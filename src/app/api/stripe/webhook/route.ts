@@ -4,6 +4,10 @@ import { supabase } from "@/lib/supabase";
 import Stripe from "stripe";
 
 export async function POST(req: NextRequest) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ received: true });
+  }
+
   const body = await req.text();
   const sig = req.headers.get("stripe-signature")!;
 

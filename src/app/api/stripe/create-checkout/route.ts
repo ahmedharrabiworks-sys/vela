@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, PLANS, type PlanId } from "@/lib/stripe";
 
 export async function POST(req: NextRequest) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+  }
+
   try {
     const { planId, email } = await req.json() as { planId: PlanId; email: string };
 
