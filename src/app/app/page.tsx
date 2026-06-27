@@ -92,7 +92,7 @@ export default function DashboardHome() {
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold text-[#1A0A00]">Good morning, Ahmed 👋</h1>
-        <p className="text-[#888888] text-sm mt-1">Here's what's happening with your business today.</p>
+        <p className="text-[#888888] text-sm mt-1">Here&apos;s what&apos;s happening with your business today.</p>
       </div>
 
       {/* KPI Cards */}

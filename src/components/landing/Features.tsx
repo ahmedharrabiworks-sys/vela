@@ -107,7 +107,7 @@ export default function Features() {
           <span className="section-label mb-6">Features</span>
           <h2 className="vela-heading text-4xl md:text-5xl text-[#1A0A00] mt-6">
             Everything your business needs.{" "}
-            <span className="vela-gradient-text">Nothing you don't.</span>
+            <span className="vela-gradient-text">Nothing you don&apos;t.</span>
           </h2>
           <p className="mt-5 text-[#888888] text-lg max-w-xl mx-auto">
             One platform replaces five tools. No integrations needed.

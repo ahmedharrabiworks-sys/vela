@@ -121,7 +121,7 @@ export default function SignupPage() {
                 <path d="M6 16l7 7 13-13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <h1 className="vela-heading text-2xl text-white mb-3">You're in! 🎉</h1>
+            <h1 className="vela-heading text-2xl text-white mb-3">You&apos;re in! 🎉</h1>
             <p className="text-white/50 text-sm mb-8">Your 7-day free trial has started. Check your email for setup instructions.</p>
             <Link href="/app"
               className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center transition-all duration-200"

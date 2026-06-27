@@ -41,7 +41,7 @@ export default function FAQ() {
           <span className="section-label mb-6">FAQ</span>
           <h2 className="vela-heading text-4xl md:text-5xl text-[#1A0A00] mt-6">
             Got questions?{" "}
-            <span className="vela-gradient-text">We've got answers.</span>
+            <span className="vela-gradient-text">We&apos;ve got answers.</span>
           </h2>
         </div>
 
