@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --vela-orange: #FF6B35;
+  --vela-rose: #FF3366;
+  --vela-night: #1A0A00;
+  --vela-cream: #FFF5F0;
+  --vela-muted: #888888;
+  --vela-gradient: linear-gradient(135deg, #FF6B35, #FF3366);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  color: var(--vela-night);
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+@layer components {
+  .vela-heading {
+    @apply font-inter font-extrabold tracking-tightest leading-none;
+    letter-spacing: -0.04em;
+  }
+
+  .vela-gradient-text {
+    background: var(--vela-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200;
+    background: var(--vela-gradient);
+    box-shadow: 0 4px 24px rgba(255,107,53,0.35);
+  }
+  .btn-primary:hover {
+    @apply scale-[1.02];
+    filter: brightness(1.08);
+    box-shadow: 0 8px 32px rgba(255,107,53,0.45);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm border border-white/30 text-white backdrop-blur-sm transition-all duration-200;
+  }
+  .btn-ghost:hover {
+    @apply border-white/60 bg-white/10;
+  }
+
+  .btn-ghost-dark {
+    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200;
+    border-color: var(--vela-orange);
+    color: var(--vela-orange);
+  }
+  .btn-ghost-dark:hover {
+    background: var(--vela-gradient);
+    @apply text-white border-transparent;
+  }
+
+  .section-label {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full;
+    background: rgba(255,107,53,0.12);
+    color: var(--vela-orange);
+  }
+
+  .card-glass {
+    @apply rounded-2xl border backdrop-blur-md;
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  .card-feature {
+    @apply rounded-2xl p-6 border bg-white transition-all duration-300 cursor-default;
+    border-color: #f0e8e0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .card-feature:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(255,107,53,0.12);
+    border-color: rgba(255,107,53,0.3);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Canvas/Three.js containers */
+canvas {
+  display: block;
+}
