@@ -62,7 +62,7 @@ export default function Footer() {
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-white/30">© 2026 Vela. All rights reserved.</p>
           <p className="text-sm text-white/30">
-            Built for businesses that don't sleep.{" "}
+            Built for businesses that don&apos;t sleep.{" "}
             <span className="vela-gradient-text font-medium">Neither does Vela.</span>
           </p>
         </div>

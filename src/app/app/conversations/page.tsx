@@ -157,7 +157,7 @@ export default function ConversationsPage() {
         <div className="px-4 py-3 border-t border-[#f0e8e0]">
           {!aiEnabled && (
             <p className="text-xs text-[#FF6B35] font-medium mb-2 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#FF6B35]" /> You're replying manually
+              <span className="w-2 h-2 rounded-full bg-[#FF6B35]" /> You&apos;re replying manually
             </p>
           )}
           <div className="flex gap-2">
