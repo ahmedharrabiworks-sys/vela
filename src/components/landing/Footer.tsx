@@ -10,12 +10,12 @@ const LINKS = {
 export default function Footer() {
   return (
     <footer className="bg-[#1A0A00] border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-14">
+      <div className="max-w-7xl mx-auto px-5 md:px-6 py-14 md:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-14">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-1 sm:col-span-2 md:col-span-1 flex flex-col items-center sm:items-start">
             <Logo showText light />
-            <p className="mt-4 text-white/45 text-sm leading-relaxed max-w-[220px]">
+            <p className="mt-4 text-white/45 text-sm leading-relaxed max-w-[220px] text-center sm:text-left">
               One platform. Every tool your business needs.
             </p>
             {/* Social icons */}
@@ -38,11 +38,11 @@ export default function Footer() {
 
           {/* Links */}
           {Object.entries(LINKS).map(([group, links]) => (
-            <div key={group}>
+            <div key={group} className="flex flex-col items-center sm:items-start">
               <p className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
                 {group}
               </p>
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col gap-3 items-center sm:items-start">
                 {links.map((link) => (
                   <li key={link}>
                     <Link
@@ -59,9 +59,9 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-white/30">© 2026 Vela. All rights reserved.</p>
-          <p className="text-sm text-white/30">
+        <div className="border-t border-white/5 pt-8 flex flex-col items-center gap-3 md:flex-row md:justify-between md:gap-4">
+          <p className="text-sm text-white/30 text-center md:text-left">© 2026 Vela. All rights reserved.</p>
+          <p className="text-sm text-white/30 text-center md:text-left">
             Built for businesses that don&apos;t sleep.{" "}
             <span className="vela-gradient-text font-medium">Neither does Vela.</span>
           </p>

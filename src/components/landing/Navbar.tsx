@@ -13,7 +13,6 @@ const navLinks = [
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -29,10 +28,10 @@ export default function Navbar() {
           : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-5 md:px-6 h-16 flex items-center justify-between">
         <Logo showText light={!scrolled} />
 
-        {/* Desktop nav */}
+        {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
             <a
@@ -48,6 +47,7 @@ export default function Navbar() {
           ))}
         </div>
 
+        {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
           <Link
             href="/auth/login"
@@ -62,41 +62,10 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          className={`md:hidden p-2 ${scrolled ? "text-[#1A0A00]" : "text-white"}`}
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          <div className="w-5 h-4 flex flex-col justify-between">
-            <span className={`block h-0.5 bg-current transition-all duration-300 ${mobileOpen ? "rotate-45 translate-y-1.5" : ""}`} />
-            <span className={`block h-0.5 bg-current transition-all duration-300 ${mobileOpen ? "opacity-0" : ""}`} />
-            <span className={`block h-0.5 bg-current transition-all duration-300 ${mobileOpen ? "-rotate-45 -translate-y-2" : ""}`} />
-          </div>
-        </button>
-      </div>
-
-      {/* Mobile menu */}
-      <div
-        className={`md:hidden transition-all duration-300 overflow-hidden bg-white border-b border-[#f0e8e0] ${
-          mobileOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="px-6 py-4 flex flex-col gap-4">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="text-sm font-medium text-[#1A0A00] hover:text-[#FF6B35] transition-colors"
-              onClick={() => setMobileOpen(false)}
-            >
-              {link.label}
-            </a>
-          ))}
-          <Link href="/auth/signup" className="btn-primary text-sm text-center mt-2">
-            Start Free Trial
-          </Link>
-        </div>
+        {/* Mobile: CTA button only, no hamburger */}
+        <Link href="/auth/signup" className="md:hidden btn-primary text-xs px-4 py-2.5">
+          Start Free Trial
+        </Link>
       </div>
     </nav>
   );

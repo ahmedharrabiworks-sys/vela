@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function CTA() {
   return (
-    <section className="py-28 bg-[#1A0A00] relative overflow-hidden">
+    <section className="py-20 md:py-28 bg-[#1A0A00] relative overflow-hidden">
       {/* Glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_50%_50%,rgba(255,107,53,0.2),transparent)] animate-pulse-glow pointer-events-none" />
 
@@ -18,22 +18,22 @@ export default function CTA() {
         }}
       />
 
-      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+      <div className="relative z-10 max-w-4xl mx-auto px-5 md:px-6 text-center">
         <span className="section-label mb-8">Get Started</span>
 
-        <h2 className="vela-heading text-4xl md:text-6xl text-white mt-8 mb-6">
+        <h2 className="vela-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white mt-8 mb-6">
           Stop losing customers
           <br />
           <span className="vela-gradient-text">to slow replies.</span>
         </h2>
 
-        <p className="text-white/60 text-xl mb-10 max-w-lg mx-auto">
+        <p className="text-white/60 text-base md:text-xl mb-10 max-w-lg mx-auto">
           Start your free 7-day trial. No credit card required.
           Be live in 7 days.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 mb-14">
-          <Link href="/auth/signup" className="btn-primary text-base px-10 py-4 text-lg">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 mb-14">
+          <Link href="/auth/signup" className="btn-primary text-base px-10 py-4 text-lg justify-center">
             Start Free Trial
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3.5 9h11M10 5l4.5 4-4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -42,7 +42,7 @@ export default function CTA() {
         </div>
 
         {/* Contact options */}
-        <div className="flex flex-wrap items-center justify-center gap-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-6">
           <a
             href="https://wa.me/971000000000"
             className="flex items-center gap-3 text-white/60 hover:text-white transition-colors text-sm"

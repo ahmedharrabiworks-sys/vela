@@ -21,7 +21,7 @@ export default function Hero() {
      * the phone frame and must not be clipped. Background effects are clipped
      * in their own absolutely-positioned inner container.
      */
-    <section className="relative h-screen flex items-center bg-[#1A0A00]">
+    <section className="relative min-h-screen flex items-center bg-[#1A0A00] pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen">
 
       {/* Background — clipped independently */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -37,7 +37,7 @@ export default function Hero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
 
           {/* ── Left: copy ── */}
@@ -45,7 +45,7 @@ export default function Hero() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-5 md:gap-6"
           >
             {/* Badge */}
             <motion.div variants={item}>
@@ -58,7 +58,7 @@ export default function Hero() {
             {/* Headline */}
             <motion.h1
               variants={item}
-              className="vela-heading text-[52px] md:text-[60px] lg:text-[68px] leading-none text-white"
+              className="vela-heading text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] leading-none text-white"
             >
               Never miss
               <br />
@@ -68,7 +68,7 @@ export default function Hero() {
             {/* Subtext */}
             <motion.p
               variants={item}
-              className="text-white/60 text-lg leading-relaxed max-w-[440px]"
+              className="text-white/60 text-base md:text-lg leading-relaxed max-w-[440px]"
             >
               Vela runs your customer communications 24/7. AI replies,
               qualifies, and books appointments — on Instagram, WhatsApp,
@@ -76,14 +76,14 @@ export default function Hero() {
             </motion.p>
 
             {/* Buttons */}
-            <motion.div variants={item} className="flex flex-wrap items-center gap-4">
-              <Link href="/auth/signup" className="btn-primary text-base px-8 py-3.5">
+            <motion.div variants={item} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <Link href="/auth/signup" className="btn-primary text-base px-8 py-3.5 justify-center">
                 Start Free Trial
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                   <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </Link>
-              <button className="btn-ghost text-base px-8 py-3.5">
+              <button className="btn-ghost text-base px-8 py-3.5 justify-center">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                   <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
                   <path d="M6 5.2l4.5 2.3L6 9.8V5.2z" fill="currentColor" />
@@ -93,7 +93,7 @@ export default function Hero() {
             </motion.div>
 
             {/* Trust row */}
-            <motion.div variants={item} className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
               {["< 60s reply time", "Works 24/7", "Live in 7 days"].map((label) => (
                 <span key={label} className="flex items-center gap-2 text-sm text-white/45">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -106,17 +106,12 @@ export default function Hero() {
             </motion.div>
           </motion.div>
 
-          {/* ── Right: phone mockup ── */}
+          {/* ── Right: phone mockup — desktop only ── */}
           <motion.div
             initial={{ opacity: 0, x: 28 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-            /*
-             * overflow-visible is required — the floating stat badges on
-             * PhoneMockup extend beyond the phone boundaries and must
-             * not be clipped by this container.
-             */
-            className="flex items-center justify-center lg:justify-end overflow-visible"
+            className="hidden lg:flex items-center justify-end overflow-visible"
           >
             <PhoneMockup />
           </motion.div>

@@ -76,8 +76,8 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="py-28 bg-[#FFF5F0]">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="pricing" className="py-20 md:py-28 bg-[#FFF5F0]">
+      <div className="max-w-7xl mx-auto px-5 md:px-6">
         {/* Header */}
         <div className="text-center mb-12">
           <span className="section-label mb-6">Pricing</span>
@@ -114,15 +114,15 @@ export default function Pricing() {
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-6 items-stretch">
+        <div className="grid md:grid-cols-3 gap-5 md:gap-6 items-stretch">
           {PLANS.map((plan) => {
             const price = annual ? plan.annual : plan.monthly;
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-8 flex flex-col transition-all duration-300 ${
+                className={`relative rounded-2xl p-6 md:p-8 flex flex-col transition-all duration-300 ${
                   plan.popular
-                    ? "bg-[#1A0A00] shadow-vela-lg scale-[1.02]"
+                    ? "bg-[#1A0A00] shadow-vela-lg md:scale-[1.02] mt-4 md:mt-0"
                     : "bg-white border border-[#f0e8e0] shadow-card hover:shadow-card-hover hover:-translate-y-1"
                 }`}
                 style={

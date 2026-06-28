@@ -34,12 +34,12 @@ export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-28 bg-white">
-      <div className="max-w-3xl mx-auto px-6">
+    <section id="faq" className="py-20 md:py-28 bg-white">
+      <div className="max-w-3xl mx-auto px-5 md:px-6">
         {/* Header */}
         <div className="text-center mb-14">
           <span className="section-label mb-6">FAQ</span>
-          <h2 className="vela-heading text-4xl md:text-5xl text-[#1A0A00] mt-6">
+          <h2 className="vela-heading text-3xl md:text-4xl lg:text-5xl text-[#1A0A00] mt-6">
             Got questions?{" "}
             <span className="vela-gradient-text">We&apos;ve got answers.</span>
           </h2>
@@ -55,10 +55,10 @@ export default function FAQ() {
               }`}
             >
               <button
-                className="w-full flex items-center justify-between p-6 text-left"
+                className="w-full flex items-center justify-between p-4 md:p-6 text-left"
                 onClick={() => setOpen(open === i ? null : i)}
               >
-                <span className="font-semibold text-[#1A0A00] pr-4">{faq.q}</span>
+                <span className="font-semibold text-[#1A0A00] text-sm md:text-base pr-4">{faq.q}</span>
                 <span
                   className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                     open === i
@@ -87,7 +87,7 @@ export default function FAQ() {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
                   >
-                    <p className="px-6 pb-6 text-[#888888] leading-relaxed">{faq.a}</p>
+                    <p className="px-4 pb-4 md:px-6 md:pb-6 text-sm md:text-base text-[#888888] leading-relaxed">{faq.a}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
