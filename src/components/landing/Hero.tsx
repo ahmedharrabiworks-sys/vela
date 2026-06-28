@@ -102,7 +102,7 @@ export default function Hero() {
 
               {/* Trust row */}
               <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                {["< 60s reply time", "Works 24/7", "Live in 7 days"].map((label) => (
+                {["< 60s reply time", "Works 24/7"].map((label) => (
                   <span key={label} className="flex items-center gap-2 text-sm text-white/45">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <circle cx="7" cy="7" r="6" stroke="#FF6B35" strokeWidth="1.2" />
