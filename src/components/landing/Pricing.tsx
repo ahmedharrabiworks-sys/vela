@@ -6,15 +6,22 @@ import Link from "next/link";
 const PLANS = [
   {
     name: "Starter",
-    monthly: 100,
-    annual: 80,
-    description: "Perfect for businesses just getting started with AI automation.",
+    monthly: 79,
+    annual: 63,
+    description: "Everything you need to get started with AI automation.",
     features: [
-      "1 business",
-      "AI chat on 1 channel (WhatsApp or Instagram)",
-      "Basic CRM — leads & conversations",
-      "Appointment booking",
-      "Email support",
+      { text: "1 custom domain", included: true },
+      { text: "AI on 1 channel only", included: true },
+      { text: "Basic website template", included: true },
+      { text: "50 bookings/month", included: true },
+      { text: "Generic AI responses", included: true },
+      { text: "Basic calendar", included: true },
+      { text: "No follow-up automation", included: false },
+      { text: "Basic CRM", included: true },
+      { text: "No white label", included: false },
+      { text: "1 team member", included: true },
+      { text: "No analytics", included: false },
+      { text: "Email support only", included: true },
     ],
     cta: "Get Started",
     popular: false,
@@ -25,31 +32,40 @@ const PLANS = [
     annual: 127,
     description: "The complete system for serious businesses ready to scale.",
     features: [
-      "1 business",
-      "All 3 channels — WhatsApp, Instagram, Website",
-      "Full CRM with pipeline view",
-      "Automated follow-up sequences",
-      "Google Calendar sync",
-      "Website builder included",
-      "Analytics dashboard",
-      "Priority support",
+      { text: "2 custom domains", included: true },
+      { text: "All 3 channels (WhatsApp + Instagram + Website)", included: true },
+      { text: "Beautiful custom website", included: true },
+      { text: "Unlimited bookings", included: true },
+      { text: "AI trained on YOUR business", included: true },
+      { text: "Full calendar + auto reminders", included: true },
+      { text: "Auto follow-up sequences", included: true },
+      { text: "Full CRM pipeline view", included: true },
+      { text: "White label included", included: true },
+      { text: "15 team members", included: true },
+      { text: "Full analytics dashboard", included: true },
+      { text: "Live chat support 24/7", included: true },
     ],
     cta: "Start Free Trial",
     popular: true,
   },
   {
     name: "Premium",
-    monthly: 199,
-    annual: 159,
-    description: "For agencies and multi-location businesses demanding the best.",
+    monthly: 299,
+    annual: 239,
+    description: "For businesses that demand the absolute best, no compromises.",
     features: [
-      "Up to 3 businesses",
-      "Everything in Pro",
-      "Advanced AI — custom trained per business",
-      "White-label option",
-      "Custom domain",
-      "Human-assisted onboarding",
-      "Priority + phone support",
+      { text: "3 custom domains", included: true },
+      { text: "All 3 channels + priority responses", included: true },
+      { text: "Full custom website + animations", included: true },
+      { text: "Unlimited bookings", included: true },
+      { text: "Advanced AI — learns over time", included: true },
+      { text: "Full calendar + reminders + analytics", included: true },
+      { text: "Advanced follow-up sequences", included: true },
+      { text: "Full CRM + revenue reports", included: true },
+      { text: "White label included", included: true },
+      { text: "Unlimited team members", included: true },
+      { text: "Advanced analytics + exports", included: true },
+      { text: "Dedicated account manager", included: true },
     ],
     cta: "Get Premium",
     popular: false,
@@ -135,7 +151,7 @@ export default function Pricing() {
                     <span className={`text-sm mb-2 ${plan.popular ? "text-white/50" : "text-[#888888]"}`}>/mo</span>
                   </div>
                   {annual && (
-                    <p className="text-xs text-[#FF6B35] font-medium">
+                    <p className={`text-xs font-medium ${plan.popular ? "text-[#FF6B35]" : "text-[#FF6B35]"}`}>
                       Save ${(plan.monthly - plan.annual) * 12}/year
                     </p>
                   )}
@@ -146,12 +162,21 @@ export default function Pricing() {
 
                 <ul className="flex flex-col gap-3 flex-1 mb-8">
                   {plan.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-3">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                        <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "rgba(255,107,53,0.1)"} />
-                        <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className={`text-sm ${plan.popular ? "text-white/80" : "text-[#1A0A00]"}`}>{feat}</span>
+                    <li key={feat.text} className="flex items-start gap-3">
+                      {feat.included ? (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                          <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "rgba(255,107,53,0.1)"} />
+                          <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                          <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.06)" />
+                          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#aaaaaa" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
+                      )}
+                      <span className={`text-sm ${feat.included ? (plan.popular ? "text-white/80" : "text-[#1A0A00]") : "text-[#aaaaaa] line-through"}`}>
+                        {feat.text}
+                      </span>
                     </li>
                   ))}
                 </ul>
