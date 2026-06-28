@@ -32,9 +32,9 @@ export default function AppointmentsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A0A00]">Appointments</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[#1A0A00]">Appointments</h1>
           <p className="text-sm text-[#888888] mt-1">June 27, 2026 · {APPOINTMENTS.filter(a => a.status === "confirmed").length} confirmed today</p>
         </div>
         <button className="btn-primary text-xs px-4 py-2.5">+ New Appointment</button>

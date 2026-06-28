@@ -40,12 +40,12 @@ export default function LeadsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A0A00]">Leads & CRM</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[#1A0A00]">Leads & CRM</h1>
           <p className="text-sm text-[#888888] mt-1">{LEADS.length} total leads</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {/* View toggle */}
           <div className="flex items-center gap-1 p-1 bg-[#FFF5F0] rounded-xl border border-[#f0e8e0]">
             {(["list", "kanban"] as const).map((v) => (
@@ -82,7 +82,8 @@ export default function LeadsPage() {
       {view === "list" ? (
         /* List view */
         <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#f0e8e0] bg-[#FFF5F0]">
                 {["Name", "Channel", "Status", "Last Contact", "Value", "Actions"].map((h) => (
@@ -131,6 +132,7 @@ export default function LeadsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         /* Kanban view */

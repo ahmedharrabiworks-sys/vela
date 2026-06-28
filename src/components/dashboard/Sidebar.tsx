@@ -82,23 +82,50 @@ const NAV = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <aside
-      className={`flex flex-col h-screen bg-[#1A0A00] border-r border-white/5 transition-all duration-300 ${
-        collapsed ? "w-16" : "w-60"
-      }`}
+      className={`
+        flex flex-col h-screen shrink-0
+        fixed inset-y-0 left-0 md:relative md:inset-auto
+        z-50 md:z-auto
+        bg-[#1A0A00] border-r border-white/5
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        md:translate-x-0
+        w-72 md:w-auto
+        ${collapsed ? "md:w-16" : "md:w-60"}
+      `}
     >
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-white/5">
+      {/* Logo row */}
+      <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0">
         {!collapsed && <Logo showText light size={28} />}
-        {collapsed && <Logo showText={false} light size={28} />}
+        {collapsed && <span className="hidden md:block"><Logo showText={false} light size={28} /></span>}
+        {collapsed && <span className="md:hidden"><Logo showText light size={28} /></span>}
+
+        {/* X button — mobile only */}
+        <button
+          onClick={onClose}
+          className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-all"
+          aria-label="Close sidebar"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </button>
+
+        {/* Collapse toggle — desktop only */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
+          className="hidden md:flex p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
           aria-label="Toggle sidebar"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -114,13 +141,14 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5 overflow-y-auto scrollbar-hide">
+      <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5 overflow-y-auto">
         {NAV.map((item) => {
           const active = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${
                 active
                   ? "bg-[#FF6B35]/15 text-[#FF6B35]"
@@ -139,15 +167,27 @@ export default function Sidebar() {
                   )}
                 </>
               )}
-              {collapsed && item.badge && (
-                <span className="absolute top-1 right-1 w-3 h-3 rounded-full bg-[#FF6B35]" />
+              {/* On mobile, always show label (sidebar is full-width) */}
+              {collapsed && (
+                <>
+                  <span className="flex-1 md:hidden">{item.label}</span>
+                  {item.badge && (
+                    <>
+                      <span className="md:hidden w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                        style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", color: "white" }}>
+                        {item.badge}
+                      </span>
+                      <span className="hidden md:block absolute top-1 right-1 w-3 h-3 rounded-full bg-[#FF6B35]" />
+                    </>
+                  )}
+                </>
               )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Upgrade CTA */}
+      {/* Upgrade CTA — hidden when collapsed on desktop */}
       {!collapsed && (
         <div className="p-3 border-t border-white/5">
           <div className="rounded-xl p-4 bg-gradient-to-br from-[#FF6B35]/15 to-[#FF3366]/10 border border-[#FF6B35]/20">
@@ -155,6 +195,7 @@ export default function Sidebar() {
             <p className="text-[10px] text-white/40 mb-3">Unlock 3 businesses + AI training</p>
             <Link
               href="/pricing"
+              onClick={onClose}
               className="block text-center text-xs font-bold py-2 rounded-lg text-white"
               style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
             >
@@ -165,13 +206,19 @@ export default function Sidebar() {
       )}
 
       {/* User */}
-      <div className={`p-3 border-t border-white/5 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
+      <div className={`p-3 border-t border-white/5 flex items-center gap-3 ${collapsed ? "md:justify-center" : ""}`}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
           style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
           A
         </div>
-        {!collapsed && (
+        {(!collapsed) && (
           <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-white truncate">Ahmed Al-Rashid</p>
+            <p className="text-[10px] text-white/40 truncate">Pro Plan</p>
+          </div>
+        )}
+        {collapsed && (
+          <div className="flex-1 min-w-0 md:hidden">
             <p className="text-xs font-semibold text-white truncate">Ahmed Al-Rashid</p>
             <p className="text-[10px] text-white/40 truncate">Pro Plan</p>
           </div>
