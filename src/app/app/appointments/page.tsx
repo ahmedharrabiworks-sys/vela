@@ -110,14 +110,14 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#1A0A00]">Appointments</h1>
-          <p className="text-sm text-[#888888] mt-1">
+          <h1 className="text-xl md:text-2xl font-bold text-[#111827]">Appointments</h1>
+          <p className="text-sm text-[#6B7280] mt-1">
             June 29, 2026 · <span className="font-semibold text-green-600">{confirmedCount} confirmed today</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Export */}
-          <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#f0e8e0] text-[#888888] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px]">
+          <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px]">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -136,14 +136,14 @@ export default function AppointmentsPage() {
             placeholder="Search by name, service, channel…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-[#f0e8e0] rounded-xl text-[#1A0A00] placeholder:text-[#bbb] focus:outline-none focus:border-[#FF6B35]/40 shadow-sm transition-colors"
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-[#E5E7EB] rounded-xl text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40 shadow-sm transition-colors"
           />
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#bbb]" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
             <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
           </svg>
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#888] transition-colors">
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#888] transition-colors">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
@@ -158,7 +158,7 @@ export default function AppointmentsPage() {
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`text-xs font-semibold px-3.5 py-2 rounded-lg transition-all min-h-[36px] ${
-                filter === f.key ? "text-white shadow-sm" : "bg-white border border-[#f0e8e0] text-[#888888] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
+                filter === f.key ? "text-white shadow-sm" : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
               }`}
               style={filter === f.key ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
             >
@@ -168,17 +168,17 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Row count */}
-        <span className="text-xs text-[#bbb] ml-auto hidden sm:block">
+        <span className="text-xs text-[#9CA3AF] ml-auto hidden sm:block">
           {rows.length} of {RAW_APPOINTMENTS.length} appointments
         </span>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
-              <tr className="border-b border-[#f0e8e0] bg-[#FAFAFA]">
+              <tr className="border-b border-[#E5E7EB] bg-[#FAFAFA]">
                 {/* Checkbox col */}
                 <th className="w-10 pl-5 pr-2 py-3.5">
                   <input type="checkbox" className="w-3.5 h-3.5 rounded border-[#ddd] accent-[#FF6B35]" />
@@ -189,7 +189,7 @@ export default function AppointmentsPage() {
                     className={`text-left py-3.5 pr-4 ${col.width}`}>
                     <button
                       onClick={() => handleSort(col.key)}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] hover:text-[#1A0A00] transition-colors group"
+                      className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#6B7280] hover:text-[#111827] transition-colors group"
                     >
                       {col.label}
                       <SortIcon dir={sortKey === col.key ? sortDir : "asc"} active={sortKey === col.key} />
@@ -199,7 +199,7 @@ export default function AppointmentsPage() {
 
                 {/* Actions col — not sortable */}
                 <th className="text-left py-3.5 pr-5 min-w-[200px]">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#888888]">Actions</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">Actions</span>
                 </th>
               </tr>
             </thead>
@@ -207,7 +207,7 @@ export default function AppointmentsPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-sm text-[#bbb]">
+                  <td colSpan={7} className="text-center py-16 text-sm text-[#9CA3AF]">
                     No appointments match your search.
                   </td>
                 </tr>
@@ -217,7 +217,7 @@ export default function AppointmentsPage() {
                   const isEven = i % 2 === 1;
                   return (
                     <tr key={apt.id}
-                      className={`border-b border-[#f0e8e0] last:border-none transition-colors hover:bg-[#FFF5F0] ${isEven ? "bg-[#FAFAFA]" : "bg-white"}`}>
+                      className={`border-b border-[#E5E7EB] last:border-none transition-colors hover:bg-[#F9FAFB] ${isEven ? "bg-[#FAFAFA]" : "bg-white"}`}>
 
                       {/* Checkbox */}
                       <td className="pl-5 pr-2 py-3.5">
@@ -232,21 +232,21 @@ export default function AppointmentsPage() {
                             {apt.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-[#1A0A00] whitespace-nowrap">{apt.name}</p>
-                            <p className="text-[11px] text-[#bbb]">{apt.phone}</p>
+                            <p className="text-sm font-semibold text-[#111827] whitespace-nowrap">{apt.name}</p>
+                            <p className="text-[11px] text-[#9CA3AF]">{apt.phone}</p>
                           </div>
                         </div>
                       </td>
 
                       {/* Service */}
                       <td className="py-3.5 pr-4">
-                        <span className="text-sm text-[#1A0A00]">{apt.service}</span>
+                        <span className="text-sm text-[#111827]">{apt.service}</span>
                       </td>
 
                       {/* Date & Time */}
                       <td className="py-3.5 pr-4">
-                        <span className="text-sm font-semibold text-[#1A0A00]">{apt.dateLabel}</span>
-                        <span className="text-sm text-[#888888]"> · {apt.time}</span>
+                        <span className="text-sm font-semibold text-[#111827]">{apt.dateLabel}</span>
+                        <span className="text-sm text-[#6B7280]"> · {apt.time}</span>
                       </td>
 
                       {/* Channel */}
@@ -270,7 +270,7 @@ export default function AppointmentsPage() {
                         <div className="flex items-center gap-1.5">
                           {apt.status !== "cancelled" && (
                             <>
-                              <button className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#f0e8e0] text-[#888888] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all whitespace-nowrap min-h-[30px]">
+                              <button className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all whitespace-nowrap min-h-[30px]">
                                 Reschedule
                               </button>
                               <button className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-all whitespace-nowrap min-h-[30px]">
@@ -294,9 +294,9 @@ export default function AppointmentsPage() {
 
         {/* Footer */}
         {rows.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#f0e8e0] bg-[#FAFAFA] flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs text-[#888888]">
-              Showing <span className="font-semibold text-[#1A0A00]">{rows.length}</span> of <span className="font-semibold text-[#1A0A00]">{RAW_APPOINTMENTS.length}</span> appointments
+          <div className="px-5 py-3 border-t border-[#E5E7EB] bg-[#FAFAFA] flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-xs text-[#6B7280]">
+              Showing <span className="font-semibold text-[#111827]">{rows.length}</span> of <span className="font-semibold text-[#111827]">{RAW_APPOINTMENTS.length}</span> appointments
             </span>
             <div className="flex items-center gap-1">
               {["Confirmed", "Pending", "Cancelled"].map((s) => {

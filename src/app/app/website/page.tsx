@@ -285,22 +285,22 @@ export default function WebsitePage() {
         <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex flex-col gap-4 w-full md:w-[300px] shrink-0`}>
 
           {/* AI prompt */}
-          <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card p-5">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5">
+            <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[#FF6B35]" style={{ background: "#FF6B35" + "15" }}>
                 <SparkleIcon />
               </div>
               <div>
-                <p className="text-sm font-bold text-[#1A0A00]">Describe Your Website</p>
-                <p className="text-[10px] text-[#888888]">AI builds it for you</p>
+                <p className="text-sm font-bold text-[#111827]">AI Instructions</p>
               </div>
             </div>
+            <p className="text-[11px] text-[#6B7280] mb-3">Describe your business. The AI generates your entire website from this.</p>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. I run a dental clinic in Dubai. Premium service, clean design, want to attract high-value patients..."
-              rows={4}
-              className="w-full text-sm resize-none rounded-xl border border-[#f0e8e0] px-3.5 py-3 text-[#1A0A00] placeholder:text-[#bbb] focus:outline-none focus:border-[#FF6B35]/40 transition-colors leading-relaxed"
+              placeholder="e.g. I run a premium dental clinic in Dubai Marina. We specialise in whitening, veneers, and cosmetic dentistry. Target audience is high-income professionals aged 25-45. Clean, luxurious feel."
+              rows={5}
+              className="w-full text-sm resize-none rounded-xl border border-[#E5E7EB] px-3.5 py-3 text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40 transition-colors leading-relaxed"
             />
             <button
               onClick={handleGenerate}
@@ -325,8 +325,11 @@ export default function WebsitePage() {
           </div>
 
           {/* Business details */}
-          <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card p-5 space-y-4">
-            <p className="text-sm font-bold text-[#1A0A00]">Details</p>
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-4">
+            <div>
+              <p className="text-sm font-bold text-[#111827]">Fine-tune</p>
+              <p className="text-[11px] text-[#6B7280]">Edit these after generation, or fill in manually</p>
+            </div>
 
             <div>
               <label className="text-[10px] font-semibold text-[#888888] uppercase tracking-wider block mb-1.5">Business Name</label>

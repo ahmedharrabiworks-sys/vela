@@ -1,7 +1,145 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+
+const TOUR_STEPS = [
+  {
+    title: "Welcome to Vela",
+    body: "This is your AI Business Operating System. Your AI handles messages, books appointments, and grows your leads — automatically, 24/7.",
+    target: null,
+  },
+  {
+    title: "AI Conversations",
+    body: "Your AI replies to WhatsApp, Instagram, and website messages instantly. No manual responses needed — ever.",
+    target: "conversations",
+    navIndex: 1,
+  },
+  {
+    title: "Leads & CRM",
+    body: "Every inquiry becomes a tracked lead. Your AI qualifies them and moves them through your pipeline automatically.",
+    target: "leads",
+    navIndex: 2,
+  },
+  {
+    title: "Appointments",
+    body: "Customers can book directly in chat. The AI confirms, adds to your calendar, and sends automated reminders.",
+    target: "appointments",
+    navIndex: 3,
+  },
+  {
+    title: "Ready to go live?",
+    body: "Start your 7-day free trial and have your AI answering customers within minutes — no setup fees.",
+    target: null,
+    isFinal: true,
+  },
+];
+
+function TooltipTour({ step, onNext, onSkip }: { step: number; onNext: () => void; onSkip: () => void }) {
+  const current = TOUR_STEPS[step - 1];
+  if (!current) return null;
+
+  const isCentered = !current.target;
+  const navItemHeight = 48;
+  const bannerHeight = 40;
+  const sidebarHeaderHeight = 56;
+  const navTopOffset = bannerHeight + sidebarHeaderHeight + 4;
+  const itemTop = current.navIndex !== undefined
+    ? navTopOffset + current.navIndex * navItemHeight + navItemHeight / 2
+    : 0;
+
+  return (
+    <>
+      {/* Dim overlay */}
+      <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onSkip} />
+
+      {isCentered ? (
+        /* Centered card */
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
+          <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">
+                {step} / {TOUR_STEPS.length}
+              </span>
+              <button onClick={onSkip} className="text-white/30 hover:text-white/60 transition-colors text-xs">
+                Skip tour
+              </button>
+            </div>
+            <h3 className="text-base font-bold text-white mb-2">{current.title}</h3>
+            <p className="text-sm text-white/60 leading-relaxed mb-5">{current.body}</p>
+            <div className="flex gap-2">
+              {current.isFinal ? (
+                <>
+                  <button onClick={onSkip}
+                    className="flex-1 py-2.5 rounded-xl text-sm text-white/40 border border-white/10 hover:border-white/20 transition-colors">
+                    Maybe later
+                  </button>
+                  <Link href="/auth/signup" onClick={onSkip}
+                    className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 transition-opacity"
+                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                    Start Free Trial →
+                  </Link>
+                </>
+              ) : (
+                <button onClick={onNext}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+                  style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                  Next →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Sidebar-anchored tooltip — desktop: right of sidebar, mobile: bottom sheet */
+        <>
+          {/* Desktop: positioned right of sidebar */}
+          <div className="hidden md:block fixed z-[70]"
+            style={{ left: 208 + 20, top: itemTop - 60, maxWidth: 280 }}>
+            <div className="relative bg-[#1A1A1A] border border-white/10 rounded-2xl p-5 shadow-2xl">
+              {/* Arrow pointing left */}
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 w-3 h-3 rotate-45 bg-[#1A1A1A] border-l border-b border-white/10" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">
+                  {step} / {TOUR_STEPS.length}
+                </span>
+                <button onClick={onSkip} className="text-white/30 hover:text-white/60 transition-colors text-xs">
+                  Skip
+                </button>
+              </div>
+              <h3 className="text-sm font-bold text-white mb-1.5">{current.title}</h3>
+              <p className="text-xs text-white/55 leading-relaxed mb-4">{current.body}</p>
+              <button onClick={onNext}
+                className="w-full py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                Next →
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile: bottom sheet */}
+          <div className="md:hidden fixed bottom-4 left-4 right-4 z-[70]">
+            <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-5 shadow-2xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">
+                  {step} / {TOUR_STEPS.length}
+                </span>
+                <button onClick={onSkip} className="text-white/30 hover:text-white/60 transition-colors text-xs">Skip</button>
+              </div>
+              <h3 className="text-sm font-bold text-white mb-1.5">{current.title}</h3>
+              <p className="text-xs text-white/55 leading-relaxed mb-4">{current.body}</p>
+              <button onClick={onNext}
+                className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                Next →
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
 
 type View = "dashboard" | "conversations" | "leads" | "appointments";
 
@@ -383,9 +521,34 @@ const NAV_ICONS: Record<View, JSX.Element> = {
 export default function DemoPage() {
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  useEffect(() => {
+    const done = typeof window !== "undefined" && localStorage.getItem("vela_tour_done");
+    if (!done) {
+      const t = setTimeout(() => setTourStep(1), 800);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  const handleTourNext = () => {
+    if (tourStep >= TOUR_STEPS.length) {
+      handleTourSkip();
+    } else {
+      setTourStep((s) => s + 1);
+    }
+  };
+
+  const handleTourSkip = () => {
+    setTourStep(0);
+    if (typeof window !== "undefined") localStorage.setItem("vela_tour_done", "1");
+  };
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#FFF5F0]">
+      {tourStep > 0 && (
+        <TooltipTour step={tourStep} onNext={handleTourNext} onSkip={handleTourSkip} />
+      )}
       {/* Demo banner */}
       <div className="shrink-0 px-4 md:px-6 py-2.5 flex items-center justify-between gap-4" style={{ background: "#1A0A00" }}>
         <p className="text-white/70 text-sm">

@@ -71,6 +71,16 @@ const NAV = [
     ),
   },
   {
+    label: "Marketing",
+    href: "/app/marketing",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M2.25 9h1.5M14.25 9h1.5M9 2.25v1.5M9 14.25v1.5M4.397 4.397l1.06 1.06M12.543 12.543l1.06 1.06M4.397 13.603l1.06-1.06M12.543 5.457l1.06-1.06" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <circle cx="9" cy="9" r="3" stroke="currentColor" strokeWidth="1.4"/>
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     href: "/app/settings",
     icon: (
