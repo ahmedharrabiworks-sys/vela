@@ -5,8 +5,6 @@ import Link from "next/link";
 
 type View = "dashboard" | "conversations" | "leads" | "appointments";
 
-/* ── Fake data ── */
-
 const CHANNEL_COLORS: Record<string, string> = {
   WhatsApp: "#25D366",
   Instagram: "#E1306C",
@@ -14,8 +12,7 @@ const CHANNEL_COLORS: Record<string, string> = {
 };
 
 const CONVOS = [
-  {
-    id: 1, name: "Ahmed Al-Rashid", channel: "WhatsApp", msg: "I want to book an appointment", time: "2m", status: "new",
+  { id: 1, name: "Ahmed Al-Rashid", channel: "WhatsApp", msg: "I want to book an appointment", time: "2m", status: "new",
     messages: [
       { role: "user", text: "Hi! I want to book a dental cleaning appointment.", time: "10:30" },
       { role: "ai", text: "Hello Ahmed! Happy to help. We have availability on Tuesday at 11 AM or Wednesday at 2 PM. Which works?", time: "10:30" },
@@ -23,31 +20,27 @@ const CONVOS = [
       { role: "ai", text: "Booked! ✅ Tuesday June 28 at 11:00 AM for a Dental Cleaning. You'll get a reminder 1 hour before. See you then!", time: "10:31" },
     ],
   },
-  {
-    id: 2, name: "Sara Khalid", channel: "Instagram", msg: "What are your prices for whitening?", time: "8m", status: "replied",
+  { id: 2, name: "Sara Khalid", channel: "Instagram", msg: "What are your prices for whitening?", time: "8m", status: "replied",
     messages: [
       { role: "user", text: "Hey! What are your prices for teeth whitening?", time: "10:22" },
       { role: "ai", text: "Hi Sara! Professional whitening is AED 800 for a 60 min session. Take-home kit is AED 400. Want to book?", time: "10:23" },
     ],
   },
-  {
-    id: 3, name: "Mohammed Ali", channel: "Website", msg: "Is Dr. Hassan available tomorrow?", time: "15m", status: "qualified",
+  { id: 3, name: "Mohammed Ali", channel: "Website", msg: "Is Dr. Hassan available tomorrow?", time: "15m", status: "qualified",
     messages: [
       { role: "user", text: "Is Dr. Hassan available tomorrow morning?", time: "10:15" },
       { role: "ai", text: "Yes! Dr. Hassan has slots tomorrow at 9 AM, 10:30 AM, and 12 PM. Which works best?", time: "10:15" },
       { role: "user", text: "10:30 works great", time: "10:16" },
-      { role: "ai", text: "Perfect! Can I get your full name and mobile number to confirm the booking?", time: "10:16" },
+      { role: "ai", text: "Perfect! Can I get your full name and mobile number to confirm?", time: "10:16" },
     ],
   },
-  {
-    id: 4, name: "Layla Hassan", channel: "WhatsApp", msg: "Can I reschedule to Monday?", time: "1h", status: "replied",
+  { id: 4, name: "Layla Hassan", channel: "WhatsApp", msg: "Can I reschedule to Monday?", time: "1h", status: "replied",
     messages: [
       { role: "user", text: "Can I move my Friday appointment to next Monday?", time: "09:45" },
       { role: "ai", text: "Of course Layla! Monday has 2 PM or 4 PM open. Which do you prefer?", time: "09:46" },
     ],
   },
-  {
-    id: 5, name: "Omar Sharif", channel: "Instagram", msg: "Do you accept Daman insurance?", time: "2h", status: "new",
+  { id: 5, name: "Omar Sharif", channel: "Instagram", msg: "Do you accept Daman insurance?", time: "2h", status: "new",
     messages: [
       { role: "user", text: "Do you accept Daman insurance?", time: "08:30" },
       { role: "ai", text: "Yes, we accept Daman! Please bring your insurance card. Would you like to book a checkup?", time: "08:31" },
@@ -56,14 +49,14 @@ const CONVOS = [
 ];
 
 const LEADS = [
-  { id: 1, name: "Ahmed Al-Rashid", service: "Dental Cleaning", channel: "WhatsApp", stage: "booked", value: "AED 350" },
-  { id: 2, name: "Sara Khalid", service: "Teeth Whitening", channel: "Instagram", stage: "qualified", value: "AED 800" },
-  { id: 3, name: "Mohammed Ali", service: "General Checkup", channel: "Website", stage: "qualified", value: "AED 200" },
-  { id: 4, name: "Layla Hassan", service: "Root Canal", channel: "WhatsApp", stage: "contacted", value: "AED 1,200" },
-  { id: 5, name: "Omar Sharif", service: "Checkup", channel: "Instagram", stage: "new", value: "AED 200" },
-  { id: 6, name: "Fatima Al-Zahra", service: "Teeth Whitening", channel: "WhatsApp", stage: "new", value: "AED 800" },
-  { id: 7, name: "Khalid Mansour", service: "Dental Cleaning", channel: "Website", stage: "contacted", value: "AED 350" },
-  { id: 8, name: "Nora Abdulla", service: "Veneers", channel: "Instagram", stage: "new", value: "AED 2,400" },
+  { id: 1, name: "Ahmed Al-Rashid", service: "Dental Cleaning", channel: "WhatsApp", stage: "booked" as const, value: "AED 350" },
+  { id: 2, name: "Sara Khalid", service: "Teeth Whitening", channel: "Instagram", stage: "qualified" as const, value: "AED 800" },
+  { id: 3, name: "Mohammed Ali", service: "General Checkup", channel: "Website", stage: "qualified" as const, value: "AED 200" },
+  { id: 4, name: "Layla Hassan", service: "Root Canal", channel: "WhatsApp", stage: "contacted" as const, value: "AED 1,200" },
+  { id: 5, name: "Omar Sharif", service: "Checkup", channel: "Instagram", stage: "new" as const, value: "AED 200" },
+  { id: 6, name: "Fatima Al-Zahra", service: "Teeth Whitening", channel: "WhatsApp", stage: "new" as const, value: "AED 800" },
+  { id: 7, name: "Khalid Mansour", service: "Dental Cleaning", channel: "Website", stage: "contacted" as const, value: "AED 350" },
+  { id: 8, name: "Nora Abdulla", service: "Veneers", channel: "Instagram", stage: "new" as const, value: "AED 2,400" },
 ];
 
 const APPOINTMENTS = [
@@ -84,42 +77,68 @@ const STAGE_CONFIG: Record<Stage, { label: string; color: string }> = {
   booked: { label: "Booked", color: "bg-green-50 text-green-600 border-green-100" },
 };
 
-/* ── Views ── */
+function ChannelIcon({ channel }: { channel: string }) {
+  if (channel === "Instagram") return (
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+      <rect x="1" y="1" width="10" height="10" rx="3" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="9.2" cy="2.8" r="0.7" fill="currentColor"/>
+    </svg>
+  );
+  if (channel === "WhatsApp") return (
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+      <path d="M6 1a5 5 0 0 1 4.33 7.5L11 11l-2.62-.86A5 5 0 1 1 6 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+    </svg>
+  );
+  return (
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+      <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M1 6h10M6 1c-1.5 2-1.5 8 0 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 function DashboardView({ setView }: { setView: (v: View) => void }) {
   const kpis = [
-    { label: "Active Conversations", value: "12", delta: "+3 today", icon: "💬", up: true },
-    { label: "Leads This Week", value: "8", delta: "+2 new", icon: "🎯", up: true },
-    { label: "Appointments Today", value: "5", delta: "2 remaining", icon: "📅", up: false },
-    { label: "AI Reply Rate", value: "94%", delta: "↑ from 91%", icon: "⚡", up: true },
+    { label: "Active Conversations", value: "12", delta: "+3 today", up: true, accent: "#7C3AED" },
+    { label: "Leads This Week", value: "8", delta: "+2 new", up: true, accent: "#059669" },
+    { label: "Appointments Today", value: "5", delta: "2 remaining", up: false, accent: "#FF6B35" },
+    { label: "AI Reply Rate", value: "94%", delta: "↑ from 91%", up: true, accent: "#0EA5E9" },
   ];
-
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map(k => (
-          <div key={k.label} className="bg-white rounded-2xl border border-[#f0e8e0] p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xl">{k.icon}</span>
-              <span className={`text-[11px] font-semibold ${k.up ? "text-green-500" : "text-[#FF6B35]"}`}>{k.delta}</span>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpis.map((k) => (
+          <div key={k.label} className="bg-white rounded-2xl border border-[#f0e8e0] p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${k.accent}15`, color: k.accent }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 13V8M5.5 13V5M9 13V2M12.5 13V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
             </div>
             <p className="text-2xl font-extrabold text-[#1A0A00]">{k.value}</p>
-            <p className="text-xs text-[#888] mt-1">{k.label}</p>
+            <p className="text-xs text-[#888] mt-0.5 leading-tight">{k.label}</p>
+            <p className={`text-[10px] font-semibold mt-1 ${k.up ? "text-green-500" : "text-[#FF6B35]"}`}>{k.delta}</p>
           </div>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3 bg-white rounded-2xl border border-[#f0e8e0] shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#f0e8e0]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#f0e8e0]">
             <p className="font-bold text-[#1A0A00] text-sm">Recent Conversations</p>
             <button onClick={() => setView("conversations")} className="text-xs text-[#FF6B35] font-semibold hover:underline">View all →</button>
           </div>
-          {CONVOS.slice(0, 4).map(c => (
+          {CONVOS.slice(0, 4).map((c) => (
             <button key={c.id} onClick={() => setView("conversations")}
-              className="w-full flex items-center gap-3 px-5 py-3 border-b border-[#f0e8e0] last:border-none hover:bg-[#FFF5F0]/60 transition-colors text-left">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                style={{ background: CHANNEL_COLORS[c.channel] }}>{c.name[0]}</div>
+              className="w-full flex items-center gap-3 px-5 py-3.5 border-b border-[#f0e8e0] last:border-none hover:bg-[#FFF5F0]/60 transition-colors text-left min-h-[60px]">
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                  style={{ background: CHANNEL_COLORS[c.channel] }}>{c.name[0]}</div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 border-white"
+                  style={{ background: CHANNEL_COLORS[c.channel], color: "white" }}>
+                  <ChannelIcon channel={c.channel} />
+                </div>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-[#1A0A00] truncate">{c.name}</p>
@@ -132,13 +151,14 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
         </div>
 
         <div className="lg:col-span-2 bg-white rounded-2xl border border-[#f0e8e0] shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#f0e8e0]">
-            <p className="font-bold text-[#1A0A00] text-sm">Today</p>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#f0e8e0]">
+            <p className="font-bold text-[#1A0A00] text-sm">Today&apos;s Schedule</p>
             <button onClick={() => setView("appointments")} className="text-xs text-[#FF6B35] font-semibold hover:underline">Calendar →</button>
           </div>
-          {APPOINTMENTS.map(a => (
-            <div key={a.id} className={`flex items-center gap-3 px-4 py-2.5 border-b border-[#f0e8e0] last:border-none ${a.status === "new" ? "bg-[#FFF5F0]" : ""}`}>
-              <span className="text-xs font-mono text-[#bbb] w-12 shrink-0">{a.time}</span>
+          {APPOINTMENTS.map((a) => (
+            <div key={a.id} className={`flex items-center gap-3 px-4 py-3 border-b border-[#f0e8e0] last:border-none min-h-[56px] ${a.status === "new" ? "bg-[#FFF5F0]" : ""}`}>
+              <span className="text-xs font-mono text-[#FF6B35] w-12 shrink-0 font-bold">{a.time}</span>
+              <div className="w-0.5 h-8 rounded-full shrink-0" style={{ background: CHANNEL_COLORS[a.channel] }} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-[#1A0A00] truncate">{a.name}</p>
                 <p className="text-[10px] text-[#888] truncate">{a.service}</p>
@@ -156,24 +176,37 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
 
 function ConversationsView() {
   const [selected, setSelected] = useState(CONVOS[0]);
+  const [showThread, setShowThread] = useState(false);
   const [aiOn, setAiOn] = useState(true);
 
+  const handleSelect = (c: typeof CONVOS[0]) => { setSelected(c); setShowThread(true); };
+
   return (
-    <div className="flex gap-4" style={{ height: "calc(100vh - 180px)" }}>
-      <div className="w-64 bg-white rounded-2xl border border-[#f0e8e0] shadow-sm flex flex-col overflow-hidden shrink-0">
+    <div className="flex gap-4" style={{ height: "calc(100vh - 200px)", minHeight: 400 }}>
+      {/* Conversation list */}
+      <div className={`bg-white rounded-2xl border border-[#f0e8e0] shadow-sm flex flex-col overflow-hidden shrink-0
+        ${showThread ? "hidden md:flex md:w-64" : "flex w-full md:w-64"}`}>
         <div className="px-4 py-3.5 border-b border-[#f0e8e0]">
           <p className="font-bold text-[#1A0A00] text-sm">All Conversations</p>
         </div>
         <div className="flex-1 overflow-y-auto divide-y divide-[#f0e8e0]">
-          {CONVOS.map(c => (
-            <button key={c.id} onClick={() => setSelected(c)}
-              className={`w-full flex items-start gap-2.5 px-4 py-3 text-left transition-colors ${selected.id === c.id ? "bg-[#FFF5F0]" : "hover:bg-[#FFF5F0]/50"}`}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5"
-                style={{ background: CHANNEL_COLORS[c.channel] }}>{c.name[0]}</div>
+          {CONVOS.map((c) => (
+            <button key={c.id} onClick={() => handleSelect(c)}
+              className={`w-full flex items-start gap-2.5 px-4 py-3.5 text-left transition-all min-h-[64px] ${
+                selected.id === c.id ? "bg-[#FFF5F0] border-l-[3px] border-[#FF6B35]" : "hover:bg-[#FFF5F0]/50 border-l-[3px] border-transparent"
+              }`}>
+              <div className="relative shrink-0 mt-0.5">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                  style={{ background: CHANNEL_COLORS[c.channel] }}>{c.name[0]}</div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 border-white"
+                  style={{ background: CHANNEL_COLORS[c.channel], color: "white" }}>
+                  <ChannelIcon channel={c.channel} />
+                </div>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
                   <span className="text-xs font-semibold text-[#1A0A00] truncate">{c.name}</span>
-                  <span className="text-[9px] text-[#bbb] shrink-0">{c.time}</span>
+                  <span className="text-[9px] text-[#bbb] shrink-0 ml-1">{c.time}</span>
                 </div>
                 <p className="text-[10px] text-[#888] truncate">{c.msg}</p>
               </div>
@@ -182,40 +215,51 @@ function ConversationsView() {
         </div>
       </div>
 
-      <div className="flex-1 bg-white rounded-2xl border border-[#f0e8e0] shadow-sm flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#f0e8e0]">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-            style={{ background: CHANNEL_COLORS[selected.channel] }}>{selected.name[0]}</div>
-          <div>
-            <p className="font-bold text-[#1A0A00] text-sm">{selected.name}</p>
-            <p className="text-[10px]" style={{ color: CHANNEL_COLORS[selected.channel] }}>{selected.channel}</p>
+      {/* Thread */}
+      <div className={`bg-white rounded-2xl border border-[#f0e8e0] shadow-sm flex flex-col overflow-hidden
+        ${showThread ? "flex flex-1" : "hidden md:flex md:flex-1"}`}>
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#f0e8e0]">
+          <button onClick={() => setShowThread(false)}
+            className="md:hidden p-2 -ml-1 rounded-xl text-[#888] hover:text-[#1A0A00] hover:bg-[#FFF5F0] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 4l-4 4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ background: CHANNEL_COLORS[selected.channel] }}>{selected.name[0]}</div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 border-white"
+              style={{ background: CHANNEL_COLORS[selected.channel], color: "white" }}>
+              <ChannelIcon channel={selected.channel} />
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
+          <div className="flex-1">
+            <p className="font-bold text-[#1A0A00] text-sm">{selected.name}</p>
+            <p className="text-[10px] font-medium" style={{ color: CHANNEL_COLORS[selected.channel] }}>{selected.channel}</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5">
               <span className="text-xs text-[#888]">AI</span>
               <button onClick={() => setAiOn(!aiOn)}
                 className={`w-9 h-5 rounded-full transition-all relative ${aiOn ? "bg-[#FF6B35]" : "bg-[#e0e0e0]"}`}>
                 <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${aiOn ? "left-4" : "left-0.5"}`} />
               </button>
             </div>
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#f0e8e0] text-[#888] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">
-              Human Takeover
-            </button>
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-all"
+            <button className="text-xs font-semibold px-3 py-2 rounded-xl text-white min-h-[36px]"
               style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-              + Book Appointment
+              + Book
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5">
           {selected.messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}>
-              <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+              <div className={`max-w-[80%] md:max-w-[70%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed ${
                 m.role === "user" ? "bg-[#f0e8e0] text-[#1A0A00] rounded-tl-sm" : "text-white rounded-tr-sm"
               }`} style={m.role === "ai" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
                 <p>{m.text}</p>
-                <p className={`text-[10px] mt-1 ${m.role === "user" ? "text-[#888]" : "text-white/60"}`}>
+                <p className={`text-[10px] mt-1.5 ${m.role === "user" ? "text-[#888]" : "text-white/60"}`}>
                   {m.role === "ai" && "⚡ Vela AI · "}{m.time}
                 </p>
               </div>
@@ -223,15 +267,10 @@ function ConversationsView() {
           ))}
         </div>
 
-        <div className="px-4 py-3 border-t border-[#f0e8e0]">
-          {!aiOn && (
-            <p className="text-xs text-[#FF6B35] font-medium mb-2 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#FF6B35]" /> You&apos;re replying manually
-            </p>
-          )}
-          <div className="flex gap-2">
-            <input placeholder="Type a reply..." className="flex-1 text-sm rounded-xl border border-[#f0e8e0] px-3 py-2.5 text-[#1A0A00] placeholder:text-[#bbb] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
-            <button className="px-4 py-2 rounded-xl text-white text-sm font-semibold self-end" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>Send</button>
+        <div className="px-4 py-3.5 border-t border-[#f0e8e0]">
+          <div className="flex gap-2 items-end">
+            <input placeholder="Type a reply…" className="flex-1 text-sm rounded-xl border border-[#f0e8e0] px-4 py-3 text-[#1A0A00] placeholder:text-[#bbb] focus:outline-none focus:border-[#FF6B35]/40 transition-colors min-h-[44px]" />
+            <button className="px-4 py-3 rounded-xl text-white text-sm font-semibold min-h-[44px]" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>Send</button>
           </div>
         </div>
       </div>
@@ -241,27 +280,36 @@ function ConversationsView() {
 
 function LeadsView() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {STAGES.map(stage => {
-        const leads = LEADS.filter(l => l.stage === stage);
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {STAGES.map((stage) => {
+        const leads = LEADS.filter((l) => l.stage === stage);
         return (
           <div key={stage} className="bg-white rounded-2xl border border-[#f0e8e0] shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-[#f0e8e0] flex items-center justify-between">
-              <p className="font-bold text-[#1A0A00] text-xs">{STAGE_CONFIG[stage].label}</p>
+              <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STAGE_CONFIG[stage].color}`}>{STAGE_CONFIG[stage].label}</p>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#f0e8e0] text-[#888]">{leads.length}</span>
             </div>
             <div className="p-3 flex flex-col gap-2">
-              {leads.map(lead => (
-                <div key={lead.id} className="bg-[#FFF5F0] rounded-xl p-3 border border-[#f5ece4] cursor-pointer hover:border-[#FF6B35]/30 transition-all">
+              {leads.map((lead) => (
+                <div key={lead.id} className="bg-[#FFF5F0] rounded-xl p-3 border border-[#f5ece4] cursor-pointer hover:border-[#FF6B35]/30 hover:-translate-y-0.5 transition-all">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                      style={{ background: CHANNEL_COLORS[lead.channel] }}>{lead.name[0]}</div>
-                    <p className="text-xs font-semibold text-[#1A0A00] truncate flex-1">{lead.name}</p>
+                    <div className="relative shrink-0">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                        style={{ background: CHANNEL_COLORS[lead.channel] }}>{lead.name[0]}</div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white"
+                        style={{ background: CHANNEL_COLORS[lead.channel], color: "white" }}>
+                        <ChannelIcon channel={lead.channel} />
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-semibold text-[#1A0A00] truncate flex-1">{lead.name}</p>
                   </div>
-                  <p className="text-[10px] text-[#888]">{lead.service}</p>
+                  <p className="text-[9px] text-[#888]">{lead.service}</p>
                   <p className="text-[10px] font-bold text-[#FF6B35] mt-1">{lead.value}</p>
                 </div>
               ))}
+              {leads.length === 0 && (
+                <div className="border-2 border-dashed border-[#f0e8e0] rounded-xl p-3 text-center text-[#ddd] text-xs">Empty</div>
+              )}
             </div>
           </div>
         );
@@ -279,10 +327,8 @@ function AppointmentsView() {
       <div className="flex gap-2 overflow-x-auto pb-1">
         {days.map((d, i) => (
           <button key={d} onClick={() => setActiveDay(i)}
-            className={`flex flex-col items-center px-4 py-3 rounded-xl shrink-0 border transition-all ${
-              activeDay === i
-                ? "text-white border-transparent"
-                : "border-[#f0e8e0] bg-white text-[#888] hover:border-[#FF6B35]/30"
+            className={`flex flex-col items-center px-4 py-3 rounded-xl shrink-0 border transition-all min-h-[64px] min-w-[60px] ${
+              activeDay === i ? "text-white border-transparent" : "border-[#f0e8e0] bg-white text-[#888] hover:border-[#FF6B35]/30"
             }`}
             style={activeDay === i ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
             <span className="text-[10px] font-medium">{d.split(" ")[0]}</span>
@@ -294,18 +340,18 @@ function AppointmentsView() {
       <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-[#f0e8e0]">
           <p className="font-bold text-[#1A0A00] text-sm">{days[activeDay]}</p>
-          <p className="text-xs text-[#888]">{activeDay === 5 ? "5 appointments" : "No appointments scheduled"}</p>
+          <p className="text-xs text-[#888]">{activeDay === 5 ? "5 appointments scheduled" : "No appointments scheduled"}</p>
         </div>
         {activeDay === 5 ? (
-          APPOINTMENTS.map(a => (
-            <div key={a.id} className={`flex items-center gap-4 px-5 py-4 border-b border-[#f0e8e0] last:border-none ${a.status === "new" ? "bg-[#FFF5F0]" : ""}`}>
-              <span className="text-sm font-mono text-[#bbb] w-12 shrink-0">{a.time}</span>
+          APPOINTMENTS.map((a) => (
+            <div key={a.id} className={`flex items-center gap-4 px-5 py-4 border-b border-[#f0e8e0] last:border-none min-h-[64px] ${a.status === "new" ? "bg-[#FFF5F0]" : ""}`}>
+              <span className="text-sm font-mono text-[#FF6B35] w-12 shrink-0 font-bold">{a.time}</span>
               <div className="w-1 h-10 rounded-full shrink-0" style={{ background: CHANNEL_COLORS[a.channel] }} />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#1A0A00] text-sm">{a.name}</p>
                 <p className="text-xs text-[#888]">{a.service}</p>
               </div>
-              <span className="text-[10px] px-2 py-1 rounded-full font-semibold shrink-0 hidden md:block"
+              <span className="text-[10px] px-2 py-1 rounded-full font-semibold shrink-0 hidden sm:block"
                 style={{ background: `${CHANNEL_COLORS[a.channel]}18`, color: CHANNEL_COLORS[a.channel] }}>{a.channel}</span>
               {a.status === "new" && (
                 <span className="text-[10px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 px-2 py-0.5 rounded-full shrink-0">NEW</span>
@@ -313,98 +359,117 @@ function AppointmentsView() {
             </div>
           ))
         ) : (
-          <div className="px-5 py-12 text-center text-[#bbb] text-sm">No appointments for this day</div>
+          <div className="px-5 py-16 text-center text-[#bbb] text-sm">No appointments for this day</div>
         )}
       </div>
     </div>
   );
 }
 
-/* ── Sidebar nav ── */
-
-const NAV: { id: View; label: string; emoji: string }[] = [
-  { id: "dashboard", label: "Dashboard", emoji: "▦" },
-  { id: "conversations", label: "Conversations", emoji: "💬" },
-  { id: "leads", label: "Leads", emoji: "🎯" },
-  { id: "appointments", label: "Appointments", emoji: "📅" },
+const NAV: { id: View; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "conversations", label: "Conversations" },
+  { id: "leads", label: "Leads" },
+  { id: "appointments", label: "Appointments" },
 ];
 
-/* ── Page ── */
+const NAV_ICONS: Record<View, JSX.Element> = {
+  dashboard: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  conversations: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 10.5a1.5 1.5 0 01-1.5 1.5H5.25L2.25 15V4.5A1.5 1.5 0 013.75 3h9.75A1.5 1.5 0 0115 4.5v6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+  leads: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M12 16.5v-1.5a3 3 0 00-3-3H4.5a3 3 0 00-3 3v1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="6.75" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/></svg>,
+  appointments: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.25" y="3" width="13.5" height="13.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 1.5v3M6 1.5v3M2.25 7.5h13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+};
 
 export default function DemoPage() {
   const [view, setView] = useState<View>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#FFF5F0]">
-
       {/* Demo banner */}
       <div className="shrink-0 px-4 md:px-6 py-2.5 flex items-center justify-between gap-4" style={{ background: "#1A0A00" }}>
         <p className="text-white/70 text-sm">
           <span className="text-yellow-400 mr-2">●</span>
-          You are in <span className="text-white font-semibold">demo mode</span>
-          <span className="hidden sm:inline"> — data resets on every visit</span>
+          <span className="text-white font-semibold">Demo mode</span>
+          <span className="hidden sm:inline text-white/50"> — data resets on every visit</span>
         </p>
-        <Link
-          href="/auth/signup"
+        <Link href="/auth/signup"
           className="shrink-0 text-xs font-bold px-4 py-1.5 rounded-lg text-white whitespace-nowrap hover:opacity-90 transition-opacity"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-        >
+          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
           Start Free Trial →
         </Link>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+        )}
 
         {/* Sidebar */}
-        <aside className="w-14 md:w-52 bg-white border-r border-[#f0e8e0] flex flex-col shrink-0">
-          <div className="px-3 md:px-5 py-4 border-b border-[#f0e8e0] flex items-center gap-2">
-            <span className="font-extrabold text-[#1A0A00] text-lg tracking-tight hidden md:block">vela</span>
-            <span className="text-[9px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 px-1.5 py-0.5 rounded-full hidden md:block">DEMO</span>
-            <span className="font-extrabold text-[#1A0A00] text-lg tracking-tight md:hidden">V</span>
+        <aside className={`
+          flex flex-col shrink-0 bg-[#1A0A00] border-r border-white/5
+          fixed inset-y-0 left-0 z-50 md:relative md:inset-auto md:z-auto
+          transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
+          w-64 md:w-52
+        `}>
+          <div className="h-14 flex items-center justify-between px-4 border-b border-white/5 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-white text-lg tracking-tight">vela</span>
+              <span className="text-[9px] font-bold text-[#FF6B35] bg-[#FF6B35]/15 px-1.5 py-0.5 rounded-full">DEMO</span>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-all">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
           </div>
 
-          <nav className="flex-1 p-2 md:p-3 flex flex-col gap-1">
-            {NAV.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setView(item.id)}
-                className={`flex items-center gap-3 px-2 md:px-3 py-2.5 rounded-xl text-sm font-medium transition-all w-full ${
-                  view === item.id ? "text-white shadow-sm" : "text-[#888] hover:text-[#1A0A00] hover:bg-[#FFF5F0]"
+          <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
+            {NAV.map((item) => (
+              <button key={item.id} onClick={() => { setView(item.id); setSidebarOpen(false); }}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all w-full min-h-[44px] ${
+                  view === item.id ? "text-white shadow-sm" : "text-white/50 hover:text-white hover:bg-white/5"
                 }`}
-                style={view === item.id ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
-                title={item.label}
-              >
-                <span className="text-base shrink-0">{item.emoji}</span>
-                <span className="hidden md:block">{item.label}</span>
+                style={view === item.id ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                <span className="shrink-0">{NAV_ICONS[item.id]}</span>
+                <span>{item.label}</span>
               </button>
             ))}
           </nav>
 
-          <div className="p-2 md:p-3 border-t border-[#f0e8e0]">
-            <Link
-              href="/auth/signup"
-              className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-xs md:text-sm font-bold text-white hover:opacity-90 transition-opacity"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-              title="Start Free Trial"
-            >
-              <span className="hidden md:block">Unlock Full Access</span>
-              <span className="md:hidden">↑</span>
+          <div className="p-3 border-t border-white/5">
+            <Link href="/auth/signup" onClick={() => setSidebarOpen(false)}
+              className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity min-h-[44px]"
+              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              Unlock Full Access
             </Link>
           </div>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="bg-white border-b border-[#f0e8e0] px-5 md:px-6 py-3.5 flex items-center justify-between sticky top-0 z-10">
-            <h1 className="font-bold text-[#1A0A00] text-sm md:text-base capitalize">{view}</h1>
+        <main className="flex-1 overflow-y-auto flex flex-col">
+          {/* Top bar */}
+          <div className="bg-white border-b border-[#f0e8e0] px-4 md:px-6 py-3.5 flex items-center justify-between sticky top-0 z-10">
+            <div className="flex items-center gap-2.5">
+              {/* Hamburger — mobile only */}
+              <button onClick={() => setSidebarOpen(true)}
+                className="md:hidden p-2 -ml-1 rounded-lg text-[#1A0A00] hover:bg-[#FFF5F0] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+              <h1 className="font-bold text-[#1A0A00] text-sm md:text-base capitalize">{view}</h1>
+            </div>
             <div className="flex items-center gap-3">
               <span className="hidden md:block text-sm text-[#888]">Demo Clinic</span>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                 style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>D</div>
             </div>
           </div>
 
-          <div className="p-4 md:p-6">
+          <div className="flex-1 p-4 md:p-6">
             {view === "dashboard" && <DashboardView setView={setView} />}
             {view === "conversations" && <ConversationsView />}
             {view === "leads" && <LeadsView />}
