@@ -1,137 +1,317 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
-const APPOINTMENTS = [
-  { id: 1, name: "Ahmed Al-Rashid", service: "Dental Cleaning", date: "Today", time: "3:00 PM", status: "confirmed", channel: "Instagram", phone: "+971 50 111 2222" },
-  { id: 2, name: "Sara Khalid", service: "Consultation", date: "Today", time: "4:30 PM", status: "confirmed", channel: "WhatsApp", phone: "+971 55 333 4444" },
-  { id: 3, name: "Mohammed Ali", service: "Teeth Whitening", date: "Tomorrow", time: "10:00 AM", status: "pending", channel: "Website", phone: "+971 52 555 6666" },
-  { id: 4, name: "Fatima Al-Zahra", service: "Check-up", date: "Tomorrow", time: "2:00 PM", status: "confirmed", channel: "Instagram", phone: "+971 56 777 8888" },
-  { id: 5, name: "Omar Bin Rashid", service: "Root Canal", date: "Wed, Jun 29", time: "9:00 AM", status: "confirmed", channel: "WhatsApp", phone: "+971 58 999 0000" },
-  { id: 6, name: "Layla Hassan", service: "Braces Consultation", date: "Thu, Jun 30", time: "11:30 AM", status: "cancelled", channel: "Website", phone: "+971 50 123 4567" },
+type SortKey = "name" | "service" | "date" | "channel" | "status";
+type SortDir = "asc" | "desc";
+type FilterKey = "all" | "today" | "week" | "upcoming";
+
+const RAW_APPOINTMENTS = [
+  { id: 1,  name: "Ahmed Al-Rashid",  phone: "+971 50 111 2222", service: "Dental Cleaning",      dateLabel: "Today",        sortDate: 0, time: "3:00 PM",  status: "confirmed", channel: "Instagram" },
+  { id: 2,  name: "Sara Khalid",      phone: "+971 55 333 4444", service: "Consultation",          dateLabel: "Today",        sortDate: 0, time: "4:30 PM",  status: "confirmed", channel: "WhatsApp"  },
+  { id: 3,  name: "Mohammed Ali",     phone: "+971 52 555 6666", service: "Teeth Whitening",       dateLabel: "Tomorrow",     sortDate: 1, time: "10:00 AM", status: "pending",   channel: "Website"   },
+  { id: 4,  name: "Fatima Al-Zahra",  phone: "+971 56 777 8888", service: "Check-up",              dateLabel: "Tomorrow",     sortDate: 1, time: "2:00 PM",  status: "confirmed", channel: "Instagram" },
+  { id: 5,  name: "Omar Bin Rashid",  phone: "+971 58 999 0000", service: "Root Canal",            dateLabel: "Wed, Jun 29",  sortDate: 2, time: "9:00 AM",  status: "confirmed", channel: "WhatsApp"  },
+  { id: 6,  name: "Layla Hassan",     phone: "+971 50 123 4567", service: "Braces Consultation",   dateLabel: "Thu, Jun 30",  sortDate: 3, time: "11:30 AM", status: "cancelled", channel: "Website"   },
+  { id: 7,  name: "Khalid Mansour",   phone: "+971 52 234 5678", service: "Dental Cleaning",       dateLabel: "Fri, Jul 1",   sortDate: 4, time: "1:00 PM",  status: "confirmed", channel: "WhatsApp"  },
+  { id: 8,  name: "Nora Abdulla",     phone: "+971 55 345 6789", service: "Veneers Consultation",  dateLabel: "Fri, Jul 1",   sortDate: 4, time: "3:30 PM",  status: "pending",   channel: "Instagram" },
+  { id: 9,  name: "Youssef Al-Noor",  phone: "+971 50 456 7890", service: "Teeth Whitening",       dateLabel: "Sat, Jul 2",   sortDate: 5, time: "10:30 AM", status: "confirmed", channel: "Website"   },
+  { id: 10, name: "Amira Bensalem",   phone: "+971 56 567 8901", service: "Consultation",          dateLabel: "Sun, Jul 3",   sortDate: 6, time: "12:00 PM", status: "pending",   channel: "Instagram" },
 ];
 
-const STATUS_STYLES: Record<string, { card: string; dot: string; text: string }> = {
-  confirmed: { card: "border-green-100 bg-green-50/30", dot: "bg-green-500", text: "text-green-600" },
-  pending: { card: "border-yellow-100 bg-yellow-50/30", dot: "bg-yellow-400", text: "text-yellow-600" },
-  cancelled: { card: "border-red-100 bg-red-50/20", dot: "bg-red-400", text: "text-red-500" },
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+  confirmed: { bg: "bg-green-50",  text: "text-green-700",  dot: "bg-green-500",  label: "Confirmed" },
+  pending:   { bg: "bg-yellow-50", text: "text-yellow-700", dot: "bg-yellow-400", label: "Pending"   },
+  cancelled: { bg: "bg-red-50",    text: "text-red-600",    dot: "bg-red-400",    label: "Cancelled" },
 };
 
 const CHANNEL_COLORS: Record<string, string> = {
   Instagram: "#E1306C",
-  WhatsApp: "#25D366",
-  Website: "#FF6B35",
+  WhatsApp:  "#25D366",
+  Website:   "#FF6B35",
 };
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const TODAY_IDX = 4;
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all",      label: "All" },
+  { key: "today",    label: "Today" },
+  { key: "week",     label: "This Week" },
+  { key: "upcoming", label: "Upcoming" },
+];
+
+const COLUMNS: { key: SortKey; label: string; width: string }[] = [
+  { key: "name",    label: "Patient",     width: "min-w-[200px]" },
+  { key: "service", label: "Service",     width: "min-w-[160px]" },
+  { key: "date",    label: "Date & Time", width: "min-w-[160px]" },
+  { key: "channel", label: "Channel",     width: "min-w-[120px]" },
+  { key: "status",  label: "Status",      width: "min-w-[120px]" },
+];
+
+function SortIcon({ dir, active }: { dir: SortDir; active: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+      className={`transition-colors ${active ? "text-[#FF6B35]" : "text-[#ccc]"}`}>
+      <path d={dir === "asc" ? "M6 9V3M3 6l3-3 3 3" : "M6 3v6M3 6l3 3 3-3"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
 
 export default function AppointmentsPage() {
-  const [activeDay, setActiveDay] = useState(TODAY_IDX);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+
+  const rows = useMemo(() => {
+    let data = [...RAW_APPOINTMENTS];
+
+    // Filter
+    if (filter === "today")    data = data.filter((a) => a.sortDate === 0);
+    if (filter === "week")     data = data.filter((a) => a.sortDate <= 6);
+    if (filter === "upcoming") data = data.filter((a) => a.sortDate >= 1);
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      data = data.filter((a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.service.toLowerCase().includes(q) ||
+        a.channel.toLowerCase().includes(q) ||
+        a.status.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    data.sort((a, b) => {
+      let va: string | number = "";
+      let vb: string | number = "";
+      if (sortKey === "name")    { va = a.name;     vb = b.name; }
+      if (sortKey === "service") { va = a.service;  vb = b.service; }
+      if (sortKey === "date")    { va = a.sortDate; vb = b.sortDate; }
+      if (sortKey === "channel") { va = a.channel;  vb = b.channel; }
+      if (sortKey === "status")  { va = a.status;   vb = b.status; }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return data;
+  }, [search, filter, sortKey, sortDir]);
+
+  const confirmedCount = RAW_APPOINTMENTS.filter((a) => a.status === "confirmed" && a.sortDate === 0).length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-5">
+    <div className="max-w-7xl mx-auto space-y-5 pb-20">
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-[#1A0A00]">Appointments</h1>
-          <p className="text-sm text-[#888888] mt-1">June 27, 2026 · {APPOINTMENTS.filter(a => a.status === "confirmed").length} confirmed today</p>
+          <p className="text-sm text-[#888888] mt-1">
+            June 29, 2026 · <span className="font-semibold text-green-600">{confirmedCount} confirmed today</span>
+          </p>
         </div>
-        <button className="btn-primary text-xs px-4 py-2.5">+ New Appointment</button>
-      </div>
-
-      {/* Week strip */}
-      <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card p-4">
-        <div className="grid grid-cols-7 gap-2">
-          {DAYS.map((day, i) => {
-            const date = 23 + i;
-            const isActive = activeDay === i;
-            const isToday = i === TODAY_IDX;
-            return (
-              <button
-                key={day}
-                onClick={() => setActiveDay(i)}
-                className={`flex flex-col items-center py-3 rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? "text-white shadow-vela"
-                    : isToday
-                    ? "bg-[#FFF5F0] text-[#FF6B35]"
-                    : "text-[#888888] hover:bg-[#FFF5F0]"
-                }`}
-                style={isActive ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
-              >
-                <span className="text-[10px] font-medium">{day}</span>
-                <span className="text-lg font-bold mt-0.5">{date}</span>
-                {/* Dot indicators */}
-                <div className="flex gap-0.5 mt-1.5">
-                  {[0, 1].map((d) => (
-                    <span key={d} className={`w-1 h-1 rounded-full ${isActive ? "bg-white/60" : "bg-[#FF6B35]/40"}`} />
-                  ))}
-                </div>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-2">
+          {/* Export */}
+          <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#f0e8e0] text-[#888888] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px]">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Export
+          </button>
+          <button className="btn-primary text-xs px-4 py-2.5 min-h-[40px]">+ New Appointment</button>
         </div>
       </div>
 
-      {/* Appointments list */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {APPOINTMENTS.map((apt) => {
-          const s = STATUS_STYLES[apt.status];
-          return (
-            <div
-              key={apt.id}
-              className={`bg-white rounded-2xl border shadow-card p-5 transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 ${s.card}`}
+      {/* Toolbar: search + filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <input
+            type="text"
+            placeholder="Search by name, service, channel…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-[#f0e8e0] rounded-xl text-[#1A0A00] placeholder:text-[#bbb] focus:outline-none focus:border-[#FF6B35]/40 shadow-sm transition-colors"
+          />
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#bbb]" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#bbb] hover:text-[#888] transition-colors">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Filter pills */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`text-xs font-semibold px-3.5 py-2 rounded-lg transition-all min-h-[36px] ${
+                filter === f.key ? "text-white shadow-sm" : "bg-white border border-[#f0e8e0] text-[#888888] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
+              }`}
+              style={filter === f.key ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-                    style={{ background: CHANNEL_COLORS[apt.channel] }}>
-                    {apt.name[0]}
-                  </div>
-                  <div>
-                    <p className="font-bold text-[#1A0A00] text-sm">{apt.name}</p>
-                    <p className="text-xs text-[#888888]">{apt.phone}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                  <span className={`text-xs font-semibold capitalize ${s.text}`}>{apt.status}</span>
-                </div>
-              </div>
+              {f.label}
+            </button>
+          ))}
+        </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-[#888888]">Service:</span>
-                  <span className="font-semibold text-[#1A0A00]">{apt.service}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-[#888888]">Time:</span>
-                  <span className="font-semibold text-[#FF6B35]">{apt.date} · {apt.time}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-[#888888]">Via:</span>
-                  <span className="font-medium" style={{ color: CHANNEL_COLORS[apt.channel] }}>{apt.channel}</span>
-                </div>
-              </div>
+        {/* Row count */}
+        <span className="text-xs text-[#bbb] ml-auto hidden sm:block">
+          {rows.length} of {RAW_APPOINTMENTS.length} appointments
+        </span>
+      </div>
 
-              {apt.status !== "cancelled" && (
-                <div className="flex gap-2 mt-4">
-                  <button className="flex-1 py-2 text-xs font-semibold border border-[#f0e8e0] rounded-lg text-[#888888] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">
-                    Reschedule
-                  </button>
-                  <button className="flex-1 py-2 text-xs font-semibold border border-red-100 rounded-lg text-red-400 hover:bg-red-50 transition-all">
-                    Cancel
-                  </button>
-                  <button className="flex-1 py-2 text-xs font-semibold rounded-lg text-white transition-all"
-                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                    Message
-                  </button>
-                </div>
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px]">
+            <thead>
+              <tr className="border-b border-[#f0e8e0] bg-[#FAFAFA]">
+                {/* Checkbox col */}
+                <th className="w-10 pl-5 pr-2 py-3.5">
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded border-[#ddd] accent-[#FF6B35]" />
+                </th>
+
+                {COLUMNS.map((col) => (
+                  <th key={col.key}
+                    className={`text-left py-3.5 pr-4 ${col.width}`}>
+                    <button
+                      onClick={() => handleSort(col.key)}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#888888] hover:text-[#1A0A00] transition-colors group"
+                    >
+                      {col.label}
+                      <SortIcon dir={sortKey === col.key ? sortDir : "asc"} active={sortKey === col.key} />
+                    </button>
+                  </th>
+                ))}
+
+                {/* Actions col — not sortable */}
+                <th className="text-left py-3.5 pr-5 min-w-[200px]">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#888888]">Actions</span>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-16 text-sm text-[#bbb]">
+                    No appointments match your search.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((apt, i) => {
+                  const s = STATUS_CONFIG[apt.status];
+                  const isEven = i % 2 === 1;
+                  return (
+                    <tr key={apt.id}
+                      className={`border-b border-[#f0e8e0] last:border-none transition-colors hover:bg-[#FFF5F0] ${isEven ? "bg-[#FAFAFA]" : "bg-white"}`}>
+
+                      {/* Checkbox */}
+                      <td className="pl-5 pr-2 py-3.5">
+                        <input type="checkbox" className="w-3.5 h-3.5 rounded border-[#ddd] accent-[#FF6B35]" />
+                      </td>
+
+                      {/* Name + Avatar */}
+                      <td className="py-3.5 pr-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                            style={{ background: CHANNEL_COLORS[apt.channel] }}>
+                            {apt.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-[#1A0A00] whitespace-nowrap">{apt.name}</p>
+                            <p className="text-[11px] text-[#bbb]">{apt.phone}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Service */}
+                      <td className="py-3.5 pr-4">
+                        <span className="text-sm text-[#1A0A00]">{apt.service}</span>
+                      </td>
+
+                      {/* Date & Time */}
+                      <td className="py-3.5 pr-4">
+                        <span className="text-sm font-semibold text-[#1A0A00]">{apt.dateLabel}</span>
+                        <span className="text-sm text-[#888888]"> · {apt.time}</span>
+                      </td>
+
+                      {/* Channel */}
+                      <td className="py-3.5 pr-4">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
+                          style={{ background: `${CHANNEL_COLORS[apt.channel]}15`, color: CHANNEL_COLORS[apt.channel] }}>
+                          {apt.channel}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 pr-4">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
+                          {s.label}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 pr-5">
+                        <div className="flex items-center gap-1.5">
+                          {apt.status !== "cancelled" && (
+                            <>
+                              <button className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#f0e8e0] text-[#888888] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all whitespace-nowrap min-h-[30px]">
+                                Reschedule
+                              </button>
+                              <button className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-all whitespace-nowrap min-h-[30px]">
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                          <button className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white transition-all hover:opacity-90 whitespace-nowrap min-h-[30px]"
+                            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                            Message
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer */}
+        {rows.length > 0 && (
+          <div className="px-5 py-3 border-t border-[#f0e8e0] bg-[#FAFAFA] flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-xs text-[#888888]">
+              Showing <span className="font-semibold text-[#1A0A00]">{rows.length}</span> of <span className="font-semibold text-[#1A0A00]">{RAW_APPOINTMENTS.length}</span> appointments
+            </span>
+            <div className="flex items-center gap-1">
+              {["Confirmed", "Pending", "Cancelled"].map((s) => {
+                const cfg = STATUS_CONFIG[s.toLowerCase()];
+                const count = rows.filter((a) => a.status === s.toLowerCase()).length;
+                return (
+                  <span key={s} className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                    {count} {s}
+                  </span>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
     </div>
   );
