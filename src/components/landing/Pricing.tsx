@@ -45,7 +45,7 @@ const PLANS = [
       { text: "Full analytics dashboard", included: true },
       { text: "Live chat support 24/7", included: true },
     ],
-    cta: "Start Free Trial",
+    cta: "Get Started",
     popular: true,
   },
   {
@@ -86,8 +86,21 @@ export default function Pricing() {
             <span className="vela-gradient-text">pricing.</span>
           </h2>
           <p className="mt-5 text-[#888888] text-lg max-w-lg mx-auto">
-            No hidden fees. Cancel any time. 7-day free trial on all plans.
+            Cancel anytime · 7-day money-back guarantee
           </p>
+
+          <div className="mt-6">
+            <Link
+              href="/demo"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#1A0A00]/15 text-[#1A0A00] hover:border-[#1A0A00]/40 hover:bg-white transition-all duration-200"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M5.5 4.8l4.2 2.2-4.2 2.2V4.8z" fill="currentColor" />
+              </svg>
+              Try Demo
+            </Link>
+          </div>
 
           {/* Toggle */}
           <div className="inline-flex items-center gap-4 mt-8 p-1.5 rounded-full bg-white border border-[#f0e8e0] shadow-sm">
@@ -197,7 +210,7 @@ export default function Pricing() {
         </div>
 
         <p className="text-center text-sm text-[#888888] mt-8">
-          All plans include a 7-day free trial. No credit card required to start.
+          Cancel anytime, no questions asked.
         </p>
       </div>
     </section>

@@ -317,7 +317,7 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden" style={{ background: "#0F0907" }}>
       <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,107,53,0.14), transparent)" }} />
 
-      <div className="relative z-10 w-full max-w-lg">
+      <div className={`relative z-10 w-full transition-all duration-300 ${step === 3 ? "max-w-5xl" : "max-w-lg"}`}>
         <div className="flex justify-center mb-8">
           <Link href="/"><Logo showText light /></Link>
         </div>
@@ -328,7 +328,7 @@ export default function SignupPage() {
         {step === 1 && (
           <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-8">
             <h1 className="text-xl font-bold text-white mb-1">Create your account</h1>
-            <p className="text-white/40 text-sm mb-7">7-day free trial · No credit card required</p>
+            <p className="text-white/40 text-sm mb-7">Get your AI receptionist set up in minutes.</p>
             <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <div>
                 <label className={labelCls}>Full Name</label>
@@ -417,12 +417,14 @@ export default function SignupPage() {
 
         {/* ── Step 3: Plan ── */}
         {step === 3 && (
-          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-            <h1 className="text-xl font-bold text-white mb-1">Choose your plan</h1>
-            <p className="text-white/40 text-sm mb-5">7 days free, then billed monthly. Cancel anytime.</p>
+          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-10">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Choose your plan</h1>
+              <p className="text-white/40 text-sm md:text-base">Billed monthly. Cancel anytime, no questions asked.</p>
+            </div>
 
             {detectedType && (
-              <div className="flex items-center gap-2.5 px-4 py-3 mb-5 rounded-xl border border-[#FF6B35]/25" style={{ background: "rgba(255,107,53,0.08)" }}>
+              <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#FF6B35]/25 max-w-md mx-auto" style={{ background: "rgba(255,107,53,0.08)" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#FF6B35" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 <p className="text-sm text-white/50">
                   Vela AI detected: <span className="text-white font-semibold">{detectedType}</span>
@@ -430,29 +432,60 @@ export default function SignupPage() {
               </div>
             )}
 
-            <div className="space-y-2.5 mb-6">
-              {PLANS.map((p) => (
-                <button key={p.id} onClick={() => setPlan(p.id)}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left ${
-                    plan === p.id ? "border-[#FF6B35] bg-[#FF6B35]/8" : "border-white/10 hover:border-white/20"
-                  }`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${plan === p.id ? "border-[#FF6B35]" : "border-white/20"}`}>
-                      {plan === p.id && <div className="w-2 h-2 rounded-full bg-[#FF6B35]" />}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white">{p.name}</span>
-                        {p.popular && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>BEST</span>}
+            <div className="grid md:grid-cols-3 gap-5 mb-8 items-stretch">
+              {PLANS.map((p) => {
+                const isSelected = plan === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPlan(p.id)}
+                    className={`relative flex flex-col text-left rounded-2xl p-7 md:p-8 min-w-[280px] transition-all duration-200 ${
+                      p.popular ? "md:scale-[1.03]" : ""
+                    } ${
+                      isSelected
+                        ? "bg-[#FF6B35]/10"
+                        : p.popular
+                        ? "bg-[#1A0A00]"
+                        : "bg-white/[0.03] hover:bg-white/[0.05]"
+                    }`}
+                    style={{
+                      border: isSelected ? "2px solid #FF6B35" : p.popular ? "2px solid rgba(255,107,53,0.4)" : "2px solid rgba(255,255,255,0.1)",
+                      boxShadow: isSelected
+                        ? "0 0 0 4px rgba(255,107,53,0.12), 0 20px 50px rgba(255,107,53,0.25)"
+                        : p.popular
+                        ? "0 12px 40px rgba(255,107,53,0.15)"
+                        : "none",
+                    }}
+                  >
+                    {p.popular && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                        <span className="px-4 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
+                          style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
+                          Most Popular
+                        </span>
                       </div>
-                      <p className="text-[11px] text-white/35 mt-0.5">{p.desc}</p>
+                    )}
+
+                    <div className="flex items-center gap-2.5 mb-5">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "border-[#FF6B35]" : "border-white/25"}`}>
+                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B35]" />}
+                      </div>
+                      <span className="text-sm font-semibold uppercase tracking-widest text-white/60">{p.name}</span>
                     </div>
-                  </div>
-                  <span className="text-sm font-bold text-[#FF6B35] shrink-0 ml-3">${p.price}/mo</span>
-                </button>
-              ))}
+
+                    <div className="flex items-end gap-1 mb-3">
+                      <span className="text-5xl font-extrabold text-white">${p.price}</span>
+                      <span className="text-sm text-white/40 mb-2">/mo</span>
+                    </div>
+
+                    <p className="text-sm text-white/45 leading-relaxed">{p.desc}</p>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex gap-3">
+
+            <div className="flex gap-3 max-w-md mx-auto">
               <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-white/40 border border-white/10 hover:border-white/20 transition-colors">Back</button>
               <button onClick={handleStart} disabled={loading}
                 className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-70"
@@ -465,10 +498,9 @@ export default function SignupPage() {
                     </svg>
                     Setting up…
                   </span>
-                ) : "Start Free Trial"}
+                ) : "Subscribe Now"}
               </button>
             </div>
-            <p className="text-center text-[10px] text-white/25 mt-3">No credit card required for trial</p>
           </div>
         )}
 
@@ -483,8 +515,7 @@ export default function SignupPage() {
             <h1 className="text-xl font-bold text-white mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
             <p className="text-white/40 text-sm mb-2">Your business is ready on Vela.</p>
             <p className="text-white/25 text-xs mb-8">
-              Your 7-day free trial has started. No charges until{" "}
-              {new Date(Date.now() + 7 * 86400000).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.
+              Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed monthly, cancel anytime.
             </p>
             <Link href="/app" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
               Go to Dashboard →

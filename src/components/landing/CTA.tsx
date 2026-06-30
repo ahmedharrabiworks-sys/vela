@@ -28,16 +28,23 @@ export default function CTA() {
         </h2>
 
         <p className="text-white/60 text-base md:text-xl mb-10 max-w-lg mx-auto">
-          Start your free 7-day trial. No credit card required.
+          Billed monthly. Cancel anytime, no questions asked.
           Be live in 7 days.
         </p>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 mb-14">
           <Link href="/auth/signup" className="btn-primary text-base px-10 py-4 text-lg justify-center">
-            Start Free Trial
+            Get Started
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3.5 9h11M10 5l4.5 4-4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
+          </Link>
+          <Link href="/demo" className="btn-ghost text-base px-10 py-4 text-lg justify-center">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M6 5.2l4.5 2.3L6 9.8V5.2z" fill="currentColor" />
+            </svg>
+            Try Demo
           </Link>
         </div>
 

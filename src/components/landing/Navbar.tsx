@@ -57,15 +57,35 @@ export default function Navbar() {
           >
             Log in
           </Link>
+          <Link
+            href="/demo"
+            className={`text-sm font-semibold px-5 py-2.5 rounded-xl border transition-all duration-200 ${
+              scrolled
+                ? "border-[#1A0A00]/15 text-[#1A0A00] hover:border-[#1A0A00]/40"
+                : "border-white/30 text-white hover:border-white/60 hover:bg-white/10"
+            }`}
+          >
+            Try Demo
+          </Link>
           <Link href="/auth/signup" className="btn-primary text-sm px-5 py-2.5">
-            Start Free Trial
+            Get Started
           </Link>
         </div>
 
-        {/* Mobile: CTA button only, no hamburger */}
-        <Link href="/auth/signup" className="md:hidden btn-primary text-xs px-4 py-2.5">
-          Start Free Trial
-        </Link>
+        {/* Mobile: CTA buttons only, no hamburger */}
+        <div className="md:hidden flex items-center gap-2">
+          <Link
+            href="/demo"
+            className={`text-xs font-semibold px-3.5 py-2.5 rounded-xl border transition-all duration-200 ${
+              scrolled ? "border-[#1A0A00]/15 text-[#1A0A00]" : "border-white/30 text-white"
+            }`}
+          >
+            Try Demo
+          </Link>
+          <Link href="/auth/signup" className="btn-primary text-xs px-4 py-2.5">
+            Get Started
+          </Link>
+        </div>
       </div>
     </nav>
   );

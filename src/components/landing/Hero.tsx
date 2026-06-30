@@ -83,20 +83,25 @@ export default function Hero() {
               {/* Buttons */}
               <motion.div variants={item} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <Link href="/auth/signup" className="btn-primary text-base px-8 py-3.5 justify-center">
-                  Start Free Trial
+                  Get Started
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </Link>
-                <button
-                  onClick={() => setDemoOpen(true)}
-                  className="btn-ghost text-base px-8 py-3.5 justify-center"
-                >
+                <Link href="/demo" className="btn-ghost text-base px-8 py-3.5 justify-center">
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
                     <path d="M6 5.2l4.5 2.3L6 9.8V5.2z" fill="currentColor" />
                   </svg>
-                  Watch Demo
+                  Try Demo
+                </Link>
+              </motion.div>
+              <motion.div variants={item}>
+                <button
+                  onClick={() => setDemoOpen(true)}
+                  className="text-sm font-medium text-white/45 hover:text-white/75 transition-colors underline underline-offset-4"
+                >
+                  Or watch a 60s preview
                 </button>
               </motion.div>
 

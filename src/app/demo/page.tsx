@@ -142,7 +142,7 @@ const TOOLTIP_STEPS = [
   },
   {
     title: "Ready to go live?",
-    body: "Start your 7-day free trial and have your AI answering customers within minutes. No setup, no contracts.",
+    body: "Get started and have your AI answering customers within minutes. No setup, no contracts.",
     target: null,
     isFinal: true,
   },
@@ -173,7 +173,7 @@ function Tooltip({ step, onNext, onSkip }: { step: number; onNext: () => void; o
                 <Link href="/auth/signup" onClick={onSkip}
                   className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 transition-opacity"
                   style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                  Start Free Trial →
+                  Get Started →
                 </Link>
               </div>
             ) : (
@@ -547,7 +547,7 @@ export default function DemoPage() {
         <Link href="/auth/signup"
           className="shrink-0 text-xs font-bold px-4 py-1.5 rounded-lg text-white whitespace-nowrap hover:opacity-90 transition-opacity"
           style={{ background: "#FF6B35" }}>
-          Start Free Trial →
+          Get Started →
         </Link>
       </div>
 
