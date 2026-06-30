@@ -1,455 +1,437 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
-const PALETTES = [
-  "#FF6B35",
-  "#0EA5E9",
-  "#7C3AED",
-  "#059669",
-  "#E11D48",
-  "#1A0A00",
-];
+type Msg = { role: "ai" | "user"; content: string; isBuilding?: boolean };
 
-function LogoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M5 9h3M9 9h4M5 12h2M9 6h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function ImageIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <rect x="1.5" y="3" width="15" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/>
-      <circle cx="6" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
-      <path d="M1.5 13l4-4 3 3 2.5-2.5 4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-function SparkleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1l1.5 4.5H14l-3.75 2.75L11.75 13 8 10.25 4.25 13l1.5-4.75L2 5.5h4.5L8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" fill="currentColor" fillOpacity="0.15"/>
-    </svg>
-  );
-}
-
-function DesktopIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-      <rect x="1" y="1.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"
-        fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0}/>
-      <path d="M4.5 13.5h6M7.5 10.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function MobileIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-      <rect x="4" y="1" width="7" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"
-        fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.12 : 0}/>
-      <circle cx="7.5" cy="11.5" r="0.8" fill="currentColor"/>
-    </svg>
-  );
-}
-
-/* ── Premium website preview ── */
-function PremiumPreview({
-  businessName, tagline, description, color, isMobile,
-}: {
+type SiteData = {
   businessName: string;
   tagline: string;
   description: string;
   color: string;
-  isMobile: boolean;
-}) {
-  const name = businessName || "Ahmed Dental Clinic";
-  const headline = tagline || "Excellence in every smile.";
-  const isDark = color === "#1A0A00";
+  services: { name: string; price: string; desc: string }[];
+  trustItems: string[];
+};
 
+const DEFAULT_SITE: SiteData = {
+  businessName: "Ahmed Dental Clinic",
+  tagline: "Excellence in every smile.",
+  description: "Book appointments instantly via WhatsApp, Instagram & your website — 24/7.",
+  color: "#FF6B35",
+  services: [
+    { name: "Dental Cleaning",  price: "AED 350", desc: "45-min deep clean" },
+    { name: "Teeth Whitening",  price: "AED 800", desc: "Professional bleaching" },
+    { name: "Consultation",     price: "AED 150", desc: "Full examination" },
+  ],
+  trustItems: ["4.9★ Rating", "500+ Patients", "10 Years Experience"],
+};
+
+function parseSite(msg: string, base: SiteData): SiteData {
+  const s: SiteData = { ...base, services: [...base.services] };
+  const m = msg.toLowerCase();
+
+  if (m.includes("gym") || m.includes("fitness")) {
+    s.businessName = m.includes("peak") ? "Peak Performance Gym" : "FitZone Gym";
+    s.tagline = "Push beyond your limits.";
+    s.description = "State-of-the-art equipment, expert coaches, and programs built for real results.";
+    s.color = "#FF6B35";
+    s.services = [
+      { name: "Monthly Membership", price: "AED 299/mo", desc: "Full gym access" },
+      { name: "Personal Training",  price: "AED 200/session", desc: "1-on-1 coaching" },
+      { name: "Group Classes",      price: "AED 80/class", desc: "HIIT, yoga, spin" },
+    ];
+    s.trustItems = ["500+ Members", "20+ Classes/Week", "Expert Trainers"];
+  } else if (m.includes("salon") || m.includes("hair") || m.includes("beauty")) {
+    s.businessName = "Luxe Hair Studio";
+    s.tagline = "Your hair, perfected.";
+    s.description = "Premium cuts, colour, and styling by award-winning stylists. Book in seconds.";
+    s.color = "#FF6B35";
+    s.services = [
+      { name: "Haircut & Style",    price: "AED 150", desc: "Cut, wash, blow-dry" },
+      { name: "Colour Treatment",   price: "AED 350", desc: "Full colour or highlights" },
+      { name: "Keratin Treatment",  price: "AED 600", desc: "Smoothing & frizz control" },
+    ];
+    s.trustItems = ["★4.9 Rating", "2000+ Clients", "Award-Winning Stylists"];
+  } else if (m.includes("spa") || m.includes("wellness") || m.includes("massage")) {
+    s.businessName = "Serenity Wellness Spa";
+    s.tagline = "Restore. Renew. Revive.";
+    s.description = "Expert therapists and premium treatments in the heart of the city.";
+    s.color = "#FF6B35";
+    s.services = [
+      { name: "Deep Tissue Massage", price: "AED 350", desc: "90-min full body" },
+      { name: "Facial Treatment",    price: "AED 280", desc: "Hydrating & anti-ageing" },
+      { name: "Couples Package",     price: "AED 780", desc: "For two, 90 min" },
+    ];
+    s.trustItems = ["800+ Reviews", "Certified Therapists", "5-Star Rated"];
+  } else if (m.includes("real estate") || m.includes("property")) {
+    s.businessName = "Premium Properties";
+    s.tagline = "Find your perfect home.";
+    s.description = "Exclusive listings across Dubai, Abu Dhabi & Sharjah — from AED 500K.";
+    s.color = "#FF6B35";
+    s.services = [
+      { name: "Property Sales",    price: "Free Consultation", desc: "Villas & apartments" },
+      { name: "Rentals",           price: "No Agency Fee",     desc: "Short & long term" },
+      { name: "Investment Advice", price: "Free",              desc: "ROI analysis" },
+    ];
+    s.trustItems = ["500+ Properties", "AED 2B+ in Sales", "10 Years in UAE"];
+  } else if (m.includes("dental") || m.includes("clinic") || m.includes("medical")) {
+    // Keep default dental or adjust name
+    if (m.includes("premium") || m.includes("luxury")) s.tagline = "World-class dental care.";
+    if (m.includes("cosmetic")) { s.tagline = "Transforming smiles, changing lives."; }
+  }
+
+  // Apply follow-up instructions
+  if (m.includes("darker") || m.includes("dark hero")) {
+    // hero is already dark, no change needed
+  }
+  if (m.includes("testimonial")) {
+    // would add testimonials section (simulated)
+  }
+
+  // If they just mentioned a business name
+  const nameMatch = msg.match(/(?:called?|named?|it's|is)\s+["']?([A-Z][^"'\n.]{2,40})["']?/i);
+  if (nameMatch) s.businessName = nameMatch[1].trim();
+
+  return s;
+}
+
+function getAIResponse(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("darker") || m.includes("dark")) return "Done! I've enhanced the hero section with a deeper, more dramatic background.";
+  if (m.includes("testimonial")) return "Added! A testimonials section now appears below your services with 3 real-looking reviews.";
+  if (m.includes("color") || m.includes("colour")) return "Updated the accent colour throughout your site.";
+  if (m.includes("contact") || m.includes("phone")) return "Done! Added a contact section with your phone and map.";
+  if (m.includes("price") || m.includes("cost")) return "Updated! Your services section now shows the new pricing.";
+  if (m.includes("logo")) return "Got it — your logo area has been updated. Upload your image in the assets panel above.";
+  if (m.includes("book")) return "The booking flow is already live — visitors can tap 'Book Now' to message you on WhatsApp instantly.";
+  return "Done! I've updated your website based on that instruction. Keep going — what else would you like to change?";
+}
+
+/* ── Website Preview ── */
+function WebPreview({ site, isMobile }: { site: SiteData; isMobile: boolean }) {
   return (
-    <div className={`w-full bg-white rounded-xl overflow-hidden shadow-2xl font-sans text-left ${isMobile ? "max-w-[320px] mx-auto" : ""}`}
-      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-
+    <div className={`w-full bg-white overflow-hidden font-sans text-left ${isMobile ? "max-w-[320px] mx-auto" : ""}`}
+      style={{ fontFamily: "'Inter', system-ui, sans-serif", borderRadius: 12 }}>
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100">
+      <nav className="flex items-center justify-between px-5 py-3.5 bg-white border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black"
-            style={{ background: color }}>{name[0]}</div>
-          <span className="font-bold text-[#111] text-sm tracking-tight">{name}</span>
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black"
+            style={{ background: site.color }}>{site.businessName[0]}</div>
+          <span className="font-bold text-[#111] text-xs tracking-tight">{site.businessName}</span>
         </div>
         {!isMobile && (
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             {["Services", "About", "Reviews", "Contact"].map((l) => (
-              <span key={l} className="text-xs font-medium text-gray-400 hover:text-gray-700 cursor-pointer transition-colors">{l}</span>
+              <span key={l} className="text-[10px] font-medium text-gray-400">{l}</span>
             ))}
           </div>
         )}
-        <button className="text-[11px] font-bold px-3.5 py-2 rounded-lg text-white"
-          style={{ background: color }}>Book Now</button>
+        <button className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background: site.color }}>Book Now</button>
       </nav>
 
-      {/* Hero — dark premium */}
+      {/* Hero */}
       <div className="relative overflow-hidden" style={{ background: "#0A0A0A" }}>
-        {/* Subtle glow */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse 70% 60% at 50% -10%, ${color}22, transparent)` }} />
-
-        <div className={`relative z-10 ${isMobile ? "px-6 py-10" : "px-10 py-14"}`}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: color }} />
-            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color }}>AI-Powered Clinic</span>
+        <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 60% at 50% -10%, ${site.color}22, transparent)` }} />
+        <div className={`relative z-10 ${isMobile ? "px-5 py-8" : "px-8 py-10"}`}>
+          <div className="flex items-center gap-1.5 mb-3">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: site.color }} />
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Powered by Vela AI</span>
           </div>
-          <h1 className={`font-black text-white leading-none tracking-tighter mb-4 ${isMobile ? "text-3xl" : "text-4xl lg:text-5xl"}`}
-            style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-            {headline}
-          </h1>
-          <p className={`text-gray-400 leading-relaxed mb-6 ${isMobile ? "text-sm" : "text-sm max-w-md"}`}>
-            {description || "Book appointments instantly on WhatsApp, Instagram & your website — 24/7. Powered by Vela AI."}
-          </p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button className="text-sm font-bold px-5 py-2.5 rounded-xl text-white"
-              style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
-              Book Appointment →
-            </button>
-            <button className="text-sm font-semibold px-5 py-2.5 rounded-xl text-gray-300 border border-white/10 hover:border-white/20 transition-all">
-              View Services
-            </button>
+          <h1 className={`font-black text-white leading-none tracking-tighter mb-3 ${isMobile ? "text-2xl" : "text-3xl"}`}>{site.tagline}</h1>
+          <p className="text-gray-400 text-xs leading-relaxed mb-5 max-w-sm">{site.description}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className="text-[11px] font-bold px-4 py-2 rounded-lg text-white" style={{ background: site.color }}>Book Appointment →</button>
+            <button className="text-[11px] font-semibold px-4 py-2 rounded-lg text-gray-300 border border-white/10">View Services</button>
           </div>
-          {/* Trust strip */}
           {!isMobile && (
-            <div className="flex items-center gap-5 mt-8 pt-6 border-t border-white/8">
-              {["4.9★ Rating", "500+ Patients", "10 Years Experience"].map((t) => (
-                <span key={t} className="text-[11px] text-gray-500 font-medium">{t}</span>
-              ))}
+            <div className="flex items-center gap-4 mt-6 pt-5 border-t border-white/8">
+              {site.trustItems.map((t) => <span key={t} className="text-[10px] text-gray-500 font-medium">{t}</span>)}
             </div>
           )}
         </div>
       </div>
 
-      {/* Services grid */}
-      <div className={`${isMobile ? "px-5 py-6" : "px-8 py-8"} bg-white`}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color }}>Our Services</p>
-        <div className={`grid gap-3 ${isMobile ? "grid-cols-1" : "grid-cols-3"}`}>
-          {[
-            { name: "Dental Cleaning", price: "AED 350", desc: "45-min deep clean" },
-            { name: "Teeth Whitening", price: "AED 800", desc: "Professional bleaching" },
-            { name: "Consultation",    price: "AED 150", desc: "Full examination" },
-          ].map((s) => (
-            <div key={s.name} className="rounded-xl p-4 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer">
-              <div className="w-7 h-7 rounded-lg mb-3 flex items-center justify-center"
-                style={{ background: `${color}12` }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11z" stroke={color} strokeWidth="1.2"/>
-                  <path d="M5 7l1.5 1.5 3-3" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <p className="text-sm font-bold text-[#111] mb-0.5">{s.name}</p>
-              <p className="text-[10px] text-gray-400 mb-2">{s.desc}</p>
-              <p className="text-sm font-black" style={{ color }}>{s.price}</p>
+      {/* Services */}
+      <div className={`${isMobile ? "px-4 py-5" : "px-6 py-6"} bg-white`}>
+        <p className="text-[9px] font-semibold uppercase tracking-widest mb-3" style={{ color: site.color }}>Services</p>
+        <div className={`grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-3"}`}>
+          {site.services.map((s) => (
+            <div key={s.name} className="rounded-xl p-3.5 border border-gray-100">
+              <p className="text-xs font-bold text-[#111] mb-0.5">{s.name}</p>
+              <p className="text-[10px] text-gray-400 mb-1.5">{s.desc}</p>
+              <p className="text-xs font-black" style={{ color: site.color }}>{s.price}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Booking CTA strip */}
-      <div className="px-8 py-5 flex items-center justify-between gap-4" style={{ background: color }}>
+      {/* CTA strip */}
+      <div className="px-6 py-4 flex items-center justify-between" style={{ background: site.color }}>
         <div>
-          <p className={`font-black text-white ${isMobile ? "text-sm" : "text-base"}`}>Book your appointment today</p>
-          <p className="text-white/70 text-xs mt-0.5">Available on WhatsApp · Instagram · Website</p>
+          <p className="font-black text-white text-xs">Book today</p>
+          <p className="text-white/60 text-[9px] mt-0.5">Via WhatsApp · Instagram · Website</p>
         </div>
-        <button className="shrink-0 text-xs font-bold px-4 py-2.5 rounded-lg bg-white"
-          style={{ color }}>Book Now →</button>
+        <button className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white" style={{ color: site.color }}>Book →</button>
       </div>
 
-      {/* AI chat widget */}
-      <div className="relative">
-        <div className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-2.5 rounded-2xl shadow-lg border border-gray-100 bg-white">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-black"
-            style={{ background: color }}>AI</div>
+      {/* AI widget spacer */}
+      <div className="relative bg-white px-4 py-3">
+        <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[8px] font-black" style={{ background: site.color }}>AI</div>
           <div>
-            <p className="text-[10px] font-bold text-[#111]">Vela AI</p>
-            <p className="text-[9px] text-gray-400">Hi! How can I help? 👋</p>
+            <p className="text-[9px] font-bold text-[#111]">Vela AI</p>
+            <p className="text-[8px] text-gray-400">Hi! How can I help?</p>
           </div>
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
         </div>
-        {/* spacer so the widget shows */}
-        <div className="h-16" />
       </div>
     </div>
   );
 }
 
-/* ── Page ── */
 export default function WebsitePage() {
-  const [activeTab, setActiveTab] = useState<"editor" | "preview">("editor");
-  const [businessName, setBusinessName] = useState("Ahmed Dental Clinic");
-  const [tagline, setTagline] = useState("Excellence in every smile.");
-  const [description, setDescription] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [color, setColor] = useState("#FF6B35");
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: "ai", content: "Hi! Tell me about your business and I'll build your website instantly.\n\nJust describe what you do, who your customers are, and the vibe you're going for." },
+  ]);
+  const [input, setInput] = useState("");
+  const [site, setSite] = useState<SiteData>(DEFAULT_SITE);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
-  const [generating, setGenerating] = useState(false);
+  const [building, setBuilding] = useState(false);
+  const [built, setBuilt] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const handleGenerate = () => {
-    if (!prompt.trim()) return;
-    setGenerating(true);
-    setTimeout(() => {
-      // Simulate AI parsing the prompt
-      const words = prompt.toLowerCase();
-      if (words.includes("dental") || words.includes("clinic") || words.includes("tooth")) {
-        setBusinessName("Premium Dental Studio");
-        setTagline("Excellence in every smile.");
-        setDescription("Expert dental care with state-of-the-art technology. From routine cleanings to complete smile transformations — your comfort is our priority.");
-      } else if (words.includes("gym") || words.includes("fitness") || words.includes("yoga")) {
-        setBusinessName(words.includes("yoga") ? "Zen Yoga Studio" : "Peak Performance Gym");
-        setTagline("Push beyond your limits.");
-        setDescription("World-class training facilities and expert coaches. Transform your body and mind with personalized programs designed for real results.");
-      } else if (words.includes("salon") || words.includes("hair") || words.includes("beauty")) {
-        setBusinessName("Luxe Hair Studio");
-        setTagline("Your hair, perfected.");
-        setDescription("Premium hair care by award-winning stylists. Color, cuts, and treatments that turn heads — every single visit.");
-      } else if (words.includes("spa") || words.includes("massage") || words.includes("wellness")) {
-        setBusinessName("Serenity Wellness Spa");
-        setTagline("Restore. Renew. Revive.");
-        setDescription("A sanctuary of calm in the heart of the city. Expert therapists, premium products, and treatments designed to deeply restore your wellbeing.");
-      } else {
-        setTagline("Excellence you can feel.");
-        setDescription(prompt.charAt(0).toUpperCase() + prompt.slice(1) + ". Book instantly via WhatsApp, Instagram, or our website — powered by Vela AI.");
-      }
-      setGenerating(false);
-    }, 1400);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs]);
+
+  const handleSend = () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+
+    const newMsgs: Msg[] = [...msgs, { role: "user", content: text }];
+
+    if (!built) {
+      // First message — build the site
+      setMsgs([...newMsgs, { role: "ai", content: "Building your website…", isBuilding: true }]);
+      setBuilding(true);
+
+      setTimeout(() => {
+        const newSite = parseSite(text, site);
+        setSite(newSite);
+        setBuilding(false);
+        setBuilt(true);
+        setMsgs([...newMsgs, {
+          role: "ai",
+          content: `Your website is ready! I built a ${newSite.businessName} site with a dark hero, services section, and booking buttons.\n\nWhat would you like to change? Try: "Make the headline bigger", "Change accent colour to black", "Add a testimonials section"`,
+        }]);
+      }, 2000);
+    } else {
+      // Follow-up — update the site
+      setMsgs([...newMsgs, { role: "ai", content: "Updating…", isBuilding: true }]);
+      setTimeout(() => {
+        const updated = parseSite(text, site);
+        setSite(updated);
+        setMsgs([...newMsgs, { role: "ai", content: getAIResponse(text) }]);
+      }, 900);
+    }
   };
 
-  const handleCopyLink = () => {
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto pb-20">
+    <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1400px] mx-auto">
+
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+      <div className="flex items-center justify-between pb-4 shrink-0">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#1A0A00]">Website Builder</h1>
-          <p className="text-sm text-[#888888] mt-1">AI-powered booking website, ready in seconds</p>
+          <h1 className="text-xl font-bold text-[#111111]">Website Builder</h1>
+          <p className="text-xs text-[#6B7280] mt-0.5">Chat with AI to build your booking website</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyLink}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#f0e8e0] text-[#888888] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px]"
-          >
-            {copied ? (
-              <>
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M2 6.5l3 3 6-6" stroke="#22c55e" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span className="text-green-600">Copied!</span>
-              </>
-            ) : (
-              <>
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                  <path d="M9 1H3a1 1 0 00-1 1v9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                  <rect x="4" y="3" width="8" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-                </svg>
-                Copy Link
-              </>
-            )}
-          </button>
-          <button className="btn-primary text-xs px-5 py-2.5 min-h-[40px]">
-            Publish Website →
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile tab toggle */}
-      <div className="flex gap-1 p-1 bg-white border border-[#f0e8e0] rounded-xl shadow-sm mb-5 md:hidden">
-        {(["editor", "preview"] as const).map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold capitalize transition-all min-h-[44px] ${activeTab === tab ? "text-white" : "text-[#888888]"}`}
-            style={activeTab === tab ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
-            {tab === "editor" ? "✏️ Editor" : "👁 Preview"}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-5 items-start">
-
-        {/* LEFT PANEL */}
-        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex flex-col gap-4 w-full md:w-[300px] shrink-0`}>
-
-          {/* AI prompt */}
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[#FF6B35]" style={{ background: "#FF6B35" + "15" }}>
-                <SparkleIcon />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#111827]">AI Instructions</p>
-              </div>
-            </div>
-            <p className="text-[11px] text-[#6B7280] mb-3">Describe your business. The AI generates your entire website from this.</p>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. I run a premium dental clinic in Dubai Marina. We specialise in whitening, veneers, and cosmetic dentistry. Target audience is high-income professionals aged 25-45. Clean, luxurious feel."
-              rows={5}
-              className="w-full text-sm resize-none rounded-xl border border-[#E5E7EB] px-3.5 py-3 text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40 transition-colors leading-relaxed"
-            />
-            <button
-              onClick={handleGenerate}
-              disabled={generating || !prompt.trim()}
-              className="w-full mt-3 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[46px]"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-            >
-              {generating ? (
-                <>
-                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.5" strokeDasharray="20 14"/>
-                  </svg>
-                  Generating…
-                </>
-              ) : (
-                <>
-                  <SparkleIcon />
-                  Generate Website
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Business details */}
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 space-y-4">
-            <div>
-              <p className="text-sm font-bold text-[#111827]">Fine-tune</p>
-              <p className="text-[11px] text-[#6B7280]">Edit these after generation, or fill in manually</p>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-semibold text-[#888888] uppercase tracking-wider block mb-1.5">Business Name</label>
-              <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-[#f0e8e0] rounded-xl text-[#1A0A00] focus:outline-none focus:border-[#FF6B35]/40 transition-colors min-h-[44px]"/>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-semibold text-[#888888] uppercase tracking-wider block mb-1.5">Headline</label>
-              <input type="text" value={tagline} onChange={(e) => setTagline(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-[#f0e8e0] rounded-xl text-[#1A0A00] focus:outline-none focus:border-[#FF6B35]/40 transition-colors min-h-[44px]"/>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-semibold text-[#888888] uppercase tracking-wider block mb-1.5">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-                placeholder="Short business description…"
-                className="w-full px-3.5 py-2.5 text-sm border border-[#f0e8e0] rounded-xl text-[#1A0A00] resize-none placeholder:text-[#bbb] focus:outline-none focus:border-[#FF6B35]/40 transition-colors"/>
-            </div>
-          </div>
-
-          {/* Upload */}
-          <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card p-5 space-y-3">
-            <p className="text-sm font-bold text-[#1A0A00]">Assets</p>
-            {[
-              { icon: <LogoIcon />, label: "Upload Logo", sub: "SVG, PNG — max 2MB" },
-              { icon: <ImageIcon />, label: "Hero Image", sub: "JPG, PNG — max 5MB" },
-            ].map((u) => (
-              <button key={u.label}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-[#e8e0d8] hover:border-[#FF6B35]/40 hover:bg-[#FFF5F0] transition-all text-left min-h-[52px]">
-                <span className="text-[#bbb]">{u.icon}</span>
-                <div>
-                  <p className="text-xs font-semibold text-[#888888]">{u.label}</p>
-                  <p className="text-[9px] text-[#bbb]">{u.sub}</p>
-                </div>
-                <svg className="ml-auto text-[#ccc]" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1v8M4 4l3-3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M1 11v1.5A1.5 1.5 0 002.5 14h9a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
+          {/* Mobile tab toggle */}
+          <div className="flex md:hidden gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
+            {(["chat", "preview"] as const).map((t) => (
+              <button key={t} onClick={() => setActiveTab(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${activeTab === t ? "bg-[#FF6B35] text-white" : "text-[#6B7280]"}`}>
+                {t}
               </button>
             ))}
           </div>
+          <button onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${copied ? "border-[#16A34A] text-[#16A34A]" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35]"}`}>
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
+          <button className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
+            Publish →
+          </button>
+        </div>
+      </div>
 
-          {/* Color palette */}
-          <div className="bg-white rounded-2xl border border-[#f0e8e0] shadow-card p-5">
-            <p className="text-sm font-bold text-[#1A0A00] mb-3">Accent Color</p>
-            <div className="flex items-center gap-2.5">
-              {PALETTES.map((c) => (
-                <button key={c} onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-full transition-all hover:scale-110 ${color === c ? "ring-2 ring-offset-2 ring-[#FF6B35] scale-110" : ""}`}
-                  style={{ background: c, ringColor: c }} />
-              ))}
-            </div>
+      {/* Main two-panel layout */}
+      <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+
+        {/* LEFT: Chat */}
+        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[38%] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {msgs.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "ai" && (
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 mr-2 mt-0.5" style={{ background: "#FF6B35" }}>
+                    AI
+                  </div>
+                )}
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-[#FF6B35] text-white rounded-tr-sm"
+                    : "bg-[#F9FAFB] text-[#111111] rounded-tl-sm border border-[#F3F4F6]"
+                } ${msg.isBuilding ? "animate-pulse" : ""}`}>
+                  {msg.isBuilding ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                      <span className="text-[#6B7280]">{msg.content}</span>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef} />
           </div>
 
+          {/* Suggested prompts */}
+          {msgs.length <= 1 && (
+            <div className="px-4 pb-2">
+              <p className="text-[10px] text-[#9CA3AF] mb-2">Try one of these:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "I run a dental clinic in Dubai Marina",
+                  "I have a gym in Abu Dhabi",
+                  "I own a hair salon in Sharjah",
+                ].map((s) => (
+                  <button key={s} onClick={() => setInput(s)}
+                    className="text-[10px] px-2.5 py-1 bg-[#F3F4F6] text-[#374151] rounded-full hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors">
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="p-3 border-t border-[#F3F4F6]">
+            <div className="flex items-end gap-2 bg-[#F9FAFB] rounded-xl px-3 py-2.5 border border-[#E5E7EB] focus-within:border-[#FF6B35]/50 transition-colors">
+              {/* Camera icon */}
+              <button className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors shrink-0 pb-0.5">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                  <circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M5 4V3.5A1.5 1.5 0 016.5 2h3A1.5 1.5 0 0111 3.5V4" stroke="currentColor" strokeWidth="1.3"/>
+                </svg>
+              </button>
+              {/* Color picker trigger */}
+              <button className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors shrink-0 pb-0.5">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M8 2.5A5.5 5.5 0 0113.5 8" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
+                  <path d="M8 2.5A5.5 5.5 0 002.5 8" stroke="#111" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+              </button>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={built ? "What would you like to change?" : "Describe your business…"}
+                rows={1}
+                className="flex-1 bg-transparent text-xs text-[#111111] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px]"
+                style={{ lineHeight: "1.5" }}
+              />
+              <button onClick={handleSend} disabled={!input.trim() || building}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 disabled:opacity-40 transition-opacity hover:opacity-90"
+                style={{ background: "#FF6B35" }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 10L10 6 2 2v3.5L7 6l-5 0.5V10z" fill="white"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* RIGHT PANEL — preview */}
-        <div className={`${activeTab === "editor" ? "hidden md:flex" : "flex"} flex-1 flex-col`}>
-          <div className="flex items-center justify-between mb-4">
+        {/* RIGHT: Preview */}
+        <div className={`${activeTab === "chat" ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden`}>
+
+          {/* Preview toolbar */}
+          <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <p className="text-sm font-semibold text-[#1A0A00]">Live Preview</p>
+              <span className={`w-2 h-2 rounded-full ${built ? "bg-green-400 animate-pulse" : "bg-[#9CA3AF]"}`} />
+              <p className="text-xs font-medium text-[#6B7280]">{built ? "yoursite.vela.ai — live preview" : "Preview will appear here"}</p>
             </div>
-            <div className="flex items-center gap-1 p-1 bg-white border border-[#f0e8e0] rounded-xl shadow-sm">
-              {(["desktop", "mobile"] as const).map((d) => (
-                <button key={d} onClick={() => setDevice(d)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[34px] ${
-                    device === d ? "text-white" : "text-[#888888] hover:text-[#1A0A00]"
-                  }`}
-                  style={device === d ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
-                  {d === "desktop" ? <DesktopIcon active={device === "desktop"} /> : <MobileIcon active={device === "mobile"} />}
-                  <span className="capitalize hidden sm:inline">{d}</span>
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
+                {(["desktop", "mobile"] as const).map((d) => (
+                  <button key={d} onClick={() => setDevice(d)}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all capitalize ${device === d ? "bg-[#111111] text-white" : "text-[#6B7280]"}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Browser chrome */}
-          <div className="bg-[#EBEBEB] rounded-2xl border border-[#ddd] overflow-hidden shadow-xl">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Chrome bar */}
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#F2F2F2] border-b border-[#ddd]">
-              <div className="flex gap-1.5">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F3F4F6] shrink-0 bg-[#F9FAFB]">
+              <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
                 <span className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
                 <span className="w-3 h-3 rounded-full bg-[#28C840]" />
               </div>
-              <div className="flex-1 mx-3 bg-white rounded-lg px-3 py-1 text-[11px] text-[#888] border border-[#e0e0e0] flex items-center gap-1.5">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-[#bbb]">
-                  <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1.1"/>
-                  <path d="M1 5h8M5 1c-1.2 1.5-1.2 6.5 0 8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-                </svg>
-                {businessName ? businessName.toLowerCase().replace(/\s+/g, "") : "yoursite"}.vela.ai
+              <div className="flex-1 mx-4">
+                <div className="bg-white border border-[#E5E7EB] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono">
+                  {site.businessName.toLowerCase().replace(/\s+/g, "-")}.vela.ai
+                </div>
               </div>
             </div>
 
-            {/* Scrollable preview */}
-            <div className={`overflow-y-auto bg-gray-50 ${device === "mobile" ? "flex justify-center py-6 px-4" : ""}`}
-              style={{ maxHeight: "calc(100vh - 260px)", minHeight: 480 }}>
-              {generating ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3">
-                  <svg className="animate-spin text-[#FF6B35]" width="28" height="28" viewBox="0 0 28 28" fill="none">
-                    <circle cx="14" cy="14" r="11" stroke="currentColor" strokeWidth="2.5" strokeDasharray="40 28" strokeOpacity="0.25"/>
-                    <circle cx="14" cy="14" r="11" stroke="currentColor" strokeWidth="2.5" strokeDasharray="20 48" strokeLinecap="round"/>
-                  </svg>
-                  <p className="text-sm text-[#888888] font-medium">Building your website…</p>
+            {/* Preview content */}
+            <div className="flex-1 overflow-y-auto p-4 bg-[#F9FAFB]">
+              {building ? (
+                <div className="h-full flex flex-col items-center justify-center gap-4">
+                  <div className="w-10 h-10 rounded-full border-3 border-[#FF6B35] border-t-transparent animate-spin" style={{ borderWidth: 3 }} />
+                  <div className="space-y-1 text-center">
+                    <p className="text-sm font-semibold text-[#111111]">Building your website…</p>
+                    <p className="text-xs text-[#6B7280]">Generating design, copy, and booking flow</p>
+                  </div>
+                </div>
+              ) : !built ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center space-y-3 max-w-xs">
+                    <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#E5E7EB] flex items-center justify-center mx-auto">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="3" width="20" height="15" rx="2" stroke="#9CA3AF" strokeWidth="1.5"/>
+                        <path d="M8 21h8M12 18v3" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <p className="text-sm font-semibold text-[#374151]">Your website preview</p>
+                    <p className="text-xs text-[#9CA3AF]">Describe your business in the chat to generate your website</p>
+                  </div>
                 </div>
               ) : (
-                <PremiumPreview
-                  businessName={businessName}
-                  tagline={tagline}
-                  description={description}
-                  color={color}
-                  isMobile={device === "mobile"}
-                />
+                <div className={device === "mobile" ? "flex justify-center" : ""}>
+                  <WebPreview site={site} isMobile={device === "mobile"} />
+                </div>
               )}
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -4,60 +4,107 @@ import { useState } from "react";
 
 type Range = "7d" | "30d" | "90d";
 
-const BAR_DATA: Record<Range, { label: string; leads: number; bookings: number }[]> = {
-  "7d": [
-    { label: "Mon", leads: 18, bookings: 7 },
-    { label: "Tue", leads: 24, bookings: 11 },
-    { label: "Wed", leads: 21, bookings: 9 },
-    { label: "Thu", leads: 31, bookings: 14 },
-    { label: "Fri", leads: 28, bookings: 12 },
-    { label: "Sat", leads: 14, bookings: 5 },
-    { label: "Sun", leads: 8, bookings: 3 },
-  ],
-  "30d": [
-    { label: "W1", leads: 72, bookings: 28 },
-    { label: "W2", leads: 88, bookings: 34 },
-    { label: "W3", leads: 95, bookings: 41 },
-    { label: "W4", leads: 110, bookings: 47 },
-  ],
-  "90d": [
-    { label: "Jan", leads: 210, bookings: 84 },
-    { label: "Feb", leads: 275, bookings: 105 },
-    { label: "Mar", leads: 340, bookings: 142 },
-  ],
+// 30 days of sample data
+const DATA_30D = [
+  4, 7, 5, 9, 11, 8, 6, 12, 14, 10, 9, 15, 18, 13, 11, 16, 20, 17, 14, 19, 22, 18, 16, 21, 24, 20, 18, 23, 26, 22,
+];
+
+const LABELS_30D = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(2026, 4, 31 + i);
+  return i % 5 === 0 ? `${d.getDate()} Jun` : "";
+});
+
+const DATA_7D  = [18, 24, 21, 31, 28, 14, 8];
+const LABELS_7D = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DATA_90D = [72, 88, 95, 110, 105, 120, 118, 132, 145, 140, 155, 168];
+const LABELS_90D = Array.from({ length: 12 }, (_, i) => i % 3 === 0 ? `W${i + 1}` : "");
+
+const RANGE_DATA: Record<Range, { data: number[]; labels: string[] }> = {
+  "7d":  { data: DATA_7D,  labels: LABELS_7D  },
+  "30d": { data: DATA_30D, labels: LABELS_30D },
+  "90d": { data: DATA_90D, labels: LABELS_90D },
 };
 
-const CHANNELS = [
-  { name: "WhatsApp", pct: 47, count: 87 },
-  { name: "Instagram", pct: 35, count: 65 },
-  { name: "Website", pct: 18, count: 32 },
+const CHANNEL_TABLE = [
+  { channel: "WhatsApp",  leads: 87,  bookings: 41, rate: 47 },
+  { channel: "Instagram", leads: 65,  bookings: 22, rate: 34 },
+  { channel: "Website",   leads: 32,  bookings: 11, rate: 34 },
 ];
 
-const AI_STATS = [
-  { label: "Messages handled by AI", value: "1,284", sub: "94% auto-resolved" },
-  { label: "Bookings created by AI", value: "67", sub: "34% conversion rate" },
-  { label: "Avg response time", value: "43s", sub: "Human avg: 4m 12s" },
-  { label: "Customer satisfaction", value: "4.8", sub: "out of 5 — 94 ratings" },
-];
+function LineChart({ data, labels }: { data: number[]; labels: string[] }) {
+  const W = 800, H = 140, padX = 8, padTop = 12, padBottom = 24;
+  const chartH = H - padTop - padBottom;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const n = data.length;
+
+  const pts = data.map((v, i) => {
+    const x = padX + (i / (n - 1)) * (W - padX * 2);
+    const y = padTop + ((max - v) / range) * chartH;
+    return { x, y };
+  });
+
+  // Build smooth path using cubic bezier
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[i - 1];
+    const p1 = pts[i];
+    const cpX = (p0.x + p1.x) / 2;
+    d += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+  }
+
+  // Area fill path
+  const areaD = d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z`;
+
+  const labelStep = Math.max(1, Math.floor(n / 7));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 160 }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.15"/>
+          <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      {/* Horizontal gridlines */}
+      {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+        const y = padTop + t * chartH;
+        return <line key={t} x1={padX} x2={W - padX} y1={y} y2={y} stroke="#F3F4F6" strokeWidth="1"/>;
+      })}
+      {/* Area */}
+      <path d={areaD} fill="url(#lineGrad)"/>
+      {/* Line */}
+      <path d={d} fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Dots on data points (every few points) */}
+      {pts.filter((_, i) => i % labelStep === 0 || i === n - 1).map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
+      ))}
+      {/* Labels */}
+      {labels.map((lbl, i) => lbl ? (
+        <text key={i} x={padX + (i / (n - 1)) * (W - padX * 2)} y={H - 4} textAnchor="middle" fontSize="9" fill="#9CA3AF">{lbl}</text>
+      ) : null)}
+    </svg>
+  );
+}
 
 export default function AnalyticsPage() {
   const [range, setRange] = useState<Range>("30d");
+  const { data, labels } = RANGE_DATA[range];
 
-  const data = BAR_DATA[range];
-  const maxLeads = Math.max(...data.map((d) => d.leads));
+  const totalLeads = CHANNEL_TABLE.reduce((s, c) => s + c.leads, 0);
+  const totalBookings = CHANNEL_TABLE.reduce((s, c) => s + c.bookings, 0);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5 pb-20">
+    <div className="max-w-4xl mx-auto space-y-5 pb-20">
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#111827]">Analytics</h1>
+        <h1 className="text-xl font-bold text-[#111111]">Analytics</h1>
         <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
           {(["7d", "30d", "90d"] as Range[]).map((r) => (
             <button key={r} onClick={() => setRange(r)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                range === r ? "bg-[#FF6B35] text-white" : "text-[#6B7280] hover:text-[#111827]"
-              }`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "bg-[#FF6B35] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
               {r}
             </button>
           ))}
@@ -65,91 +112,81 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Leads", value: "184", sub: "+23 vs prev period" },
-          { label: "Appointments", value: "67", sub: "36% from leads" },
-          { label: "Revenue (AED)", value: "48,200", sub: "+12% growth" },
-          { label: "Conversion Rate", value: "34%", sub: "+2pp this period" },
+          { label: "Total Leads",      value: "184",     trend: "+23",  up: true  },
+          { label: "Appointments",     value: "67",      trend: "+8",   up: true  },
+          { label: "Revenue (AED)",    value: "48,200",  trend: "+12%", up: true  },
+          { label: "Conversion Rate",  value: "34%",     trend: "+2pp", up: true  },
         ].map((k) => (
-          <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4">
-            <p className="text-[11px] text-[#9CA3AF] font-semibold uppercase tracking-wide mb-2">{k.label}</p>
-            <p className="text-2xl font-bold text-[#111827] leading-none mb-1">{k.value}</p>
-            <p className="text-[11px] text-[#059669] font-medium">↑ {k.sub}</p>
+          <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+            <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
+            <p className="text-3xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
+            <p className={`text-xs font-medium ${k.up ? "text-[#16A34A]" : "text-[#DC2626]"}`}>{k.up ? "↑" : "↓"} {k.trend} this period</p>
           </div>
         ))}
       </div>
 
-      {/* Bar chart */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-bold text-[#111827]">Leads vs Bookings</h2>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-[#FF6B35]" />
-              <span className="text-xs text-[#6B7280]">Leads</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-[#FFD5C2]" />
-              <span className="text-xs text-[#6B7280]">Bookings</span>
-            </div>
-          </div>
+      {/* Line chart */}
+      <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-bold text-[#111111]">New Leads Over Time</p>
+          <p className="text-xs text-[#9CA3AF]">{data.reduce((a, b) => a + b, 0)} total this period</p>
         </div>
-
-        <div className="flex items-end justify-between gap-2 h-44">
-          {data.map((d) => (
-            <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex items-end gap-0.5 h-36">
-                <div className="flex-1 rounded-t-md transition-all duration-500 bg-[#FF6B35]"
-                  style={{ height: `${(d.leads / maxLeads) * 100}%` }} />
-                <div className="flex-1 rounded-t-md transition-all duration-500 bg-[#FFD5C2]"
-                  style={{ height: `${(d.bookings / maxLeads) * 100}%` }} />
-              </div>
-              <span className="text-[10px] text-[#9CA3AF] font-medium">{d.label}</span>
-            </div>
-          ))}
-        </div>
+        <LineChart data={data} labels={labels} />
       </div>
 
-      {/* Bottom grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        {/* Channel breakdown — horizontal bars */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <h2 className="text-sm font-bold text-[#111827] mb-4">Lead Sources</h2>
-          <div className="space-y-4">
-            {CHANNELS.map((ch) => (
-              <div key={ch.name}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-[#374151]">{ch.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-[#6B7280]">{ch.count} leads</span>
-                    <span className="text-xs font-bold text-[#111827]">{ch.pct}%</span>
-                  </div>
-                </div>
-                <div className="h-2 bg-[#F3F4F6] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-[#FF6B35] transition-all duration-700"
-                    style={{ width: `${ch.pct}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Channel table */}
+      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#F3F4F6]">
+          <p className="text-sm font-bold text-[#111111]">Lead Sources</p>
         </div>
-
-        {/* AI Performance */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-          <h2 className="text-sm font-bold text-[#111827] mb-4">AI Performance</h2>
-          <div className="space-y-3.5">
-            {AI_STATS.map((s) => (
-              <div key={s.label} className="flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-medium text-[#374151]">{s.label}</p>
-                  <p className="text-[10px] text-[#9CA3AF] mt-0.5">{s.sub}</p>
-                </div>
-                <span className="text-lg font-bold text-[#FF6B35] shrink-0 ml-4">{s.value}</span>
-              </div>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[#F3F4F6]">
+              {["Channel", "Leads", "Bookings", "Conv. Rate"].map((h) => (
+                <th key={h} className="text-left px-6 py-3 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {CHANNEL_TABLE.map((row, i) => (
+              <tr key={row.channel} className={`border-b border-[#F9FAFB] last:border-none ${i % 2 === 1 ? "bg-[#FAFAFA]" : ""}`}>
+                <td className="px-6 py-4">
+                  <span className="text-sm font-semibold text-[#111111]">{row.channel}</span>
+                </td>
+                <td className="px-6 py-4 text-sm text-[#374151]">{row.leads}</td>
+                <td className="px-6 py-4 text-sm text-[#374151]">{row.bookings}</td>
+                <td className="px-6 py-4">
+                  <span className="text-sm font-bold text-[#FF6B35]">{row.rate}%</span>
+                </td>
+              </tr>
             ))}
-          </div>
+            <tr className="bg-[#F9FAFB] border-t border-[#E5E7EB]">
+              <td className="px-6 py-3 text-xs font-bold text-[#6B7280]">Total</td>
+              <td className="px-6 py-3 text-sm font-bold text-[#111111]">{totalLeads}</td>
+              <td className="px-6 py-3 text-sm font-bold text-[#111111]">{totalBookings}</td>
+              <td className="px-6 py-3 text-sm font-bold text-[#FF6B35]">{Math.round(totalBookings / totalLeads * 100)}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* AI Performance — 4 numbers */}
+      <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
+        <p className="text-sm font-bold text-[#111111] mb-5">AI Performance</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-[#E5E7EB]">
+          {[
+            { label: "Messages Handled", value: "1,284" },
+            { label: "Bookings by AI",   value: "67"    },
+            { label: "Avg Response",     value: "43s"   },
+            { label: "Satisfaction",     value: "4.8/5" },
+          ].map((s) => (
+            <div key={s.label} className="px-6 first:pl-0 last:pr-0">
+              <p className="text-2xl font-bold text-[#FF6B35] mb-1">{s.value}</p>
+              <p className="text-xs text-[#6B7280]">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
