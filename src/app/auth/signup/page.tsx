@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { saveProfile } from "@/lib/business-profile";
+import { getSupabase } from "@/lib/supabase";
 
 /* ── All countries with dial codes ── */
 const COUNTRIES = [
@@ -268,7 +270,9 @@ function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChan
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
+  const [authError, setAuthError] = useState("");
 
   /* Step 1 */
   const [fullName, setFullName] = useState("");
@@ -298,8 +302,35 @@ export default function SignupPage() {
     }, 900);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     setLoading(true);
+    setAuthError("");
+
+    const supabase = getSupabase();
+
+    // 1. Create the auth user
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          business_type: detectedType,
+          country: country.name,
+          city,
+          phone: country.dial + " " + phone,
+          plan,
+        },
+      },
+    });
+
+    if (error) {
+      setAuthError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Save profile to localStorage for dashboard personalisation
     saveProfile({
       ownerName: fullName,
       email,
@@ -310,7 +341,25 @@ export default function SignupPage() {
       phone: country.dial + " " + phone,
       plan,
     });
-    setTimeout(() => { setLoading(false); setStep(4); }, 1400);
+
+    // 3. Create tenant record (requires schema.sql to have been run)
+    if (data.user) {
+      try {
+        await supabase.from("tenants").insert({
+          owner_id: data.user.id,
+          business_name: businessDesc || detectedType,
+          plan: plan as "starter" | "pro" | "premium",
+        });
+      } catch {
+        // Table may not exist yet — auth still works, proceed to dashboard
+      }
+    }
+
+    setLoading(false);
+    setStep(4);
+
+    // Redirect after a short delay so the success screen is visible
+    setTimeout(() => router.push("/app"), 1800);
   };
 
   return (
@@ -485,6 +534,11 @@ export default function SignupPage() {
               })}
             </div>
 
+            {authError && (
+              <div className="mb-4 max-w-md mx-auto px-4 py-3 rounded-xl text-sm text-red-300 border border-red-500/20 bg-red-500/10">
+                {authError}
+              </div>
+            )}
             <div className="flex gap-3 max-w-md mx-auto">
               <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-white/40 border border-white/10 hover:border-white/20 transition-colors">Back</button>
               <button onClick={handleStart} disabled={loading}

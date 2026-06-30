@@ -1,9 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { createBrowserClient } from "@supabase/ssr";
 
 export type Database = {
   public: {
@@ -14,6 +9,7 @@ export type Database = {
           owner_id: string;
           business_name: string;
           plan: "starter" | "pro" | "premium";
+          stripe_customer_id: string | null;
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["tenants"]["Row"], "id" | "created_at">;
@@ -81,3 +77,18 @@ export type Database = {
     };
   };
 };
+
+/** Browser client — use in Client Components */
+export function createSupabaseBrowserClient() {
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+// Singleton for convenience in client components
+let _client: ReturnType<typeof createSupabaseBrowserClient> | null = null;
+export function getSupabase() {
+  if (!_client) _client = createSupabaseBrowserClient();
+  return _client;
+}

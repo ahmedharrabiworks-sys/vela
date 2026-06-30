@@ -1,19 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
+import { getSupabase } from "@/lib/supabase";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Supabase auth wired here
-    setTimeout(() => setLoading(false), 1200);
+    setError("");
+
+    const supabase = getSupabase();
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    router.push("/app");
+    router.refresh();
   };
 
   return (
@@ -63,6 +78,12 @@ export default function LoginPage() {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[#FF6B35]/50 transition-colors"
               />
             </div>
+
+            {error && (
+              <div className="px-4 py-3 rounded-xl text-sm text-red-300 border border-red-500/20 bg-red-500/10">
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"
