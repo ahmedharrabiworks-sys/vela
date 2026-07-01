@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/ui/Logo";
+import { getProfile } from "@/lib/business-profile";
 
 const NAV = [
   {
@@ -100,6 +101,22 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [displayName, setDisplayName] = useState("Your Account");
+  const [displayPlan, setDisplayPlan] = useState("Free Plan");
+  const [initials, setInitials] = useState("V");
+
+  useEffect(() => {
+    const profile = getProfile();
+    if (profile?.ownerName) {
+      setDisplayName(profile.ownerName);
+      const parts = profile.ownerName.split(" ");
+      setInitials(parts.map((p) => p[0]).slice(0, 2).join("").toUpperCase());
+    }
+    if (profile?.plan) {
+      const planMap: Record<string, string> = { starter: "Starter Plan", pro: "Pro Plan", premium: "Premium Plan" };
+      setDisplayPlan(planMap[profile.plan.toLowerCase()] ?? profile.plan);
+    }
+  }, []);
 
   return (
     <aside
@@ -219,18 +236,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       <div className={`p-3 border-t border-white/5 flex items-center gap-3 ${collapsed ? "md:justify-center" : ""}`}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
           style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-          A
+          {initials}
         </div>
         {(!collapsed) && (
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-white truncate">Ahmed Al-Rashid</p>
-            <p className="text-[10px] text-white/40 truncate">Pro Plan</p>
+            <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+            <p className="text-[10px] text-white/40 truncate">{displayPlan}</p>
           </div>
         )}
         {collapsed && (
           <div className="flex-1 min-w-0 md:hidden">
-            <p className="text-xs font-semibold text-white truncate">Ahmed Al-Rashid</p>
-            <p className="text-[10px] text-white/40 truncate">Pro Plan</p>
+            <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+            <p className="text-[10px] text-white/40 truncate">{displayPlan}</p>
           </div>
         )}
       </div>

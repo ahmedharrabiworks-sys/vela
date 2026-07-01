@@ -34,22 +34,23 @@ const BUCKET_VOCAB: Record<string, IndustryVocab> = {
 };
 
 const TYPE_TO_BUCKET: Record<string, keyof typeof BUCKET_VOCAB> = {
-  "Dental Clinic": "healthcare", "Medical Clinic": "healthcare", "Cosmetic Clinic": "healthcare",
-  "Physiotherapy": "healthcare", "Dermatology": "healthcare", "Eye Clinic": "healthcare",
-  "Veterinary Clinic": "healthcare", "Pharmacy": "healthcare", "Psychologist": "healthcare",
-  "Nutritionist": "healthcare", "Life Coach": "healthcare",
+  // New simplified detection categories
+  "Medical Clinic": "healthcare", "Dental Clinic": "healthcare", "Beauty & Wellness": "beauty",
+  "Gym & Fitness": "fitness", "Real Estate": "realestate", "Restaurant": "food",
+  "Coffee Shop": "food", "Hotel": "food", "Law Firm": "professional",
+  "Education": "education", "E-Commerce": "retail", "Business": "general",
+  // Legacy categories (kept for backward compat)
+  "Cosmetic Clinic": "healthcare", "Physiotherapy": "healthcare", "Dermatology": "healthcare",
+  "Eye Clinic": "healthcare", "Veterinary Clinic": "healthcare", "Pharmacy": "healthcare",
   "Hair Salon": "beauty", "Barbershop": "beauty", "Nail Salon": "beauty", "Spa & Wellness": "beauty",
-  "Personal Trainer": "fitness", "Gym & Fitness": "fitness", "Yoga Studio": "fitness",
+  "Personal Trainer": "fitness", "Yoga Studio": "fitness",
   "Real Estate Agency": "realestate", "Property Management": "realestate",
-  "Restaurant": "food", "Cafe": "food", "Bakery": "food", "Catering": "food", "Hotel": "food",
-  "Language School": "education", "Tutoring Center": "education", "Driving School": "education", "Childcare": "education",
-  "Law Firm": "professional", "Accounting Firm": "professional", "Consulting": "professional",
-  "Architecture Studio": "professional", "Interior Design": "professional", "Marketing Agency": "professional",
+  "Cafe": "food", "Bakery": "food", "Catering": "food",
+  "Language School": "education", "Tutoring Center": "education",
+  "Accounting Firm": "professional", "Consulting": "professional", "Marketing Agency": "professional",
   "Financial Advisor": "professional", "Insurance Agency": "professional",
-  "Jewelry Store": "retail", "Clothing Boutique": "retail", "Furniture Store": "retail",
-  "Electronics Shop": "retail", "Florist": "retail", "E-commerce": "retail",
-  "Cleaning Service": "home", "Plumbing": "home", "Electrician": "home", "Landscaping": "home",
-  "Moving Company": "home", "Security Services": "home",
+  "E-commerce": "retail", "Jewelry Store": "retail", "Clothing Boutique": "retail",
+  "Cleaning Service": "home", "Plumbing": "home", "Electrician": "home",
 };
 
 const STORAGE_KEY = "vela_profile";

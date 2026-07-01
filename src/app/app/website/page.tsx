@@ -189,9 +189,62 @@ function WebPreview({ site, isMobile }: { site: SiteData; isMobile: boolean }) {
   );
 }
 
+const INDUSTRY_PROMPTS: Record<string, { greeting: string; suggestions: string[] }> = {
+  "Gym & Fitness": {
+    greeting: "I can see you run a gym or fitness business. I'll build a site that showcases your memberships and gets people to book a trial session.",
+    suggestions: ["Show monthly membership plans", "Add a free trial class offer", "List all our group classes", "Highlight our personal trainers"],
+  },
+  "Beauty & Wellness": {
+    greeting: "I see you're in beauty or wellness. I'll build a clean, elegant site to showcase your services and fill your booking calendar.",
+    suggestions: ["Show our treatment menu with prices", "Add a 'Book Now' section for each service", "Make it look very premium and luxurious", "Add a before/after section"],
+  },
+  "Restaurant": {
+    greeting: "I see you run a restaurant. I'll build a site that shows your menu and lets people make reservations instantly.",
+    suggestions: ["Show our full menu with categories", "Add a table reservation button", "Highlight our signature dishes", "Add our opening hours and location"],
+  },
+  "Coffee Shop": {
+    greeting: "I see you have a coffee shop. I'll build a cozy, inviting site that shows your menu and drives foot traffic.",
+    suggestions: ["Show our drinks menu and pricing", "Add our daily specials section", "Make it feel warm and cozy", "Add our location and hours"],
+  },
+  "Real Estate": {
+    greeting: "I see you're in real estate. I'll build a professional site to showcase your listings and capture buyer leads.",
+    suggestions: ["Show featured property listings", "Add a free property valuation CTA", "Highlight our recent sales", "Add a contact form for inquiries"],
+  },
+  "Medical Clinic": {
+    greeting: "I see you run a medical clinic. I'll build a professional, trustworthy site to showcase your services and let patients book appointments.",
+    suggestions: ["Show our services and specialties", "Add online appointment booking", "List our doctors and their expertise", "Add insurance information"],
+  },
+  "Education": {
+    greeting: "I see you're in education. I'll build a site that showcases your courses and gets students to enroll.",
+    suggestions: ["Show our courses with pricing", "Add a free trial class offer", "Highlight student success stories", "Add our curriculum and schedule"],
+  },
+  "E-Commerce": {
+    greeting: "I see you run an online store. I'll build a product showcase site that drives traffic to your store.",
+    suggestions: ["Show our bestselling products", "Add a featured collections section", "Highlight our shipping and returns policy", "Add customer reviews section"],
+  },
+  "Hotel": {
+    greeting: "I see you run a hotel. I'll build a stunning site that showcases your rooms and drives direct bookings.",
+    suggestions: ["Show our room types with pricing", "Add a direct booking button", "Highlight amenities and facilities", "Add a photo gallery of the property"],
+  },
+  "Law Firm": {
+    greeting: "I see you run a law firm. I'll build a professional, authoritative site that builds trust and generates client inquiries.",
+    suggestions: ["Show our practice areas", "Add a free consultation CTA", "Highlight our attorneys and credentials", "Add client testimonials"],
+  },
+};
+
+function getIndustryGreeting(btype: string | null): string {
+  if (!btype) return "Hi! Tell me about your business and I'll build your website instantly.\n\nJust describe what you do, who your customers are, and the vibe you're going for.";
+  const data = INDUSTRY_PROMPTS[btype];
+  if (!data) return `Hi! I see you run a ${btype}. Tell me your business name and I'll build your site instantly.\n\nDescribe the vibe — clean and minimal, bold, or premium?`;
+  return `Hi! ${data.greeting}\n\nTell me your business name and I'll get started. Or pick a suggestion below:`;
+}
+
 export default function WebsitePage() {
+  const [btype] = useState<string | null>(
+    typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null
+  );
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "ai", content: "Hi! Tell me about your business and I'll build your website instantly.\n\nJust describe what you do, who your customers are, and the vibe you're going for." },
+    { role: "ai", content: getIndustryGreeting(typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null) },
   ]);
   const [input, setInput] = useState("");
   const [site, setSite] = useState<SiteData>(DEFAULT_SITE);
@@ -203,8 +256,8 @@ export default function WebsitePage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const btype = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
-    if (btype) setSite(parseSite(btype, DEFAULT_SITE));
+    const stored = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
+    if (stored) setSite(parseSite(stored, DEFAULT_SITE));
   }, []);
 
   useEffect(() => {
@@ -314,15 +367,16 @@ export default function WebsitePage() {
           {/* Suggested prompts */}
           {msgs.length <= 1 && (
             <div className="px-4 pb-2">
-              <p className="text-[10px] text-[#9CA3AF] mb-2">Try one of these:</p>
+              <p className="text-[10px] text-[#9CA3AF] mb-2">
+                {btype && INDUSTRY_PROMPTS[btype] ? "Quick prompts for your business:" : "Try one of these:"}
+              </p>
               <div className="flex flex-wrap gap-1.5">
-                {[
-                  "I run a dental clinic in Dubai Marina",
-                  "I have a gym in Abu Dhabi",
-                  "I own a hair salon in Sharjah",
-                ].map((s) => (
+                {(btype && INDUSTRY_PROMPTS[btype]
+                  ? INDUSTRY_PROMPTS[btype].suggestions
+                  : ["I run a dental clinic in Dubai Marina", "I have a gym in Abu Dhabi", "I own a hair salon in Sharjah"]
+                ).map((s) => (
                   <button key={s} onClick={() => setInput(s)}
-                    className="text-[10px] px-2.5 py-1 bg-[#F3F4F6] text-[#374151] rounded-full hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors">
+                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors text-left">
                     {s}
                   </button>
                 ))}
