@@ -381,7 +381,8 @@ export default function SignupPage() {
     // 3. Create tenant record (requires schema.sql to have been run)
     if (data.user) {
       try {
-        await supabase.from("tenants").insert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("tenants").insert({
           owner_id: data.user.id,
           business_name: businessDesc || detectedType,
           plan: plan as "starter" | "pro" | "premium",

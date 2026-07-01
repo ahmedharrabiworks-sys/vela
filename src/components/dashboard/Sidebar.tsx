@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
 import { getProfile } from "@/lib/business-profile";
+import { getSupabase } from "@/lib/supabase";
 
 const NAV = [
   {
@@ -100,10 +101,16 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [displayName, setDisplayName] = useState("Your Account");
-  const [displayPlan, setDisplayPlan] = useState("Free Plan");
+  const [displayEmail, setDisplayEmail] = useState("");
+  const [displayPlan, setDisplayPlan] = useState("starter");
   const [initials, setInitials] = useState("V");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [language, setLanguage] = useState("English");
+  const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const profile = getProfile();
@@ -112,11 +119,59 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       const parts = profile.ownerName.split(" ");
       setInitials(parts.map((p) => p[0]).slice(0, 2).join("").toUpperCase());
     }
-    if (profile?.plan) {
-      const planMap: Record<string, string> = { starter: "Starter Plan", pro: "Pro Plan", premium: "Premium Plan" };
-      setDisplayPlan(planMap[profile.plan.toLowerCase()] ?? profile.plan);
+    if (profile?.plan) setDisplayPlan(profile.plan.toLowerCase());
+    if (profile?.email) setDisplayEmail(profile.email);
+    if (typeof window !== "undefined") {
+      setLanguage(localStorage.getItem("vela_lang") || "English");
     }
   }, []);
+
+  useEffect(() => {
+    async function loadAuth() {
+      try {
+        const supabase = getSupabase();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) setDisplayEmail(user.email);
+        const name = (user?.user_metadata?.full_name || user?.user_metadata?.name) as string | undefined;
+        if (name) {
+          setDisplayName(name);
+          const parts = name.split(" ");
+          setInitials(parts.map((p) => p[0]).slice(0, 2).join("").toUpperCase());
+        }
+      } catch { /* no auth session */ }
+    }
+    loadAuth();
+  }, []);
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+        setShowLangMenu(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [dropdownOpen]);
+
+  const handleLogout = async () => {
+    setDropdownOpen(false);
+    try {
+      const supabase = getSupabase();
+      await supabase.auth.signOut();
+    } catch { /* ignore */ }
+    router.push("/");
+  };
+
+  const selectLanguage = (lang: string) => {
+    setLanguage(lang);
+    if (typeof window !== "undefined") localStorage.setItem("vela_lang", lang);
+    setShowLangMenu(false);
+  };
+
+  const PLAN_LABELS: Record<string, string> = { starter: "Starter Plan", pro: "Pro Plan", premium: "Premium Plan" };
+  const planLabel = PLAN_LABELS[displayPlan] ?? "Starter Plan";
+  const isPremium = displayPlan === "premium";
 
   return (
     <aside
@@ -138,31 +193,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {collapsed && <span className="hidden md:block"><Logo showText={false} light size={28} /></span>}
         {collapsed && <span className="md:hidden"><Logo showText light size={28} /></span>}
 
-        {/* X button — mobile only */}
-        <button
-          onClick={onClose}
-          className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-all"
-          aria-label="Close sidebar"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+        <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-all" aria-label="Close sidebar">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
 
-        {/* Collapse toggle — desktop only */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="hidden md:flex p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
-          aria-label="Toggle sidebar"
-        >
+        <button onClick={() => setCollapsed(!collapsed)} className="hidden md:flex p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all" aria-label="Toggle sidebar">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path
-              d={collapsed ? "M5 2l5 5-5 5" : "M9 2L4 7l5 5"}
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d={collapsed ? "M5 2l5 5-5 5" : "M9 2L4 7l5 5"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
       </div>
@@ -176,35 +213,33 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${
+              className={`flex items-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${
                 active
-                  ? "bg-[#FF6B35]/15 text-[#FF6B35]"
+                  ? "bg-[#FF6B35]/12 text-[#FF6B35] border-l-2 border-[#FF6B35]"
                   : "text-white/50 hover:text-white hover:bg-white/5"
               }`}
+              style={{ paddingLeft: active ? "10px" : "12px", paddingRight: "12px" }}
             >
               <span className="shrink-0">{item.icon}</span>
               {!collapsed && (
                 <>
                   <span className="flex-1">{item.label}</span>
                   {item.badge && (
-                    <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", color: "white" }}>
+                    <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
                       {item.badge}
                     </span>
                   )}
                 </>
               )}
-              {/* On mobile, always show label (sidebar is full-width) */}
               {collapsed && (
                 <>
                   <span className="flex-1 md:hidden">{item.label}</span>
                   {item.badge && (
                     <>
-                      <span className="md:hidden w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
-                        style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", color: "white" }}>
+                      <span className="md:hidden w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
                         {item.badge}
                       </span>
-                      <span className="hidden md:block absolute top-1 right-1 w-3 h-3 rounded-full bg-[#FF6B35]" />
+                      <span className="hidden md:block absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FF3366]" />
                     </>
                   )}
                 </>
@@ -214,42 +249,137 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         })}
       </nav>
 
-      {/* Upgrade CTA — hidden when collapsed on desktop */}
-      {!collapsed && (
+      {/* Upgrade CTA — only if not premium and sidebar not collapsed */}
+      {!collapsed && !isPremium && (
         <div className="p-3 border-t border-white/5">
           <div className="rounded-xl p-4 bg-gradient-to-br from-[#FF6B35]/15 to-[#FF3366]/10 border border-[#FF6B35]/20">
             <p className="text-xs font-bold text-white mb-1">Upgrade to Premium</p>
             <p className="text-[10px] text-white/40 mb-3">Unlock 3 businesses + AI training</p>
-            <Link
-              href="/pricing"
-              onClick={onClose}
-              className="block text-center text-xs font-bold py-2 rounded-lg text-white"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-            >
+            <Link href="/pricing" onClick={onClose} className="block text-center text-xs font-bold py-2 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
               Upgrade Now
             </Link>
           </div>
         </div>
       )}
 
-      {/* User */}
-      <div className={`p-3 border-t border-white/5 flex items-center gap-3 ${collapsed ? "md:justify-center" : ""}`}>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-          {initials}
-        </div>
-        {(!collapsed) && (
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-white truncate">{displayName}</p>
-            <p className="text-[10px] text-white/40 truncate">{displayPlan}</p>
+      {/* User area with dropdown */}
+      <div ref={dropRef} className="relative border-t border-white/5">
+        {/* Dropdown — renders above */}
+        {dropdownOpen && (
+          <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-[#E5E7EB] shadow-2xl z-50 overflow-hidden">
+            {/* User info */}
+            <div className="px-4 py-3.5 border-b border-[#F3F4F6]">
+              <p className="text-sm font-semibold text-[#111111] truncate">{displayName}</p>
+              {displayEmail && <p className="text-xs text-[#6B7280] truncate mt-0.5">{displayEmail}</p>}
+              <span className="mt-2 inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,107,53,0.1)", color: "#FF6B35" }}>
+                {planLabel}
+              </span>
+            </div>
+
+            <div className="py-1">
+              {/* Settings */}
+              <Link href="/app/settings" onClick={() => { setDropdownOpen(false); onClose(); }}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-[#9CA3AF]">
+                  <circle cx="7" cy="7" r="1.75" stroke="currentColor" strokeWidth="1.2"/>
+                  <path d="M7 1.17V2.5M7 11.5v1.33M1.17 7H2.5M11.5 7h1.33M2.64 2.64l.94.94M10.42 10.42l.94.94M2.64 11.36l.94-.94M10.42 3.58l.94-.94" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+                Settings
+              </Link>
+
+              {/* Language */}
+              <button onClick={() => setShowLangMenu(!showLangMenu)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors">
+                <span className="flex items-center gap-3">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-[#9CA3AF]">
+                    <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
+                    <path d="M1.5 7h11M7 1.5c-1.5 2-1.5 9 0 11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  Language
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-[#9CA3AF]">
+                  {language}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d={showLangMenu ? "M2 6.5l3-3 3 3" : "M2 3.5l3 3 3-3"} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+              </button>
+              {showLangMenu && (
+                <div className="bg-[#F9FAFB] border-t border-[#F3F4F6]">
+                  {["English", "Arabic"].map((lang) => (
+                    <button key={lang} onClick={() => selectLanguage(lang)}
+                      className="w-full flex items-center justify-between pl-11 pr-4 py-2.5 text-sm text-[#374151] hover:bg-[#F3F4F6] transition-colors">
+                      {lang}
+                      {language === lang && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="#FF6B35" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* View all plans */}
+              <Link href="/pricing" onClick={() => { setDropdownOpen(false); onClose(); }}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-[#9CA3AF]">
+                  <path d="M7 1.5L8.5 5.25 12.5 5.5 9.75 7.75l1 4.25L7 9.75 3.25 12l1-4.25L1.5 5.5 5.5 5.25z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                </svg>
+                View all plans
+              </Link>
+            </div>
+
+            <div className="h-px bg-[#F3F4F6]" />
+
+            <div className="py-1">
+              {!isPremium && (
+                <Link href="/auth/signup" onClick={() => { setDropdownOpen(false); onClose(); }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#FF6B35] hover:bg-[#FFF5F0] transition-colors">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  Upgrade Plan
+                </Link>
+              )}
+              <button onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2M9.5 10l3-3-3-3M12.5 7H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Log out
+              </button>
+            </div>
           </div>
         )}
-        {collapsed && (
-          <div className="flex-1 min-w-0 md:hidden">
-            <p className="text-xs font-semibold text-white truncate">{displayName}</p>
-            <p className="text-[10px] text-white/40 truncate">{displayPlan}</p>
+
+        {/* User button */}
+        <button
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+          className={`w-full flex items-center gap-3 p-3 transition-all ${dropdownOpen ? "bg-white/10" : "hover:bg-white/5"} ${collapsed ? "md:justify-center" : ""}`}
+        >
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            {initials}
           </div>
-        )}
+          {!collapsed && (
+            <>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+                <p className="text-[10px] text-white/40 truncate">{planLabel}</p>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-white/20 shrink-0">
+                <path d={dropdownOpen ? "M2 7.5l4-4 4 4" : "M2 4.5l4 4 4-4"} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </>
+          )}
+          {collapsed && (
+            <div className="flex-1 min-w-0 md:hidden text-left">
+              <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+              <p className="text-[10px] text-white/40 truncate">{planLabel}</p>
+            </div>
+          )}
+        </button>
       </div>
     </aside>
   );

@@ -19,8 +19,8 @@ export default function DashboardPage() {
   }, []);
 
   const vocab = getVocab(profile?.businessType);
-  const bName = profile?.businessName || "Ahmed Dental Clinic";
-  const firstName = profile?.ownerName?.split(" ")[0] || "Ahmed";
+  const bName = profile?.businessName || "";
+  const firstName = profile?.ownerName?.split(" ")[0] || "there";
 
   const KPI_CARDS = [
     { label: "Revenue (AED)",        value: "48,200", trend: "+12%", up: true  },
@@ -51,7 +51,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="pt-1">
         <h1 className="text-xl font-bold text-[#111111]">Good morning, {firstName}</h1>
-        <p className="text-sm text-[#6B7280] mt-0.5">{bName} · Monday, 29 June 2026</p>
+        <p className="text-sm text-[#6B7280] mt-0.5">{bName ? `${bName} · ` : ""}Tuesday, 1 July 2026</p>
       </div>
 
       {/* KPI strip */}
