@@ -50,7 +50,7 @@ export default function Hero() {
               variants={container}
               initial="hidden"
               animate="show"
-              className="flex flex-col gap-5 md:gap-6"
+              className="flex flex-col gap-5 md:gap-6 items-center text-center lg:items-start lg:text-left"
             >
               {/* Badge */}
               <motion.div variants={item}>
@@ -73,7 +73,7 @@ export default function Hero() {
               {/* Subtext */}
               <motion.p
                 variants={item}
-                className="text-white/60 text-base md:text-lg leading-relaxed max-w-[440px]"
+                className="text-white/60 text-base md:text-lg leading-relaxed max-w-[440px] mx-auto lg:mx-0"
               >
                 Vela runs your customer communications 24/7. AI replies,
                 qualifies, and books appointments — on Instagram, WhatsApp,

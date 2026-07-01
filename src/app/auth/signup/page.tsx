@@ -142,10 +142,62 @@ const COUNTRIES = [
 
 const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.name === "United Arab Emirates")!;
 
+type PlanFeature = { text: string; included: boolean };
 const PLANS = [
-  { id: "starter", name: "Starter", price: 79,  desc: "1 channel · 50 bookings/mo · Basic CRM" },
-  { id: "pro",     name: "Pro",     price: 159, desc: "All 3 channels · Unlimited · Full CRM", popular: true },
-  { id: "premium", name: "Premium", price: 299, desc: "Everything + dedicated account manager" },
+  {
+    id: "starter", name: "Starter", monthly: 79, annual: 63, popular: false,
+    description: "Everything you need to get started with AI automation.",
+    features: [
+      { text: "1 custom domain",          included: true  },
+      { text: "AI on 1 channel only",     included: true  },
+      { text: "Basic website template",   included: true  },
+      { text: "50 bookings/month",        included: true  },
+      { text: "Generic AI responses",     included: true  },
+      { text: "Basic calendar",           included: true  },
+      { text: "No follow-up automation",  included: false },
+      { text: "Basic CRM",                included: true  },
+      { text: "No white label",           included: false },
+      { text: "1 team member",            included: true  },
+      { text: "No analytics",             included: false },
+      { text: "Email support only",       included: true  },
+    ] as PlanFeature[],
+  },
+  {
+    id: "pro", name: "Pro", monthly: 159, annual: 127, popular: true,
+    description: "The complete system for serious businesses ready to scale.",
+    features: [
+      { text: "2 custom domains",                         included: true },
+      { text: "All 3 channels (WhatsApp + Instagram + Website)", included: true },
+      { text: "Beautiful custom website",                 included: true },
+      { text: "Unlimited bookings",                       included: true },
+      { text: "AI trained on YOUR business",              included: true },
+      { text: "Full calendar + auto reminders",           included: true },
+      { text: "Auto follow-up sequences",                 included: true },
+      { text: "Full CRM pipeline view",                   included: true },
+      { text: "White label included",                     included: true },
+      { text: "15 team members",                          included: true },
+      { text: "Full analytics dashboard",                 included: true },
+      { text: "Live chat support 24/7",                   included: true },
+    ] as PlanFeature[],
+  },
+  {
+    id: "premium", name: "Premium", monthly: 299, annual: 239, popular: false,
+    description: "For businesses that demand the absolute best, no compromises.",
+    features: [
+      { text: "3 custom domains",                         included: true },
+      { text: "All 3 channels + priority responses",      included: true },
+      { text: "Full custom website + animations",         included: true },
+      { text: "Unlimited bookings",                       included: true },
+      { text: "Advanced AI — learns over time",           included: true },
+      { text: "Full calendar + reminders + analytics",    included: true },
+      { text: "Advanced follow-up sequences",             included: true },
+      { text: "Full CRM + revenue reports",               included: true },
+      { text: "White label included",                     included: true },
+      { text: "Unlimited team members",                   included: true },
+      { text: "Advanced analytics + exports",             included: true },
+      { text: "Dedicated account manager",                included: true },
+    ] as PlanFeature[],
+  },
 ];
 
 /* Detect industry from plain-text business description */
@@ -286,9 +338,12 @@ export default function SignupPage() {
   const [phone, setPhone] = useState("");
   const [detecting, setDetecting] = useState(false);
   const [detectedType, setDetectedType] = useState("");
+  const [aiDetecting, setAiDetecting] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Step 3 */
   const [plan, setPlan] = useState("pro");
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const [loading, setLoading] = useState(false);
 
   const handleStep2 = (e: React.FormEvent) => {
@@ -341,6 +396,7 @@ export default function SignupPage() {
       phone: country.dial + " " + phone,
       plan,
     });
+    if (detectedType) localStorage.setItem("vela_business_type", detectedType);
 
     // 3. Create tenant record (requires schema.sql to have been run)
     if (data.user) {
@@ -412,13 +468,53 @@ export default function SignupPage() {
                 <label className={labelCls}>What&apos;s your business?</label>
                 <textarea
                   value={businessDesc}
-                  onChange={(e) => setBusinessDesc(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setBusinessDesc(val);
+                    if (debounceRef.current) clearTimeout(debounceRef.current);
+                    if (!val.trim()) { setDetectedType(""); return; }
+                    debounceRef.current = setTimeout(async () => {
+                      setAiDetecting(true);
+                      try {
+                        const res = await fetch("/api/detect-business", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ description: val }),
+                        });
+                        const data = await res.json();
+                        if (data.type) {
+                          setDetectedType(data.type);
+                          localStorage.setItem("vela_business_type", data.type);
+                        }
+                      } catch { /* ignore */ } finally {
+                        setAiDetecting(false);
+                      }
+                    }, 1000);
+                  }}
                   placeholder="e.g. Dental clinic in Dubai, Real estate agency, Hair salon…"
                   required
                   rows={3}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[#FF6B35]/60 transition-colors resize-none"
                 />
-                <p className="text-[10px] text-white/20 mt-1.5">Vela AI will auto-detect your industry from this description</p>
+                {aiDetecting && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <svg className="animate-spin w-3 h-3 text-[#FF6B35]" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6" stroke="rgba(255,107,53,0.3)" strokeWidth="2"/>
+                      <path d="M14 8a6 6 0 0 0-6-6" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    <span className="text-[11px] text-white/30">Detecting business type…</span>
+                  </div>
+                )}
+                {detectedType && !aiDetecting && (
+                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#FF6B35]/20 w-fit" style={{ background: "rgba(255,107,53,0.08)" }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span className="text-[11px] text-white/60">Detected: <span className="text-white font-semibold">{detectedType}</span></span>
+                    <button type="button" onClick={() => setDetectedType("")} className="text-white/20 hover:text-white/50 transition-colors text-xs ml-0.5">✕</button>
+                  </div>
+                )}
+                {!aiDetecting && !detectedType && (
+                  <p className="text-[10px] text-white/20 mt-1.5">Vela AI will auto-detect your industry from this description</p>
+                )}
               </div>
 
               <div>
@@ -467,9 +563,22 @@ export default function SignupPage() {
         {/* ── Step 3: Plan ── */}
         {step === 3 && (
           <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-10">
-            <div className="text-center mb-6">
+            <div className="text-center mb-7">
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Choose your plan</h1>
-              <p className="text-white/40 text-sm md:text-base">Billed monthly. Cancel anytime, no questions asked.</p>
+              <p className="text-white/40 text-sm md:text-base mb-5">Cancel anytime · 7-day money-back guarantee</p>
+
+              {/* Billing toggle */}
+              <div className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10" style={{ background: "rgba(255,255,255,0.04)" }}>
+                <button type="button" onClick={() => setBilling("monthly")}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "monthly" ? "bg-white/15 text-white shadow-sm" : "text-white/40 hover:text-white/60"}`}>
+                  Monthly
+                </button>
+                <button type="button" onClick={() => setBilling("annual")}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "annual" ? "bg-white/15 text-white shadow-sm" : "text-white/40 hover:text-white/60"}`}>
+                  Annual
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FF6B35] text-white">−20%</span>
+                </button>
+              </div>
             </div>
 
             {detectedType && (
@@ -481,15 +590,16 @@ export default function SignupPage() {
               </div>
             )}
 
-            <div className="grid md:grid-cols-3 gap-5 mb-8 items-stretch">
+            <div className="grid md:grid-cols-3 gap-5 mb-8 items-start">
               {PLANS.map((p) => {
                 const isSelected = plan === p.id;
+                const price = billing === "annual" ? p.annual : p.monthly;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => setPlan(p.id)}
-                    className={`relative flex flex-col text-left rounded-2xl p-7 md:p-8 min-w-[280px] transition-all duration-200 ${
+                    className={`relative flex flex-col text-left rounded-2xl p-6 md:p-7 transition-all duration-200 w-full ${
                       p.popular ? "md:scale-[1.03]" : ""
                     } ${
                       isSelected
@@ -516,19 +626,48 @@ export default function SignupPage() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2.5 mb-5">
+                    {/* Plan name + radio */}
+                    <div className="flex items-center gap-2.5 mb-4">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "border-[#FF6B35]" : "border-white/25"}`}>
                         {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B35]" />}
                       </div>
                       <span className="text-sm font-semibold uppercase tracking-widest text-white/60">{p.name}</span>
                     </div>
 
-                    <div className="flex items-end gap-1 mb-3">
-                      <span className="text-5xl font-extrabold text-white">${p.price}</span>
+                    {/* Price */}
+                    <div className="flex items-end gap-1 mb-1">
+                      <span className="text-5xl font-extrabold text-white">${price}</span>
                       <span className="text-sm text-white/40 mb-2">/mo</span>
                     </div>
+                    {billing === "annual" ? (
+                      <p className="text-xs text-[#FF6B35] mb-3">Billed ${price * 12}/yr · Save ${(p.monthly - p.annual) * 12}/yr</p>
+                    ) : (
+                      <p className="text-xs text-white/25 mb-3">Billed monthly</p>
+                    )}
 
-                    <p className="text-sm text-white/45 leading-relaxed">{p.desc}</p>
+                    <p className="text-xs text-white/40 leading-relaxed mb-4">{p.description}</p>
+
+                    {/* Feature list */}
+                    <ul className="flex flex-col gap-2.5">
+                      {p.features.map((feat) => (
+                        <li key={feat.text} className="flex items-start gap-2.5">
+                          {feat.included ? (
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                              <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.2)" />
+                              <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          ) : (
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                              <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.04)" />
+                              <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                          )}
+                          <span className={`text-xs leading-relaxed ${feat.included ? "text-white/65" : "text-white/20 line-through"}`}>
+                            {feat.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </button>
                 );
               })}
@@ -569,7 +708,7 @@ export default function SignupPage() {
             <h1 className="text-xl font-bold text-white mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
             <p className="text-white/40 text-sm mb-2">Your business is ready on Vela.</p>
             <p className="text-white/25 text-xs mb-8">
-              Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed monthly, cancel anytime.
+              Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed {billing === "annual" ? "annually" : "monthly"}, cancel anytime.
             </p>
             <Link href="/app" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
               Go to Dashboard →

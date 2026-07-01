@@ -203,6 +203,11 @@ export default function WebsitePage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const btype = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
+    if (btype) setSite(parseSite(btype, DEFAULT_SITE));
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 

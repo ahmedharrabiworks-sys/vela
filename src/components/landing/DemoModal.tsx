@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-const SLIDE_DURATION = 5000;
+const SLIDE_DURATION = 6000;
 const TOTAL = 4;
 
 interface Props {
