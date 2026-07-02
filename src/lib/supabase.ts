@@ -8,21 +8,28 @@ export type Database = {
           id: string;
           owner_id: string;
           business_name: string;
+          industry: string | null;
+          city: string | null;
+          phone: string | null;
+          website: string | null;
           plan: "starter" | "pro" | "premium";
           stripe_customer_id: string | null;
           created_at: string;
         };
         Insert: Omit<Database["public"]["Tables"]["tenants"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["tenants"]["Insert"]>;
       };
       tenant_config: {
         Row: {
           tenant_id: string;
-          services_json: Record<string, string>[];
-          faq_json: Record<string, string>[];
+          services_json: Array<{ name: string; price?: string; description?: string }>;
+          faq_json: Array<{ question: string; answer: string }>;
           tone: string;
           language: string;
           booking_rules: Record<string, unknown>;
         };
+        Insert: Partial<Database["public"]["Tables"]["tenant_config"]["Row"]> & { tenant_id: string };
+        Update: Partial<Database["public"]["Tables"]["tenant_config"]["Row"]>;
       };
       leads: {
         Row: {
@@ -35,15 +42,22 @@ export type Database = {
           status: "new" | "contacted" | "qualified" | "booked" | "client";
           created_at: string;
         };
+        Insert: Omit<Database["public"]["Tables"]["leads"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
       };
       conversations: {
         Row: {
           id: string;
           tenant_id: string;
-          lead_id: string;
+          lead_id: string | null;
           channel: string;
+          customer_name: string;
+          ai_enabled: boolean;
+          last_message_at: string | null;
           created_at: string;
         };
+        Insert: Omit<Database["public"]["Tables"]["conversations"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["conversations"]["Insert"]>;
       };
       messages: {
         Row: {
@@ -53,16 +67,23 @@ export type Database = {
           content: string;
           created_at: string;
         };
+        Insert: Omit<Database["public"]["Tables"]["messages"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;
       };
       appointments: {
         Row: {
           id: string;
           tenant_id: string;
-          lead_id: string;
-          datetime: string;
+          lead_id: string | null;
+          conversation_id: string | null;
+          service_name: string;
+          datetime: string | null;
           status: "pending" | "confirmed" | "cancelled";
           notes: string | null;
+          created_at: string;
         };
+        Insert: Omit<Database["public"]["Tables"]["appointments"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>;
       };
       automations: {
         Row: {
@@ -72,7 +93,10 @@ export type Database = {
           trigger: string;
           action: Record<string, unknown>;
           active: boolean;
+          created_at: string;
         };
+        Insert: Omit<Database["public"]["Tables"]["automations"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["automations"]["Insert"]>;
       };
     };
   };

@@ -323,7 +323,8 @@ function ChannelsTab({ tenantId }: { tenantId: string }) {
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState("");
 
-  const embedCode = `<script src="https://widget.vela.ai/embed.js" data-id="${tenantId || "YOUR_TENANT_ID"}"></script>`;
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://app.vela.ai").replace(/\/$/, "");
+  const embedCode = `<script src="${appUrl}/api/embed/${tenantId || "YOUR_TENANT_ID"}" async></script>`;
 
   const connectInstagram = (username: string) => {
     const next = { ...channels, instagram: { connected: true, username } };
