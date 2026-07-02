@@ -1,0 +1,181 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "conversations": "Conversations",
+    "leads": "Leads / CRM",
+    "appointments": "Appointments",
+    "channels": "Channels",
+    "website": "Website Builder",
+    "analytics": "Analytics",
+    "marketing": "Marketing"
+  },
+  "common": {
+    "save": "Save Changes",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "upgrade": "Upgrade",
+    "back": "Back",
+    "done": "Done",
+    "loading": "Loading…",
+    "search": "Search…",
+    "export": "Export CSV",
+    "send": "Send",
+    "copy": "Copy",
+    "copied": "Copied",
+    "regenerate": "Regenerate",
+    "generate": "Generate",
+    "close": "Close"
+  },
+  "sidebar": {
+    "upgradePremium": "Upgrade to Premium",
+    "unlockFeatures": "Unlock 3 businesses + AI training",
+    "upgradeNow": "Upgrade Now",
+    "settings": "Settings",
+    "language": "Language",
+    "viewAllPlans": "View all plans",
+    "upgradePlan": "Upgrade Plan",
+    "logout": "Log out",
+    "plans": {
+      "starter": "Starter Plan",
+      "pro": "Pro Plan",
+      "premium": "Premium Plan"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your business configuration and integrations.",
+    "tabs": {
+      "businessInfo": "Business Info",
+      "aiConfig": "AI Configuration",
+      "notifications": "Notifications",
+      "billing": "Billing"
+    },
+    "businessInfo": {
+      "title": "Business Information",
+      "name": "Business Name",
+      "industry": "Industry",
+      "phone": "Phone",
+      "email": "Email",
+      "city": "City",
+      "website": "Website",
+      "services": "Services (used by AI)"
+    },
+    "aiConfig": {
+      "title": "AI Configuration",
+      "tone": "AI Tone",
+      "language": "Response Language",
+      "timing": "Reply Timing",
+      "instructions": "Custom AI Instructions",
+      "save": "Save AI Config"
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "save": "Save Preferences"
+    },
+    "billing": {
+      "title": "Billing & Subscription",
+      "upgradePlan": "Upgrade Plan",
+      "manageBilling": "Manage Billing",
+      "addPayment": "Add payment method",
+      "noCard": "No card on file",
+      "renews": "Renews automatically · Cancel anytime",
+      "whiteLabel": "Hide “Powered by Vela” branding",
+      "whiteLabelDesc": "Remove Vela branding from your chat widget (Pro & Premium)"
+    }
+  },
+  "channels": {
+    "title": "Channels",
+    "subtitle": "Connect your messaging channels. Vela AI will reply automatically on each.",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "readyToEmbed": "Ready to embed",
+    "upgradeTitle": "Upgrade to Pro for more channels",
+    "upgradeDesc": "Starter plan includes 1 channel. Upgrade to connect all 3.",
+    "instagram": {
+      "name": "Instagram",
+      "desc": "AI replies to your Instagram DMs automatically"
+    },
+    "whatsapp": {
+      "name": "WhatsApp Business",
+      "desc": "AI replies to WhatsApp Business messages automatically"
+    },
+    "website": {
+      "name": "Website Chat Widget",
+      "desc": "Add an AI chat bubble to any website"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "totalLeads": "Total Leads",
+    "appointments": "Appointments",
+    "revenue": "Revenue (AED)",
+    "conversionRate": "Conversion Rate",
+    "newLeads": "New Leads Over Time",
+    "leadSources": "Lead Sources",
+    "aiPerformance": "AI Performance",
+    "channel": "Channel",
+    "leads": "Leads",
+    "bookings": "Bookings",
+    "convRate": "Conv. Rate",
+    "total": "Total",
+    "messagesHandled": "Messages Handled",
+    "bookingsByAI": "Bookings by AI",
+    "avgResponse": "Avg Response",
+    "satisfaction": "Satisfaction",
+    "upgradeCta": "Upgrade to Pro to unlock Analytics",
+    "upgradeDesc": "Get detailed insights into your leads, bookings, and revenue."
+  },
+  "marketing": {
+    "title": "Marketing",
+    "subtitle": "AI tools to grow your business",
+    "upgradeCta": "Upgrade to Pro to unlock Marketing",
+    "upgradeDesc": "Send broadcasts, generate posts, and create video scripts with AI.",
+    "tools": {
+      "social": "Social Media Posts",
+      "socialDesc": "AI-written posts for any platform",
+      "broadcast": "Broadcast Message",
+      "broadcastDesc": "Bulk message to leads or customers",
+      "video": "Video Script",
+      "videoDesc": "Scene-by-scene scripts for Reels & TikTok"
+    }
+  },
+  "appointments": {
+    "title": "Appointments",
+    "confirmedToday": "confirmed today",
+    "newAppointment": "+ New Appointment",
+    "exportCsv": "Export CSV",
+    "searchPlaceholder": "Search by name, service, channel…",
+    "filters": {
+      "all": "All",
+      "today": "Today",
+      "week": "This Week",
+      "upcoming": "Upcoming",
+      "past": "Past"
+    },
+    "columns": {
+      "patient": "Patient",
+      "phone": "Phone",
+      "service": "Service",
+      "dateTime": "Date & Time",
+      "channel": "Channel",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "cancelled": "Cancelled"
+    },
+    "actions": {
+      "reschedule": "Reschedule",
+      "cancel": "Cancel",
+      "message": "Message"
+    },
+    "showing": "Showing",
+    "bookingCounter": "bookings this month",
+    "bookingLimitReached": "Booking limit reached — upgrade to Pro for unlimited bookings"
+  }
+}

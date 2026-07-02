@@ -1,0 +1,181 @@
+{
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "conversations": "المحادثات",
+    "leads": "العملاء المحتملون",
+    "appointments": "المواعيد",
+    "channels": "القنوات",
+    "website": "منشئ المواقع",
+    "analytics": "التحليلات",
+    "marketing": "التسويق"
+  },
+  "common": {
+    "save": "حفظ التغييرات",
+    "saving": "جارٍ الحفظ…",
+    "saved": "تم الحفظ",
+    "cancel": "إلغاء",
+    "connect": "ربط",
+    "disconnect": "قطع الاتصال",
+    "upgrade": "ترقية",
+    "back": "رجوع",
+    "done": "تم",
+    "loading": "جارٍ التحميل…",
+    "search": "بحث…",
+    "export": "تصدير CSV",
+    "send": "إرسال",
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "regenerate": "إعادة توليد",
+    "generate": "توليد",
+    "close": "إغلاق"
+  },
+  "sidebar": {
+    "upgradePremium": "ترقية إلى Premium",
+    "unlockFeatures": "افتح 3 أعمال + تدريب الذكاء الاصطناعي",
+    "upgradeNow": "ترقية الآن",
+    "settings": "الإعدادات",
+    "language": "اللغة",
+    "viewAllPlans": "عرض جميع الخطط",
+    "upgradePlan": "ترقية الخطة",
+    "logout": "تسجيل الخروج",
+    "plans": {
+      "starter": "خطة المبتدئ",
+      "pro": "خطة Pro",
+      "premium": "خطة Premium"
+    }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "subtitle": "إدارة إعدادات عملك وتكاملاته.",
+    "tabs": {
+      "businessInfo": "معلومات النشاط",
+      "aiConfig": "إعداد الذكاء الاصطناعي",
+      "notifications": "الإشعارات",
+      "billing": "الفواتير"
+    },
+    "businessInfo": {
+      "title": "معلومات النشاط التجاري",
+      "name": "اسم النشاط",
+      "industry": "القطاع",
+      "phone": "الهاتف",
+      "email": "البريد الإلكتروني",
+      "city": "المدينة",
+      "website": "الموقع الإلكتروني",
+      "services": "الخدمات (للذكاء الاصطناعي)"
+    },
+    "aiConfig": {
+      "title": "إعداد الذكاء الاصطناعي",
+      "tone": "أسلوب الذكاء الاصطناعي",
+      "language": "لغة الردود",
+      "timing": "توقيت الرد",
+      "instructions": "تعليمات مخصصة",
+      "save": "حفظ إعدادات الذكاء الاصطناعي"
+    },
+    "notifications": {
+      "title": "إعدادات الإشعارات",
+      "save": "حفظ التفضيلات"
+    },
+    "billing": {
+      "title": "الفواتير والاشتراك",
+      "upgradePlan": "ترقية الخطة",
+      "manageBilling": "إدارة الفواتير",
+      "addPayment": "إضافة وسيلة دفع",
+      "noCard": "لا توجد بطاقة مسجلة",
+      "renews": "يتجدد تلقائياً · إلغاء في أي وقت",
+      "whiteLabel": "إخفاء شعار Vela",
+      "whiteLabelDesc": "إزالة علامة Vela التجارية من أداة الدردشة (Pro وPremium)"
+    }
+  },
+  "channels": {
+    "title": "القنوات",
+    "subtitle": "قم بربط قنوات المراسلة الخاصة بك. سيرد Vela AI تلقائياً على كل منها.",
+    "connected": "متصل",
+    "notConnected": "غير متصل",
+    "readyToEmbed": "جاهز للتضمين",
+    "upgradeTitle": "ترقية إلى Pro للحصول على قنوات أكثر",
+    "upgradeDesc": "خطة المبتدئ تتضمن قناة واحدة. قم بالترقية لربط جميع القنوات الثلاث.",
+    "instagram": {
+      "name": "انستغرام",
+      "desc": "يرد Vela AI على رسائل Instagram الخاصة تلقائياً"
+    },
+    "whatsapp": {
+      "name": "واتساب بيزنس",
+      "desc": "يرد Vela AI على رسائل WhatsApp Business تلقائياً"
+    },
+    "website": {
+      "name": "أداة دردشة الموقع",
+      "desc": "أضف فقاعة دردشة AI إلى أي موقع ويب"
+    }
+  },
+  "analytics": {
+    "title": "التحليلات",
+    "totalLeads": "إجمالي العملاء",
+    "appointments": "المواعيد",
+    "revenue": "الإيرادات (درهم)",
+    "conversionRate": "معدل التحويل",
+    "newLeads": "العملاء الجدد بمرور الوقت",
+    "leadSources": "مصادر العملاء",
+    "aiPerformance": "أداء الذكاء الاصطناعي",
+    "channel": "القناة",
+    "leads": "العملاء",
+    "bookings": "الحجوزات",
+    "convRate": "معدل التحويل",
+    "total": "الإجمالي",
+    "messagesHandled": "الرسائل المعالجة",
+    "bookingsByAI": "حجوزات الذكاء الاصطناعي",
+    "avgResponse": "متوسط وقت الرد",
+    "satisfaction": "الرضا",
+    "upgradeCta": "ترقية إلى Pro لفتح التحليلات",
+    "upgradeDesc": "احصل على رؤى تفصيلية حول عملائك وحجوزاتك وإيراداتك."
+  },
+  "marketing": {
+    "title": "التسويق",
+    "subtitle": "أدوات الذكاء الاصطناعي لتنمية عملك",
+    "upgradeCta": "ترقية إلى Pro لفتح التسويق",
+    "upgradeDesc": "أرسل رسائل جماعية وأنشئ منشورات ونصوص فيديو بالذكاء الاصطناعي.",
+    "tools": {
+      "social": "منشورات التواصل الاجتماعي",
+      "socialDesc": "منشورات مكتوبة بالذكاء الاصطناعي لأي منصة",
+      "broadcast": "رسالة جماعية",
+      "broadcastDesc": "رسائل جماعية للعملاء",
+      "video": "نص الفيديو",
+      "videoDesc": "نصوص مشهد بمشهد لـ Reels وTikTok"
+    }
+  },
+  "appointments": {
+    "title": "المواعيد",
+    "confirmedToday": "مؤكد اليوم",
+    "newAppointment": "+ موعد جديد",
+    "exportCsv": "تصدير CSV",
+    "searchPlaceholder": "بحث بالاسم أو الخدمة أو القناة…",
+    "filters": {
+      "all": "الكل",
+      "today": "اليوم",
+      "week": "هذا الأسبوع",
+      "upcoming": "القادمة",
+      "past": "السابقة"
+    },
+    "columns": {
+      "patient": "المريض",
+      "phone": "الهاتف",
+      "service": "الخدمة",
+      "dateTime": "التاريخ والوقت",
+      "channel": "القناة",
+      "status": "الحالة",
+      "actions": "الإجراءات"
+    },
+    "status": {
+      "confirmed": "مؤكد",
+      "pending": "معلق",
+      "cancelled": "ملغى"
+    },
+    "actions": {
+      "reschedule": "إعادة جدولة",
+      "cancel": "إلغاء",
+      "message": "رسالة"
+    },
+    "showing": "يعرض",
+    "bookingCounter": "حجز هذا الشهر",
+    "bookingLimitReached": "تم الوصول لحد الحجوزات — قم بالترقية للحصول على حجوزات غير محدودة"
+  }
+}

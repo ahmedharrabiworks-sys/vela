@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { usePlan } from "@/lib/plans";
+import { useI18n } from "@/lib/i18n";
 
 type SortKey = "name" | "phone" | "service" | "date" | "channel" | "status";
 type SortDir = "asc" | "desc";
@@ -39,21 +41,15 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; lab
   cancelled: { bg: "bg-red-50",    text: "text-red-600",    dot: "bg-red-400",    label: "Cancelled" },
 };
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all",      label: "All" },
-  { key: "today",    label: "Today" },
-  { key: "week",     label: "This Week" },
-  { key: "upcoming", label: "Upcoming" },
-  { key: "past",     label: "Past" },
-];
+const FILTER_KEYS: FilterKey[] = ["all", "today", "week", "upcoming", "past"];
 
-const SORT_COLS: { key: SortKey; label: string; width: string }[] = [
-  { key: "name",    label: "Patient",     width: "min-w-[170px]" },
-  { key: "phone",   label: "Phone",       width: "min-w-[140px]" },
-  { key: "service", label: "Service",     width: "min-w-[150px]" },
-  { key: "date",    label: "Date & Time", width: "min-w-[150px]" },
-  { key: "channel", label: "Channel",     width: "min-w-[110px]" },
-  { key: "status",  label: "Status",      width: "min-w-[110px]" },
+const SORT_COL_KEYS: { key: SortKey; labelKey: string; width: string }[] = [
+  { key: "name",    labelKey: "appointments.columns.patient",  width: "min-w-[170px]" },
+  { key: "phone",   labelKey: "appointments.columns.phone",    width: "min-w-[140px]" },
+  { key: "service", labelKey: "appointments.columns.service",  width: "min-w-[150px]" },
+  { key: "date",    labelKey: "appointments.columns.dateTime", width: "min-w-[150px]" },
+  { key: "channel", labelKey: "appointments.columns.channel",  width: "min-w-[110px]" },
+  { key: "status",  labelKey: "appointments.columns.status",   width: "min-w-[110px]" },
 ];
 
 function formatDateLabel(dateStr: string): string {
@@ -225,6 +221,10 @@ export default function AppointmentsPage() {
   const [modal, setModal] = useState<{ type: "message" | "reschedule" | "cancel"; id: number } | null>(null);
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const [msgSentId, setMsgSentId] = useState<number | null>(null);
+  const { isStarter, config } = usePlan();
+  const { t } = useI18n();
+  // Mock booking counter — in production would come from Supabase
+  const bookingsThisMonth = 34;
 
   const flashRow = (id: number) => {
     setHighlightId(id);
@@ -307,10 +307,26 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#111827]">Appointments</h1>
-          <p className="text-sm text-[#6B7280] mt-1">
-            <span className="font-semibold text-green-600">{confirmedToday} confirmed today</span>
-          </p>
+          <h1 className="text-xl md:text-2xl font-bold text-[#111827]">{t("appointments.title")}</h1>
+          <div className="flex items-center flex-wrap gap-3 mt-1">
+            <span className="text-sm font-semibold text-green-600">{confirmedToday} {t("appointments.confirmedToday")}</span>
+            {isStarter && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                bookingsThisMonth >= config.bookingsPerMonth
+                  ? "bg-red-50 text-red-600"
+                  : bookingsThisMonth >= config.bookingsPerMonth * 0.8
+                  ? "bg-yellow-50 text-yellow-700"
+                  : "bg-[#F3F4F6] text-[#6B7280]"
+              }`}>
+                {bookingsThisMonth} / {config.bookingsPerMonth} {t("appointments.bookingCounter")}
+              </span>
+            )}
+            {isStarter && bookingsThisMonth >= config.bookingsPerMonth && (
+              <span className="text-xs text-red-600 font-medium">
+                {t("appointments.bookingLimitReached")}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px]">
@@ -341,13 +357,13 @@ export default function AppointmentsPage() {
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          {FILTERS.map((f) => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
+          {FILTER_KEYS.map((key) => (
+            <button key={key} onClick={() => setFilter(key)}
               className={`text-xs font-semibold px-3.5 py-2 rounded-lg transition-all min-h-[36px] ${
-                filter === f.key ? "text-white" : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
+                filter === key ? "text-white" : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
               }`}
-              style={filter === f.key ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
-              {f.label}
+              style={filter === key ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+              {t(`appointments.filters.${key}`)}
             </button>
           ))}
         </div>
@@ -363,17 +379,17 @@ export default function AppointmentsPage() {
                 <th className="w-10 pl-5 pr-3 py-3.5 text-left">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">#</span>
                 </th>
-                {SORT_COLS.map((col) => (
+                {SORT_COL_KEYS.map((col) => (
                   <th key={col.key} className={`text-left py-3.5 pr-4 ${col.width}`}>
                     <button onClick={() => handleSort(col.key)}
                       className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#6B7280] hover:text-[#111827] transition-colors">
-                      {col.label}
+                      {t(col.labelKey)}
                       <SortIcon dir={sortKey === col.key ? sortDir : "asc"} active={sortKey === col.key} />
                     </button>
                   </th>
                 ))}
                 <th className="text-left py-3.5 pr-5 min-w-[200px]">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">Actions</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">{t("appointments.columns.actions")}</span>
                 </th>
               </tr>
             </thead>

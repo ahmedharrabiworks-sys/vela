@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePlan } from "@/lib/plans";
+import { track } from "@/lib/track";
+import { useI18n } from "@/lib/i18n";
 
 type Tool = "social" | "broadcast" | "video";
 
@@ -319,31 +323,69 @@ const TOOLS: { id: Tool; label: string; desc: string }[] = [
 
 export default function MarketingPage() {
   const [active, setActive] = useState<Tool>("social");
+  const { isPro } = usePlan();
+  const { t } = useI18n();
+
+  const TOOLS_I18N: { id: Tool; label: string; desc: string }[] = [
+    { id: "social",    label: t("marketing.tools.social"),    desc: t("marketing.tools.socialDesc") },
+    { id: "broadcast", label: t("marketing.tools.broadcast"), desc: t("marketing.tools.broadcastDesc") },
+    { id: "video",     label: t("marketing.tools.video"),     desc: t("marketing.tools.videoDesc") },
+  ];
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
 
       <div>
-        <h1 className="text-xl font-bold text-[#111827]">Marketing</h1>
-        <p className="text-sm text-[#6B7280] mt-0.5">AI tools to grow your business</p>
+        <h1 className="text-xl font-bold text-[#111827]">{t("marketing.title")}</h1>
+        <p className="text-sm text-[#6B7280] mt-0.5">{t("marketing.subtitle")}</p>
       </div>
 
-      {/* Tool selector */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {TOOLS.map((t) => (
-          <button key={t.id} onClick={() => setActive(t.id)}
-            className={`p-4 rounded-xl border text-left transition-all ${active === t.id ? "border-[#FF6B35] bg-[#FFF8F5]" : "bg-white border-[#E5E7EB] hover:border-[#9CA3AF]"}`}>
-            <p className={`text-sm font-bold mb-0.5 ${active === t.id ? "text-[#FF6B35]" : "text-[#111827]"}`}>{t.label}</p>
-            <p className="text-[11px] text-[#6B7280]">{t.desc}</p>
-          </button>
-        ))}
-      </div>
+      {/* Gated content */}
+      <div className="relative">
+        <div className={`space-y-6 ${!isPro ? "blur-sm pointer-events-none select-none" : ""}`}>
+          {/* Tool selector */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {TOOLS_I18N.map((tool) => (
+              <button key={tool.id} onClick={() => setActive(tool.id)}
+                className={`p-4 rounded-xl border text-left transition-all ${active === tool.id ? "border-[#FF6B35] bg-[#FFF8F5]" : "bg-white border-[#E5E7EB] hover:border-[#9CA3AF]"}`}>
+                <p className={`text-sm font-bold mb-0.5 ${active === tool.id ? "text-[#FF6B35]" : "text-[#111827]"}`}>{tool.label}</p>
+                <p className="text-[11px] text-[#6B7280]">{tool.desc}</p>
+              </button>
+            ))}
+          </div>
 
-      {/* Active tool */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-        {active === "social" && <SocialTool />}
-        {active === "broadcast" && <BroadcastTool />}
-        {active === "video" && <VideoTool />}
+          {/* Active tool */}
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+            {active === "social"    && <SocialTool />}
+            {active === "broadcast" && <BroadcastTool />}
+            {active === "video"     && <VideoTool />}
+          </div>
+        </div>
+
+        {/* Upgrade overlay for Starter */}
+        {!isPro && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.7)" }}>
+            <div className="max-w-sm text-center p-8 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.12),rgba(255,51,102,0.08))" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="5" y="11" width="14" height="10" rx="2" stroke="#FF6B35" strokeWidth="1.8"/>
+                  <path d="M8 11V7a4 4 0 018 0v4" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#111111] mb-2">{t("marketing.upgradeCta")}</h3>
+              <p className="text-sm text-[#6B7280] mb-5">{t("marketing.upgradeDesc")}</p>
+              <Link
+                href="/auth/signup"
+                onClick={() => track("upgrade_clicked", { source: "marketing" })}
+                className="inline-block px-6 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+              >
+                Upgrade to Pro →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

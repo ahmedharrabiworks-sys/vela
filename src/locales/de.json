@@ -1,0 +1,181 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "conversations": "Gespräche",
+    "leads": "Leads / CRM",
+    "appointments": "Termine",
+    "channels": "Kanäle",
+    "website": "Website-Builder",
+    "analytics": "Analysen",
+    "marketing": "Marketing"
+  },
+  "common": {
+    "save": "Änderungen speichern",
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert",
+    "cancel": "Abbrechen",
+    "connect": "Verbinden",
+    "disconnect": "Trennen",
+    "upgrade": "Upgrade",
+    "back": "Zurück",
+    "done": "Fertig",
+    "loading": "Wird geladen…",
+    "search": "Suchen…",
+    "export": "CSV exportieren",
+    "send": "Senden",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "regenerate": "Neu generieren",
+    "generate": "Generieren",
+    "close": "Schließen"
+  },
+  "sidebar": {
+    "upgradePremium": "Auf Premium upgraden",
+    "unlockFeatures": "3 Unternehmen + KI-Training freischalten",
+    "upgradeNow": "Jetzt upgraden",
+    "settings": "Einstellungen",
+    "language": "Sprache",
+    "viewAllPlans": "Alle Pläne ansehen",
+    "upgradePlan": "Plan upgraden",
+    "logout": "Abmelden",
+    "plans": {
+      "starter": "Starter-Plan",
+      "pro": "Pro-Plan",
+      "premium": "Premium-Plan"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Ihre Unternehmenskonfiguration und Integrationen.",
+    "tabs": {
+      "businessInfo": "Unternehmensinfo",
+      "aiConfig": "KI-Konfiguration",
+      "notifications": "Benachrichtigungen",
+      "billing": "Abrechnung"
+    },
+    "businessInfo": {
+      "title": "Unternehmensinformationen",
+      "name": "Unternehmensname",
+      "industry": "Branche",
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "city": "Stadt",
+      "website": "Website",
+      "services": "Dienstleistungen (für KI)"
+    },
+    "aiConfig": {
+      "title": "KI-Konfiguration",
+      "tone": "KI-Ton",
+      "language": "Antwortsprache",
+      "timing": "Antwortzeit",
+      "instructions": "Benutzerdefinierte KI-Anweisungen",
+      "save": "KI-Konfiguration speichern"
+    },
+    "notifications": {
+      "title": "Benachrichtigungseinstellungen",
+      "save": "Einstellungen speichern"
+    },
+    "billing": {
+      "title": "Abrechnung & Abonnement",
+      "upgradePlan": "Plan upgraden",
+      "manageBilling": "Abrechnung verwalten",
+      "addPayment": "Zahlungsmethode hinzufügen",
+      "noCard": "Keine Karte hinterlegt",
+      "renews": "Automatische Verlängerung · Jederzeit kündbar",
+      "whiteLabel": "Vela-Branding ausblenden",
+      "whiteLabelDesc": "Vela-Branding aus Ihrem Chat-Widget entfernen (Pro & Premium)"
+    }
+  },
+  "channels": {
+    "title": "Kanäle",
+    "subtitle": "Verbinden Sie Ihre Nachrichtenkanäle. Vela AI antwortet automatisch auf jedem.",
+    "connected": "Verbunden",
+    "notConnected": "Nicht verbunden",
+    "readyToEmbed": "Bereit zum Einbetten",
+    "upgradeTitle": "Auf Pro upgraden für mehr Kanäle",
+    "upgradeDesc": "Starter-Plan enthält 1 Kanal. Upgraden Sie für alle 3.",
+    "instagram": {
+      "name": "Instagram",
+      "desc": "KI antwortet automatisch auf Ihre Instagram DMs"
+    },
+    "whatsapp": {
+      "name": "WhatsApp Business",
+      "desc": "KI antwortet automatisch auf WhatsApp Business Nachrichten"
+    },
+    "website": {
+      "name": "Website-Chat-Widget",
+      "desc": "Fügen Sie eine KI-Chat-Blase zu jeder Website hinzu"
+    }
+  },
+  "analytics": {
+    "title": "Analysen",
+    "totalLeads": "Gesamt-Leads",
+    "appointments": "Termine",
+    "revenue": "Umsatz (AED)",
+    "conversionRate": "Konversionsrate",
+    "newLeads": "Neue Leads im Zeitverlauf",
+    "leadSources": "Lead-Quellen",
+    "aiPerformance": "KI-Leistung",
+    "channel": "Kanal",
+    "leads": "Leads",
+    "bookings": "Buchungen",
+    "convRate": "Konv.-Rate",
+    "total": "Gesamt",
+    "messagesHandled": "Bearbeitete Nachrichten",
+    "bookingsByAI": "Buchungen durch KI",
+    "avgResponse": "Ø Antwortzeit",
+    "satisfaction": "Zufriedenheit",
+    "upgradeCta": "Auf Pro upgraden für Analysen",
+    "upgradeDesc": "Erhalten Sie detaillierte Einblicke in Ihre Leads, Buchungen und Umsätze."
+  },
+  "marketing": {
+    "title": "Marketing",
+    "subtitle": "KI-Tools für Ihr Unternehmenswachstum",
+    "upgradeCta": "Auf Pro upgraden für Marketing",
+    "upgradeDesc": "Senden Sie Broadcasts, generieren Sie Posts und erstellen Sie Video-Skripte mit KI.",
+    "tools": {
+      "social": "Social-Media-Beiträge",
+      "socialDesc": "KI-geschriebene Beiträge für jede Plattform",
+      "broadcast": "Broadcast-Nachricht",
+      "broadcastDesc": "Massennachricht an Leads oder Kunden",
+      "video": "Video-Skript",
+      "videoDesc": "Szene-für-Szene-Skripte für Reels & TikTok"
+    }
+  },
+  "appointments": {
+    "title": "Termine",
+    "confirmedToday": "heute bestätigt",
+    "newAppointment": "+ Neuer Termin",
+    "exportCsv": "CSV exportieren",
+    "searchPlaceholder": "Nach Name, Service, Kanal suchen…",
+    "filters": {
+      "all": "Alle",
+      "today": "Heute",
+      "week": "Diese Woche",
+      "upcoming": "Bevorstehend",
+      "past": "Vergangen"
+    },
+    "columns": {
+      "patient": "Patient",
+      "phone": "Telefon",
+      "service": "Service",
+      "dateTime": "Datum & Uhrzeit",
+      "channel": "Kanal",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "status": {
+      "confirmed": "Bestätigt",
+      "pending": "Ausstehend",
+      "cancelled": "Storniert"
+    },
+    "actions": {
+      "reschedule": "Verschieben",
+      "cancel": "Stornieren",
+      "message": "Nachricht"
+    },
+    "showing": "Zeigt",
+    "bookingCounter": "Buchungen diesen Monat",
+    "bookingLimitReached": "Buchungslimit erreicht — upgraden Sie auf Pro für unbegrenzte Buchungen"
+  }
+}

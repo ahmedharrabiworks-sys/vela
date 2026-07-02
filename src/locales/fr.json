@@ -1,0 +1,181 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "conversations": "Conversations",
+    "leads": "Prospects / CRM",
+    "appointments": "Rendez-vous",
+    "channels": "Canaux",
+    "website": "Créateur de site",
+    "analytics": "Analytiques",
+    "marketing": "Marketing"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "cancel": "Annuler",
+    "connect": "Connecter",
+    "disconnect": "Déconnecter",
+    "upgrade": "Mettre à niveau",
+    "back": "Retour",
+    "done": "Terminé",
+    "loading": "Chargement…",
+    "search": "Rechercher…",
+    "export": "Exporter CSV",
+    "send": "Envoyer",
+    "copy": "Copier",
+    "copied": "Copié",
+    "regenerate": "Régénérer",
+    "generate": "Générer",
+    "close": "Fermer"
+  },
+  "sidebar": {
+    "upgradePremium": "Passer à Premium",
+    "unlockFeatures": "Déverrouillez 3 entreprises + formation IA",
+    "upgradeNow": "Mettre à niveau",
+    "settings": "Paramètres",
+    "language": "Langue",
+    "viewAllPlans": "Voir tous les plans",
+    "upgradePlan": "Mettre à niveau",
+    "logout": "Se déconnecter",
+    "plans": {
+      "starter": "Plan Starter",
+      "pro": "Plan Pro",
+      "premium": "Plan Premium"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Gérez votre configuration et vos intégrations.",
+    "tabs": {
+      "businessInfo": "Infos entreprise",
+      "aiConfig": "Configuration IA",
+      "notifications": "Notifications",
+      "billing": "Facturation"
+    },
+    "businessInfo": {
+      "title": "Informations sur l'entreprise",
+      "name": "Nom de l'entreprise",
+      "industry": "Secteur",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "city": "Ville",
+      "website": "Site web",
+      "services": "Services (utilisés par l'IA)"
+    },
+    "aiConfig": {
+      "title": "Configuration IA",
+      "tone": "Ton de l'IA",
+      "language": "Langue de réponse",
+      "timing": "Délai de réponse",
+      "instructions": "Instructions personnalisées",
+      "save": "Enregistrer la config IA"
+    },
+    "notifications": {
+      "title": "Préférences de notification",
+      "save": "Enregistrer les préférences"
+    },
+    "billing": {
+      "title": "Facturation & Abonnement",
+      "upgradePlan": "Mettre à niveau",
+      "manageBilling": "Gérer la facturation",
+      "addPayment": "Ajouter un moyen de paiement",
+      "noCard": "Aucune carte enregistrée",
+      "renews": "Renouvellement automatique · Annulable à tout moment",
+      "whiteLabel": "Masquer la marque Vela",
+      "whiteLabelDesc": "Supprimer la marque Vela de votre widget de chat (Pro & Premium)"
+    }
+  },
+  "channels": {
+    "title": "Canaux",
+    "subtitle": "Connectez vos canaux de messagerie. Vela AI répondra automatiquement sur chacun.",
+    "connected": "Connecté",
+    "notConnected": "Non connecté",
+    "readyToEmbed": "Prêt à intégrer",
+    "upgradeTitle": "Passez à Pro pour plus de canaux",
+    "upgradeDesc": "Le plan Starter inclut 1 canal. Passez à Pro pour connecter les 3.",
+    "instagram": {
+      "name": "Instagram",
+      "desc": "L'IA répond automatiquement à vos DMs Instagram"
+    },
+    "whatsapp": {
+      "name": "WhatsApp Business",
+      "desc": "L'IA répond automatiquement aux messages WhatsApp Business"
+    },
+    "website": {
+      "name": "Widget de chat",
+      "desc": "Ajoutez une bulle de chat IA à n'importe quel site web"
+    }
+  },
+  "analytics": {
+    "title": "Analytiques",
+    "totalLeads": "Total prospects",
+    "appointments": "Rendez-vous",
+    "revenue": "Revenus (AED)",
+    "conversionRate": "Taux de conversion",
+    "newLeads": "Nouveaux prospects dans le temps",
+    "leadSources": "Sources de prospects",
+    "aiPerformance": "Performance IA",
+    "channel": "Canal",
+    "leads": "Prospects",
+    "bookings": "Réservations",
+    "convRate": "Taux conv.",
+    "total": "Total",
+    "messagesHandled": "Messages traités",
+    "bookingsByAI": "Réservations par IA",
+    "avgResponse": "Temps de réponse moy.",
+    "satisfaction": "Satisfaction",
+    "upgradeCta": "Passez à Pro pour débloquer les analytiques",
+    "upgradeDesc": "Obtenez des informations détaillées sur vos prospects, réservations et revenus."
+  },
+  "marketing": {
+    "title": "Marketing",
+    "subtitle": "Outils IA pour développer votre entreprise",
+    "upgradeCta": "Passez à Pro pour débloquer le marketing",
+    "upgradeDesc": "Envoyez des diffusions, générez des publications et créez des scripts vidéo avec l'IA.",
+    "tools": {
+      "social": "Publications sur les réseaux sociaux",
+      "socialDesc": "Publications rédigées par IA pour toute plateforme",
+      "broadcast": "Message diffusion",
+      "broadcastDesc": "Message en masse aux prospects ou clients",
+      "video": "Script vidéo",
+      "videoDesc": "Scripts scène par scène pour Reels & TikTok"
+    }
+  },
+  "appointments": {
+    "title": "Rendez-vous",
+    "confirmedToday": "confirmés aujourd'hui",
+    "newAppointment": "+ Nouveau rendez-vous",
+    "exportCsv": "Exporter CSV",
+    "searchPlaceholder": "Rechercher par nom, service, canal…",
+    "filters": {
+      "all": "Tous",
+      "today": "Aujourd'hui",
+      "week": "Cette semaine",
+      "upcoming": "À venir",
+      "past": "Passés"
+    },
+    "columns": {
+      "patient": "Patient",
+      "phone": "Téléphone",
+      "service": "Service",
+      "dateTime": "Date & Heure",
+      "channel": "Canal",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "status": {
+      "confirmed": "Confirmé",
+      "pending": "En attente",
+      "cancelled": "Annulé"
+    },
+    "actions": {
+      "reschedule": "Reprogrammer",
+      "cancel": "Annuler",
+      "message": "Message"
+    },
+    "showing": "Affichage de",
+    "bookingCounter": "réservations ce mois",
+    "bookingLimitReached": "Limite de réservations atteinte — passez à Pro pour des réservations illimitées"
+  }
+}
