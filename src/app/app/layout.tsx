@@ -70,10 +70,10 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   const groups = Array.from(new Set(filtered.map((i) => i.group)));
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[12vh] px-4" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+    <div className="fixed inset-0 z-[200] flex flex-col sm:items-start sm:justify-center sm:pt-[12vh] sm:px-4" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
       onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-xl bg-white rounded-2xl border border-[#E5E7EB] shadow-2xl overflow-hidden">
+        className="w-full sm:max-w-xl bg-white sm:rounded-2xl border-0 sm:border border-[#E5E7EB] shadow-2xl overflow-hidden flex-1 sm:flex-none flex flex-col">
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#F3F4F6]">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[#9CA3AF] shrink-0">
@@ -87,7 +87,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Results */}
-        <div className="max-h-[320px] overflow-y-auto">
+        <div className="flex-1 sm:flex-none sm:max-h-[320px] overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="py-12 text-center text-sm text-[#9CA3AF]">No results for &ldquo;{query}&rdquo;</div>
           ) : (

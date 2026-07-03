@@ -396,7 +396,7 @@ export default function SignupPage() {
     setStep(4);
 
     // Redirect after a short delay so the success screen is visible
-    setTimeout(() => router.push("/app"), 1800);
+    setTimeout(() => router.push("/app/welcome"), 1800);
   };
 
   return (
@@ -418,7 +418,7 @@ export default function SignupPage() {
             <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <div>
                 <label className={labelCls}>Full Name</label>
-                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ahmed Al-Rashid" required className={inputCls} />
+                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Email Address</label>
@@ -691,8 +691,8 @@ export default function SignupPage() {
             <p className="text-white/25 text-xs mb-8">
               Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed {billing === "annual" ? "annually" : "monthly"}, cancel anytime.
             </p>
-            <Link href="/app" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-              Go to Dashboard →
+            <Link href="/app/welcome" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              Set up your account →
             </Link>
           </div>
         )}

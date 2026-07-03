@@ -7,6 +7,7 @@ import type { Database } from "@/lib/supabase";
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   preview?: string;
   isNew?: boolean;
+  needs_human?: boolean;
 };
 type Message = Database["public"]["Tables"]["messages"]["Row"];
 
@@ -105,7 +106,7 @@ export default function ConversationsPage() {
     const db = getSupabase() as any;
     const { data, error: err } = await db
       .from("conversations")
-      .select("*")
+      .select("*, needs_human")
       .eq("tenant_id", tId)
       .order("last_message_at", { ascending: false });
 
@@ -352,7 +353,10 @@ export default function ConversationsPage() {
                   <div className="flex items-center justify-between mb-0.5">
                     <span className="text-xs font-semibold text-[#111111] truncate">{conv.customer_name}</span>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {conv.isNew && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
+                      {conv.needs_human && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">Needs attention</span>
+                      )}
+                      {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
                       <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at)}</span>
                     </div>
                   </div>
