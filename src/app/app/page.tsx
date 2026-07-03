@@ -22,7 +22,7 @@ function timeAgo(ts: string | null) {
 
 type Conv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 type Appt = { id: string; time: string; name: string; service: string; status: string };
-type KPI = { label: string; value: string };
+type KPI = { label: string; value: string; change?: number };
 
 export default function DashboardPage() {
   const [firstName, setFirstName]   = useState("there");
@@ -88,6 +88,19 @@ export default function DashboardPage() {
     const totalLeads = leads.length;
     const newLeads = leads.filter((l) => l.status === "new").length;
     const apptCount = (apptRes.data ?? []).length;
+
+    // Fetch week-over-week stats in background
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((stats: { newLeadsChange?: number; appointmentsChange?: number; conversationsChange?: number }) => {
+        setKpis([
+          { label: "Total Leads",        value: String(totalLeads),  change: stats.newLeadsChange },
+          { label: "New Leads",          value: String(newLeads),    change: stats.newLeadsChange },
+          { label: "Appointments Today", value: String(apptCount),   change: stats.appointmentsChange },
+        ]);
+      })
+      .catch(() => null);
+
     setKpis([
       { label: "Total Leads",      value: String(totalLeads) },
       { label: "New Leads",        value: String(newLeads)   },
@@ -204,7 +217,15 @@ export default function DashboardPage() {
           : kpis.map((k) => (
               <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5">
                 <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
-                <p className="text-2xl font-bold text-[#111111] leading-none">{k.value}</p>
+                <p className="text-2xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
+                {k.change !== undefined && (
+                  <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                    k.change > 0 ? "bg-green-50 text-green-600" : k.change < 0 ? "bg-red-50 text-red-500" : "bg-[#F3F4F6] text-[#9CA3AF]"
+                  }`}>
+                    {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
+                    {k.change !== 0 ? `${Math.abs(k.change)}% vs last week` : "Same as last week"}
+                  </span>
+                )}
               </div>
             ))}
       </div>

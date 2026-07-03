@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
+import { VelaAssistant } from "@/components/dashboard/VelaAssistant";
 import { I18nProvider } from "@/lib/i18n";
 
 /* ── Command palette ── */
@@ -210,6 +211,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Global AI Assistant */}
+      <VelaAssistant />
     </div>
     </I18nProvider>
   );
