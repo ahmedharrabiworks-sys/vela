@@ -213,8 +213,14 @@ function detectBusinessType(desc: string): string {
   if (/real estate|property|rent|apartment|villa|realtor|realty/.test(d)) return "Real Estate";
   if (/law|legal|attorney|lawyer|solicitor/.test(d)) return "Law Firm";
   if (/school|tutor|education|academy|learning|lesson|class|course/.test(d)) return "Education";
-  return "Business";
+  return "Other";
 }
+
+const BUSINESS_CATEGORIES = [
+  "Dental Clinic", "Medical Clinic", "Hair Salon", "Gym & Fitness",
+  "Real Estate Agency", "Restaurant", "Coffee Shop", "Hotel",
+  "Law Firm", "Education", "E-Commerce", "Beauty & Wellness", "Car Dealership",
+];
 
 function StepBar({ step }: { step: number }) {
   return (
@@ -258,7 +264,7 @@ function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChan
   }, []);
 
   const filtered = useMemo(
-    () => COUNTRIES.filter((c) => c.name.toLowerCase().includes(query.toLowerCase())),
+    () => COUNTRIES.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()) || c.dial.includes(query)),
     [query]
   );
 
@@ -486,11 +492,27 @@ export default function SignupPage() {
                     <span className="text-[11px] text-white/30">Detecting business type…</span>
                   </div>
                 )}
-                {detectedType && !aiDetecting && (
+                {detectedType && detectedType !== "Other" && !aiDetecting && (
                   <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#FF6B35]/20 w-fit" style={{ background: "rgba(255,107,53,0.08)" }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     <span className="text-[11px] text-white/60">Detected: <span className="text-white font-semibold">{detectedType}</span></span>
                     <button type="button" onClick={() => setDetectedType("")} className="text-white/20 hover:text-white/50 transition-colors text-xs ml-0.5">✕</button>
+                  </div>
+                )}
+                {!aiDetecting && detectedType === "Other" && (
+                  <div className="mt-2">
+                    <p className="text-[10px] text-white/30 mb-1.5">AI couldn&apos;t auto-detect — please select your business type:</p>
+                    <select
+                      value=""
+                      onChange={(e) => { if (e.target.value) setDetectedType(e.target.value); }}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FF6B35]/60 transition-colors"
+                      style={{ background: "rgba(255,255,255,0.05)" }}
+                    >
+                      <option value="" disabled style={{ background: "#1A0A00" }}>Select your business type…</option>
+                      {BUSINESS_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat} style={{ background: "#1A0A00" }}>{cat}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 {!aiDetecting && !detectedType && (

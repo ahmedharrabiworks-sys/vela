@@ -12,7 +12,7 @@ function detectFallback(desc: string): string {
   if (/real estate|property|rent|apartment|villa|realtor|realty/.test(d)) return "Real Estate";
   if (/law|legal|attorney|lawyer|solicitor/.test(d)) return "Law Firm";
   if (/school|tutor|education|academy|learning|lesson|class|course/.test(d)) return "Education";
-  return "Business";
+  return "Other";
 }
 
 export async function POST(req: NextRequest) {
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
           {
             role: "system",
             content:
-              "You are a business type classifier. Given a business description, respond with ONLY the business type as a short label (2-4 words max). Examples: 'Dental Clinic', 'Hair Salon', 'Real Estate Agency', 'Gym & Fitness', 'Restaurant'. Return nothing else — no punctuation, no explanation.",
+              "You are a business type classifier. Given a business description, respond with ONLY one of these exact labels (copy it exactly):\nDental Clinic\nMedical Clinic\nHair Salon\nGym & Fitness\nReal Estate Agency\nRestaurant\nCoffee Shop\nHotel\nLaw Firm\nEducation\nE-Commerce\nBeauty & Wellness\nCar Dealership\nOther\n\nPick the single best match. If none fits clearly, respond with exactly: Other\nReturn ONLY the label. No punctuation, no explanation.",
           },
           { role: "user", content: description },
         ],

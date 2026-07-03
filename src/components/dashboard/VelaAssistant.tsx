@@ -219,7 +219,7 @@ export function VelaAssistant() {
             </div>
 
             {/* Input */}
-            <div className="px-3 py-3 border-t border-[#F3F4F6] shrink-0 bg-white">
+            <div className="px-3 pt-3 border-t border-[#F3F4F6] shrink-0 bg-white" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
               <div className="flex items-end gap-2">
                 <textarea
                   ref={inputRef}

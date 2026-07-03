@@ -37,7 +37,7 @@ export async function GET(
   frame.title = 'Chat with us';
   frame.style.cssText = [
     'position:fixed', 'bottom:96px', 'right:24px',
-    'width:400px', 'height:600px',
+    'width: min(400px, calc(100vw - 48px))', 'height:600px',
     'border:none', 'border-radius:16px',
     'box-shadow:0 8px 40px rgba(0,0,0,0.18)',
     'z-index:9999', 'display:none',

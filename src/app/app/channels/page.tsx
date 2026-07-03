@@ -8,6 +8,10 @@ import { track } from "@/lib/track";
 import { useI18n } from "@/lib/i18n";
 import { COUNTRIES, countryFlag, type Country } from "@/lib/countries";
 
+const GULF_ISO2 = ["AE", "SA", "QA", "KW", "BH", "OM"];
+const GULF_COUNTRIES = COUNTRIES.filter((c) => GULF_ISO2.includes(c.iso2));
+const OTHER_COUNTRIES = COUNTRIES.filter((c) => !GULF_ISO2.includes(c.iso2));
+
 /* ── Toast ── */
 function Toast({ msg, type = "success", onDone }: { msg: string; type?: "success" | "error" | "info"; onDone: () => void }) {
   useEffect(() => {
@@ -181,18 +185,48 @@ function CountryPicker({ value, onChange }: { value: Country; onChange: (c: Coun
               className="w-full px-3 py-2 text-sm border border-[#E5E7EB] rounded-lg text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50" />
           </div>
           <div className="max-h-52 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <div className="px-4 py-4 text-sm text-[#9CA3AF] text-center">No results</div>
+            {query ? (
+              filtered.length === 0 ? (
+                <div className="px-4 py-4 text-sm text-[#9CA3AF] text-center">No results</div>
+              ) : (
+                filtered.map((c) => (
+                  <button key={c.iso2 + c.dial} type="button"
+                    onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
+                    <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
+                    <span className="flex-1 truncate">{c.name}</span>
+                    <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
+                  </button>
+                ))
+              )
             ) : (
-              filtered.map((c) => (
-                <button key={c.iso2 + c.dial} type="button"
-                  onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
-                  <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
-                  <span className="flex-1 truncate">{c.name}</span>
-                  <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
-                </button>
-              ))
+              <>
+                <div className="px-4 pt-2.5 pb-1">
+                  <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Gulf Countries</span>
+                </div>
+                {GULF_COUNTRIES.map((c) => (
+                  <button key={c.iso2} type="button"
+                    onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
+                    <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
+                    <span className="flex-1 truncate">{c.name}</span>
+                    <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
+                  </button>
+                ))}
+                <div className="h-px bg-[#F3F4F6] mx-4 my-1.5" />
+                <div className="px-4 pb-1">
+                  <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">All Countries</span>
+                </div>
+                {OTHER_COUNTRIES.map((c) => (
+                  <button key={c.iso2} type="button"
+                    onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
+                    <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
+                    <span className="flex-1 truncate">{c.name}</span>
+                    <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
+                  </button>
+                ))}
+              </>
             )}
           </div>
         </div>

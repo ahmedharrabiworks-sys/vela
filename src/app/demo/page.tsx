@@ -160,7 +160,7 @@ function Tooltip({ step, onNext, onSkip }: { step: number; onNext: () => void; o
       <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onSkip} />
       {isCentered ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
-          <div className="bg-[#111111] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="bg-[#111111] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">{step} / {TOOLTIP_STEPS.length}</span>
               <button onClick={onSkip} className="text-white/30 hover:text-white/60 text-xs transition-colors">Skip tour</button>
@@ -187,7 +187,7 @@ function Tooltip({ step, onNext, onSkip }: { step: number; onNext: () => void; o
       ) : (
         <>
           {/* Desktop: right of sidebar */}
-          <div className="hidden md:block fixed z-[70] animate-in fade-in slide-in-from-left-2 duration-200"
+          <div className="hidden md:block fixed z-[70]"
             style={{ left: 208 + 16, top: topPos, maxWidth: 280 }}>
             <div className="relative bg-[#111111] border border-white/10 rounded-2xl p-5 shadow-2xl">
               <div className="absolute left-0 top-6 -translate-x-1.5 w-3 h-3 rotate-45 bg-[#111111] border-l border-b border-white/10" />
@@ -204,7 +204,7 @@ function Tooltip({ step, onNext, onSkip }: { step: number; onNext: () => void; o
             </div>
           </div>
           {/* Mobile: bottom sheet */}
-          <div className="md:hidden fixed bottom-4 left-4 right-4 z-[70] animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="md:hidden fixed left-0 right-0 z-[70] px-4" style={{ bottom: "max(16px, env(safe-area-inset-bottom))" }}>
             <div className="bg-[#111111] border border-white/10 rounded-2xl p-5 shadow-2xl">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">{step} / {TOOLTIP_STEPS.length}</span>
@@ -233,18 +233,18 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
         <p className="text-sm text-[#6B7280] mt-0.5">Ahmed Dental Clinic · Monday, 29 June 2026</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {[
-          { label: "Revenue (AED)",   value: "48,200", trend: "+12%", up: true  },
-          { label: "New Patients",    value: "184",    trend: "+23",  up: true  },
-          { label: "Appointments",    value: "67",     trend: "12 today", up: true },
-          { label: "Avg Response",    value: "43s",    trend: "-8s",  up: true  },
-          { label: "Conversion",      value: "34%",    trend: "+2pp", up: true  },
+          { label: "Total Leads",        value: "184", change: 23 },
+          { label: "New Leads",          value: "47",  change: 12 },
+          { label: "Appointments Today", value: "8",   change: 5  },
         ].map((k) => (
           <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5">
             <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
             <p className="text-2xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
-            <p className={`text-[11px] font-medium ${k.up ? "text-[#16A34A]" : "text-[#DC2626]"}`}>{k.up ? "↑" : "↓"} {k.trend}</p>
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">
+              ↑{k.change}% vs last week
+            </span>
           </div>
         ))}
       </div>
