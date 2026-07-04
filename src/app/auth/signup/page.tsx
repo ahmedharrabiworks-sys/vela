@@ -203,23 +203,41 @@ const PLANS = [
 /* Detect industry from plain-text business description */
 function detectBusinessType(desc: string): string {
   const d = desc.toLowerCase();
-  if (/ecommerce|e-commerce|online store|dropshipping|sell online|products/.test(d)) return "E-Commerce";
+  if (/ecommerce|e-commerce|online store|dropshipping|sell online/.test(d)) return "E-Commerce";
   if (/coffee|cafe|brew|espresso|latte/.test(d)) return "Coffee Shop";
-  if (/restaurant|food|eat|dining|cuisine|burger|pizza|menu|takeaway/.test(d)) return "Restaurant";
-  if (/hotel|accommodation|stay|resort|inn|motel/.test(d)) return "Hotel";
-  if (/dental|teeth|orthodont|tooth|dentist|medical|clinic|doctor|hospital|physician|healthcare|health/.test(d)) return "Medical Clinic";
-  if (/hair|salon|beauty|nail|spa|massage|barber|barbershop|wellness/.test(d)) return "Beauty & Wellness";
-  if (/gym|fitness|sport|yoga|pilates|training|workout|crossfit|personal trainer/.test(d)) return "Gym & Fitness";
-  if (/real estate|property|rent|apartment|villa|realtor|realty/.test(d)) return "Real Estate";
+  if (/restaurant|food|dining|cuisine|burger|pizza|takeaway/.test(d)) return "Restaurant";
+  if (/hotel|accommodation|resort|inn|motel/.test(d)) return "Hotel";
+  if (/dental|teeth|orthodont|dentist/.test(d)) return "Dental Clinic";
+  if (/medical|clinic|doctor|hospital|physician|healthcare/.test(d)) return "Medical Clinic";
+  if (/barber|barbershop|men.*hair/.test(d)) return "Barbershop";
+  if (/spa|massage|wellbeing/.test(d)) return "Spa & Massage";
+  if (/hair|salon|beauty|nail/.test(d)) return "Hair Salon";
+  if (/gym|fitness|sport|yoga|pilates|workout|crossfit/.test(d)) return "Gym & Fitness";
+  if (/real estate|property|villa|realtor|realty/.test(d)) return "Real Estate";
   if (/law|legal|attorney|lawyer|solicitor/.test(d)) return "Law Firm";
-  if (/school|tutor|education|academy|learning|lesson|class|course/.test(d)) return "Education";
+  if (/tutor|tutoring|school|education|academy|learning|lesson|class|course/.test(d)) return "Education & Tutoring";
+  if (/car dealer|dealership|vehicle sales/.test(d)) return "Car Dealership";
+  if (/auto repair|garage|mechanic|car service/.test(d)) return "Auto Repair";
+  if (/interior design|interior decor|home design/.test(d)) return "Interior Design";
+  if (/photo|photographer|photography/.test(d)) return "Photography Studio";
+  if (/marketing agency|digital marketing|advertising agency/.test(d)) return "Marketing Agency";
+  if (/cleaning|maid|janitorial|housekeeping/.test(d)) return "Cleaning Services";
+  if (/travel agency|travel agent|tour operator/.test(d)) return "Travel Agency";
+  if (/event|wedding planner|event planning/.test(d)) return "Event Planning";
+  if (/pet|veterinary|vet|grooming/.test(d)) return "Pet Services";
+  if (/construction|contracting|builder|renovation/.test(d)) return "Construction";
+  if (/accounting|accountant|bookkeeping|audit|tax/.test(d)) return "Accounting & Finance";
+  if (/recruitment|staffing|headhunt|hr agency/.test(d)) return "Recruitment";
   return "Other";
 }
 
 const BUSINESS_CATEGORIES = [
-  "Dental Clinic", "Medical Clinic", "Hair Salon", "Gym & Fitness",
-  "Real Estate Agency", "Restaurant", "Coffee Shop", "Hotel",
-  "Law Firm", "Education", "E-Commerce", "Beauty & Wellness", "Car Dealership",
+  "Dental Clinic", "Medical Clinic", "Hair Salon", "Barbershop", "Spa & Massage",
+  "Beauty & Wellness", "Gym & Fitness", "Real Estate", "Restaurant", "Coffee Shop",
+  "Hotel", "Law Firm", "Education & Tutoring", "E-Commerce", "Car Dealership",
+  "Auto Repair", "Interior Design", "Photography Studio", "Marketing Agency",
+  "Cleaning Services", "Travel Agency", "Event Planning", "Pet Services",
+  "Construction", "Accounting & Finance", "Recruitment",
 ];
 
 function StepBar({ step }: { step: number }) {

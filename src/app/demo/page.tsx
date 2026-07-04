@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 /* ── Types ── */
-type View = "dashboard" | "conversations" | "leads" | "appointments" | "analytics";
+type View = "dashboard" | "conversations" | "leads" | "appointments" | "channels" | "website" | "analytics" | "marketing";
 
 /* ── Demo Data — Dental Clinic ── */
 const CONVOS = [
@@ -127,18 +127,18 @@ const TOOLTIP_STEPS = [
   },
   {
     title: "All your messages, one place",
-    body: "This is where all your client messages land — Instagram, WhatsApp, everything in one inbox. Your AI replies instantly so you never miss a lead.",
+    body: "Every Instagram DM, WhatsApp message, and website enquiry lands here. Vela AI replies instantly so you never miss a lead.",
     navIndex: 1,
   },
   {
-    title: "Your sales pipeline",
-    body: "Every inquiry becomes a tracked lead. Watch them move from New → Qualified → Booked automatically as your AI qualifies them.",
-    navIndex: 2,
+    title: "Connect your channels",
+    body: "Link Instagram, WhatsApp, and your website in under 5 minutes. Your AI goes live immediately — no coding required.",
+    navIndex: 4,
   },
   {
-    title: "Your calendar, filled for you",
-    body: "Customers book directly in chat. The AI confirms, adds it here, and sends reminders — no back-and-forth, no manual entry.",
-    navIndex: 3,
+    title: "Build your website with AI",
+    body: "Describe your business and Vela generates a full, beautiful website in seconds. No designer, no code — just type and publish.",
+    navIndex: 5,
   },
   {
     title: "Ready to go live?",
@@ -511,13 +511,298 @@ function AnalyticsView() {
   );
 }
 
+/* ── Channels View ── */
+function ChannelsView() {
+  const channels = [
+    {
+      name: "WhatsApp",
+      desc: "Auto-reply to WhatsApp enquiries around the clock",
+      msgs: "847 messages handled this month",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+          <path d="M10 2C5.58 2 2 5.58 2 10c0 1.57.43 3.08 1.18 4.36L2 18l3.75-1.17A7.97 7.97 0 0010 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" stroke="#25D366" strokeWidth="1.4" strokeLinejoin="round"/>
+          <path d="M7.5 8.5s.5 1.5 2 3 3.5 2 3.5 2l1-1.5s-.5-.5-1-.5-1 .5-1.5 0S10.5 10 10 9.5 8.5 7.5 8.5 7.5L7.5 8.5z" fill="#25D366"/>
+        </svg>
+      ),
+    },
+    {
+      name: "Instagram",
+      desc: "Auto-reply to DMs while you focus on your business",
+      msgs: "312 messages handled this month",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+          <defs>
+            <linearGradient id="ig-ch" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#FCAF45"/><stop offset="40%" stopColor="#E1306C"/><stop offset="100%" stopColor="#833AB4"/>
+            </linearGradient>
+          </defs>
+          <rect x="2" y="2" width="16" height="16" rx="4.5" stroke="url(#ig-ch)" strokeWidth="1.6"/>
+          <circle cx="10" cy="10" r="3.5" stroke="url(#ig-ch)" strokeWidth="1.6"/>
+          <circle cx="14.5" cy="5.5" r="1.1" fill="url(#ig-ch)"/>
+        </svg>
+      ),
+    },
+    {
+      name: "Website Widget",
+      desc: "Paste one line of code — a chat bubble appears on your site instantly",
+      msgs: "189 messages handled this month",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="7.5" stroke="#3B82F6" strokeWidth="1.5"/>
+          <path d="M2.5 10h15M10 2.5c-2 2.5-3 5-3 7.5s1 5 3 7.5M10 2.5c2 2.5 3 5 3 7.5s-1 5-3 7.5" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-[#111111]">Channels</h1>
+        <p className="text-sm text-[#6B7280] mt-0.5">Your AI is active on 3 channels</p>
+      </div>
+      <div className="space-y-4">
+        {channels.map((ch) => (
+          <div key={ch.name} className="bg-white border border-[#E5E7EB] rounded-2xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center shrink-0">
+                {ch.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-bold text-[#111111]">{ch.name}</p>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />Connected
+                  </span>
+                </div>
+                <p className="text-sm text-[#6B7280] mb-2">{ch.desc}</p>
+                <p className="text-xs text-[#9CA3AF]">{ch.msgs}</p>
+              </div>
+              <button className="hidden sm:block text-xs font-semibold px-3 py-2 rounded-xl border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35]/40 transition-colors shrink-0">
+                Configure
+              </button>
+            </div>
+            <div className="mt-4 pt-4 border-t border-[#F3F4F6] flex items-center gap-6">
+              <div>
+                <p className="text-[11px] text-[#9CA3AF]">Response time</p>
+                <p className="text-sm font-bold text-[#111111]">{"< 3 sec"}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-[#9CA3AF]">Auto-reply rate</p>
+                <p className="text-sm font-bold text-[#111111]">97%</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-[#9CA3AF]">AI active</p>
+                <div className="mt-0.5 w-9 h-5 rounded-full bg-[#FF6B35] relative shrink-0">
+                  <span className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Website Builder View ── */
+const DEMO_SITE_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ahmed Dental Clinic</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#0a0f1a;color:#f0f4f8}nav{background:#0a0f1a;border-bottom:1px solid rgba(255,255,255,0.06);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}.nav-logo{font-weight:800;font-size:.95rem;color:#FF6B35;letter-spacing:1px}.nav-links{display:flex;gap:18px;font-size:.75rem;color:#94a3b8}.nav-btn{background:#FF6B35;color:#fff;padding:7px 16px;border-radius:8px;font-size:.72rem;font-weight:700;border:none;cursor:pointer}.hero{padding:72px 20px 52px;text-align:center;background:linear-gradient(180deg,#0a0f1a 0%,#111827 100%)}.hero-tag{display:inline-block;background:rgba(255,107,53,.12);color:#FF6B35;font-size:.65rem;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:18px}.hero h1{font-size:2.2rem;font-weight:900;line-height:1.15;margin-bottom:14px}.hero h1 span{background:linear-gradient(135deg,#FF6B35,#FF3366);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}.hero p{font-size:.88rem;color:#94a3b8;max-width:380px;margin:0 auto 24px;line-height:1.6}.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.btn-p{background:linear-gradient(135deg,#FF6B35,#FF3366);color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.8rem;border:none;cursor:pointer}.btn-s{background:transparent;color:#f0f4f8;padding:12px 24px;border-radius:10px;font-weight:600;font-size:.8rem;border:1px solid rgba(255,255,255,.15);cursor:pointer}.badges{display:flex;gap:14px;justify-content:center;margin-top:20px;flex-wrap:wrap}.badge{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#64748b}.dot{width:5px;height:5px;border-radius:50%;background:#22c55e}.services{padding:52px 20px;max-width:800px;margin:0 auto}.s-title{font-size:1.35rem;font-weight:800;text-align:center;margin-bottom:6px}.s-sub{text-align:center;color:#64748b;font-size:.8rem;margin-bottom:30px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.card{background:#111827;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px}.card-icon{font-size:1.6rem;margin-bottom:10px}.card h3{font-size:.85rem;font-weight:700;margin-bottom:5px}.card p{font-size:.72rem;color:#64748b;line-height:1.5}.price{font-size:.88rem;font-weight:800;color:#FF6B35;margin-top:8px}.cta{background:linear-gradient(135deg,#FF6B35 0%,#FF3366 100%);padding:52px 20px;text-align:center}.cta h2{font-size:1.5rem;font-weight:800;margin-bottom:8px}.cta p{color:rgba(255,255,255,.8);margin-bottom:20px;font-size:.82rem}.btn-w{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#FF6B35;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.8rem;border:none;cursor:pointer}.footer{background:#060a12;padding:20px;text-align:center;color:#475569;font-size:.7rem;border-top:1px solid rgba(255,255,255,.04)}</style></head><body><nav><span class="nav-logo">AHMED DENTAL</span><div class="nav-links"><span>Services</span><span>About</span><span>Contact</span></div><button class="nav-btn">Book Now</button></nav><div class="hero"><div class="hero-tag">⭐ Dubai Marina&apos;s #1 Dental Clinic</div><h1>Your Perfect Smile<br>Starts <span>Here</span></h1><p>Expert dental care in the heart of Dubai Marina. From routine cleanings to stunning veneers — we have got you covered.</p><div class="btns"><button class="btn-p">📅 Book Appointment</button><button class="btn-s">💬 WhatsApp Us</button></div><div class="badges"><div class="badge"><span class="dot"></span>Open 7 Days a Week</div><div class="badge"><span class="dot"></span>Insurance Accepted</div><div class="badge"><span class="dot"></span>Same-Day Emergency</div></div></div><div class="services"><h2 class="s-title">Our Services</h2><p class="s-sub">Professional care with the latest technology</p><div class="grid"><div class="card"><div class="card-icon">🦷</div><h3>Dental Cleaning</h3><p>Deep cleaning and polishing for a healthy smile</p><div class="price">AED 350</div></div><div class="card"><div class="card-icon">✨</div><h3>Teeth Whitening</h3><p>Professional whitening — up to 8 shades brighter</p><div class="price">AED 800</div></div><div class="card"><div class="card-icon">💎</div><h3>Porcelain Veneers</h3><p>Hollywood smile with custom porcelain veneers</p><div class="price">From AED 1,800</div></div><div class="card"><div class="card-icon">🔬</div><h3>Root Canal</h3><p>Pain-free treatment with modern anesthesia</p><div class="price">AED 1,200</div></div></div></div><div class="cta"><h2>Ready to Book?</h2><p>Mon–Sat 9 AM–8 PM · Fri 9 AM–2 PM · Insurance accepted</p><button class="btn-w">💬 WhatsApp to Book</button></div><div class="footer">© 2025 Ahmed Dental Clinic · Dubai Marina Tower, UAE · +971 50 123 4567</div></body></html>`;
+
+function WebsiteView() {
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [activeTab, setActiveTab] = useState<"chat" | "preview">("preview");
+
+  const chatMsgs = [
+    { role: "user", text: "Build a dental clinic website for Ahmed Dental Clinic in Dubai Marina" },
+    { role: "ai",   text: "Building your website…", faint: true },
+    { role: "ai",   text: "✅ Your website is ready! It includes a hero, services with pricing, and a WhatsApp booking button. Refine it below." },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4 h-[calc(100vh-188px)] min-h-[440px]">
+      <div className="flex sm:hidden gap-1 p-1 bg-[#F3F4F6] rounded-xl">
+        {(["chat", "preview"] as const).map((t) => (
+          <button key={t} onClick={() => setActiveTab(t)}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${activeTab === t ? "bg-white text-[#111111] shadow-sm" : "text-[#6B7280]"}`}>
+            {t === "chat" ? "Chat" : "Preview"}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-4 flex-1 overflow-hidden">
+        <div className={`flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden
+          ${activeTab === "preview" ? "hidden sm:flex sm:w-72 sm:flex-none" : "flex flex-1 sm:w-72 sm:flex-none"}`}>
+          <div className="px-5 py-4 border-b border-[#F3F4F6]">
+            <p className="text-sm font-bold text-[#111111]">Website Builder</p>
+            <p className="text-[11px] text-[#9CA3AF] mt-0.5">AI-powered · Full HTML website</p>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#F9FAFB]">
+            {chatMsgs.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
+                  m.role === "user"
+                    ? "bg-[#FF6B35] text-white"
+                    : `bg-white border border-[#E5E7EB] ${"faint" in m && m.faint ? "text-[#9CA3AF]" : "text-[#111111]"}`
+                }`}>{m.text}</div>
+              </div>
+            ))}
+          </div>
+          <div className="px-4 py-3 border-t border-[#F3F4F6] bg-white">
+            <div className="flex gap-2">
+              <input placeholder="Add a section, change colors…" readOnly
+                className="flex-1 text-xs border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] bg-[#FAFAFA] cursor-default" />
+              <button disabled className="px-3 py-2.5 rounded-xl bg-[#F3F4F6] text-[#9CA3AF]">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className={`flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden flex-1
+          ${activeTab === "chat" ? "hidden sm:flex" : "flex"}`}>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#F3F4F6]">
+            <p className="text-sm font-bold text-[#111111]">Live Preview</p>
+            <div className="flex items-center gap-1.5">
+              {(["desktop", "mobile"] as const).map((d) => (
+                <button key={d} onClick={() => setDevice(d)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${device === d ? "bg-[#111111] text-white" : "text-[#6B7280] hover:bg-[#F3F4F6]"}`}>
+                  {d === "desktop" ? "Desktop" : "Mobile"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden flex items-start justify-center bg-[#F3F4F6] p-3">
+            <div
+              className="bg-white rounded-xl overflow-hidden shadow-xl h-full transition-all"
+              style={{ width: device === "mobile" ? 375 : "100%", maxWidth: "100%" }}>
+              <iframe
+                srcDoc={DEMO_SITE_HTML}
+                className="w-full h-full border-none"
+                sandbox="allow-scripts"
+                title="Website preview"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Marketing View ── */
+function MarketingView() {
+  const [tool, setTool] = useState<"social" | "video" | "broadcast">("social");
+  const [platform, setPlatform] = useState("Instagram");
+  const [tone, setTone] = useState("Professional");
+
+  const EXAMPLE_POST = `🦷 Transform Your Smile at Ahmed Dental Clinic!
+
+Your perfect smile is just one appointment away. Our expert team in Dubai Marina offers:
+✅ Professional Teeth Whitening — AED 800
+✅ Dental Cleaning — AED 350
+✅ Porcelain Veneers — from AED 1,800
+
+We accept Daman & ADNIC insurance.
+Same-day emergency appointments available.
+
+📍 Dubai Marina  |  📞 Book via WhatsApp
+
+#DubaiDentist #SmileGoals #DentalCare #DubaiMarina`;
+
+  return (
+    <div className="space-y-5">
+      <h1 className="text-xl font-bold text-[#111111]">Marketing AI</h1>
+      <div className="flex gap-2">
+        {(["social", "video", "broadcast"] as const).map((t) => (
+          <button key={t} onClick={() => setTool(t)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${tool === t ? "text-white border-transparent" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/30 bg-white"}`}
+            style={tool === t ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+            {t === "social" ? "Social Post" : t === "video" ? "Video Script" : "Broadcast"}
+          </button>
+        ))}
+      </div>
+
+      {tool === "social" && (
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4">
+            <p className="text-sm font-bold text-[#111111]">Generate Social Post</p>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Platform</label>
+              <div className="flex gap-2 flex-wrap">
+                {["Instagram", "Facebook", "LinkedIn"].map((p) => (
+                  <button key={p} onClick={() => setPlatform(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${platform === p ? "bg-[#111111] text-white border-[#111111]" : "border-[#E5E7EB] text-[#6B7280] bg-white"}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Tone</label>
+              <div className="flex gap-2 flex-wrap">
+                {["Professional", "Friendly", "Promotional"].map((t) => (
+                  <button key={t} onClick={() => setTone(t)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${tone === t ? "bg-[#111111] text-white border-[#111111]" : "border-[#E5E7EB] text-[#6B7280] bg-white"}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Topic</label>
+              <textarea rows={3} defaultValue="Special offer on dental whitening this month"
+                className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none" />
+            </div>
+            <button disabled className="w-full py-3 rounded-xl text-sm font-bold text-white/80 cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              Sign up to generate →
+            </button>
+          </div>
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-[#111111]">Example Output</p>
+              <span className="text-[10px] font-bold text-[#E1306C] bg-[#E1306C]/10 px-2 py-0.5 rounded-full">Instagram · Professional</span>
+            </div>
+            <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4">
+              <pre className="text-xs text-[#374151] whitespace-pre-wrap leading-relaxed font-sans">{EXAMPLE_POST}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tool === "video" && (
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-6 py-16 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center mx-auto mb-4">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="12" height="12" rx="2" stroke="#9CA3AF" strokeWidth="1.4"/><path d="M14 8l4-2v8l-4-2V8z" stroke="#9CA3AF" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+          </div>
+          <p className="text-sm font-bold text-[#111111] mb-1">Video Script Generator</p>
+          <p className="text-xs text-[#9CA3AF] max-w-xs mx-auto">Sign up to generate engaging Reels, TikTok, and YouTube Shorts scripts for your business</p>
+        </div>
+      )}
+
+      {tool === "broadcast" && (
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-6 py-16 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center mx-auto mb-4">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 6h14M3 10h10M3 14h7" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </div>
+          <p className="text-sm font-bold text-[#111111] mb-1">WhatsApp Broadcast</p>
+          <p className="text-xs text-[#9CA3AF] max-w-xs mx-auto">Sign up to send bulk WhatsApp messages to all your patients at once — promotions, reminders, and more</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Sidebar nav items ── */
 const NAV: { id: View; label: string; icon: React.ReactNode }[] = [
   { id: "dashboard",     label: "Dashboard",     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg> },
   { id: "conversations", label: "Conversations", icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 10.5a1.5 1.5 0 01-1.5 1.5H5.25L2.25 15V4.5A1.5 1.5 0 013.75 3h9.75A1.5 1.5 0 0115 4.5v6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg> },
   { id: "leads",         label: "Leads / CRM",   icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M12 16.5v-1.5a3 3 0 00-3-3H4.5a3 3 0 00-3 3v1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="6.75" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/></svg> },
   { id: "appointments",  label: "Appointments",  icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.25" y="3" width="13.5" height="13.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M12 1.5v3M6 1.5v3M2.25 7.5h13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
+  { id: "channels",      label: "Channels",      icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="4" cy="9" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="14" cy="4" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="14" cy="14" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 8l6-3M6 10l6 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
+  { id: "website",       label: "Website",       icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.4"/><path d="M2 9h14M9 2c-2 2.5-3 4.5-3 7s1 4.5 3 7M9 2c2 2.5 3 4.5 3 7s-1 4.5-3 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
   { id: "analytics",     label: "Analytics",     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 15V9.75M7.5 15V6.75M12 15V3.75M16.5 15V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
+  { id: "marketing",     label: "Marketing",     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 11V7l10-4v12L3 11z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 8.5c1 .5 1.5 1.5 0 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M5 11.5l-1.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg> },
 ];
 
 export default function DemoPage() {
@@ -600,7 +885,9 @@ export default function DemoPage() {
                 className="md:hidden p-2 -ml-1 rounded-lg text-[#374151] hover:bg-[#F3F4F6] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </button>
-              <span className="font-bold text-[#111111] text-sm capitalize">{view === "leads" ? "Leads / CRM" : view}</span>
+              <span className="font-bold text-[#111111] text-sm capitalize">
+                {view === "leads" ? "Leads / CRM" : view === "website" ? "Website Builder" : view === "marketing" ? "Marketing AI" : view}
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden md:block text-sm text-[#6B7280]">Ahmed Dental Clinic</span>
@@ -613,7 +900,10 @@ export default function DemoPage() {
             {view === "conversations" && <ConversationsView />}
             {view === "leads"         && <LeadsView />}
             {view === "appointments"  && <AppointmentsView />}
+            {view === "channels"      && <ChannelsView />}
+            {view === "website"       && <WebsiteView />}
             {view === "analytics"     && <AnalyticsView />}
+            {view === "marketing"     && <MarketingView />}
           </div>
         </main>
       </div>
