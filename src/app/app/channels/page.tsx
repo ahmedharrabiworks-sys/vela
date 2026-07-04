@@ -607,25 +607,32 @@ function ChannelsPageContent() {
     {
       key: "instagram" as const,
       name: t("channels.instagram.name"),
-      desc: t("channels.instagram.desc"),
+      desc: "Auto-reply to DMs while you focus on your business",
       connectedDesc: channels.instagram.username ? `@${channels.instagram.username}` : "Connected",
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <rect x="2" y="2" width="16" height="16" rx="4.5" stroke="#374151" strokeWidth="1.5"/>
-          <circle cx="10" cy="10" r="3.5" stroke="#374151" strokeWidth="1.5"/>
-          <circle cx="14.5" cy="5.5" r="1" fill="#374151"/>
+          <defs>
+            <linearGradient id="ig-g" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#FCAF45"/>
+              <stop offset="40%" stopColor="#E1306C"/>
+              <stop offset="100%" stopColor="#833AB4"/>
+            </linearGradient>
+          </defs>
+          <rect x="2" y="2" width="16" height="16" rx="4.5" stroke="url(#ig-g)" strokeWidth="1.6"/>
+          <circle cx="10" cy="10" r="3.5" stroke="url(#ig-g)" strokeWidth="1.6"/>
+          <circle cx="14.5" cy="5.5" r="1.1" fill="url(#ig-g)"/>
         </svg>
       ),
     },
     {
       key: "whatsapp" as const,
       name: t("channels.whatsapp.name"),
-      desc: t("channels.whatsapp.desc"),
+      desc: "Let Vela handle WhatsApp enquiries around the clock",
       connectedDesc: channels.whatsapp.phone || "Connected",
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M10 2a8 8 0 0 1 6.928 12L18 18l-4.133-1.069A8 8 0 1 1 10 2z" stroke="#374151" strokeWidth="1.5" strokeLinejoin="round"/>
-          <path d="M7.5 8.5c.2.8 1.2 2.4 2 3.2.8.8 2.1 1.7 2.9 1.8.5.1.8-.1 1-.4l.3-.5c.1-.2 0-.4-.1-.5l-1-.5c-.2-.1-.4 0-.5.1l-.3.4c-.5-.2-1.4-.9-1.9-1.9l.3-.3c.1-.1.2-.3.1-.5l-.5-1c-.1-.2-.3-.2-.5-.1l-.5.3c-.3.3-.5.6-.4 1z" stroke="#374151" strokeWidth="1.2" strokeLinejoin="round"/>
+          <path d="M10 2a8 8 0 0 1 6.928 12L18 18l-4.133-1.069A8 8 0 1 1 10 2z" stroke="#25D366" strokeWidth="1.6" strokeLinejoin="round"/>
+          <path d="M7.5 8.5c.2.8 1.2 2.4 2 3.2.8.8 2.1 1.7 2.9 1.8.5.1.8-.1 1-.4l.3-.5c.1-.2 0-.4-.1-.5l-1-.5c-.2-.1-.4 0-.5.1l-.3.4c-.5-.2-1.4-.9-1.9-1.9l.3-.3c.1-.1.2-.3.1-.5l-.5-1c-.1-.2-.3-.2-.5-.1l-.5.3c-.3.3-.5.6-.4 1z" stroke="#25D366" strokeWidth="1.2" strokeLinejoin="round"/>
         </svg>
       ),
     },
@@ -746,8 +753,8 @@ function ChannelsPageContent() {
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <rect x="2" y="2" width="16" height="11" rx="2" stroke="#374151" strokeWidth="1.5"/>
-                  <path d="M7 17h6M10 13v4" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="10" cy="10" r="7.5" stroke="#3B82F6" strokeWidth="1.5"/>
+                  <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#3B82F6" strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
               </div>
               <div>
@@ -758,7 +765,7 @@ function ChannelsPageContent() {
                     {t("channels.readyToEmbed")}
                   </span>
                 </div>
-                <p className="text-xs text-[#6B7280] mt-0.5">{t("channels.website.desc")}</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">Paste one line of code — a chat bubble appears on your site instantly</p>
               </div>
             </div>
           </div>
@@ -804,8 +811,10 @@ function ChannelsPageContent() {
                 <div className="bg-white border border-[#E5E7EB] rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
                   <p className="text-xs text-[#374151] font-medium whitespace-nowrap">Hi! How can I help?</p>
                 </div>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-lg" style={{ background: "#FF6B35" }}>
-                  AI
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-lg" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
               </div>
             </div>

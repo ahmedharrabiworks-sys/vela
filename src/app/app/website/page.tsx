@@ -2,299 +2,96 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type Msg = { role: "ai" | "user"; content: string; isBuilding?: boolean };
+type Msg = { role: "ai" | "user"; content: string; isBuilding?: boolean; isError?: boolean };
 
-type SiteData = {
-  businessName: string;
-  tagline: string;
-  description: string;
-  color: string;
-  services: { name: string; price: string; desc: string }[];
-  trustItems: string[];
+const INDUSTRY_SUGGESTIONS: Record<string, string[]> = {
+  "Gym & Fitness":    ["Build a site for my gym", "Highlight monthly memberships", "Add a free trial offer"],
+  "Beauty & Wellness":["Build a luxury salon website", "Show our treatment menu", "Add a before/after section"],
+  "Restaurant":       ["Build a restaurant website with menu", "Add reservation button", "Show signature dishes"],
+  "Medical Clinic":   ["Build a medical clinic website", "Show our specialties", "Add online booking"],
+  "Real Estate":      ["Build a property agency website", "Show featured listings", "Add free valuation CTA"],
+  "Coffee Shop":      ["Build a coffee shop website", "Show drinks menu", "Make it cozy and inviting"],
+  "Education":        ["Build an education website", "Show our courses", "Highlight student success"],
+  "Hotel":            ["Build a hotel website", "Show room types", "Add direct booking button"],
+  "Law Firm":         ["Build a law firm website", "Show practice areas", "Add free consultation CTA"],
+  "E-Commerce":       ["Build a product showcase site", "Show bestselling products", "Add customer reviews"],
 };
 
-const DEFAULT_SITE: SiteData = {
-  businessName: "Ahmed Dental Clinic",
-  tagline: "Excellence in every smile.",
-  description: "Book appointments instantly via WhatsApp, Instagram & your website — 24/7.",
-  color: "#FF6B35",
-  services: [
-    { name: "Dental Cleaning",  price: "AED 350", desc: "45-min deep clean" },
-    { name: "Teeth Whitening",  price: "AED 800", desc: "Professional bleaching" },
-    { name: "Consultation",     price: "AED 150", desc: "Full examination" },
-  ],
-  trustItems: ["4.9★ Rating", "500+ Patients", "10 Years Experience"],
-};
-
-function parseSite(msg: string, base: SiteData): SiteData {
-  const s: SiteData = { ...base, services: [...base.services] };
-  const m = msg.toLowerCase();
-
-  if (m.includes("gym") || m.includes("fitness")) {
-    s.businessName = m.includes("peak") ? "Peak Performance Gym" : "FitZone Gym";
-    s.tagline = "Push beyond your limits.";
-    s.description = "State-of-the-art equipment, expert coaches, and programs built for real results.";
-    s.color = "#FF6B35";
-    s.services = [
-      { name: "Monthly Membership", price: "AED 299/mo", desc: "Full gym access" },
-      { name: "Personal Training",  price: "AED 200/session", desc: "1-on-1 coaching" },
-      { name: "Group Classes",      price: "AED 80/class", desc: "HIIT, yoga, spin" },
-    ];
-    s.trustItems = ["500+ Members", "20+ Classes/Week", "Expert Trainers"];
-  } else if (m.includes("salon") || m.includes("hair") || m.includes("beauty")) {
-    s.businessName = "Luxe Hair Studio";
-    s.tagline = "Your hair, perfected.";
-    s.description = "Premium cuts, colour, and styling by award-winning stylists. Book in seconds.";
-    s.color = "#FF6B35";
-    s.services = [
-      { name: "Haircut & Style",    price: "AED 150", desc: "Cut, wash, blow-dry" },
-      { name: "Colour Treatment",   price: "AED 350", desc: "Full colour or highlights" },
-      { name: "Keratin Treatment",  price: "AED 600", desc: "Smoothing & frizz control" },
-    ];
-    s.trustItems = ["★4.9 Rating", "2000+ Clients", "Award-Winning Stylists"];
-  } else if (m.includes("spa") || m.includes("wellness") || m.includes("massage")) {
-    s.businessName = "Serenity Wellness Spa";
-    s.tagline = "Restore. Renew. Revive.";
-    s.description = "Expert therapists and premium treatments in the heart of the city.";
-    s.color = "#FF6B35";
-    s.services = [
-      { name: "Deep Tissue Massage", price: "AED 350", desc: "90-min full body" },
-      { name: "Facial Treatment",    price: "AED 280", desc: "Hydrating & anti-ageing" },
-      { name: "Couples Package",     price: "AED 780", desc: "For two, 90 min" },
-    ];
-    s.trustItems = ["800+ Reviews", "Certified Therapists", "5-Star Rated"];
-  } else if (m.includes("real estate") || m.includes("property")) {
-    s.businessName = "Premium Properties";
-    s.tagline = "Find your perfect home.";
-    s.description = "Exclusive listings across Dubai, Abu Dhabi & Sharjah — from AED 500K.";
-    s.color = "#FF6B35";
-    s.services = [
-      { name: "Property Sales",    price: "Free Consultation", desc: "Villas & apartments" },
-      { name: "Rentals",           price: "No Agency Fee",     desc: "Short & long term" },
-      { name: "Investment Advice", price: "Free",              desc: "ROI analysis" },
-    ];
-    s.trustItems = ["500+ Properties", "AED 2B+ in Sales", "10 Years in UAE"];
-  } else if (m.includes("dental") || m.includes("clinic") || m.includes("medical")) {
-    // Keep default dental or adjust name
-    if (m.includes("premium") || m.includes("luxury")) s.tagline = "World-class dental care.";
-    if (m.includes("cosmetic")) { s.tagline = "Transforming smiles, changing lives."; }
-  }
-
-  // Apply follow-up instructions
-  if (m.includes("darker") || m.includes("dark hero")) {
-    // hero is already dark, no change needed
-  }
-  if (m.includes("testimonial")) {
-    // would add testimonials section (simulated)
-  }
-
-  // If they just mentioned a business name
-  const nameMatch = msg.match(/(?:called?|named?|it's|is)\s+["']?([A-Z][^"'\n.]{2,40})["']?/i);
-  if (nameMatch) s.businessName = nameMatch[1].trim();
-
-  return s;
-}
-
-function getAIResponse(msg: string): string {
-  const m = msg.toLowerCase();
-  if (m.includes("darker") || m.includes("dark")) return "Done! I've enhanced the hero section with a deeper, more dramatic background.";
-  if (m.includes("testimonial")) return "Added! A testimonials section now appears below your services with 3 real-looking reviews.";
-  if (m.includes("color") || m.includes("colour")) return "Updated the accent colour throughout your site.";
-  if (m.includes("contact") || m.includes("phone")) return "Done! Added a contact section with your phone and map.";
-  if (m.includes("price") || m.includes("cost")) return "Updated! Your services section now shows the new pricing.";
-  if (m.includes("logo")) return "Got it — your logo area has been updated. Upload your image in the assets panel above.";
-  if (m.includes("book")) return "The booking flow is already live — visitors can tap 'Book Now' to message you on WhatsApp instantly.";
-  return "Done! I've updated your website based on that instruction. Keep going — what else would you like to change?";
-}
-
-/* ── Website Preview ── */
-function WebPreview({ site, isMobile }: { site: SiteData; isMobile: boolean }) {
-  return (
-    <div className={`w-full bg-white overflow-hidden font-sans text-left ${isMobile ? "max-w-[320px] mx-auto" : ""}`}
-      style={{ fontFamily: "'Inter', system-ui, sans-serif", borderRadius: 12 }}>
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-5 py-3.5 bg-white border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-black"
-            style={{ background: site.color }}>{site.businessName[0]}</div>
-          <span className="font-bold text-[#111] text-xs tracking-tight">{site.businessName}</span>
-        </div>
-        {!isMobile && (
-          <div className="flex items-center gap-5">
-            {["Services", "About", "Reviews", "Contact"].map((l) => (
-              <span key={l} className="text-[10px] font-medium text-gray-400">{l}</span>
-            ))}
-          </div>
-        )}
-        <button className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background: site.color }}>Book Now</button>
-      </nav>
-
-      {/* Hero */}
-      <div className="relative overflow-hidden" style={{ background: "#0A0A0A" }}>
-        <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 60% at 50% -10%, ${site.color}22, transparent)` }} />
-        <div className={`relative z-10 ${isMobile ? "px-5 py-8" : "px-8 py-10"}`}>
-          <div className="flex items-center gap-1.5 mb-3">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: site.color }} />
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-400">Powered by Vela AI</span>
-          </div>
-          <h1 className={`font-black text-white leading-none tracking-tighter mb-3 ${isMobile ? "text-2xl" : "text-3xl"}`}>{site.tagline}</h1>
-          <p className="text-gray-400 text-xs leading-relaxed mb-5 max-w-sm">{site.description}</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button className="text-[11px] font-bold px-4 py-2 rounded-lg text-white" style={{ background: site.color }}>Book Appointment →</button>
-            <button className="text-[11px] font-semibold px-4 py-2 rounded-lg text-gray-300 border border-white/10">View Services</button>
-          </div>
-          {!isMobile && (
-            <div className="flex items-center gap-4 mt-6 pt-5 border-t border-white/8">
-              {site.trustItems.map((t) => <span key={t} className="text-[10px] text-gray-500 font-medium">{t}</span>)}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Services */}
-      <div className={`${isMobile ? "px-4 py-5" : "px-6 py-6"} bg-white`}>
-        <p className="text-[9px] font-semibold uppercase tracking-widest mb-3" style={{ color: site.color }}>Services</p>
-        <div className={`grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-3"}`}>
-          {site.services.map((s) => (
-            <div key={s.name} className="rounded-xl p-3.5 border border-gray-100">
-              <p className="text-xs font-bold text-[#111] mb-0.5">{s.name}</p>
-              <p className="text-[10px] text-gray-400 mb-1.5">{s.desc}</p>
-              <p className="text-xs font-black" style={{ color: site.color }}>{s.price}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA strip */}
-      <div className="px-6 py-4 flex items-center justify-between" style={{ background: site.color }}>
-        <div>
-          <p className="font-black text-white text-xs">Book today</p>
-          <p className="text-white/60 text-[9px] mt-0.5">Via WhatsApp · Instagram · Website</p>
-        </div>
-        <button className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white" style={{ color: site.color }}>Book →</button>
-      </div>
-
-      {/* AI widget spacer */}
-      <div className="relative bg-white px-4 py-3">
-        <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[8px] font-black" style={{ background: site.color }}>AI</div>
-          <div>
-            <p className="text-[9px] font-bold text-[#111]">Vela AI</p>
-            <p className="text-[8px] text-gray-400">Hi! How can I help?</p>
-          </div>
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const INDUSTRY_PROMPTS: Record<string, { greeting: string; suggestions: string[] }> = {
-  "Gym & Fitness": {
-    greeting: "I can see you run a gym or fitness business. I'll build a site that showcases your memberships and gets people to book a trial session.",
-    suggestions: ["Show monthly membership plans", "Add a free trial class offer", "List all our group classes", "Highlight our personal trainers"],
-  },
-  "Beauty & Wellness": {
-    greeting: "I see you're in beauty or wellness. I'll build a clean, elegant site to showcase your services and fill your booking calendar.",
-    suggestions: ["Show our treatment menu with prices", "Add a 'Book Now' section for each service", "Make it look very premium and luxurious", "Add a before/after section"],
-  },
-  "Restaurant": {
-    greeting: "I see you run a restaurant. I'll build a site that shows your menu and lets people make reservations instantly.",
-    suggestions: ["Show our full menu with categories", "Add a table reservation button", "Highlight our signature dishes", "Add our opening hours and location"],
-  },
-  "Coffee Shop": {
-    greeting: "I see you have a coffee shop. I'll build a cozy, inviting site that shows your menu and drives foot traffic.",
-    suggestions: ["Show our drinks menu and pricing", "Add our daily specials section", "Make it feel warm and cozy", "Add our location and hours"],
-  },
-  "Real Estate": {
-    greeting: "I see you're in real estate. I'll build a professional site to showcase your listings and capture buyer leads.",
-    suggestions: ["Show featured property listings", "Add a free property valuation CTA", "Highlight our recent sales", "Add a contact form for inquiries"],
-  },
-  "Medical Clinic": {
-    greeting: "I see you run a medical clinic. I'll build a professional, trustworthy site to showcase your services and let patients book appointments.",
-    suggestions: ["Show our services and specialties", "Add online appointment booking", "List our doctors and their expertise", "Add insurance information"],
-  },
-  "Education": {
-    greeting: "I see you're in education. I'll build a site that showcases your courses and gets students to enroll.",
-    suggestions: ["Show our courses with pricing", "Add a free trial class offer", "Highlight student success stories", "Add our curriculum and schedule"],
-  },
-  "E-Commerce": {
-    greeting: "I see you run an online store. I'll build a product showcase site that drives traffic to your store.",
-    suggestions: ["Show our bestselling products", "Add a featured collections section", "Highlight our shipping and returns policy", "Add customer reviews section"],
-  },
-  "Hotel": {
-    greeting: "I see you run a hotel. I'll build a stunning site that showcases your rooms and drives direct bookings.",
-    suggestions: ["Show our room types with pricing", "Add a direct booking button", "Highlight amenities and facilities", "Add a photo gallery of the property"],
-  },
-  "Law Firm": {
-    greeting: "I see you run a law firm. I'll build a professional, authoritative site that builds trust and generates client inquiries.",
-    suggestions: ["Show our practice areas", "Add a free consultation CTA", "Highlight our attorneys and credentials", "Add client testimonials"],
-  },
-};
-
-function getIndustryGreeting(btype: string | null): string {
-  if (!btype) return "Hi! Tell me about your business and I'll build your website instantly.\n\nJust describe what you do, who your customers are, and the vibe you're going for.";
-  const data = INDUSTRY_PROMPTS[btype];
-  if (!data) return `Hi! I see you run a ${btype}. Tell me your business name and I'll build your site instantly.\n\nDescribe the vibe — clean and minimal, bold, or premium?`;
-  return `Hi! ${data.greeting}\n\nTell me your business name and I'll get started. Or pick a suggestion below:`;
-}
+const DEFAULT_SUGGESTIONS = [
+  "Build a dental clinic website in Dubai Marina",
+  "Build a gym website with membership plans",
+  "Build a hair salon website with service menu",
+];
 
 export default function WebsitePage() {
-  const [btype] = useState<string | null>(
-    typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null
-  );
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { role: "ai", content: getIndustryGreeting(typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null) },
-  ]);
-  const [input, setInput] = useState("");
-  const [site, setSite] = useState<SiteData>(DEFAULT_SITE);
-  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const btype = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
+  const suggestions = (btype && INDUSTRY_SUGGESTIONS[btype]) ? INDUSTRY_SUGGESTIONS[btype] : DEFAULT_SUGGESTIONS;
+
+  const [msgs, setMsgs] = useState<Msg[]>([{
+    role: "ai",
+    content: btype && INDUSTRY_SUGGESTIONS[btype]
+      ? `Hi! I see you run a ${btype} business. Tell me your business name and I'll build your website in seconds.\n\nOr pick a suggestion below:`
+      : "Hi! Describe your business and I'll build your website instantly — full design, services, and booking buttons.\n\nOr pick a suggestion below:",
+  }]);
+  const [input, setInput]     = useState("");
+  const [html, setHtml]       = useState("");
+  const [device, setDevice]   = useState<"desktop" | "mobile">("desktop");
   const [building, setBuilding] = useState(false);
-  const [built, setBuilt] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [built, setBuilt]     = useState(false);
+  const [copied, setCopied]   = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
-    if (stored) setSite(parseSite(stored, DEFAULT_SITE));
-  }, []);
-
-  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [msgs]);
+  }, [msgs, building]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || building) return;
     setInput("");
 
     const newMsgs: Msg[] = [...msgs, { role: "user", content: text }];
+    const loadingMsg: Msg = {
+      role: "ai",
+      content: built ? "Updating your website…" : "Building your website…",
+      isBuilding: true,
+    };
+    setMsgs([...newMsgs, loadingMsg]);
+    setBuilding(true);
 
-    if (!built) {
-      // First message — build the site
-      setMsgs([...newMsgs, { role: "ai", content: "Building your website…", isBuilding: true }]);
-      setBuilding(true);
+    try {
+      const res = await fetch("/api/website/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, currentHtml: built ? html : undefined }),
+      });
+      const data = await res.json() as { html?: string; error?: string };
 
-      setTimeout(() => {
-        const newSite = parseSite(text, site);
-        setSite(newSite);
+      if (!res.ok || !data.html) {
+        const errText = data.error === "Unauthorized"
+          ? "Please sign in to use the website builder."
+          : data.error === "AI not configured"
+          ? "The AI service isn't set up yet — contact support."
+          : "Something went wrong generating your site. Please try again.";
+        setMsgs([...newMsgs, { role: "ai", content: errText, isError: true }]);
         setBuilding(false);
-        setBuilt(true);
-        setMsgs([...newMsgs, {
-          role: "ai",
-          content: `Your website is ready! I built a ${newSite.businessName} site with a dark hero, services section, and booking buttons.\n\nWhat would you like to change? Try: "Make the headline bigger", "Change accent colour to black", "Add a testimonials section"`,
-        }]);
-      }, 2000);
-    } else {
-      // Follow-up — update the site
-      setMsgs([...newMsgs, { role: "ai", content: "Updating…", isBuilding: true }]);
-      setTimeout(() => {
-        const updated = parseSite(text, site);
-        setSite(updated);
-        setMsgs([...newMsgs, { role: "ai", content: getAIResponse(text) }]);
-      }, 900);
+        return;
+      }
+
+      setHtml(data.html);
+      setBuilt(true);
+      setActiveTab("preview");
+
+      const successMsg = built
+        ? "Done! Your website has been updated. What else would you like to change?"
+        : "Your website is ready! Switch to the Preview tab to see it.\n\nWhat would you like to change? Try: \"Make the headline bolder\", \"Change the accent colour to blue\", \"Add a testimonials section\".";
+
+      setMsgs([...newMsgs, { role: "ai", content: successMsg }]);
+    } catch {
+      setMsgs([...newMsgs, { role: "ai", content: "Connection error. Please check your internet and try again.", isError: true }]);
     }
+    setBuilding(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -311,7 +108,6 @@ export default function WebsitePage() {
           <p className="text-xs text-[#6B7280] mt-0.5">Chat with AI to build your booking website</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Mobile tab toggle */}
           <div className="flex md:hidden gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
             {(["chat", "preview"] as const).map((t) => (
               <button key={t} onClick={() => setActiveTab(t)}
@@ -320,11 +116,19 @@ export default function WebsitePage() {
               </button>
             ))}
           </div>
-          <button onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-            className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${copied ? "border-[#16A34A] text-[#16A34A]" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35]"}`}>
-            {copied ? "Copied!" : "Copy Link"}
-          </button>
-          <button className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
+          {built && (
+            <button
+              onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+              className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${copied ? "border-[#16A34A] text-[#16A34A]" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35]"}`}
+            >
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+          )}
+          <button
+            className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+            style={{ background: "#FF6B35" }}
+            disabled={!built}
+          >
             Publish →
           </button>
         </div>
@@ -335,19 +139,22 @@ export default function WebsitePage() {
 
         {/* LEFT: Chat */}
         <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[38%] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
-
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "ai" && (
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 mr-2 mt-0.5" style={{ background: "#FF6B35" }}>
-                    AI
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5"
+                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                    <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                      <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                   </div>
                 )}
                 <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
                   msg.role === "user"
                     ? "bg-[#FF6B35] text-white rounded-tr-sm"
+                    : msg.isError
+                    ? "bg-red-50 text-[#991B1B] rounded-tl-sm border border-red-100"
                     : "bg-[#F9FAFB] text-[#111111] rounded-tl-sm border border-[#F3F4F6]"
                 } ${msg.isBuilding ? "animate-pulse" : ""}`}>
                   {msg.isBuilding ? (
@@ -364,17 +171,12 @@ export default function WebsitePage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Suggested prompts */}
-          {msgs.length <= 1 && (
+          {/* Suggestions — shown before first user message */}
+          {msgs.filter((m) => m.role === "user").length === 0 && (
             <div className="px-4 pb-2">
-              <p className="text-[10px] text-[#9CA3AF] mb-2">
-                {btype && INDUSTRY_PROMPTS[btype] ? "Quick prompts for your business:" : "Try one of these:"}
-              </p>
+              <p className="text-[10px] text-[#9CA3AF] mb-2">Quick starts:</p>
               <div className="flex flex-wrap gap-1.5">
-                {(btype && INDUSTRY_PROMPTS[btype]
-                  ? INDUSTRY_PROMPTS[btype].suggestions
-                  : ["I run a dental clinic in Dubai Marina", "I have a gym in Abu Dhabi", "I own a hair salon in Sharjah"]
-                ).map((s) => (
+                {suggestions.map((s) => (
                   <button key={s} onClick={() => setInput(s)}
                     className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors text-left">
                     {s}
@@ -387,36 +189,21 @@ export default function WebsitePage() {
           {/* Input */}
           <div className="p-3 border-t border-[#F3F4F6]">
             <div className="flex items-end gap-2 bg-[#F9FAFB] rounded-xl px-3 py-2.5 border border-[#E5E7EB] focus-within:border-[#FF6B35]/50 transition-colors">
-              {/* Camera icon */}
-              <button className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors shrink-0 pb-0.5">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-                  <circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M5 4V3.5A1.5 1.5 0 016.5 2h3A1.5 1.5 0 0111 3.5V4" stroke="currentColor" strokeWidth="1.3"/>
-                </svg>
-              </button>
-              {/* Color picker trigger */}
-              <button className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors shrink-0 pb-0.5">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
-                  <path d="M8 2.5A5.5 5.5 0 0113.5 8" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
-                  <path d="M8 2.5A5.5 5.5 0 002.5 8" stroke="#111" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-              </button>
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={built ? "What would you like to change?" : "Describe your business…"}
                 rows={1}
-                className="flex-1 bg-transparent text-xs text-[#111111] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px]"
+                disabled={building}
+                className="flex-1 bg-transparent text-xs text-[#111111] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
                 style={{ lineHeight: "1.5" }}
               />
               <button onClick={handleSend} disabled={!input.trim() || building}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 disabled:opacity-40 transition-opacity hover:opacity-90"
                 style={{ background: "#FF6B35" }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 10L10 6 2 2v3.5L7 6l-5 0.5V10z" fill="white"/>
+                  <path d="M1.5 10.5l9-4.5-9-4.5v3.5l6 1-6 1V10.5z" fill="white"/>
                 </svg>
               </button>
             </div>
@@ -425,14 +212,12 @@ export default function WebsitePage() {
 
         {/* RIGHT: Preview */}
         <div className={`${activeTab === "chat" ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden`}>
-
-          {/* Preview toolbar */}
           <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${built ? "bg-green-400 animate-pulse" : "bg-[#9CA3AF]"}`} />
               <p className="text-xs font-medium text-[#6B7280]">{built ? "yoursite.vela.ai — live preview" : "Preview will appear here"}</p>
             </div>
-            <div className="flex items-center gap-2">
+            {built && (
               <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
                 {(["desktop", "mobile"] as const).map((d) => (
                   <button key={d} onClick={() => setDevice(d)}
@@ -441,12 +226,11 @@ export default function WebsitePage() {
                   </button>
                 ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Browser chrome */}
           <div className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
-            {/* Chrome bar */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F3F4F6] shrink-0 bg-[#F9FAFB]">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
@@ -455,23 +239,22 @@ export default function WebsitePage() {
               </div>
               <div className="flex-1 mx-4">
                 <div className="bg-white border border-[#E5E7EB] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono">
-                  {site.businessName.toLowerCase().replace(/\s+/g, "-")}.vela.ai
+                  yoursite.vela.ai
                 </div>
               </div>
             </div>
 
-            {/* Preview content */}
-            <div className="flex-1 overflow-y-auto p-4 bg-[#F9FAFB]">
+            <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex items-start justify-center p-4">
               {building ? (
-                <div className="h-full flex flex-col items-center justify-center gap-4">
-                  <div className="w-10 h-10 rounded-full border-3 border-[#FF6B35] border-t-transparent animate-spin" style={{ borderWidth: 3 }} />
+                <div className="flex flex-col items-center justify-center h-full gap-4 w-full">
+                  <div className="w-10 h-10 rounded-full border-[3px] border-[#FF6B35] border-t-transparent animate-spin" />
                   <div className="space-y-1 text-center">
                     <p className="text-sm font-semibold text-[#111111]">Building your website…</p>
                     <p className="text-xs text-[#6B7280]">Generating design, copy, and booking flow</p>
                   </div>
                 </div>
               ) : !built ? (
-                <div className="h-full flex items-center justify-center">
+                <div className="flex items-center justify-center h-full w-full">
                   <div className="text-center space-y-3 max-w-xs">
                     <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#E5E7EB] flex items-center justify-center mx-auto">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -484,8 +267,14 @@ export default function WebsitePage() {
                   </div>
                 </div>
               ) : (
-                <div className={device === "mobile" ? "flex justify-center" : ""}>
-                  <WebPreview site={site} isMobile={device === "mobile"} />
+                <div className={`w-full h-full flex ${device === "mobile" ? "justify-center" : ""}`}>
+                  <iframe
+                    srcDoc={html}
+                    title="Website preview"
+                    className={`rounded-xl border border-[#E5E7EB] bg-white ${device === "mobile" ? "max-w-[375px] w-full" : "w-full"}`}
+                    style={{ height: "100%", minHeight: 400 }}
+                    sandbox="allow-scripts allow-same-origin"
+                  />
                 </div>
               )}
             </div>

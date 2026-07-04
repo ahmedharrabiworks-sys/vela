@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { VelaAssistant } from "@/components/dashboard/VelaAssistant";
 import { I18nProvider } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 
 /* ── Command palette ── */
 const PALETTE_ITEMS = [
@@ -71,10 +72,10 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   const groups = Array.from(new Set(filtered.map((i) => i.group)));
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col sm:items-start sm:justify-center sm:pt-[12vh] sm:px-4" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+    <div className="fixed inset-0 z-[200] flex flex-col sm:items-center sm:justify-center sm:pt-[12vh] sm:px-4" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
       onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-xl bg-white sm:rounded-2xl border-0 sm:border border-[#E5E7EB] shadow-2xl overflow-hidden flex-1 sm:flex-none flex flex-col">
+        className="w-full sm:max-w-xl mx-auto bg-white sm:rounded-2xl border-0 sm:border border-[#E5E7EB] shadow-2xl overflow-hidden flex-1 sm:flex-none flex flex-col">
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#F3F4F6]">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[#9CA3AF] shrink-0">
@@ -132,6 +133,28 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   );
 }
 
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  return (
+    <button
+      onClick={toggle}
+      className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all"
+      aria-label="Toggle dark mode"
+    >
+      {theme === "dark" ? (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.4"/>
+          <path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M13.5 9.4A6 6 0 016.6 2.5a5.5 5.5 0 100 11 6 6 0 006.9-4.1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -164,7 +187,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <header className="h-14 md:h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 md:px-6 shrink-0">
+        <header className="h-14 md:h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 md:px-6 shrink-0" style={{ transition: "background 0.2s" }}>
           <div className="flex items-center gap-2 md:gap-3">
 
             {/* Hamburger — mobile only */}
@@ -189,6 +212,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            <ThemeToggle />
             <button className="relative w-9 h-9 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M9 1.5A5.25 5.25 0 003.75 6.75c0 3.375-1.5 4.5-1.5 4.5h13.5s-1.5-1.125-1.5-4.5A5.25 5.25 0 009 1.5zM10.299 15a1.5 1.5 0 01-2.598 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>

@@ -126,7 +126,8 @@
     "avgResponse": "Avg Response",
     "satisfaction": "Satisfaction",
     "upgradeCta": "Upgrade to Pro to unlock Analytics",
-    "upgradeDesc": "Get detailed insights into your leads, bookings, and revenue."
+    "upgradeDesc": "Get detailed insights into your leads, bookings, and revenue.",
+    "conversations": "Conversations"
   },
   "marketing": {
     "title": "Marketing",

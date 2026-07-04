@@ -126,7 +126,8 @@
     "avgResponse": "Temps de réponse moy.",
     "satisfaction": "Satisfaction",
     "upgradeCta": "Passez à Pro pour débloquer les analytiques",
-    "upgradeDesc": "Obtenez des informations détaillées sur vos prospects, réservations et revenus."
+    "upgradeDesc": "Obtenez des informations détaillées sur vos prospects, réservations et revenus.",
+    "conversations": "Conversations"
   },
   "marketing": {
     "title": "Marketing",

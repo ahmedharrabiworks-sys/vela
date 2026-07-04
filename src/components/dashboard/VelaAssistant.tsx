@@ -2,8 +2,14 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { getProfile } from "@/lib/business-profile";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  isError?: boolean;
+  retryText?: string;
+};
 
 const QUICK_ACTIONS = [
   { label: "Today's appointments", message: "What appointments do I have today?" },
@@ -12,26 +18,47 @@ const QUICK_ACTIONS = [
   { label: "Write a reply",        message: "Help me write a professional reply to a customer asking about pricing" },
 ];
 
+function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
+  const icon = Math.round(size * 0.52);
+  return (
+    <div
+      className={`rounded-full shrink-0 flex items-center justify-center${mt ? " mt-0.5" : ""}`}
+      style={{ width: size, height: size, background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+    >
+      <svg width={icon} height={icon} viewBox="0 0 14 14" fill="none">
+        <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
+  );
+}
+
 export function VelaAssistant() {
   const router = useRouter();
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
-  const bottomRef  = useRef<HTMLDivElement>(null);
-  const inputRef   = useRef<HTMLTextAreaElement>(null);
-  const panelRef   = useRef<HTMLDivElement>(null);
+  const [firstName, setFirstName] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef  = useRef<HTMLTextAreaElement>(null);
+  const panelRef  = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const profile = getProfile();
+    if (profile?.ownerName) setFirstName(profile.ownerName.split(" ")[0]);
+  }, []);
 
   // Welcome message on first open
   useEffect(() => {
     if (open && messages.length === 0) {
+      const hi = firstName ? `Hi ${firstName}! ` : "Hi! ";
       setMessages([{
         role: "assistant",
-        content: "Hi! I'm Vela AI, your business assistant. I can answer questions about your leads, appointments, and conversations — or help you craft replies and marketing copy.",
+        content: `${hi}I'm Vela, your AI business assistant. Ask me about your leads, appointments, or conversations — or I'll help you write replies and marketing copy.`,
       }]);
       setTimeout(() => inputRef.current?.focus(), 150);
     }
-  }, [open, messages.length]);
+  }, [open, messages.length, firstName]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,8 +66,7 @@ export function VelaAssistant() {
 
   const send = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
-    const userMsg: Message = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
     setLoading(true);
 
@@ -48,15 +74,26 @@ export function VelaAssistant() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          history: messages.slice(-10),
-        }),
+        body: JSON.stringify({ message: text, history: messages.slice(-10) }),
       });
       const data = await res.json() as { reply?: string; error?: string };
-      let reply = data.reply ?? "Sorry, I couldn't process that request.";
 
-      // Handle navigation command
+      if (!res.ok) {
+        const errText =
+          data.error === "Unauthorized"
+            ? "Please sign in to use Vela AI."
+            : data.error === "Tenant not found"
+            ? "Finish setting up your account to unlock the assistant."
+            : data.error === "AI not configured"
+            ? "The AI service isn't configured yet. Contact support."
+            : "Something went wrong — tap Retry below to try again.";
+        setMessages((prev) => [...prev, { role: "assistant", content: errText, isError: true, retryText: text }]);
+        setLoading(false);
+        return;
+      }
+
+      let reply = data.reply ?? "I couldn't generate a response. Please try again.";
+
       const navMatch = reply.match(/\[navigate:([^\]]+)\]/);
       if (navMatch) {
         reply = reply.replace(/\[navigate:[^\]]+\]/g, "").trim();
@@ -65,7 +102,12 @@ export function VelaAssistant() {
 
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Connection error. Please try again." }]);
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: "Connection error — check your internet and tap Retry.",
+        isError: true,
+        retryText: text,
+      }]);
     }
     setLoading(false);
   }, [loading, messages, router]);
@@ -83,7 +125,6 @@ export function VelaAssistant() {
         style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
         aria-label="Open Vela AI Assistant"
       >
-        {/* Pulse ring */}
         {!open && (
           <span className="absolute inset-0 rounded-full animate-ping opacity-25" style={{ background: "#FF6B35" }} />
         )}
@@ -99,16 +140,12 @@ export function VelaAssistant() {
         )}
       </button>
 
-      {/* Panel */}
       {open && (
         <>
           {/* Mobile backdrop */}
-          <div
-            className="fixed inset-0 z-[141] bg-black/40 sm:hidden"
-            onClick={() => setOpen(false)}
-          />
+          <div className="fixed inset-0 z-[141] bg-black/40 sm:hidden" onClick={() => setOpen(false)} />
 
-          {/* Slide-in panel */}
+          {/* Panel */}
           <div
             ref={panelRef}
             className="fixed z-[142] inset-0 sm:inset-auto sm:right-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
@@ -120,9 +157,9 @@ export function VelaAssistant() {
               style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+                    <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
                 <div>
@@ -172,26 +209,33 @@ export function VelaAssistant() {
             <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "assistant" && (
-                    <div className="w-6 h-6 rounded-full shrink-0 mr-2 mt-0.5 flex items-center justify-center text-white text-[9px] font-bold"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                      AI
+                  {msg.role === "assistant" && <VAvatar size={24} mt />}
+                  <div className={`flex flex-col max-w-[82%]${msg.role === "assistant" ? " ml-2" : ""}`}>
+                    <div
+                      className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                        msg.role === "user"
+                          ? "text-white rounded-br-sm"
+                          : msg.isError
+                          ? "bg-red-50 text-[#991B1B] rounded-bl-sm border border-red-100"
+                          : "bg-[#F3F4F6] text-[#111111] rounded-bl-sm"
+                      }`}
+                      style={msg.role === "user" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
+                    >
+                      {msg.content.split("\n").map((line, j, arr) => (
+                        <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
+                      ))}
                     </div>
-                  )}
-                  <div
-                    className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                      msg.role === "user"
-                        ? "text-white rounded-br-sm"
-                        : "bg-[#F3F4F6] text-[#111111] rounded-bl-sm"
-                    }`}
-                    style={msg.role === "user" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
-                  >
-                    {msg.content.split("\n").map((line, j, arr) => (
-                      <span key={j}>
-                        {line}
-                        {j < arr.length - 1 && <br />}
-                      </span>
-                    ))}
+                    {msg.isError && msg.retryText && (
+                      <button
+                        onClick={() => send(msg.retryText!)}
+                        className="mt-1.5 text-[11px] font-semibold text-[#FF6B35] hover:text-[#FF3366] flex items-center gap-1 transition-colors self-start"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6a4 4 0 014-4 4 4 0 013.46 2M10 2v3H7M10 6a4 4 0 01-4 4 4 4 0 01-3.46-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Retry
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -199,10 +243,7 @@ export function VelaAssistant() {
               {/* Typing indicator */}
               {loading && (
                 <div className="flex justify-start items-end gap-2">
-                  <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-white text-[9px] font-bold"
-                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                    AI
-                  </div>
+                  <VAvatar size={24} />
                   <div className="bg-[#F3F4F6] rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
                     {[0, 1, 2].map((i) => (
                       <div

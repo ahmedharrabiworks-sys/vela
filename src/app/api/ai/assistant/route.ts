@@ -14,8 +14,11 @@ export async function POST(req: NextRequest) {
   if (!message?.trim()) return NextResponse.json({ error: "Message required" }, { status: 400 });
 
   const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !user) {
+    console.error("[assistant] Auth failed:", authErr?.message ?? "no session");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
@@ -81,6 +84,10 @@ Keep responses concise, helpful, and conversational. Use markdown for structure 
   ];
 
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[assistant] OPENAI_API_KEY not set");
+      return NextResponse.json({ error: "AI not configured" }, { status: 500 });
+    }
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -92,7 +99,8 @@ Keep responses concise, helpful, and conversational. Use markdown for structure 
     const reply = completion.choices[0]?.message?.content ?? "Sorry, I couldn't process that request.";
     return NextResponse.json({ reply });
   } catch (err) {
-    console.error("Assistant AI error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[assistant] OpenAI error:", msg);
     return NextResponse.json({ error: "AI unavailable" }, { status: 500 });
   }
 }
