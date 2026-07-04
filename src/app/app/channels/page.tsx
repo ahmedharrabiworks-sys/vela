@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
@@ -485,7 +485,7 @@ type ChannelStatus = {
   whatsapp:  { connected: boolean; phone: string };
 };
 
-export default function ChannelsPage() {
+function ChannelsPageContent() {
   const { t }                 = useI18n();
   const { isStarter, config } = usePlan();
   const searchParams          = useSearchParams();
@@ -813,5 +813,13 @@ export default function ChannelsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChannelsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ChannelsPageContent />
+    </Suspense>
   );
 }
