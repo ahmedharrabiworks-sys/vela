@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
@@ -81,6 +81,7 @@ Keep responses concise, helpful, and conversational. Use markdown for structure 
   ];
 
   try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: msgs,

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/auth/instagram
  * Redirects the authenticated user to Meta's OAuth dialog.

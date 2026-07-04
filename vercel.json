@@ -4,11 +4,5 @@
   "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_APP_URL": "https://vela.ai"
-  },
-  "rewrites": [
-    {
-      "source": "/app/:path*",
-      "destination": "/app/:path*"
-    }
-  ]
+  }
 }
