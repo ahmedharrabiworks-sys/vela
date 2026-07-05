@@ -23,15 +23,16 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  const { data: tenant } = await admin
-    .from("tenants")
-    .select("id, business_name, industry, city")
-    .eq("owner_id", user.id)
-    .single();
+  let tenant: { id: string; business_name: string; industry: string; city: string };
+  try {
+    const { ensureTenant } = await import("@/lib/ensure-tenant");
+    tenant = await ensureTenant(user.id, user.email, user.user_metadata);
+  } catch (err) {
+    console.error("[assistant] ensureTenant error:", err);
+    return NextResponse.json({ error: "Account setup required" }, { status: 500 });
+  }
 
-  if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-
-  const tenantId = tenant.id as string;
+  const tenantId = tenant.id;
 
   // Load real-time data in parallel
   const [leadsRes, apptsRes, convsRes, cfgRes] = await Promise.all([

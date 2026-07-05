@@ -115,15 +115,19 @@ canvas {
 /* ── Dark mode ── */
 html.dark {
   color-scheme: dark;
-  --dm-bg:        #0D0400;
-  --dm-card:      #150700;
-  --dm-card2:     #1A0A00;
-  --dm-border:    #2D1500;
-  --dm-border2:   #220F00;
-  --dm-text:      #F5F0EB;
-  --dm-text2:     #D6C8BF;
-  --dm-muted:     #8A7A70;
-  --dm-faint:     #5C4F45;
+  /* Warm near-black backgrounds — no pure black, no cold grays */
+  --dm-bg:     #0F0A08;
+  --dm-card:   #1A130F;
+  --dm-card2:  #241A14;
+  --dm-border: rgba(255,255,255,0.08);
+  --dm-border2:rgba(255,255,255,0.05);
+  /* Typography */
+  --dm-text:   #F5F0EC;
+  --dm-text2:  #A89F98;
+  --dm-muted:  #7A7068;
+  --dm-faint:  #50463F;
+  /* Accents (slightly desaturated for dark comfort) */
+  --dm-orange: #FF7D4D;
 }
 
 html.dark body {
@@ -132,20 +136,24 @@ html.dark body {
 }
 
 /* Main layout surfaces */
-html.dark .bg-\[\#F8F9FA\]  { background-color: var(--dm-bg) !important; }
-html.dark .bg-\[\#F9FAFB\]  { background-color: var(--dm-card) !important; }
-html.dark .bg-\[\#FAFAFA\]   { background-color: var(--dm-card) !important; }
+html.dark .bg-\[\#F8F9FA\]  { background-color: var(--dm-bg)    !important; }
+html.dark .bg-\[\#F9FAFB\]  { background-color: var(--dm-card)  !important; }
+html.dark .bg-\[\#FAFAFA\]  { background-color: var(--dm-card)  !important; }
 html.dark .bg-\[\#F3F4F6\]  { background-color: var(--dm-card2) !important; }
-html.dark .bg-white          { background-color: var(--dm-card) !important; }
+html.dark .bg-white         { background-color: var(--dm-card)  !important; }
+html.dark .bg-\[\#111111\]  { background-color: var(--dm-card2) !important; }
+html.dark .bg-\[\#111827\]  { background-color: var(--dm-card2) !important; }
 
 /* Borders */
-html.dark .border-\[\#E5E7EB\] { border-color: var(--dm-border) !important; }
+html.dark .border-\[\#E5E7EB\] { border-color: var(--dm-border)  !important; }
 html.dark .border-\[\#F3F4F6\] { border-color: var(--dm-border2) !important; }
-html.dark .border-\[\#D1D5DB\] { border-color: var(--dm-border) !important; }
+html.dark .border-\[\#D1D5DB\] { border-color: var(--dm-border)  !important; }
+html.dark .border-\[\#E5E7EB\]\/40 { border-color: var(--dm-border) !important; }
 
 /* Text */
-html.dark .text-\[\#111111\]  { color: var(--dm-text) !important; }
-html.dark .text-\[\#1A0A00\]  { color: var(--dm-text) !important; }
+html.dark .text-\[\#111111\]  { color: var(--dm-text)  !important; }
+html.dark .text-\[\#111827\]  { color: var(--dm-text)  !important; }
+html.dark .text-\[\#1A0A00\]  { color: var(--dm-text)  !important; }
 html.dark .text-\[\#374151\]  { color: var(--dm-text2) !important; }
 html.dark .text-\[\#6B7280\]  { color: var(--dm-muted) !important; }
 html.dark .text-\[\#9CA3AF\]  { color: var(--dm-faint) !important; }
@@ -154,20 +162,39 @@ html.dark .text-\[\#9CA3AF\]  { color: var(--dm-faint) !important; }
 html.dark .divide-\[\#E5E7EB\] > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--dm-border) !important;
 }
+html.dark .divide-\[\#F9FAFB\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--dm-border2) !important;
+}
 
-/* Hover states that reference light colors */
-html.dark .hover\:bg-\[\#F9FAFB\]:hover  { background-color: var(--dm-card2) !important; }
-html.dark .hover\:bg-\[\#FAFAFA\]:hover   { background-color: var(--dm-card2) !important; }
-html.dark .hover\:bg-\[\#F3F4F6\]:hover  { background-color: var(--dm-card2) !important; }
-html.dark .hover\:bg-\[\#FFF5F0\]:hover  { background-color: rgba(255,107,53,0.12) !important; }
+/* Hover states */
+html.dark .hover\:bg-\[\#F9FAFB\]:hover { background-color: var(--dm-card2)             !important; }
+html.dark .hover\:bg-\[\#FAFAFA\]:hover  { background-color: var(--dm-card2)             !important; }
+html.dark .hover\:bg-\[\#F3F4F6\]:hover { background-color: var(--dm-card2)             !important; }
+html.dark .hover\:bg-\[\#FFF5F0\]:hover { background-color: rgba(255,125,77,0.12)       !important; }
+html.dark .hover\:bg-\[\#FAFAFA\]       { background-color: var(--dm-card2)             !important; }
+
+/* Active/selected states */
+html.dark .bg-\[\#FFF8F5\]   { background-color: rgba(255,125,77,0.08) !important; }
+html.dark .bg-\[\#FFF3EE\]   { background-color: rgba(255,125,77,0.10) !important; }
+html.dark .bg-\[\#FFF5F0\]   { background-color: rgba(255,125,77,0.10) !important; }
+
+/* Borders active/selected */
+html.dark .border-\[\#FFD5C2\] { border-color: rgba(255,125,77,0.25) !important; }
 
 /* Kbd badges */
-html.dark kbd { background-color: var(--dm-card2) !important; }
+html.dark kbd { background-color: var(--dm-card2) !important; border-color: var(--dm-border) !important; }
 
-/* Input / textarea */
-html.dark input, html.dark textarea, html.dark select {
-  background-color: var(--dm-card) !important;
-  color: var(--dm-text) !important;
-  border-color: var(--dm-border) !important;
+/* Input / textarea / select */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark textarea,
+html.dark select {
+  background-color: var(--dm-card)   !important;
+  color:            var(--dm-text)   !important;
+  border-color:     var(--dm-border) !important;
 }
-html.dark input::placeholder, html.dark textarea::placeholder { color: var(--dm-muted) !important; }
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: var(--dm-muted) !important; }
+
+/* Chart gridlines in dark mode */
+html.dark svg line[stroke="#F3F4F6"] { stroke: rgba(255,255,255,0.06) !important; }
+html.dark svg text[fill="#9CA3AF"]   { fill:   var(--dm-faint) !important; }

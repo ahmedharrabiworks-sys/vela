@@ -101,14 +101,14 @@ const LEADS = [
 ];
 
 const APPOINTMENTS = [
-  { id: 1, time: "09:00", name: "Ahmed Al-Rashid",   svc: "Dental Cleaning",     ch: "WhatsApp",  status: "confirmed" },
-  { id: 2, time: "10:30", name: "Sara Khalid",        svc: "Teeth Whitening",     ch: "Instagram", status: "confirmed" },
-  { id: 3, time: "11:00", name: "Mohammed Al-Zaabi",  svc: "Root Canal Consult",  ch: "Website",   status: "pending" },
-  { id: 4, time: "12:00", name: "Layla Hassan",       svc: "Consultation",        ch: "WhatsApp",  status: "confirmed" },
-  { id: 5, time: "14:00", name: "Omar Sharif",        svc: "General Check-up",    ch: "Instagram", status: "confirmed" },
-  { id: 6, time: "15:00", name: "Reem Al-Mazrouei",  svc: "Emergency Visit",     ch: "WhatsApp",  status: "confirmed" },
-  { id: 7, time: "15:30", name: "Fatima Al-Nasser",  svc: "Braces Consultation", ch: "Website",   status: "pending" },
-  { id: 8, time: "16:30", name: "Khalid Mansour",    svc: "Dental Cleaning",     ch: "WhatsApp",  status: "confirmed" },
+  { id: 1, time: "09:00", name: "Ahmed Al-Rashid",   phone: "+971 50 123 4567", svc: "Dental Cleaning",     ch: "WhatsApp",  status: "confirmed" },
+  { id: 2, time: "10:30", name: "Sara Khalid",        phone: "+971 55 234 5678", svc: "Teeth Whitening",     ch: "Instagram", status: "confirmed" },
+  { id: 3, time: "11:00", name: "Mohammed Al-Zaabi",  phone: "+971 52 345 6789", svc: "Root Canal Consult",  ch: "Website",   status: "pending" },
+  { id: 4, time: "12:00", name: "Layla Hassan",       phone: "+971 56 456 7890", svc: "Consultation",        ch: "WhatsApp",  status: "confirmed" },
+  { id: 5, time: "14:00", name: "Omar Sharif",        phone: "+971 54 567 8901", svc: "General Check-up",    ch: "Instagram", status: "confirmed" },
+  { id: 6, time: "15:00", name: "Reem Al-Mazrouei",  phone: "+971 50 678 9012", svc: "Emergency Visit",     ch: "WhatsApp",  status: "confirmed" },
+  { id: 7, time: "15:30", name: "Fatima Al-Nasser",  phone: "+971 55 789 0123", svc: "Braces Consultation", ch: "Website",   status: "pending" },
+  { id: 8, time: "16:30", name: "Khalid Mansour",    phone: "+971 52 890 1234", svc: "Dental Cleaning",     ch: "WhatsApp",  status: "confirmed" },
 ];
 
 const STAGE_ORDER = ["New", "Contacted", "Qualified", "Booked", "Client"] as const;
@@ -148,74 +148,100 @@ const TOOLTIP_STEPS = [
   },
 ];
 
+function TourDots({ total, current }: { total: number; current: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: total }).map((_, i) => (
+        <span key={i} className="rounded-full transition-all duration-300"
+          style={{ width: i === current - 1 ? 16 : 6, height: 6,
+            background: i === current - 1 ? "#FF6B35" : "rgba(255,255,255,0.25)" }} />
+      ))}
+    </div>
+  );
+}
+
+function TourCard({ step, total, current, onNext, onSkip }: {
+  step: typeof TOOLTIP_STEPS[0]; total: number; current: number;
+  onNext: () => void; onSkip: () => void;
+}) {
+  const isFinal = "isFinal" in step && step.isFinal;
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-200
+      bg-[#1C1410] border border-white/10 rounded-2xl p-5 shadow-2xl"
+      style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07)" }}>
+      <div className="flex items-center justify-between mb-4">
+        <TourDots total={total} current={current} />
+        <button onClick={onSkip} className="text-white/30 hover:text-white/50 text-[11px] transition-colors">Skip</button>
+      </div>
+      <h3 className="text-sm font-bold text-white mb-1.5">{step.title}</h3>
+      <p className="text-xs text-white/55 leading-relaxed mb-4">{step.body}</p>
+      {isFinal ? (
+        <div className="flex gap-2">
+          <button onClick={onSkip} className="flex-1 py-2 rounded-xl text-xs text-white/35 border border-white/10 hover:border-white/20 transition-colors">Later</button>
+          <Link href="/auth/signup" onClick={onSkip}
+            className="flex-[2] py-2 rounded-xl text-xs font-bold text-white text-center hover:opacity-90 transition-opacity"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            Get Started →
+          </Link>
+        </div>
+      ) : (
+        <button onClick={onNext} className="w-full py-2.5 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
+          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+          Next →
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Tooltip({ step, onNext, onSkip }: { step: number; onNext: () => void; onSkip: () => void }) {
   const current = TOOLTIP_STEPS[step - 1];
   if (!current) return null;
   const isCentered = !("navIndex" in current) || current.navIndex === undefined;
-  const navIdx = "navIndex" in current ? current.navIndex ?? 0 : 0;
-  const topPos = 40 + 56 + 4 + navIdx * 48 + 12;
+  const navIdx = "navIndex" in current ? (current.navIndex ?? 0) : 0;
+  // Sidebar: demo banner (40) + sidebar header (56) + padding (4) + items before (navIdx * 44)
+  const spotTop  = 40 + 56 + 4 + navIdx * 44;
+  const spotH    = 44;
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-[60]" onClick={onSkip} />
+      {/* Dimming overlay with spotlight cutout */}
+      {!isCentered ? (
+        <>
+          {/* Top dim */}
+          <div className="fixed z-[60] left-0 right-0 top-0 bg-black/55 pointer-events-none" style={{ height: spotTop }} />
+          {/* Spotlight row — transparent gap, but sidebar width only */}
+          <div className="fixed z-[60] right-0 bg-black/55 pointer-events-none" style={{ left: 208, top: spotTop, height: spotH }} />
+          {/* Bottom dim */}
+          <div className="fixed z-[60] left-0 right-0 bg-black/55 pointer-events-none" style={{ top: spotTop + spotH, bottom: 0 }} />
+          {/* Click-to-skip overlay */}
+          <div className="fixed inset-0 z-[59]" onClick={onSkip} />
+        </>
+      ) : (
+        <div className="fixed inset-0 bg-black/50 z-[60]" onClick={onSkip} />
+      )}
+
       {isCentered ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4">
-          <div className="bg-[#111111] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">{step} / {TOOLTIP_STEPS.length}</span>
-              <button onClick={onSkip} className="text-white/30 hover:text-white/60 text-xs transition-colors">Skip tour</button>
-            </div>
-            <h3 className="text-base font-bold text-white mb-2">{current.title}</h3>
-            <p className="text-sm text-white/55 leading-relaxed mb-5">{current.body}</p>
-            {"isFinal" in current && current.isFinal ? (
-              <div className="flex gap-2">
-                <button onClick={onSkip} className="flex-1 py-2.5 rounded-xl text-sm text-white/40 border border-white/10 hover:border-white/20 transition-colors">Maybe later</button>
-                <Link href="/auth/signup" onClick={onSkip}
-                  className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 transition-opacity"
-                  style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                  Get Started →
-                </Link>
-              </div>
-            ) : (
-              <button onClick={onNext} className="w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                Next →
-              </button>
-            )}
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-sm">
+            <TourCard step={current} total={TOOLTIP_STEPS.length} current={step} onNext={onNext} onSkip={onSkip} />
           </div>
         </div>
       ) : (
         <>
           {/* Desktop: right of sidebar */}
-          <div className="hidden md:block fixed z-[70]"
-            style={{ left: 208 + 16, top: topPos, maxWidth: 280 }}>
-            <div className="relative bg-[#111111] border border-white/10 rounded-2xl p-5 shadow-2xl">
-              <div className="absolute left-0 top-6 -translate-x-1.5 w-3 h-3 rotate-45 bg-[#111111] border-l border-b border-white/10" />
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">{step} / {TOOLTIP_STEPS.length}</span>
-                <button onClick={onSkip} className="text-white/30 hover:text-white/60 text-xs transition-colors">Skip</button>
-              </div>
-              <h3 className="text-sm font-bold text-white mb-1.5">{current.title}</h3>
-              <p className="text-xs text-white/55 leading-relaxed mb-4">{current.body}</p>
-              <button onClick={onNext} className="w-full py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                Next →
-              </button>
+          <div className="hidden md:block fixed z-[70] pointer-events-none"
+            style={{ left: 208 + 16, top: spotTop - 4, maxWidth: 276 }}>
+            <div className="pointer-events-auto relative">
+              <div className="absolute left-0 top-5 -translate-x-2 w-3.5 h-3.5 rotate-45 bg-[#1C1410] border-l border-b border-white/10" />
+              <TourCard step={current} total={TOOLTIP_STEPS.length} current={step} onNext={onNext} onSkip={onSkip} />
             </div>
           </div>
           {/* Mobile: bottom sheet */}
-          <div className="md:hidden fixed left-0 right-0 z-[70] px-4" style={{ bottom: "max(16px, env(safe-area-inset-bottom))" }}>
-            <div className="bg-[#111111] border border-white/10 rounded-2xl p-5 shadow-2xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-[#FF6B35] uppercase tracking-wider">{step} / {TOOLTIP_STEPS.length}</span>
-                <button onClick={onSkip} className="text-white/30 hover:text-white/60 text-xs transition-colors">Skip</button>
-              </div>
-              <h3 className="text-sm font-bold text-white mb-1.5">{current.title}</h3>
-              <p className="text-xs text-white/55 leading-relaxed mb-4">{current.body}</p>
-              <button onClick={onNext} className="w-full py-2.5 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                Next →
-              </button>
+          <div className="md:hidden fixed left-0 right-0 z-[70] px-4 pointer-events-none"
+            style={{ bottom: "max(16px, env(safe-area-inset-bottom))" }}>
+            <div className="pointer-events-auto">
+              <TourCard step={current} total={TOOLTIP_STEPS.length} current={step} onNext={onNext} onSkip={onSkip} />
             </div>
           </div>
         </>
@@ -416,46 +442,75 @@ function LeadsView() {
   );
 }
 
-function AppointmentsView() {
-  const days = ["Mon 23", "Tue 24", "Wed 25", "Thu 26", "Fri 27", "Sat 28", "Sun 29"];
-  const [activeDay, setActiveDay] = useState(5);
+const CH_COLOR: Record<string, string> = { WhatsApp: "#25D366", Instagram: "#E1306C", Website: "#3B82F6" };
 
+function AppointmentsView() {
   return (
-    <div className="space-y-5">
-      <h1 className="text-xl font-bold text-[#111111]">Appointments</h1>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {days.map((d, i) => (
-          <button key={d} onClick={() => setActiveDay(i)}
-            className={`flex flex-col items-center px-4 py-3 rounded-xl shrink-0 border transition-all min-h-[64px] min-w-[60px] ${
-              activeDay === i ? "text-white border-transparent" : "border-[#E5E7EB] bg-white text-[#6B7280] hover:border-[#FF6B35]/30"
-            }`}
-            style={activeDay === i ? { background: "#FF6B35" } : {}}>
-            <span className="text-[10px] font-medium">{d.split(" ")[0]}</span>
-            <span className="text-lg font-extrabold leading-tight">{d.split(" ")[1]}</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-xl font-bold text-[#111111]">Appointments</h1>
+        <div className="flex gap-2">
+          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white text-xs font-semibold text-[#374151] hover:border-[#FF6B35]/30 transition-colors">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 3.5h10M3 6.5h7M4.5 9.5h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            Export CSV
           </button>
-        ))}
+          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            + New Appointment
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#F3F4F6]">
-          <p className="font-bold text-[#111111] text-sm">{days[activeDay]}</p>
-          <p className="text-xs text-[#6B7280]">{activeDay === 5 ? "8 appointments scheduled" : "No appointments scheduled"}</p>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-sm">
+            <thead>
+              <tr className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                {["Patient", "Phone", "Service", "Date & Time", "Channel", "Status", "Actions"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider whitespace-nowrap first:pl-5">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F3F4F6]">
+              {APPOINTMENTS.map((a, i) => (
+                <tr key={a.id} className={`hover:bg-[#FAFAFA] transition-colors ${i % 2 === 1 ? "bg-[#FEFEFE]" : ""}`}>
+                  <td className="px-4 py-3.5 pl-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[10px] font-bold text-[#374151] shrink-0">{a.name[0]}</div>
+                      <span className="font-semibold text-[#111111] text-[13px] whitespace-nowrap">{a.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5 text-[13px] text-[#6B7280] whitespace-nowrap font-mono">{a.phone}</td>
+                  <td className="px-4 py-3.5 text-[13px] text-[#374151] whitespace-nowrap">{a.svc}</td>
+                  <td className="px-4 py-3.5 text-[13px] text-[#374151] whitespace-nowrap">Sat 28 Jun · {a.time}</td>
+                  <td className="px-4 py-3.5">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: `${CH_COLOR[a.ch]}18`, color: CH_COLOR[a.ch] }}>
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: CH_COLOR[a.ch] }} />
+                      {a.ch}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      a.status === "confirmed" ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-600"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${a.status === "confirmed" ? "bg-green-500" : "bg-orange-400"}`} />
+                      {a.status === "confirmed" ? "Confirmed" : "Pending"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <button className="px-2.5 py-1 text-[11px] font-semibold text-[#374151] border border-[#E5E7EB] rounded-lg hover:border-[#FF6B35]/40 transition-colors">Edit</button>
+                      <button className="p-1 text-[#9CA3AF] hover:text-red-400 transition-colors rounded-lg hover:bg-red-50">
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M5 3.5V2h3v1.5M3.5 3.5l.5 7h5l.5-7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        {activeDay === 5 ? (
-          APPOINTMENTS.map((a) => (
-            <div key={a.id} className="flex items-center gap-4 px-6 py-4 border-b border-[#F9FAFB] last:border-none hover:bg-[#FAFAFA] transition-colors">
-              <span className="text-xs font-mono text-[#6B7280] w-12 shrink-0">{a.time}</span>
-              <div className="w-px h-8 rounded-full shrink-0 bg-[#FF6B35]" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[#111111] text-sm">{a.name}</p>
-                <p className="text-xs text-[#6B7280]">{a.svc}</p>
-              </div>
-              <StatusDot status={a.status} />
-            </div>
-          ))
-        ) : (
-          <div className="px-6 py-16 text-center text-[#9CA3AF] text-sm">No appointments for this day</div>
-        )}
       </div>
     </div>
   );
@@ -771,22 +826,111 @@ Same-day emergency appointments available.
       )}
 
       {tool === "video" && (
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-6 py-16 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center mx-auto mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="12" height="12" rx="2" stroke="#9CA3AF" strokeWidth="1.4"/><path d="M14 8l4-2v8l-4-2V8z" stroke="#9CA3AF" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4">
+            <p className="text-sm font-bold text-[#111111]">Video Script Generator</p>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Format</label>
+              <div className="flex gap-2 flex-wrap">
+                {["Reels / TikTok", "YouTube Shorts", "Story"].map((f) => (
+                  <button key={f} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${f === "Reels / TikTok" ? "bg-[#111111] text-white border-[#111111]" : "border-[#E5E7EB] text-[#6B7280] bg-white"}`}>{f}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Goal</label>
+              <div className="flex gap-2 flex-wrap">
+                {["Book appointments", "Promote offer", "Build trust"].map((g) => (
+                  <button key={g} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${g === "Book appointments" ? "bg-[#111111] text-white border-[#111111]" : "border-[#E5E7EB] text-[#6B7280] bg-white"}`}>{g}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Topic</label>
+              <textarea rows={2} defaultValue="Why patients trust Ahmed Dental Clinic in Dubai Marina"
+                className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none" />
+            </div>
+            <button disabled className="w-full py-3 rounded-xl text-sm font-bold text-white/80 cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              Generate Script →
+            </button>
           </div>
-          <p className="text-sm font-bold text-[#111111] mb-1">Video Script Generator</p>
-          <p className="text-xs text-[#9CA3AF] max-w-xs mx-auto">Sign up to generate engaging Reels, TikTok, and YouTube Shorts scripts for your business</p>
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-[#111111]">Example Output</p>
+              <span className="text-[10px] font-bold text-[#FF6B35] bg-[#FF6B35]/10 px-2 py-0.5 rounded-full">30s · Reels</span>
+            </div>
+            <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4 space-y-3">
+              {[
+                { tag: "HOOK", color: "#FF6B35", bg: "#FF6B35", text: `[0–5s] CLOSE-UP of teeth transformation\n\n"Your smile could look like this — in just one visit."\n\n📍 Text overlay: Ahmed Dental Clinic, Dubai Marina` },
+                { tag: "BODY", color: "#3B82F6", bg: "#3B82F6", text: `[5–20s] B-roll: clinic interior, friendly staff, patient smiling\n\nVoiceover:\n"We offer professional teeth whitening, same-day emergency visits, and braces consultations — all in one place.\n\nDaman & ADNIC insurance accepted.\nResults that speak for themselves."` },
+                { tag: "CTA",  color: "#16A34A", bg: "#16A34A", text: `[20–30s] Direct to camera\n\n"Book your free consultation via WhatsApp — link in bio. Slots filling up fast this week!"\n\n📲 On-screen: WhatsApp number + Book Now button` },
+              ].map((s) => (
+                <div key={s.tag}>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5 inline-block"
+                    style={{ background: `${s.bg}18`, color: s.color }}>{s.tag}</span>
+                  <pre className="text-[11px] text-[#374151] whitespace-pre-wrap leading-relaxed font-sans">{s.text}</pre>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       {tool === "broadcast" && (
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl px-6 py-16 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center mx-auto mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 6h14M3 10h10M3 14h7" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round"/></svg>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5 space-y-4">
+            <p className="text-sm font-bold text-[#111111]">WhatsApp Broadcast</p>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Audience</label>
+              <div className="flex gap-2 flex-wrap">
+                {["All Patients", "Booked — June", "Inactive 30d+"].map((a) => (
+                  <button key={a} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${a === "All Patients" ? "bg-[#111111] text-white border-[#111111]" : "border-[#E5E7EB] text-[#6B7280] bg-white"}`}>{a}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mb-2 block">Message</label>
+              <textarea rows={6} defaultValue={`Hi {{name}} 👋\n\nThis July, we're offering 20% off professional teeth whitening at Ahmed Dental Clinic — exclusively for our existing patients!\n\n✨ Was AED 800 → Now AED 640\n📅 Limited slots: July 5–20 only\n\nReply YES to book your slot, or tap the link below to choose your time:\n👉 Book Now: wa.me/97150xxxxxxx\n\nSee you soon!\n— Dr. Ahmed & Team`}
+                className="w-full text-xs border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none leading-relaxed" />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-[#9CA3AF] px-1">
+              <span>184 recipients · Est. delivery: &lt;2 min</span>
+              <span className="text-[#FF6B35] font-semibold">Preview →</span>
+            </div>
+            <button disabled className="w-full py-3 rounded-xl text-sm font-bold text-white/80 cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg,#25D366,#128C7E)" }}>
+              Send Broadcast via WhatsApp →
+            </button>
           </div>
-          <p className="text-sm font-bold text-[#111111] mb-1">WhatsApp Broadcast</p>
-          <p className="text-xs text-[#9CA3AF] max-w-xs mx-auto">Sign up to send bulk WhatsApp messages to all your patients at once — promotions, reminders, and more</p>
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-[#111111]">Message Preview</p>
+              <span className="text-[10px] font-bold text-[#25D366] bg-[#25D366]/10 px-2 py-0.5 rounded-full">WhatsApp</span>
+            </div>
+            <div className="bg-[#ECF5E8] rounded-2xl p-4 max-w-xs mx-auto"
+              style={{ background: "linear-gradient(180deg,#E2F5E1 0%,#EDF7EC 100%)" }}>
+              <div className="bg-white rounded-xl p-3.5 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 pb-2 border-b border-[#F3F4F6]">
+                  <div className="w-7 h-7 rounded-full bg-[#FF6B35]/15 flex items-center justify-center text-xs font-bold text-[#FF6B35]">A</div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[#111111]">Ahmed Dental Clinic</p>
+                    <p className="text-[9px] text-[#25D366]">Official Business</p>
+                  </div>
+                </div>
+                <pre className="text-[11px] text-[#111111] whitespace-pre-wrap leading-relaxed font-sans">{`Hi Sara 👋\n\nThis July, we're offering 20% off professional teeth whitening — exclusively for our existing patients!\n\n✨ Was AED 800 → Now AED 640\n📅 Slots: July 5–20 only\n\nReply YES to book!`}</pre>
+                <p className="text-[9px] text-[#9CA3AF] text-right">10:31 AM ✓✓</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-[#F3F4F6] grid grid-cols-3 gap-2 text-center">
+              {[{ l: "Recipients", v: "184" }, { l: "Open rate", v: "91%" }, { l: "Replies", v: "—" }].map((s) => (
+                <div key={s.l}>
+                  <p className="text-sm font-bold text-[#111111]">{s.v}</p>
+                  <p className="text-[10px] text-[#9CA3AF]">{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -848,7 +992,7 @@ export default function DemoPage() {
 
           <div className="h-14 flex items-center justify-between px-4 border-b border-white/5 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-white text-lg tracking-tight">vela</span>
+              <Link href="/" className="font-extrabold text-white text-lg tracking-tight hover:text-white/80 transition-colors">vela</Link>
               <span className="text-[9px] font-bold text-[#FF6B35] bg-[#FF6B35]/15 px-1.5 py-0.5 rounded-full">DEMO</span>
             </div>
             <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white transition-all">

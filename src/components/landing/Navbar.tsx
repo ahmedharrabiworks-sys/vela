@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
-import { useTheme } from "@/lib/theme";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -14,7 +13,6 @@ const navLinks = [
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -51,17 +49,6 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={toggle}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${scrolled ? "text-[#6B7280] hover:text-[#FF6B35]" : "text-white/70 hover:text-white"}`}
-            aria-label="Toggle dark mode"
-          >
-            {theme === "dark" ? (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.4"/><path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M13.5 9.4A6 6 0 016.6 2.5a5.5 5.5 0 100 11 6 6 0 006.9-4.1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
-            )}
-          </button>
           <Link
             href="/auth/login"
             className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-200 ${

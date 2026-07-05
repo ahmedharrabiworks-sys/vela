@@ -236,7 +236,7 @@ function CountryPicker({ value, onChange }: { value: Country; onChange: (c: Coun
 }
 
 /* ── WhatsApp modal ── */
-function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect: (phone: string) => void }) {
+function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect: (phone: string, isPending?: boolean) => void }) {
   const UAE = COUNTRIES.find((c) => c.iso2 === "AE")!;
   const [step, setStep]               = useState<0 | 1 | 2>(0);
   const [country, setCountry]         = useState<Country>(UAE);
@@ -246,7 +246,11 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
   const [verifying, setVerifying]     = useState(false);
   const [sendMsg, setSendMsg]         = useState<{ text: string; isError: boolean } | null>(null);
   const [verifyError, setVerifyError] = useState("");
+  const [isPendingMode, setIsPendingMode] = useState(false);
+  const [phoneErr, setPhoneErr]       = useState("");
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const localDigits = number.replace(/\s/g, "").length;
 
   const fullPhone = `${country.dial}${number.replace(/\s/g, "")}`;
   const fullCode = code.join("");
@@ -277,7 +281,10 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
   };
 
   const handleSendCode = async () => {
-    if (!number.trim()) return;
+    setPhoneErr("");
+    if (!number.trim()) { setPhoneErr("Please enter your phone number."); return; }
+    if (localDigits < 6) { setPhoneErr("Number too short — please include all digits."); return; }
+    if (localDigits > 15) { setPhoneErr("Number too long — please check the format."); return; }
     setSending(true);
     setSendMsg(null);
     try {
@@ -288,15 +295,17 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
       });
       const data = await res.json() as { success: boolean; notConfigured?: boolean; message?: string };
       if (data.notConfigured) {
-        setSendMsg({ text: "Demo mode: Twilio not configured yet. Enter any 6-digit code to continue.", isError: false });
+        // Twilio not configured — show pending state, skip code entry
+        setIsPendingMode(true);
+        setStep(2);
       } else if (!data.success) {
         setSendMsg({ text: data.message ?? "Failed to send code", isError: true });
         setSending(false);
         return;
       } else {
         setSendMsg({ text: `Verification code sent to ${fullPhone}`, isError: false });
+        setStep(1);
       }
-      setStep(1);
     } catch {
       setSendMsg({ text: "Network error. Please try again.", isError: true });
     }
@@ -360,6 +369,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
                 />
               </div>
               <p className="text-[11px] text-[#9CA3AF] mt-1.5">Number: {fullPhone || "—"}</p>
+            {phoneErr && <p className="text-xs text-red-500 mt-1.5">{phoneErr}</p>}
             </div>
             {sendMsg && (
               <p className={`text-xs mb-3 px-3 py-2 rounded-lg ${sendMsg.isError ? "bg-red-50 text-red-600" : "bg-[#F0FFF4] text-green-700"}`}>
@@ -424,7 +434,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
           </>
         )}
 
-        {step === 2 && (
+        {step === 2 && !isPendingMode && (
           <div className="flex flex-col items-center text-center py-4">
             <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(37,211,102,0.1)", border: "2px solid rgba(37,211,102,0.25)" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -435,11 +445,37 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
             <p className="text-sm font-semibold text-[#374151] mb-1">{fullPhone}</p>
             <p className="text-xs text-[#9CA3AF] mb-6">Vela AI will now reply to your WhatsApp messages automatically.</p>
             <button
-              onClick={() => onConnect(fullPhone)}
+              onClick={() => onConnect(fullPhone, false)}
               className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90"
               style={{ background: "#FF6B35" }}
             >
               Done
+            </button>
+          </div>
+        )}
+
+        {step === 2 && isPendingMode && (
+          <div className="flex flex-col items-center text-center py-4">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(245,158,11,0.1)", border: "2px solid rgba(245,158,11,0.25)" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 9v4M12 17h.01" stroke="#D97706" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#D97706" strokeWidth="1.8" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h4 className="font-bold text-[#111111] mb-1">Setup Saved — Preview Mode</h4>
+            <p className="text-sm font-semibold text-[#374151] mb-1">{fullPhone}</p>
+            <p className="text-xs text-[#6B7280] mb-5 leading-relaxed max-w-xs">
+              WhatsApp connection will activate when your account is approved. Your number has been saved and will go live automatically.
+            </p>
+            <div className="w-full p-3 rounded-xl bg-amber-50 border border-amber-200 mb-5">
+              <p className="text-xs text-amber-700 font-medium">Pending activation — not yet live</p>
+            </div>
+            <button
+              onClick={() => onConnect(fullPhone, true)}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90"
+              style={{ background: "#FF6B35" }}
+            >
+              Got it
             </button>
           </div>
         )}
@@ -482,7 +518,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
 ══════════════════════════════════════ */
 type ChannelStatus = {
   instagram: { connected: boolean; username: string };
-  whatsapp:  { connected: boolean; phone: string };
+  whatsapp:  { connected: boolean; phone: string; pending?: boolean };
 };
 
 function ChannelsPageContent() {
@@ -569,11 +605,14 @@ function ChannelsPageContent() {
     }
   };
 
-  const connectWhatsApp = (phone: string) => {
-    setChannels((prev) => ({ ...prev, whatsapp: { connected: true, phone } }));
+  const connectWhatsApp = (phone: string, isPending = false) => {
+    setChannels((prev) => ({ ...prev, whatsapp: { connected: !isPending, phone, pending: isPending } }));
     setModal(null);
-    setToast({ msg: "WhatsApp Business connected", type: "success" });
-    track("channel_connected", { channel: "whatsapp" });
+    setToast({
+      msg: isPending ? "Setup saved — activation pending" : "WhatsApp Business connected",
+      type: isPending ? "info" : "success",
+    });
+    if (!isPending) track("channel_connected", { channel: "whatsapp" });
   };
 
   const disconnect = async (ch: "instagram" | "whatsapp") => {
@@ -676,7 +715,8 @@ function ChannelsPageContent() {
         {/* Social channels */}
         {CHANNELS.map((ch) => {
           const isConnected = ch.key === "instagram" ? channels.instagram.connected : channels.whatsapp.connected;
-          const isLocked = isStarter && !isConnected && connectedSocialCount >= config.channels;
+          const isPending   = ch.key === "whatsapp" && channels.whatsapp.pending && !channels.whatsapp.connected;
+          const isLocked = isStarter && !isConnected && !isPending && connectedSocialCount >= config.channels;
           const isDisc = disconnecting === ch.key;
 
           return (
@@ -709,6 +749,11 @@ function ChannelsPageContent() {
                             </svg>
                             Pro only
                           </span>
+                        ) : isPending ? (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            Pending activation
+                          </span>
                         ) : (
                           <span className={`flex items-center gap-1 text-[10px] font-semibold ${isConnected ? "text-green-600" : "text-[#9CA3AF]"}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
@@ -729,6 +774,10 @@ function ChannelsPageContent() {
                     >
                       {isDisc ? "…" : t("common.disconnect")}
                     </button>
+                  ) : isPending ? (
+                    <span className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-amber-200 text-amber-600 bg-amber-50 shrink-0">
+                      Pending
+                    </span>
                   ) : (
                     <button
                       onClick={() => handleConnectClick(ch.key)}

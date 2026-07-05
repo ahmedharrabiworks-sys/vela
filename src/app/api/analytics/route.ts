@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
+import { ensureTenant } from "@/lib/ensure-tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -8,12 +9,18 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  let tenantId: string;
+  try {
+    const tenant = await ensureTenant(user.id, user.email, user.user_metadata);
+    tenantId = tenant.id;
+  } catch (err) {
+    console.error("[analytics] ensureTenant error:", err);
+    return NextResponse.json({ error: "Failed to load analytics" }, { status: 500 });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
-  const { data: tenant } = await admin.from("tenants").select("id").eq("owner_id", user.id).single();
-  if (!tenant) return NextResponse.json({ error: "No tenant" }, { status: 404 });
 
-  const tenantId = tenant.id as string;
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
   const [leadsRes, convsRes, apptsRes] = await Promise.all([

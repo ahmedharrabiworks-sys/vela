@@ -111,7 +111,10 @@ export default function AnalyticsPage() {
     if (!isPro) { setLoading(false); return; }
     fetch("/api/analytics")
       .then((r) => r.json())
-      .then((d) => { setAnalytics(d as AnalyticsData); setLoading(false); })
+      .then((d: AnalyticsData & { error?: string }) => {
+        if (d && !d.error) setAnalytics(d);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [isPro]);
 

@@ -387,25 +387,8 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* Empty state */}
-      {!loading && appointments.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-white rounded-2xl border border-[#E5E7EB]">
-          <div className="w-12 h-12 rounded-2xl bg-[#F3F4F6] flex items-center justify-center mb-4">
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <rect x="2" y="3" width="18" height="17" rx="2" stroke="#9CA3AF" strokeWidth="1.4"/>
-              <path d="M7 2v2M15 2v2M2 8h18" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <p className="text-sm font-bold text-[#374151] mb-1">No appointments yet</p>
-          <p className="text-xs text-[#9CA3AF] mb-4 max-w-xs">Appointments booked through your AI chat will appear here automatically.</p>
-          <Link href="/app/channels" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90" style={{ background: "#FF6B35" }}>
-            Connect a channel
-          </Link>
-        </div>
-      )}
-
-      {/* Table */}
-      {(loading || appointments.length > 0) && (
+      {/* Table — always rendered; empty state lives inside */}
+      {(
         <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
@@ -439,9 +422,24 @@ export default function AppointmentsPage() {
                       <td className="py-4 pr-5"><div className="h-2.5 bg-[#F3F4F6] rounded w-32" /></td>
                     </tr>
                   ))
+                ) : rows.length === 0 && appointments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="flex flex-col items-center gap-3 py-14 text-center">
+                        <div className="w-11 h-11 rounded-2xl bg-[#F3F4F6] flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="16" height="15" rx="2" stroke="#9CA3AF" strokeWidth="1.3"/><path d="M6 2v2M14 2v2M2 7h16" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                        </div>
+                        <p className="text-sm font-semibold text-[#374151]">No appointments yet — they&apos;ll appear here automatically</p>
+                        <p className="text-xs text-[#9CA3AF] max-w-xs">When customers book through your AI chat, appointments show up here in real time.</p>
+                        <Link href="/app/channels" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 mt-1" style={{ background: "#FF6B35" }}>
+                          Connect a channel
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-16 text-sm text-[#9CA3AF]">
+                    <td colSpan={8} className="text-center py-12 text-sm text-[#9CA3AF]">
                       {filter === "past" ? "No past appointments." : "No appointments match your search."}
                     </td>
                   </tr>

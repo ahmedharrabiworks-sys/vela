@@ -93,6 +93,16 @@ const NAV = [
       </svg>
     ),
   },
+  {
+    labelKey: "sidebar.settings",
+    href: "/app/settings",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="2.25" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M9 1.5v1.5M9 15v1.5M1.5 9H3M15 9h1.5M3.45 3.45l1.07 1.07M13.48 13.48l1.07 1.07M3.45 14.55l1.07-1.07M13.48 4.52l1.07-1.07" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
 ];
 
 interface SidebarProps {
@@ -197,9 +207,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     >
       {/* Logo row */}
       <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0">
-        {!collapsed && <Logo showText light size={28} />}
-        {collapsed && <span className="hidden md:block"><Logo showText={false} light size={28} /></span>}
-        {collapsed && <span className="md:hidden"><Logo showText light size={28} /></span>}
+        {!collapsed && <Link href="/" onClick={onClose}><Logo showText light size={28} /></Link>}
+        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} light size={28} /></Link></span>}
+        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText light size={28} /></Link></span>}
 
         <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-all" aria-label="Close sidebar">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
