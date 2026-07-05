@@ -35,6 +35,8 @@ export async function GET() {
       openaiReachable = true;
     } catch (err) {
       openaiError = classifyOpenAIError(err);
+      const s = (err as { status?: number }).status;
+      if (s) openaiError += `_http${s}`;
     }
   } else {
     openaiError = "key_not_set";
