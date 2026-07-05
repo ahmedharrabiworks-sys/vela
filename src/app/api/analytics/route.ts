@@ -21,32 +21,47 @@ export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  // Fetch 180 days so we can compute period-over-period for any range
+  const oneEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
 
   const [leadsRes, convsRes, apptsRes] = await Promise.all([
-    admin.from("leads").select("created_at").eq("tenant_id", tenantId).gte("created_at", ninetyDaysAgo),
-    admin.from("conversations").select("channel, created_at").eq("tenant_id", tenantId),
-    admin.from("appointments").select("created_at, status").eq("tenant_id", tenantId),
+    admin.from("leads").select("created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("conversations").select("channel, created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("appointments").select("created_at, status").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
   ]);
 
   const leads: { created_at: string }[] = leadsRes.data ?? [];
   const conversations: { channel: string; created_at: string }[] = convsRes.data ?? [];
   const appointments: { created_at: string; status: string }[] = apptsRes.data ?? [];
 
-  // Daily lead counts for past 90 days
+  // Daily counts for past 180 days (leads, conversations, appointments)
   const dailyCounts: Record<string, number> = {};
+  const dailyConvCounts: Record<string, number> = {};
+  const dailyApptCounts: Record<string, number> = {};
+
   leads.forEach((l) => {
     const date = l.created_at.slice(0, 10);
     dailyCounts[date] = (dailyCounts[date] ?? 0) + 1;
   });
-
-  // Channel breakdown from conversations
-  const channelMap: Record<string, number> = {};
   conversations.forEach((c) => {
-    const ch = (c.channel || "website").toLowerCase();
-    const label = ch === "whatsapp" ? "WhatsApp" : ch === "instagram" ? "Instagram" : "Website";
-    channelMap[label] = (channelMap[label] ?? 0) + 1;
+    const date = c.created_at.slice(0, 10);
+    dailyConvCounts[date] = (dailyConvCounts[date] ?? 0) + 1;
   });
+  appointments.forEach((a) => {
+    const date = a.created_at.slice(0, 10);
+    dailyApptCounts[date] = (dailyApptCounts[date] ?? 0) + 1;
+  });
+
+  // Channel breakdown from conversations (last 90 days)
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const channelMap: Record<string, number> = {};
+  conversations
+    .filter((c) => c.created_at >= ninetyDaysAgo)
+    .forEach((c) => {
+      const ch = (c.channel || "website").toLowerCase();
+      const label = ch === "whatsapp" ? "WhatsApp" : ch === "instagram" ? "Instagram" : "Website";
+      channelMap[label] = (channelMap[label] ?? 0) + 1;
+    });
 
   const knownChannels = ["WhatsApp", "Instagram", "Website"];
   const channelBreakdown = knownChannels.map((ch) => ({
@@ -54,11 +69,18 @@ export async function GET() {
     conversations: channelMap[ch] ?? 0,
   }));
 
+  // Count totals for last 90 days
+  const totalLeads = leads.filter((l) => l.created_at >= ninetyDaysAgo).length;
+  const totalConversations = conversations.filter((c) => c.created_at >= ninetyDaysAgo).length;
+  const totalAppointments = appointments.filter((a) => a.created_at >= ninetyDaysAgo).length;
+
   return NextResponse.json({
-    totalLeads: leads.length,
-    totalConversations: conversations.length,
-    totalAppointments: appointments.length,
+    totalLeads,
+    totalConversations,
+    totalAppointments,
     dailyCounts,
+    dailyConvCounts,
+    dailyApptCounts,
     channelBreakdown,
   });
 }

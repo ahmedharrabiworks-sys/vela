@@ -128,8 +128,10 @@ html.dark {
   --dm-text2:   #9B9BA3;
   --dm-muted:   #6E6E76;
   --dm-faint:   #48484F;
-  /* Accents — orange/rose pop against neutral grey */
-  --dm-orange:  #FF6B35;
+  /* Accents — slightly muted orange/rose for dark mode (less glare on dark bg) */
+  --dm-orange:  #E85A28;
+  --dm-gradient: linear-gradient(135deg, #E85A28, #E02B57);
+  --dm-glow:    rgba(232, 90, 40, 0.25);
 }
 
 html.dark body {
@@ -209,3 +211,25 @@ html.dark .shadow-2xl        { box-shadow: 0 24px 64px rgba(0,0,0,0.5) !importan
 /* Chart gridlines and axis labels */
 html.dark svg line[stroke="#F3F4F6"]  { stroke: rgba(255,255,255,0.06) !important; }
 html.dark svg text[fill="#9CA3AF"]    { fill:   var(--dm-faint) !important; }
+
+/* ── FIX 3: Dark mode accent tuning — softer orange/rose, less glare ── */
+/* btn-primary gradient override */
+html.dark .btn-primary {
+  background: var(--dm-gradient) !important;
+  box-shadow: 0 4px 24px var(--dm-glow) !important;
+}
+html.dark .btn-primary:hover {
+  box-shadow: 0 8px 32px var(--dm-glow) !important;
+}
+/* Orange text */
+html.dark .text-\[\#FF6B35\]    { color: var(--dm-orange) !important; }
+html.dark .text-\[\#FF3366\]    { color: #E02B57 !important; }
+/* Orange solid backgrounds (badges, dots, send buttons) */
+html.dark .bg-\[\#FF6B35\]      { background-color: var(--dm-orange) !important; }
+/* Orange borders */
+html.dark .border-\[\#FF6B35\]  { border-color: var(--dm-orange) !important; }
+/* Active nav highlight (sidebar) */
+html.dark .bg-\[\#FF6B35\]\/12  { background-color: rgba(232,90,40,0.10) !important; }
+/* Upgrade CTA box gradient tints */
+html.dark .from-\[\#FF6B35\]\/15 { --tw-gradient-from: rgba(232,90,40,0.12) !important; }
+html.dark .to-\[\#FF3366\]\/10   { --tw-gradient-to:   rgba(224,43,87,0.08)  !important; }

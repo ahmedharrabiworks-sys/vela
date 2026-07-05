@@ -13,17 +13,41 @@ type AnalyticsData = {
   totalConversations: number;
   totalAppointments: number;
   dailyCounts: Record<string, number>;
+  dailyConvCounts: Record<string, number>;
+  dailyApptCounts: Record<string, number>;
   channelBreakdown: { channel: string; conversations: number }[];
 };
 
-function buildDayArray(dailyCounts: Record<string, number>, days: number): number[] {
+function buildDayArray(dailyCounts: Record<string, number>, days: number, offsetDays = 0): number[] {
   const arr: number[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const d = new Date(Date.now() - (i + offsetDays) * 24 * 60 * 60 * 1000);
     const key = d.toISOString().slice(0, 10);
     arr.push(dailyCounts[key] ?? 0);
   }
   return arr;
+}
+
+function periodSum(dailyCounts: Record<string, number>, days: number, offsetDays = 0): number {
+  return buildDayArray(dailyCounts, days, offsetDays).reduce((a, b) => a + b, 0);
+}
+
+function computeChange(current: number, prior: number): number | null {
+  if (prior === 0 && current === 0) return null;
+  if (prior === 0) return null; // "New" — no meaningful %
+  return Math.round(((current - prior) / prior) * 100);
+}
+
+function TrendBadge({ change }: { change: number | null }) {
+  if (change === null) {
+    return <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF]">— New</span>;
+  }
+  const up = change >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+      {up ? "↑" : "↓"} {Math.abs(change)}% vs prior period
+    </span>
+  );
 }
 
 function buildLabels(days: number): string[] {
@@ -128,6 +152,17 @@ export default function AnalyticsPage() {
   const totalAppts = analytics?.totalAppointments ?? 0;
   const convRate = totalConvs > 0 ? Math.round((totalAppts / totalConvs) * 100) : 0;
 
+  // Real period-over-period trends (current days vs prior same-length window)
+  const leadsChange    = analytics ? computeChange(periodSum(analytics.dailyCounts,    days), periodSum(analytics.dailyCounts,    days, days)) : null;
+  const apptsChange    = analytics ? computeChange(periodSum(analytics.dailyApptCounts, days), periodSum(analytics.dailyApptCounts, days, days)) : null;
+  const convsChange    = analytics ? computeChange(periodSum(analytics.dailyConvCounts,  days), periodSum(analytics.dailyConvCounts,  days, days)) : null;
+
+  // Conv rate prior period
+  const priorConvs = analytics ? periodSum(analytics.dailyConvCounts, days, days) : 0;
+  const priorAppts = analytics ? periodSum(analytics.dailyApptCounts, days, days) : 0;
+  const priorConvRate = priorConvs > 0 ? Math.round((priorAppts / priorConvs) * 100) : 0;
+  const convRateChange = analytics ? computeChange(convRate, priorConvRate) : null;
+
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-20">
       {/* Header */}
@@ -155,15 +190,19 @@ export default function AnalyticsPage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: t("analytics.totalLeads"),     value: isPro ? String(totalLeads)  : "184",  trend: "+23",  up: true },
-                { label: t("analytics.appointments"),   value: isPro ? String(totalAppts)  : "67",   trend: "+8",   up: true },
-                { label: t("analytics.conversations"),  value: isPro ? String(totalConvs)  : "1,284",trend: "+12%", up: true },
-                { label: t("analytics.conversionRate"), value: isPro ? `${convRate}%`      : "34%",  trend: "+2pp", up: true },
+                { label: t("analytics.totalLeads"),     value: isPro ? String(totalLeads)  : "184",   change: leadsChange   },
+                { label: t("analytics.appointments"),   value: isPro ? String(totalAppts)  : "67",    change: apptsChange   },
+                { label: t("analytics.conversations"),  value: isPro ? String(totalConvs)  : "1,284", change: convsChange   },
+                { label: t("analytics.conversionRate"), value: isPro ? `${convRate}%`      : "34%",   change: convRateChange},
               ].map((k) => (
                 <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl p-5">
                   <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
                   <p className="text-3xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
-                  <p className={`text-xs font-medium ${k.up ? "text-[#16A34A]" : "text-[#DC2626]"}`}>↑ {k.trend} this period</p>
+                  {isPro && analytics ? (
+                    <TrendBadge change={k.change ?? null} />
+                  ) : (
+                    <p className="text-xs font-medium text-[#9CA3AF]">vs prior period</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -208,9 +247,9 @@ export default function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {(isPro && analytics ? channelTable : [
-                    { channel: "WhatsApp",  conversations: 87,  leads: 41 },
-                    { channel: "Instagram", conversations: 65,  leads: 22 },
-                    { channel: "Website",   conversations: 32,  leads: 11 },
+                    { channel: "WhatsApp",  conversations: 87  },
+                    { channel: "Instagram", conversations: 65  },
+                    { channel: "Website",   conversations: 32  },
                   ]).map((row, i) => (
                     <tr key={row.channel} className={`border-b border-[#F9FAFB] last:border-none ${i % 2 === 1 ? "bg-[#FAFAFA]" : ""}`}>
                       <td className="px-6 py-4"><span className="text-sm font-semibold text-[#111111]">{row.channel}</span></td>
@@ -228,12 +267,11 @@ export default function AnalyticsPage() {
           {/* AI Performance */}
           <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
             <p className="text-sm font-bold text-[#111111] mb-5">{t("analytics.aiPerformance")}</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-[#E5E7EB]">
+            <div className="grid grid-cols-3 gap-0 divide-x divide-[#E5E7EB]">
               {[
                 { label: t("analytics.messagesHandled"), value: isPro && analytics ? String(totalConvs) : "1,284" },
                 { label: t("analytics.bookingsByAI"),    value: isPro && analytics ? String(totalAppts) : "67"    },
                 { label: t("analytics.avgResponse"),     value: "< 1 min" },
-                { label: t("analytics.satisfaction"),    value: "4.8/5"   },
               ].map((s) => (
                 <div key={s.label} className="px-6 first:pl-0 last:pr-0">
                   <p className="text-2xl font-bold text-[#FF6B35] mb-1">{s.value}</p>
@@ -258,7 +296,7 @@ export default function AnalyticsPage() {
               <h3 className="text-lg font-bold text-[#111111] mb-2">{t("analytics.upgradeCta")}</h3>
               <p className="text-sm text-[#6B7280] mb-5">{t("analytics.upgradeDesc")}</p>
               <Link
-                href="/auth/signup"
+                href="/pricing"
                 onClick={() => track("upgrade_clicked", { source: "analytics" })}
                 className="inline-block px-6 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
                 style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}

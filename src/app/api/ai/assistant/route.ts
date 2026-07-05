@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     admin.from("leads").select("id, name, stage, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(5),
     admin.from("appointments").select("id, datetime, status, service_name, leads(name)").eq("tenant_id", tenantId).gte("datetime", new Date().toISOString()).order("datetime", { ascending: true }).limit(5),
     admin.from("conversations").select("id, channel, status, needs_human, customer_name").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(8),
-    admin.from("tenant_config").select("instagram_connected, whatsapp_connected, services_json").eq("tenant_id", tenantId).maybeSingle(),
+    admin.from("tenant_config").select("instagram_connected, whatsapp_connected, services_json, knowledge_base").eq("tenant_id", tenantId).maybeSingle(),
   ]);
 
   const today = new Date();
@@ -47,7 +47,28 @@ export async function POST(req: NextRequest) {
     return new Date(a.datetime).toDateString() === today.toDateString();
   });
 
-  const cfg = cfgRes.data as { instagram_connected?: boolean; whatsapp_connected?: boolean; services_json?: unknown[] } | null;
+  const cfg = cfgRes.data as { instagram_connected?: boolean; whatsapp_connected?: boolean; services_json?: unknown[]; knowledge_base?: string } | null;
+
+  // Parse AI training knowledge base
+  type KbService = { name: string; price?: string; duration?: string; description?: string };
+  type KbFaq     = { q: string; a: string };
+  type Kb        = { services?: KbService[]; faqs?: KbFaq[]; business?: { hours?: string; address?: string; bookingPolicy?: string; tone?: string }; extra?: string };
+  let kb: Kb = {};
+  if (cfg?.knowledge_base) {
+    try { kb = JSON.parse(cfg.knowledge_base) as Kb; } catch { /* ignore */ }
+  }
+  const kbServicesText = (kb.services ?? []).length > 0
+    ? "\n\nServices & Prices:\n" + (kb.services ?? []).map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.duration ? ` (${s.duration})` : ""}${s.description ? `: ${s.description}` : ""}`).join("\n")
+    : "";
+  const kbFaqsText = (kb.faqs ?? []).length > 0
+    ? "\n\nFAQs:\n" + (kb.faqs ?? []).map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n")
+    : "";
+  const kbBusinessText = [
+    kb.business?.hours     ? `Working hours: ${kb.business.hours}` : "",
+    kb.business?.address   ? `Address: ${kb.business.address}`     : "",
+    kb.business?.bookingPolicy ? `Booking policy: ${kb.business.bookingPolicy}` : "",
+  ].filter(Boolean).join("\n");
+  const kbExtraText = kb.extra?.trim() ? `\n\nAdditional knowledge:\n${kb.extra}` : "";
 
   const systemPrompt = `You are Vela, the AI business assistant built into the Vela dashboard. You are warm, concise, and knowledgeable — a smart business partner, not a generic chatbot.
 
@@ -59,6 +80,7 @@ Today: ${today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", m
 - City: ${tenant.city || "Unknown"}
 - Instagram: ${cfg?.instagram_connected ? "Connected ✓" : "Not connected"}
 - WhatsApp: ${cfg?.whatsapp_connected ? "Connected ✓" : "Not connected"}
+${kbBusinessText ? `${kbBusinessText}` : ""}${kbServicesText}${kbFaqsText}${kbExtraText}
 
 ## Live data
 - Recent leads: ${JSON.stringify((leadsRes.data ?? []).map((l: { name: string; stage: string }) => ({ name: l.name, stage: l.stage })))}
@@ -78,6 +100,7 @@ Vela is an AI Business Operating System. It automatically answers customer messa
 - **Website** (/app/website): AI website builder. Describe your business, Vela generates a full website in seconds. Refine it by chatting ("add a pricing section", "change color to blue"). Preview in desktop or mobile. Embed link published instantly.
 - **Analytics** (/app/analytics): Performance metrics — leads over time, channel breakdown (WhatsApp / Instagram / Website), conversion rates, appointment fill rate, revenue trends.
 - **Marketing** (/app/marketing): AI marketing tools — Social Post generator (Instagram, Facebook, LinkedIn), Video Script generator (Reels / TikTok / Shorts), WhatsApp Broadcast (bulk messages to all contacts).
+- **Train AI** (/app/ai-training): Teach your AI about your services & prices, FAQs, hours, address, and booking policy. The more you fill in, the better the AI serves customers.
 - **Settings** (/app/settings): Business profile, AI personality & custom responses, services list, team members, notification preferences, billing.
 
 ## How to connect channels
@@ -89,11 +112,11 @@ Vela is an AI Business Operating System. It automatically answers customer messa
 - **Starter** ($79/mo, $63/mo annual): 1 channel, 50 bookings/month, basic CRM, 1 team member, email support. No follow-up automation, no white label, no analytics.
 - **Pro** ($159/mo, $127/mo annual): All 3 channels, unlimited bookings, AI trained on your business, full CRM pipeline, auto follow-up, white label, 15 team members, full analytics, 24/7 live chat. Most popular.
 - **Premium** ($299/mo, $239/mo annual): Everything in Pro + dedicated account manager, advanced AI that learns over time, unlimited team members, priority responses, advanced analytics.
-- Annual billing saves 20%. No free trial. 7-day money-back guarantee. Cancel anytime.
+- Annual billing saves 20%. No free trial. Cancel anytime.
 
 ## Navigation
 When directing the user somewhere, append [navigate:/path] at the end of your message.
-Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
+Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-training, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
 
 ## Rules
 - Reply in the same language the user writes in (English, Arabic, French, German, or any other).

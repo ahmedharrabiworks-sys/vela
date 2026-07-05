@@ -18,7 +18,7 @@ export default function Pricing() {
             <span className="vela-gradient-text">pricing.</span>
           </h2>
           <p className="mt-5 text-[#888888] text-lg max-w-lg mx-auto">
-            Cancel anytime · 7-day money-back guarantee
+            Cancel anytime
           </p>
 
           <div className="mt-6">

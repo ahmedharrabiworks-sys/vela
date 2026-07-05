@@ -12,6 +12,7 @@ const nextConfig = {
   transpilePackages: ["three"],
   experimental: {
     optimizePackageImports: ["@react-three/fiber", "@react-three/drei", "framer-motion"],
+    serverComponentsExternalPackages: ["pdf-parse"],
   },
 };
 

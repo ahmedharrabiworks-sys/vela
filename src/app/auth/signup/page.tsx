@@ -529,7 +529,7 @@ export default function SignupPage() {
           <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-10">
             <div className="text-center mb-7">
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Choose your plan</h1>
-              <p className="text-white/40 text-sm md:text-base mb-5">Cancel anytime · 7-day money-back guarantee</p>
+              <p className="text-white/40 text-sm md:text-base mb-5">Cancel anytime</p>
 
               {/* Billing toggle */}
               <div className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10" style={{ background: "rgba(255,255,255,0.04)" }}>

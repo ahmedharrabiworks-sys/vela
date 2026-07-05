@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const { data: config } = await admin
     .from("tenant_config")
-    .select("services_json, faq_json, tone, language, booking_rules")
+    .select("services_json, faq_json, tone, language, booking_rules, knowledge_base")
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
@@ -125,30 +125,54 @@ export async function POST(req: NextRequest) {
     .limit(20);
 
   /* ── 6. Build system prompt ── */
-  type ServiceRow = { name: string; price?: string; description?: string };
-  type FaqRow = { question: string; answer: string };
-  type TenantRow = { business_name: string; industry?: string; city?: string; phone?: string; website?: string };
-  type ConfigRow = { services_json?: ServiceRow[]; faq_json?: FaqRow[]; tone?: string; language?: string; booking_rules?: Record<string, unknown> };
-  type BookingRow = { datetime: string; service_name?: string };
+  type ServiceRow   = { name: string; price?: string; description?: string };
+  type FaqRow       = { question: string; answer: string };
+  type KbService    = { name: string; price?: string; duration?: string; description?: string };
+  type KbFaq        = { q: string; a: string };
+  type KbBusiness   = { hours?: string; address?: string; bookingPolicy?: string; tone?: string };
+  type KnowledgeBase = { services?: KbService[]; faqs?: KbFaq[]; business?: KbBusiness; extra?: string };
+  type TenantRow    = { business_name: string; industry?: string; city?: string; phone?: string; website?: string };
+  type ConfigRow    = { services_json?: ServiceRow[]; faq_json?: FaqRow[]; tone?: string; language?: string; booking_rules?: Record<string, unknown>; knowledge_base?: string };
+  type BookingRow   = { datetime: string; service_name?: string };
 
   const t = tenant as TenantRow;
   const cfg = (config ?? {}) as ConfigRow;
-  const services: ServiceRow[] = cfg.services_json ?? [];
-  const faqs: FaqRow[]         = cfg.faq_json ?? [];
-  const tone                   = cfg.tone ?? "professional";
-  const language               = cfg.language ?? "Auto-detect";
-  const bookingRules           = cfg.booking_rules as { workingHours?: { start: string; end: string; days: string[] } } | undefined;
 
+  // Parse the AI training knowledge base (new) — falls back to legacy services_json
+  let kb: KnowledgeBase = {};
+  if (cfg.knowledge_base) {
+    try { kb = JSON.parse(cfg.knowledge_base as string) as KnowledgeBase; } catch { /* ignore */ }
+  }
+
+  const kbServices: KbService[] = kb.services ?? [];
+  const kbFaqs: KbFaq[]         = kb.faqs ?? [];
+  const kbBusiness: KbBusiness  = kb.business ?? {};
+  const kbExtra: string         = kb.extra ?? "";
+
+  const legacyServices: ServiceRow[] = cfg.services_json ?? [];
+  const legacyFaqs: FaqRow[]         = cfg.faq_json ?? [];
+  const tone     = kbBusiness.tone ?? cfg.tone ?? "professional";
+  const language = cfg.language ?? "Auto-detect";
+  const bookingRules = cfg.booking_rules as { workingHours?: { start: string; end: string; days: string[] } } | undefined;
+
+  // Services: prefer KB, fall back to legacy
   const servicesText =
-    services.length > 0
-      ? services
+    kbServices.length > 0
+      ? kbServices
+          .map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.duration ? ` (${s.duration})` : ""}${s.description ? `: ${s.description}` : ""}`)
+          .join("\n")
+      : legacyServices.length > 0
+      ? legacyServices
           .map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`)
           .join("\n")
       : "(No services configured yet — use general knowledge about the industry)";
 
+  // FAQs: prefer KB (q/a format), fall back to legacy (question/answer format)
   const faqsText =
-    faqs.length > 0
-      ? "\nFAQs:\n" + faqs.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n")
+    kbFaqs.length > 0
+      ? "\nFAQs:\n" + kbFaqs.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n")
+      : legacyFaqs.length > 0
+      ? "\nFAQs:\n" + legacyFaqs.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n")
       : "";
 
   const now = new Date();
@@ -157,9 +181,15 @@ export async function POST(req: NextRequest) {
   });
   const currentTime = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
-  const workingHoursText = bookingRules?.workingHours
+  const workingHoursText = kbBusiness.hours
+    ? `Working hours: ${kbBusiness.hours}`
+    : bookingRules?.workingHours
     ? `Working hours: ${bookingRules.workingHours.days.join(", ")} ${bookingRules.workingHours.start}–${bookingRules.workingHours.end}`
     : "Working hours: not specified — use reasonable business hours";
+
+  const addressText = kbBusiness.address ? `Address: ${kbBusiness.address}` : "";
+  const bookingPolicyText = kbBusiness.bookingPolicy ? `\nBooking policy: ${kbBusiness.bookingPolicy}` : "";
+  const extraText = kbExtra.trim() ? `\n\nAdditional business knowledge:\n${kbExtra}` : "";
 
   const bookedSlotsText =
     (bookedSlots as BookingRow[] | null)?.length
@@ -184,15 +214,15 @@ Your job: help customers, answer questions about services and prices, and book a
 Business details:
 • Name: ${t.business_name}
 • Industry: ${t.industry || "not specified"}
-• Location: ${t.city || "UAE"}${t.phone ? `\n• Phone: ${t.phone}` : ""}${t.website ? `\n• Website: ${t.website}` : ""}
-• ${workingHoursText}
+• Location: ${t.city || "UAE"}${addressText ? `\n• ${addressText}` : ""}${t.phone ? `\n• Phone: ${t.phone}` : ""}${t.website ? `\n• Website: ${t.website}` : ""}
+• ${workingHoursText}${bookingPolicyText}
 
 Current date & time: ${todayFull}, ${currentTime}
 
 Services:
 ${servicesText}
 ${faqsText}
-${bookedSlotsText}
+${bookedSlotsText}${extraText}
 
 Rules:
 • Tone: ${tone} and warm — be like a helpful employee, not a robot

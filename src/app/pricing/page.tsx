@@ -63,7 +63,7 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h1>
           <p className="text-[#6B7280] text-lg max-w-md mx-auto">
-            Cancel anytime · 7-day money-back guarantee · No contracts
+            Cancel anytime · No contracts
           </p>
 
           {/* Toggle */}
@@ -177,14 +177,14 @@ export default function PricingPage() {
 
         {/* Footer note */}
         <p className="text-center text-sm text-[#9CA3AF] mt-10">
-          Cancel anytime, no questions asked. · 7-day money-back guarantee
+          Cancel anytime, no questions asked.
         </p>
 
         {/* FAQ rows */}
         <div className="mt-16 max-w-2xl mx-auto space-y-4">
           <h2 className="text-xl font-bold text-[#111111] text-center mb-8">Frequently asked</h2>
           {[
-            { q: "Is there a free trial?", a: "No free trial, but we offer a 7-day money-back guarantee on all plans. Sign up, try everything, and get a full refund if it&apos;s not for you." },
+            { q: "Is there a free trial?", a: "No free trial — but try the full product free with our interactive demo at <a href='/demo' class='text-[#FF6B35] hover:underline'>/demo</a>. Cancel anytime, no questions asked." },
             { q: "When do payments launch?", a: "We&apos;re activating billing shortly. Everyone who signs up before launch locks in their plan at current prices." },
             { q: "Can I switch plans?", a: "Yes — upgrade or downgrade anytime from your Settings page. Upgrades are prorated, downgrades take effect at the next billing cycle." },
             { q: "What channels are included?", a: "Starter gets 1 channel. Pro and Premium get all three: WhatsApp, Instagram, and Website chat." },

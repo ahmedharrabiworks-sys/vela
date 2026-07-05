@@ -64,6 +64,19 @@ const NAV = [
     ),
   },
   {
+    labelKey: "nav.aiTraining",
+    href: "/app/ai-training",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="7.5" r="4.5" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M6.75 7.5a2.25 2.25 0 014.5 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <circle cx="9" cy="7.5" r="1" fill="currentColor"/>
+        <path d="M6 12.75l1.5-1.5M12 12.75l-1.5-1.5M9 11.25v2.25" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M5.25 13.5h7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     labelKey: "nav.website",
     href: "/app/website",
     icon: (
