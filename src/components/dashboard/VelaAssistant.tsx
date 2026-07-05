@@ -83,6 +83,23 @@ export function VelaAssistant() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Keep sendRef current so the event listener doesn't need to re-register on every render
+  const sendRef = useRef<typeof send | null>(null);
+
+  // Event listener for "answer 5 quick questions" from the training page
+  useEffect(() => {
+    const handler = () => {
+      setOpen(true);
+      setInterviewMode(true);
+      setMessages([]);
+      setTimeout(() => {
+        sendRef.current?.("I want to train my AI — please start the interview now.", true);
+      }, 500);
+    };
+    window.addEventListener("vela-start-interview", handler);
+    return () => window.removeEventListener("vela-start-interview", handler);
+  }, []);
+
   const send = useCallback(async (text: string, startInterview = false) => {
     if (!text.trim() || loading) return;
     const isInterview = startInterview || interviewMode;
@@ -152,6 +169,9 @@ export function VelaAssistant() {
     }
     setLoading(false);
   }, [loading, messages, router, interviewMode]);
+
+  // Update ref whenever send changes (useCallback deps may change)
+  useEffect(() => { sendRef.current = send; }, [send]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }

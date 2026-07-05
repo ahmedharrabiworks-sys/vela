@@ -34,7 +34,7 @@ function periodSum(dailyCounts: Record<string, number>, days: number, offsetDays
 
 function computeChange(current: number, prior: number): number | null {
   if (prior === 0 && current === 0) return null;
-  if (prior === 0) return null; // "New" — no meaningful %
+  if (prior === 0) return null;
   return Math.round(((current - prior) / prior) * 100);
 }
 
@@ -72,14 +72,14 @@ function LineChart({ data, labels }: { data: number[]; labels: string[] }) {
     y: padTop + ((max - v) / range) * chartH,
   }));
 
-  let d = `M ${pts[0].x} ${pts[0].y}`;
+  let d = pts.length > 0 ? `M ${pts[0].x} ${pts[0].y}` : "";
   for (let i = 1; i < pts.length; i++) {
     const p0 = pts[i - 1], p1 = pts[i];
     const cpX = (p0.x + p1.x) / 2;
     d += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
   }
 
-  const areaD = d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z`;
+  const areaD = pts.length > 0 ? d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z` : "";
   const labelStep = Math.max(1, Math.floor(n / 7));
   const hasData = data.some((v) => v > 0);
 
@@ -105,7 +105,9 @@ function LineChart({ data, labels }: { data: number[]; labels: string[] }) {
         </>
       )}
       {!hasData && (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill="#9CA3AF">No data yet — leads will appear here</text>
+        <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill="#9CA3AF">
+          Connect a channel to start seeing data here
+        </text>
       )}
       {labels.map((lbl, i) => lbl ? (
         <text key={i} x={padX + (i / Math.max(n - 1, 1)) * (W - padX * 2)} y={H - 4} textAnchor="middle" fontSize="9" fill="#9CA3AF">{lbl}</text>
@@ -130,20 +132,31 @@ export default function AnalyticsPage() {
   const { t } = useI18n();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     if (!isPro) { setLoading(false); return; }
     fetch("/api/analytics")
       .then((r) => r.json())
       .then((d: AnalyticsData & { error?: string }) => {
-        if (d && !d.error) setAnalytics(d);
+        if (d && !d.error) {
+          setAnalytics(d);
+        } else {
+          console.error("[analytics] API returned error:", d?.error);
+          setFetchError(true);
+        }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("[analytics] fetch failed:", err);
+        setFetchError(true);
+        setLoading(false);
+      });
   }, [isPro]);
 
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-  const chartData = analytics ? buildDayArray(analytics.dailyCounts, days) : [];
+  // Never fake data: if analytics is null, use empty arrays that show "no data" state
+  const chartData = analytics ? buildDayArray(analytics.dailyCounts, days) : Array(days).fill(0) as number[];
   const chartLabels = buildLabels(days);
 
   const totalConvs = analytics?.totalConversations ?? 0;
@@ -152,16 +165,23 @@ export default function AnalyticsPage() {
   const totalAppts = analytics?.totalAppointments ?? 0;
   const convRate = totalConvs > 0 ? Math.round((totalAppts / totalConvs) * 100) : 0;
 
-  // Real period-over-period trends (current days vs prior same-length window)
-  const leadsChange    = analytics ? computeChange(periodSum(analytics.dailyCounts,    days), periodSum(analytics.dailyCounts,    days, days)) : null;
+  const leadsChange    = analytics ? computeChange(periodSum(analytics.dailyCounts,     days), periodSum(analytics.dailyCounts,     days, days)) : null;
   const apptsChange    = analytics ? computeChange(periodSum(analytics.dailyApptCounts, days), periodSum(analytics.dailyApptCounts, days, days)) : null;
   const convsChange    = analytics ? computeChange(periodSum(analytics.dailyConvCounts,  days), periodSum(analytics.dailyConvCounts,  days, days)) : null;
-
-  // Conv rate prior period
-  const priorConvs = analytics ? periodSum(analytics.dailyConvCounts, days, days) : 0;
-  const priorAppts = analytics ? periodSum(analytics.dailyApptCounts, days, days) : 0;
-  const priorConvRate = priorConvs > 0 ? Math.round((priorAppts / priorConvs) * 100) : 0;
+  const priorConvs     = analytics ? periodSum(analytics.dailyConvCounts, days, days) : 0;
+  const priorAppts     = analytics ? periodSum(analytics.dailyApptCounts, days, days) : 0;
+  const priorConvRate  = priorConvs > 0 ? Math.round((priorAppts / priorConvs) * 100) : 0;
   const convRateChange = analytics ? computeChange(convRate, priorConvRate) : null;
+
+  // Values: always real (when analytics loaded) or "—" (no data). NEVER hardcoded fake numbers.
+  const kpiItems = [
+    { label: t("analytics.totalLeads"),     value: analytics ? String(totalLeads) : "—", change: leadsChange    },
+    { label: t("analytics.appointments"),   value: analytics ? String(totalAppts) : "—", change: apptsChange    },
+    { label: t("analytics.conversations"),  value: analytics ? String(totalConvs) : "—", change: convsChange    },
+    { label: t("analytics.conversionRate"), value: analytics ? `${convRate}%`     : "—", change: convRateChange },
+  ];
+
+  const hasChannelData = channelTable.some((r) => r.conversations > 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-20">
@@ -178,7 +198,26 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Gated content */}
+      {/* Error banner — only shown to Pro users when the fetch actually failed */}
+      {isPro && fetchError && !loading && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 bg-red-50">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+            <circle cx="8" cy="8" r="7" stroke="#DC2626" strokeWidth="1.3"/>
+            <path d="M8 5v3.5M8 10.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          <p className="text-sm text-red-700 flex-1">
+            Analytics data failed to load — your connection may be interrupted or the session expired.
+          </p>
+          <button
+            onClick={() => { setFetchError(false); setLoading(true); fetch("/api/analytics").then(r=>r.json()).then((d: AnalyticsData & { error?: string }) => { if (d && !d.error) setAnalytics(d); else setFetchError(true); setLoading(false); }).catch(() => { setFetchError(true); setLoading(false); }); }}
+            className="text-xs font-bold text-red-700 hover:text-red-900 shrink-0 px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-100 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Gated content — blur empty state for non-Pro, never fake numbers */}
       <div className="relative">
         <div className={`space-y-5 ${!isPro ? "blur-sm pointer-events-none select-none" : ""}`}>
 
@@ -189,19 +228,14 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: t("analytics.totalLeads"),     value: isPro ? String(totalLeads)  : "184",   change: leadsChange   },
-                { label: t("analytics.appointments"),   value: isPro ? String(totalAppts)  : "67",    change: apptsChange   },
-                { label: t("analytics.conversations"),  value: isPro ? String(totalConvs)  : "1,284", change: convsChange   },
-                { label: t("analytics.conversionRate"), value: isPro ? `${convRate}%`      : "34%",   change: convRateChange},
-              ].map((k) => (
+              {kpiItems.map((k) => (
                 <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl p-5">
                   <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
                   <p className="text-3xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
-                  {isPro && analytics ? (
+                  {analytics ? (
                     <TrendBadge change={k.change ?? null} />
                   ) : (
-                    <p className="text-xs font-medium text-[#9CA3AF]">vs prior period</p>
+                    <p className="text-xs text-[#9CA3AF]">vs prior period</p>
                   )}
                 </div>
               ))}
@@ -219,11 +253,11 @@ export default function AnalyticsPage() {
             {loading ? (
               <div className="h-40 bg-[#F9FAFB] rounded-xl animate-pulse" />
             ) : (
-              <LineChart data={isPro && analytics ? chartData : [4,7,5,9,11,8,6,12,14,10,9,15,18,13,11,16,20,17,14,19,22,18,16,21,24,20,18,23,26,22]} labels={chartLabels} />
+              <LineChart data={chartData} labels={chartLabels} />
             )}
           </div>
 
-          {/* Channel table */}
+          {/* Channel breakdown */}
           <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-[#F3F4F6]">
               <p className="text-sm font-bold text-[#111111]">{t("analytics.leadSources")}</p>
@@ -232,9 +266,9 @@ export default function AnalyticsPage() {
               <div className="p-6 space-y-3">
                 {[0,1,2].map((i) => <div key={i} className="h-8 bg-[#F3F4F6] rounded animate-pulse" />)}
               </div>
-            ) : isPro && analytics && totalConvs === 0 ? (
-              <div className="px-6 py-10 text-center text-sm text-[#9CA3AF]">
-                No conversations yet — connect a channel to start receiving messages.
+            ) : !hasChannelData ? (
+              <div className="px-6 py-12 text-center">
+                <p className="text-sm text-[#9CA3AF]">Connect a channel to start seeing traffic breakdown here.</p>
               </div>
             ) : (
               <table className="w-full">
@@ -246,11 +280,7 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(isPro && analytics ? channelTable : [
-                    { channel: "WhatsApp",  conversations: 87  },
-                    { channel: "Instagram", conversations: 65  },
-                    { channel: "Website",   conversations: 32  },
-                  ]).map((row, i) => (
+                  {channelTable.map((row, i) => (
                     <tr key={row.channel} className={`border-b border-[#F9FAFB] last:border-none ${i % 2 === 1 ? "bg-[#FAFAFA]" : ""}`}>
                       <td className="px-6 py-4"><span className="text-sm font-semibold text-[#111111]">{row.channel}</span></td>
                       <td className="px-6 py-4 text-sm text-[#374151]">{row.conversations}</td>
@@ -264,14 +294,13 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* AI Performance */}
+          {/* AI Performance — 2 real stats only; Avg Response removed (not measured) */}
           <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
             <p className="text-sm font-bold text-[#111111] mb-5">{t("analytics.aiPerformance")}</p>
-            <div className="grid grid-cols-3 gap-0 divide-x divide-[#E5E7EB]">
+            <div className="grid grid-cols-2 gap-0 divide-x divide-[#E5E7EB]">
               {[
-                { label: t("analytics.messagesHandled"), value: isPro && analytics ? String(totalConvs) : "1,284" },
-                { label: t("analytics.bookingsByAI"),    value: isPro && analytics ? String(totalAppts) : "67"    },
-                { label: t("analytics.avgResponse"),     value: "< 1 min" },
+                { label: t("analytics.messagesHandled"), value: analytics ? String(totalConvs) : "—" },
+                { label: t("analytics.bookingsByAI"),    value: analytics ? String(totalAppts) : "—" },
               ].map((s) => (
                 <div key={s.label} className="px-6 first:pl-0 last:pr-0">
                   <p className="text-2xl font-bold text-[#FF6B35] mb-1">{s.value}</p>
@@ -282,7 +311,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Upgrade overlay for Starter */}
+        {/* Upgrade overlay — blurs the empty state above, not fake numbers */}
         {!isPro && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.7)" }}>
             <div className="max-w-sm text-center p-8 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">

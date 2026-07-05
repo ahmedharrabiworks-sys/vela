@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { KnowledgeBase } from "@/app/api/ai-training/route";
 
-type ServiceRow = KnowledgeBase["services"][number];
-type FaqRow     = KnowledgeBase["faqs"][number];
+type ServiceRow  = KnowledgeBase["services"][number];
+type FaqRow      = KnowledgeBase["faqs"][number];
+type Tab         = "Services" | "FAQs" | "Business Info" | "Extra";
 type ImportState = "idle" | "importing" | "review" | "error" | "instagram";
 
 const EMPTY_SERVICE: ServiceRow = { name: "", price: "", duration: "", description: "" };
 const EMPTY_FAQ: FaqRow         = { q: "", a: "" };
+const TABS: Tab[]               = ["Services", "FAQs", "Business Info", "Extra"];
 
 const DEFAULT_KB: KnowledgeBase = {
   services: [],
@@ -17,7 +19,7 @@ const DEFAULT_KB: KnowledgeBase = {
   extra: "",
 };
 
-function computeCompleteness(kb: KnowledgeBase): number {
+export function computeCompleteness(kb: KnowledgeBase): number {
   const checks = [
     kb.services.some((s) => s.name.trim()),
     kb.faqs.some((f) => f.q.trim()),
@@ -29,51 +31,54 @@ function computeCompleteness(kb: KnowledgeBase): number {
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
-function CompletenessBar({ pct }: { pct: number }) {
+function ProgressRing({ pct }: { pct: number }) {
+  const r = 22;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct / 100);
   const color = pct >= 80 ? "#16A34A" : pct >= 50 ? "#FF6B35" : "#DC2626";
-  const label = pct >= 80 ? "Great — your AI is well-trained!" : pct >= 50 ? "Getting there…" : "Your AI needs more info";
+  const label = pct >= 80 ? "Well trained" : pct >= 50 ? "Getting there" : "Needs info";
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-sm font-bold text-[#111111]">AI Knowledge Score</p>
-          <p className="text-xs text-[#6B7280] mt-0.5">{label}</p>
-        </div>
-        <span className="text-3xl font-extrabold" style={{ color }}>{pct}%</span>
-      </div>
-      <div className="h-2.5 bg-[#F3F4F6] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: color }}
+    <div className="flex items-center gap-2.5">
+      <svg width="52" height="52" viewBox="0 0 52 52" className="shrink-0">
+        <circle cx="26" cy="26" r={r} fill="none" stroke="#F3F4F6" strokeWidth="3.5"/>
+        <circle cx="26" cy="26" r={r} fill="none" stroke={color} strokeWidth="3.5"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          strokeLinecap="round" transform="rotate(-90 26 26)"
+          style={{ transition: "stroke-dashoffset 0.7s ease, stroke 0.3s" }}
         />
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] text-[#9CA3AF]">
-        <span className={pct >= 17 ? "text-[#16A34A] font-semibold" : ""}>✓ Services</span>
-        <span className={pct >= 33 ? "text-[#16A34A] font-semibold" : ""}>✓ FAQs</span>
-        <span className={pct >= 50 ? "text-[#16A34A] font-semibold" : ""}>✓ Hours</span>
-        <span className={pct >= 67 ? "text-[#16A34A] font-semibold" : ""}>✓ Address</span>
-        <span className={pct >= 83 ? "text-[#16A34A] font-semibold" : ""}>✓ Policy</span>
-        <span className={pct === 100 ? "text-[#16A34A] font-semibold" : ""}>✓ Extra</span>
+        <text x="26" y="26" textAnchor="middle" dominantBaseline="central"
+          fontSize="11" fontWeight="700" fill={color}>{pct}%</text>
+      </svg>
+      <div>
+        <p className="text-xs font-bold text-[#374151]">AI Score</p>
+        <p className="text-[11px] text-[#9CA3AF]">{label}</p>
       </div>
     </div>
   );
 }
 
+const CELL = "w-full text-sm bg-transparent px-2.5 py-2 text-[#111111] placeholder-[#D1D5DB] focus:outline-none focus:bg-[#FFF8F5] rounded-lg transition-colors";
+
 export default function AITrainingPage() {
-  const [kb, setKb] = useState<KnowledgeBase>(DEFAULT_KB);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [kb, setKb]             = useState<KnowledgeBase>(DEFAULT_KB);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [toast, setToast]       = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("Services");
 
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [extractedText, setExtractedText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Magic Import state
-  const [importInput, setImportInput] = useState("");
-  const [importState, setImportState] = useState<ImportState>("idle");
-  const [importedKb, setImportedKb] = useState<KnowledgeBase | null>(null);
-  const [importError, setImportError] = useState("");
+  const [importInput, setImportInput]   = useState("");
+  const [importState, setImportState]   = useState<ImportState>("idle");
+  const [importedKb, setImportedKb]     = useState<KnowledgeBase | null>(null);
+  const [importError, setImportError]   = useState("");
+
+  // Always-current ref for auto-save
+  const kbRef           = useRef(kb);
+  kbRef.current         = kb;
+  const autoSaveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/ai-training")
@@ -82,73 +87,80 @@ export default function AITrainingPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  }, []);
+
   const save = useCallback(async (data: KnowledgeBase) => {
     setSaving(true);
-    setSaved(false);
     try {
       await fetch("/api/ai-training", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
     } finally {
       setSaving(false);
     }
   }, []);
 
-  const updateKb = (patch: Partial<KnowledgeBase>) => {
+  const triggerAutoSave = useCallback(() => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      await save(kbRef.current);
+      showToast("Saved ✓");
+    }, 700);
+  }, [save, showToast]);
+
+  const updateKb = (patch: Partial<KnowledgeBase>) =>
     setKb((prev) => ({ ...prev, ...patch }));
-  };
 
-  const updateBusiness = (patch: Partial<KnowledgeBase["business"]>) => {
+  const updateBusiness = (patch: Partial<KnowledgeBase["business"]>) =>
     setKb((prev) => ({ ...prev, business: { ...prev.business, ...patch } }));
-  };
 
-  // Services
-  const addService = () => updateKb({ services: [...kb.services, { ...EMPTY_SERVICE }] });
-  const removeService = (i: number) => updateKb({ services: kb.services.filter((_, idx) => idx !== i) });
-  const updateService = (i: number, patch: Partial<ServiceRow>) => {
-    const next = kb.services.map((s, idx) => idx === i ? { ...s, ...patch } : s);
-    updateKb({ services: next });
+  const addService    = () => updateKb({ services: [...kb.services, { ...EMPTY_SERVICE }] });
+  const removeService = (i: number) => {
+    const next = { ...kbRef.current, services: kbRef.current.services.filter((_, idx) => idx !== i) };
+    setKb(next);
+    save(next).then(() => showToast("Saved ✓"));
   };
+  const updateService = (i: number, patch: Partial<ServiceRow>) =>
+    setKb((prev) => ({ ...prev, services: prev.services.map((s, idx) => idx === i ? { ...s, ...patch } : s) }));
 
-  // FAQs
-  const addFaq = () => updateKb({ faqs: [...kb.faqs, { ...EMPTY_FAQ }] });
-  const removeFaq = (i: number) => updateKb({ faqs: kb.faqs.filter((_, idx) => idx !== i) });
-  const updateFaq = (i: number, patch: Partial<FaqRow>) => {
-    const next = kb.faqs.map((f, idx) => idx === i ? { ...f, ...patch } : f);
-    updateKb({ faqs: next });
+  const addFaq    = () => updateKb({ faqs: [...kb.faqs, { ...EMPTY_FAQ }] });
+  const removeFaq = (i: number) => {
+    const next = { ...kbRef.current, faqs: kbRef.current.faqs.filter((_, idx) => idx !== i) };
+    setKb(next);
+    save(next).then(() => showToast("Saved ✓"));
   };
+  const updateFaq = (i: number, patch: Partial<FaqRow>) =>
+    setKb((prev) => ({ ...prev, faqs: prev.faqs.map((f, idx) => idx === i ? { ...f, ...patch } : f) }));
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadStatus("uploading");
     setExtractedText("");
+    setActiveTab("Extra");
     const form = new FormData();
     form.append("file", file);
     try {
       const res = await fetch("/api/ai-training/upload", { method: "POST", body: form });
       const data = await res.json() as { text?: string; error?: string };
-      if (data.text) {
-        setExtractedText(data.text);
-        setUploadStatus("done");
-      } else {
-        setUploadStatus("error");
-      }
-    } catch {
-      setUploadStatus("error");
-    }
+      if (data.text) { setExtractedText(data.text); setUploadStatus("done"); }
+      else setUploadStatus("error");
+    } catch { setUploadStatus("error"); }
     if (fileRef.current) fileRef.current.value = "";
   };
 
   const appendExtracted = () => {
-    const sep = kb.extra.trim() ? "\n\n---\n\n" : "";
-    updateKb({ extra: kb.extra + sep + extractedText });
+    const sep = kbRef.current.extra.trim() ? "\n\n---\n\n" : "";
+    const next = { ...kbRef.current, extra: kbRef.current.extra + sep + extractedText };
+    setKb(next);
     setExtractedText("");
     setUploadStatus("idle");
+    save(next).then(() => showToast("Saved ✓"));
   };
 
   const handleImport = async () => {
@@ -187,109 +199,128 @@ export default function AITrainingPage() {
     };
     setKb(merged);
     await save(merged);
+    showToast("Imported & Saved ✓");
     setImportState("idle");
     setImportedKb(null);
     setImportInput("");
+    setActiveTab("Services");
   };
 
   const pct = computeCompleteness(kb);
 
+  // Spinner SVG for import button
+  const SpinnerIcon = () => (
+    <svg className="animate-spin" width="11" height="11" viewBox="0 0 11 11" fill="none">
+      <path d="M5.5 1v1.5M5.5 8.5V10M1 5.5h1.5M8.5 5.5H10M2.2 2.2l1.06 1.06M7.74 7.74l1.06 1.06M2.2 8.8l1.06-1.06M7.74 3.26l1.06-1.06" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+
+  const TrashIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M1.5 3h10M5 3V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M10.5 3l-.75 7a.9.9 0 01-.9.8H4.15a.9.9 0 01-.9-.8L2.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto space-y-5 pb-20 animate-pulse">
-        {[0,1,2,3].map((i) => <div key={i} className="h-40 bg-[#F3F4F6] rounded-xl" />)}
+      <div className="max-w-3xl mx-auto space-y-4 pb-20 animate-pulse">
+        <div className="h-14 bg-[#F3F4F6] rounded-xl" />
+        <div className="h-16 bg-[#F3F4F6] rounded-xl" />
+        <div className="h-12 bg-[#F3F4F6] rounded-xl" />
+        <div className="h-64 bg-[#F3F4F6] rounded-xl" />
       </div>
     );
   }
 
+  // Shared tab badges
+  const tabBadge: Record<Tab, number> = {
+    Services:      kb.services.filter((s) => s.name.trim()).length,
+    FAQs:          kb.faqs.filter((f) => f.q.trim()).length,
+    "Business Info": [kb.business.hours, kb.business.address, kb.business.bookingPolicy].filter(Boolean).length,
+    Extra:         kb.extra.trim() ? 1 : 0,
+  };
+
   return (
-    <div className="max-w-3xl mx-auto pb-24 space-y-6">
+    <div className="max-w-3xl mx-auto pb-24">
+
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl font-bold text-[#111111]">Train Your AI</h1>
-          <p className="text-sm text-[#6B7280] mt-0.5">The more you tell your AI, the better it serves your customers.</p>
+          <p className="text-sm text-[#6B7280] mt-0.5">The more you tell your AI, the better it serves customers.</p>
         </div>
-        <button
-          onClick={() => save(kb)}
-          disabled={saving}
-          className="shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm text-white hover:opacity-90 transition-opacity disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-        >
-          {saving ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
-        </button>
+        <ProgressRing pct={pct} />
       </div>
 
-      {/* Magic Import card */}
-      <div className="bg-gradient-to-br from-[#FF6B35]/8 to-[#FF3366]/5 border border-[#FF6B35]/25 rounded-xl p-5">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1l1.8 3.6L14 5.6l-3 2.9.7 4.1L8 10.5l-3.7 2.1.7-4.1-3-2.9 4.2-.6L8 1z" fill="white"/>
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-[#111111]">Let Vela learn your business automatically ✨</p>
-            <p className="text-xs text-[#6B7280] mt-0.5">Paste your website URL and we&apos;ll extract your services, prices, and FAQs automatically.</p>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
+      {/* ── Magic Import hero ── */}
+      <div className="mb-6">
+        <div className="relative">
           <input
             type="text"
             value={importInput}
             onChange={(e) => setImportInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && importState !== "importing" && handleImport()}
-            placeholder="e.g. https://yoursalon.com or @your_instagram"
-            className="flex-1 text-sm border border-[#FF6B35]/30 rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white"
+            placeholder="Paste your website — Vela learns everything ✨"
+            className="w-full text-sm rounded-xl px-4 py-3.5 pr-[7.5rem] border border-[#E5E7EB] bg-white text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all"
           />
           <button
             onClick={handleImport}
             disabled={!importInput.trim() || importState === "importing"}
-            className="shrink-0 px-5 py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
             style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
           >
-            {importState === "importing" ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 1v2M6 9v2M1 6h2M9 6h2" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M2.46 2.46l1.41 1.41M8.13 8.13l1.41 1.41M9.54 2.46L8.13 3.87M3.87 8.13L2.46 9.54" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                Analyzing…
-              </span>
-            ) : "Import"}
+            {importState === "importing" ? <><SpinnerIcon /> Analyzing</> : "Import"}
           </button>
         </div>
 
+        {/* Hidden file input — triggered from multiple places */}
+        <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileUpload} disabled={uploadStatus === "uploading"} />
+
+        <p className="text-xs text-center text-[#9CA3AF] mt-2.5">
+          or{" "}
+          <button type="button" onClick={() => { setActiveTab("Extra"); fileRef.current?.click(); }}
+            className="text-[#6B7280] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">
+            upload a price list
+          </button>
+          {" · or "}
+          <button type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("vela-start-interview"))}
+            className="text-[#6B7280] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">
+            answer 5 quick questions
+          </button>
+        </p>
+
+        {/* Import feedback */}
         {importState === "instagram" && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+          <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#7C3AED" strokeWidth="1.2"/><path d="M7 4v3.5L9 9" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round"/></svg>
-            <p className="text-xs text-purple-700">Instagram import is coming soon — paste your website URL or upload a price list PDF instead.</p>
-            <button onClick={() => { setImportState("idle"); setImportInput(""); }} className="ml-auto text-purple-400 hover:text-purple-600 shrink-0">
+            <p className="text-xs text-purple-700 flex-1">Instagram import is coming soon — paste your website URL or upload a price list PDF instead.</p>
+            <button onClick={() => { setImportState("idle"); setImportInput(""); }} className="text-purple-300 hover:text-purple-500">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
           </div>
         )}
 
         {importState === "error" && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-lg">
+          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#DC2626" strokeWidth="1.2"/><path d="M7 4.5v3M7 9.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            <p className="text-xs text-red-700">{importError}</p>
-            <button onClick={() => setImportState("idle")} className="ml-auto text-red-400 hover:text-red-600 shrink-0">
+            <p className="text-xs text-red-700 flex-1">{importError}</p>
+            <button onClick={() => setImportState("idle")} className="text-red-300 hover:text-red-500">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
           </div>
         )}
 
+        {/* Import review panel */}
         {importState === "review" && importedKb && (
           <div className="mt-4 border border-[#FF6B35]/30 rounded-xl overflow-hidden bg-white">
             <div className="px-4 py-3 border-b border-[#F3F4F6] flex items-center justify-between">
-              <p className="text-xs font-bold text-[#111111]">Imported data — review before saving</p>
+              <p className="text-xs font-bold text-[#111111]">Extracted from your website — review before saving</p>
               <button onClick={() => { setImportState("idle"); setImportedKb(null); }} className="text-[#9CA3AF] hover:text-[#6B7280]">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
               </button>
             </div>
-            <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto">
+            <div className="px-4 py-3 space-y-3 max-h-56 overflow-y-auto">
               {importedKb.services.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">Services ({importedKb.services.length})</p>
@@ -309,9 +340,7 @@ export default function AITrainingPage() {
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">FAQs ({importedKb.faqs.length})</p>
                   <div className="space-y-1">
                     {importedKb.faqs.slice(0, 3).map((f, i) => (
-                      <div key={i} className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
-                        <span className="font-semibold text-[#374151]">{f.q}</span>
-                      </div>
+                      <div key={i} className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 font-semibold text-[#374151]">{f.q}</div>
                     ))}
                     {importedKb.faqs.length > 3 && <p className="text-[11px] text-[#9CA3AF] pl-1">+{importedKb.faqs.length - 3} more</p>}
                   </div>
@@ -328,18 +357,13 @@ export default function AITrainingPage() {
               )}
             </div>
             <div className="px-4 py-3 border-t border-[#F3F4F6] flex gap-2">
-              <button
-                onClick={acceptImport}
-                disabled={saving}
+              <button onClick={acceptImport} disabled={saving}
                 className="flex-1 py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-60 hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-              >
+                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
                 {saving ? "Saving…" : "Looks good — Save"}
               </button>
-              <button
-                onClick={() => { setImportState("idle"); setImportedKb(null); }}
-                className="px-4 py-2.5 rounded-lg text-sm font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
-              >
+              <button onClick={() => { setImportState("idle"); setImportedKb(null); }}
+                className="px-4 py-2.5 rounded-lg text-sm font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors">
                 Discard
               </button>
             </div>
@@ -347,289 +371,246 @@ export default function AITrainingPage() {
         )}
       </div>
 
-      {/* Completeness meter */}
-      <CompletenessBar pct={pct} />
-
-      {/* Section 1: Services & Prices */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#F3F4F6] flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-[#111111]">Services &amp; Prices</p>
-            <p className="text-xs text-[#9CA3AF] mt-0.5">Your AI will quote these prices and answer service questions.</p>
-          </div>
-          <button
-            onClick={addService}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-[#FF6B35] border border-[#FF6B35]/30 hover:bg-[#FFF5F0] transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            Add Service
-          </button>
-        </div>
-
-        {kb.services.length === 0 ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-[#9CA3AF]">No services yet — click "Add Service" to get started.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-[#F3F4F6]">
-            {kb.services.map((svc, i) => (
-              <div key={i} className="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
-                <div className="md:col-span-1">
-                  <label className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Service Name *</label>
-                  <input
-                    type="text"
-                    value={svc.name}
-                    onChange={(e) => updateService(i, { name: e.target.value })}
-                    placeholder="e.g. Haircut"
-                    className="mt-1 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Price</label>
-                  <input
-                    type="text"
-                    value={svc.price}
-                    onChange={(e) => updateService(i, { price: e.target.value })}
-                    placeholder="e.g. 150 AED"
-                    className="mt-1 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Duration</label>
-                  <input
-                    type="text"
-                    value={svc.duration}
-                    onChange={(e) => updateService(i, { duration: e.target.value })}
-                    placeholder="e.g. 45 min"
-                    className="mt-1 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <label className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Description</label>
-                    <input
-                      type="text"
-                      value={svc.description}
-                      onChange={(e) => updateService(i, { description: e.target.value })}
-                      placeholder="Short description"
-                      className="mt-1 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeService(i)}
-                    className="mb-0.5 p-2 text-[#DC2626] hover:bg-red-50 rounded-lg transition-colors"
-                    aria-label="Remove"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M11.5 3.5l-.833 7.5a1 1 0 01-.995.9H4.328a1 1 0 01-.995-.9L2.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* ── Segment tabs ── */}
+      <div className="flex gap-0.5 bg-[#F3F4F6] rounded-xl p-1 mb-1 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        {TABS.map((tab) => {
+          const badge = tabBadge[tab];
+          return (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                activeTab === tab ? "bg-white text-[#111111] shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
+              }`}
+            >
+              {tab}
+              {badge > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none ${
+                  activeTab === tab ? "bg-[#FF6B35]/10 text-[#FF6B35]" : "bg-[#E5E7EB] text-[#9CA3AF]"
+                }`}>{badge}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Section 2: FAQs */}
+      {/* ── Tab content panel ── */}
       <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#F3F4F6] flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-[#111111]">FAQs</p>
-            <p className="text-xs text-[#9CA3AF] mt-0.5">Teach your AI how to answer common customer questions.</p>
-          </div>
-          <button
-            onClick={addFaq}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg text-[#FF6B35] border border-[#FF6B35]/30 hover:bg-[#FFF5F0] transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            Add FAQ
-          </button>
-        </div>
 
-        {kb.faqs.length === 0 ? (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-[#9CA3AF]">No FAQs yet — add questions your customers frequently ask.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-[#F3F4F6]">
-            {kb.faqs.map((faq, i) => (
-              <div key={i} className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-                <div>
-                  <label className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Question</label>
-                  <input
-                    type="text"
-                    value={faq.q}
-                    onChange={(e) => updateFaq(i, { q: e.target.value })}
-                    placeholder="e.g. Do you offer home visits?"
-                    className="mt-1 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-                  />
-                </div>
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <label className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Answer</label>
-                    <input
-                      type="text"
-                      value={faq.a}
-                      onChange={(e) => updateFaq(i, { a: e.target.value })}
-                      placeholder="Your AI will say this exactly"
-                      className="mt-1 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeFaq(i)}
-                    className="mb-0.5 p-2 text-[#DC2626] hover:bg-red-50 rounded-lg transition-colors"
-                    aria-label="Remove"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M11.5 3.5l-.833 7.5a1 1 0 01-.995.9H4.328a1 1 0 01-.995-.9L2.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                </div>
+        {/* SERVICES */}
+        {activeTab === "Services" && (
+          <div>
+            {kb.services.length > 0 && (
+              <div className="hidden sm:grid sm:grid-cols-[1fr_100px_90px_1fr_36px] px-2 py-2.5 border-b border-[#F3F4F6] bg-[#FAFAFA]">
+                {["Service", "Price", "Duration", "Description", ""].map((h, i) => (
+                  <span key={i} className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider px-2.5">{h}</span>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            )}
 
-      {/* Section 3: Business Info */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#F3F4F6]">
-          <p className="text-sm font-bold text-[#111111]">Business Info</p>
-          <p className="text-xs text-[#9CA3AF] mt-0.5">Your AI uses these to answer scheduling and policy questions.</p>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-[#374151]">Working Hours</label>
-              <input
-                type="text"
-                value={kb.business.hours}
-                onChange={(e) => updateBusiness({ hours: e.target.value })}
-                placeholder="e.g. Mon–Fri 9am–6pm, Sat 10am–4pm"
-                className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-[#374151]">Address / Location</label>
-              <input
-                type="text"
-                value={kb.business.address}
-                onChange={(e) => updateBusiness({ address: e.target.value })}
-                placeholder="e.g. Shop 5, Al Wasl Road, Dubai"
-                className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-[#374151]">Booking Policy</label>
-            <textarea
-              value={kb.business.bookingPolicy}
-              onChange={(e) => updateBusiness({ bookingPolicy: e.target.value })}
-              rows={3}
-              placeholder="e.g. 24-hour cancellation required. Deposits non-refundable. Walk-ins welcome subject to availability."
-              className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-[#374151]">AI Tone</label>
-            <div className="mt-1.5 flex gap-2 flex-wrap">
-              {(["professional", "friendly", "luxury"] as const).map((tone) => (
-                <button
-                  key={tone}
-                  onClick={() => updateBusiness({ tone })}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all capitalize ${
-                    kb.business.tone === tone
-                      ? "bg-[#FF6B35] text-white border-[#FF6B35]"
-                      : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                  }`}
-                >
-                  {tone}
-                </button>
+            <div className="divide-y divide-[#F9FAFB]">
+              {kb.services.map((svc, i) => (
+                <div key={i} className="group hover:bg-[#FAFAFA] transition-colors">
+                  {/* Desktop row */}
+                  <div className="hidden sm:grid sm:grid-cols-[1fr_100px_90px_1fr_36px] items-center px-2 py-1">
+                    <input value={svc.name} onChange={(e) => updateService(i, { name: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder="Service name" className={CELL} />
+                    <input value={svc.price} onChange={(e) => updateService(i, { price: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder="Price" className={CELL} />
+                    <input value={svc.duration} onChange={(e) => updateService(i, { duration: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder="45 min" className={CELL} />
+                    <input value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder="Short description" className={CELL} />
+                    <div className="flex justify-center">
+                      <button onClick={() => removeService(i)}
+                        className="p-1.5 text-[#D1D5DB] hover:text-[#DC2626] opacity-0 group-hover:opacity-100 transition-all rounded-lg">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Mobile card */}
+                  <div className="sm:hidden px-4 py-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input value={svc.name} onChange={(e) => updateService(i, { name: e.target.value })} onBlur={triggerAutoSave}
+                        placeholder="Service name" className="flex-1 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                      <button onClick={() => removeService(i)} className="p-2 text-[#D1D5DB] hover:text-[#DC2626] rounded-lg shrink-0">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input value={svc.price} onChange={(e) => updateService(i, { price: e.target.value })} onBlur={triggerAutoSave}
+                        placeholder="Price" className="flex-1 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                      <input value={svc.duration} onChange={(e) => updateService(i, { duration: e.target.value })} onBlur={triggerAutoSave}
+                        placeholder="45 min" className="w-24 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                    </div>
+                    <input value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder="Short description" className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                  </div>
+                </div>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-[#9CA3AF]">
-              {kb.business.tone === "professional" && "Formal, clear, and business-like."}
-              {kb.business.tone === "friendly"     && "Warm, approachable, and conversational."}
-              {kb.business.tone === "luxury"        && "Elegant, exclusive, and premium feel."}
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Section 4: Extra Knowledge */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#F3F4F6]">
-          <p className="text-sm font-bold text-[#111111]">Extra Knowledge</p>
-          <p className="text-xs text-[#9CA3AF] mt-0.5">Paste anything else your AI should know: policies, promotions, team info, brand voice.</p>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <textarea
-            value={kb.extra}
-            onChange={(e) => updateKb({ extra: e.target.value })}
-            rows={6}
-            placeholder="Paste any extra context here — e.g. 'We use only vegan products.' or 'Senior discount: 15% off on Tuesdays.'"
-            className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
-          />
-
-          {/* File upload */}
-          <div className="border border-dashed border-[#E5E7EB] rounded-xl p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-[#374151]">Upload document</p>
-                <p className="text-xs text-[#9CA3AF] mt-0.5">PDF or image — we&apos;ll extract the text for review.</p>
+            {kb.services.length === 0 && (
+              <div className="px-6 py-8 text-center text-sm text-[#9CA3AF]">
+                No services yet
               </div>
-              <label className="shrink-0 cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1.5v7M4 5l3-3.5L10 5M2 10.5v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {uploadStatus === "uploading" ? "Extracting…" : "Choose File"}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,image/*"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  disabled={uploadStatus === "uploading"}
-                />
-              </label>
+            )}
+
+            <button onClick={addService}
+              className="w-full flex items-center gap-2 px-5 py-3.5 text-sm text-[#9CA3AF] hover:text-[#FF6B35] hover:bg-[#FFF8F5] transition-colors border-t border-dashed border-[#F3F4F6]">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Add service
+            </button>
+          </div>
+        )}
+
+        {/* FAQS */}
+        {activeTab === "FAQs" && (
+          <div>
+            <div className="divide-y divide-[#F9FAFB]">
+              {kb.faqs.map((faq, i) => (
+                <div key={i} className="group px-5 py-3.5 hover:bg-[#FAFAFA] transition-colors">
+                  <div className="flex gap-3 items-start">
+                    <div className="flex-1 space-y-1.5">
+                      <input value={faq.q} onChange={(e) => updateFaq(i, { q: e.target.value })} onBlur={triggerAutoSave}
+                        placeholder="Customer question…"
+                        className="w-full text-sm px-0 py-1 text-[#111111] placeholder-[#9CA3AF] focus:outline-none bg-transparent border-b border-transparent focus:border-[#FF6B35] font-medium transition-colors" />
+                      <input value={faq.a} onChange={(e) => updateFaq(i, { a: e.target.value })} onBlur={triggerAutoSave}
+                        placeholder="Your AI will say…"
+                        className="w-full text-sm px-0 py-1 text-[#6B7280] placeholder-[#9CA3AF] focus:outline-none bg-transparent border-b border-transparent focus:border-[#FF6B35] transition-colors" />
+                    </div>
+                    <button onClick={() => removeFaq(i)}
+                      className="mt-1 p-1.5 text-[#D1D5DB] hover:text-[#DC2626] opacity-0 group-hover:opacity-100 transition-all rounded-lg shrink-0">
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {kb.faqs.length === 0 && (
+                <div className="px-6 py-8 text-center text-sm text-[#9CA3AF]">
+                  No FAQs yet — add common questions your customers ask
+                </div>
+              )}
+            </div>
+            <button onClick={addFaq}
+              className="w-full flex items-center gap-2 px-5 py-3.5 text-sm text-[#9CA3AF] hover:text-[#FF6B35] hover:bg-[#FFF8F5] transition-colors border-t border-dashed border-[#F3F4F6]">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Add FAQ
+            </button>
+          </div>
+        )}
+
+        {/* BUSINESS INFO */}
+        {activeTab === "Business Info" && (
+          <div className="p-6 space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="text-xs font-medium text-[#6B7280]">Working Hours</label>
+                <input value={kb.business.hours} onChange={(e) => updateBusiness({ hours: e.target.value })} onBlur={triggerAutoSave}
+                  placeholder="Mon–Fri 9am–6pm, Sat 10am–4pm"
+                  className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[#6B7280]">Address / Location</label>
+                <input value={kb.business.address} onChange={(e) => updateBusiness({ address: e.target.value })} onBlur={triggerAutoSave}
+                  placeholder="Shop 5, Al Wasl Road, Dubai"
+                  className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[#6B7280]">Booking Policy</label>
+              <textarea value={kb.business.bookingPolicy} onChange={(e) => updateBusiness({ bookingPolicy: e.target.value })} onBlur={triggerAutoSave}
+                rows={3} placeholder="24-hour cancellation required. Deposits non-refundable. Walk-ins welcome subject to availability."
+                className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all resize-none" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[#6B7280] mb-3 block">AI Tone</label>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { value: "professional", label: "Professional", desc: "Formal and business-like" },
+                  { value: "friendly",     label: "Friendly",     desc: "Warm and conversational" },
+                  { value: "luxury",       label: "Luxury",       desc: "Elegant and exclusive" },
+                ] as const).map((tone) => (
+                  <button key={tone.value}
+                    onClick={() => {
+                      const next = { ...kbRef.current, business: { ...kbRef.current.business, tone: tone.value } };
+                      setKb(next);
+                      save(next).then(() => showToast("Saved ✓"));
+                    }}
+                    className={`text-left p-3 rounded-xl border transition-all ${
+                      kb.business.tone === tone.value
+                        ? "border-[#FF6B35] bg-[#FFF5F0]"
+                        : "border-[#E5E7EB] hover:border-[#FF6B35]/40 hover:bg-[#FAFAFA]"
+                    }`}
+                  >
+                    <p className={`text-xs font-bold capitalize ${kb.business.tone === tone.value ? "text-[#FF6B35]" : "text-[#374151]"}`}>{tone.label}</p>
+                    <p className="text-[10px] text-[#9CA3AF] mt-0.5 leading-snug">{tone.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EXTRA */}
+        {activeTab === "Extra" && (
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-[#6B7280]">Additional Knowledge</label>
+              <p className="text-[11px] text-[#9CA3AF] mt-0.5 mb-2">Policies, promotions, team info, brand voice — anything else your AI should know.</p>
+              <textarea value={kb.extra} onChange={(e) => updateKb({ extra: e.target.value })} onBlur={triggerAutoSave}
+                rows={7} placeholder="e.g. 'We use only vegan products.' or 'Senior discount: 15% off on Tuesdays.'"
+                className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all resize-none" />
             </div>
 
-            {uploadStatus === "error" && (
-              <p className="mt-3 text-xs text-red-500 font-medium">
-                Extraction failed — try a different file or paste the text manually.
-              </p>
-            )}
-
-            {uploadStatus === "done" && extractedText && (
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-[#374151]">Extracted text — review before adding:</p>
-                  <button onClick={() => { setExtractedText(""); setUploadStatus("idle"); }} className="text-[10px] text-[#9CA3AF] hover:text-[#6B7280]">Discard</button>
+            {/* Upload section */}
+            <div className="border border-dashed border-[#E5E7EB] rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[#374151]">Upload document</p>
+                  <p className="text-xs text-[#9CA3AF] mt-0.5">PDF or image — we&apos;ll extract the text for review.</p>
                 </div>
-                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg p-3 max-h-48 overflow-y-auto">
-                  <pre className="text-xs text-[#374151] whitespace-pre-wrap font-sans">{extractedText}</pre>
-                </div>
-                <button
-                  onClick={appendExtracted}
-                  className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                  style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-                >
-                  Add to Knowledge Base
+                <button onClick={() => fileRef.current?.click()} disabled={uploadStatus === "uploading"}
+                  className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors disabled:opacity-50">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1.5v6M3.5 4L6 1.5 8.5 4M1.5 9v1a.75.75 0 00.75.75h7.5A.75.75 0 0010.5 10V9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {uploadStatus === "uploading" ? "Extracting…" : "Choose File"}
                 </button>
               </div>
-            )}
+
+              {uploadStatus === "error" && (
+                <p className="mt-3 text-xs text-red-500">Extraction failed — try a different file or paste the text manually.</p>
+              )}
+
+              {uploadStatus === "done" && extractedText && (
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-[#374151]">Extracted text — review before adding:</p>
+                    <button onClick={() => { setExtractedText(""); setUploadStatus("idle"); }} className="text-[10px] text-[#9CA3AF] hover:text-[#6B7280]">Discard</button>
+                  </div>
+                  <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg p-3 max-h-44 overflow-y-auto">
+                    <pre className="text-xs text-[#374151] whitespace-pre-wrap font-sans">{extractedText}</pre>
+                  </div>
+                  <button onClick={appendExtracted}
+                    className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                    Add to Knowledge Base
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Bottom save */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => save(kb)}
-          disabled={saving}
-          className="px-8 py-3 rounded-xl font-semibold text-sm text-white hover:opacity-90 transition-opacity disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-        >
-          {saving ? "Saving…" : saved ? "✓ Saved!" : "Save All Changes"}
-        </button>
-      </div>
+      {/* Auto-save toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#111111] text-white text-xs font-semibold rounded-full shadow-xl flex items-center gap-2 pointer-events-none">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="#4ADE80" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
