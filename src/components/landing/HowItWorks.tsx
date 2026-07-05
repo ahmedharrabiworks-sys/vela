@@ -1,131 +1,198 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
 
 const STEPS = [
   {
-    number: "01",
-    title: "Customer sends a message",
-    description:
-      "A lead reaches out on Instagram DM, WhatsApp, or your website chat — any time of day or night.",
-    chips: ["Instagram DM", "WhatsApp", "Website Chat"],
+    num: "01",
+    title: "Connect your channels",
+    body: "Link Instagram, WhatsApp Business, and your website chat in minutes. No code. No developers. Just copy-paste.",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M14 4a10 10 0 0 1 8.66 5M14 4a10 10 0 0 0-8.66 5M14 4v5M14 24a10 10 0 0 1-8.66-5M14 24a10 10 0 0 0 8.66-5M14 24v-5M4 14h5M24 14h-5"
+          stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    detail: ["Instagram DMs & comments", "WhatsApp Business API", "Website live chat widget"],
   },
   {
-    number: "02",
-    title: "Vela AI replies in under 60 seconds",
-    description:
-      "Your AI assistant responds immediately, in your brand voice, in any language — even at 2 AM.",
-    chips: ["< 60s response", "Multilingual", "Brand-trained"],
+    num: "02",
+    title: "Train your AI",
+    body: "Paste your website URL. Upload a price list. Vela extracts your services, prices, hours, and booking rules automatically.",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M14 6a5 5 0 0 1 5 5c0 2-.8 3.8-2 5l2.5 7h-11l2.5-7A5 5 0 0 1 9 11a5 5 0 0 1 5-5z"
+          stroke="#FF6B35" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M11 20h6M12.5 14c.5.3 1 .5 1.5.5s1-.2 1.5-.5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+    detail: ["Paste a URL — we extract everything", "Upload PDF price lists", "Or answer 5 quick questions"],
   },
   {
-    number: "03",
-    title: "AI qualifies the lead",
-    description:
-      "Smart follow-up questions gather the right information: service interest, timeline, budget — automatically.",
-    chips: ["Service type", "Budget range", "Urgency"],
-  },
-  {
-    number: "04",
-    title: "Appointment booked into your calendar",
-    description:
-      "Once qualified, AI offers real available slots and books directly into Google Calendar. No back-and-forth.",
-    chips: ["Google Calendar sync", "Real-time slots", "Auto-confirm"],
-  },
-  {
-    number: "05",
-    title: "You receive a confirmed booking",
-    description:
-      "Instant notification with the lead's name, service, and time. You show up. The rest is handled.",
-    chips: ["Push notification", "SMS alert", "Email summary"],
+    num: "03",
+    title: "Watch it grow",
+    body: "Your AI replies, qualifies leads, and books appointments — while you focus on delivering great service.",
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M5 21l5-6 4 4 5-8 4 5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    detail: ["Zero missed messages", "Instant lead qualification", "Automatic appointment booking"],
   },
 ];
 
-export default function HowItWorks() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const steps = sectionRef.current?.querySelectorAll(".step-item");
-    if (!steps) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const el = entry.target as HTMLElement;
-            const idx = Number(el.dataset.index);
-            setTimeout(() => el.classList.add("visible"), idx * 150);
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-
-    steps.forEach((step) => observer.observe(step));
-    return () => observer.disconnect();
-  }, []);
+function Step({
+  step,
+  index,
+  isLast,
+}: {
+  step: (typeof STEPS)[number];
+  index: number;
+  isLast: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
-    <section id="how-it-works" ref={sectionRef} className="py-28 bg-[#FFF5F0]">
-      <div className="max-w-4xl mx-auto px-6">
+    <div ref={ref} className="relative flex gap-6 md:gap-10">
+      {/* Connector line */}
+      {!isLast && (
+        <div
+          aria-hidden
+          className="absolute top-14 bottom-0 hidden md:block"
+          style={{ left: 27, width: 1, background: "rgba(255,255,255,0.05)" }}
+        >
+          <motion.div
+            className="w-full"
+            style={{ background: "linear-gradient(180deg,#FF6B35,#FF3366)", originY: 0 }}
+            initial={{ scaleY: 0 }}
+            animate={inView ? { scaleY: 1 } : { scaleY: 0 }}
+            transition={{ delay: 0.5, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </div>
+      )}
+
+      {/* Circle icon */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={inView ? { opacity: 1, scale: 1 } : {}}
+        transition={{ delay: index * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="shrink-0"
+      >
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center"
+          style={{
+            background: "rgba(255,107,53,0.08)",
+            border: "1px solid rgba(255,107,53,0.18)",
+          }}
+        >
+          {step.icon}
+        </div>
+      </motion.div>
+
+      {/* Content */}
+      <motion.div
+        initial={{ opacity: 0, x: 24 }}
+        animate={inView ? { opacity: 1, x: 0 } : {}}
+        transition={{ delay: index * 0.15 + 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="pb-12 md:pb-16 flex-1"
+      >
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#FF6B35" }}>
+          Step {step.num}
+        </p>
+        <h3
+          className="text-white mb-3"
+          style={{ fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, letterSpacing: "-0.02em" }}
+        >
+          {step.title}
+        </h3>
+        <p className="text-sm md:text-base leading-relaxed mb-4 max-w-md" style={{ color: "rgba(255,255,255,0.45)" }}>
+          {step.body}
+        </p>
+        <ul className="flex flex-col gap-2">
+          {step.detail.map((d) => (
+            <li key={d} className="flex items-center gap-2 text-sm" style={{ color: "rgba(255,255,255,0.48)" }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="5" stroke="rgba(255,107,53,0.4)" strokeWidth="1" />
+                <path d="M3.5 6l1.8 1.8 3.2-3.2" stroke="#FF6B35" strokeWidth="1" strokeLinecap="round" />
+              </svg>
+              {d}
+            </li>
+          ))}
+        </ul>
+      </motion.div>
+    </div>
+  );
+}
+
+export default function HowItWorks() {
+  const headRef = useRef<HTMLDivElement>(null);
+  const headInView = useInView(headRef, { once: true, margin: "-80px" });
+
+  return (
+    <section
+      id="how-it-works"
+      className="relative py-20 md:py-28 overflow-hidden"
+      style={{ background: "#0A0908" }}
+    >
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(255,107,53,0.04) 0%, transparent 70%)" }}
+      />
+
+      <div className="relative z-10 max-w-5xl mx-auto px-5 md:px-8">
         {/* Header */}
-        <div className="text-center mb-20">
-          <span className="section-label mb-6">How It Works</span>
-          <h2 className="vela-heading text-4xl md:text-5xl text-[#1A0A00] mt-6">
-            From first message to{" "}
-            <span className="vela-gradient-text">confirmed booking.</span>
-          </h2>
-          <p className="mt-5 text-[#888888] text-lg max-w-xl mx-auto">
-            Five steps. Fully automated. You only see the result.
+        <motion.div
+          ref={headRef}
+          initial={{ opacity: 0, y: 24 }}
+          animate={headInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center mb-16 md:mb-20"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] mb-4" style={{ color: "#FF6B35" }}>
+            How it works
           </p>
+          <h2
+            className="text-white"
+            style={{ fontSize: "clamp(32px, 4.5vw, 60px)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.05 }}
+          >
+            Live in{" "}
+            <span style={{ fontWeight: 200, color: "rgba(255,255,255,0.32)" }}>7 days.</span>
+            <br />3 steps.
+          </h2>
+          <p className="mt-5 text-base md:text-lg max-w-lg mx-auto" style={{ color: "rgba(255,255,255,0.4)" }}>
+            No developers. No agencies. No complexity. Just plug in and let Vela handle the rest.
+          </p>
+        </motion.div>
+
+        {/* Steps */}
+        <div className="max-w-2xl mx-auto">
+          {STEPS.map((step, i) => (
+            <Step key={step.num} step={step} index={i} isLast={i === STEPS.length - 1} />
+          ))}
         </div>
 
-        {/* Timeline */}
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-[27px] top-6 bottom-6 w-px bg-gradient-to-b from-[#FF6B35] via-[#FF3366] to-[#FF6B35]/20 hidden md:block" />
-
-          <div className="flex flex-col gap-10">
-            {STEPS.map((step, i) => (
-              <div
-                key={step.number}
-                data-index={i}
-                className="step-item opacity-0 translate-y-5 transition-all duration-500 ease-out flex gap-6 items-start"
-              >
-                {/* Step number bubble */}
-                <div className="relative flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center font-bold text-sm text-white z-10 shadow-vela"
-                  style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}
-                >
-                  {step.number}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 pb-4">
-                  <h3 className="text-xl font-bold text-[#1A0A00] mb-2">{step.title}</h3>
-                  <p className="text-[#888888] leading-relaxed mb-4">{step.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {step.chips.map((chip) => (
-                      <span
-                        key={chip}
-                        className="text-xs font-medium px-3 py-1 rounded-full"
-                        style={{ background: "rgba(255,107,53,0.1)", color: "#FF6B35" }}
-                      >
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* Live badge */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="flex justify-center mt-4"
+        >
+          <div
+            className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl"
+            style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.18)" }}
+          >
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-sm font-semibold text-green-400">
+              You&apos;re live — AI handles every message from here
+            </span>
           </div>
-        </div>
+        </motion.div>
       </div>
-
-      <style jsx>{`
-        .step-item.visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      `}</style>
     </section>
   );
 }
