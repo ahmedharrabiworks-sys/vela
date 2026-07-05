@@ -363,7 +363,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="py-1">
               {!isPremium && (
                 <Link
-                  href="/auth/signup"
+                  href="/pricing"
                   onClick={() => { setDropdownOpen(false); onClose(); }}
                   className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#FF6B35] hover:bg-[#FFF5F0] transition-colors"
                 >

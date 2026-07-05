@@ -88,8 +88,18 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ html });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[website/generate] OpenAI error:", msg);
-    return NextResponse.json({ error: "AI generation failed" }, { status: 500 });
+    const apiErr = err as { status?: number; error?: { type?: string } };
+    const errType = apiErr.error?.type
+      ?? (apiErr.status === 401 ? "invalid_api_key"
+        : apiErr.status === 429 ? "rate_limited"
+        : apiErr.status === 402 ? "insufficient_quota"
+        : "unknown");
+    const userMsg =
+      errType === "invalid_api_key"    ? "AI configuration error — please contact support." :
+      errType === "insufficient_quota" ? "AI quota exceeded — the site owner needs to top up OpenAI credits." :
+      errType === "rate_limited"       ? "AI is temporarily busy — please try again in a moment." :
+                                         "Website generation temporarily unavailable — please try again.";
+    console.error("[website/generate] OpenAI error:", errType, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }

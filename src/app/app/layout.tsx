@@ -20,7 +20,7 @@ const PALETTE_ITEMS = [
   { label: "New Appointment",  href: "/app/appointments",     group: "Actions", icon: "plus"     },
   { label: "Connect Instagram",href: "/app/settings#channels",group: "Actions", icon: "instagram"},
   { label: "Connect WhatsApp", href: "/app/settings#channels",group: "Actions", icon: "whatsapp" },
-  { label: "Upgrade Plan",     href: "/auth/signup",          group: "Actions", icon: "upgrade"  },
+  { label: "Upgrade Plan",     href: "/pricing",              group: "Actions", icon: "upgrade"  },
 ];
 
 function PaletteIcon({ type }: { type: string }) {
