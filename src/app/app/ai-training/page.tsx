@@ -5,6 +5,7 @@ import type { KnowledgeBase } from "@/app/api/ai-training/route";
 
 type ServiceRow = KnowledgeBase["services"][number];
 type FaqRow     = KnowledgeBase["faqs"][number];
+type ImportState = "idle" | "importing" | "review" | "error" | "instagram";
 
 const EMPTY_SERVICE: ServiceRow = { name: "", price: "", duration: "", description: "" };
 const EMPTY_FAQ: FaqRow         = { q: "", a: "" };
@@ -67,6 +68,12 @@ export default function AITrainingPage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [extractedText, setExtractedText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Magic Import state
+  const [importInput, setImportInput] = useState("");
+  const [importState, setImportState] = useState<ImportState>("idle");
+  const [importedKb, setImportedKb] = useState<KnowledgeBase | null>(null);
+  const [importError, setImportError] = useState("");
 
   useEffect(() => {
     fetch("/api/ai-training")
@@ -144,6 +151,47 @@ export default function AITrainingPage() {
     setUploadStatus("idle");
   };
 
+  const handleImport = async () => {
+    const raw = importInput.trim();
+    if (!raw) return;
+    setImportState("importing");
+    setImportError("");
+    try {
+      const res = await fetch("/api/ai-training/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: raw }),
+      });
+      const data = await res.json() as { kb?: KnowledgeBase; instagram?: boolean; error?: string };
+      if (data.instagram) { setImportState("instagram"); return; }
+      if (!res.ok || data.error) { setImportError(data.error ?? "Import failed."); setImportState("error"); return; }
+      if (data.kb) { setImportedKb(data.kb); setImportState("review"); }
+    } catch {
+      setImportError("Connection error — please try again.");
+      setImportState("error");
+    }
+  };
+
+  const acceptImport = async () => {
+    if (!importedKb) return;
+    const merged: KnowledgeBase = {
+      services: importedKb.services.length > 0 ? importedKb.services : kb.services,
+      faqs:     importedKb.faqs.length > 0     ? importedKb.faqs     : kb.faqs,
+      business: {
+        hours:         importedKb.business.hours         || kb.business.hours,
+        address:       importedKb.business.address       || kb.business.address,
+        bookingPolicy: importedKb.business.bookingPolicy || kb.business.bookingPolicy,
+        tone:          importedKb.business.tone          || kb.business.tone,
+      },
+      extra: importedKb.extra || kb.extra,
+    };
+    setKb(merged);
+    await save(merged);
+    setImportState("idle");
+    setImportedKb(null);
+    setImportInput("");
+  };
+
   const pct = computeCompleteness(kb);
 
   if (loading) {
@@ -170,6 +218,133 @@ export default function AITrainingPage() {
         >
           {saving ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
         </button>
+      </div>
+
+      {/* Magic Import card */}
+      <div className="bg-gradient-to-br from-[#FF6B35]/8 to-[#FF3366]/5 border border-[#FF6B35]/25 rounded-xl p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1l1.8 3.6L14 5.6l-3 2.9.7 4.1L8 10.5l-3.7 2.1.7-4.1-3-2.9 4.2-.6L8 1z" fill="white"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#111111]">Let Vela learn your business automatically ✨</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">Paste your website URL and we&apos;ll extract your services, prices, and FAQs automatically.</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={importInput}
+            onChange={(e) => setImportInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && importState !== "importing" && handleImport()}
+            placeholder="e.g. https://yoursalon.com or @your_instagram"
+            className="flex-1 text-sm border border-[#FF6B35]/30 rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white"
+          />
+          <button
+            onClick={handleImport}
+            disabled={!importInput.trim() || importState === "importing"}
+            className="shrink-0 px-5 py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+          >
+            {importState === "importing" ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 1v2M6 9v2M1 6h2M9 6h2" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M2.46 2.46l1.41 1.41M8.13 8.13l1.41 1.41M9.54 2.46L8.13 3.87M3.87 8.13L2.46 9.54" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Analyzing…
+              </span>
+            ) : "Import"}
+          </button>
+        </div>
+
+        {importState === "instagram" && (
+          <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#7C3AED" strokeWidth="1.2"/><path d="M7 4v3.5L9 9" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            <p className="text-xs text-purple-700">Instagram import is coming soon — paste your website URL or upload a price list PDF instead.</p>
+            <button onClick={() => { setImportState("idle"); setImportInput(""); }} className="ml-auto text-purple-400 hover:text-purple-600 shrink-0">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+        )}
+
+        {importState === "error" && (
+          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-lg">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#DC2626" strokeWidth="1.2"/><path d="M7 4.5v3M7 9.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/></svg>
+            <p className="text-xs text-red-700">{importError}</p>
+            <button onClick={() => setImportState("idle")} className="ml-auto text-red-400 hover:text-red-600 shrink-0">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            </button>
+          </div>
+        )}
+
+        {importState === "review" && importedKb && (
+          <div className="mt-4 border border-[#FF6B35]/30 rounded-xl overflow-hidden bg-white">
+            <div className="px-4 py-3 border-b border-[#F3F4F6] flex items-center justify-between">
+              <p className="text-xs font-bold text-[#111111]">Imported data — review before saving</p>
+              <button onClick={() => { setImportState("idle"); setImportedKb(null); }} className="text-[#9CA3AF] hover:text-[#6B7280]">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto">
+              {importedKb.services.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">Services ({importedKb.services.length})</p>
+                  <div className="space-y-1">
+                    {importedKb.services.slice(0, 5).map((s, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                        <span className="font-semibold text-[#374151]">{s.name}{s.duration ? ` (${s.duration})` : ""}</span>
+                        {s.price && <span className="text-[#FF6B35] font-bold">{s.price}</span>}
+                      </div>
+                    ))}
+                    {importedKb.services.length > 5 && <p className="text-[11px] text-[#9CA3AF] pl-1">+{importedKb.services.length - 5} more</p>}
+                  </div>
+                </div>
+              )}
+              {importedKb.faqs.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">FAQs ({importedKb.faqs.length})</p>
+                  <div className="space-y-1">
+                    {importedKb.faqs.slice(0, 3).map((f, i) => (
+                      <div key={i} className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                        <span className="font-semibold text-[#374151]">{f.q}</span>
+                      </div>
+                    ))}
+                    {importedKb.faqs.length > 3 && <p className="text-[11px] text-[#9CA3AF] pl-1">+{importedKb.faqs.length - 3} more</p>}
+                  </div>
+                </div>
+              )}
+              {(importedKb.business.hours || importedKb.business.address) && (
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">Business Info</p>
+                  <div className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 space-y-0.5">
+                    {importedKb.business.hours && <p><span className="text-[#9CA3AF]">Hours:</span> {importedKb.business.hours}</p>}
+                    {importedKb.business.address && <p><span className="text-[#9CA3AF]">Address:</span> {importedKb.business.address}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-3 border-t border-[#F3F4F6] flex gap-2">
+              <button
+                onClick={acceptImport}
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-60 hover:opacity-90 transition-opacity"
+                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+              >
+                {saving ? "Saving…" : "Looks good — Save"}
+              </button>
+              <button
+                onClick={() => { setImportState("idle"); setImportedKb(null); }}
+                className="px-4 py-2.5 rounded-lg text-sm font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Completeness meter */}

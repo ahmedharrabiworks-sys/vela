@@ -16,7 +16,25 @@ const QUICK_ACTIONS = [
   { label: "Recent leads",         message: "Show me my most recent leads" },
   { label: "Needs attention",      message: "Which conversations need human attention?" },
   { label: "Write a reply",        message: "Help me write a professional reply to a customer asking about pricing" },
+  { label: "Train me", message: "", isInterview: true },
 ];
+
+function extractSaveKbToken(text: string): { json: string; stripped: string } | null {
+  const start = text.indexOf("[save_kb:");
+  if (start === -1) return null;
+  const jsonStart = start + "[save_kb:".length;
+  let depth = 0;
+  let jsonEnd = -1;
+  for (let i = jsonStart; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
+  }
+  if (jsonEnd === -1 || text[jsonEnd] !== "]") return null;
+  return {
+    json: text.slice(jsonStart, jsonEnd),
+    stripped: (text.slice(0, start) + text.slice(jsonEnd + 1)).replace(/\n{3,}/g, "\n\n").trim(),
+  };
+}
 
 function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
   const icon = Math.round(size * 0.52);
@@ -34,11 +52,12 @@ function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
 
 export function VelaAssistant() {
   const router = useRouter();
-  const [open, setOpen]         = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [open, setOpen]           = useState(false);
+  const [messages, setMessages]   = useState<Message[]>([]);
+  const [input, setInput]         = useState("");
+  const [loading, setLoading]     = useState(false);
   const [firstName, setFirstName] = useState("");
+  const [interviewMode, setInterviewMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
   const panelRef  = useRef<HTMLDivElement>(null);
@@ -64,8 +83,10 @@ export function VelaAssistant() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = useCallback(async (text: string) => {
+  const send = useCallback(async (text: string, startInterview = false) => {
     if (!text.trim() || loading) return;
+    const isInterview = startInterview || interviewMode;
+    if (startInterview) setInterviewMode(true);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
     setLoading(true);
@@ -74,7 +95,7 @@ export function VelaAssistant() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: messages.slice(-10) }),
+        body: JSON.stringify({ message: text, history: messages.slice(-10), interviewMode: isInterview }),
       });
       const data = await res.json() as { reply?: string; error?: string };
 
@@ -94,10 +115,30 @@ export function VelaAssistant() {
 
       let reply = data.reply ?? "I couldn't generate a response. Please try again.";
 
+      // Handle [navigate:/path] token
       const navMatch = reply.match(/\[navigate:([^\]]+)\]/);
       if (navMatch) {
         reply = reply.replace(/\[navigate:[^\]]+\]/g, "").trim();
         setTimeout(() => { router.push(navMatch[1]); setOpen(false); }, 800);
+      }
+
+      // Handle [save_kb:{...}] token
+      const kbToken = extractSaveKbToken(reply);
+      if (kbToken) {
+        reply = kbToken.stripped;
+        try {
+          const kbData = JSON.parse(kbToken.json);
+          await fetch("/api/ai-training?merge=true", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(kbData),
+          });
+          setInterviewMode(false);
+          reply = (reply ? reply + "\n\n" : "") + "✓ Your AI knowledge base has been updated! Visit Train your AI to review or adjust anything.";
+        } catch {
+          reply = (reply ? reply + "\n\n" : "") + "I've finished the interview but had trouble saving — please visit Train your AI to save manually.";
+          setInterviewMode(false);
+        }
       }
 
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
@@ -110,7 +151,7 @@ export function VelaAssistant() {
       }]);
     }
     setLoading(false);
-  }, [loading, messages, router]);
+  }, [loading, messages, router, interviewMode]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
@@ -195,8 +236,18 @@ export function VelaAssistant() {
                   {QUICK_ACTIONS.map((qa) => (
                     <button
                       key={qa.label}
-                      onClick={() => send(qa.message)}
-                      className="text-[11px] px-2.5 py-1.5 rounded-full border border-[#E5E7EB] text-[#374151] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
+                      onClick={() => {
+                        if (qa.isInterview) {
+                          send("I want to train my AI — please start the interview now.", true);
+                        } else {
+                          send(qa.message);
+                        }
+                      }}
+                      className={`text-[11px] px-2.5 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
+                        qa.isInterview
+                          ? "border-[#FF6B35] text-[#FF6B35] bg-[#FFF5F0] hover:bg-[#FF6B35] hover:text-white font-semibold"
+                          : "border-[#E5E7EB] text-[#374151] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      }`}
                     >
                       {qa.label}
                     </button>

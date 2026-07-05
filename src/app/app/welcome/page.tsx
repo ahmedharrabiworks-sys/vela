@@ -55,13 +55,32 @@ export default function WelcomePage() {
         if (tenant) {
           const { data: cfg } = await db
             .from("tenant_config")
-            .select("instagram_connected, whatsapp_connected, services_json")
+            .select("instagram_connected, whatsapp_connected, knowledge_base")
             .eq("tenant_id", tenant.id)
             .maybeSingle();
 
           channelDone = !!(cfg?.instagram_connected || cfg?.whatsapp_connected);
-          const services = cfg?.services_json as unknown[] | null;
-          aiDone = Array.isArray(services) && services.length > 0;
+
+          // AI done = knowledge base score > 30%
+          let kbScore = 0;
+          if (cfg?.knowledge_base) {
+            try {
+              const kb = JSON.parse(cfg.knowledge_base as string) as {
+                services?: Array<{ name: string }>; faqs?: Array<{ q: string }>;
+                business?: { hours?: string; address?: string; bookingPolicy?: string }; extra?: string;
+              };
+              const checks = [
+                kb.services?.some((s) => s.name?.trim()),
+                kb.faqs?.some((f) => f.q?.trim()),
+                !!kb.business?.hours?.trim(),
+                !!kb.business?.address?.trim(),
+                !!kb.business?.bookingPolicy?.trim(),
+                !!kb.extra?.trim(),
+              ];
+              kbScore = Math.round((checks.filter(Boolean).length / 6) * 100);
+            } catch { /* ignore */ }
+          }
+          aiDone = kbScore > 30;
         }
       }
 
@@ -98,16 +117,16 @@ export default function WelcomePage() {
         },
         {
           id: "ai",
-          title: "Review your AI setup",
-          description: "Add your services, prices, FAQ, and set the tone so your AI knows exactly how to represent your business.",
-          cta: aiDone ? "Configured" : "Configure AI",
-          href: "/app/settings",
+          title: "Train your AI",
+          description: "Teach your AI your services, prices, and hours — it will answer customers perfectly from day one.",
+          cta: aiDone ? "Trained" : "Train your AI",
+          href: "/app/ai-training",
           status: aiDone ? "done" : "pending",
           color: "#7C3AED",
           icon: (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <rect x="3" y="3" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M7 11h8M7 7.5h5M7 14.5h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M11 3a5 5 0 0 1 5 5c0 1.5-.7 2.9-1.7 3.8L16 19H6l1.7-7.2A5 5 0 0 1 6 8a5 5 0 0 1 5-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M8.5 19h5M9 12.5c.6.3 1.2.5 2 .5s1.4-.2 2-.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           ),
         },

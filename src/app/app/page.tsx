@@ -33,9 +33,12 @@ export default function DashboardPage() {
   const [loading, setLoading]       = useState(true);
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [kbScore, setKbScore]       = useState(100); // default high → no flash before load
+  const [kbBannerDismissed, setKbBannerDismissed] = useState(false);
 
   useEffect(() => {
     setBannerDismissed(localStorage.getItem("vela_onboarding_banner_dismissed") === "true");
+    setKbBannerDismissed(localStorage.getItem("vela_training_banner_dismissed") === "true");
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -78,7 +81,7 @@ export default function DashboardPage() {
         .order("last_message_at", { ascending: false })
         .limit(5),
       db.from("tenant_config")
-        .select("instagram_connected, whatsapp_connected")
+        .select("instagram_connected, whatsapp_connected, knowledge_base")
         .eq("tenant_id", tenantId)
         .maybeSingle(),
     ]);
@@ -146,12 +149,34 @@ export default function DashboardPage() {
       }))
     );
 
-    // Onboarding status
-    const cfg = configRes.data as { instagram_connected?: boolean; whatsapp_connected?: boolean } | null;
+    // Onboarding + KB score
+    const cfg = configRes.data as { instagram_connected?: boolean; whatsapp_connected?: boolean; knowledge_base?: string } | null;
     const channelDone = cfg?.instagram_connected || cfg?.whatsapp_connected;
     const ob = JSON.parse(localStorage.getItem("vela_onboarding") || "{}") as Record<string, boolean>;
     const allDone = !!channelDone && !!ob.aiDone && !!ob.websiteDone;
     setOnboardingDone(allDone);
+
+    let score = 100;
+    if (cfg?.knowledge_base) {
+      try {
+        const kb = JSON.parse(cfg.knowledge_base) as {
+          services?: Array<{ name: string }>; faqs?: Array<{ q: string }>;
+          business?: { hours?: string; address?: string; bookingPolicy?: string }; extra?: string;
+        };
+        const checks = [
+          kb.services?.some((s) => s.name?.trim()),
+          kb.faqs?.some((f) => f.q?.trim()),
+          !!kb.business?.hours?.trim(),
+          !!kb.business?.address?.trim(),
+          !!kb.business?.bookingPolicy?.trim(),
+          !!kb.extra?.trim(),
+        ];
+        score = Math.round((checks.filter(Boolean).length / 6) * 100);
+      } catch { /* ignore */ }
+    } else {
+      score = 0; // no knowledge base at all
+    }
+    setKbScore(score);
 
     setLoading(false);
   }
@@ -159,14 +184,50 @@ export default function DashboardPage() {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
   const showBanner = !onboardingDone && !bannerDismissed;
+  const showKbBanner = !loading && kbScore < 30 && !kbBannerDismissed && onboardingDone;
 
   const dismissBanner = () => {
     localStorage.setItem("vela_onboarding_banner_dismissed", "true");
     setBannerDismissed(true);
   };
 
+  const dismissKbBanner = () => {
+    localStorage.setItem("vela_training_banner_dismissed", "true");
+    setKbBannerDismissed(true);
+  };
+
   return (
     <div className="max-w-5xl mx-auto pb-20 space-y-5">
+
+      {/* KB low-score banner */}
+      {showKbBanner && (
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2a3 3 0 0 1 3 3c0 .9-.4 1.7-1 2.3L10.5 12h-7L5 7.3A3 3 0 0 1 4 5a3 3 0 0 1 3-3z" stroke="#D97706" strokeWidth="1.3" strokeLinejoin="round"/>
+                <path d="M5.5 12h3" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[#111111]">Your AI is only {kbScore}% trained</p>
+              <p className="text-[11px] text-[#6B7280] truncate">Teach it your services so it can answer customers correctly.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/app/ai-training"
+              className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
+              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              Train your AI
+            </Link>
+            <button onClick={dismissKbBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Onboarding banner */}
       {showBanner && !loading && (

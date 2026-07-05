@@ -56,10 +56,37 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
+  const merge = new URL(req.url).searchParams.get("merge") === "true";
+  let saveKb = body;
+
+  if (merge) {
+    const { data: cfgRow } = await admin
+      .from("tenant_config")
+      .select("knowledge_base")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+
+    let existing: KnowledgeBase = DEFAULT_KB;
+    if (cfgRow?.knowledge_base) {
+      try { existing = { ...DEFAULT_KB, ...JSON.parse(cfgRow.knowledge_base as string) }; } catch { /* ignore */ }
+    }
+    saveKb = {
+      services: existing.services.length > 0 ? existing.services : body.services,
+      faqs:     existing.faqs.length > 0     ? existing.faqs     : body.faqs,
+      business: {
+        hours:         existing.business.hours         || body.business.hours,
+        address:       existing.business.address       || body.business.address,
+        bookingPolicy: existing.business.bookingPolicy || body.business.bookingPolicy,
+        tone:          existing.business.tone          || body.business.tone,
+      },
+      extra: existing.extra || body.extra,
+    };
+  }
+
   const { error } = await admin
     .from("tenant_config")
     .upsert(
-      { tenant_id: tenant.id, knowledge_base: JSON.stringify(body) },
+      { tenant_id: tenant.id, knowledge_base: JSON.stringify(saveKb) },
       { onConflict: "tenant_id" }
     );
 
