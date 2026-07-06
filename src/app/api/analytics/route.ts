@@ -13,8 +13,9 @@ export async function GET() {
   try {
     const tenant = await ensureTenant(user.id, user.email, user.user_metadata);
     tenantId = tenant.id;
+    console.log("[analytics] tenant resolved:", tenantId, "user:", user.id);
   } catch (err) {
-    console.error("[analytics] ensureTenant error:", err);
+    console.error("[analytics] ensureTenant failed for user", user.id, ":", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "Failed to load analytics" }, { status: 500 });
   }
 
@@ -30,9 +31,14 @@ export async function GET() {
     admin.from("appointments").select("created_at, status").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
   ]);
 
+  if (leadsRes.error) console.error("[analytics] leads query error:", leadsRes.error.message, leadsRes.error.code);
+  if (convsRes.error) console.error("[analytics] conversations query error:", convsRes.error.message, convsRes.error.code);
+  if (apptsRes.error) console.error("[analytics] appointments query error:", apptsRes.error.message, apptsRes.error.code);
+
   const leads: { created_at: string }[] = leadsRes.data ?? [];
   const conversations: { channel: string; created_at: string }[] = convsRes.data ?? [];
   const appointments: { created_at: string; status: string }[] = apptsRes.data ?? [];
+  console.log("[analytics] data counts:", { leads: leads.length, conversations: conversations.length, appointments: appointments.length });
 
   // Daily counts for past 180 days (leads, conversations, appointments)
   const dailyCounts: Record<string, number> = {};

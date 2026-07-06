@@ -4,13 +4,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { KnowledgeBase } from "@/app/api/ai-training/route";
 
 type ServiceRow  = KnowledgeBase["services"][number];
-type FaqRow      = KnowledgeBase["faqs"][number];
-type Tab         = "Services" | "FAQs" | "Business Info" | "Extra";
+type Tab         = "Services" | "Business Info" | "Extra";
 type ImportState = "idle" | "importing" | "review" | "error" | "instagram";
 
 const EMPTY_SERVICE: ServiceRow = { name: "", price: "", duration: "", description: "" };
-const EMPTY_FAQ: FaqRow         = { q: "", a: "" };
-const TABS: Tab[]               = ["Services", "FAQs", "Business Info", "Extra"];
+const TABS: Tab[]               = ["Services", "Business Info", "Extra"];
 
 const DEFAULT_KB: KnowledgeBase = {
   services: [],
@@ -22,7 +20,6 @@ const DEFAULT_KB: KnowledgeBase = {
 export function computeCompleteness(kb: KnowledgeBase): number {
   const checks = [
     kb.services.some((s) => s.name.trim()),
-    kb.faqs.some((f) => f.q.trim()),
     !!kb.business.hours.trim(),
     !!kb.business.address.trim(),
     !!kb.business.bookingPolicy.trim(),
@@ -75,15 +72,29 @@ export default function AITrainingPage() {
   const [importedKb, setImportedKb]     = useState<KnowledgeBase | null>(null);
   const [importError, setImportError]   = useState("");
 
-  // Always-current ref for auto-save
-  const kbRef           = useRef(kb);
-  kbRef.current         = kb;
-  const autoSaveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const kbRef         = useRef(kb);
+  kbRef.current       = kb;
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/ai-training")
       .then((r) => r.json())
-      .then((data: KnowledgeBase) => { setKb({ ...DEFAULT_KB, ...data }); setLoading(false); })
+      .then((data: KnowledgeBase) => {
+        let loaded = { ...DEFAULT_KB, ...data };
+        // Migrate existing FAQs into the extra textarea on first load
+        if (loaded.faqs && loaded.faqs.length > 0) {
+          const faqLines = loaded.faqs.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
+          const sep = loaded.extra.trim() ? "\n\n---\n\n" : "";
+          loaded = { ...loaded, extra: loaded.extra + sep + faqLines, faqs: [] };
+          fetch("/api/ai-training", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(loaded),
+          });
+        }
+        setKb(loaded);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -127,15 +138,6 @@ export default function AITrainingPage() {
   };
   const updateService = (i: number, patch: Partial<ServiceRow>) =>
     setKb((prev) => ({ ...prev, services: prev.services.map((s, idx) => idx === i ? { ...s, ...patch } : s) }));
-
-  const addFaq    = () => updateKb({ faqs: [...kb.faqs, { ...EMPTY_FAQ }] });
-  const removeFaq = (i: number) => {
-    const next = { ...kbRef.current, faqs: kbRef.current.faqs.filter((_, idx) => idx !== i) };
-    setKb(next);
-    save(next).then(() => showToast("Saved ✓"));
-  };
-  const updateFaq = (i: number, patch: Partial<FaqRow>) =>
-    setKb((prev) => ({ ...prev, faqs: prev.faqs.map((f, idx) => idx === i ? { ...f, ...patch } : f) }));
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,16 +188,23 @@ export default function AITrainingPage() {
 
   const acceptImport = async () => {
     if (!importedKb) return;
+    // Convert any extracted FAQs into Q:/A: lines in extra
+    let importedExtra = importedKb.extra ?? "";
+    if (importedKb.faqs && importedKb.faqs.length > 0) {
+      const faqLines = importedKb.faqs.map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
+      const sep = importedExtra.trim() ? "\n\n---\n\n" : "";
+      importedExtra = importedExtra + sep + faqLines;
+    }
     const merged: KnowledgeBase = {
       services: importedKb.services.length > 0 ? importedKb.services : kb.services,
-      faqs:     importedKb.faqs.length > 0     ? importedKb.faqs     : kb.faqs,
+      faqs: [],
       business: {
         hours:         importedKb.business.hours         || kb.business.hours,
         address:       importedKb.business.address       || kb.business.address,
         bookingPolicy: importedKb.business.bookingPolicy || kb.business.bookingPolicy,
         tone:          importedKb.business.tone          || kb.business.tone,
       },
-      extra: importedKb.extra || kb.extra,
+      extra: importedExtra || kb.extra,
     };
     setKb(merged);
     await save(merged);
@@ -208,7 +217,6 @@ export default function AITrainingPage() {
 
   const pct = computeCompleteness(kb);
 
-  // Spinner SVG for import button
   const SpinnerIcon = () => (
     <svg className="animate-spin" width="11" height="11" viewBox="0 0 11 11" fill="none">
       <path d="M5.5 1v1.5M5.5 8.5V10M1 5.5h1.5M8.5 5.5H10M2.2 2.2l1.06 1.06M7.74 7.74l1.06 1.06M2.2 8.8l1.06-1.06M7.74 3.26l1.06-1.06" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
@@ -232,12 +240,10 @@ export default function AITrainingPage() {
     );
   }
 
-  // Shared tab badges
   const tabBadge: Record<Tab, number> = {
-    Services:      kb.services.filter((s) => s.name.trim()).length,
-    FAQs:          kb.faqs.filter((f) => f.q.trim()).length,
+    Services:        kb.services.filter((s) => s.name.trim()).length,
     "Business Info": [kb.business.hours, kb.business.address, kb.business.bookingPolicy].filter(Boolean).length,
-    Extra:         kb.extra.trim() ? 1 : 0,
+    Extra:           kb.extra.trim() ? 1 : 0,
   };
 
   return (
@@ -273,7 +279,6 @@ export default function AITrainingPage() {
           </button>
         </div>
 
-        {/* Hidden file input — triggered from multiple places */}
         <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileUpload} disabled={uploadStatus === "uploading"} />
 
         <p className="text-xs text-center text-[#9CA3AF] mt-2.5">
@@ -290,7 +295,6 @@ export default function AITrainingPage() {
           </button>
         </p>
 
-        {/* Import feedback */}
         {importState === "instagram" && (
           <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#7C3AED" strokeWidth="1.2"/><path d="M7 4v3.5L9 9" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round"/></svg>
@@ -311,7 +315,6 @@ export default function AITrainingPage() {
           </div>
         )}
 
-        {/* Import review panel */}
         {importState === "review" && importedKb && (
           <div className="mt-4 border border-[#FF6B35]/30 rounded-xl overflow-hidden bg-white">
             <div className="px-4 py-3 border-b border-[#F3F4F6] flex items-center justify-between">
@@ -335,15 +338,14 @@ export default function AITrainingPage() {
                   </div>
                 </div>
               )}
-              {importedKb.faqs.length > 0 && (
+              {(importedKb.faqs.length > 0 || importedKb.extra) && (
                 <div>
-                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">FAQs ({importedKb.faqs.length})</p>
-                  <div className="space-y-1">
-                    {importedKb.faqs.slice(0, 3).map((f, i) => (
-                      <div key={i} className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 font-semibold text-[#374151]">{f.q}</div>
-                    ))}
-                    {importedKb.faqs.length > 3 && <p className="text-[11px] text-[#9CA3AF] pl-1">+{importedKb.faqs.length - 3} more</p>}
-                  </div>
+                  <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">Extra Info</p>
+                  {importedKb.faqs.length > 0 && (
+                    <div className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 text-[#374151]">
+                      {importedKb.faqs.length} Q&amp;A pair{importedKb.faqs.length > 1 ? "s" : ""} → will be added to Extra
+                    </div>
+                  )}
                 </div>
               )}
               {(importedKb.business.hours || importedKb.business.address) && (
@@ -462,42 +464,6 @@ export default function AITrainingPage() {
           </div>
         )}
 
-        {/* FAQS */}
-        {activeTab === "FAQs" && (
-          <div>
-            <div className="divide-y divide-[#F9FAFB]">
-              {kb.faqs.map((faq, i) => (
-                <div key={i} className="group px-5 py-3.5 hover:bg-[#FAFAFA] transition-colors">
-                  <div className="flex gap-3 items-start">
-                    <div className="flex-1 space-y-1.5">
-                      <input value={faq.q} onChange={(e) => updateFaq(i, { q: e.target.value })} onBlur={triggerAutoSave}
-                        placeholder="Customer question…"
-                        className="w-full text-sm px-0 py-1 text-[#111111] placeholder-[#9CA3AF] focus:outline-none bg-transparent border-b border-transparent focus:border-[#FF6B35] font-medium transition-colors" />
-                      <input value={faq.a} onChange={(e) => updateFaq(i, { a: e.target.value })} onBlur={triggerAutoSave}
-                        placeholder="Your AI will say…"
-                        className="w-full text-sm px-0 py-1 text-[#6B7280] placeholder-[#9CA3AF] focus:outline-none bg-transparent border-b border-transparent focus:border-[#FF6B35] transition-colors" />
-                    </div>
-                    <button onClick={() => removeFaq(i)}
-                      className="mt-1 p-1.5 text-[#D1D5DB] hover:text-[#DC2626] opacity-0 group-hover:opacity-100 transition-all rounded-lg shrink-0">
-                      <TrashIcon />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {kb.faqs.length === 0 && (
-                <div className="px-6 py-8 text-center text-sm text-[#9CA3AF]">
-                  No FAQs yet — add common questions your customers ask
-                </div>
-              )}
-            </div>
-            <button onClick={addFaq}
-              className="w-full flex items-center gap-2 px-5 py-3.5 text-sm text-[#9CA3AF] hover:text-[#FF6B35] hover:bg-[#FFF8F5] transition-colors border-t border-dashed border-[#F3F4F6]">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              Add FAQ
-            </button>
-          </div>
-        )}
-
         {/* BUSINESS INFO */}
         {activeTab === "Business Info" && (
           <div className="p-6 space-y-5">
@@ -554,10 +520,10 @@ export default function AITrainingPage() {
         {activeTab === "Extra" && (
           <div className="p-6 space-y-4">
             <div>
-              <label className="text-xs font-medium text-[#6B7280]">Additional Knowledge</label>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5 mb-2">Policies, promotions, team info, brand voice — anything else your AI should know.</p>
+              <label className="text-xs font-medium text-[#6B7280]">Extra Knowledge</label>
+              <p className="text-[11px] text-[#9CA3AF] mt-0.5 mb-2">Anything your AI should know — policies, common questions &amp; answers, promotions, team info…</p>
               <textarea value={kb.extra} onChange={(e) => updateKb({ extra: e.target.value })} onBlur={triggerAutoSave}
-                rows={7} placeholder="e.g. 'We use only vegan products.' or 'Senior discount: 15% off on Tuesdays.'"
+                rows={7} placeholder={"e.g. 'We use only vegan products.' or 'Q: Do you offer discounts?\nA: Yes, 15% off on Tuesdays.'"}
                 className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all resize-none" />
             </div>
 
@@ -610,6 +576,10 @@ export default function AITrainingPage() {
           </svg>
           {toast}
         </div>
+      )}
+
+      {saving && (
+        <div className="fixed bottom-6 right-6 z-50 w-2 h-2 rounded-full bg-[#FF6B35] animate-pulse pointer-events-none" />
       )}
     </div>
   );

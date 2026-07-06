@@ -135,9 +135,9 @@ Step 4 — Ask: "What is your booking policy? Any cancellation rules, deposit re
 Step 5 — Ask: "What do customers ask you most often? List the questions and your answers."
 
 After step 5 is answered: thank them warmly, confirm what you learned in 2–3 short bullets, then — at the very end of your reply on its own line — output this token filled from the conversation:
-[save_kb:{"services":[{"name":"","price":"","duration":"","description":""}],"faqs":[{"q":"","a":""}],"business":{"hours":"","address":"","bookingPolicy":"","tone":"professional"},"extra":""}]
+[save_kb:{"services":[{"name":"","price":"","duration":"","description":""}],"faqs":[],"business":{"hours":"","address":"","bookingPolicy":"","tone":"professional"},"extra":""}]
 
-Token rules: services from step 1; business.hours from step 2; business.address from step 3; business.bookingPolicy from step 4; faqs from step 5; tone = professional/friendly/luxury inferred from their style; extra = anything else useful. Valid escaped JSON only. Emit [save_kb:...] ONLY after all 5 steps — never mid-interview.` : ""}`;
+Token rules: services from step 1; business.hours from step 2; business.address from step 3; business.bookingPolicy from step 4; tone = professional/friendly/luxury inferred from their style; extra = format Q&A from step 5 as lines "Q: ...\nA: ..." joined by blank lines, plus anything else useful; faqs must always be []. Valid escaped JSON only. Emit [save_kb:...] ONLY after all 5 steps — never mid-interview.` : ""}`;
 
 
   const msgs: OpenAI.ChatCompletionMessageParam[] = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
 import { track } from "@/lib/track";
@@ -132,27 +132,34 @@ export default function AnalyticsPage() {
   const { t } = useI18n();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
+  const [fetchError, setFetchError] = useState<"5xx" | null>(null);
 
-  useEffect(() => {
-    if (!isPro) { setLoading(false); return; }
+  const doFetch = useCallback(() => {
+    setLoading(true);
+    setFetchError(null);
     fetch("/api/analytics")
-      .then((r) => r.json())
-      .then((d: AnalyticsData & { error?: string }) => {
-        if (d && !d.error) {
+      .then(async (r) => {
+        const d = await r.json() as AnalyticsData & { error?: string };
+        if (r.ok && !d.error) {
           setAnalytics(d);
+        } else if (r.status >= 500) {
+          console.error("[analytics] server error:", r.status, d?.error);
+          setFetchError("5xx");
         } else {
-          console.error("[analytics] API returned error:", d?.error);
-          setFetchError(true);
+          console.error("[analytics] API error:", r.status, d?.error);
         }
         setLoading(false);
       })
       .catch((err) => {
         console.error("[analytics] fetch failed:", err);
-        setFetchError(true);
         setLoading(false);
       });
-  }, [isPro]);
+  }, []);
+
+  useEffect(() => {
+    if (!isPro) { setLoading(false); return; }
+    doFetch();
+  }, [isPro, doFetch]);
 
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
   // Never fake data: if analytics is null, use empty arrays that show "no data" state
@@ -198,18 +205,18 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Error banner — only shown to Pro users when the fetch actually failed */}
-      {isPro && fetchError && !loading && (
+      {/* 5xx error — only when server fails, not for empty/new accounts */}
+      {isPro && fetchError === "5xx" && !loading && (
         <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 bg-red-50">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
             <circle cx="8" cy="8" r="7" stroke="#DC2626" strokeWidth="1.3"/>
             <path d="M8 5v3.5M8 10.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
           <p className="text-sm text-red-700 flex-1">
-            Analytics data failed to load — your connection may be interrupted or the session expired.
+            We couldn&apos;t load your analytics right now — tap retry.
           </p>
           <button
-            onClick={() => { setFetchError(false); setLoading(true); fetch("/api/analytics").then(r=>r.json()).then((d: AnalyticsData & { error?: string }) => { if (d && !d.error) setAnalytics(d); else setFetchError(true); setLoading(false); }).catch(() => { setFetchError(true); setLoading(false); }); }}
+            onClick={doFetch}
             className="text-xs font-bold text-red-700 hover:text-red-900 shrink-0 px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-100 transition-colors"
           >
             Retry
@@ -217,7 +224,31 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Gated content — blur empty state for non-Pro, never fake numbers */}
+      {/* Friendly empty state — Pro, loaded, no data, no server error */}
+      {isPro && !loading && !analytics && !fetchError && (
+        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-10 text-center">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.10),rgba(255,51,102,0.06))" }}>
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect x="4" y="14" width="5" height="10" rx="1.5" fill="#FF6B35" fillOpacity="0.4"/>
+              <rect x="11.5" y="8" width="5" height="16" rx="1.5" fill="#FF6B35" fillOpacity="0.65"/>
+              <rect x="19" y="4" width="5" height="20" rx="1.5" fill="#FF6B35"/>
+            </svg>
+          </div>
+          <h3 className="text-base font-bold text-[#111111] mb-2">Your analytics will appear here</h3>
+          <p className="text-sm text-[#6B7280] mb-6 max-w-xs mx-auto">
+            Connect a channel so Vela can start capturing leads, conversations, and bookings.
+          </p>
+          <Link href="/app/channels"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            Connect a channel →
+          </Link>
+        </div>
+      )}
+
+      {/* Analytics content — always for non-Pro (blurred), for Pro when loading or has data */}
+      {(!isPro || loading || analytics !== null) && (
       <div className="relative">
         <div className={`space-y-5 ${!isPro ? "blur-sm pointer-events-none select-none" : ""}`}>
 
@@ -336,6 +367,7 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
