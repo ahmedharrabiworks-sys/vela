@@ -8,23 +8,23 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <section id="pricing" className="py-20 md:py-28 bg-[#FFF5F0]">
+    <section id="pricing" className="py-20 md:py-28 bg-[#F9FAFB]">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
         {/* Header */}
         <div className="text-center mb-12">
           <span className="section-label mb-6">Pricing</span>
-          <h2 className="vela-heading text-4xl md:text-5xl text-[#1A0A00] mt-6">
+          <h2 className="vela-heading text-4xl md:text-5xl text-[#111111] mt-6">
             Simple, transparent{" "}
             <span className="vela-gradient-text">pricing.</span>
           </h2>
-          <p className="mt-5 text-[#888888] text-lg max-w-lg mx-auto">
+          <p className="mt-5 text-[#6B7280] text-lg max-w-lg mx-auto">
             Cancel anytime
           </p>
 
           <div className="mt-6">
             <Link
               href="/demo"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#1A0A00]/15 text-[#1A0A00] hover:border-[#1A0A00]/40 hover:bg-white transition-all duration-200"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
@@ -35,11 +35,11 @@ export default function Pricing() {
           </div>
 
           {/* Toggle */}
-          <div className="inline-flex items-center gap-4 mt-8 p-1.5 rounded-full bg-white border border-[#f0e8e0] shadow-sm">
+          <div className="inline-flex items-center gap-1 mt-8 p-1 rounded-full bg-white border border-[#E5E7EB] shadow-sm">
             <button
               onClick={() => setAnnual(false)}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
-                !annual ? "bg-[#1A0A00] text-white shadow-sm" : "text-[#888888]"
+                !annual ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
               }`}
             >
               Monthly
@@ -47,7 +47,7 @@ export default function Pricing() {
             <button
               onClick={() => setAnnual(true)}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                annual ? "bg-[#1A0A00] text-white shadow-sm" : "text-[#888888]"
+                annual ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
               }`}
             >
               Annual
@@ -67,12 +67,12 @@ export default function Pricing() {
                 key={plan.name}
                 className={`relative rounded-2xl p-6 md:p-8 flex flex-col transition-all duration-300 ${
                   plan.popular
-                    ? "bg-[#1A0A00] shadow-vela-lg md:scale-[1.02] mt-4 md:mt-0"
-                    : "bg-white border border-[#f0e8e0] shadow-card hover:shadow-card-hover hover:-translate-y-1"
+                    ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
+                    : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
                 }`}
                 style={
                   plan.popular
-                    ? { boxShadow: "0 0 0 2px #FF6B35, 0 20px 60px rgba(255,107,53,0.25)" }
+                    ? { border: "2px solid #FF6B35", boxShadow: "0 8px 32px rgba(255,107,53,0.12)" }
                     : {}
                 }
               >
@@ -86,21 +86,21 @@ export default function Pricing() {
                 )}
 
                 <div className="mb-6">
-                  <p className={`text-sm font-semibold uppercase tracking-widest mb-4 ${plan.popular ? "text-[#FF6B35]" : "text-[#888888]"}`}>
+                  <p className={`text-sm font-semibold uppercase tracking-widest mb-4 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                     {plan.name}
                   </p>
                   <div className="flex items-end gap-1 mb-2">
-                    <span className={`text-5xl font-extrabold ${plan.popular ? "text-white" : "text-[#1A0A00]"}`}>
+                    <span className="text-5xl font-extrabold text-[#111111]">
                       ${price}
                     </span>
-                    <span className={`text-sm mb-2 ${plan.popular ? "text-white/50" : "text-[#888888]"}`}>/mo</span>
+                    <span className="text-sm mb-2 text-[#9CA3AF]">/mo</span>
                   </div>
                   {annual && (
-                    <p className={`text-xs font-medium ${plan.popular ? "text-[#FF6B35]" : "text-[#FF6B35]"}`}>
+                    <p className="text-xs font-medium text-[#FF6B35]">
                       Save ${(plan.monthly - plan.annual) * 12}/year
                     </p>
                   )}
-                  <p className={`text-sm mt-3 leading-relaxed ${plan.popular ? "text-white/60" : "text-[#888888]"}`}>
+                  <p className="text-sm mt-3 leading-relaxed text-[#6B7280]">
                     {plan.description}
                   </p>
                 </div>
@@ -110,16 +110,16 @@ export default function Pricing() {
                     <li key={feat.text} className="flex items-start gap-3">
                       {feat.included ? (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "rgba(255,107,53,0.1)"} />
+                          <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.12)" />
                           <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       ) : (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.06)" />
-                          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#aaaaaa" strokeWidth="1.5" strokeLinecap="round" />
+                          <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.04)" />
+                          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                       )}
-                      <span className={`text-sm ${feat.included ? (plan.popular ? "text-white/80" : "text-[#1A0A00]") : "text-[#aaaaaa] line-through"}`}>
+                      <span className={`text-sm ${feat.included ? "text-[#374151]" : "text-[#D1D5DB] line-through"}`}>
                         {feat.text}
                       </span>
                     </li>
@@ -131,7 +131,7 @@ export default function Pricing() {
                   className={`text-center py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 ${
                     plan.popular
                       ? "btn-primary"
-                      : "border border-[#f0e8e0] text-[#1A0A00] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
                   }`}
                 >
                   {plan.cta}
@@ -141,7 +141,7 @@ export default function Pricing() {
           })}
         </div>
 
-        <p className="text-center text-sm text-[#888888] mt-8">
+        <p className="text-center text-sm text-[#6B7280] mt-8">
           Cancel anytime, no questions asked.
         </p>
       </div>

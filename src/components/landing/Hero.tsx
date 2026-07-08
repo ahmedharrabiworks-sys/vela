@@ -21,25 +21,7 @@ export default function Hero() {
 
   return (
     <>
-      {/*
-       * No overflow-hidden on the section — floating phone badges extend outside
-       * the phone frame and must not be clipped. Background effects are clipped
-       * in their own absolutely-positioned inner container.
-       */}
-      <section className="relative min-h-screen flex items-center bg-[#1A0A00] pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen">
-
-        {/* Background — clipped independently */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_50%_-5%,rgba(255,107,53,0.22),transparent)]" />
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "linear-gradient(#FF6B35 1px,transparent 1px),linear-gradient(90deg,#FF6B35 1px,transparent 1px)",
-              backgroundSize: "60px 60px",
-            }}
-          />
-        </div>
+      <section className="relative min-h-screen flex items-center bg-white pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen">
 
         {/* Content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6">
@@ -63,7 +45,7 @@ export default function Hero() {
               {/* Headline */}
               <motion.h1
                 variants={item}
-                className="vela-heading text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] leading-none text-white"
+                className="vela-heading text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] leading-none text-[#111111]"
               >
                 Never miss
                 <br />
@@ -73,7 +55,7 @@ export default function Hero() {
               {/* Subtext */}
               <motion.p
                 variants={item}
-                className="text-white/60 text-base md:text-lg leading-relaxed max-w-[440px] mx-auto lg:mx-0"
+                className="text-[#6B7280] text-base md:text-lg leading-relaxed max-w-[440px] mx-auto lg:mx-0"
               >
                 Vela runs your customer communications 24/7. AI replies,
                 qualifies, and books appointments — on Instagram, WhatsApp,
@@ -88,7 +70,10 @@ export default function Hero() {
                     <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </Link>
-                <Link href="/demo" className="btn-ghost text-base px-8 py-3.5 justify-center">
+                <Link
+                  href="/demo"
+                  className="inline-flex items-center gap-2 text-base px-8 py-3.5 rounded-xl font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200 justify-center"
+                >
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
                     <path d="M6 5.2l4.5 2.3L6 9.8V5.2z" fill="currentColor" />
@@ -99,7 +84,7 @@ export default function Hero() {
               <motion.div variants={item}>
                 <button
                   onClick={() => setDemoOpen(true)}
-                  className="text-sm font-medium text-white/45 hover:text-white/75 transition-colors underline underline-offset-4"
+                  className="text-sm font-medium text-[#6B7280] hover:text-[#374151] transition-colors underline underline-offset-4"
                 >
                   Or watch a 60s preview
                 </button>
@@ -108,7 +93,7 @@ export default function Hero() {
               {/* Trust row */}
               <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 {["< 60s reply time", "Works 24/7"].map((label) => (
-                  <span key={label} className="flex items-center gap-2 text-sm text-white/45">
+                  <span key={label} className="flex items-center gap-2 text-sm text-[#6B7280]">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <circle cx="7" cy="7" r="6" stroke="#FF6B35" strokeWidth="1.2" />
                       <path d="M4.5 7l2 2 3-3" stroke="#FF6B35" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -131,9 +116,6 @@ export default function Hero() {
 
           </div>
         </div>
-
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-white to-transparent pointer-events-none" />
       </section>
 
       {/* Demo modal */}

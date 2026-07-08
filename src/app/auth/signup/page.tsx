@@ -189,7 +189,7 @@ function StepBar({ step }: { step: number }) {
       {[1, 2, 3].map((n) => (
         <div key={n} className="flex items-center">
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-            n < step ? "bg-[#FF6B35] text-white" : n === step ? "bg-[#FF6B35] text-white" : "bg-white/10 text-white/30"
+            n <= step ? "bg-[#FF6B35] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
           }`}>
             {n < step ? (
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -197,15 +197,15 @@ function StepBar({ step }: { step: number }) {
               </svg>
             ) : n}
           </div>
-          {n < 3 && <div className={`w-10 h-px mx-1 ${n < step ? "bg-[#FF6B35]" : "bg-white/10"}`} />}
+          {n < 3 && <div className={`w-10 h-px mx-1 ${n < step ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`} />}
         </div>
       ))}
     </div>
   );
 }
 
-const inputCls = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[#FF6B35]/60 transition-colors";
-const labelCls = "text-[10px] font-semibold text-white/40 uppercase tracking-wider block mb-1.5";
+const inputCls = "w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
+const labelCls = "text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5";
 
 /* Searchable country dropdown */
 function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChange: (c: typeof COUNTRIES[0]) => void }) {
@@ -232,32 +232,32 @@ function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChan
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => { setOpen(!open); setQuery(""); }}
-        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#FF6B35]/60 transition-colors flex items-center justify-between text-left">
+        className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all flex items-center justify-between text-left">
         <span className="truncate">{value.name}</span>
         <div className="flex items-center gap-2 shrink-0 ml-2">
-          <span className="text-white/30 text-xs font-mono">{value.dial}</span>
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`text-white/30 transition-transform ${open ? "rotate-180" : ""}`}>
+          <span className="text-[#9CA3AF] text-xs font-mono">{value.dial}</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`text-[#9CA3AF] transition-transform ${open ? "rotate-180" : ""}`}>
             <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       </button>
       {open && (
-        <div className="absolute z-50 top-[calc(100%+4px)] left-0 right-0 rounded-xl overflow-hidden border border-white/10 shadow-2xl" style={{ background: "#1A1008" }}>
-          <div className="p-2 border-b border-white/5">
+        <div className="absolute z-50 top-[calc(100%+4px)] left-0 right-0 rounded-xl overflow-hidden border border-[#E5E7EB] shadow-card-hover bg-white">
+          <div className="p-2 border-b border-[#E5E7EB]">
             <input autoFocus type="text" value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="Search countries…"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/20 transition-colors" />
+              className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-sm text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35] transition-colors" />
           </div>
           <div className="max-h-48 overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,107,53,0.3) transparent" }}>
             {filtered.length === 0 ? (
-              <div className="px-4 py-4 text-sm text-white/30 text-center">No results</div>
+              <div className="px-4 py-4 text-sm text-[#9CA3AF] text-center">No results</div>
             ) : (
               filtered.map((c) => (
                 <button key={c.name + c.dial} type="button"
                   onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors hover:bg-white/5 ${value.name === c.name ? "text-[#FF6B35]" : "text-white/70"}`}>
+                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors hover:bg-[#F9FAFB] ${value.name === c.name ? "text-[#FF6B35] font-medium" : "text-[#374151]"}`}>
                   <span>{c.name}</span>
-                  <span className="text-white/25 text-xs font-mono">{c.dial}</span>
+                  <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
                 </button>
               ))
             )}
@@ -310,7 +310,6 @@ export default function SignupPage() {
 
     const supabase = getSupabase();
 
-    // 1. Create the auth user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -332,7 +331,6 @@ export default function SignupPage() {
       return;
     }
 
-    // 2. Save profile to localStorage for dashboard personalisation
     saveProfile({
       ownerName: fullName,
       email,
@@ -345,7 +343,6 @@ export default function SignupPage() {
     });
     if (detectedType) localStorage.setItem("vela_business_type", detectedType);
 
-    // 3. Create tenant record (requires schema.sql to have been run)
     if (data.user) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -361,27 +358,27 @@ export default function SignupPage() {
 
     setLoading(false);
     setStep(4);
-
-    // Redirect after a short delay so the success screen is visible
     setTimeout(() => router.push("/app/welcome"), 1800);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden" style={{ background: "#0F0907" }}>
-      <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,107,53,0.14), transparent)" }} />
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      {/* V logo top-left */}
+      <div className="absolute top-0 left-0 p-6 z-10">
+        <Link href="/">
+          <Logo showText />
+        </Link>
+      </div>
 
       <div className={`relative z-10 w-full transition-all duration-300 ${step === 3 ? "max-w-5xl" : "max-w-lg"}`}>
-        <div className="flex justify-center mb-8">
-          <Link href="/"><Logo showText light /></Link>
-        </div>
 
         {step <= 3 && <StepBar step={step} />}
 
         {/* ── Step 1: Account ── */}
         {step === 1 && (
-          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-            <h1 className="text-xl font-bold text-white mb-1">Create your account</h1>
-            <p className="text-white/40 text-sm mb-7">Get your AI receptionist set up in minutes.</p>
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
+            <h1 className="text-xl font-bold text-[#111111] mb-1">Create your account</h1>
+            <p className="text-[#6B7280] text-sm mb-7">Get your AI receptionist set up in minutes.</p>
             <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <div>
                 <label className={labelCls}>Full Name</label>
@@ -399,7 +396,7 @@ export default function SignupPage() {
                 Continue →
               </button>
             </form>
-            <p className="text-center text-sm text-white/30 mt-6">
+            <p className="text-center text-sm text-[#6B7280] mt-6">
               Already have an account?{" "}
               <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">Sign in</Link>
             </p>
@@ -408,9 +405,9 @@ export default function SignupPage() {
 
         {/* ── Step 2: Business Info ── */}
         {step === 2 && (
-          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-            <h1 className="text-xl font-bold text-white mb-1">Tell us about your business</h1>
-            <p className="text-white/40 text-sm mb-7">Vela will personalise everything for you automatically</p>
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
+            <h1 className="text-xl font-bold text-[#111111] mb-1">Tell us about your business</h1>
+            <p className="text-[#6B7280] text-sm mb-7">Vela will personalise everything for you automatically</p>
             <form onSubmit={handleStep2} className="space-y-4">
               <div>
                 <label className={labelCls}>What&apos;s your business?</label>
@@ -442,7 +439,7 @@ export default function SignupPage() {
                   placeholder="e.g. Dental clinic in Dubai, Real estate agency, Hair salon…"
                   required
                   rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[#FF6B35]/60 transition-colors resize-none"
+                  className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all resize-none"
                 />
                 {aiDetecting && (
                   <div className="flex items-center gap-2 mt-2">
@@ -450,34 +447,33 @@ export default function SignupPage() {
                       <circle cx="8" cy="8" r="6" stroke="rgba(255,107,53,0.3)" strokeWidth="2"/>
                       <path d="M14 8a6 6 0 0 0-6-6" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
-                    <span className="text-[11px] text-white/30">Detecting business type…</span>
+                    <span className="text-[11px] text-[#6B7280]">Detecting business type…</span>
                   </div>
                 )}
                 {detectedType && detectedType !== "Other" && !aiDetecting && (
-                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#FF6B35]/20 w-fit" style={{ background: "rgba(255,107,53,0.08)" }}>
+                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#FF6B35]/20 w-fit" style={{ background: "rgba(255,107,53,0.06)" }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    <span className="text-[11px] text-white/60">Detected: <span className="text-white font-semibold">{detectedType}</span></span>
-                    <button type="button" onClick={() => setDetectedType("")} className="text-white/20 hover:text-white/50 transition-colors text-xs ml-0.5">✕</button>
+                    <span className="text-[11px] text-[#6B7280]">Detected: <span className="text-[#111111] font-semibold">{detectedType}</span></span>
+                    <button type="button" onClick={() => setDetectedType("")} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-xs ml-0.5">✕</button>
                   </div>
                 )}
                 {!aiDetecting && detectedType === "Other" && (
                   <div className="mt-2">
-                    <p className="text-[10px] text-white/30 mb-1.5">AI couldn&apos;t auto-detect — please select your business type:</p>
+                    <p className="text-[10px] text-[#9CA3AF] mb-1.5">AI couldn&apos;t auto-detect — please select your business type:</p>
                     <select
                       value=""
                       onChange={(e) => { if (e.target.value) setDetectedType(e.target.value); }}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FF6B35]/60 transition-colors"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] text-sm focus:outline-none focus:border-[#FF6B35] transition-colors"
                     >
-                      <option value="" disabled style={{ background: "#1A0A00" }}>Select your business type…</option>
+                      <option value="" disabled>Select your business type…</option>
                       {BUSINESS_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat} style={{ background: "#1A0A00" }}>{cat}</option>
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
                   </div>
                 )}
                 {!aiDetecting && !detectedType && (
-                  <p className="text-[10px] text-white/20 mt-1.5">Vela AI will auto-detect your industry from this description</p>
+                  <p className="text-[10px] text-[#9CA3AF] mt-1.5">Vela AI will auto-detect your industry from this description</p>
                 )}
               </div>
 
@@ -494,7 +490,7 @@ export default function SignupPage() {
                 <div>
                   <label className={labelCls}>Phone Number</label>
                   <div className="flex gap-2">
-                    <div className="flex items-center justify-center bg-white/5 border border-white/10 rounded-xl px-3 text-white/50 text-xs font-mono whitespace-nowrap shrink-0">
+                    <div className="flex items-center justify-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3 text-[#6B7280] text-xs font-mono whitespace-nowrap shrink-0">
                       {country.dial}
                     </div>
                     <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="50 000 0000" required className={inputCls} />
@@ -503,7 +499,7 @@ export default function SignupPage() {
               </div>
 
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl text-sm text-white/40 border border-white/10 hover:border-white/20 transition-colors">
+                <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">
                   Back
                 </button>
                 <button type="submit" disabled={detecting}
@@ -526,19 +522,19 @@ export default function SignupPage() {
 
         {/* ── Step 3: Plan ── */}
         {step === 3 && (
-          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-10">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-10 shadow-card">
             <div className="text-center mb-7">
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Choose your plan</h1>
-              <p className="text-white/40 text-sm md:text-base mb-5">Cancel anytime</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-[#111111] mb-2">Choose your plan</h1>
+              <p className="text-[#6B7280] text-sm md:text-base mb-5">Cancel anytime</p>
 
               {/* Billing toggle */}
-              <div className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <div className="inline-flex items-center gap-1 p-1 rounded-full border border-[#E5E7EB] bg-white shadow-sm">
                 <button type="button" onClick={() => setBilling("monthly")}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "monthly" ? "bg-white/15 text-white shadow-sm" : "text-white/40 hover:text-white/60"}`}>
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "monthly" ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"}`}>
                   Monthly
                 </button>
                 <button type="button" onClick={() => setBilling("annual")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "annual" ? "bg-white/15 text-white shadow-sm" : "text-white/40 hover:text-white/60"}`}>
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "annual" ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"}`}>
                   Annual
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FF6B35] text-white">−20%</span>
                 </button>
@@ -546,10 +542,10 @@ export default function SignupPage() {
             </div>
 
             {detectedType && (
-              <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#FF6B35]/25 max-w-md mx-auto" style={{ background: "rgba(255,107,53,0.08)" }}>
+              <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#FF6B35]/20 max-w-md mx-auto" style={{ background: "rgba(255,107,53,0.06)" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#FF6B35" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <p className="text-sm text-white/50">
-                  Vela AI detected: <span className="text-white font-semibold">{detectedType}</span>
+                <p className="text-sm text-[#6B7280]">
+                  Vela AI detected: <span className="text-[#111111] font-semibold">{detectedType}</span>
                 </p>
               </div>
             )}
@@ -566,18 +562,14 @@ export default function SignupPage() {
                     className={`relative flex flex-col text-left rounded-2xl p-6 md:p-7 transition-all duration-200 w-full ${
                       p.popular ? "md:scale-[1.03]" : ""
                     } ${
-                      isSelected
-                        ? "bg-[#FF6B35]/10"
-                        : p.popular
-                        ? "bg-[#1A0A00]"
-                        : "bg-white/[0.03] hover:bg-white/[0.05]"
+                      isSelected ? "bg-[#FFF8F5]" : "bg-white hover:bg-[#F9FAFB]"
                     }`}
                     style={{
-                      border: isSelected ? "2px solid #FF6B35" : p.popular ? "2px solid rgba(255,107,53,0.4)" : "2px solid rgba(255,255,255,0.1)",
+                      border: isSelected ? "2px solid #FF6B35" : p.popular ? "2px solid rgba(255,107,53,0.3)" : "2px solid #E5E7EB",
                       boxShadow: isSelected
-                        ? "0 0 0 4px rgba(255,107,53,0.12), 0 20px 50px rgba(255,107,53,0.25)"
+                        ? "0 0 0 4px rgba(255,107,53,0.08), 0 8px 24px rgba(255,107,53,0.15)"
                         : p.popular
-                        ? "0 12px 40px rgba(255,107,53,0.15)"
+                        ? "0 4px 24px rgba(255,107,53,0.08)"
                         : "none",
                     }}
                   >
@@ -592,24 +584,24 @@ export default function SignupPage() {
 
                     {/* Plan name + radio */}
                     <div className="flex items-center gap-2.5 mb-4">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "border-[#FF6B35]" : "border-white/25"}`}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "border-[#FF6B35]" : "border-[#D1D5DB]"}`}>
                         {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B35]" />}
                       </div>
-                      <span className="text-sm font-semibold uppercase tracking-widest text-white/60">{p.name}</span>
+                      <span className={`text-sm font-semibold uppercase tracking-widest ${p.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>{p.name}</span>
                     </div>
 
                     {/* Price */}
                     <div className="flex items-end gap-1 mb-1">
-                      <span className="text-5xl font-extrabold text-white">${price}</span>
-                      <span className="text-sm text-white/40 mb-2">/mo</span>
+                      <span className="text-5xl font-extrabold text-[#111111]">${price}</span>
+                      <span className="text-sm text-[#9CA3AF] mb-2">/mo</span>
                     </div>
                     {billing === "annual" ? (
                       <p className="text-xs text-[#FF6B35] mb-3">Billed ${price * 12}/yr · Save ${(p.monthly - p.annual) * 12}/yr</p>
                     ) : (
-                      <p className="text-xs text-white/25 mb-3">Billed monthly</p>
+                      <p className="text-xs text-[#9CA3AF] mb-3">Billed monthly</p>
                     )}
 
-                    <p className="text-xs text-white/40 leading-relaxed mb-4">{p.description}</p>
+                    <p className="text-xs text-[#6B7280] leading-relaxed mb-4">{p.description}</p>
 
                     {/* Feature list */}
                     <ul className="flex flex-col gap-2.5">
@@ -617,16 +609,16 @@ export default function SignupPage() {
                         <li key={feat.text} className="flex items-start gap-2.5">
                           {feat.included ? (
                             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                              <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.2)" />
+                              <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.12)" />
                               <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           ) : (
                             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                              <circle cx="8" cy="8" r="7" fill="rgba(255,255,255,0.04)" />
-                              <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeLinecap="round" />
+                              <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.04)" />
+                              <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" />
                             </svg>
                           )}
-                          <span className={`text-xs leading-relaxed ${feat.included ? "text-white/65" : "text-white/20 line-through"}`}>
+                          <span className={`text-xs leading-relaxed ${feat.included ? "text-[#374151]" : "text-[#D1D5DB] line-through"}`}>
                             {feat.text}
                           </span>
                         </li>
@@ -638,12 +630,12 @@ export default function SignupPage() {
             </div>
 
             {authError && (
-              <div className="mb-4 max-w-md mx-auto px-4 py-3 rounded-xl text-sm text-red-300 border border-red-500/20 bg-red-500/10">
+              <div className="mb-4 max-w-md mx-auto px-4 py-3 rounded-xl text-sm text-red-600 border border-red-200 bg-red-50">
                 {authError}
               </div>
             )}
             <div className="flex gap-3 max-w-md mx-auto">
-              <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-white/40 border border-white/10 hover:border-white/20 transition-colors">Back</button>
+              <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">Back</button>
               <button onClick={handleStart} disabled={loading}
                 className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-70"
                 style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
@@ -663,15 +655,15 @@ export default function SignupPage() {
 
         {/* ── Step 4: Success ── */}
         {step === 4 && (
-          <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card text-center">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-white mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
-            <p className="text-white/40 text-sm mb-2">Your business is ready on Vela.</p>
-            <p className="text-white/25 text-xs mb-8">
+            <h1 className="text-xl font-bold text-[#111111] mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
+            <p className="text-[#6B7280] text-sm mb-2">Your business is ready on Vela.</p>
+            <p className="text-[#9CA3AF] text-xs mb-8">
               Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed {billing === "annual" ? "annually" : "monthly"}, cancel anytime.
             </p>
             <Link href="/app/welcome" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
