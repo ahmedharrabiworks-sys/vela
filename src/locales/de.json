@@ -5,6 +5,7 @@
     "leads": "Leads / CRM",
     "appointments": "Termine",
     "channels": "Kanäle",
+    "aiTraining": "KI trainieren",
     "website": "Website-Builder",
     "analytics": "Analysen",
     "marketing": "Marketing"
@@ -178,5 +179,11 @@
     "showing": "Zeigt",
     "bookingCounter": "Buchungen diesen Monat",
     "bookingLimitReached": "Buchungslimit erreicht — upgraden Sie auf Pro für unbegrenzte Buchungen"
+  },
+  "greeting": {
+    "morning": "Guten Morgen",
+    "afternoon": "Guten Tag",
+    "evening": "Guten Abend",
+    "there": "da"
   }
 }

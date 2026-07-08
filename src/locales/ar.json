@@ -5,6 +5,7 @@
     "leads": "العملاء المحتملون",
     "appointments": "المواعيد",
     "channels": "القنوات",
+    "aiTraining": "تدريب الذكاء الاصطناعي",
     "website": "منشئ المواقع",
     "analytics": "التحليلات",
     "marketing": "التسويق"
@@ -178,5 +179,11 @@
     "showing": "يعرض",
     "bookingCounter": "حجز هذا الشهر",
     "bookingLimitReached": "تم الوصول لحد الحجوزات — قم بالترقية للحصول على حجوزات غير محدودة"
+  },
+  "greeting": {
+    "morning": "صباح الخير",
+    "afternoon": "مساء الخير",
+    "evening": "مساء الخير",
+    "there": "هناك"
   }
 }

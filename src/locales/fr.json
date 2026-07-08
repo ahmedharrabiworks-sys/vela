@@ -5,6 +5,7 @@
     "leads": "Prospects / CRM",
     "appointments": "Rendez-vous",
     "channels": "Canaux",
+    "aiTraining": "Entraîner votre IA",
     "website": "Créateur de site",
     "analytics": "Analytiques",
     "marketing": "Marketing"
@@ -178,5 +179,11 @@
     "showing": "Affichage de",
     "bookingCounter": "réservations ce mois",
     "bookingLimitReached": "Limite de réservations atteinte — passez à Pro pour des réservations illimitées"
+  },
+  "greeting": {
+    "morning": "Bonjour",
+    "afternoon": "Bon après-midi",
+    "evening": "Bonsoir",
+    "there": "là"
   }
 }

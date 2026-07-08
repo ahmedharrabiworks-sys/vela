@@ -182,7 +182,7 @@ export function VelaAssistant() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        className="fixed bottom-6 end-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
         style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
         aria-label="Open Vela AI Assistant"
       >
@@ -209,7 +209,7 @@ export function VelaAssistant() {
           {/* Panel */}
           <div
             ref={panelRef}
-            className="fixed z-[142] inset-0 sm:inset-auto sm:right-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
+            className="fixed z-[142] inset-0 sm:inset-auto sm:end-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
             style={{ maxHeight: "calc(100vh - 120px)", minHeight: "400px" }}
           >
             {/* Header */}

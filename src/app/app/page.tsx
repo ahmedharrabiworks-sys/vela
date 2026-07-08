@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 const CHANNEL_COLORS: Record<string, string> = { instagram: "#E1306C", whatsapp: "#25D366", website: "#FF6B35" };
 
@@ -25,7 +26,8 @@ type Appt = { id: string; time: string; name: string; service: string; status: s
 type KPI = { label: string; value: string; change?: number };
 
 export default function DashboardPage() {
-  const [firstName, setFirstName]   = useState("there");
+  const { t } = useI18n();
+  const [firstName, setFirstName]   = useState("");
   const [bName, setBName]           = useState("");
   const [kpis, setKpis]             = useState<KPI[]>([]);
   const [convs, setConvs]           = useState<Conv[]>([]);
@@ -59,7 +61,7 @@ export default function DashboardPage() {
     if (!tenant) { setLoading(false); return; }
 
     const name = (user.user_metadata?.full_name as string | undefined) || "";
-    setFirstName(name.split(" ")[0] || "there");
+    setFirstName(name.split(" ")[0] || "");
     setBName(tenant.business_name || "");
 
     const tenantId = tenant.id as string;
@@ -97,17 +99,17 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((stats: { newLeadsChange?: number; appointmentsChange?: number; conversationsChange?: number }) => {
         setKpis([
-          { label: "Total Leads",        value: String(totalLeads),  change: stats.newLeadsChange },
-          { label: "New Leads",          value: String(newLeads),    change: stats.newLeadsChange },
-          { label: "Appointments Today", value: String(apptCount),   change: stats.appointmentsChange },
+          { label: "kpiTotalLeads",        value: String(totalLeads),  change: stats.newLeadsChange },
+          { label: "kpiNewLeads",          value: String(newLeads),    change: stats.newLeadsChange },
+          { label: "kpiAppointmentsToday", value: String(apptCount),   change: stats.appointmentsChange },
         ]);
       })
       .catch(() => null);
 
     setKpis([
-      { label: "Total Leads",      value: String(totalLeads) },
-      { label: "New Leads",        value: String(newLeads)   },
-      { label: "Appointments Today", value: String(apptCount) },
+      { label: "kpiTotalLeads",        value: String(totalLeads) },
+      { label: "kpiNewLeads",          value: String(newLeads)   },
+      { label: "kpiAppointmentsToday", value: String(apptCount) },
     ]);
 
     // Conversations
@@ -143,7 +145,7 @@ export default function DashboardPage() {
       rawAppts.map((a) => ({
         id: a.id,
         time: new Date(a.datetime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-        name: a.leads?.name ?? "Unknown",
+        name: a.leads?.name ?? t("dashboard.unknown"),
         service: a.service_name ?? "Appointment",
         status: a.status,
       }))
@@ -182,6 +184,9 @@ export default function DashboardPage() {
   }
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const hour = new Date().getHours();
+  const greetKey = hour < 12 ? "greeting.morning" : hour < 17 ? "greeting.afternoon" : "greeting.evening";
+  const displayName = firstName || t("greeting.there");
 
   const showBanner = !onboardingDone && !bannerDismissed;
   const showKbBanner = !loading && kbScore < 30 && !kbBannerDismissed && onboardingDone;
@@ -210,15 +215,15 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-bold text-[#111111]">Your AI is only {kbScore}% trained</p>
-              <p className="text-[11px] text-[#6B7280] truncate">Teach it your services so it can answer customers correctly.</p>
+              <p className="text-xs font-bold text-[#111111]">{t("dashboard.kbBannerPre")}{kbScore}{t("dashboard.kbBannerPost")}</p>
+              <p className="text-[11px] text-[#6B7280] truncate">{t("dashboard.kbBannerSub")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/app/ai-training"
               className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
               style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-              Train your AI
+              {t("dashboard.trainAI")}
             </Link>
             <button onClick={dismissKbBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -239,15 +244,15 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-bold text-[#111111]">Finish setting up your account</p>
-              <p className="text-[11px] text-[#6B7280] truncate">Connect a channel, configure your AI, and build your website to go live.</p>
+              <p className="text-xs font-bold text-[#111111]">{t("dashboard.onboardingTitle")}</p>
+              <p className="text-[11px] text-[#6B7280] truncate">{t("dashboard.onboardingDesc")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/app/welcome"
               className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
               style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-              Continue setup
+              {t("dashboard.continueSetup")}
             </Link>
             <button onClick={dismissBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -261,7 +266,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="pt-1">
         <h1 className="text-xl font-bold text-[#111111]">
-          {loading ? "Loading…" : `Good morning, ${firstName}`}
+          {loading ? t("common.loading") : `${t(greetKey)}, ${displayName}`}
         </h1>
         <p className="text-sm text-[#6B7280] mt-0.5">{bName ? `${bName} · ` : ""}{today}</p>
       </div>
@@ -277,14 +282,14 @@ export default function DashboardPage() {
             ))
           : kpis.map((k) => (
               <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5">
-                <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
+                <p className="text-[11px] text-[#6B7280] mb-3">{t(`dashboard.${k.label}`)}</p>
                 <p className="text-2xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
                 {k.change !== undefined && (
                   <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                     k.change > 0 ? "bg-green-50 text-green-600" : k.change < 0 ? "bg-red-50 text-red-500" : "bg-[#F3F4F6] text-[#9CA3AF]"
                   }`}>
                     {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
-                    {k.change !== 0 ? `${Math.abs(k.change)}% vs last week` : "Same as last week"}
+                    {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsLastWeek")}` : t("dashboard.sameAsLastWeek")}
                   </span>
                 )}
               </div>
@@ -297,8 +302,8 @@ export default function DashboardPage() {
         {/* Conversations — 2 cols */}
         <div className="lg:col-span-2 bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6]">
-            <h2 className="text-sm font-bold text-[#111111]">Recent Messages</h2>
-            <a href="/app/conversations" className="text-xs text-[#FF6B35] font-semibold hover:underline">View all</a>
+            <h2 className="text-sm font-bold text-[#111111]">{t("dashboard.recentMessages")}</h2>
+            <a href="/app/conversations" className="text-xs text-[#FF6B35] font-semibold hover:underline">{t("dashboard.viewAll")}</a>
           </div>
           {loading ? (
             <div className="divide-y divide-[#F9FAFB]">
@@ -319,10 +324,10 @@ export default function DashboardPage() {
                   <path d="M16 2H2a1 1 0 0 0-1 1v12l3-3h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z" stroke="#9CA3AF" strokeWidth="1.3" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <p className="text-sm font-semibold text-[#374151] mb-1">No conversations yet</p>
-              <p className="text-xs text-[#9CA3AF] mb-3">Connect a channel to start receiving messages.</p>
+              <p className="text-sm font-semibold text-[#374151] mb-1">{t("dashboard.noConversations")}</p>
+              <p className="text-xs text-[#9CA3AF] mb-3">{t("dashboard.connectToReceive")}</p>
               <Link href="/app/channels" className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
-                Connect a channel
+                {t("dashboard.connectChannel")}
               </Link>
             </div>
           ) : (
@@ -340,10 +345,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-[#111111] truncate">{c.customer_name ?? "Unknown"}</span>
+                      <span className="text-xs font-semibold text-[#111111] truncate">{c.customer_name ?? t("dashboard.unknown")}</span>
                       <span className="text-[10px] text-[#9CA3AF] shrink-0 ml-2">{c.time}</span>
                     </div>
-                    <p className="text-[11px] text-[#6B7280] truncate mt-0.5">{c.preview || "No messages yet"}</p>
+                    <p className="text-[11px] text-[#6B7280] truncate mt-0.5">{c.preview || t("dashboard.noMessages")}</p>
                   </div>
                 </a>
               ))}
@@ -354,8 +359,8 @@ export default function DashboardPage() {
         {/* Appointments — 3 cols */}
         <div className="lg:col-span-3 bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6]">
-            <h2 className="text-sm font-bold text-[#111111]">Today&apos;s Appointments</h2>
-            <a href="/app/appointments" className="text-xs text-[#FF6B35] font-semibold hover:underline">View all</a>
+            <h2 className="text-sm font-bold text-[#111111]">{t("dashboard.todayAppointments")}</h2>
+            <a href="/app/appointments" className="text-xs text-[#FF6B35] font-semibold hover:underline">{t("dashboard.viewAll")}</a>
           </div>
           {loading ? (
             <div className="divide-y divide-[#F9FAFB]">
@@ -378,8 +383,8 @@ export default function DashboardPage() {
                   <path d="M6 2v2M12 2v2M2 7h14" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
               </div>
-              <p className="text-sm font-semibold text-[#374151] mb-1">No appointments today</p>
-              <p className="text-xs text-[#9CA3AF]">Appointments booked via AI will appear here.</p>
+              <p className="text-sm font-semibold text-[#374151] mb-1">{t("dashboard.noAppointments")}</p>
+              <p className="text-xs text-[#9CA3AF]">{t("dashboard.appointmentsHint")}</p>
             </div>
           ) : (
             <div className="divide-y divide-[#F9FAFB]">

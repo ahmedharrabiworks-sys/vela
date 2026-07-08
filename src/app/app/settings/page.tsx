@@ -4,8 +4,15 @@ import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { getProfile, saveProfile } from "@/lib/business-profile";
 import { usePlan } from "@/lib/plans";
+import { useI18n } from "@/lib/i18n";
 
-const TABS = ["Business Info", "AI Configuration", "Notifications", "Billing"];
+const TABS = ["Business Info", "AI Configuration", "Notifications", "Billing"] as const;
+const TAB_KEYS: Record<string, string> = {
+  "Business Info":     "settings.tabs.businessInfo",
+  "AI Configuration":  "settings.tabs.aiConfig",
+  "Notifications":     "settings.tabs.notifications",
+  "Billing":           "settings.tabs.billing",
+};
 
 /* ── Toast ── */
 function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
@@ -49,6 +56,7 @@ export default function SettingsPage() {
   const [whiteLabelEnabled, setWhiteLabelEnabled] = useState(false);
 
   const { isPro } = usePlan();
+  const { t } = useI18n();
 
   useEffect(() => {
     async function load() {
@@ -131,10 +139,10 @@ export default function SettingsPage() {
           .upsert({ owner_id: userId, business_name: businessName, industry, city, phone, website, plan: getProfile()?.plan ?? "starter" }, { onConflict: "owner_id" });
       }
       setSaveStatus("saved");
-      setToast("Settings saved");
+      setToast(t("settings.billing.toastSaved"));
     } catch {
       setSaveStatus("saved");
-      setToast("Saved locally");
+      setToast(t("settings.billing.toastSavedLocally"));
     }
     setSaving(false);
     setTimeout(() => setSaveStatus(""), 2500);
@@ -159,7 +167,7 @@ export default function SettingsPage() {
     } catch { /* table may not exist */ }
     setSaving(false);
     setSaveStatus("saved");
-    setToast("AI configuration saved");
+    setToast(t("settings.aiConfig.toastSaved"));
     setTimeout(() => setSaveStatus(""), 2500);
   };
 
@@ -178,8 +186,8 @@ export default function SettingsPage() {
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       <div>
-        <h1 className="text-2xl font-bold text-[#111111]">Settings</h1>
-        <p className="text-sm text-[#6B7280] mt-1">Manage your business configuration and integrations.</p>
+        <h1 className="text-2xl font-bold text-[#111111]">{t("settings.title")}</h1>
+        <p className="text-sm text-[#6B7280] mt-1">{t("settings.subtitle")}</p>
       </div>
 
       {/* Tabs */}
@@ -190,7 +198,7 @@ export default function SettingsPage() {
               activeTab === tab ? "text-white shadow-sm" : "text-[#6B7280] hover:text-[#111111]"
             }`}
             style={activeTab === tab ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
-            {tab}
+            {t(TAB_KEYS[tab])}
           </button>
         ))}
       </div>
@@ -200,46 +208,46 @@ export default function SettingsPage() {
         {/* ── Business Info ── */}
         {activeTab === "Business Info" && (
           <>
-            <h2 className="font-bold text-[#111111] text-lg">Business Information</h2>
+            <h2 className="font-bold text-[#111111] text-lg">{t("settings.businessInfo.title")}</h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Business Name</label>
+                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.name")}</label>
                 <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="Your business name"
                   className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Industry</label>
+                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.industry")}</label>
                 <input type="text" value={industry} onChange={(e) => setIndustry(e.target.value)}
                   placeholder="e.g. Medical Clinic, Gym, Restaurant"
                   className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Phone</label>
+                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.phone")}</label>
                 <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)}
                   placeholder="+971 50 000 0000"
                   className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Email</label>
+                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.email")}</label>
                 <input type="email" value={userEmail} readOnly
                   className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#6B7280] bg-[#FAFAFA] cursor-not-allowed" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">City</label>
+                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.city")}</label>
                 <input type="text" value={city} onChange={(e) => setCity(e.target.value)}
                   placeholder="Dubai, UAE"
                   className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Website</label>
+                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.website")}</label>
                 <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)}
                   placeholder="yourbusiness.com"
                   className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Services (used by AI)</label>
+              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.businessInfo.services")}</label>
               <textarea rows={3} value={services} onChange={(e) => setServices(e.target.value)}
                 placeholder="List your services, e.g. Consultation, Cleaning, Premium Package"
                 className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors resize-none" />
@@ -248,12 +256,12 @@ export default function SettingsPage() {
               <button onClick={handleSaveBusiness} disabled={saving}
                 className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 disabled:opacity-70 transition-opacity"
                 style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                {saving ? "Saving…" : "Save Changes"}
+                {saving ? t("common.saving") : t("common.save")}
               </button>
               {saveStatus === "saved" && (
                 <span className="flex items-center gap-1.5 text-sm text-green-600">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3 3 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Saved
+                  {t("common.saved")}
                 </span>
               )}
             </div>
@@ -263,9 +271,9 @@ export default function SettingsPage() {
         {/* ── AI Configuration ── */}
         {activeTab === "AI Configuration" && (
           <>
-            <h2 className="font-bold text-[#111111] text-lg">AI Configuration</h2>
+            <h2 className="font-bold text-[#111111] text-lg">{t("settings.aiConfig.title")}</h2>
             <div>
-              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-3">AI Tone</label>
+              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-3">{t("settings.aiConfig.tone")}</label>
               <div className="flex flex-wrap gap-2">
                 {["professional", "friendly", "formal", "casual"].map((t) => (
                   <button key={t} onClick={() => setTone(t)}
@@ -277,7 +285,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-3">Response Language</label>
+              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-3">{t("settings.aiConfig.language")}</label>
               <div className="flex flex-wrap gap-2">
                 {["English", "Arabic", "Auto-detect"].map((l) => (
                   <button key={l} onClick={() => setLanguage(l)}
@@ -289,7 +297,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-3">Reply Timing</label>
+              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-3">{t("settings.aiConfig.timing")}</label>
               <div className="flex flex-wrap gap-2">
                 {["instant", "1-2 min", "5 min"].map((d) => (
                   <button key={d} onClick={() => setAiDelay(d)}
@@ -301,7 +309,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Custom AI Instructions</label>
+              <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">{t("settings.aiConfig.instructions")}</label>
               <textarea rows={5} value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)}
                 placeholder="e.g. Always mention our free parking. Never discuss competitor pricing. Offer 10% discount to first-time customers."
                 className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40 transition-colors resize-none" />
@@ -310,12 +318,12 @@ export default function SettingsPage() {
               <button onClick={handleSaveAI} disabled={saving}
                 className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 disabled:opacity-70 transition-opacity"
                 style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                {saving ? "Saving…" : "Save AI Config"}
+                {saving ? t("common.saving") : t("settings.aiConfig.save")}
               </button>
               {saveStatus === "saved" && (
                 <span className="flex items-center gap-1.5 text-sm text-green-600">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3 3 7-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Saved
+                  {t("common.saved")}
                 </span>
               )}
             </div>
@@ -325,19 +333,19 @@ export default function SettingsPage() {
         {/* ── Notifications ── */}
         {activeTab === "Notifications" && (
           <>
-            <h2 className="font-bold text-[#111111] text-lg">Notification Preferences</h2>
+            <h2 className="font-bold text-[#111111] text-lg">{t("settings.notifications.title")}</h2>
             <div className="space-y-3">
-              {[
-                { label: "New lead notification",  sub: "When AI captures a new lead",             enabled: true  },
-                { label: "Booking confirmation",   sub: "When an appointment is booked",           enabled: true  },
-                { label: "AI handoff alert",        sub: "When AI requests human takeover",         enabled: true  },
-                { label: "Daily summary email",    sub: "Morning summary of yesterday's activity", enabled: false },
-                { label: "WhatsApp notifications", sub: "Receive alerts via WhatsApp",             enabled: true  },
-              ].map((notif) => (
-                <div key={notif.label} className="flex items-center justify-between p-4 rounded-xl border border-[#E5E7EB]">
+              {([
+                { labelKey: "settings.notifications.items.newLead",      subKey: "settings.notifications.items.newLeadSub",      enabled: true  },
+                { labelKey: "settings.notifications.items.booking",       subKey: "settings.notifications.items.bookingSub",       enabled: true  },
+                { labelKey: "settings.notifications.items.handoff",       subKey: "settings.notifications.items.handoffSub",       enabled: true  },
+                { labelKey: "settings.notifications.items.dailySummary",  subKey: "settings.notifications.items.dailySummarySub",  enabled: false },
+                { labelKey: "settings.notifications.items.whatsapp",      subKey: "settings.notifications.items.whatsappSub",      enabled: true  },
+              ] as const).map((notif) => (
+                <div key={notif.labelKey} className="flex items-center justify-between p-4 rounded-xl border border-[#E5E7EB]">
                   <div>
-                    <p className="font-semibold text-[#111111] text-sm">{notif.label}</p>
-                    <p className="text-xs text-[#6B7280]">{notif.sub}</p>
+                    <p className="font-semibold text-[#111111] text-sm">{t(notif.labelKey)}</p>
+                    <p className="text-xs text-[#6B7280]">{t(notif.subKey)}</p>
                   </div>
                   <div className="relative cursor-pointer" style={{ width: 40, height: 22 }}>
                     <div className={`w-full h-full rounded-full transition-all ${notif.enabled ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`} />
@@ -347,7 +355,7 @@ export default function SettingsPage() {
               ))}
             </div>
             <button className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-              Save Preferences
+              {t("settings.notifications.save")}
             </button>
           </>
         )}
@@ -355,12 +363,12 @@ export default function SettingsPage() {
         {/* ── Billing ── */}
         {activeTab === "Billing" && (
           <>
-            <h2 className="font-bold text-[#111111] text-lg">Billing & Subscription</h2>
+            <h2 className="font-bold text-[#111111] text-lg">{t("settings.billing.title")}</h2>
             <div className="p-5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-sm font-bold text-[#111111] capitalize">{getProfile()?.plan ?? "Starter"} Plan</p>
-                  <p className="text-xs text-[#6B7280]">Renews automatically · Cancel anytime</p>
+                  <p className="text-xs text-[#6B7280]">{t("settings.billing.renews")}</p>
                 </div>
                 <span className="text-2xl font-extrabold text-[#FF6B35]">
                   {getProfile()?.plan === "premium" ? "$299" : getProfile()?.plan === "pro" ? "$159" : "$79"}
@@ -369,10 +377,10 @@ export default function SettingsPage() {
               </div>
               <div className="flex gap-2">
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                  Upgrade Plan
+                  {t("settings.billing.upgradePlan")}
                 </button>
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">
-                  Manage Billing
+                  {t("settings.billing.manageBilling")}
                 </button>
               </div>
             </div>
@@ -388,8 +396,8 @@ export default function SettingsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className={`text-sm font-semibold ${isPro ? "text-[#111111]" : "text-[#9CA3AF]"}`}>Hide "Powered by Vela" branding</p>
-                    <p className="text-xs text-[#9CA3AF] mt-0.5">Remove Vela branding from your chat widget and emails</p>
+                    <p className={`text-sm font-semibold ${isPro ? "text-[#111111]" : "text-[#9CA3AF]"}`}>{t("settings.billing.whiteLabel")}</p>
+                    <p className="text-xs text-[#9CA3AF] mt-0.5">{t("settings.billing.whiteLabelDesc")}</p>
                   </div>
                 </div>
                 {isPro ? (
@@ -398,7 +406,7 @@ export default function SettingsPage() {
                       const next = !whiteLabelEnabled;
                       setWhiteLabelEnabled(next);
                       localStorage.setItem("vela_white_label", String(next));
-                      setToast(next ? "Vela branding hidden" : "Vela branding restored");
+                      setToast(next ? t("settings.billing.toastHidden") : t("settings.billing.toastRestored"));
                     }}
                     className="relative shrink-0 transition-colors"
                     style={{ width: 40, height: 22 }}
@@ -412,19 +420,17 @@ export default function SettingsPage() {
                 )}
               </div>
               {!isPro && (
-                <p className="text-xs text-[#9CA3AF] mt-3">
-                  Available on <span className="font-semibold text-[#FF6B35]">Pro</span> and <span className="font-semibold text-[#FF6B35]">Premium</span> plans.
-                </p>
+                <p className="text-xs text-[#9CA3AF] mt-3">{t("settings.billing.plansNote")}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">Payment Method</p>
+              <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-widest">{t("settings.billing.paymentMethod")}</p>
               <div className="flex items-center gap-3 p-4 rounded-xl border border-[#E5E7EB]">
                 <div className="w-10 h-7 bg-[#111111] rounded flex items-center justify-center text-white text-xs font-bold">VISA</div>
-                <span className="text-sm text-[#6B7280]">No card on file</span>
+                <span className="text-sm text-[#6B7280]">{t("settings.billing.noCard")}</span>
               </div>
-              <button className="text-xs font-semibold text-[#FF6B35] hover:underline">Add payment method</button>
+              <button className="text-xs font-semibold text-[#FF6B35] hover:underline">{t("settings.billing.addPayment")}</button>
             </div>
           </>
         )}

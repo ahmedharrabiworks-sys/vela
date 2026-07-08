@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useI18n } from "@/lib/i18n";
 
 type Msg = { role: "ai" | "user"; content: string; isBuilding?: boolean; isError?: boolean };
 
@@ -24,6 +25,7 @@ const DEFAULT_SUGGESTIONS = [
 ];
 
 export default function WebsitePage() {
+  const { t } = useI18n();
   const btype = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
   const suggestions = (btype && INDUSTRY_SUGGESTIONS[btype]) ? INDUSTRY_SUGGESTIONS[btype] : DEFAULT_SUGGESTIONS;
 
@@ -104,8 +106,8 @@ export default function WebsitePage() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-[#111111]">Website Builder</h1>
-          <p className="text-xs text-[#6B7280] mt-0.5">Chat with AI to build your booking website</p>
+          <h1 className="text-xl font-bold text-[#111111]">{t("website.title")}</h1>
+          <p className="text-xs text-[#6B7280] mt-0.5">{t("website.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex md:hidden gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
@@ -121,7 +123,7 @@ export default function WebsitePage() {
               onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }}
               className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-all ${copied ? "border-[#16A34A] text-[#16A34A]" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35]"}`}
             >
-              {copied ? "Copied!" : "Copy Link"}
+              {copied ? t("website.copied") : t("website.copyLink")}
             </button>
           )}
           <button
@@ -129,7 +131,7 @@ export default function WebsitePage() {
             style={{ background: "#FF6B35" }}
             disabled={!built}
           >
-            Publish →
+            {t("website.publish")}
           </button>
         </div>
       </div>
@@ -174,7 +176,7 @@ export default function WebsitePage() {
           {/* Suggestions — shown before first user message */}
           {msgs.filter((m) => m.role === "user").length === 0 && (
             <div className="px-4 pb-2">
-              <p className="text-[10px] text-[#9CA3AF] mb-2">Quick starts:</p>
+              <p className="text-[10px] text-[#9CA3AF] mb-2">{t("website.quickStarts")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {suggestions.map((s) => (
                   <button key={s} onClick={() => setInput(s)}
@@ -215,7 +217,7 @@ export default function WebsitePage() {
           <div className="flex items-center justify-between mb-3 shrink-0">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${built ? "bg-green-400 animate-pulse" : "bg-[#9CA3AF]"}`} />
-              <p className="text-xs font-medium text-[#6B7280]">{built ? "yoursite.vela.ai — live preview" : "Preview will appear here"}</p>
+              <p className="text-xs font-medium text-[#6B7280]">{built ? t("website.livePreview") : t("website.previewEmpty")}</p>
             </div>
             {built && (
               <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
@@ -249,7 +251,7 @@ export default function WebsitePage() {
                 <div className="flex flex-col items-center justify-center h-full gap-4 w-full">
                   <div className="w-10 h-10 rounded-full border-[3px] border-[#FF6B35] border-t-transparent animate-spin" />
                   <div className="space-y-1 text-center">
-                    <p className="text-sm font-semibold text-[#111111]">Building your website…</p>
+                    <p className="text-sm font-semibold text-[#111111]">{t("website.building")}</p>
                     <p className="text-xs text-[#6B7280]">Generating design, copy, and booking flow</p>
                   </div>
                 </div>

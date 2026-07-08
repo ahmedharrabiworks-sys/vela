@@ -70,11 +70,24 @@
       "language": "Response Language",
       "timing": "Reply Timing",
       "instructions": "Custom AI Instructions",
-      "save": "Save AI Config"
+      "save": "Save AI Config",
+      "toastSaved": "AI configuration saved"
     },
     "notifications": {
       "title": "Notification Preferences",
-      "save": "Save Preferences"
+      "save": "Save Preferences",
+      "items": {
+        "newLead": "New lead notification",
+        "newLeadSub": "When AI captures a new lead",
+        "booking": "Booking confirmation",
+        "bookingSub": "When an appointment is booked",
+        "handoff": "AI handoff alert",
+        "handoffSub": "When AI requests human takeover",
+        "dailySummary": "Daily summary email",
+        "dailySummarySub": "Morning summary of yesterday's activity",
+        "whatsapp": "WhatsApp notifications",
+        "whatsappSub": "Receive alerts via WhatsApp"
+      }
     },
     "billing": {
       "title": "Billing & Subscription",
@@ -83,8 +96,14 @@
       "addPayment": "Add payment method",
       "noCard": "No card on file",
       "renews": "Renews automatically · Cancel anytime",
-      "whiteLabel": "Hide “Powered by Vela” branding",
-      "whiteLabelDesc": "Remove Vela branding from your chat widget (Pro & Premium)"
+      "whiteLabel": "Hide \"Powered by Vela\" branding",
+      "whiteLabelDesc": "Remove Vela branding from your chat widget and emails",
+      "paymentMethod": "Payment Method",
+      "plansNote": "Available on Pro and Premium plans.",
+      "toastSaved": "Settings saved",
+      "toastSavedLocally": "Saved locally",
+      "toastHidden": "Vela branding hidden",
+      "toastRestored": "Vela branding restored"
     }
   },
   "channels": {
@@ -179,5 +198,151 @@
     "showing": "Showing",
     "bookingCounter": "bookings this month",
     "bookingLimitReached": "Booking limit reached — upgrade to Pro for unlimited bookings"
+  },
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "there": "there"
+  },
+  "dashboard": {
+    "kpiTotalLeads": "Total Leads",
+    "kpiNewLeads": "New Leads",
+    "kpiAppointmentsToday": "Appointments Today",
+    "vsLastWeek": "vs last week",
+    "sameAsLastWeek": "Same as last week",
+    "recentMessages": "Recent Messages",
+    "todayAppointments": "Today's Appointments",
+    "viewAll": "View all",
+    "noConversations": "No conversations yet",
+    "connectToReceive": "Connect a channel to start receiving messages.",
+    "connectChannel": "Connect a channel",
+    "noAppointments": "No appointments today",
+    "appointmentsHint": "Appointments booked via AI will appear here.",
+    "kbBannerPre": "Your AI is only ",
+    "kbBannerPost": "% trained",
+    "kbBannerSub": "Teach it your services so it can answer customers correctly.",
+    "trainAI": "Train your AI",
+    "onboardingTitle": "Finish setting up your account",
+    "onboardingDesc": "Connect a channel, configure your AI, and build your website to go live.",
+    "continueSetup": "Continue setup",
+    "noMessages": "No messages yet",
+    "unknown": "Unknown"
+  },
+  "conversations": {
+    "title": "Conversations",
+    "filterAll": "All",
+    "filterUnread": "Unread",
+    "noConversations": "No conversations yet",
+    "widgetHint": "Messages from your widget will appear here",
+    "needsAttention": "Needs attention",
+    "replyingManually": "Replying manually as your team",
+    "aiModeHint": "AI mode — typing here simulates a customer message for testing",
+    "simulatePlaceholder": "Simulate a customer message…",
+    "replyPlaceholder": "Type your reply…",
+    "send": "Send",
+    "selectConversation": "Select a conversation",
+    "selectHint": "Choose from the left to read messages and reply",
+    "takeover": "Takeover",
+    "setupRequired": "Setup required",
+    "noMessages": "No messages yet",
+    "via": "via"
+  },
+  "leads": {
+    "title": "Leads & CRM",
+    "addLead": "+ Add Lead",
+    "searchPlaceholder": "Search leads by name, channel, or status…",
+    "stages": {
+      "new": "New",
+      "contacted": "Contacted",
+      "qualified": "Qualified",
+      "booked": "Booked",
+      "client": "Client"
+    },
+    "totalSingular": "total lead",
+    "totalPlural": "total leads",
+    "newCount": "new",
+    "noLeadsGlobal": "No leads yet",
+    "leadsHint": "Leads are created automatically when customers message through your connected channels.",
+    "connectChannel": "Connect a channel",
+    "emptyColumn": "No leads"
+  },
+  "website": {
+    "title": "Website Builder",
+    "subtitle": "Chat with AI to build your booking website",
+    "quickStarts": "Quick starts:",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "publish": "Publish →",
+    "previewEmpty": "Preview will appear here",
+    "building": "Building your website…",
+    "livePreview": "yoursite.vela.ai — live preview"
+  },
+  "aiTraining": {
+    "title": "Train Your AI",
+    "subtitle": "The more you tell your AI, the better it serves customers.",
+    "aiScore": "AI Score",
+    "wellTrained": "Well trained",
+    "gettingThere": "Getting there",
+    "needsInfo": "Needs info",
+    "importPlaceholder": "Paste your website — Vela learns everything ✨",
+    "analyzing": "Analyzing",
+    "importBtn": "Import",
+    "uploadPriceList": "upload a price list",
+    "answerQuestions": "answer 5 quick questions",
+    "or": "or",
+    "instagramSoon": "Instagram import is coming soon — paste your website URL or upload a price list PDF instead.",
+    "reviewTitle": "Extracted from your website — review before saving",
+    "reviewServices": "Services",
+    "reviewExtraInfo": "Extra Info",
+    "reviewBusinessInfo": "Business Info",
+    "reviewHours": "Hours:",
+    "reviewAddress": "Address:",
+    "saveBtn": "Looks good — Save",
+    "discardBtn": "Discard",
+    "tabs": {
+      "services": "Services",
+      "businessInfo": "Business Info",
+      "extra": "Extra"
+    },
+    "services": {
+      "colService": "Service",
+      "colPrice": "Price",
+      "colDuration": "Duration",
+      "colDescription": "Description",
+      "empty": "No services yet",
+      "addService": "Add service",
+      "namePlaceholder": "Service name",
+      "pricePlaceholder": "Price",
+      "durationPlaceholder": "45 min",
+      "descPlaceholder": "Short description"
+    },
+    "businessInfo": {
+      "hours": "Working Hours",
+      "hoursPlaceholder": "Mon–Fri 9am–6pm, Sat 10am–4pm",
+      "address": "Address / Location",
+      "bookingPolicy": "Booking Policy",
+      "tone": "AI Tone",
+      "toneProfessional": "Professional",
+      "toneProfessionalDesc": "Formal and business-like",
+      "toneFriendly": "Friendly",
+      "toneFriendlyDesc": "Warm and conversational",
+      "toneLuxury": "Luxury",
+      "toneLuxuryDesc": "Elegant and exclusive"
+    },
+    "extra": {
+      "label": "Extra Knowledge",
+      "hint": "Anything your AI should know — policies, common questions & answers, promotions, team info…",
+      "uploadTitle": "Upload document",
+      "uploadHint": "PDF or image — we'll extract the text for review.",
+      "chooseFile": "Choose File",
+      "extracting": "Extracting…",
+      "extractionFailed": "Extraction failed — try a different file or paste the text manually.",
+      "reviewExtracted": "Extracted text — review before adding:",
+      "discard": "Discard",
+      "addToKB": "Add to Knowledge Base"
+    },
+    "saved": "Saved ✓",
+    "savedImported": "Imported & Saved ✓"
   }
 }

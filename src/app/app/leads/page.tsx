@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 type Lead = {
   id: string;
@@ -17,12 +18,12 @@ type Lead = {
 const PIPELINE_STAGES = ["new", "contacted", "qualified", "booked", "client"] as const;
 type Stage = typeof PIPELINE_STAGES[number];
 
-const STAGE_LABELS: Record<Stage, string> = {
-  new:       "New",
-  contacted: "Contacted",
-  qualified: "Qualified",
-  booked:    "Booked",
-  client:    "Client",
+const STAGE_LABEL_KEYS: Record<Stage, string> = {
+  new:       "leads.stages.new",
+  contacted: "leads.stages.contacted",
+  qualified: "leads.stages.qualified",
+  booked:    "leads.stages.booked",
+  client:    "leads.stages.client",
 };
 
 const STAGE_COLORS: Record<Stage, { dot: string }> = {
@@ -64,6 +65,7 @@ function timeAgo(ts: string | null) {
 }
 
 export default function LeadsPage() {
+  const { t } = useI18n();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -109,22 +111,22 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#111111]">Leads &amp; CRM</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[#111111]">{t("leads.title")}</h1>
           {!loading && (
             <p className="text-sm text-[#6B7280] mt-1">
-              {leads.length} total lead{leads.length !== 1 ? "s" : ""}
-              {leads.filter((l) => l.status === "new").length > 0 && ` · ${leads.filter((l) => l.status === "new").length} new`}
+              {leads.length} {leads.length !== 1 ? t("leads.totalPlural") : t("leads.totalSingular")}
+              {leads.filter((l) => l.status === "new").length > 0 && ` · ${leads.filter((l) => l.status === "new").length} ${t("leads.newCount")}`}
             </p>
           )}
         </div>
         <button className="text-xs font-bold px-4 py-2.5 min-h-[40px] rounded-xl text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
-          + Add Lead
+          {t("leads.addLead")}
         </button>
       </div>
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <input type="text" placeholder="Search leads by name, channel, or status…"
+        <input type="text" placeholder={t("leads.searchPlaceholder")}
           value={search} onChange={(e) => setSearch(e.target.value)}
           className="pl-9 pr-4 py-2.5 text-sm bg-white border border-[#E5E7EB] rounded-xl w-full text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors" />
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -167,14 +169,14 @@ export default function LeadsPage() {
                   <path d="M11 7v4M11 15h.01" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round"/>
                 </svg>
               </div>
-              <p className="text-sm font-bold text-[#374151] mb-1">No leads yet</p>
+              <p className="text-sm font-bold text-[#374151] mb-1">{t("leads.noLeadsGlobal")}</p>
               <p className="text-xs text-[#9CA3AF] mb-4 max-w-xs">
-                Leads are created automatically when customers message through your connected channels.
+                {t("leads.leadsHint")}
               </p>
               <Link href="/app/channels"
                 className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
                 style={{ background: "#FF6B35" }}>
-                Connect a channel
+                {t("leads.connectChannel")}
               </Link>
             </div>
           ) : (
@@ -188,7 +190,7 @@ export default function LeadsPage() {
                     <div className="flex items-center justify-between mb-3 px-1">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
-                        <span className="text-xs font-bold text-[#374151]">{STAGE_LABELS[stage]}</span>
+                        <span className="text-xs font-bold text-[#374151]">{t(STAGE_LABEL_KEYS[stage])}</span>
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280]">
                         {stageLeads.length}
@@ -223,7 +225,7 @@ export default function LeadsPage() {
 
                       {stageLeads.length === 0 && (
                         <div className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-5 text-center">
-                          <p className="text-[11px] text-[#9CA3AF]">No leads</p>
+                          <p className="text-[11px] text-[#9CA3AF]">{t("leads.emptyColumn")}</p>
                         </div>
                       )}
                     </div>

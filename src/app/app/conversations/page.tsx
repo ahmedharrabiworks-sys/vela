@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { Database } from "@/lib/supabase";
+import { useI18n } from "@/lib/i18n";
 
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   preview?: string;
@@ -57,6 +58,7 @@ function ConvSkeleton() {
 }
 
 export default function ConversationsPage() {
+  const { t } = useI18n();
   const [tenantId, setTenantId]             = useState<string | null>(null);
   const [conversations, setConversations]   = useState<Conversation[]>([]);
   const [selected, setSelected]             = useState<Conversation | null>(null);
@@ -279,6 +281,8 @@ export default function ConversationsPage() {
   };
 
   const filters = ["All", "instagram", "whatsapp", "website", "Unread"];
+  const filterLabel = (f: string) =>
+    f === "All" ? t("conversations.filterAll") : f === "Unread" ? t("conversations.filterUnread") : f;
 
   const filtered = conversations.filter((c) => {
     if (filter === "All") return true;
@@ -293,7 +297,7 @@ export default function ConversationsPage() {
         <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-4">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 6v4M10 14h.01" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round"/><circle cx="10" cy="10" r="8" stroke="#DC2626" strokeWidth="1.5"/></svg>
         </div>
-        <p className="font-semibold text-[#111111] mb-2">Setup required</p>
+        <p className="font-semibold text-[#111111] mb-2">{t("conversations.setupRequired")}</p>
         <p className="text-sm text-[#6B7280]">{error}</p>
         <a href="/app/settings" className="mt-4 inline-block text-sm text-[#FF6B35] font-semibold hover:underline">Go to Settings →</a>
       </div>
@@ -308,14 +312,14 @@ export default function ConversationsPage() {
         ${showThread ? "hidden md:flex md:w-72" : "flex w-full md:w-72"}`}>
 
         <div className="px-4 py-4 border-b border-[#F3F4F6]">
-          <h2 className="font-bold text-[#111111] mb-3 text-sm">Conversations</h2>
+          <h2 className="font-bold text-[#111111] mb-3 text-sm">{t("conversations.title")}</h2>
           <div className="flex gap-1.5 flex-wrap">
             {filters.map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all capitalize ${
                   filter === f ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] text-[#6B7280] hover:text-[#111111]"
                 }`}>
-                {f}
+                {filterLabel(f)}
               </button>
             ))}
           </div>
@@ -329,8 +333,8 @@ export default function ConversationsPage() {
               <div className="w-10 h-10 rounded-xl bg-[#F3F4F6] flex items-center justify-center mb-3">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M16 2H2a1 1 0 0 0-1 1v12l3-3h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z" stroke="#9CA3AF" strokeWidth="1.3" strokeLinejoin="round"/></svg>
               </div>
-              <p className="text-sm font-semibold text-[#374151]">No conversations yet</p>
-              <p className="text-xs text-[#9CA3AF] mt-1">Messages from your widget will appear here</p>
+              <p className="text-sm font-semibold text-[#374151]">{t("conversations.noConversations")}</p>
+              <p className="text-xs text-[#9CA3AF] mt-1">{t("conversations.widgetHint")}</p>
             </div>
           )}
 
@@ -354,13 +358,13 @@ export default function ConversationsPage() {
                     <span className="text-xs font-semibold text-[#111111] truncate">{conv.customer_name}</span>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       {conv.needs_human && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">Needs attention</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
                       )}
                       {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
                       <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at)}</span>
                     </div>
                   </div>
-                  <p className="text-[11px] text-[#6B7280] truncate">{conv.preview || "No messages yet"}</p>
+                  <p className="text-[11px] text-[#6B7280] truncate">{conv.preview || t("conversations.noMessages")}</p>
                 </div>
               </button>
             );
@@ -394,7 +398,7 @@ export default function ConversationsPage() {
 
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[#111111] text-sm leading-tight">{selected.customer_name}</p>
-                <p className="text-[10px] text-[#6B7280] mt-0.5 capitalize">via {selected.channel}</p>
+                <p className="text-[10px] text-[#6B7280] mt-0.5 capitalize">{t("conversations.via")} {selected.channel}</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -408,7 +412,7 @@ export default function ConversationsPage() {
                 <button
                   onClick={() => toggleAI(false)}
                   className="hidden md:block text-xs font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">
-                  Takeover
+                  {t("conversations.takeover")}
                 </button>
               </div>
             </div>
@@ -463,12 +467,12 @@ export default function ConversationsPage() {
             <div className="px-4 md:px-5 py-4 border-t border-[#F3F4F6] bg-white">
               {!selected.ai_enabled && (
                 <p className="text-xs text-[#FF6B35] font-medium mb-2 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#FF6B35]" /> Replying manually as your team
+                  <span className="w-2 h-2 rounded-full bg-[#FF6B35]" /> {t("conversations.replyingManually")}
                 </p>
               )}
               {selected.ai_enabled && (
                 <p className="text-xs text-[#6B7280] font-medium mb-2 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-pulse" /> AI mode — typing here simulates a customer message for testing
+                  <span className="w-2 h-2 rounded-full bg-[#FF6B35] animate-pulse" /> {t("conversations.aiModeHint")}
                 </p>
               )}
               <div className="flex gap-2 items-end">
@@ -476,7 +480,7 @@ export default function ConversationsPage() {
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder={selected.ai_enabled ? "Simulate a customer message…" : "Type your reply…"}
+                  placeholder={selected.ai_enabled ? t("conversations.simulatePlaceholder") : t("conversations.replyPlaceholder")}
                   rows={2}
                   disabled={sending}
                   className="flex-1 text-sm resize-none rounded-xl border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors min-h-[52px] disabled:opacity-60"
@@ -486,7 +490,7 @@ export default function ConversationsPage() {
                   disabled={!reply.trim() || sending}
                   className="px-4 py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity min-h-[44px]"
                   style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                  Send
+                  {t("conversations.send")}
                 </button>
               </div>
             </div>
@@ -500,8 +504,8 @@ export default function ConversationsPage() {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
               </svg>
             </div>
-            <p className="font-bold text-[#111111] mb-1">Select a conversation</p>
-            <p className="text-sm text-[#6B7280]">Choose from the left to read messages and reply</p>
+            <p className="font-bold text-[#111111] mb-1">{t("conversations.selectConversation")}</p>
+            <p className="text-sm text-[#6B7280]">{t("conversations.selectHint")}</p>
           </div>
         )}
       </div>
