@@ -210,7 +210,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         flex flex-col h-screen shrink-0
         fixed inset-y-0 left-0 md:relative md:inset-auto
         z-50 md:z-auto
-        bg-[#1A0A00] border-r border-white/5
+        bg-white border-r border-[#E5E7EB]
         transition-transform duration-300 ease-in-out
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0
@@ -219,16 +219,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       `}
     >
       {/* Logo row */}
-      <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0">
-        {!collapsed && <Link href="/" onClick={onClose}><Logo showText light size={28} /></Link>}
-        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} light size={28} /></Link></span>}
-        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText light size={28} /></Link></span>}
+      <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-[#E5E7EB] shrink-0">
+        {!collapsed && <Link href="/" onClick={onClose}><Logo showText size={28} /></Link>}
+        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} size={28} /></Link></span>}
+        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText size={28} /></Link></span>}
 
-        <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-all" aria-label="Close sidebar">
+        <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-all" aria-label="Close sidebar">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
 
-        <button onClick={() => setCollapsed(!collapsed)} className="hidden md:flex p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all" aria-label="Toggle sidebar">
+        <button onClick={() => setCollapsed(!collapsed)} className="hidden md:flex p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#374151] hover:bg-[#F3F4F6] transition-all" aria-label="Toggle sidebar">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d={collapsed ? "M5 2l5 5-5 5" : "M9 2L4 7l5 5"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -246,8 +246,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={onClose}
               className={`flex items-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${
                 active
-                  ? "bg-[#FF6B35]/12 text-[#FF6B35] border-l-2 border-[#FF6B35]"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
+                  ? "bg-[#FFF5F0] text-[#FF6B35] border-l-2 border-[#FF6B35]"
+                  : "text-[#374151] hover:text-[#111111] hover:bg-[#F9FAFB]"
               }`}
               style={{ paddingLeft: active ? "10px" : "12px", paddingRight: "12px" }}
             >
@@ -282,10 +282,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Upgrade CTA */}
       {!collapsed && !isPremium && (
-        <div className="p-3 border-t border-white/5">
-          <div className="rounded-xl p-4 bg-gradient-to-br from-[#FF6B35]/15 to-[#FF3366]/10 border border-[#FF6B35]/20">
-            <p className="text-xs font-bold text-white mb-1">{t("sidebar.upgradePremium")}</p>
-            <p className="text-[10px] text-white/40 mb-3">{t("sidebar.unlockFeatures")}</p>
+        <div className="p-3 border-t border-[#E5E7EB]">
+          <div className="rounded-xl p-4 bg-white border border-[#FF6B35]">
+            <p className="text-xs font-bold text-[#111111] mb-1">{t("sidebar.upgradePremium")}</p>
+            <p className="text-[10px] text-[#6B7280] mb-3">{t("sidebar.unlockFeatures")}</p>
             <Link href="/pricing" onClick={onClose} className="block text-center text-xs font-bold py-2 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
               {t("sidebar.upgradeNow")}
             </Link>
@@ -294,7 +294,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       {/* User area with dropdown */}
-      <div ref={dropRef} className="relative border-t border-white/5">
+      <div ref={dropRef} className="relative border-t border-[#E5E7EB]">
         {dropdownOpen && (
           <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-[#E5E7EB] shadow-2xl z-50 overflow-hidden">
             {/* User info */}
@@ -402,7 +402,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* User button */}
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          className={`w-full flex items-center gap-3 p-3 transition-all ${dropdownOpen ? "bg-white/10" : "hover:bg-white/5"} ${collapsed ? "md:justify-center" : ""}`}
+          className={`w-full flex items-center gap-3 p-3 transition-all ${dropdownOpen ? "bg-[#FFF5F0]" : "hover:bg-[#F9FAFB]"} ${collapsed ? "md:justify-center" : ""}`}
         >
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
@@ -413,18 +413,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-semibold text-white truncate">{displayName}</p>
-                <p className="text-[10px] text-white/40 truncate">{planLabel}</p>
+                <p className="text-xs font-semibold text-[#111111] truncate">{displayName}</p>
+                <p className="text-[10px] text-[#6B7280] truncate">{planLabel}</p>
               </div>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-white/20 shrink-0">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[#9CA3AF] shrink-0">
                 <path d={dropdownOpen ? "M2 7.5l4-4 4 4" : "M2 4.5l4 4 4-4"} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </>
           )}
           {collapsed && (
             <div className="flex-1 min-w-0 md:hidden text-left">
-              <p className="text-xs font-semibold text-white truncate">{displayName}</p>
-              <p className="text-[10px] text-white/40 truncate">{planLabel}</p>
+              <p className="text-xs font-semibold text-[#111111] truncate">{displayName}</p>
+              <p className="text-[10px] text-[#6B7280] truncate">{planLabel}</p>
             </div>
           )}
         </button>
