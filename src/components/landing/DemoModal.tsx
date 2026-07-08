@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,7 +18,7 @@ const slideVariants = {
 };
 
 const G = ({ children }: { children: React.ReactNode }) => (
-  <span style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+  <span style={{ background: "var(--vela-gradient)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
     {children}
   </span>
 );
@@ -208,10 +208,10 @@ function S3() {
           animate={{ opacity: [0.3, 0.7, 0.3] }}
           transition={{ repeat: Infinity, duration: 3 }}
           className="absolute inset-0 rounded-3xl"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", filter: "blur(24px)", transform: "scale(1.4)" }}
+          style={{ background: "var(--vela-gradient)", filter: "blur(24px)", transform: "scale(1.4)" }}
         />
         <div className="relative w-20 h-20 rounded-3xl flex items-center justify-center text-white font-black text-3xl tracking-tight"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 0 48px rgba(255,107,53,0.5)" }}>
+          style={{ background: "var(--vela-gradient)", boxShadow: "0 0 48px rgba(255,107,53,0.5)" }}>
           V
         </div>
       </motion.div>
@@ -243,7 +243,7 @@ function S3() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ delay: 0.7 + i * 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-full border"
-            style={{ border: "1px solid rgba(255,107,53,0.25)", background: "rgba(255,107,53,0.08)" }}
+            style={{ border: "1px solid rgba(255,107,53,0.25)", background: "var(--vp-08)" }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 6l2.5 2.5 5.5-5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -300,9 +300,9 @@ function S4() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.15, duration: 0.5 }}
         className="flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 border border-[#FF6B35]/30"
-        style={{ background: "rgba(255,107,53,0.1)" }}
+        style={{ background: "var(--vp-10)" }}
       >
-        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#FF6B35" }} />
+        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--vp-color)" }} />
         <span className="font-mono text-sm font-semibold" style={{ color: "#FF6B35" }}>Watch it work</span>
       </motion.div>
 
@@ -349,7 +349,7 @@ function S4() {
             {phase === "typing" && (
               <motion.div key="dots" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="self-end rounded-2xl rounded-tr-sm px-4 py-3 border border-[#FF6B35]/30"
-                style={{ background: "rgba(255,107,53,0.15)" }}>
+                style={{ background: "var(--vp-15)" }}>
                 <div className="flex gap-1">
                   {[0, 150, 300].map(d => (
                     <span key={d} className="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style={{ animationDelay: `${d}ms` }} />
@@ -361,7 +361,7 @@ function S4() {
               <motion.div key="reply" initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="self-end rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[90%]"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                style={{ background: "var(--vela-gradient)" }}>
                 <p className="text-white text-sm leading-relaxed">⚡ Hi Sara! Dental cleaning is AED 350 — 45 min. We have tomorrow at 11 AM or 3 PM. Which works?</p>
                 <p className="text-white/50 text-[10px] mt-0.5 text-right">02:17 ✓✓</p>
               </motion.div>
@@ -381,7 +381,7 @@ function S4() {
             <motion.div initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: 0.3, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="self-end rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[90%]"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               <p className="text-white text-sm leading-relaxed">✅ Booked! Sara Khalid · Thu 11:00 AM · Dental Cleaning. See you then!</p>
               <p className="text-white/50 text-[10px] mt-0.5 text-right">02:18 ✓✓</p>
             </motion.div>
@@ -538,7 +538,7 @@ function S6({ onCTA, onClose }: { onCTA: () => void; onClose: () => void }) {
           whileTap={{ scale: 0.97 }}
           className="flex items-center gap-3 px-10 py-4 rounded-2xl font-bold text-white text-lg"
           style={{
-            background: "linear-gradient(135deg,#FF6B35,#FF3366)",
+            background: "var(--vela-gradient)",
             boxShadow: "0 0 60px rgba(255,107,53,0.45), 0 8px 32px rgba(255,51,102,0.3)",
           }}
         >
@@ -621,12 +621,12 @@ export default function DemoModal({ onClose }: Props) {
       <div className="absolute top-0 left-0 right-0 z-30 flex h-[2px]">
         {Array.from({ length: TOTAL }).map((_, i) => (
           <div key={i} className="flex-1 overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-            {i < slide && <div className="h-full w-full" style={{ background: "#FF6B35" }} />}
+            {i < slide && <div className="h-full w-full" style={{ background: "var(--vp-color)" }} />}
             {i === slide && (
               <motion.div
                 key={`p-${slide}`}
                 className="h-full"
-                style={{ background: "#FF6B35" }}
+                style={{ background: "var(--vp-color)" }}
                 initial={{ width: "0%" }}
                 animate={{ width: "100%" }}
                 transition={{ duration: slide < TOTAL - 1 ? SLIDE_DURATION / 1000 : 0.3, ease: "linear" }}
@@ -639,7 +639,7 @@ export default function DemoModal({ onClose }: Props) {
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#FF6B35" }} />
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--vp-color)" }} />
           <span className="font-mono text-white/20 text-xs tracking-widest">VELA</span>
         </div>
         <button

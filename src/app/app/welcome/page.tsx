@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -169,7 +169,7 @@ export default function WelcomePage() {
     return (
       <div className="max-w-lg mx-auto py-16 text-center px-4">
         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+          style={{ background: "var(--vela-gradient)" }}>
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
             <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -178,7 +178,7 @@ export default function WelcomePage() {
         <p className="text-sm text-[#6B7280] mb-8">Your AI assistant is live and ready to handle customers 24/7.</p>
         <Link href="/app"
           className="inline-block px-8 py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+          style={{ background: "var(--vela-gradient)" }}>
           Go to Dashboard →
         </Link>
       </div>

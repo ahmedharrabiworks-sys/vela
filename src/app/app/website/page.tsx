@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { useI18n } from "@/lib/i18n";
@@ -128,7 +128,7 @@ export default function WebsitePage() {
           )}
           <button
             className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-            style={{ background: "#FF6B35" }}
+            style={{ background: "var(--vp-color)" }}
             disabled={!built}
           >
             {t("website.publish")}
@@ -146,7 +146,7 @@ export default function WebsitePage() {
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "ai" && (
                   <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5"
-                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                    style={{ background: "var(--vela-gradient)" }}>
                     <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
                       <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
@@ -203,7 +203,7 @@ export default function WebsitePage() {
               />
               <button onClick={handleSend} disabled={!input.trim() || building}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 disabled:opacity-40 transition-opacity hover:opacity-90"
-                style={{ background: "#FF6B35" }}>
+                style={{ background: "var(--vp-color)" }}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M1.5 10.5l9-4.5-9-4.5v3.5l6 1-6 1V10.5z" fill="white"/>
                 </svg>

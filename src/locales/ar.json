@@ -52,7 +52,8 @@
       "businessInfo": "معلومات النشاط",
       "aiConfig": "إعداد الذكاء الاصطناعي",
       "notifications": "الإشعارات",
-      "billing": "الفواتير"
+      "billing": "الفواتير",
+      "appearance": "المظهر"
     },
     "businessInfo": {
       "title": "معلومات النشاط التجاري",

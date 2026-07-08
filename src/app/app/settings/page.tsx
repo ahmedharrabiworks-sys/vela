@@ -5,13 +5,15 @@ import { getSupabase } from "@/lib/supabase";
 import { getProfile, saveProfile } from "@/lib/business-profile";
 import { usePlan } from "@/lib/plans";
 import { useI18n } from "@/lib/i18n";
+import { useColorTheme } from "@/lib/theme";
 
-const TABS = ["Business Info", "AI Configuration", "Notifications", "Billing"] as const;
+const TABS = ["Business Info", "AI Configuration", "Notifications", "Billing", "Appearance"] as const;
 const TAB_KEYS: Record<string, string> = {
   "Business Info":     "settings.tabs.businessInfo",
   "AI Configuration":  "settings.tabs.aiConfig",
   "Notifications":     "settings.tabs.notifications",
   "Billing":           "settings.tabs.billing",
+  "Appearance":        "settings.tabs.appearance",
 };
 
 /* ── Toast ── */
@@ -57,6 +59,7 @@ export default function SettingsPage() {
 
   const { isPro } = usePlan();
   const { t } = useI18n();
+  const { colorTheme, setColorTheme } = useColorTheme();
 
   useEffect(() => {
     async function load() {
@@ -197,7 +200,7 @@ export default function SettingsPage() {
             className={`px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
               activeTab === tab ? "text-white shadow-sm" : "text-[#6B7280] hover:text-[#111111]"
             }`}
-            style={activeTab === tab ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+            style={activeTab === tab ? { background: "var(--vela-gradient)" } : {}}>
             {t(TAB_KEYS[tab])}
           </button>
         ))}
@@ -255,7 +258,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <button onClick={handleSaveBusiness} disabled={saving}
                 className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 disabled:opacity-70 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                style={{ background: "var(--vela-gradient)" }}>
                 {saving ? t("common.saving") : t("common.save")}
               </button>
               {saveStatus === "saved" && (
@@ -278,7 +281,7 @@ export default function SettingsPage() {
                 {["professional", "friendly", "formal", "casual"].map((t) => (
                   <button key={t} onClick={() => setTone(t)}
                     className={`px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all ${tone === t ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
-                    style={tone === t ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                    style={tone === t ? { background: "var(--vela-gradient)" } : {}}>
                     {t}
                   </button>
                 ))}
@@ -290,7 +293,7 @@ export default function SettingsPage() {
                 {["English", "Arabic", "Auto-detect"].map((l) => (
                   <button key={l} onClick={() => setLanguage(l)}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${language === l ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
-                    style={language === l ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                    style={language === l ? { background: "var(--vela-gradient)" } : {}}>
                     {l}
                   </button>
                 ))}
@@ -302,7 +305,7 @@ export default function SettingsPage() {
                 {["instant", "1-2 min", "5 min"].map((d) => (
                   <button key={d} onClick={() => setAiDelay(d)}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${aiDelay === d ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
-                    style={aiDelay === d ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                    style={aiDelay === d ? { background: "var(--vela-gradient)" } : {}}>
                     {d}
                   </button>
                 ))}
@@ -317,7 +320,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <button onClick={handleSaveAI} disabled={saving}
                 className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 disabled:opacity-70 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                style={{ background: "var(--vela-gradient)" }}>
                 {saving ? t("common.saving") : t("settings.aiConfig.save")}
               </button>
               {saveStatus === "saved" && (
@@ -354,9 +357,53 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
-            <button className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            <button className="text-sm font-bold px-6 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
               {t("settings.notifications.save")}
             </button>
+          </>
+        )}
+
+        {/* ── Appearance ── */}
+        {activeTab === "Appearance" && (
+          <>
+            <h2 className="font-bold text-[#111111] text-lg">Appearance</h2>
+            <p className="text-sm text-[#6B7280]">Choose an accent colour for your dashboard and homepage.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+              {([
+                { id: "classic" as const, name: "Classic",  desc: "Orange & rose",  color: "#FF6B35", accent: "#FF3366" },
+                { id: "ocean"   as const, name: "Ocean",    desc: "Blue & sky",     color: "#3B82F6", accent: "#60A5FA" },
+                { id: "sunset"  as const, name: "Sunset",   desc: "Warm amber",     color: "#FB8C42", accent: "#FBA94C" },
+              ]).map((th) => (
+                <button
+                  key={th.id}
+                  onClick={() => setColorTheme(th.id)}
+                  className={`relative flex flex-col items-start gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
+                    colorTheme === th.id
+                      ? "border-[#FF6B35] shadow-sm"
+                      : "border-[#E5E7EB] hover:border-[#D1D5DB]"
+                  }`}
+                  style={colorTheme === th.id ? { borderColor: th.color } : {}}
+                >
+                  {/* Colour swatch */}
+                  <div className="flex gap-1.5">
+                    <span className="w-7 h-7 rounded-full" style={{ background: th.color }} />
+                    <span className="w-7 h-7 rounded-full" style={{ background: th.accent }} />
+                    <span className="w-7 h-7 rounded-full bg-white border border-[#E5E7EB]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#111111]">{th.name}</p>
+                    <p className="text-xs text-[#6B7280]">{th.desc}</p>
+                  </div>
+                  {colorTheme === th.id && (
+                    <span className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: th.color }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </>
         )}
 
@@ -376,7 +423,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <button className="text-xs font-semibold px-4 py-2 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                <button className="text-xs font-semibold px-4 py-2 rounded-lg text-white" style={{ background: "var(--vela-gradient)" }}>
                   {t("settings.billing.upgradePlan")}
                 </button>
                 <button className="text-xs font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">
@@ -390,7 +437,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: isPro ? "linear-gradient(135deg,rgba(255,107,53,0.12),rgba(255,51,102,0.08))" : "#F3F4F6" }}>
+                    style={{ background: isPro ? "var(--vela-gradient-tint)" : "#F3F4F6" }}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M8 1.5L2 4.5v3.5c0 3.1 2.1 6 5 6.8 1 .3 2 0 3-1 1.9-1.7 2-3.3 2-5.8V4.5L8 1.5z" stroke={isPro ? "#FF6B35" : "#9CA3AF"} strokeWidth="1.3" strokeLinejoin="round"/>
                     </svg>

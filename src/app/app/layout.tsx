@@ -6,6 +6,7 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import { VelaAssistant } from "@/components/dashboard/VelaAssistant";
 import { I18nProvider } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import { ThemePicker } from "@/components/ui/ThemePicker";
 
 /* ── Command palette ── */
 const PALETTE_ITEMS = [
@@ -214,6 +215,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            <ThemePicker />
             <ThemeToggle />
             <button className="relative w-9 h-9 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">

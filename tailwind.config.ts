@@ -17,6 +17,10 @@ const config: Config = {
           cream: "#FFF5F0",
           muted: "#888888",
         },
+        /* Theme-aware tokens — use in JIT classes like bg-vp/10, text-vp */
+        vp: "rgb(var(--vp-rgb) / <alpha-value>)",
+        va: "rgb(var(--va-rgb) / <alpha-value>)",
+        vt: "var(--vt-color)",
       },
       fontFamily: {
         inter: ["Inter", "sans-serif"],

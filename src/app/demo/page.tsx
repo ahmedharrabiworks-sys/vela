@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -180,13 +180,13 @@ function TourCard({ step, total, current, onNext, onSkip }: {
           <button onClick={onSkip} className="flex-1 py-2 rounded-xl text-xs text-white/35 border border-white/10 hover:border-white/20 transition-colors">Later</button>
           <Link href="/auth/signup" onClick={onSkip}
             className="flex-[2] py-2 rounded-xl text-xs font-bold text-white text-center hover:opacity-90 transition-opacity"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            style={{ background: "var(--vela-gradient)" }}>
             Get Started →
           </Link>
         </div>
       ) : (
         <button onClick={onNext} className="w-full py-2.5 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+          style={{ background: "var(--vela-gradient)" }}>
           Next →
         </button>
       )}
@@ -375,7 +375,7 @@ function ConversationsView() {
                 <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${aiOn ? "left-4" : "left-0.5"}`} />
               </button>
             </div>
-            <button className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>+ Book</button>
+            <button className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>+ Book</button>
           </div>
         </div>
 
@@ -398,7 +398,7 @@ function ConversationsView() {
           <div className="flex gap-2 items-end">
             <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type a reply…"
               className="flex-1 text-sm rounded-xl border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors min-h-[44px]" />
-            <button className="px-4 py-3 rounded-xl text-white text-sm font-semibold min-h-[44px] hover:opacity-90" style={{ background: "#FF6B35" }}>Send</button>
+            <button className="px-4 py-3 rounded-xl text-white text-sm font-semibold min-h-[44px] hover:opacity-90" style={{ background: "var(--vp-color)" }}>Send</button>
           </div>
         </div>
       </div>
@@ -455,7 +455,7 @@ function AppointmentsView() {
             Export CSV
           </button>
           <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            style={{ background: "var(--vela-gradient)" }}>
             + New Appointment
           </button>
         </div>
@@ -661,7 +661,7 @@ function ChannelsView() {
 }
 
 /* ── Website Builder View ── */
-const DEMO_SITE_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ahmed Dental Clinic</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#0a0f1a;color:#f0f4f8}nav{background:#0a0f1a;border-bottom:1px solid rgba(255,255,255,0.06);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}.nav-logo{font-weight:800;font-size:.95rem;color:#FF6B35;letter-spacing:1px}.nav-links{display:flex;gap:18px;font-size:.75rem;color:#94a3b8}.nav-btn{background:#FF6B35;color:#fff;padding:7px 16px;border-radius:8px;font-size:.72rem;font-weight:700;border:none;cursor:pointer}.hero{padding:72px 20px 52px;text-align:center;background:linear-gradient(180deg,#0a0f1a 0%,#111827 100%)}.hero-tag{display:inline-block;background:rgba(255,107,53,.12);color:#FF6B35;font-size:.65rem;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:18px}.hero h1{font-size:2.2rem;font-weight:900;line-height:1.15;margin-bottom:14px}.hero h1 span{background:linear-gradient(135deg,#FF6B35,#FF3366);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}.hero p{font-size:.88rem;color:#94a3b8;max-width:380px;margin:0 auto 24px;line-height:1.6}.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.btn-p{background:linear-gradient(135deg,#FF6B35,#FF3366);color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.8rem;border:none;cursor:pointer}.btn-s{background:transparent;color:#f0f4f8;padding:12px 24px;border-radius:10px;font-weight:600;font-size:.8rem;border:1px solid rgba(255,255,255,.15);cursor:pointer}.badges{display:flex;gap:14px;justify-content:center;margin-top:20px;flex-wrap:wrap}.badge{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#64748b}.dot{width:5px;height:5px;border-radius:50%;background:#22c55e}.services{padding:52px 20px;max-width:800px;margin:0 auto}.s-title{font-size:1.35rem;font-weight:800;text-align:center;margin-bottom:6px}.s-sub{text-align:center;color:#64748b;font-size:.8rem;margin-bottom:30px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.card{background:#111827;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px}.card-icon{font-size:1.6rem;margin-bottom:10px}.card h3{font-size:.85rem;font-weight:700;margin-bottom:5px}.card p{font-size:.72rem;color:#64748b;line-height:1.5}.price{font-size:.88rem;font-weight:800;color:#FF6B35;margin-top:8px}.cta{background:linear-gradient(135deg,#FF6B35 0%,#FF3366 100%);padding:52px 20px;text-align:center}.cta h2{font-size:1.5rem;font-weight:800;margin-bottom:8px}.cta p{color:rgba(255,255,255,.8);margin-bottom:20px;font-size:.82rem}.btn-w{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#FF6B35;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.8rem;border:none;cursor:pointer}.footer{background:#060a12;padding:20px;text-align:center;color:#475569;font-size:.7rem;border-top:1px solid rgba(255,255,255,.04)}</style></head><body><nav><span class="nav-logo">AHMED DENTAL</span><div class="nav-links"><span>Services</span><span>About</span><span>Contact</span></div><button class="nav-btn">Book Now</button></nav><div class="hero"><div class="hero-tag">⭐ Dubai Marina&apos;s #1 Dental Clinic</div><h1>Your Perfect Smile<br>Starts <span>Here</span></h1><p>Expert dental care in the heart of Dubai Marina. From routine cleanings to stunning veneers — we have got you covered.</p><div class="btns"><button class="btn-p">📅 Book Appointment</button><button class="btn-s">💬 WhatsApp Us</button></div><div class="badges"><div class="badge"><span class="dot"></span>Open 7 Days a Week</div><div class="badge"><span class="dot"></span>Insurance Accepted</div><div class="badge"><span class="dot"></span>Same-Day Emergency</div></div></div><div class="services"><h2 class="s-title">Our Services</h2><p class="s-sub">Professional care with the latest technology</p><div class="grid"><div class="card"><div class="card-icon">🦷</div><h3>Dental Cleaning</h3><p>Deep cleaning and polishing for a healthy smile</p><div class="price">AED 350</div></div><div class="card"><div class="card-icon">✨</div><h3>Teeth Whitening</h3><p>Professional whitening — up to 8 shades brighter</p><div class="price">AED 800</div></div><div class="card"><div class="card-icon">💎</div><h3>Porcelain Veneers</h3><p>Hollywood smile with custom porcelain veneers</p><div class="price">From AED 1,800</div></div><div class="card"><div class="card-icon">🔬</div><h3>Root Canal</h3><p>Pain-free treatment with modern anesthesia</p><div class="price">AED 1,200</div></div></div></div><div class="cta"><h2>Ready to Book?</h2><p>Mon–Sat 9 AM–8 PM · Fri 9 AM–2 PM · Insurance accepted</p><button class="btn-w">💬 WhatsApp to Book</button></div><div class="footer">© 2025 Ahmed Dental Clinic · Dubai Marina Tower, UAE · +971 50 123 4567</div></body></html>`;
+const DEMO_SITE_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ahmed Dental Clinic</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#0a0f1a;color:#f0f4f8}nav{background:#0a0f1a;border-bottom:1px solid rgba(255,255,255,0.06);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}.nav-logo{font-weight:800;font-size:.95rem;color:#FF6B35;letter-spacing:1px}.nav-links{display:flex;gap:18px;font-size:.75rem;color:#94a3b8}.nav-btn{background:#FF6B35;color:#fff;padding:7px 16px;border-radius:8px;font-size:.72rem;font-weight:700;border:none;cursor:pointer}.hero{padding:72px 20px 52px;text-align:center;background:linear-gradient(180deg,#0a0f1a 0%,#111827 100%)}.hero-tag{display:inline-block;background:rgba(255,107,53,.12);color:#FF6B35;font-size:.65rem;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;margin-bottom:18px}.hero h1{font-size:2.2rem;font-weight:900;line-height:1.15;margin-bottom:14px}.hero h1 span{background:var(--vela-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}.hero p{font-size:.88rem;color:#94a3b8;max-width:380px;margin:0 auto 24px;line-height:1.6}.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.btn-p{background:var(--vela-gradient);color:#fff;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.8rem;border:none;cursor:pointer}.btn-s{background:transparent;color:#f0f4f8;padding:12px 24px;border-radius:10px;font-weight:600;font-size:.8rem;border:1px solid rgba(255,255,255,.15);cursor:pointer}.badges{display:flex;gap:14px;justify-content:center;margin-top:20px;flex-wrap:wrap}.badge{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#64748b}.dot{width:5px;height:5px;border-radius:50%;background:#22c55e}.services{padding:52px 20px;max-width:800px;margin:0 auto}.s-title{font-size:1.35rem;font-weight:800;text-align:center;margin-bottom:6px}.s-sub{text-align:center;color:#64748b;font-size:.8rem;margin-bottom:30px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.card{background:#111827;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px}.card-icon{font-size:1.6rem;margin-bottom:10px}.card h3{font-size:.85rem;font-weight:700;margin-bottom:5px}.card p{font-size:.72rem;color:#64748b;line-height:1.5}.price{font-size:.88rem;font-weight:800;color:#FF6B35;margin-top:8px}.cta{background:linear-gradient(135deg,#FF6B35 0%,#FF3366 100%);padding:52px 20px;text-align:center}.cta h2{font-size:1.5rem;font-weight:800;margin-bottom:8px}.cta p{color:rgba(255,255,255,.8);margin-bottom:20px;font-size:.82rem}.btn-w{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#FF6B35;padding:12px 24px;border-radius:10px;font-weight:700;font-size:.8rem;border:none;cursor:pointer}.footer{background:#060a12;padding:20px;text-align:center;color:#475569;font-size:.7rem;border-top:1px solid rgba(255,255,255,.04)}</style></head><body><nav><span class="nav-logo">AHMED DENTAL</span><div class="nav-links"><span>Services</span><span>About</span><span>Contact</span></div><button class="nav-btn">Book Now</button></nav><div class="hero"><div class="hero-tag">⭐ Dubai Marina&apos;s #1 Dental Clinic</div><h1>Your Perfect Smile<br>Starts <span>Here</span></h1><p>Expert dental care in the heart of Dubai Marina. From routine cleanings to stunning veneers — we have got you covered.</p><div class="btns"><button class="btn-p">📅 Book Appointment</button><button class="btn-s">💬 WhatsApp Us</button></div><div class="badges"><div class="badge"><span class="dot"></span>Open 7 Days a Week</div><div class="badge"><span class="dot"></span>Insurance Accepted</div><div class="badge"><span class="dot"></span>Same-Day Emergency</div></div></div><div class="services"><h2 class="s-title">Our Services</h2><p class="s-sub">Professional care with the latest technology</p><div class="grid"><div class="card"><div class="card-icon">🦷</div><h3>Dental Cleaning</h3><p>Deep cleaning and polishing for a healthy smile</p><div class="price">AED 350</div></div><div class="card"><div class="card-icon">✨</div><h3>Teeth Whitening</h3><p>Professional whitening — up to 8 shades brighter</p><div class="price">AED 800</div></div><div class="card"><div class="card-icon">💎</div><h3>Porcelain Veneers</h3><p>Hollywood smile with custom porcelain veneers</p><div class="price">From AED 1,800</div></div><div class="card"><div class="card-icon">🔬</div><h3>Root Canal</h3><p>Pain-free treatment with modern anesthesia</p><div class="price">AED 1,200</div></div></div></div><div class="cta"><h2>Ready to Book?</h2><p>Mon–Sat 9 AM–8 PM · Fri 9 AM–2 PM · Insurance accepted</p><button class="btn-w">💬 WhatsApp to Book</button></div><div class="footer">© 2025 Ahmed Dental Clinic · Dubai Marina Tower, UAE · +971 50 123 4567</div></body></html>`;
 
 function WebsiteView() {
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
@@ -771,7 +771,7 @@ Same-day emergency appointments available.
         {(["social", "video", "broadcast"] as const).map((t) => (
           <button key={t} onClick={() => setTool(t)}
             className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${tool === t ? "text-white border-transparent" : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/30 bg-white"}`}
-            style={tool === t ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+            style={tool === t ? { background: "var(--vela-gradient)" } : {}}>
             {t === "social" ? "Social Post" : t === "video" ? "Video Script" : "Broadcast"}
           </button>
         ))}
@@ -809,7 +809,7 @@ Same-day emergency appointments available.
                 className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none" />
             </div>
             <button disabled className="w-full py-3 rounded-xl text-sm font-bold text-white/80 cursor-not-allowed"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               Sign up to generate →
             </button>
           </div>
@@ -851,7 +851,7 @@ Same-day emergency appointments available.
                 className="w-full text-sm border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none" />
             </div>
             <button disabled className="w-full py-3 rounded-xl text-sm font-bold text-white/80 cursor-not-allowed"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               Generate Script →
             </button>
           </div>
@@ -975,7 +975,7 @@ export default function DemoPage() {
         </p>
         <Link href="/auth/signup"
           className="shrink-0 text-xs font-bold px-4 py-1.5 rounded-lg text-white whitespace-nowrap hover:opacity-90 transition-opacity"
-          style={{ background: "#FF6B35" }}>
+          style={{ background: "var(--vp-color)" }}>
           Get Started →
         </Link>
       </div>
@@ -1015,7 +1015,7 @@ export default function DemoPage() {
           <div className="p-3 border-t border-white/5">
             <Link href="/auth/signup" onClick={() => setSidebarOpen(false)}
               className="flex items-center justify-center w-full py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity min-h-[44px]"
-              style={{ background: "#FF6B35" }}>
+              style={{ background: "var(--vp-color)" }}>
               Unlock Full Access
             </Link>
           </div>
@@ -1035,7 +1035,7 @@ export default function DemoPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden md:block text-sm text-[#6B7280]">Ahmed Dental Clinic</span>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: "#FF6B35" }}>A</div>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: "var(--vp-color)" }}>A</div>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
@@ -222,7 +222,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/app/ai-training"
               className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               {t("dashboard.trainAI")}
             </Link>
             <button onClick={dismissKbBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
@@ -251,7 +251,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/app/welcome"
               className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               {t("dashboard.continueSetup")}
             </Link>
             <button onClick={dismissBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
@@ -326,7 +326,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm font-semibold text-[#374151] mb-1">{t("dashboard.noConversations")}</p>
               <p className="text-xs text-[#9CA3AF] mb-3">{t("dashboard.connectToReceive")}</p>
-              <Link href="/app/channels" className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
+              <Link href="/app/channels" className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>
                 {t("dashboard.connectChannel")}
               </Link>
             </div>

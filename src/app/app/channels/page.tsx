@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -447,7 +447,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
             <button
               onClick={() => onConnect(fullPhone, false)}
               className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90"
-              style={{ background: "#FF6B35" }}
+              style={{ background: "var(--vp-color)" }}
             >
               Done
             </button>
@@ -473,7 +473,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
             <button
               onClick={() => onConnect(fullPhone, true)}
               className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90"
-              style={{ background: "#FF6B35" }}
+              style={{ background: "var(--vp-color)" }}
             >
               Got it
             </button>
@@ -490,7 +490,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
     <Modal onClose={onClose}>
       <div className="p-6 text-center">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-          style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.12),rgba(255,51,102,0.08))" }}>
+          style={{ background: "var(--vela-gradient-tint)" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -502,7 +502,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
           <Link
             href="/auth/signup"
             className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+            style={{ background: "var(--vela-gradient)" }}
             onClick={() => { track("upgrade_clicked", { source: "channels" }); onClose(); }}
           >
             Upgrade to Pro →
@@ -705,7 +705,7 @@ function ChannelsPageContent() {
           </div>
           <Link href="/auth/signup" onClick={() => track("upgrade_clicked", { source: "channels_banner" })}
             className="text-xs font-bold px-3.5 py-2 rounded-lg text-white whitespace-nowrap hover:opacity-90"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            style={{ background: "var(--vela-gradient)" }}>
             Upgrade
           </Link>
         </div>
@@ -860,7 +860,7 @@ function ChannelsPageContent() {
                 <div className="bg-white border border-[#E5E7EB] rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
                   <p className="text-xs text-[#374151] font-medium whitespace-nowrap">Hi! How can I help?</p>
                 </div>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-lg" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-lg" style={{ background: "var(--vela-gradient)" }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>

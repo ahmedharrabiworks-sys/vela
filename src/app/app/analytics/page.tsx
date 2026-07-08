@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -228,7 +228,7 @@ export default function AnalyticsPage() {
       {isPro && !loading && !analytics && !fetchError && (
         <div className="bg-white border border-[#E5E7EB] rounded-2xl p-10 text-center">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-            style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.10),rgba(255,51,102,0.06))" }}>
+            style={{ background: "var(--vela-gradient-tint2)" }}>
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
               <rect x="4" y="14" width="5" height="10" rx="1.5" fill="#FF6B35" fillOpacity="0.4"/>
               <rect x="11.5" y="8" width="5" height="16" rx="1.5" fill="#FF6B35" fillOpacity="0.65"/>
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
           </p>
           <Link href="/app/channels"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            style={{ background: "var(--vela-gradient)" }}>
             Connect a channel →
           </Link>
         </div>
@@ -347,7 +347,7 @@ export default function AnalyticsPage() {
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.7)" }}>
             <div className="max-w-sm text-center p-8 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.12),rgba(255,51,102,0.08))" }}>
+                style={{ background: "var(--vela-gradient-tint)" }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <rect x="5" y="11" width="14" height="10" rx="2" stroke="#FF6B35" strokeWidth="1.8"/>
                   <path d="M8 11V7a4 4 0 018 0v4" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round"/>
@@ -359,7 +359,7 @@ export default function AnalyticsPage() {
                 href="/pricing"
                 onClick={() => track("upgrade_clicked", { source: "analytics" })}
                 className="inline-block px-6 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+                style={{ background: "var(--vela-gradient)" }}
               >
                 Upgrade to Pro →
               </Link>

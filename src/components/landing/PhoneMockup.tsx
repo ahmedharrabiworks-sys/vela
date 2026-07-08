@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -149,7 +149,7 @@ export default function PhoneMockup() {
           <div className="relative shrink-0">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+              style={{ background: "var(--vela-gradient)" }}
             >
               V
             </div>
@@ -196,7 +196,7 @@ export default function PhoneMockup() {
                     className="max-w-[80%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed"
                     style={
                       msg.role === "user"
-                        ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)", color: "white", borderBottomRightRadius: 4 }
+                        ? { background: "var(--vela-gradient)", color: "white", borderBottomRightRadius: 4 }
                         : { background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.88)", borderBottomLeftRadius: 4 }
                     }
                   >
@@ -220,7 +220,7 @@ export default function PhoneMockup() {
           </div>
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+            style={{ background: "var(--vela-gradient)" }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 6h8M7 2.5l3.5 3.5L7 9.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -244,7 +244,7 @@ export default function PhoneMockup() {
           whiteSpace: "nowrap",
         }}
       >
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(255,107,53,0.15)" }}>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--vp-15)" }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 11V6.5M4.5 11V4M7 11V2M9.5 11V5.5" stroke="#FF6B35" strokeWidth="1.4" strokeLinecap="round" />
           </svg>

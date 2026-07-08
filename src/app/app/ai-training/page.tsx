@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { KnowledgeBase } from "@/app/api/ai-training/route";
@@ -279,7 +279,7 @@ export default function AITrainingPage() {
             onClick={handleImport}
             disabled={!importInput.trim() || importState === "importing"}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+            style={{ background: "var(--vela-gradient)" }}
           >
             {importState === "importing" ? <><SpinnerIcon /> {t("aiTraining.analyzing")}</> : t("aiTraining.importBtn")}
           </button>
@@ -367,7 +367,7 @@ export default function AITrainingPage() {
             <div className="px-4 py-3 border-t border-[#F3F4F6] flex gap-2">
               <button onClick={acceptImport} disabled={saving}
                 className="flex-1 py-2.5 rounded-lg font-semibold text-sm text-white disabled:opacity-60 hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                style={{ background: "var(--vela-gradient)" }}>
                 {saving ? t("common.saving") : t("aiTraining.saveBtn")}
               </button>
               <button onClick={() => { setImportState("idle"); setImportedKb(null); }}
@@ -564,7 +564,7 @@ export default function AITrainingPage() {
                   </div>
                   <button onClick={appendExtracted}
                     className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                    style={{ background: "var(--vela-gradient)" }}>
                     {t("aiTraining.extra.addToKB")}
                   </button>
                 </div>

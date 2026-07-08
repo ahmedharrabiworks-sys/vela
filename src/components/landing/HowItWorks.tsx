@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef } from "react";
 
@@ -93,7 +93,7 @@ export default function HowItWorks() {
               >
                 {/* Step number bubble */}
                 <div className="relative flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center font-bold text-sm text-white z-10 shadow-vela"
-                  style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}
+                  style={{ background: "var(--vela-gradient)" }}
                 >
                   {step.number}
                 </div>
@@ -107,7 +107,7 @@ export default function HowItWorks() {
                       <span
                         key={chip}
                         className="text-xs font-medium px-3 py-1 rounded-full"
-                        style={{ background: "rgba(255,107,53,0.1)", color: "#FF6B35" }}
+                        style={{ background: "var(--vp-10)", color: "#FF6B35" }}
                       >
                         {chip}
                       </span>

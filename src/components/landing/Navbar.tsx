@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
+import { ThemePicker } from "@/components/ui/ThemePicker";
 import { useI18n } from "@/lib/i18n";
 
 const NAV_LINKS = [
-  { key: "features", href: "#features" },
+  { key: "features",   href: "#features" },
   { key: "howItWorks", href: "#how-it-works" },
-  { key: "pricing", href: "#pricing" },
-  { key: "faq", href: "#faq" },
+  { key: "pricing",    href: "#pricing" },
+  { key: "faq",        href: "#faq" },
 ];
 
 const LANG_OPTIONS = [
@@ -28,10 +29,10 @@ const NAME_MAP: Record<string, string> = {
 
 export default function Navbar() {
   const { locale, setLocale, t } = useI18n();
-  const [scrolled, setScrolled] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
+  const [scrolled, setScrolled]         = useState(false);
+  const [langOpen, setLangOpen]         = useState(false);
   const [mobileLangOpen, setMobileLangOpen] = useState(false);
-  const langRef = useRef<HTMLDivElement>(null);
+  const langRef       = useRef<HTMLDivElement>(null);
   const mobileLangRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [mobileLangOpen]);
 
-  const selectLang = (opt: typeof LANG_OPTIONS[0]) => {
+  const selectLang = (opt: (typeof LANG_OPTIONS)[0]) => {
     setLocale(NAME_MAP[opt.code]);
     setLangOpen(false);
     setMobileLangOpen(false);
@@ -71,24 +72,28 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-5 md:px-6 h-16 flex items-center justify-between">
+        {/* Logo — far left */}
         <Logo showText />
 
-        {/* Desktop nav links */}
-        <div className="hidden md:flex items-center gap-6">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.key}
-              href={link.href}
-              className="text-sm font-medium text-[#374151] hover:text-[#111111] transition-colors duration-200 relative group"
-            >
-              {t(`landing.nav.${link.key}`)}
-              <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#FF6B35] transition-all duration-300 group-hover:w-full" />
-            </a>
-          ))}
-        </div>
+        {/* Desktop right group: nav links → ThemePicker → lang → CTAs */}
+        <div className="hidden md:flex items-center gap-1">
+          {/* Nav links */}
+          <div className="flex items-center gap-1 mr-3">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.key}
+                href={link.href}
+                className="text-sm font-medium text-[#374151] hover:text-[#111111] transition-colors duration-200 relative group px-3 py-2 rounded-lg hover:bg-[#F9FAFB]"
+              >
+                {t(`landing.nav.${link.key}`)}
+                <span className="absolute bottom-1 left-3 right-3 h-px w-0 bg-[#FF6B35] transition-all duration-300 group-hover:w-[calc(100%-24px)]" />
+              </a>
+            ))}
+          </div>
 
-        {/* Desktop right: lang switcher + CTAs */}
-        <div className="hidden md:flex items-center gap-3">
+          {/* Theme picker */}
+          <ThemePicker />
+
           {/* Language switcher */}
           <div ref={langRef} className="relative">
             <button
@@ -127,6 +132,9 @@ export default function Navbar() {
               </div>
             )}
           </div>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-[#E5E7EB] mx-1" />
 
           <Link
             href="/auth/login"

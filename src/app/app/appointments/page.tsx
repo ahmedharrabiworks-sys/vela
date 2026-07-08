@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
@@ -105,7 +105,7 @@ function MessageModal({ apt, onSend, onClose }: { apt: Appointment; onSend: (msg
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
           <button onClick={() => { if (text.trim()) onSend(text.trim()); }} disabled={!text.trim()}
             className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ background: "#FF6B35" }}>
+            style={{ background: "var(--vp-color)" }}>
             Send Message
           </button>
         </div>
@@ -149,7 +149,7 @@ function RescheduleModal({ apt, onReschedule, onClose }: { apt: Appointment; onR
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
           <button onClick={() => { if (date && time) onReschedule(date, time); }} disabled={!date || !time}
             className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
-            style={{ background: "#FF6B35" }}>
+            style={{ background: "var(--vp-color)" }}>
             Confirm Reschedule
           </button>
         </div>
@@ -358,7 +358,7 @@ export default function AppointmentsPage() {
             </svg>
             Export CSV
           </button>
-          <button className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity min-h-[40px]" style={{ background: "#FF6B35" }}>
+          <button className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity min-h-[40px]" style={{ background: "var(--vp-color)" }}>
             + New Appointment
           </button>
         </div>
@@ -380,7 +380,7 @@ export default function AppointmentsPage() {
               className={`text-xs font-semibold px-3.5 py-2 rounded-lg transition-all min-h-[36px] capitalize ${
                 filter === key ? "text-white" : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
               }`}
-              style={filter === key ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+              style={filter === key ? { background: "var(--vela-gradient)" } : {}}>
               {t(`appointments.filters.${key}`)}
             </button>
           ))}
@@ -431,7 +431,7 @@ export default function AppointmentsPage() {
                         </div>
                         <p className="text-sm font-semibold text-[#374151]">No appointments yet — they&apos;ll appear here automatically</p>
                         <p className="text-xs text-[#9CA3AF] max-w-xs">When customers book through your AI chat, appointments show up here in real time.</p>
-                        <Link href="/app/channels" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 mt-1" style={{ background: "#FF6B35" }}>
+                        <Link href="/app/channels" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 mt-1" style={{ background: "var(--vp-color)" }}>
                           Connect a channel
                         </Link>
                       </div>
@@ -492,7 +492,7 @@ export default function AppointmentsPage() {
                               )}
                               <button onClick={() => setModal({ type: "message", id: apt.id })}
                                 className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white hover:opacity-90 whitespace-nowrap min-h-[30px]"
-                                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                                style={{ background: "var(--vela-gradient)" }}>
                                 Message
                               </button>
                             </div>

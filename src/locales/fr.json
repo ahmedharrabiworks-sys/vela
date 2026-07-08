@@ -52,7 +52,8 @@
       "businessInfo": "Infos entreprise",
       "aiConfig": "Configuration IA",
       "notifications": "Notifications",
-      "billing": "Facturation"
+      "billing": "Facturation",
+      "appearance": "Apparence"
     },
     "businessInfo": {
       "title": "Informations sur l'entreprise",

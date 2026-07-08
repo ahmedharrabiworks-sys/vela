@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -82,7 +82,7 @@ export default function Pricing() {
                 {plan.popular && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                     <span className="px-4 py-1 rounded-full text-xs font-bold text-white"
-                      style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
+                      style={{ background: "var(--vela-gradient)" }}>
                       {t("landing.pricing.mostPopular")}
                     </span>
                   </div>
@@ -113,7 +113,7 @@ export default function Pricing() {
                     <li key={i} className="flex items-start gap-3">
                       {feat.included ? (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.12)" />
+                          <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                           <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       ) : (

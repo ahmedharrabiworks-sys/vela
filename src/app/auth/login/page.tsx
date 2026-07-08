@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -84,7 +84,7 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 disabled:opacity-70"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+              style={{ background: "var(--vela-gradient)" }}
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>

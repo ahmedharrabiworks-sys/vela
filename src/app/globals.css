@@ -2,13 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --vela-orange: #FF6B35;
-  --vela-rose: #FF3366;
-  --vela-night: #1A0A00;
-  --vela-cream: #FFF5F0;
-  --vela-muted: #888888;
-  --vela-gradient: linear-gradient(135deg, #FF6B35, #FF3366);
+/* ═══════════════════════════════════════════════════
+   THEME CSS VARIABLES
+   data-theme="classic" (default) | "ocean" | "sunset"
+═══════════════════════════════════════════════════ */
+
+:root, [data-theme="classic"] {
+  --vp-color:  #FF6B35;
+  --va-color:  #FF3366;
+  --vt-color:  #FFF5F0;
+  --vela-gradient:       linear-gradient(135deg, #FF6B35, #FF3366);
+  --vela-gradient-90:    linear-gradient(90deg,  #FF6B35, #FF3366);
+  --vela-gradient-180:   linear-gradient(180deg, #FF6B35, #FF3366);
+  --vela-gradient-tint:  linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,51,102,0.08));
+  --vela-gradient-tint2: linear-gradient(135deg, rgba(255,107,53,0.10), rgba(255,51,102,0.06));
+  --vp-05: rgba(255,107,53,0.05);
+  --vp-06: rgba(255,107,53,0.06);
+  --vp-08: rgba(255,107,53,0.08);
+  --vp-10: rgba(255,107,53,0.10);
+  --vp-12: rgba(255,107,53,0.12);
+  --vp-15: rgba(255,107,53,0.15);
+  --vp-20: rgba(255,107,53,0.20);
+  --vp-25: rgba(255,107,53,0.25);
+  --vp-30: rgba(255,107,53,0.30);
+  --vp-35: rgba(255,107,53,0.35);
+  --vp-50: rgba(255,107,53,0.50);
+  --vp-rgb: 255 107 53;
+  --va-rgb: 255 51 102;
+  /* backward-compat */
+  --vela-orange:  #FF6B35;
+  --vela-rose:    #FF3366;
+  --vela-night:   #1A0A00;
+  --vela-cream:   #FFF5F0;
+  --vela-muted:   #888888;
+}
+
+[data-theme="ocean"] {
+  --vp-color:  #3B82F6;
+  --va-color:  #60A5FA;
+  --vt-color:  #EFF6FF;
+  --vela-gradient:       linear-gradient(135deg, #3B82F6, #60A5FA);
+  --vela-gradient-90:    linear-gradient(90deg,  #3B82F6, #60A5FA);
+  --vela-gradient-180:   linear-gradient(180deg, #3B82F6, #60A5FA);
+  --vela-gradient-tint:  linear-gradient(135deg, rgba(59,130,246,0.12), rgba(96,165,250,0.08));
+  --vela-gradient-tint2: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(96,165,250,0.06));
+  --vp-05: rgba(59,130,246,0.05);
+  --vp-06: rgba(59,130,246,0.06);
+  --vp-08: rgba(59,130,246,0.08);
+  --vp-10: rgba(59,130,246,0.10);
+  --vp-12: rgba(59,130,246,0.12);
+  --vp-15: rgba(59,130,246,0.15);
+  --vp-20: rgba(59,130,246,0.20);
+  --vp-25: rgba(59,130,246,0.25);
+  --vp-30: rgba(59,130,246,0.30);
+  --vp-35: rgba(59,130,246,0.35);
+  --vp-50: rgba(59,130,246,0.50);
+  --vp-rgb: 59 130 246;
+  --va-rgb: 96 165 250;
+  --vela-orange: #3B82F6;
+  --vela-rose:   #60A5FA;
+  --vela-cream:  #EFF6FF;
+}
+
+[data-theme="sunset"] {
+  --vp-color:  #FB8C42;
+  --va-color:  #FBA94C;
+  --vt-color:  #FFF7ED;
+  --vela-gradient:       linear-gradient(135deg, #FB8C42, #FBA94C);
+  --vela-gradient-90:    linear-gradient(90deg,  #FB8C42, #FBA94C);
+  --vela-gradient-180:   linear-gradient(180deg, #FB8C42, #FBA94C);
+  --vela-gradient-tint:  linear-gradient(135deg, rgba(251,140,66,0.12), rgba(251,169,76,0.08));
+  --vela-gradient-tint2: linear-gradient(135deg, rgba(251,140,66,0.10), rgba(251,169,76,0.06));
+  --vp-05: rgba(251,140,66,0.05);
+  --vp-06: rgba(251,140,66,0.06);
+  --vp-08: rgba(251,140,66,0.08);
+  --vp-10: rgba(251,140,66,0.10);
+  --vp-12: rgba(251,140,66,0.12);
+  --vp-15: rgba(251,140,66,0.15);
+  --vp-20: rgba(251,140,66,0.20);
+  --vp-25: rgba(251,140,66,0.25);
+  --vp-30: rgba(251,140,66,0.30);
+  --vp-35: rgba(251,140,66,0.35);
+  --vp-50: rgba(251,140,66,0.50);
+  --vp-rgb: 251 140 66;
+  --va-rgb: 251 169 76;
+  --vela-orange: #FB8C42;
+  --vela-rose:   #FBA94C;
+  --vela-cream:  #FFF7ED;
 }
 
 * {
@@ -44,12 +124,12 @@ body {
   .btn-primary {
     @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200;
     background: var(--vela-gradient);
-    box-shadow: 0 4px 24px rgba(255,107,53,0.35);
+    box-shadow: 0 4px 24px var(--vp-35);
   }
   .btn-primary:hover {
     @apply scale-[1.02];
     filter: brightness(1.08);
-    box-shadow: 0 8px 32px rgba(255,107,53,0.45);
+    box-shadow: 0 8px 32px var(--vp-35);
   }
 
   .btn-ghost {
@@ -61,8 +141,8 @@ body {
 
   .btn-ghost-dark {
     @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-sm border transition-all duration-200;
-    border-color: var(--vela-orange);
-    color: var(--vela-orange);
+    border-color: var(--vp-color);
+    color: var(--vp-color);
   }
   .btn-ghost-dark:hover {
     background: var(--vela-gradient);
@@ -71,8 +151,8 @@ body {
 
   .section-label {
     @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full;
-    background: rgba(255,107,53,0.12);
-    color: var(--vela-orange);
+    background: var(--vp-12);
+    color: var(--vp-color);
   }
 
   .card-glass {
@@ -88,8 +168,8 @@ body {
   }
   .card-feature:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(255,107,53,0.12);
-    border-color: rgba(255,107,53,0.3);
+    box-shadow: 0 12px 40px var(--vp-12);
+    border-color: var(--vp-30);
   }
 }
 
@@ -112,23 +192,108 @@ canvas {
   display: block;
 }
 
+/* ═══════════════════════════════════════════════════
+   NON-CLASSIC THEME OVERRIDES
+   Covers all Tailwind arbitrary-value classes that
+   reference the orange hex so they respect the theme.
+   Uses CSS vars so one rule serves ocean + sunset.
+═══════════════════════════════════════════════════ */
+
+/* text */
+[data-theme="ocean"] .text-\[\#FF6B35\],
+[data-theme="sunset"] .text-\[\#FF6B35\] { color: var(--vp-color) !important; }
+
+[data-theme="ocean"] .hover\:text-\[\#FF6B35\]:hover,
+[data-theme="sunset"] .hover\:text-\[\#FF6B35\]:hover { color: var(--vp-color) !important; }
+
+[data-theme="ocean"] .text-\[\#FF3366\],
+[data-theme="sunset"] .text-\[\#FF3366\] { color: var(--va-color) !important; }
+
+/* backgrounds */
+[data-theme="ocean"] .bg-\[\#FF6B35\],
+[data-theme="sunset"] .bg-\[\#FF6B35\] { background-color: var(--vp-color) !important; }
+
+[data-theme="ocean"] .bg-\[\#FF3366\],
+[data-theme="sunset"] .bg-\[\#FF3366\] { background-color: var(--va-color) !important; }
+
+[data-theme="ocean"] .bg-\[\#FF6B35\]\/10,
+[data-theme="sunset"] .bg-\[\#FF6B35\]\/10 { background-color: var(--vp-10) !important; }
+
+[data-theme="ocean"] .bg-\[\#FF6B35\]\/12,
+[data-theme="sunset"] .bg-\[\#FF6B35\]\/12 { background-color: var(--vp-12) !important; }
+
+[data-theme="ocean"] .hover\:bg-\[\#FF6B35\]\/10:hover,
+[data-theme="sunset"] .hover\:bg-\[\#FF6B35\]\/10:hover { background-color: var(--vp-10) !important; }
+
+[data-theme="ocean"] .bg-\[\#FFF5F0\],
+[data-theme="sunset"] .bg-\[\#FFF5F0\] { background-color: var(--vt-color) !important; }
+
+[data-theme="ocean"] .hover\:bg-\[\#FFF5F0\]:hover,
+[data-theme="sunset"] .hover\:bg-\[\#FFF5F0\]:hover { background-color: var(--vt-color) !important; }
+
+[data-theme="ocean"] .bg-\[\#FFF8F5\],
+[data-theme="sunset"] .bg-\[\#FFF8F5\] { background-color: var(--vt-color) !important; }
+
+[data-theme="ocean"] .bg-\[\#FFF3EE\],
+[data-theme="sunset"] .bg-\[\#FFF3EE\] { background-color: var(--vt-color) !important; }
+
+/* borders */
+[data-theme="ocean"] .border-\[\#FF6B35\],
+[data-theme="sunset"] .border-\[\#FF6B35\] { border-color: var(--vp-color) !important; }
+
+[data-theme="ocean"] .hover\:border-\[\#FF6B35\]:hover,
+[data-theme="sunset"] .hover\:border-\[\#FF6B35\]:hover { border-color: var(--vp-color) !important; }
+
+[data-theme="ocean"] .hover\:border-\[\#FF6B35\]\/40:hover,
+[data-theme="sunset"] .hover\:border-\[\#FF6B35\]\/40:hover { border-color: rgb(var(--vp-rgb) / 0.4) !important; }
+
+[data-theme="ocean"] .border-\[\#FF6B35\]\/20,
+[data-theme="sunset"] .border-\[\#FF6B35\]\/20 { border-color: rgb(var(--vp-rgb) / 0.2) !important; }
+
+[data-theme="ocean"] .border-\[\#FF6B35\]\/40,
+[data-theme="sunset"] .border-\[\#FF6B35\]\/40 { border-color: rgb(var(--vp-rgb) / 0.4) !important; }
+
+/* focus borders */
+[data-theme="ocean"] .focus\:border-\[\#FF6B35\]\/40:focus,
+[data-theme="sunset"] .focus\:border-\[\#FF6B35\]\/40:focus { border-color: rgb(var(--vp-rgb) / 0.4) !important; }
+
+[data-theme="ocean"] .focus\:border-\[\#FF6B35\]\/50:focus,
+[data-theme="sunset"] .focus\:border-\[\#FF6B35\]\/50:focus { border-color: rgb(var(--vp-rgb) / 0.5) !important; }
+
+/* gradients */
+[data-theme="ocean"] .from-\[\#FF6B35\],
+[data-theme="sunset"] .from-\[\#FF6B35\] { --tw-gradient-from: var(--vp-color) !important; }
+
+[data-theme="ocean"] .from-\[\#FF6B35\]\/15,
+[data-theme="sunset"] .from-\[\#FF6B35\]\/15 { --tw-gradient-from: rgb(var(--vp-rgb) / 0.15) !important; }
+
+[data-theme="ocean"] .to-\[\#FF3366\],
+[data-theme="sunset"] .to-\[\#FF3366\] { --tw-gradient-to: var(--va-color) !important; }
+
+[data-theme="ocean"] .to-\[\#FF3366\]\/10,
+[data-theme="sunset"] .to-\[\#FF3366\]\/10 { --tw-gradient-to: rgb(var(--va-rgb) / 0.10) !important; }
+
+/* SVG presentation attributes — CSS overrides them */
+[data-theme="ocean"] [stroke="#FF6B35"],
+[data-theme="sunset"] [stroke="#FF6B35"] { stroke: var(--vp-color) !important; }
+
+[data-theme="ocean"] [fill="#FF6B35"],
+[data-theme="sunset"] [fill="#FF6B35"] { fill: var(--vp-color) !important; }
+
 /* ── Dark mode — Lovable/Linear neutral grey palette ── */
 html.dark {
   color-scheme: dark;
-  /* Neutral grey backgrounds — no warm tones, no pure black */
-  --dm-bg:      #101014;   /* page background */
-  --dm-card:    #17171C;   /* cards, panels, header */
-  --dm-card2:   #1E1E24;   /* elevated: table headers, kbd, section dividers */
-  --dm-hover:   #26262E;   /* hover states */
-  --dm-sidebar: #0C0C0F;   /* sidebar — slightly darker than content */
+  --dm-bg:      #101014;
+  --dm-card:    #17171C;
+  --dm-card2:   #1E1E24;
+  --dm-hover:   #26262E;
+  --dm-sidebar: #0C0C0F;
   --dm-border:  rgba(255,255,255,0.07);
   --dm-border2: rgba(255,255,255,0.04);
-  /* Typography */
   --dm-text:    #EDEDEF;
   --dm-text2:   #9B9BA3;
   --dm-muted:   #6E6E76;
   --dm-faint:   #48484F;
-  /* Accents — slightly muted orange/rose for dark mode (less glare on dark bg) */
   --dm-orange:  #E85A28;
   --dm-gradient: linear-gradient(135deg, #E85A28, #E02B57);
   --dm-glow:    rgba(232, 90, 40, 0.25);
@@ -139,25 +304,21 @@ html.dark body {
   color: var(--dm-text);
 }
 
-/* Page / layout surfaces */
 html.dark .bg-\[\#F8F9FA\]  { background-color: var(--dm-bg)      !important; }
 html.dark .bg-\[\#F9FAFB\]  { background-color: var(--dm-card2)   !important; }
 html.dark .bg-\[\#FAFAFA\]  { background-color: var(--dm-card2)   !important; }
 html.dark .bg-\[\#F3F4F6\]  { background-color: var(--dm-card2)   !important; }
 html.dark .bg-white          { background-color: var(--dm-card)    !important; }
-/* Sidebar — slightly darker */
 html.dark .bg-\[\#1A0A00\]  { background-color: var(--dm-sidebar) !important; }
 html.dark .bg-\[\#111111\]  { background-color: var(--dm-sidebar) !important; }
 html.dark .bg-\[\#111827\]  { background-color: var(--dm-sidebar) !important; }
 
-/* Borders */
 html.dark .border-\[\#E5E7EB\]     { border-color: var(--dm-border)  !important; }
 html.dark .border-\[\#F3F4F6\]     { border-color: var(--dm-border2) !important; }
 html.dark .border-\[\#D1D5DB\]     { border-color: var(--dm-border)  !important; }
 html.dark .border-\[\#E5E7EB\]\/40 { border-color: var(--dm-border)  !important; }
 html.dark .border-\[#f0e8e0\]      { border-color: var(--dm-border)  !important; }
 
-/* Text */
 html.dark .text-\[\#111111\]  { color: var(--dm-text)  !important; }
 html.dark .text-\[\#111827\]  { color: var(--dm-text)  !important; }
 html.dark .text-\[\#1A0A00\]  { color: var(--dm-text)  !important; }
@@ -166,33 +327,24 @@ html.dark .text-\[\#6B7280\]  { color: var(--dm-muted) !important; }
 html.dark .text-\[\#9CA3AF\]  { color: var(--dm-faint) !important; }
 html.dark .text-\[\#888888\]  { color: var(--dm-faint) !important; }
 
-/* Divide lines */
 html.dark .divide-\[\#E5E7EB\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--dm-border)  !important; }
 html.dark .divide-\[\#F9FAFB\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--dm-border2) !important; }
 html.dark .divide-\[\#F3F4F6\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--dm-border2) !important; }
 
-/* Hover states */
 html.dark .hover\:bg-\[\#F9FAFB\]:hover  { background-color: var(--dm-hover)          !important; }
 html.dark .hover\:bg-\[\#FAFAFA\]:hover  { background-color: var(--dm-hover)          !important; }
 html.dark .hover\:bg-\[\#F3F4F6\]:hover  { background-color: var(--dm-hover)          !important; }
 html.dark .hover\:bg-\[\#FFF5F0\]:hover  { background-color: rgba(255,107,53,0.12)    !important; }
 
-/* Active/selected states — orange tint */
 html.dark .bg-\[\#FFF8F5\]   { background-color: rgba(255,107,53,0.08) !important; }
 html.dark .bg-\[\#FFF3EE\]   { background-color: rgba(255,107,53,0.10) !important; }
 html.dark .bg-\[\#FFF5F0\]   { background-color: rgba(255,107,53,0.10) !important; }
 html.dark .bg-\[\#FFD5C2\]   { background-color: rgba(255,107,53,0.20) !important; }
-
-/* Active borders */
 html.dark .border-\[\#FFD5C2\] { border-color: rgba(255,107,53,0.25) !important; }
 
-/* Table headers — ensure elevated look regardless of bg class */
 html.dark thead tr { background-color: var(--dm-card2) !important; }
-
-/* Kbd badges */
 html.dark kbd { background-color: var(--dm-card2) !important; border-color: var(--dm-border) !important; color: var(--dm-text2) !important; }
 
-/* Input / textarea / select */
 html.dark input:not([type="checkbox"]):not([type="radio"]),
 html.dark textarea,
 html.dark select {
@@ -203,17 +355,13 @@ html.dark select {
 html.dark input::placeholder,
 html.dark textarea::placeholder { color: var(--dm-muted) !important; }
 
-/* Shadows — soften in dark mode */
 html.dark .shadow-card       { box-shadow: 0 4px 24px rgba(0,0,0,0.4) !important; }
 html.dark .shadow-card-hover { box-shadow: 0 12px 48px rgba(0,0,0,0.5) !important; }
 html.dark .shadow-2xl        { box-shadow: 0 24px 64px rgba(0,0,0,0.5) !important; }
 
-/* Chart gridlines and axis labels */
 html.dark svg line[stroke="#F3F4F6"]  { stroke: rgba(255,255,255,0.06) !important; }
 html.dark svg text[fill="#9CA3AF"]    { fill:   var(--dm-faint) !important; }
 
-/* ── FIX 3: Dark mode accent tuning — softer orange/rose, less glare ── */
-/* btn-primary gradient override */
 html.dark .btn-primary {
   background: var(--dm-gradient) !important;
   box-shadow: 0 4px 24px var(--dm-glow) !important;
@@ -221,15 +369,10 @@ html.dark .btn-primary {
 html.dark .btn-primary:hover {
   box-shadow: 0 8px 32px var(--dm-glow) !important;
 }
-/* Orange text */
 html.dark .text-\[\#FF6B35\]    { color: var(--dm-orange) !important; }
 html.dark .text-\[\#FF3366\]    { color: #E02B57 !important; }
-/* Orange solid backgrounds (badges, dots, send buttons) */
 html.dark .bg-\[\#FF6B35\]      { background-color: var(--dm-orange) !important; }
-/* Orange borders */
 html.dark .border-\[\#FF6B35\]  { border-color: var(--dm-orange) !important; }
-/* Active nav highlight (sidebar) */
 html.dark .bg-\[\#FF6B35\]\/12  { background-color: rgba(232,90,40,0.10) !important; }
-/* Upgrade CTA box gradient tints */
 html.dark .from-\[\#FF6B35\]\/15 { --tw-gradient-from: rgba(232,90,40,0.12) !important; }
 html.dark .to-\[\#FF3366\]\/10   { --tw-gradient-to:   rgba(224,43,87,0.08)  !important; }

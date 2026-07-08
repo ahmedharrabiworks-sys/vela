@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -162,7 +162,7 @@ function SocialTool({ onGenerate }: { onGenerate: () => void }) {
         {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
         <button onClick={() => generate()} disabled={loading || !prompt.trim()}
           className="w-full py-3 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-          style={{ background: "#FF6B35" }}>
+          style={{ background: "var(--vp-color)" }}>
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -193,7 +193,7 @@ function SocialTool({ onGenerate }: { onGenerate: () => void }) {
                 {copied ? "Copied!" : "Copy Text"}
               </button>
               <button onClick={() => generate()}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
+                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>
                 Regenerate
               </button>
             </div>
@@ -302,7 +302,7 @@ function BroadcastTool({ onGenerate }: { onGenerate: () => void }) {
           </p>
           <button onClick={() => setSent(true)} disabled={!message.trim()}
             className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-            style={{ background: "#FF6B35" }}>
+            style={{ background: "var(--vp-color)" }}>
             Send Broadcast
           </button>
         </div>
@@ -377,7 +377,7 @@ function VideoTool({ onGenerate }: { onGenerate: () => void }) {
         {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
         <button onClick={() => generate()} disabled={loading || !topic.trim()}
           className="w-full py-3 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-          style={{ background: "#FF6B35" }}>
+          style={{ background: "var(--vp-color)" }}>
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -408,7 +408,7 @@ function VideoTool({ onGenerate }: { onGenerate: () => void }) {
                 {copied ? "Copied!" : "Copy Script"}
               </button>
               <button onClick={() => generate()}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ background: "#FF6B35" }}>
+                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>
                 Regenerate
               </button>
             </div>
@@ -475,7 +475,7 @@ export default function MarketingPage() {
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.7)" }}>
             <div className="max-w-sm text-center p-8 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.12),rgba(255,51,102,0.08))" }}>
+                style={{ background: "var(--vela-gradient-tint)" }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <rect x="5" y="11" width="14" height="10" rx="2" stroke="#FF6B35" strokeWidth="1.8"/>
                   <path d="M8 11V7a4 4 0 018 0v4" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round"/>
@@ -487,7 +487,7 @@ export default function MarketingPage() {
                 href="/auth/signup"
                 onClick={() => track("upgrade_clicked", { source: "marketing" })}
                 className="inline-block px-6 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+                style={{ background: "var(--vela-gradient)" }}
               >
                 Upgrade to Pro →
               </Link>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { getSupabase } from "@/lib/supabase";
@@ -180,7 +180,7 @@ export default function TestAIPage() {
                         ? "text-white rounded-br-sm"
                         : "bg-white border border-[#E5E7EB] text-[#111111] rounded-bl-sm"
                     }`}
-                      style={msg.role === "user" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                      style={msg.role === "user" ? { background: "var(--vela-gradient)" } : {}}>
                       {msg.content}
                     </div>
                   </div>
@@ -212,7 +212,7 @@ export default function TestAIPage() {
                 />
                 <button onClick={send} disabled={sending || !tenantId.trim() || !input.trim()}
                   className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity"
-                  style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                  style={{ background: "var(--vela-gradient)" }}>
                   {sending ? "…" : "Send"}
                 </button>
               </div>

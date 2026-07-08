@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -392,7 +392,7 @@ export default function SignupPage() {
                 <label className={labelCls}>Password</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} className={inputCls} />
               </div>
-              <button type="submit" className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              <button type="submit" className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
                 Continue →
               </button>
             </form>
@@ -504,7 +504,7 @@ export default function SignupPage() {
                 </button>
                 <button type="submit" disabled={detecting}
                   className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                  style={{ background: "var(--vela-gradient)" }}>
                   {detecting ? (
                     <span className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-4 h-4" viewBox="0 0 16 16" fill="none">
@@ -576,7 +576,7 @@ export default function SignupPage() {
                     {p.popular && (
                       <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                         <span className="px-4 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
-                          style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
+                          style={{ background: "var(--vela-gradient)" }}>
                           Most Popular
                         </span>
                       </div>
@@ -609,7 +609,7 @@ export default function SignupPage() {
                         <li key={feat.text} className="flex items-start gap-2.5">
                           {feat.included ? (
                             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                              <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.12)" />
+                              <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                               <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           ) : (
@@ -638,7 +638,7 @@ export default function SignupPage() {
               <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">Back</button>
               <button onClick={handleStart} disabled={loading}
                 className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-70"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                style={{ background: "var(--vela-gradient)" }}>
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin w-4 h-4" viewBox="0 0 16 16" fill="none">
@@ -656,7 +656,7 @@ export default function SignupPage() {
         {/* ── Step 4: Success ── */}
         {step === 4 && (
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card text-center">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "var(--vela-gradient)" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -666,7 +666,7 @@ export default function SignupPage() {
             <p className="text-[#9CA3AF] text-xs mb-8">
               Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed {billing === "annual" ? "annually" : "monthly"}, cancel anytime.
             </p>
-            <Link href="/app/welcome" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            <Link href="/app/welcome" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
               Set up your account →
             </Link>
           </div>

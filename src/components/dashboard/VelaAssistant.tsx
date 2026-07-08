@@ -41,7 +41,7 @@ function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
   return (
     <div
       className={`rounded-full shrink-0 flex items-center justify-center${mt ? " mt-0.5" : ""}`}
-      style={{ width: size, height: size, background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+      style={{ width: size, height: size, background: "var(--vela-gradient)" }}
     >
       <svg width={icon} height={icon} viewBox="0 0 14 14" fill="none">
         <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -183,11 +183,11 @@ export function VelaAssistant() {
       <button
         onClick={() => setOpen((v) => !v)}
         className="fixed bottom-6 end-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+        style={{ background: "var(--vela-gradient)" }}
         aria-label="Open Vela AI Assistant"
       >
         {!open && (
-          <span className="absolute inset-0 rounded-full animate-ping opacity-25" style={{ background: "#FF6B35" }} />
+          <span className="absolute inset-0 rounded-full animate-ping opacity-25" style={{ background: "var(--vp-color)" }} />
         )}
         {open ? (
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="relative z-10">
@@ -215,7 +215,7 @@ export function VelaAssistant() {
             {/* Header */}
             <div
               className="flex items-center justify-between px-4 py-3.5 shrink-0"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+              style={{ background: "var(--vela-gradient)" }}
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
@@ -290,7 +290,7 @@ export function VelaAssistant() {
                           ? "bg-red-50 text-[#991B1B] rounded-bl-sm border border-red-100"
                           : "bg-[#F3F4F6] text-[#111111] rounded-bl-sm"
                       }`}
-                      style={msg.role === "user" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
+                      style={msg.role === "user" ? { background: "var(--vela-gradient)" } : {}}
                     >
                       {msg.content.split("\n").map((line, j, arr) => (
                         <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
@@ -348,7 +348,7 @@ export function VelaAssistant() {
                   onClick={() => send(input)}
                   disabled={!input.trim() || loading}
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 shrink-0 hover:opacity-90 transition-opacity"
-                  style={{ background: "#FF6B35" }}
+                  style={{ background: "var(--vp-color)" }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M12.5 1.5L1.5 7.5l4 2m7-8l-7 8m0 0v3l2.5-2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

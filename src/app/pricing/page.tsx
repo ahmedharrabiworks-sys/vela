@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -37,7 +37,7 @@ export default function PricingPage() {
           <div className="flex items-center gap-3">
             <Link href="/auth/login" className="text-sm text-[#6B7280] hover:text-[#111111] transition-colors">Sign in</Link>
             <Link href="/auth/signup" className="text-sm font-semibold px-4 py-2 rounded-xl text-white hover:opacity-90 transition-opacity"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               Get Started
             </Link>
           </div>
@@ -56,7 +56,7 @@ export default function PricingPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5"
-            style={{ background: "rgba(255,107,53,0.1)", color: "#FF6B35" }}>
+            style={{ background: "var(--vp-10)", color: "var(--vp-color)" }}>
             Pricing
           </span>
           <h1 className="text-4xl md:text-5xl font-extrabold text-[#111111] tracking-tight leading-none mt-4 mb-4">
@@ -97,7 +97,7 @@ export default function PricingPage() {
                 {plan.popular && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                     <span className="px-4 py-1 rounded-full text-xs font-bold text-white"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                      style={{ background: "var(--vela-gradient)" }}>
                       Most Popular
                     </span>
                   </div>
@@ -134,7 +134,7 @@ export default function PricingPage() {
                     <li key={feat.text} className="flex items-start gap-3">
                       {feat.included ? (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "rgba(255,107,53,0.1)"} />
+                          <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "var(--vp-10)"} />
                           <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       ) : (
@@ -166,7 +166,7 @@ export default function PricingPage() {
                         ? "text-white hover:opacity-90"
                         : "border border-[#E5E7EB] text-[#111111] hover:border-[#FF6B35] hover:text-[#FF6B35]"
                     }`}
-                    style={plan.popular ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                    style={plan.popular ? { background: "var(--vela-gradient)" } : {}}>
                     {plan.cta}
                   </button>
                 )}

@@ -286,7 +286,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="rounded-xl p-4 bg-white border border-[#FF6B35]">
             <p className="text-xs font-bold text-[#111111] mb-1">{t("sidebar.upgradePremium")}</p>
             <p className="text-[10px] text-[#6B7280] mb-3">{t("sidebar.unlockFeatures")}</p>
-            <Link href="/pricing" onClick={onClose} className="block text-center text-xs font-bold py-2 rounded-lg text-white" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            <Link href="/pricing" onClick={onClose} className="block text-center text-xs font-bold py-2 rounded-lg text-white" style={{ background: "var(--vela-gradient)" }}>
               {t("sidebar.upgradeNow")}
             </Link>
           </div>
@@ -301,7 +301,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="px-4 py-3.5 border-b border-[#F3F4F6]">
               <p className="text-sm font-semibold text-[#111111] truncate">{displayName}</p>
               {displayEmail && <p className="text-xs text-[#6B7280] truncate mt-0.5">{displayEmail}</p>}
-              <span className="mt-2 inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(255,107,53,0.1)", color: "#FF6B35" }}>
+              <span className="mt-2 inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "var(--vp-10)", color: "var(--vp-color)" }}>
                 {planLabel}
               </span>
             </div>
@@ -406,7 +406,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         >
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+            style={{ background: "var(--vela-gradient)" }}
           >
             {initials}
           </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
@@ -437,7 +437,7 @@ export default function ConversationsPage() {
                       ? "bg-white text-[#111111] rounded-tl-sm border border-[#E5E7EB]"
                       : "text-white rounded-tr-sm"
                   }`}
-                    style={msg.role !== "user" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}>
+                    style={msg.role !== "user" ? { background: "var(--vela-gradient)" } : {}}>
                     <p>{msg.content}</p>
                     <p className="text-[10px] mt-1.5 opacity-50">
                       {msg.role === "assistant" ? "Vela AI · " : ""}
@@ -450,7 +450,7 @@ export default function ConversationsPage() {
               {sending && (
                 <div className="flex justify-end">
                   <div className="px-4 py-3 rounded-2xl rounded-tr-sm text-white text-sm"
-                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", opacity: 0.6 }}>
+                    style={{ background: "var(--vela-gradient)", opacity: 0.6 }}>
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
                         <span key={i} className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce"
@@ -489,7 +489,7 @@ export default function ConversationsPage() {
                   onClick={handleSend}
                   disabled={!reply.trim() || sending}
                   className="px-4 py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity min-h-[44px]"
-                  style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                  style={{ background: "var(--vela-gradient)" }}>
                   {t("conversations.send")}
                 </button>
               </div>
@@ -499,7 +499,7 @@ export default function ConversationsPage() {
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: "var(--vela-gradient)" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
               </svg>

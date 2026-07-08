@@ -52,7 +52,8 @@
       "businessInfo": "Unternehmensinfo",
       "aiConfig": "KI-Konfiguration",
       "notifications": "Benachrichtigungen",
-      "billing": "Abrechnung"
+      "billing": "Abrechnung",
+      "appearance": "Erscheinungsbild"
     },
     "businessInfo": {
       "title": "Unternehmensinformationen",
