@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
+import { useI18n } from "@/lib/i18n";
 
-const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+const NAV_LINKS = [
+  { key: "features", href: "#features" },
+  { key: "howItWorks", href: "#how-it-works" },
+  { key: "pricing", href: "#pricing" },
+  { key: "faq", href: "#faq" },
 ];
 
 const LANG_OPTIONS = [
@@ -18,13 +19,20 @@ const LANG_OPTIONS = [
   { code: "de", short: "DE", label: "Deutsch" },
 ];
 
+const NAME_MAP: Record<string, string> = {
+  en: "English",
+  ar: "Arabic",
+  fr: "Français",
+  de: "Deutsch",
+};
+
 export default function Navbar() {
+  const { locale, setLocale, t } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
-  const [langCode, setLangCode] = useState("en");
+  const [mobileLangOpen, setMobileLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
   const mobileLangRef = useRef<HTMLDivElement>(null);
-  const [mobileLangOpen, setMobileLangOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -32,16 +40,6 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Load persisted language
-  useEffect(() => {
-    const saved = localStorage.getItem("vela_lang");
-    if (saved) {
-      const opt = LANG_OPTIONS.find((o) => o.label === saved || o.code === saved);
-      if (opt) setLangCode(opt.code);
-    }
-  }, []);
-
-  // Close desktop lang dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
@@ -50,7 +48,6 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [langOpen]);
 
-  // Close mobile lang dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (mobileLangRef.current && !mobileLangRef.current.contains(e.target as Node)) setMobileLangOpen(false);
@@ -60,15 +57,12 @@ export default function Navbar() {
   }, [mobileLangOpen]);
 
   const selectLang = (opt: typeof LANG_OPTIONS[0]) => {
-    setLangCode(opt.code);
+    setLocale(NAME_MAP[opt.code]);
     setLangOpen(false);
     setMobileLangOpen(false);
-    localStorage.setItem("vela_lang", opt.label);
-    document.documentElement.setAttribute("lang", opt.code);
-    document.documentElement.setAttribute("dir", opt.code === "ar" ? "rtl" : "ltr");
   };
 
-  const currentLang = LANG_OPTIONS.find((o) => o.code === langCode) ?? LANG_OPTIONS[0];
+  const currentLang = LANG_OPTIONS.find((o) => o.code === locale) ?? LANG_OPTIONS[0];
 
   return (
     <nav
@@ -81,13 +75,13 @@ export default function Navbar() {
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
+          {NAV_LINKS.map((link) => (
             <a
-              key={link.label}
+              key={link.key}
               href={link.href}
               className="text-sm font-medium text-[#374151] hover:text-[#111111] transition-colors duration-200 relative group"
             >
-              {link.label}
+              {t(`landing.nav.${link.key}`)}
               <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-[#FF6B35] transition-all duration-300 group-hover:w-full" />
             </a>
           ))}
@@ -102,7 +96,6 @@ export default function Navbar() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-[#374151] hover:text-[#FF6B35] hover:bg-[#F9FAFB] border border-transparent hover:border-[#E5E7EB] transition-all duration-200"
               aria-label="Select language"
             >
-              {/* Globe icon */}
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.3"/>
                 <path d="M1.5 7.5h12M7.5 1.5c-1.5 2-1.5 9 0 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -120,11 +113,11 @@ export default function Navbar() {
                     key={opt.code}
                     onClick={() => selectLang(opt)}
                     className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-[#F9FAFB] ${
-                      langCode === opt.code ? "text-[#FF6B35] font-semibold" : "text-[#374151]"
+                      locale === opt.code ? "text-[#FF6B35] font-semibold" : "text-[#374151]"
                     }`}
                   >
                     {opt.label}
-                    {langCode === opt.code && (
+                    {locale === opt.code && (
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         <path d="M2 6l3 3 5-5" stroke="#FF6B35" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -139,22 +132,21 @@ export default function Navbar() {
             href="/auth/login"
             className="text-sm font-medium px-4 py-2 rounded-lg text-[#374151] hover:text-[#FF6B35] transition-colors duration-200"
           >
-            Log in
+            {t("landing.nav.login")}
           </Link>
           <Link
             href="/demo"
             className="text-sm font-semibold px-5 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200"
           >
-            Try Demo
+            {t("landing.nav.tryDemo")}
           </Link>
           <Link href="/auth/signup" className="btn-primary text-sm px-5 py-2.5">
-            Get Started
+            {t("landing.nav.getStarted")}
           </Link>
         </div>
 
         {/* Mobile: globe + Try Demo + Get Started */}
         <div className="md:hidden flex items-center gap-2">
-          {/* Mobile language button */}
           <div ref={mobileLangRef} className="relative">
             <button
               onClick={() => setMobileLangOpen(!mobileLangOpen)}
@@ -174,11 +166,11 @@ export default function Navbar() {
                     key={opt.code}
                     onClick={() => selectLang(opt)}
                     className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-[#F9FAFB] ${
-                      langCode === opt.code ? "text-[#FF6B35] font-semibold" : "text-[#374151]"
+                      locale === opt.code ? "text-[#FF6B35] font-semibold" : "text-[#374151]"
                     }`}
                   >
                     {opt.label}
-                    {langCode === opt.code && (
+                    {locale === opt.code && (
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         <path d="M2 6l3 3 5-5" stroke="#FF6B35" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -193,10 +185,10 @@ export default function Navbar() {
             href="/demo"
             className="text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151]"
           >
-            Try Demo
+            {t("landing.nav.tryDemo")}
           </Link>
           <Link href="/auth/signup" className="btn-primary text-xs px-4 py-2.5">
-            Get Started
+            {t("landing.nav.getStarted")}
           </Link>
         </div>
       </div>

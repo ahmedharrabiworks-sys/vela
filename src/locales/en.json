@@ -344,5 +344,140 @@
     },
     "saved": "Saved ✓",
     "savedImported": "Imported & Saved ✓"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "howItWorks": "How It Works",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "login": "Log in",
+      "tryDemo": "Try Demo",
+      "getStarted": "Get Started"
+    },
+    "hero": {
+      "badge": "AI Business Operating System",
+      "headline1": "Never miss",
+      "headline2": "another lead.",
+      "subtext": "Vela runs your customer communications 24/7. AI replies, qualifies, and books appointments — on Instagram, WhatsApp, and your website.",
+      "watchPreview": "Or watch a 60s preview",
+      "trust1": "< 60s reply time",
+      "trust2": "Works 24/7"
+    },
+    "pricing": {
+      "badge": "Pricing",
+      "headline1": "Simple, transparent",
+      "headline2": "pricing.",
+      "cancelAnytime": "Cancel anytime",
+      "cancelNote": "Cancel anytime, no questions asked.",
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "billedMonthly": "Billed monthly",
+      "save": "Save",
+      "mostPopular": "Most Popular",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "description": "Everything you need to get started with AI automation.",
+          "cta": "Get Started",
+          "features": [
+            "1 custom domain",
+            "AI on 1 channel only",
+            "Basic website template",
+            "50 bookings/month",
+            "Generic AI responses",
+            "Basic calendar",
+            "No follow-up automation",
+            "Basic CRM",
+            "No white label",
+            "1 team member",
+            "No analytics",
+            "Email support only"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "description": "The complete system for serious businesses ready to scale.",
+          "cta": "Get Started",
+          "features": [
+            "2 custom domains",
+            "All 3 channels (WhatsApp + Instagram + Website)",
+            "Beautiful custom website",
+            "Unlimited bookings",
+            "AI trained on YOUR business",
+            "Full calendar + auto reminders",
+            "Auto follow-up sequences",
+            "Full CRM pipeline view",
+            "White label included",
+            "15 team members",
+            "Full analytics dashboard",
+            "Live chat support 24/7"
+          ]
+        },
+        "premium": {
+          "name": "Premium",
+          "description": "For businesses that demand the absolute best, no compromises.",
+          "cta": "Get Premium",
+          "features": [
+            "3 custom domains",
+            "All 3 channels + priority responses",
+            "Full custom website + animations",
+            "Unlimited bookings",
+            "Advanced AI — learns over time",
+            "Full calendar + reminders + analytics",
+            "Advanced follow-up sequences",
+            "Full CRM + revenue reports",
+            "White label included",
+            "Unlimited team members",
+            "Advanced analytics + exports",
+            "Dedicated account manager"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "badge": "FAQ",
+      "headline1": "Got questions?",
+      "headline2": "We've got answers.",
+      "questions": [
+        { "q": "How quickly can I get started?", "a": "Most businesses are live within 7 days. After signing up, our onboarding team connects your channels, trains the AI on your services, and tests everything before you go live. You don't need to write a single line of code." },
+        { "q": "Does Vela really work on Instagram and WhatsApp?", "a": "Yes. Vela integrates directly with Instagram's Official API and WhatsApp Business API. Every DM, comment reply, and story response is handled by your AI assistant. WhatsApp is especially powerful for booking-heavy businesses like clinics and salons." },
+        { "q": "Can I customize what the AI says?", "a": "Absolutely. During setup, you provide your service list, pricing, FAQs, tone of voice, and booking rules. The AI is trained specifically on your business. You can also set escalation rules so the AI hands off to a human for complex cases." },
+        { "q": "What happens if a customer asks something the AI doesn't know?", "a": "The AI gracefully acknowledges it doesn't have that information and offers to connect the customer with a team member. You receive an instant notification so you can jump in. You can also expand the AI's knowledge base at any time from your settings." },
+        { "q": "Is my customer data safe?", "a": "All data is stored encrypted in Supabase with Row Level Security — meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. GDPR and data protection compliance is built in." },
+        { "q": "Can I cancel my subscription?", "a": "Yes, any time. No contracts, no cancellation fees. You can cancel directly from your billing settings. Your data is available for export for 30 days after cancellation." }
+      ]
+    },
+    "cta": {
+      "badge": "Get Started",
+      "headline1": "Stop losing customers",
+      "headline2": "to slow replies.",
+      "subtext": "Billed monthly. Cancel anytime, no questions asked. Be live in 7 days.",
+      "whatsapp": "Chat on WhatsApp"
+    },
+    "footer": {
+      "tagline": "One platform. Every tool your business needs.",
+      "sections": {
+        "product": "Product",
+        "company": "Company",
+        "legal": "Legal"
+      },
+      "links": {
+        "features": "Features",
+        "pricing": "Pricing",
+        "howItWorks": "How It Works",
+        "faq": "FAQ",
+        "about": "About",
+        "blog": "Blog",
+        "careers": "Careers",
+        "contact": "Contact",
+        "privacy": "Privacy Policy",
+        "terms": "Terms of Service",
+        "cookies": "Cookie Policy"
+      },
+      "copyright": "© 2026 Vela. All rights reserved.",
+      "slogan1": "Built for businesses that don't sleep.",
+      "slogan2": "Neither does Vela."
+    }
   }
 }

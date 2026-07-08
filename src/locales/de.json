@@ -185,5 +185,140 @@
     "afternoon": "Guten Tag",
     "evening": "Guten Abend",
     "there": "da"
+  },
+  "landing": {
+    "nav": {
+      "features": "Funktionen",
+      "howItWorks": "Wie es funktioniert",
+      "pricing": "Preise",
+      "faq": "FAQ",
+      "login": "Anmelden",
+      "tryDemo": "Demo testen",
+      "getStarted": "Loslegen"
+    },
+    "hero": {
+      "badge": "KI-Betriebssystem für Unternehmen",
+      "headline1": "Verpassen Sie nie",
+      "headline2": "einen Kunden.",
+      "subtext": "Vela verwaltet Ihre Kundenkommunikation rund um die Uhr. Die KI antwortet, qualifiziert und bucht Termine — auf Instagram, WhatsApp und Ihrer Website.",
+      "watchPreview": "Oder sehen Sie eine 60-Sekunden-Vorschau",
+      "trust1": "< 60s Antwortzeit",
+      "trust2": "Arbeitet 24/7"
+    },
+    "pricing": {
+      "badge": "Preise",
+      "headline1": "Einfach und transparent",
+      "headline2": "Preisgestaltung.",
+      "cancelAnytime": "Jederzeit kündbar",
+      "cancelNote": "Jederzeit kündbar, keine Fragen.",
+      "monthly": "Monatlich",
+      "annual": "Jährlich",
+      "billedMonthly": "Monatlich abgerechnet",
+      "save": "Sparen Sie",
+      "mostPopular": "Am beliebtesten",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "description": "Alles, was Sie für den Einstieg in die KI-Automatisierung benötigen.",
+          "cta": "Loslegen",
+          "features": [
+            "1 benutzerdefinierte Domain",
+            "KI nur auf 1 Kanal",
+            "Basis-Website-Vorlage",
+            "50 Buchungen/Monat",
+            "Generische KI-Antworten",
+            "Basiskalender",
+            "Keine Follow-up-Automatisierung",
+            "Basis-CRM",
+            "Kein White Label",
+            "1 Teammitglied",
+            "Keine Analysen",
+            "Nur E-Mail-Support"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "description": "Das komplette System für ernsthafte Unternehmen, die wachsen wollen.",
+          "cta": "Loslegen",
+          "features": [
+            "2 benutzerdefinierte Domains",
+            "Alle 3 Kanäle (WhatsApp + Instagram + Website)",
+            "Schöne individuelle Website",
+            "Unbegrenzte Buchungen",
+            "KI auf IHR Unternehmen trainiert",
+            "Vollständiger Kalender + automatische Erinnerungen",
+            "Automatische Follow-up-Sequenzen",
+            "Vollständige CRM-Pipeline-Ansicht",
+            "White Label inklusive",
+            "15 Teammitglieder",
+            "Vollständiges Analytics-Dashboard",
+            "Live-Chat-Support 24/7"
+          ]
+        },
+        "premium": {
+          "name": "Premium",
+          "description": "Für Unternehmen, die das Allerbeste fordern — ohne Kompromisse.",
+          "cta": "Premium holen",
+          "features": [
+            "3 benutzerdefinierte Domains",
+            "Alle 3 Kanäle + Prioritätsantworten",
+            "Vollständige individuelle Website + Animationen",
+            "Unbegrenzte Buchungen",
+            "Erweiterte KI — lernt mit der Zeit",
+            "Vollständiger Kalender + Erinnerungen + Analysen",
+            "Erweiterte Follow-up-Sequenzen",
+            "Vollständiges CRM + Umsatzberichte",
+            "White Label inklusive",
+            "Unbegrenzte Teammitglieder",
+            "Erweiterte Analysen + Exporte",
+            "Dedizierter Account-Manager"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "badge": "FAQ",
+      "headline1": "Haben Sie Fragen?",
+      "headline2": "Wir haben Antworten.",
+      "questions": [
+        { "q": "Wie schnell kann ich starten?", "a": "Die meisten Unternehmen sind innerhalb von 7 Tagen live. Nach der Anmeldung verbindet unser Onboarding-Team Ihre Kanäle, trainiert die KI auf Ihre Dienste und testet alles vor dem Start. Sie müssen keine einzige Zeile Code schreiben." },
+        { "q": "Funktioniert Vela wirklich auf Instagram und WhatsApp?", "a": "Ja. Vela integriert sich direkt mit der offiziellen Instagram-API und der WhatsApp Business API. Jede DM, Kommentarantwort und Story-Reaktion wird von Ihrem KI-Assistenten bearbeitet. WhatsApp ist besonders leistungsstark für buchungsintensive Unternehmen wie Kliniken und Salons." },
+        { "q": "Kann ich anpassen, was die KI sagt?", "a": "Absolut. Während der Einrichtung geben Sie Ihre Dienstleistungsliste, Preise, FAQs, Tonalität und Buchungsregeln ein. Die KI wird speziell auf Ihr Unternehmen trainiert. Sie können auch Eskalationsregeln festlegen, damit die KI komplexe Fälle an einen Menschen weitergibt." },
+        { "q": "Was passiert, wenn ein Kunde etwas fragt, das die KI nicht weiß?", "a": "Die KI erkennt höflich, dass sie diese Information nicht hat, und bietet an, den Kunden mit einem Teammitglied zu verbinden. Sie erhalten sofort eine Benachrichtigung, um einzugreifen. Sie können die Wissensbasis der KI auch jederzeit in Ihren Einstellungen erweitern." },
+        { "q": "Sind meine Kundendaten sicher?", "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert — Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir geben Kundendaten niemals weiter oder verkaufen sie. DSGVO-Konformität und Datenschutz sind integriert." },
+        { "q": "Kann ich mein Abonnement kündigen?", "a": "Ja, jederzeit. Keine Verträge, keine Kündigungsgebühren. Sie können direkt in Ihren Abrechnungseinstellungen kündigen. Ihre Daten stehen nach der Kündigung 30 Tage lang zum Export bereit." }
+      ]
+    },
+    "cta": {
+      "badge": "Loslegen",
+      "headline1": "Hören Sie auf, Kunden zu verlieren",
+      "headline2": "durch langsame Antworten.",
+      "subtext": "Monatlich abgerechnet. Jederzeit kündbar. In 7 Tagen live.",
+      "whatsapp": "Auf WhatsApp chatten"
+    },
+    "footer": {
+      "tagline": "Eine Plattform. Alle Werkzeuge, die Ihr Unternehmen braucht.",
+      "sections": {
+        "product": "Produkt",
+        "company": "Unternehmen",
+        "legal": "Rechtliches"
+      },
+      "links": {
+        "features": "Funktionen",
+        "pricing": "Preise",
+        "howItWorks": "Wie es funktioniert",
+        "faq": "FAQ",
+        "about": "Über uns",
+        "blog": "Blog",
+        "careers": "Karriere",
+        "contact": "Kontakt",
+        "privacy": "Datenschutzrichtlinie",
+        "terms": "Nutzungsbedingungen",
+        "cookies": "Cookie-Richtlinie"
+      },
+      "copyright": "© 2026 Vela. Alle Rechte vorbehalten.",
+      "slogan1": "Gebaut für Unternehmen, die nie schlafen.",
+      "slogan2": "Vela auch nicht."
+    }
   }
 }

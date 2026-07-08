@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
+import { useI18n } from "@/lib/i18n";
 
-const LINKS = {
-  Product: ["Features", "Pricing", "How It Works", "FAQ"],
-  Company: ["About", "Blog", "Careers", "Contact"],
-  Legal: ["Privacy Policy", "Terms of Service", "Cookie Policy"],
-};
+const SECTIONS = [
+  { key: "product", links: ["features", "pricing", "howItWorks", "faq"] },
+  { key: "company", links: ["about", "blog", "careers", "contact"] },
+  { key: "legal", links: ["privacy", "terms", "cookies"] },
+];
 
 export default function Footer() {
+  const { t } = useI18n();
+
   return (
     <footer className="bg-[#F9FAFB] border-t border-[#E5E7EB]">
       <div className="max-w-7xl mx-auto px-5 md:px-6 py-14 md:py-16">
@@ -16,7 +21,7 @@ export default function Footer() {
           <div className="col-span-1 sm:col-span-2 md:col-span-1 flex flex-col items-center sm:items-start">
             <Logo showText />
             <p className="mt-4 text-[#6B7280] text-sm leading-relaxed max-w-[220px] text-center sm:text-left">
-              One platform. Every tool your business needs.
+              {t("landing.footer.tagline")}
             </p>
             {/* Social icons */}
             <div className="flex gap-3 mt-6">
@@ -37,19 +42,19 @@ export default function Footer() {
           </div>
 
           {/* Links */}
-          {Object.entries(LINKS).map(([group, links]) => (
-            <div key={group} className="flex flex-col items-center sm:items-start">
+          {SECTIONS.map((sec) => (
+            <div key={sec.key} className="flex flex-col items-center sm:items-start">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-4">
-                {group}
+                {t(`landing.footer.sections.${sec.key}`)}
               </p>
               <ul className="flex flex-col gap-3 items-center sm:items-start">
-                {links.map((link) => (
+                {sec.links.map((link) => (
                   <li key={link}>
                     <Link
                       href="#"
                       className="text-sm text-[#6B7280] hover:text-[#111111] transition-colors duration-200"
                     >
-                      {link}
+                      {t(`landing.footer.links.${link}`)}
                     </Link>
                   </li>
                 ))}
@@ -60,10 +65,10 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-[#E5E7EB] pt-8 flex flex-col items-center gap-3 md:flex-row md:justify-between md:gap-4">
-          <p className="text-sm text-[#9CA3AF] text-center md:text-left">© 2026 Vela. All rights reserved.</p>
+          <p className="text-sm text-[#9CA3AF] text-center md:text-left">{t("landing.footer.copyright")}</p>
           <p className="text-sm text-[#9CA3AF] text-center md:text-left">
-            Built for businesses that don&apos;t sleep.{" "}
-            <span className="vela-gradient-text font-medium">Neither does Vela.</span>
+            {t("landing.footer.slogan1")}{" "}
+            <span className="vela-gradient-text font-medium">{t("landing.footer.slogan2")}</span>
           </p>
         </div>
       </div>

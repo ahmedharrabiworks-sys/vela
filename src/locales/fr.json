@@ -185,5 +185,140 @@
     "afternoon": "Bon après-midi",
     "evening": "Bonsoir",
     "there": "là"
+  },
+  "landing": {
+    "nav": {
+      "features": "Fonctionnalités",
+      "howItWorks": "Comment ça marche",
+      "pricing": "Tarifs",
+      "faq": "FAQ",
+      "login": "Se connecter",
+      "tryDemo": "Essayer la démo",
+      "getStarted": "Commencer"
+    },
+    "hero": {
+      "badge": "Système d'exploitation d'entreprise IA",
+      "headline1": "Ne ratez jamais",
+      "headline2": "un prospect.",
+      "subtext": "Vela gère vos communications clients 24h/24. L'IA répond, qualifie et prend des rendez-vous — sur Instagram, WhatsApp et votre site web.",
+      "watchPreview": "Ou regardez un aperçu de 60 secondes",
+      "trust1": "Temps de réponse < 60s",
+      "trust2": "Fonctionne 24h/24"
+    },
+    "pricing": {
+      "badge": "Tarifs",
+      "headline1": "Simple et transparent",
+      "headline2": "la tarification.",
+      "cancelAnytime": "Annuler à tout moment",
+      "cancelNote": "Annulable à tout moment, sans question.",
+      "monthly": "Mensuel",
+      "annual": "Annuel",
+      "billedMonthly": "Facturé mensuellement",
+      "save": "Économisez",
+      "mostPopular": "Le plus populaire",
+      "plans": {
+        "starter": {
+          "name": "Starter",
+          "description": "Tout ce dont vous avez besoin pour démarrer avec l'automatisation IA.",
+          "cta": "Commencer",
+          "features": [
+            "1 domaine personnalisé",
+            "IA sur 1 canal uniquement",
+            "Modèle de site basique",
+            "50 réservations/mois",
+            "Réponses IA génériques",
+            "Calendrier basique",
+            "Pas d'automatisation de suivi",
+            "CRM basique",
+            "Pas de marque blanche",
+            "1 membre d'équipe",
+            "Pas d'analytiques",
+            "Support e-mail uniquement"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "description": "Le système complet pour les entreprises sérieuses prêtes à évoluer.",
+          "cta": "Commencer",
+          "features": [
+            "2 domaines personnalisés",
+            "Les 3 canaux (WhatsApp + Instagram + Site web)",
+            "Site web personnalisé élégant",
+            "Réservations illimitées",
+            "IA formée sur VOTRE entreprise",
+            "Calendrier complet + rappels automatiques",
+            "Séquences de suivi automatiques",
+            "Vue pipeline CRM complète",
+            "Marque blanche incluse",
+            "15 membres d'équipe",
+            "Tableau de bord analytique complet",
+            "Support chat en direct 24h/24"
+          ]
+        },
+        "premium": {
+          "name": "Premium",
+          "description": "Pour les entreprises qui exigent le meilleur absolu, sans compromis.",
+          "cta": "Obtenir Premium",
+          "features": [
+            "3 domaines personnalisés",
+            "Les 3 canaux + réponses prioritaires",
+            "Site web personnalisé complet + animations",
+            "Réservations illimitées",
+            "IA avancée — apprend avec le temps",
+            "Calendrier complet + rappels + analytiques",
+            "Séquences de suivi avancées",
+            "CRM complet + rapports de revenus",
+            "Marque blanche incluse",
+            "Membres d'équipe illimités",
+            "Analytiques avancées + exports",
+            "Responsable de compte dédié"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "badge": "FAQ",
+      "headline1": "Des questions ?",
+      "headline2": "Nous avons les réponses.",
+      "questions": [
+        { "q": "En combien de temps peut-on démarrer ?", "a": "La plupart des entreprises sont opérationnelles en 7 jours. Après l'inscription, notre équipe d'intégration connecte vos canaux, forme l'IA sur vos services et teste tout avant le lancement. Vous n'avez pas besoin d'écrire une seule ligne de code." },
+        { "q": "Vela fonctionne-t-il vraiment sur Instagram et WhatsApp ?", "a": "Oui. Vela s'intègre directement avec l'API officielle d'Instagram et l'API WhatsApp Business. Chaque DM, réponse à un commentaire et réponse aux stories est géré par votre assistant IA. WhatsApp est particulièrement puissant pour les entreprises basées sur les réservations comme les cliniques et les salons." },
+        { "q": "Puis-je personnaliser ce que dit l'IA ?", "a": "Absolument. Lors de la configuration, vous fournissez votre liste de services, vos tarifs, vos FAQ, votre ton et vos règles de réservation. L'IA est formée spécifiquement pour votre entreprise. Vous pouvez aussi définir des règles d'escalade pour que l'IA transfère les cas complexes à un humain." },
+        { "q": "Que se passe-t-il si un client pose une question que l'IA ne connaît pas ?", "a": "L'IA reconnaît élégamment qu'elle n'a pas cette information et propose de mettre le client en contact avec un membre de l'équipe. Vous recevez une notification instantanée pour intervenir. Vous pouvez aussi enrichir la base de connaissances de l'IA à tout moment depuis vos paramètres." },
+        { "q": "Les données de mes clients sont-elles en sécurité ?", "a": "Toutes les données sont stockées chiffrées dans Supabase avec Row Level Security — vos données sont complètement isolées des autres entreprises sur la plateforme. Nous ne partageons ni ne vendons jamais les données clients. La conformité RGPD est intégrée." },
+        { "q": "Puis-je annuler mon abonnement ?", "a": "Oui, à tout moment. Pas de contrats, pas de frais d'annulation. Vous pouvez annuler directement depuis vos paramètres de facturation. Vos données sont disponibles pour export pendant 30 jours après l'annulation." }
+      ]
+    },
+    "cta": {
+      "badge": "Commencer",
+      "headline1": "Arrêtez de perdre des clients",
+      "headline2": "à cause de réponses lentes.",
+      "subtext": "Facturé mensuellement. Annulable à tout moment. En ligne en 7 jours.",
+      "whatsapp": "Discuter sur WhatsApp"
+    },
+    "footer": {
+      "tagline": "Une plateforme. Tous les outils dont votre entreprise a besoin.",
+      "sections": {
+        "product": "Produit",
+        "company": "Entreprise",
+        "legal": "Mentions légales"
+      },
+      "links": {
+        "features": "Fonctionnalités",
+        "pricing": "Tarifs",
+        "howItWorks": "Comment ça marche",
+        "faq": "FAQ",
+        "about": "À propos",
+        "blog": "Blog",
+        "careers": "Carrières",
+        "contact": "Contact",
+        "privacy": "Politique de confidentialité",
+        "terms": "Conditions d'utilisation",
+        "cookies": "Politique de cookies"
+      },
+      "copyright": "© 2026 Vela. Tous droits réservés.",
+      "slogan1": "Conçu pour les entreprises qui ne dorment jamais.",
+      "slogan2": "Vela non plus."
+    }
   }
 }

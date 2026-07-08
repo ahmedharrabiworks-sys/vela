@@ -3,22 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PLANS } from "@/lib/pricing";
+import { useI18n } from "@/lib/i18n";
 
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
+  const { t } = useI18n();
 
   return (
     <section id="pricing" className="py-20 md:py-28 bg-[#F9FAFB]">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
         {/* Header */}
         <div className="text-center mb-12">
-          <span className="section-label mb-6">Pricing</span>
+          <span className="section-label mb-6">{t("landing.pricing.badge")}</span>
           <h2 className="vela-heading text-4xl md:text-5xl text-[#111111] mt-6">
-            Simple, transparent{" "}
-            <span className="vela-gradient-text">pricing.</span>
+            {t("landing.pricing.headline1")}{" "}
+            <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
           </h2>
           <p className="mt-5 text-[#6B7280] text-lg max-w-lg mx-auto">
-            Cancel anytime
+            {t("landing.pricing.cancelAnytime")}
           </p>
 
           <div className="mt-6">
@@ -30,7 +32,7 @@ export default function Pricing() {
                 <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
                 <path d="M5.5 4.8l4.2 2.2-4.2 2.2V4.8z" fill="currentColor" />
               </svg>
-              Try Demo
+              {t("landing.nav.tryDemo")}
             </Link>
           </div>
 
@@ -42,7 +44,7 @@ export default function Pricing() {
                 !annual ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
               }`}
             >
-              Monthly
+              {t("landing.pricing.monthly")}
             </button>
             <button
               onClick={() => setAnnual(true)}
@@ -50,7 +52,7 @@ export default function Pricing() {
                 annual ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
               }`}
             >
-              Annual
+              {t("landing.pricing.annual")}
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FF6B35] text-white">
                 −20%
               </span>
@@ -62,6 +64,7 @@ export default function Pricing() {
         <div className="grid md:grid-cols-3 gap-5 md:gap-6 items-stretch">
           {PLANS.map((plan) => {
             const price = annual ? plan.annual : plan.monthly;
+            const planKey = plan.name.toLowerCase();
             return (
               <div
                 key={plan.name}
@@ -80,14 +83,14 @@ export default function Pricing() {
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                     <span className="px-4 py-1 rounded-full text-xs font-bold text-white"
                       style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
-                      Most Popular
+                      {t("landing.pricing.mostPopular")}
                     </span>
                   </div>
                 )}
 
                 <div className="mb-6">
                   <p className={`text-sm font-semibold uppercase tracking-widest mb-4 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
-                    {plan.name}
+                    {t(`landing.pricing.plans.${planKey}.name`)}
                   </p>
                   <div className="flex items-end gap-1 mb-2">
                     <span className="text-5xl font-extrabold text-[#111111]">
@@ -97,17 +100,17 @@ export default function Pricing() {
                   </div>
                   {annual && (
                     <p className="text-xs font-medium text-[#FF6B35]">
-                      Save ${(plan.monthly - plan.annual) * 12}/year
+                      {t("landing.pricing.save")} ${(plan.monthly - plan.annual) * 12}/year
                     </p>
                   )}
                   <p className="text-sm mt-3 leading-relaxed text-[#6B7280]">
-                    {plan.description}
+                    {t(`landing.pricing.plans.${planKey}.description`)}
                   </p>
                 </div>
 
                 <ul className="flex flex-col gap-3 flex-1 mb-8">
-                  {plan.features.map((feat) => (
-                    <li key={feat.text} className="flex items-start gap-3">
+                  {plan.features.map((feat, i) => (
+                    <li key={i} className="flex items-start gap-3">
                       {feat.included ? (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                           <circle cx="8" cy="8" r="7" fill="rgba(255,107,53,0.12)" />
@@ -120,7 +123,7 @@ export default function Pricing() {
                         </svg>
                       )}
                       <span className={`text-sm ${feat.included ? "text-[#374151]" : "text-[#D1D5DB] line-through"}`}>
-                        {feat.text}
+                        {t(`landing.pricing.plans.${planKey}.features.${i}`)}
                       </span>
                     </li>
                   ))}
@@ -134,7 +137,7 @@ export default function Pricing() {
                       : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
                   }`}
                 >
-                  {plan.cta}
+                  {t(`landing.pricing.plans.${planKey}.cta`)}
                 </Link>
               </div>
             );
@@ -142,7 +145,7 @@ export default function Pricing() {
         </div>
 
         <p className="text-center text-sm text-[#6B7280] mt-8">
-          Cancel anytime, no questions asked.
+          {t("landing.pricing.cancelNote")}
         </p>
       </div>
     </section>

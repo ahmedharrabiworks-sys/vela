@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneMockup from "@/components/landing/PhoneMockup";
 import DemoModal from "@/components/landing/DemoModal";
+import { useI18n } from "@/lib/i18n";
 
 const container = {
   hidden: {},
@@ -18,6 +19,7 @@ const item = {
 
 export default function Hero() {
   const [demoOpen, setDemoOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <>
@@ -38,7 +40,7 @@ export default function Hero() {
               <motion.div variants={item}>
                 <span className="section-label">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] animate-pulse" />
-                  AI Business Operating System
+                  {t("landing.hero.badge")}
                 </span>
               </motion.div>
 
@@ -47,9 +49,9 @@ export default function Hero() {
                 variants={item}
                 className="vela-heading text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] leading-none text-[#111111]"
               >
-                Never miss
+                {t("landing.hero.headline1")}
                 <br />
-                <span className="vela-gradient-text">another lead.</span>
+                <span className="vela-gradient-text">{t("landing.hero.headline2")}</span>
               </motion.h1>
 
               {/* Subtext */}
@@ -57,15 +59,13 @@ export default function Hero() {
                 variants={item}
                 className="text-[#6B7280] text-base md:text-lg leading-relaxed max-w-[440px] mx-auto lg:mx-0"
               >
-                Vela runs your customer communications 24/7. AI replies,
-                qualifies, and books appointments — on Instagram, WhatsApp,
-                and your website.
+                {t("landing.hero.subtext")}
               </motion.p>
 
               {/* Buttons */}
               <motion.div variants={item} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <Link href="/auth/signup" className="btn-primary text-base px-8 py-3.5 justify-center">
-                  Get Started
+                  {t("landing.nav.getStarted")}
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -78,7 +78,7 @@ export default function Hero() {
                     <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
                     <path d="M6 5.2l4.5 2.3L6 9.8V5.2z" fill="currentColor" />
                   </svg>
-                  Try Demo
+                  {t("landing.nav.tryDemo")}
                 </Link>
               </motion.div>
               <motion.div variants={item}>
@@ -86,13 +86,13 @@ export default function Hero() {
                   onClick={() => setDemoOpen(true)}
                   className="text-sm font-medium text-[#6B7280] hover:text-[#374151] transition-colors underline underline-offset-4"
                 >
-                  Or watch a 60s preview
+                  {t("landing.hero.watchPreview")}
                 </button>
               </motion.div>
 
               {/* Trust row */}
               <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                {["< 60s reply time", "Works 24/7"].map((label) => (
+                {[t("landing.hero.trust1"), t("landing.hero.trust2")].map((label) => (
                   <span key={label} className="flex items-center gap-2 text-sm text-[#6B7280]">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <circle cx="7" cy="7" r="6" stroke="#FF6B35" strokeWidth="1.2" />

@@ -1,27 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 export default function CTA() {
+  const { t } = useI18n();
+
   return (
     <section className="py-20 md:py-28 bg-[#F9FAFB]">
       <div className="max-w-4xl mx-auto px-5 md:px-6 text-center">
-        <span className="section-label mb-8">Get Started</span>
+        <span className="section-label mb-8">{t("landing.cta.badge")}</span>
 
         <h2 className="vela-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#111111] mt-8 mb-6">
-          Stop losing customers
+          {t("landing.cta.headline1")}
           <br />
-          <span className="vela-gradient-text">to slow replies.</span>
+          <span className="vela-gradient-text">{t("landing.cta.headline2")}</span>
         </h2>
 
         <p className="text-[#6B7280] text-base md:text-xl mb-10 max-w-lg mx-auto">
-          Billed monthly. Cancel anytime, no questions asked.
-          Be live in 7 days.
+          {t("landing.cta.subtext")}
         </p>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 mb-14">
           <Link href="/auth/signup" className="btn-primary text-base px-10 py-4 text-lg justify-center">
-            Get Started
+            {t("landing.nav.getStarted")}
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3.5 9h11M10 5l4.5 4-4.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -34,7 +36,7 @@ export default function CTA() {
               <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
               <path d="M6 5.2l4.5 2.3L6 9.8V5.2z" fill="currentColor" />
             </svg>
-            Try Demo
+            {t("landing.nav.tryDemo")}
           </Link>
         </div>
 
@@ -50,7 +52,7 @@ export default function CTA() {
                 <path d="M11.998 2C6.478 2 2 6.478 2 11.998c0 1.767.459 3.43 1.265 4.876L2 22l5.274-1.38A9.944 9.944 0 0011.998 22C17.52 22 22 17.522 22 11.998S17.52 2 11.998 2z" fillRule="evenodd" clipRule="evenodd"/>
               </svg>
             </span>
-            Chat on WhatsApp
+            {t("landing.cta.whatsapp")}
           </a>
           <a
             href="mailto:hello@vela.ai"
