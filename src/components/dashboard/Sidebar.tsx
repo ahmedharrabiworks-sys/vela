@@ -149,6 +149,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
+  const agentCollapseRef = useRef<{ wasCollapsed: boolean } | null>(null);
 
   useEffect(() => {
     const profile = getProfile();
@@ -183,6 +184,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     loadAuth();
   }, []);
+
+  // Auto-collapse sidebar when entering the AI Agent immersive page, restore on leave
+  useEffect(() => {
+    if (pathname === "/app/ai-agent" && agentCollapseRef.current === null) {
+      agentCollapseRef.current = { wasCollapsed: collapsed };
+      setCollapsed(true);
+    } else if (pathname !== "/app/ai-agent" && agentCollapseRef.current !== null) {
+      setCollapsed(agentCollapseRef.current.wasCollapsed);
+      agentCollapseRef.current = null;
+    }
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
