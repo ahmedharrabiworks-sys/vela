@@ -88,6 +88,19 @@ const NAV = [
     ),
   },
   {
+    labelKey: "nav.aiAgent",
+    href: "/app/ai-agent",
+    badge: "NEW",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M1.5 9h2M14.5 9h2M9 1.5v2M9 14.5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M4.1 4.1l1.4 1.4M12.5 12.5l1.4 1.4M4.1 13.9l1.4-1.4M12.5 5.5l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+        <circle cx="9" cy="9" r="1.2" fill="currentColor"/>
+      </svg>
+    ),
+  },
+  {
     labelKey: "nav.analytics",
     href: "/app/analytics",
     icon: (
@@ -256,9 +269,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <>
                   <span className="flex-1">{t(item.labelKey)}</span>
                   {"badge" in item && item.badge && (
-                    <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
-                      {item.badge}
-                    </span>
+                    typeof item.badge === "string" ? (
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#FF6B35] text-white uppercase tracking-wide leading-none">
+                        {item.badge}
+                      </span>
+                    ) : (
+                      <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
+                        {item.badge}
+                      </span>
+                    )
                   )}
                 </>
               )}
@@ -267,10 +286,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <span className="flex-1 md:hidden">{t(item.labelKey)}</span>
                   {"badge" in item && item.badge && (
                     <>
-                      <span className="md:hidden w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
-                        {item.badge}
-                      </span>
-                      <span className="hidden md:block absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FF3366]" />
+                      {typeof item.badge === "string" ? (
+                        <span className="md:hidden text-[8px] font-black px-1.5 py-0.5 rounded bg-[#FF6B35] text-white uppercase tracking-wide leading-none">
+                          {item.badge}
+                        </span>
+                      ) : (
+                        <span className="md:hidden w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
+                          {item.badge}
+                        </span>
+                      )}
+                      <span className="hidden md:block absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FF6B35]" />
                     </>
                   )}
                 </>

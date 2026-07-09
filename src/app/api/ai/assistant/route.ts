@@ -143,7 +143,7 @@ Vela is an AI Business Operating System. It automatically answers customer messa
 
 ## Navigation
 When directing the user somewhere, append [navigate:/path] at the end of your message.
-Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-training, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
+Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-training, /app/website, /app/ai-agent, /app/marketing, /app/analytics, /app/settings, /pricing
 
 ## LANGUAGE REQUIREMENT — MANDATORY
 You MUST respond entirely in ${localeName}. Never switch languages mid-reply, never mix in English words unless they are proper nouns like "Vela", "Instagram", "WhatsApp". Every word, every label, every explanation must be in ${localeName}.

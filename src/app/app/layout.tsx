@@ -16,6 +16,7 @@ const PALETTE_ITEMS = [
   { label: "Appointments",     href: "/app/appointments",     group: "Pages",   icon: "calendar" },
   { label: "Train your AI",    href: "/app/ai-training",      group: "Pages",   icon: "brain"    },
   { label: "Website Builder",  href: "/app/website",          group: "Pages",   icon: "globe"    },
+  { label: "AI Agent",         href: "/app/ai-agent",         group: "Pages",   icon: "agent"    },
   { label: "Analytics",        href: "/app/analytics",        group: "Pages",   icon: "chart"    },
   { label: "Marketing",        href: "/app/marketing",        group: "Pages",   icon: "star"     },
   { label: "Settings",         href: "/app/settings",         group: "Pages",   icon: "settings" },
@@ -40,6 +41,7 @@ function PaletteIcon({ type }: { type: string }) {
   if (type === "upgrade") return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cls}><path d="M7.5 2.5L9.063 6.875 13.75 7.5 10.625 10.313l1.25 4.375L7.5 12.5 3.125 14.688l1.25-4.375L1.25 7.5l4.688-.625z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>;
   if (type === "instagram") return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cls}><rect x="1.5" y="1.5" width="12" height="12" rx="3.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="7.5" cy="7.5" r="3" stroke="currentColor" strokeWidth="1.3"/><circle cx="11.25" cy="3.75" r="0.875" fill="currentColor"/></svg>;
   if (type === "whatsapp") return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cls}><path d="M7.5 1.25a6.25 6.25 0 0 1 5.413 9.375L13.75 13.75l-3.212-1.075A6.25 6.25 0 1 1 7.5 1.25z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>;
+  if (type === "agent") return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cls}><circle cx="7.5" cy="7.5" r="3" stroke="currentColor" strokeWidth="1.3"/><path d="M1.25 7.5h1.5M12.25 7.5h1.5M7.5 1.25v1.5M7.5 12.25v1.5M3.4 3.4l1.06 1.06M10.54 10.54l1.06 1.06M3.4 11.6l1.06-1.06M10.54 4.46l1.06-1.06" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/><circle cx="7.5" cy="7.5" r="1" fill="currentColor"/></svg>;
   return <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className={cls}><path d="M7.5 2.5h5v5M7.5 7.5l5-5M5 2.5H2.5v10h10V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
