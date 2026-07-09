@@ -12,13 +12,13 @@ function StatusDot({ status }: { status: string }) {
   return <span className="w-2 h-2 rounded-full shrink-0 inline-block" style={{ background: colors[status] || "#9CA3AF" }} />;
 }
 
-function timeAgo(ts: string | null) {
+function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (diff < 60) return "now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
+  if (diff < 60) return t("dashboard.timeNow");
+  if (diff < 3600) return `${Math.floor(diff / 60)}${t("dashboard.timeMinutes")}`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}${t("dashboard.timeHours")}`;
+  return `${Math.floor(diff / 86400)}${t("dashboard.timeDays")}`;
 }
 
 type Conv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
@@ -131,7 +131,7 @@ export default function DashboardPage() {
           customer_name: c.customer_name,
           channel: c.channel,
           preview: last?.content?.slice(0, 55) ?? "",
-          time: timeAgo(c.last_message_at),
+          time: timeAgo(c.last_message_at, t),
           isNew: last?.role === "user",
         };
       })
@@ -146,7 +146,7 @@ export default function DashboardPage() {
         id: a.id,
         time: new Date(a.datetime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
         name: a.leads?.name ?? t("dashboard.unknown"),
-        service: a.service_name ?? "Appointment",
+        service: a.service_name ?? t("dashboard.defaultService"),
         status: a.status,
       }))
     );

@@ -11,16 +11,16 @@
     "marketing": "Marketing"
   },
   "common": {
-    "save": "Änderungen speichern",
-    "saving": "Wird gespeichert…",
+    "save": "Speichern",
+    "saving": "Speichern…",
     "saved": "Gespeichert",
     "cancel": "Abbrechen",
     "connect": "Verbinden",
     "disconnect": "Trennen",
-    "upgrade": "Upgrade",
+    "upgrade": "Upgraden",
     "back": "Zurück",
     "done": "Fertig",
-    "loading": "Wird geladen…",
+    "loading": "Lädt…",
     "search": "Suchen…",
     "export": "CSV exportieren",
     "send": "Senden",
@@ -36,18 +36,18 @@
     "upgradeNow": "Jetzt upgraden",
     "settings": "Einstellungen",
     "language": "Sprache",
-    "viewAllPlans": "Alle Pläne ansehen",
-    "upgradePlan": "Plan upgraden",
+    "viewAllPlans": "Alle Tarife ansehen",
+    "upgradePlan": "Upgraden",
     "logout": "Abmelden",
     "plans": {
-      "starter": "Starter-Plan",
-      "pro": "Pro-Plan",
-      "premium": "Premium-Plan"
+      "starter": "Starter-Tarif",
+      "pro": "Pro-Tarif",
+      "premium": "Premium-Tarif"
     }
   },
   "settings": {
     "title": "Einstellungen",
-    "subtitle": "Verwalten Sie Ihre Unternehmenskonfiguration und Integrationen.",
+    "subtitle": "Verwalten Sie Ihre Konfiguration und Integrationen.",
     "tabs": {
       "businessInfo": "Unternehmensinfo",
       "aiConfig": "KI-Konfiguration",
@@ -63,55 +63,74 @@
       "email": "E-Mail",
       "city": "Stadt",
       "website": "Website",
-      "services": "Dienstleistungen (für KI)"
+      "services": "Leistungen (von KI verwendet)"
     },
     "aiConfig": {
       "title": "KI-Konfiguration",
       "tone": "KI-Ton",
       "language": "Antwortsprache",
-      "timing": "Antwortzeit",
-      "instructions": "Benutzerdefinierte KI-Anweisungen",
-      "save": "KI-Konfiguration speichern"
+      "timing": "Antwortverzögerung",
+      "instructions": "Benutzerdefinierte Anweisungen",
+      "save": "KI-Konfiguration speichern",
+      "toastSaved": "KI-Konfiguration gespeichert"
     },
     "notifications": {
       "title": "Benachrichtigungseinstellungen",
-      "save": "Einstellungen speichern"
+      "save": "Einstellungen speichern",
+      "items": {
+        "newLead": "Neuer Lead",
+        "newLeadSub": "Wenn die KI einen neuen Lead erfasst",
+        "booking": "Buchungsbestätigung",
+        "bookingSub": "Wenn ein Termin gebucht wird",
+        "handoff": "KI-Übergabe-Alarm",
+        "handoffSub": "Wenn die KI menschliche Unterstützung anfordert",
+        "dailySummary": "Tägliche E-Mail-Zusammenfassung",
+        "dailySummarySub": "Morgendliche Zusammenfassung der gestrigen Aktivitäten",
+        "whatsapp": "WhatsApp-Benachrichtigungen",
+        "whatsappSub": "Benachrichtigungen über WhatsApp erhalten"
+      }
     },
     "billing": {
       "title": "Abrechnung & Abonnement",
-      "upgradePlan": "Plan upgraden",
+      "upgradePlan": "Upgraden",
       "manageBilling": "Abrechnung verwalten",
       "addPayment": "Zahlungsmethode hinzufügen",
       "noCard": "Keine Karte hinterlegt",
       "renews": "Automatische Verlängerung · Jederzeit kündbar",
       "whiteLabel": "Vela-Branding ausblenden",
-      "whiteLabelDesc": "Vela-Branding aus Ihrem Chat-Widget entfernen (Pro & Premium)"
+      "whiteLabelDesc": "Vela-Branding aus Ihrem Chat-Widget entfernen (Pro & Premium)",
+      "paymentMethod": "Zahlungsmethode",
+      "plansNote": "Verfügbar in den Pro- und Premium-Tarifen.",
+      "toastSaved": "Einstellungen gespeichert",
+      "toastSavedLocally": "Lokal gespeichert",
+      "toastHidden": "Vela-Branding ausgeblendet",
+      "toastRestored": "Vela-Branding wiederhergestellt"
     }
   },
   "channels": {
     "title": "Kanäle",
-    "subtitle": "Verbinden Sie Ihre Nachrichtenkanäle. Vela AI antwortet automatisch auf jedem.",
+    "subtitle": "Verbinden Sie Ihre Messaging-Kanäle. Vela AI antwortet automatisch auf jedem.",
     "connected": "Verbunden",
     "notConnected": "Nicht verbunden",
-    "readyToEmbed": "Bereit zum Einbetten",
+    "readyToEmbed": "Bereit zur Einbettung",
     "upgradeTitle": "Auf Pro upgraden für mehr Kanäle",
-    "upgradeDesc": "Starter-Plan enthält 1 Kanal. Upgraden Sie für alle 3.",
+    "upgradeDesc": "Der Starter-Tarif enthält 1 Kanal. Upgraden Sie auf Pro für alle 3.",
     "instagram": {
       "name": "Instagram",
-      "desc": "KI antwortet automatisch auf Ihre Instagram DMs"
+      "desc": "KI antwortet automatisch auf Ihre Instagram-DMs"
     },
     "whatsapp": {
       "name": "WhatsApp Business",
-      "desc": "KI antwortet automatisch auf WhatsApp Business Nachrichten"
+      "desc": "KI antwortet automatisch auf WhatsApp-Business-Nachrichten"
     },
     "website": {
-      "name": "Website-Chat-Widget",
+      "name": "Chat-Widget",
       "desc": "Fügen Sie eine KI-Chat-Blase zu jeder Website hinzu"
     }
   },
   "analytics": {
     "title": "Analysen",
-    "totalLeads": "Gesamt-Leads",
+    "totalLeads": "Leads gesamt",
     "appointments": "Termine",
     "revenue": "Umsatz (AED)",
     "conversionRate": "Konversionsrate",
@@ -123,7 +142,7 @@
     "bookings": "Buchungen",
     "convRate": "Konv.-Rate",
     "total": "Gesamt",
-    "messagesHandled": "Bearbeitete Nachrichten",
+    "messagesHandled": "Behandelte Nachrichten",
     "bookingsByAI": "Buchungen durch KI",
     "avgResponse": "Ø Antwortzeit",
     "satisfaction": "Zufriedenheit",
@@ -135,12 +154,12 @@
     "title": "Marketing",
     "subtitle": "KI-Tools für Ihr Unternehmenswachstum",
     "upgradeCta": "Auf Pro upgraden für Marketing",
-    "upgradeDesc": "Senden Sie Broadcasts, generieren Sie Posts und erstellen Sie Video-Skripte mit KI.",
+    "upgradeDesc": "Senden Sie Broadcasts, erstellen Sie Posts und schreiben Sie Video-Skripte mit KI.",
     "tools": {
-      "social": "Social-Media-Beiträge",
-      "socialDesc": "KI-geschriebene Beiträge für jede Plattform",
+      "social": "Social-Media-Posts",
+      "socialDesc": "KI-generierte Posts für jede Plattform",
       "broadcast": "Broadcast-Nachricht",
-      "broadcastDesc": "Massennachricht an Leads oder Kunden",
+      "broadcastDesc": "Massenversand an Leads oder Kunden",
       "video": "Video-Skript",
       "videoDesc": "Szene-für-Szene-Skripte für Reels & TikTok"
     }
@@ -150,7 +169,7 @@
     "confirmedToday": "heute bestätigt",
     "newAppointment": "+ Neuer Termin",
     "exportCsv": "CSV exportieren",
-    "searchPlaceholder": "Nach Name, Service, Kanal suchen…",
+    "searchPlaceholder": "Nach Name, Leistung, Kanal suchen…",
     "filters": {
       "all": "Alle",
       "today": "Heute",
@@ -161,7 +180,7 @@
     "columns": {
       "patient": "Patient",
       "phone": "Telefon",
-      "service": "Service",
+      "service": "Leistung",
       "dateTime": "Datum & Uhrzeit",
       "channel": "Kanal",
       "status": "Status",
@@ -170,14 +189,14 @@
     "status": {
       "confirmed": "Bestätigt",
       "pending": "Ausstehend",
-      "cancelled": "Storniert"
+      "cancelled": "Abgesagt"
     },
     "actions": {
       "reschedule": "Verschieben",
-      "cancel": "Stornieren",
+      "cancel": "Absagen",
       "message": "Nachricht"
     },
-    "showing": "Zeigt",
+    "showing": "Anzeige von",
     "bookingCounter": "Buchungen diesen Monat",
     "bookingLimitReached": "Buchungslimit erreicht — upgraden Sie auf Pro für unbegrenzte Buchungen"
   },
@@ -185,33 +204,224 @@
     "morning": "Guten Morgen",
     "afternoon": "Guten Tag",
     "evening": "Guten Abend",
-    "there": "da"
+    "there": ""
+  },
+  "dashboard": {
+    "kpiTotalLeads": "Leads gesamt",
+    "kpiNewLeads": "Neue Leads",
+    "kpiAppointmentsToday": "Termine heute",
+    "vsLastWeek": "vs. letzte Woche",
+    "sameAsLastWeek": "Unverändert",
+    "recentMessages": "Aktuelle Nachrichten",
+    "todayAppointments": "Heutige Termine",
+    "viewAll": "Alle anzeigen",
+    "noConversations": "Noch keine Gespräche",
+    "connectToReceive": "Verbinden Sie einen Kanal, um Nachrichten zu empfangen.",
+    "connectChannel": "Kanal verbinden",
+    "noAppointments": "Heute keine Termine",
+    "appointmentsHint": "Von der KI gebuchte Termine erscheinen hier.",
+    "kbBannerPre": "Ihre KI ist erst zu ",
+    "kbBannerPost": "% trainiert",
+    "kbBannerSub": "Bringen Sie ihr Ihre Leistungen bei, damit sie Kunden korrekt antworten kann.",
+    "trainAI": "KI trainieren",
+    "onboardingTitle": "Kontoeinrichtung abschließen",
+    "onboardingDesc": "Verbinden Sie einen Kanal, konfigurieren Sie Ihre KI und erstellen Sie Ihre Website.",
+    "continueSetup": "Einrichtung fortsetzen",
+    "noMessages": "Noch keine Nachrichten",
+    "unknown": "Unbekannt",
+    "defaultService": "Termin",
+    "timeNow": "jetzt",
+    "timeMinutes": "Min.",
+    "timeHours": "Std.",
+    "timeDays": "T"
+  },
+  "conversations": {
+    "title": "Gespräche",
+    "filterAll": "Alle",
+    "filterUnread": "Ungelesen",
+    "noConversations": "Noch keine Gespräche",
+    "widgetHint": "Nachrichten aus Ihrem Widget erscheinen hier",
+    "needsAttention": "Aufmerksamkeit erforderlich",
+    "replyingManually": "Manuell als Team antworten",
+    "aiModeHint": "KI-Modus — Text eingeben simuliert eine Kundennachricht zum Testen",
+    "simulatePlaceholder": "Kundennachricht simulieren…",
+    "replyPlaceholder": "Antwort eingeben…",
+    "send": "Senden",
+    "selectConversation": "Gespräch auswählen",
+    "selectHint": "Links auswählen, um Nachrichten zu lesen und zu antworten",
+    "takeover": "Übernehmen",
+    "setupRequired": "Einrichtung erforderlich",
+    "noMessages": "Noch keine Nachrichten",
+    "via": "über",
+    "aiLabel": "KI",
+    "velaAiPrefix": "Vela AI · ",
+    "goToSettings": "Zu Einstellungen →",
+    "errorNoTenant": "Kein Konto gefunden. Bitte schließen Sie die Unternehmenseinrichtung ab.",
+    "errorLoadFailed": "Gespräche konnten nicht geladen werden. Überprüfen Sie die Datenbankkonfiguration."
+  },
+  "leads": {
+    "title": "Leads & CRM",
+    "addLead": "+ Lead hinzufügen",
+    "searchPlaceholder": "Nach Name, Kanal oder Status suchen…",
+    "stages": {
+      "new": "Neu",
+      "contacted": "Kontaktiert",
+      "qualified": "Qualifiziert",
+      "booked": "Gebucht",
+      "client": "Kunde"
+    },
+    "totalSingular": "Lead insgesamt",
+    "totalPlural": "Leads insgesamt",
+    "newCount": "neu",
+    "noLeadsGlobal": "Noch keine Leads",
+    "leadsHint": "Leads werden automatisch erstellt, wenn Kunden über Ihre verbundenen Kanäle Kontakt aufnehmen.",
+    "connectChannel": "Kanal verbinden",
+    "emptyColumn": "Keine Leads"
+  },
+  "website": {
+    "title": "Website-Builder",
+    "subtitle": "Chatten Sie mit der KI, um Ihre Buchungswebsite zu erstellen",
+    "quickStarts": "Schnellstart:",
+    "copyLink": "Link kopieren",
+    "copied": "Kopiert!",
+    "publish": "Veröffentlichen →",
+    "previewEmpty": "Vorschau erscheint hier",
+    "building": "Website wird erstellt…",
+    "livePreview": "yoursite.vela.ai — Live-Vorschau"
+  },
+  "aiTraining": {
+    "title": "KI trainieren",
+    "subtitle": "Je mehr Sie Ihrer KI beibringen, desto besser betreut sie Ihre Kunden.",
+    "aiScore": "KI-Score",
+    "wellTrained": "Gut trainiert",
+    "gettingThere": "Auf gutem Weg",
+    "needsInfo": "Braucht mehr Infos",
+    "importPlaceholder": "Ihre Website einfügen — Vela lernt alles ✨",
+    "analyzing": "Analyse läuft",
+    "importBtn": "Importieren",
+    "uploadPriceList": "Preisliste hochladen",
+    "answerQuestions": "5 kurze Fragen beantworten",
+    "or": "oder",
+    "instagramSoon": "Instagram-Import kommt bald — fügen Sie stattdessen Ihre Website-URL ein oder laden Sie ein PDF hoch.",
+    "reviewTitle": "Auszug von Ihrer Website — bitte vor dem Speichern prüfen",
+    "reviewServices": "Leistungen",
+    "reviewExtraInfo": "Zusätzliche Informationen",
+    "reviewBusinessInfo": "Unternehmensinfo",
+    "reviewHours": "Öffnungszeiten:",
+    "reviewAddress": "Adresse:",
+    "saveBtn": "Passt so — Speichern",
+    "discardBtn": "Verwerfen",
+    "tabs": {
+      "services": "Leistungen",
+      "businessInfo": "Unternehmensinfo",
+      "extra": "Weiteres"
+    },
+    "services": {
+      "colService": "Leistung",
+      "colPrice": "Preis",
+      "colDuration": "Dauer",
+      "colDescription": "Beschreibung",
+      "empty": "Noch keine Leistungen",
+      "addService": "Leistung hinzufügen",
+      "namePlaceholder": "Leistungsname",
+      "pricePlaceholder": "Preis",
+      "durationPlaceholder": "45 Min.",
+      "descPlaceholder": "Kurze Beschreibung"
+    },
+    "businessInfo": {
+      "hours": "Öffnungszeiten",
+      "hoursPlaceholder": "Mo–Fr 9–18 Uhr, Sa 10–16 Uhr",
+      "address": "Adresse / Standort",
+      "addressPlaceholder": "z. B. Hauptstraße 5, Stadt",
+      "bookingPolicy": "Buchungsrichtlinien",
+      "bookingPolicyPlaceholder": "Stornierung 24 Stunden im Voraus erforderlich. Anzahlungen nicht erstattungsfähig.",
+      "tone": "KI-Ton",
+      "toneProfessional": "Professionell",
+      "toneProfessionalDesc": "Formell und sachlich",
+      "toneFriendly": "Freundlich",
+      "toneFriendlyDesc": "Warm und gesprächsnah",
+      "toneLuxury": "Luxus",
+      "toneLuxuryDesc": "Elegant und exklusiv"
+    },
+    "extra": {
+      "label": "Zusätzliches Wissen",
+      "hint": "Alles, was Ihre KI wissen sollte — Richtlinien, FAQ, Aktionen, Team-Infos…",
+      "uploadTitle": "Dokument hochladen",
+      "uploadHint": "PDF oder Bild — wir extrahieren den Text zur Überprüfung.",
+      "chooseFile": "Datei auswählen",
+      "extracting": "Extrahiere…",
+      "extractionFailed": "Extraktion fehlgeschlagen — versuchen Sie eine andere Datei oder fügen Sie den Text manuell ein.",
+      "reviewExtracted": "Extrahierter Text — bitte vor dem Hinzufügen prüfen:",
+      "discard": "Verwerfen",
+      "addToKB": "Zur Wissensbasis hinzufügen",
+      "textareaPlaceholder": "z. B. 'Wir verwenden ausschließlich vegane Produkte.' oder 'F: Gibt es Rabatte?\nA: Ja, 15% dienstags.'"
+    },
+    "importFailed": "Import fehlgeschlagen.",
+    "connectionError": "Verbindungsfehler — bitte erneut versuchen.",
+    "moreCount": " weitere",
+    "saved": "Gespeichert ✓",
+    "savedImported": "Importiert & gespeichert ✓"
+  },
+  "velaAssistant": {
+    "title": "Vela AI",
+    "subtitle": "Ihr Unternehmensassistent",
+    "clearChat": "Löschen",
+    "quickQuestionsLabel": "Schnellfragen",
+    "inputPlaceholder": "Fragen Sie alles über Ihr Unternehmen…",
+    "retryButton": "Wiederholen",
+    "keyboardHint": "Drücken Sie",
+    "keyboardSend": "zum Senden · ",
+    "keyboardNewline": "für neue Zeile",
+    "greeting": "Hallo",
+    "greetingMessage": "Ich bin Vela, Ihr KI-Unternehmensassistent. Fragen Sie mich zu Ihren Leads, Terminen oder Gesprächen — oder ich helfe Ihnen, Antworten und Marketingtexte zu verfassen.",
+    "errorUnauthorized": "Bitte melden Sie sich an, um Vela AI zu nutzen.",
+    "errorTenantNotFound": "Schließen Sie die Kontoeinrichtung ab, um den Assistenten freizuschalten.",
+    "errorNotConfigured": "Der KI-Dienst ist noch nicht konfiguriert. Wenden Sie sich an den Support.",
+    "errorGeneric": "Etwas ist schiefgelaufen — tippen Sie unten auf 'Wiederholen'.",
+    "errorNoResponse": "Keine Antwort generiert. Bitte erneut versuchen.",
+    "errorConnection": "Verbindungsfehler — überprüfen Sie Ihr Internet und tippen Sie auf 'Wiederholen'.",
+    "kbUpdated": "✓ Ihre KI-Wissensbasis wurde aktualisiert! Besuchen Sie 'KI trainieren', um alles zu überprüfen.",
+    "kbSaveFailed": "Das Interview ist abgeschlossen, aber das Speichern ist fehlgeschlagen — bitte 'KI trainieren' besuchen und manuell speichern.",
+    "quickActions": {
+      "todayAppointments": "Heutige Termine",
+      "recentLeads": "Aktuelle Leads",
+      "needsAttention": "Aufmerksamkeit nötig",
+      "writeReply": "Antwort verfassen",
+      "trainMe": "Mich trainieren"
+    },
+    "quickMessages": {
+      "todayAppointments": "Welche Termine habe ich heute?",
+      "recentLeads": "Zeig mir meine neuesten Leads",
+      "needsAttention": "Welche Gespräche erfordern menschliche Unterstützung?",
+      "writeReply": "Hilf mir, eine professionelle Antwort auf eine Preisanfrage zu schreiben",
+      "trainMe": "Ich möchte meine KI trainieren — bitte starte das Interview jetzt."
+    }
   },
   "landing": {
     "nav": {
       "features": "Funktionen",
-      "howItWorks": "Wie es funktioniert",
+      "howItWorks": "So funktioniert's",
       "pricing": "Preise",
       "faq": "FAQ",
       "login": "Anmelden",
       "tryDemo": "Demo testen",
-      "getStarted": "Loslegen"
+      "getStarted": "Jetzt starten"
     },
     "hero": {
       "badge": "KI-Betriebssystem für Unternehmen",
-      "headline1": "Verpassen Sie nie",
-      "headline2": "einen Kunden.",
-      "subtext": "Vela verwaltet Ihre Kundenkommunikation rund um die Uhr. Die KI antwortet, qualifiziert und bucht Termine — auf Instagram, WhatsApp und Ihrer Website.",
+      "headline1": "Verpassen Sie nie wieder",
+      "headline2": "einen Lead.",
+      "subtext": "Vela übernimmt Ihre Kundenkommunikation rund um die Uhr. Die KI antwortet, qualifiziert und bucht Termine — auf Instagram, WhatsApp und Ihrer Website.",
       "watchPreview": "Oder sehen Sie eine 60-Sekunden-Vorschau",
-      "trust1": "< 60s Antwortzeit",
-      "trust2": "Arbeitet 24/7"
+      "trust1": "Antwortzeit < 60 Sek.",
+      "trust2": "Läuft 24/7"
     },
     "pricing": {
       "badge": "Preise",
       "headline1": "Einfach und transparent",
-      "headline2": "Preisgestaltung.",
+      "headline2": "unsere Preise.",
       "cancelAnytime": "Jederzeit kündbar",
-      "cancelNote": "Jederzeit kündbar, keine Fragen.",
+      "cancelNote": "Jederzeit kündbar, ohne Fragen.",
       "monthly": "Monatlich",
       "annual": "Jährlich",
       "billedMonthly": "Monatlich abgerechnet",
@@ -220,17 +430,17 @@
       "plans": {
         "starter": {
           "name": "Starter",
-          "description": "Alles, was Sie für den Einstieg in die KI-Automatisierung benötigen.",
+          "description": "Alles, was Sie brauchen, um mit KI-Automatisierung zu beginnen.",
           "cta": "Loslegen",
           "features": [
             "1 benutzerdefinierte Domain",
             "KI nur auf 1 Kanal",
-            "Basis-Website-Vorlage",
+            "Einfache Website-Vorlage",
             "50 Buchungen/Monat",
             "Generische KI-Antworten",
-            "Basiskalender",
+            "Einfacher Kalender",
             "Keine Follow-up-Automatisierung",
-            "Basis-CRM",
+            "Einfaches CRM",
             "Kein White Label",
             "1 Teammitglied",
             "Keine Analysen",
@@ -244,35 +454,35 @@
           "features": [
             "2 benutzerdefinierte Domains",
             "Alle 3 Kanäle (WhatsApp + Instagram + Website)",
-            "Schöne individuelle Website",
+            "Elegante benutzerdefinierte Website",
             "Unbegrenzte Buchungen",
-            "KI auf IHR Unternehmen trainiert",
+            "KI trainiert auf IHR Unternehmen",
             "Vollständiger Kalender + automatische Erinnerungen",
             "Automatische Follow-up-Sequenzen",
             "Vollständige CRM-Pipeline-Ansicht",
             "White Label inklusive",
             "15 Teammitglieder",
-            "Vollständiges Analytics-Dashboard",
-            "Live-Chat-Support 24/7"
+            "Vollständiges Analyse-Dashboard",
+            "24/7 Live-Chat-Support"
           ]
         },
         "premium": {
           "name": "Premium",
-          "description": "Für Unternehmen, die das Allerbeste fordern — ohne Kompromisse.",
+          "description": "Für Unternehmen, die das Absolute Beste ohne Kompromisse fordern.",
           "cta": "Premium holen",
           "features": [
             "3 benutzerdefinierte Domains",
             "Alle 3 Kanäle + Prioritätsantworten",
-            "Vollständige individuelle Website + Animationen",
+            "Vollständige benutzerdefinierte Website + Animationen",
             "Unbegrenzte Buchungen",
-            "Erweiterte KI — lernt mit der Zeit",
+            "Fortgeschrittene KI — lernt mit der Zeit",
             "Vollständiger Kalender + Erinnerungen + Analysen",
             "Erweiterte Follow-up-Sequenzen",
             "Vollständiges CRM + Umsatzberichte",
             "White Label inklusive",
             "Unbegrenzte Teammitglieder",
             "Erweiterte Analysen + Exporte",
-            "Dedizierter Account-Manager"
+            "Dedizierter Account Manager"
           ]
         }
       }
@@ -282,23 +492,23 @@
       "headline1": "Haben Sie Fragen?",
       "headline2": "Wir haben Antworten.",
       "questions": [
-        { "q": "Wie schnell kann ich starten?", "a": "Die meisten Unternehmen sind innerhalb von 7 Tagen live. Nach der Anmeldung verbindet unser Onboarding-Team Ihre Kanäle, trainiert die KI auf Ihre Dienste und testet alles vor dem Start. Sie müssen keine einzige Zeile Code schreiben." },
-        { "q": "Funktioniert Vela wirklich auf Instagram und WhatsApp?", "a": "Ja. Vela integriert sich direkt mit der offiziellen Instagram-API und der WhatsApp Business API. Jede DM, Kommentarantwort und Story-Reaktion wird von Ihrem KI-Assistenten bearbeitet. WhatsApp ist besonders leistungsstark für buchungsintensive Unternehmen wie Kliniken und Salons." },
-        { "q": "Kann ich anpassen, was die KI sagt?", "a": "Absolut. Während der Einrichtung geben Sie Ihre Dienstleistungsliste, Preise, FAQs, Tonalität und Buchungsregeln ein. Die KI wird speziell auf Ihr Unternehmen trainiert. Sie können auch Eskalationsregeln festlegen, damit die KI komplexe Fälle an einen Menschen weitergibt." },
-        { "q": "Was passiert, wenn ein Kunde etwas fragt, das die KI nicht weiß?", "a": "Die KI erkennt höflich, dass sie diese Information nicht hat, und bietet an, den Kunden mit einem Teammitglied zu verbinden. Sie erhalten sofort eine Benachrichtigung, um einzugreifen. Sie können die Wissensbasis der KI auch jederzeit in Ihren Einstellungen erweitern." },
-        { "q": "Sind meine Kundendaten sicher?", "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert — Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir geben Kundendaten niemals weiter oder verkaufen sie. DSGVO-Konformität und Datenschutz sind integriert." },
-        { "q": "Kann ich mein Abonnement kündigen?", "a": "Ja, jederzeit. Keine Verträge, keine Kündigungsgebühren. Sie können direkt in Ihren Abrechnungseinstellungen kündigen. Ihre Daten stehen nach der Kündigung 30 Tage lang zum Export bereit." }
+        { "q": "Wie schnell kann ich loslegen?", "a": "Die meisten Unternehmen sind innerhalb von 7 Tagen live. Nach der Anmeldung verbindet unser Onboarding-Team Ihre Kanäle, trainiert die KI mit Ihren Leistungen und testet alles vor dem Start. Sie müssen keine einzige Zeile Code schreiben." },
+        { "q": "Funktioniert Vela wirklich auf Instagram und WhatsApp?", "a": "Ja. Vela integriert sich direkt mit der offiziellen Instagram API und der WhatsApp Business API. Jede DM, Kommentarantwort und Story-Reaktion wird von Ihrem KI-Assistenten verwaltet. WhatsApp ist besonders leistungsstark für buchungsbasierte Unternehmen wie Kliniken und Salons." },
+        { "q": "Kann ich anpassen, was die KI sagt?", "a": "Absolut. Beim Einrichten geben Sie Ihre Leistungsliste, Preise, FAQs, Ton und Buchungsregeln an. Die KI wird speziell für Ihr Unternehmen trainiert. Sie können auch Eskalationsregeln festlegen, damit die KI komplexe Fälle an einen Menschen übergibt." },
+        { "q": "Was passiert, wenn ein Kunde etwas fragt, das die KI nicht weiß?", "a": "Die KI erkennt höflich, dass sie diese Information nicht hat, und bietet an, den Kunden mit einem Teammitglied zu verbinden. Sie erhalten sofort eine Benachrichtigung, um einzugreifen. Sie können die Wissensbasis der KI jederzeit in Ihren Einstellungen erweitern." },
+        { "q": "Sind meine Kundendaten sicher?", "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert — Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir teilen oder verkaufen niemals Kundendaten. DSGVO-Konformität ist eingebaut." },
+        { "q": "Kann ich mein Abonnement kündigen?", "a": "Ja, jederzeit. Keine Verträge, keine Stornierungsgebühren. Sie können direkt in Ihren Abrechnungseinstellungen kündigen. Ihre Daten stehen 30 Tage nach der Kündigung zum Export zur Verfügung." }
       ]
     },
     "cta": {
-      "badge": "Loslegen",
-      "headline1": "Hören Sie auf, Kunden zu verlieren",
-      "headline2": "durch langsame Antworten.",
+      "badge": "Jetzt starten",
+      "headline1": "Hören Sie auf, Kunden durch",
+      "headline2": "langsame Antworten zu verlieren.",
       "subtext": "Monatlich abgerechnet. Jederzeit kündbar. In 7 Tagen live.",
       "whatsapp": "Auf WhatsApp chatten"
     },
     "footer": {
-      "tagline": "Eine Plattform. Alle Werkzeuge, die Ihr Unternehmen braucht.",
+      "tagline": "Eine Plattform. Alle Tools, die Ihr Unternehmen braucht.",
       "sections": {
         "product": "Produkt",
         "company": "Unternehmen",
@@ -307,7 +517,7 @@
       "links": {
         "features": "Funktionen",
         "pricing": "Preise",
-        "howItWorks": "Wie es funktioniert",
+        "howItWorks": "So funktioniert's",
         "faq": "FAQ",
         "about": "Über uns",
         "blog": "Blog",
@@ -318,7 +528,7 @@
         "cookies": "Cookie-Richtlinie"
       },
       "copyright": "© 2026 Vela. Alle Rechte vorbehalten.",
-      "slogan1": "Gebaut für Unternehmen, die nie schlafen.",
+      "slogan1": "Gebaut für Unternehmen, die niemals schlafen.",
       "slogan2": "Vela auch nicht."
     }
   }

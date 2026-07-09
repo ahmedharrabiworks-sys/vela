@@ -178,10 +178,10 @@ export default function AITrainingPage() {
       });
       const data = await res.json() as { kb?: KnowledgeBase; instagram?: boolean; error?: string };
       if (data.instagram) { setImportState("instagram"); return; }
-      if (!res.ok || data.error) { setImportError(data.error ?? "Import failed."); setImportState("error"); return; }
+      if (!res.ok || data.error) { setImportError(data.error ?? t("aiTraining.importFailed")); setImportState("error"); return; }
       if (data.kb) { setImportedKb(data.kb); setImportState("review"); }
     } catch {
-      setImportError("Connection error — please try again.");
+      setImportError(t("aiTraining.connectionError"));
       setImportState("error");
     }
   };
@@ -340,7 +340,7 @@ export default function AITrainingPage() {
                         {s.price && <span className="text-[#FF6B35] font-bold">{s.price}</span>}
                       </div>
                     ))}
-                    {importedKb.services.length > 5 && <p className="text-[11px] text-[#9CA3AF] pl-1">+{importedKb.services.length - 5} more</p>}
+                    {importedKb.services.length > 5 && <p className="text-[11px] text-[#9CA3AF] pl-1">+{importedKb.services.length - 5}{t("aiTraining.moreCount")}</p>}
                   </div>
                 </div>
               )}
@@ -483,14 +483,14 @@ export default function AITrainingPage() {
               <div>
                 <label className="text-xs font-medium text-[#6B7280]">{t("aiTraining.businessInfo.address")}</label>
                 <input value={kb.business.address} onChange={(e) => updateBusiness({ address: e.target.value })} onBlur={triggerAutoSave}
-                  placeholder="Shop 5, Al Wasl Road, Dubai"
+                  placeholder={t("aiTraining.businessInfo.addressPlaceholder")}
                   className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all" />
               </div>
             </div>
             <div>
               <label className="text-xs font-medium text-[#6B7280]">{t("aiTraining.businessInfo.bookingPolicy")}</label>
               <textarea value={kb.business.bookingPolicy} onChange={(e) => updateBusiness({ bookingPolicy: e.target.value })} onBlur={triggerAutoSave}
-                rows={3} placeholder="24-hour cancellation required. Deposits non-refundable. Walk-ins welcome subject to availability."
+                rows={3} placeholder={t("aiTraining.businessInfo.bookingPolicyPlaceholder")}
                 className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all resize-none" />
             </div>
             <div>
@@ -529,7 +529,7 @@ export default function AITrainingPage() {
               <label className="text-xs font-medium text-[#6B7280]">{t("aiTraining.extra.label")}</label>
               <p className="text-[11px] text-[#9CA3AF] mt-0.5 mb-2">{t("aiTraining.extra.hint")}</p>
               <textarea value={kb.extra} onChange={(e) => updateKb({ extra: e.target.value })} onBlur={triggerAutoSave}
-                rows={7} placeholder={"e.g. 'We use only vegan products.' or 'Q: Do you offer discounts?\nA: Yes, 15% off on Tuesdays.'"}
+                rows={7} placeholder={t("aiTraining.extra.textareaPlaceholder")}
                 className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all resize-none" />
             </div>
 

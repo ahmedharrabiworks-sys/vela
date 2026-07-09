@@ -55,13 +55,13 @@ function ChannelIcon({ channel }: { channel: string | null }) {
   );
 }
 
-function timeAgo(ts: string | null) {
+function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (diff < 60) return "now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return t("dashboard.timeNow");
+  if (diff < 3600) return `${Math.floor(diff / 60)}${t("dashboard.timeMinutes")}`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}${t("dashboard.timeHours")}`;
+  return `${Math.floor(diff / 86400)}${t("dashboard.timeDays")}`;
 }
 
 export default function LeadsPage() {
@@ -207,7 +207,7 @@ export default function LeadsPage() {
                               <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
                                 {(lead.name ?? "?")[0].toUpperCase()}
                               </div>
-                              <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? "Unknown"}</p>
+                              <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</p>
                             </div>
                             <span className="flex items-center gap-1 text-[9px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] shrink-0 whitespace-nowrap capitalize">
                               <ChannelIcon channel={lead.channel} />
@@ -218,7 +218,7 @@ export default function LeadsPage() {
                             <p className="text-[10px] text-[#6B7280] mb-2 font-mono">{lead.phone}</p>
                           )}
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.updated_at)}</span>
+                            <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.updated_at, t)}</span>
                           </div>
                         </div>
                       ))}

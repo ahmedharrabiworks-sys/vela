@@ -35,13 +35,13 @@ function ChannelIcon({ channel }: { channel: string }) {
   );
 }
 
-function timeAgo(ts: string | null) {
+function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (diff < 60) return "now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
+  if (diff < 60) return t("dashboard.timeNow");
+  if (diff < 3600) return `${Math.floor(diff / 60)}${t("dashboard.timeMinutes")}`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}${t("dashboard.timeHours")}`;
+  return `${Math.floor(diff / 86400)}${t("dashboard.timeDays")}`;
 }
 
 /* ── Loading skeleton ── */
@@ -90,7 +90,7 @@ export default function ConversationsPage() {
         .single();
 
       if (!tenant) {
-        setError("No tenant found. Please complete your business setup first.");
+        setError(t("conversations.errorNoTenant"));
         setLoading(false);
         return;
       }
@@ -113,7 +113,7 @@ export default function ConversationsPage() {
       .order("last_message_at", { ascending: false });
 
     if (err) {
-      setError("Could not load conversations. Please run the Supabase migration first.");
+      setError(t("conversations.errorLoadFailed"));
       return;
     }
 
@@ -299,7 +299,7 @@ export default function ConversationsPage() {
         </div>
         <p className="font-semibold text-[#111111] mb-2">{t("conversations.setupRequired")}</p>
         <p className="text-sm text-[#6B7280]">{error}</p>
-        <a href="/app/settings" className="mt-4 inline-block text-sm text-[#FF6B35] font-semibold hover:underline">Go to Settings →</a>
+        <a href="/app/settings" className="mt-4 inline-block text-sm text-[#FF6B35] font-semibold hover:underline">{t("conversations.goToSettings")}</a>
       </div>
     );
   }
@@ -361,7 +361,7 @@ export default function ConversationsPage() {
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
                       )}
                       {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
-                      <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at)}</span>
+                      <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at, t)}</span>
                     </div>
                   </div>
                   <p className="text-[11px] text-[#6B7280] truncate">{conv.preview || t("conversations.noMessages")}</p>
@@ -403,7 +403,7 @@ export default function ConversationsPage() {
 
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex items-center gap-1.5">
-                  <span className="text-xs text-[#6B7280]">AI</span>
+                  <span className="text-xs text-[#6B7280]">{t("conversations.aiLabel")}</span>
                   <button onClick={() => toggleAI(!selected.ai_enabled)}
                     className={`w-9 h-5 rounded-full transition-all duration-200 relative ${selected.ai_enabled ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`}>
                     <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${selected.ai_enabled ? "left-4" : "left-0.5"}`} />
@@ -440,7 +440,7 @@ export default function ConversationsPage() {
                     style={msg.role !== "user" ? { background: "var(--vela-gradient)" } : {}}>
                     <p>{msg.content}</p>
                     <p className="text-[10px] mt-1.5 opacity-50">
-                      {msg.role === "assistant" ? "Vela AI · " : ""}
+                      {msg.role === "assistant" ? t("conversations.velaAiPrefix") : ""}
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>

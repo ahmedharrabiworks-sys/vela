@@ -228,7 +228,12 @@
     "onboardingDesc": "Connect a channel, configure your AI, and build your website to go live.",
     "continueSetup": "Continue setup",
     "noMessages": "No messages yet",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "defaultService": "Appointment",
+    "timeNow": "now",
+    "timeMinutes": "m",
+    "timeHours": "h",
+    "timeDays": "d"
   },
   "conversations": {
     "title": "Conversations",
@@ -247,7 +252,12 @@
     "takeover": "Takeover",
     "setupRequired": "Setup required",
     "noMessages": "No messages yet",
-    "via": "via"
+    "via": "via",
+    "aiLabel": "AI",
+    "velaAiPrefix": "Vela AI · ",
+    "goToSettings": "Go to Settings →",
+    "errorNoTenant": "No tenant found. Please complete your business setup first.",
+    "errorLoadFailed": "Could not load conversations. Please run the Supabase migration first."
   },
   "leads": {
     "title": "Leads & CRM",
@@ -322,7 +332,9 @@
       "hours": "Working Hours",
       "hoursPlaceholder": "Mon–Fri 9am–6pm, Sat 10am–4pm",
       "address": "Address / Location",
+      "addressPlaceholder": "e.g. Shop 5, Main Road, City",
       "bookingPolicy": "Booking Policy",
+      "bookingPolicyPlaceholder": "24-hour cancellation required. Deposits non-refundable. Walk-ins welcome.",
       "tone": "AI Tone",
       "toneProfessional": "Professional",
       "toneProfessionalDesc": "Formal and business-like",
@@ -341,10 +353,49 @@
       "extractionFailed": "Extraction failed — try a different file or paste the text manually.",
       "reviewExtracted": "Extracted text — review before adding:",
       "discard": "Discard",
-      "addToKB": "Add to Knowledge Base"
+      "addToKB": "Add to Knowledge Base",
+      "textareaPlaceholder": "e.g. 'We use only vegan products.' or 'Q: Do you offer discounts?\\nA: Yes, 15% off on Tuesdays.'"
     },
+    "importFailed": "Import failed.",
+    "connectionError": "Connection error — please try again.",
+    "moreCount": " more",
     "saved": "Saved ✓",
     "savedImported": "Imported & Saved ✓"
+  },
+  "velaAssistant": {
+    "title": "Vela AI",
+    "subtitle": "Your business assistant",
+    "clearChat": "Clear",
+    "quickQuestionsLabel": "Quick questions",
+    "inputPlaceholder": "Ask anything about your business…",
+    "retryButton": "Retry",
+    "keyboardHint": "Press",
+    "keyboardSend": "to send · ",
+    "keyboardNewline": "for new line",
+    "greeting": "Hi",
+    "greetingMessage": "I'm Vela, your AI business assistant. Ask me about your leads, appointments, or conversations — or I'll help you write replies and marketing copy.",
+    "errorUnauthorized": "Please sign in to use Vela AI.",
+    "errorTenantNotFound": "Finish setting up your account to unlock the assistant.",
+    "errorNotConfigured": "The AI service isn't configured yet. Contact support.",
+    "errorGeneric": "Something went wrong — tap Retry below to try again.",
+    "errorNoResponse": "I couldn't generate a response. Please try again.",
+    "errorConnection": "Connection error — check your internet and tap Retry.",
+    "kbUpdated": "✓ Your AI knowledge base has been updated! Visit Train your AI to review or adjust anything.",
+    "kbSaveFailed": "I've finished the interview but had trouble saving — please visit Train your AI to save manually.",
+    "quickActions": {
+      "todayAppointments": "Today's appointments",
+      "recentLeads": "Recent leads",
+      "needsAttention": "Needs attention",
+      "writeReply": "Write a reply",
+      "trainMe": "Train me"
+    },
+    "quickMessages": {
+      "todayAppointments": "What appointments do I have today?",
+      "recentLeads": "Show me my most recent leads",
+      "needsAttention": "Which conversations need human attention?",
+      "writeReply": "Help me write a professional reply to a customer asking about pricing",
+      "trainMe": "I want to train my AI — please start the interview now."
+    }
   },
   "landing": {
     "nav": {

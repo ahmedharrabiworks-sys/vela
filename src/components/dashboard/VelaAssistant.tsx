@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getProfile } from "@/lib/business-profile";
+import { useI18n } from "@/lib/i18n";
 
 type Message = {
   role: "user" | "assistant";
@@ -11,13 +12,13 @@ type Message = {
   retryText?: string;
 };
 
-const QUICK_ACTIONS = [
-  { label: "Today's appointments", message: "What appointments do I have today?" },
-  { label: "Recent leads",         message: "Show me my most recent leads" },
-  { label: "Needs attention",      message: "Which conversations need human attention?" },
-  { label: "Write a reply",        message: "Help me write a professional reply to a customer asking about pricing" },
-  { label: "Train me", message: "", isInterview: true },
-];
+const QUICK_ACTION_KEYS = [
+  { labelKey: "velaAssistant.quickActions.todayAppointments", messageKey: "velaAssistant.quickMessages.todayAppointments" },
+  { labelKey: "velaAssistant.quickActions.recentLeads",       messageKey: "velaAssistant.quickMessages.recentLeads" },
+  { labelKey: "velaAssistant.quickActions.needsAttention",    messageKey: "velaAssistant.quickMessages.needsAttention" },
+  { labelKey: "velaAssistant.quickActions.writeReply",        messageKey: "velaAssistant.quickMessages.writeReply" },
+  { labelKey: "velaAssistant.quickActions.trainMe",           messageKey: "velaAssistant.quickMessages.trainMe", isInterview: true },
+] as const;
 
 function extractSaveKbToken(text: string): { json: string; stripped: string } | null {
   const start = text.indexOf("[save_kb:");
@@ -52,6 +53,7 @@ function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
 
 export function VelaAssistant() {
   const router = useRouter();
+  const { t } = useI18n();
   const [open, setOpen]           = useState(false);
   const [messages, setMessages]   = useState<Message[]>([]);
   const [input, setInput]         = useState("");
@@ -62,6 +64,12 @@ export function VelaAssistant() {
   const inputRef  = useRef<HTMLTextAreaElement>(null);
   const panelRef  = useRef<HTMLDivElement>(null);
 
+  const QUICK_ACTIONS = QUICK_ACTION_KEYS.map((qa) => ({
+    label: t(qa.labelKey),
+    message: t(qa.messageKey),
+    isInterview: "isInterview" in qa ? qa.isInterview : false,
+  }));
+
   useEffect(() => {
     const profile = getProfile();
     if (profile?.ownerName) setFirstName(profile.ownerName.split(" ")[0]);
@@ -70,14 +78,14 @@ export function VelaAssistant() {
   // Welcome message on first open
   useEffect(() => {
     if (open && messages.length === 0) {
-      const hi = firstName ? `Hi ${firstName}! ` : "Hi! ";
+      const hi = firstName ? `${t("velaAssistant.greeting")} ${firstName}! ` : `${t("velaAssistant.greeting")}! `;
       setMessages([{
         role: "assistant",
-        content: `${hi}I'm Vela, your AI business assistant. Ask me about your leads, appointments, or conversations — or I'll help you write replies and marketing copy.`,
+        content: `${hi}${t("velaAssistant.greetingMessage")}`,
       }]);
       setTimeout(() => inputRef.current?.focus(), 150);
     }
-  }, [open, messages.length, firstName]);
+  }, [open, messages.length, firstName, t]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -93,7 +101,7 @@ export function VelaAssistant() {
       setInterviewMode(true);
       setMessages([]);
       setTimeout(() => {
-        sendRef.current?.("I want to train my AI — please start the interview now.", true);
+        sendRef.current?.(t("velaAssistant.quickMessages.trainMe"), true);
       }, 500);
     };
     window.addEventListener("vela-start-interview", handler);
@@ -119,18 +127,18 @@ export function VelaAssistant() {
       if (!res.ok) {
         const errText =
           data.error === "Unauthorized"
-            ? "Please sign in to use Vela AI."
+            ? t("velaAssistant.errorUnauthorized")
             : data.error === "Tenant not found"
-            ? "Finish setting up your account to unlock the assistant."
+            ? t("velaAssistant.errorTenantNotFound")
             : data.error === "AI not configured"
-            ? "The AI service isn't configured yet. Contact support."
-            : "Something went wrong — tap Retry below to try again.";
+            ? t("velaAssistant.errorNotConfigured")
+            : t("velaAssistant.errorGeneric");
         setMessages((prev) => [...prev, { role: "assistant", content: errText, isError: true, retryText: text }]);
         setLoading(false);
         return;
       }
 
-      let reply = data.reply ?? "I couldn't generate a response. Please try again.";
+      let reply = data.reply ?? t("velaAssistant.errorNoResponse");
 
       // Handle [navigate:/path] token
       const navMatch = reply.match(/\[navigate:([^\]]+)\]/);
@@ -151,9 +159,9 @@ export function VelaAssistant() {
             body: JSON.stringify(kbData),
           });
           setInterviewMode(false);
-          reply = (reply ? reply + "\n\n" : "") + "✓ Your AI knowledge base has been updated! Visit Train your AI to review or adjust anything.";
+          reply = (reply ? reply + "\n\n" : "") + t("velaAssistant.kbUpdated");
         } catch {
-          reply = (reply ? reply + "\n\n" : "") + "I've finished the interview but had trouble saving — please visit Train your AI to save manually.";
+          reply = (reply ? reply + "\n\n" : "") + t("velaAssistant.kbSaveFailed");
           setInterviewMode(false);
         }
       }
@@ -162,7 +170,7 @@ export function VelaAssistant() {
     } catch {
       setMessages((prev) => [...prev, {
         role: "assistant",
-        content: "Connection error — check your internet and tap Retry.",
+        content: t("velaAssistant.errorConnection"),
         isError: true,
         retryText: text,
       }]);
@@ -224,8 +232,8 @@ export function VelaAssistant() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white leading-none">Vela AI</p>
-                  <p className="text-[11px] text-white/70 mt-0.5">Your business assistant</p>
+                  <p className="text-sm font-bold text-white leading-none">{t("velaAssistant.title")}</p>
+                  <p className="text-[11px] text-white/70 mt-0.5">{t("velaAssistant.subtitle")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -234,7 +242,7 @@ export function VelaAssistant() {
                     onClick={() => setMessages([])}
                     className="text-[11px] text-white/70 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
                   >
-                    Clear
+                    {t("velaAssistant.clearChat")}
                   </button>
                 )}
                 <button
@@ -251,7 +259,7 @@ export function VelaAssistant() {
             {/* Quick actions — shown before first user message */}
             {messages.filter((m) => m.role === "user").length === 0 && (
               <div className="px-3 py-2.5 border-b border-[#F3F4F6] shrink-0 bg-[#FAFAFA]">
-                <p className="text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2 font-semibold px-0.5">Quick questions</p>
+                <p className="text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2 font-semibold px-0.5">{t("velaAssistant.quickQuestionsLabel")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_ACTIONS.map((qa) => (
                     <button
@@ -268,9 +276,7 @@ export function VelaAssistant() {
                           ? "border-[#FF6B35] text-[#FF6B35] bg-[#FFF5F0] hover:bg-[#FF6B35] hover:text-white font-semibold"
                           : "border-[#E5E7EB] text-[#374151] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35]"
                       }`}
-                    >
-                      {qa.label}
-                    </button>
+                    >{qa.label}</button>
                   ))}
                 </div>
               </div>
@@ -304,7 +310,7 @@ export function VelaAssistant() {
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
                           <path d="M2 6a4 4 0 014-4 4 4 0 013.46 2M10 2v3H7M10 6a4 4 0 01-4 4 4 4 0 01-3.46-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                        Retry
+                        {t("velaAssistant.retryButton")}
                       </button>
                     )}
                   </div>
@@ -338,7 +344,7 @@ export function VelaAssistant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask anything about your business…"
+                  placeholder={t("velaAssistant.inputPlaceholder")}
                   rows={1}
                   disabled={loading}
                   className="flex-1 resize-none text-sm border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors disabled:opacity-60"
@@ -356,7 +362,7 @@ export function VelaAssistant() {
                 </button>
               </div>
               <p className="text-[10px] text-[#9CA3AF] mt-1.5 text-center">
-                Press <kbd className="font-mono bg-[#F3F4F6] px-1 rounded text-[9px]">Enter</kbd> to send · <kbd className="font-mono bg-[#F3F4F6] px-1 rounded text-[9px]">Shift+Enter</kbd> for new line
+                {t("velaAssistant.keyboardHint")} <kbd className="font-mono bg-[#F3F4F6] px-1 rounded text-[9px]">Enter</kbd> {t("velaAssistant.keyboardSend")}<kbd className="font-mono bg-[#F3F4F6] px-1 rounded text-[9px]">Shift+Enter</kbd> {t("velaAssistant.keyboardNewline")}
               </p>
             </div>
           </div>

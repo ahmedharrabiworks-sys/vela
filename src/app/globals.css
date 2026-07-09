@@ -35,6 +35,11 @@
   --vela-night:   #1A0A00;
   --vela-cream:   #FFF5F0;
   --vela-muted:   #888888;
+  /* landing page premium background */
+  --bg-page:  linear-gradient(160deg, #FFFFFF 0%, #FFF9F5 100%);
+  --bg-orb1:  rgba(255,107,53,0.10);
+  --bg-orb2:  rgba(255,51,102,0.08);
+  --bg-orb3:  rgba(255,107,53,0.06);
 }
 
 [data-theme="ocean"] {
@@ -62,6 +67,10 @@
   --vela-orange: #3B82F6;
   --vela-rose:   #60A5FA;
   --vela-cream:  #EFF6FF;
+  --bg-page:  linear-gradient(160deg, #FFFFFF 0%, #F8FAFF 100%);
+  --bg-orb1:  rgba(59,130,246,0.10);
+  --bg-orb2:  rgba(96,165,250,0.08);
+  --bg-orb3:  rgba(59,130,246,0.06);
 }
 
 [data-theme="sunset"] {
@@ -89,6 +98,10 @@
   --vela-orange: #FB8C42;
   --vela-rose:   #FBA94C;
   --vela-cream:  #FFF7ED;
+  --bg-page:  linear-gradient(160deg, #FFFFFF 0%, #FFFBF7 100%);
+  --bg-orb1:  rgba(251,140,66,0.10);
+  --bg-orb2:  rgba(251,169,76,0.08);
+  --bg-orb3:  rgba(251,140,66,0.06);
 }
 
 * {
@@ -190,6 +203,44 @@ body {
 /* Canvas/Three.js containers */
 canvas {
   display: block;
+}
+
+/* ── Landing page premium background system ── */
+.landing-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.landing-orb-1 {
+  width: 900px; height: 900px;
+  top: -30%; right: -15%;
+  background: var(--bg-orb1);
+  filter: blur(100px);
+}
+.landing-orb-2 {
+  width: 700px; height: 700px;
+  bottom: -20%; left: -12%;
+  background: var(--bg-orb2);
+  filter: blur(90px);
+}
+.landing-orb-3 {
+  width: 500px; height: 500px;
+  top: 45%; left: 45%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-orb3);
+  filter: blur(80px);
+}
+.landing-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,0,0,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.022) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+.section-tint {
+  background: var(--vt-color);
 }
 
 /* ═══════════════════════════════════════════════════

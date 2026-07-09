@@ -7,7 +7,7 @@ export default function CTA() {
   const { t } = useI18n();
 
   return (
-    <section className="py-20 md:py-28 bg-[#F9FAFB]">
+    <section className="py-20 md:py-28 section-tint">
       <div className="max-w-4xl mx-auto px-5 md:px-6 text-center">
         <span className="section-label mb-8">{t("landing.cta.badge")}</span>
 
