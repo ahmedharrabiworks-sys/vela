@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));
-const MAX_MSG_LEN = 2000;
+const MAX_MSG_LEN = 5000;
 
 const TYPE_QUERIES: Record<string, { hero: string; about: string; services: string }> = {
   dental:      { hero: "dental clinic modern interior", about: "dentist patient smiling", services: "dental tools clean white" },
@@ -39,143 +39,183 @@ function detectBusinessType(industry: string, message: string): string {
 
 async function fetchUnsplashPhoto(query: string): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
-  if (!key) return null;
+  if (!key) {
+    console.warn("[unsplash] UNSPLASH_ACCESS_KEY is not set — skipping photo fetch");
+    return null;
+  }
   try {
-    const res = await fetch(
-      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`,
-      { headers: { Authorization: `Client-ID ${key}` } }
-    );
-    if (!res.ok) return null;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`;
+    const res = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
+    if (!res.ok) {
+      console.warn(`[unsplash] API returned ${res.status} for query="${query}"`);
+      return null;
+    }
     const data = await res.json() as { results?: { urls?: { regular?: string } }[] };
     const results = data.results ?? [];
-    if (!results.length) return null;
+    if (!results.length) {
+      console.warn(`[unsplash] No results for query="${query}"`);
+      return null;
+    }
     const pick = results[Math.floor(Math.random() * Math.min(results.length, 3))];
-    return pick?.urls?.regular ?? null;
-  } catch {
+    const photoUrl = pick?.urls?.regular ?? null;
+    console.log(`[unsplash] query="${query}" → ${photoUrl ? photoUrl.slice(0, 80) + "…" : "null"}`);
+    return photoUrl;
+  } catch (err) {
+    console.error("[unsplash] fetch error:", err instanceof Error ? err.message : err);
     return null;
   }
 }
 
-const BUILD_SYSTEM = `You are a world-class web designer. Generate a complete, premium, modern booking website as a single self-contained HTML file. The output must be Framer/Webflow quality — not a basic flat page.
+const BUILD_SYSTEM = `You are a world-class web designer. Generate a complete, minimal, premium booking website as a single self-contained HTML file. Target aesthetic: Linear, Framer templates, Lovable output — restrained, editorial, professional. Not loud or flashy.
 
 OUTPUT RULE: Raw HTML only — no markdown, no code fences, no explanation. Start with <!DOCTYPE html> and end with </html>.
 
-━━━ STEP 1: DETECT INDUSTRY, THEN APPLY THIS EXACT AESTHETIC ━━━
+━━━ STEP 1: DETECT INDUSTRY → APPLY EXACT AESTHETIC ━━━
 
 MEDICAL / DENTAL / CLINIC / HEALTHCARE:
-  Colors: accent #0EA5E9, bg #F0F9FF, dark text #1E293B, white base, section alt #EFF6FF
+  Colors: accent #0EA5E9, section-alt #F0F9FF, dark #1E293B, text-muted #64748B, white
   Fonts: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@400;700&display=swap')
-  Headings: Merriweather, serif — Body: Inter, sans-serif
-  Vibe: clinical cleanliness, airy spacing, blues and whites only. Trust-first. CTA: "Book Appointment" or "Schedule Consultation"
+  Heading: Merriweather, serif | Body: Inter, sans-serif
+  CTA text: "Book Appointment" / "Schedule Consultation"
 
 RESTAURANT / CAFÉ / FOOD / BAR:
-  Colors: accent #92400E, highlight #D97706, dark #1C1917, warm light #FEF3C7, card bg #FFFBEB
-  Fonts: @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lato:wght@300;400;700&display=swap')
-  Headings: Playfair Display, serif — Body: Lato, sans-serif
-  Vibe: warm, appetizing, rich amber+cream palette. CTA: "Reserve a Table" or "Order Now"
+  Colors: accent #B45309, dark #1C1917, warm-light #FEF3C7, text-muted #78716C, card #FFFBEB
+  Fonts: @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap')
+  Heading: Playfair Display, serif | Body: Lato, sans-serif
+  CTA text: "Reserve a Table" / "Order Now"
 
-GYM / FITNESS / SPORTS / CROSSFIT / YOGA:
-  Colors: base #111827, accent #F59E0B, alt #EF4444, light #F9FAFB
-  Fonts: @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=Inter:wght@400;500&display=swap')
-  Headings: Montserrat ExtraBold/Black — Body: Inter
-  Vibe: bold, powerful, high contrast. Large text. CTA: "Start Free Trial" or "Join Now"
+GYM / FITNESS / SPORTS / YOGA / CROSSFIT:
+  Colors: accent #F59E0B, base #111827, mid #374151, light #F9FAFB
+  Fonts: @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&family=Inter:wght@400;500&display=swap')
+  Heading: Montserrat 700/900 | Body: Inter
+  CTA text: "Start Free Trial" / "Join Now"
 
-SALON / BEAUTY / SPA / HAIR / NAILS / LASHES:
-  Colors: accent #C4956A, soft gold #E8C99A, cream #F9F5F0, text #2D2D2D, muted #8B7355
-  Fonts: @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Raleway:wght@300;400;600&display=swap')
-  Headings: Cormorant Garamond, serif — Body: Raleway
-  Vibe: elegant, soft, luxurious. Rose-gold tones, generous white space. CTA: "Book Treatment" or "Reserve Your Spot"
+SALON / BEAUTY / SPA / HAIR / NAILS:
+  Colors: accent #B08D6E, cream #F9F5F0, text #2D2D2D, soft #E8D5C4, muted #9B8577
+  Fonts: @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Raleway:wght@300;400;500&display=swap')
+  Heading: Cormorant Garamond, serif | Body: Raleway
+  CTA text: "Book Treatment" / "Reserve Your Spot"
 
 LAW / LEGAL / FINANCE / ACCOUNTING:
-  Colors: navy #1E3A5F, gold #C9A84C, off-white #F8F7F4, dark #1A1A2E, mid #4A5568
+  Colors: navy #1E3A5F, gold #B8922A, off-white #F8F7F4, dark #1A1A2E, mid #4A5568
   Fonts: @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@300;400;600&display=swap')
-  Headings: Libre Baskerville, serif — Body: Source Sans 3
-  Vibe: authoritative, structured, conservative. Deep navy + gold. CTA: "Free Consultation" or "Contact Us"
+  Heading: Libre Baskerville, serif | Body: Source Sans 3
+  CTA text: "Free Consultation" / "Contact Us"
 
 HOTEL / HOSPITALITY / RESORT:
-  Colors: deep green #065F46, gold #D4AF37, cream #FAF9F6, dark #1A1A1A
-  Fonts: @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&display=swap')
-  Headings: Playfair Display — Body: Inter
-  Vibe: luxury, refined, sophisticated. Cream + deep green. CTA: "Book Your Stay" or "Reserve Now"
+  Colors: forest #064E3B, gold #C9A84C, cream #FAF9F6, dark #1A1A1A
+  Fonts: @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500&display=swap')
+  Heading: Playfair Display | Body: Inter
+  CTA text: "Book Your Stay" / "Reserve Now"
 
 DEFAULT / OTHER:
-  Colors: accent #2563EB, light bg #F8FAFC, dark text #1E293B, card bg white
-  Fonts: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap')
-  Headings + Body: Inter
-  Vibe: clean, modern, professional. CTA: "Get Started" or "Book Now"
+  Colors: accent #2563EB, light #F8FAFC, dark #1E293B, muted #64748B
+  Fonts: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap')
+  Heading + Body: Inter
+  CTA text: "Get Started" / "Book Now"
 
-━━━ STEP 2: BUILD THESE REQUIRED SECTIONS IN ORDER ━━━
+━━━ STEP 2: REQUIRED SECTIONS IN ORDER ━━━
 
-1. STICKY NAV
-   position:sticky; top:0; z-index:1000; background: white or semi-transparent with backdrop-filter:blur(12px); box-shadow:0 1px 12px rgba(0,0,0,0.08)
-   Left: logo text (business name, font-weight:800, accent color)
-   Center (hidden on mobile): nav links (Services, About, Testimonials, Contact) — no underline, hover: accent color
-   Right: "Book Now" button — accent bg, white text, border-radius:8px, padding:10px 22px, font-weight:600
-   Mobile hamburger menu (visual only — no JS needed, just hide nav links with media query)
+1. NAV
+   position:sticky; top:0; z-index:100; background:white; border-bottom:1px solid #E5E7EB
+   Layout: max-width:1200px; margin:0 auto; padding:0 32px; height:64px; display:flex; align-items:center; justify-content:space-between
+   Left: business name — font-weight:700; font-size:1.1rem; accent color; letter-spacing:-0.02em
+   Center: nav links (Services, About, Testimonials, Contact) — gap:32px; font-size:0.875rem; color:#374151; no-underline; hover:accent
+   Right: CTA button — background:accent; color:white; padding:9px 20px; border-radius:6px; font-size:0.875rem; font-weight:600
+   Mobile: hide center links; keep logo + CTA button only
 
-2. HERO SECTION
-   min-height:90vh; display:flex; align-items:center; position:relative; overflow:hidden
-   If HERO_IMAGE provided: background-image:url(HERO_IMAGE); background-size:cover; background-position:center; + dark overlay ::before { background:rgba(0,0,0,0.5); }
-   If no HERO_IMAGE: use a rich industry-appropriate gradient (multi-stop, NOT flat)
-   Content: headline font-size:clamp(2.5rem,6vw,5rem); font-weight:800; line-height:1.1; color:white; text-shadow:0 2px 20px rgba(0,0,0,0.3)
-   Subheadline: font-size:1.25rem; opacity:0.9; max-width:600px; margin:16px auto 32px
-   2 CTAs: primary (accent bg, white, border-radius:50px, padding:16px 36px, font-size:1.1rem) + secondary (white outline, same size)
-   Layout: centered or left-aligned per industry vibe
+2. HERO — TWO-COLUMN EDITORIAL SPLIT (MANDATORY LAYOUT)
+   Section: display:grid; grid-template-columns:1fr 1fr; min-height:80vh; overflow:hidden
 
-3. SERVICES SECTION
-   Light bg (industry alt color or #F9FAFB); padding:100px 24px
-   Section heading: text-align:center; font-size:2.5rem; font-weight:700; margin-bottom:16px
-   Subheading: text-align:center; color:muted; margin-bottom:60px
-   Grid: display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:28px; max-width:1100px; margin:0 auto
-   Each card: background:white; border-radius:16px; padding:36px 28px; box-shadow:0 4px 24px rgba(0,0,0,0.08); transition:transform 0.3s ease,box-shadow 0.3s ease
-   Card hover: transform:translateY(-6px); box-shadow:0 12px 40px rgba(0,0,0,0.14)
-   Card icon: 52px circle with accent bg (light tint), centered icon (unicode emoji or simple SVG)
-   Card title: font-size:1.25rem; font-weight:700; margin:20px 0 10px
-   Price badge if price given: inline-block; accent-colored pill; font-weight:600
-   Use REAL services if provided in instruction. If not, write 3 industry-fitting services with realistic prices.
+   LEFT COLUMN — text side:
+     background: industry-appropriate dark (navy, near-black, dark-green, or very dark version of accent)
+     padding:80px 56px 80px 64px; display:flex; flex-direction:column; justify-content:center
+     Eyebrow: font-size:0.7rem; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.5); margin-bottom:20px
+     Headline: font-size:clamp(2rem,3.5vw,3.2rem); font-weight:700; line-height:1.2; color:white; margin-bottom:16px; max-width:480px
+     Sub: font-size:0.975rem; line-height:1.7; color:rgba(255,255,255,0.65); margin-bottom:36px; max-width:420px
+     CTAs: display:flex; gap:12px; flex-wrap:wrap
+       Primary: background:accent; color:white; padding:12px 28px; border-radius:6px; font-weight:600; font-size:0.9rem; cursor:pointer
+       Secondary: border:1px solid rgba(255,255,255,0.25); color:white; same padding; border-radius:6px; background:transparent
 
-4. ABOUT / WHY US SECTION
-   White bg; padding:100px 24px; max-width:1100px; margin:0 auto
-   2-column: left image (if ABOUT_IMAGE: <img> with object-fit:cover, border-radius:16px, height:420px), right: content
-   Stack to 1-col on mobile (flex-direction:column-reverse on small screens)
-   Heading: "Why Choose [Business Name]?" — font-size:2.2rem; font-weight:800
-   3-4 bullet points with checkmark icons (✓ in accent color circle): real differentiators, not generic filler
-   Write industry-specific, believable copy — never Lorem ipsum
+   RIGHT COLUMN — photo side:
+     position:relative; overflow:hidden; background:#111
+     ⚠ CRITICAL: If a HERO_IMAGE URL is provided below, you MUST include this exact img element inside the right column div:
+       <img src="THE_EXACT_URL" alt="[business] photo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
+     Do NOT use CSS background-image — use an <img> tag so the photo is guaranteed to load.
+     If no hero URL is given, use a CSS gradient matching the industry palette.
 
-5. TESTIMONIALS SECTION
-   Warm alt bg (light tint of accent); padding:100px 24px
-   3 testimonial cards in grid (auto-fit minmax 280px)
-   Each card: white bg; border-radius:16px; padding:28px; box-shadow:0 2px 16px rgba(0,0,0,0.06)
-   ★★★★★ in gold (#F59E0B), rating count in muted gray
-   2-sentence quote in italic
-   Avatar: 48px circle with initials (accent bg, white text) + name + "Verified Client"
-   Use realistic names from the local region (city/country context from business info)
+   MOBILE (@media (max-width:768px)):
+     grid-template-columns:1fr (stack)
+     Right col (image): height:280px; position:relative (image is absolute inside, still works)
+     Left col: padding:52px 24px; order:-1 (text first on mobile)
 
-6. CTA / BOOKING STRIP
-   Full-width; accent color gradient (linear-gradient from accent to darker shade); padding:80px 24px; text-align:center
-   Large white headline (font-size:2.5rem; font-weight:800)
-   Subtitle in white/85% opacity
-   Big white button: color accent; border-radius:50px; padding:18px 48px; font-size:1.1rem; font-weight:700
-   Hover: transform:translateY(-3px); box-shadow:0 8px 32px rgba(0,0,0,0.2)
+3. SERVICES
+   background:section-alt or #F9FAFB; padding:80px 32px
+   max-width:1100px; margin:0 auto
+   Section label (eyebrow): same style as hero eyebrow but in accent color, centered, margin-bottom:12px
+   Heading: font-size:clamp(1.6rem,3vw,2.4rem); font-weight:700; text-align:center; color:dark; margin-bottom:8px
+   Sub: font-size:0.925rem; color:muted; text-align:center; margin-bottom:48px
+   Grid: display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px
+   Card: background:white; border-radius:12px; padding:28px 24px; border:1px solid #E5E7EB; transition:box-shadow 0.2s,transform 0.2s
+   Card hover: box-shadow:0 8px 32px rgba(0,0,0,0.1); transform:translateY(-4px)
+   Icon circle: 44px; background:accent/10; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:18px; font-size:1.25rem
+   Title: font-size:1.05rem; font-weight:600; color:dark; margin-bottom:6px
+   Body: font-size:0.875rem; color:muted; line-height:1.6
+   Price (if given): display:inline-block; margin-top:12px; font-size:0.875rem; font-weight:600; color:accent
+   Use REAL services from the instruction if provided. Otherwise write 3 realistic ones for the industry with plausible prices.
+
+4. ABOUT / WHY US
+   background:white; padding:80px 32px
+   Inner: max-width:1100px; margin:0 auto; display:flex; gap:64px; align-items:center
+   ⚠ ABOUT IMAGE: If an ABOUT_IMAGE URL is provided, you MUST place this img in the left side:
+     <img src="THE_EXACT_URL" alt="Our team" style="width:100%;height:420px;object-fit:cover;border-radius:12px;display:block;flex-shrink:0;max-width:480px">
+   If no URL: use a styled div placeholder (accent-tinted bg with centered icon)
+   Right side: flex:1; min-width:0
+     Eyebrow label + heading (font-size:clamp(1.5rem,2.5vw,2.2rem); font-weight:700; margin-bottom:20px)
+     3-4 feature rows: display:flex; gap:14px; margin-bottom:20px
+       Check circle (28px; accent bg; ✓ white) + text column (title bold 0.9rem + desc 0.85rem muted)
+     Write industry-specific, believable differentiators — never generic filler or Lorem ipsum.
+   Mobile: flex-direction:column; image max-width:100%; height:260px
+
+5. TESTIMONIALS
+   background:section-alt or light tint; padding:80px 32px
+   max-width:1100px; margin:0 auto
+   Eyebrow + heading (centered)
+   Grid: display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; margin-top:48px
+   Card: background:white; border-radius:12px; padding:24px; border:1px solid #E5E7EB
+   Stars: ★★★★★ color:#F59E0B; font-size:0.875rem; margin-bottom:12px
+   Quote: font-size:0.9rem; line-height:1.65; color:#374151; font-style:italic; margin-bottom:20px
+   Footer row: display:flex; align-items:center; gap:12px
+     Avatar: 40px circle; background:accent; color:white; font-weight:600; font-size:0.8rem
+     Name: font-weight:600; font-size:0.875rem | Label: font-size:0.75rem; color:muted
+   Use realistic names from the business's city/region.
+
+6. CTA STRIP
+   background:accent (or dark for salon/law); padding:72px 32px; text-align:center
+   Heading: font-size:clamp(1.5rem,3vw,2.2rem); font-weight:700; color:white; margin-bottom:12px
+   Sub: font-size:0.975rem; color:rgba(255,255,255,0.75); margin-bottom:32px
+   Button: background:white; color:accent (or dark); padding:14px 36px; border-radius:6px; font-weight:600; cursor:pointer
 
 7. FOOTER
-   Dark bg (#111827 or industry dark); color:#9CA3AF; padding:60px 24px 24px
-   3-column grid on desktop, 1-col mobile: logo+tagline | quick links | contact info
-   Business name in white, font-weight:800; tagline in muted
-   Links: Services, About, Privacy Policy (no underline, hover white)
-   Contact: address placeholder, phone, email, hours (realistic for industry)
-   Bottom border: copyright © 2025 [Business Name]. All rights reserved.
+   background:#111827; color:#9CA3AF; padding:52px 32px 24px
+   Inner: max-width:1100px; margin:0 auto
+   Top: display:grid; grid-template-columns:2fr 1fr 1fr; gap:40px; margin-bottom:40px
+   Col1: business name (white, 700) + tagline (muted) + social row (placeholder dots)
+   Col2: "Quick Links" label + links list (Services, About, Privacy — hover white)
+   Col3: "Contact" label + address/phone/email/hours (realistic placeholders per industry)
+   Bottom: border-top:1px solid #1F2937; padding-top:20px; font-size:0.8rem; text-align:center
+   Mobile: grid-template-columns:1fr
 
 ━━━ QUALITY STANDARDS ━━━
-- @import font inside <style> in <head>. NEVER use a <link> tag for fonts.
+- @import inside <style> tag in <head>. NEVER use a <link> tag for fonts.
 - <meta charset="UTF-8"> and <meta name="viewport" content="width=device-width,initial-scale=1">
-- ZERO horizontal scroll at 375px. Test every section with padding: use padding:X 20px on mobile.
-- All img tags: style="width:100%;height:100%;object-fit:cover;display:block" or appropriate dimensions
-- Every button: cursor:pointer; transition:all 0.3s ease; + hover state
-- Section padding minimum: desktop 100px 24px, mobile 56px 20px (use @media (max-width:768px))
-- Cards in grid use auto-fit/minmax — never fixed column counts that would overflow on mobile
-- NO flat single-color background for any large section. Every section has visual depth.
-- business-specific copy throughout. Never placeholder text. Write real headlines that would convert.`;
+- Type scale: headlines clamp(2rem,3.5vw,3.2rem) max | body 0.925rem–1rem | captions 0.8rem. NOTHING larger than 3.5rem.
+- Spacing: 80px vertical section padding on desktop, 52px on mobile. Not more.
+- Zero horizontal scroll at 375px. Mobile padding: 24px sides minimum.
+- All img: always include style="display:block" — never inline-block or default
+- Buttons: cursor:pointer; transition:all 0.2s; + :hover state. border-radius:6px (not 50px pills).
+- Cards: border:1px solid #E5E7EB; border-radius:12px — no heavy box-shadows
+- Write real, industry-specific copy throughout. Never "Lorem ipsum" or "My Business".`;
 
 const REVISE_SYSTEM = `You are an expert web designer editing an existing website. Apply ONLY the change the user requested. Output the complete updated HTML — nothing else.
 
@@ -203,7 +243,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Message required" }, { status: 400 });
   }
   if (message && message.length > MAX_MSG_LEN) {
-    return NextResponse.json({ error: "Message too long (max 2000 characters)" }, { status: 400 });
+    return NextResponse.json({ error: "Message too long (max 5000 characters)" }, { status: 400 });
   }
 
   if (!process.env.OPENAI_API_KEY) {
@@ -270,16 +310,30 @@ export async function POST(req: NextRequest) {
         ? `data:${validImages[0].mimeType};base64,${validImages[0].data}`
         : heroUrl;
 
+      // Build explicit img-tag snippets so GPT-4o can copy-paste them directly
+      const heroImgTag = heroSrc
+        ? `<img src="${heroSrc}" alt="${industry || "business"} photo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">`
+        : null;
+      const aboutImgTag = aboutUrl
+        ? `<img src="${aboutUrl}" alt="Our team" style="width:100%;height:420px;object-fit:cover;border-radius:12px;display:block;flex-shrink:0;max-width:480px">`
+        : null;
+
+      console.log(`[website/generate] heroSrc=${heroSrc ? "✓ " + heroSrc.slice(0, 60) : "none"} aboutUrl=${aboutUrl ? "✓" : "none"}`);
+
       userContent = [
         `Business name: ${businessName}`,
         `Industry: ${industry || "service business"}`,
         `City: ${city || ""}`,
         `User instruction: ${msgText}`,
         ``,
-        `Real photos to use (embed these URLs directly as background-image or <img src> — do NOT modify the URLs):`,
-        `HERO_IMAGE: ${heroSrc ?? "none — use CSS gradient"}`,
-        `ABOUT_IMAGE: ${aboutUrl ?? "none — use a colored block with a large icon"}`,
-        `SERVICE_IMAGE: ${servicesUrl ?? "none"}`,
+        `━━━ MANDATORY PHOTOS — COPY THESE EXACT TAGS INTO THE HTML ━━━`,
+        heroImgTag
+          ? `HERO PHOTO (REQUIRED — do NOT skip):\nPlace this exact img tag inside the right column div of the hero section:\n${heroImgTag}`
+          : `HERO PHOTO: Not available. Use a CSS gradient for the right column.`,
+        ``,
+        aboutImgTag
+          ? `ABOUT PHOTO (REQUIRED — do NOT skip):\nPlace this exact img tag as the left element in the about section flex row:\n${aboutImgTag}`
+          : `ABOUT PHOTO: Not available. Use a styled accent-tinted placeholder div instead.`,
       ].join("\n");
     }
 

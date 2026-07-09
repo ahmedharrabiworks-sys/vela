@@ -212,7 +212,7 @@ export default function WebsitePage() {
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
         {/* LEFT: Chat */}
-        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[38%] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
+        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -394,55 +394,53 @@ export default function WebsitePage() {
             </div>
 
             {/* Content area */}
-            <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex items-start justify-center p-4 min-h-0">
-              {building ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4 w-full">
-                  <div className="w-10 h-10 rounded-full border-[3px] border-[#FF6B35] border-t-transparent animate-spin" />
-                  <div className="space-y-1 text-center">
-                    <p className="text-sm font-semibold text-[#111111]">{t("website.building")}</p>
-                    <p className="text-xs text-[#6B7280]">Generating design, real photos, and booking flow…</p>
+            {building ? (
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex flex-col items-center justify-center gap-4 min-h-0">
+                <div className="w-10 h-10 rounded-full border-[3px] border-[#FF6B35] border-t-transparent animate-spin" />
+                <div className="space-y-1 text-center">
+                  <p className="text-sm font-semibold text-[#111111]">{t("website.building")}</p>
+                  <p className="text-xs text-[#6B7280]">Generating design, real photos, and booking flow…</p>
+                </div>
+              </div>
+            ) : !built ? (
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex items-center justify-center min-h-0">
+                <div className="text-center space-y-3 max-w-xs p-4">
+                  <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#E5E7EB] flex items-center justify-center mx-auto">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="3" width="20" height="15" rx="2" stroke="#9CA3AF" strokeWidth="1.5"/>
+                      <path d="M8 21h8M12 18v3" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
                   </div>
+                  <p className="text-sm font-semibold text-[#374151]">Your website preview</p>
+                  <p className="text-xs text-[#9CA3AF]">Describe your business in the chat — I&apos;ll build a premium site with real photos in seconds</p>
                 </div>
-              ) : !built ? (
-                <div className="flex items-center justify-center h-full w-full">
-                  <div className="text-center space-y-3 max-w-xs">
-                    <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#E5E7EB] flex items-center justify-center mx-auto">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <rect x="2" y="3" width="20" height="15" rx="2" stroke="#9CA3AF" strokeWidth="1.5"/>
-                        <path d="M8 21h8M12 18v3" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    </div>
-                    <p className="text-sm font-semibold text-[#374151]">Your website preview</p>
-                    <p className="text-xs text-[#9CA3AF]">Describe your business in the chat — I'll build a premium site with real photos in seconds</p>
-                  </div>
-                </div>
-              ) : viewMode === "code" ? (
-                /* Code view */
-                <div className="relative w-full h-full min-h-0 flex flex-col">
-                  <button
-                    onClick={copyCode}
-                    className="absolute top-3 right-3 z-10 text-[10px] px-3 py-1.5 bg-[#374151] text-[#D1D5DB] rounded-lg hover:bg-[#4B5563] transition-colors font-semibold shrink-0"
-                  >
-                    {codeCopied ? "✓ Copied!" : "Copy Code"}
-                  </button>
-                  <pre className="w-full h-full overflow-auto bg-[#1E1E1E] text-[#D4D4D4] text-[11px] font-mono p-4 rounded-xl leading-relaxed whitespace-pre break-normal">
-                    {html}
-                  </pre>
-                </div>
-              ) : (
-                /* Preview iframe */
-                <div className={`w-full h-full flex min-h-0 ${device === "mobile" ? "justify-center" : ""}`}>
-                  <iframe
-                    key={html}
-                    srcDoc={html}
-                    title="Website preview"
-                    className={`rounded-xl border border-[#E5E7EB] bg-white ${device === "mobile" ? "max-w-[375px] w-full" : "w-full"}`}
-                    style={{ height: "100%", minHeight: 400 }}
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                </div>
-              )}
-            </div>
+              </div>
+            ) : viewMode === "code" ? (
+              /* Code view */
+              <div className="flex-1 overflow-hidden min-h-0 relative">
+                <button
+                  onClick={copyCode}
+                  className="absolute top-3 right-3 z-10 text-[10px] px-3 py-1.5 bg-[#374151] text-[#D1D5DB] rounded-lg hover:bg-[#4B5563] transition-colors font-semibold"
+                >
+                  {codeCopied ? "✓ Copied!" : "Copy Code"}
+                </button>
+                <pre className="w-full h-full overflow-auto bg-[#1E1E1E] text-[#D4D4D4] text-[11px] font-mono p-4 leading-relaxed whitespace-pre break-normal">
+                  {html}
+                </pre>
+              </div>
+            ) : (
+              /* Preview iframe — flush, fills full chrome area */
+              <div className={`flex-1 min-h-0 flex overflow-hidden ${device === "mobile" ? "bg-[#F9FAFB] justify-center items-start" : ""}`}>
+                <iframe
+                  key={html}
+                  srcDoc={html}
+                  title="Website preview"
+                  className={`bg-white ${device === "mobile" ? "max-w-[375px] w-full m-3 rounded-xl border border-[#E5E7EB]" : "w-full h-full"}`}
+                  style={device === "mobile" ? { height: "calc(100% - 24px)" } : { height: "100%" }}
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
