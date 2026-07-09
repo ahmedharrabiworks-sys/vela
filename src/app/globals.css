@@ -35,11 +35,14 @@
   --vela-night:   #1A0A00;
   --vela-cream:   #FFF5F0;
   --vela-muted:   #888888;
-  /* landing page premium background */
-  --bg-page:  linear-gradient(160deg, #FFFFFF 0%, #FFF9F5 100%);
-  --bg-orb1:  rgba(255,107,53,0.10);
-  --bg-orb2:  rgba(255,51,102,0.08);
-  --bg-orb3:  rgba(255,107,53,0.06);
+  /* global premium background system */
+  --bg-page:       linear-gradient(160deg, #FFFFFF 0%, #FFF9F5 100%);
+  --bg-orb1:       rgba(255,107,53,0.10);
+  --bg-orb2:       rgba(255,51,102,0.08);
+  --bg-orb3:       rgba(255,107,53,0.06);
+  --bg-orb1-strong: rgba(255,107,53,0.20);
+  --bg-orb2-strong: rgba(255,51,102,0.14);
+  --bg-orb3-light:  rgba(255,107,53,0.08);
 }
 
 [data-theme="ocean"] {
@@ -67,10 +70,13 @@
   --vela-orange: #3B82F6;
   --vela-rose:   #60A5FA;
   --vela-cream:  #EFF6FF;
-  --bg-page:  linear-gradient(160deg, #FFFFFF 0%, #F8FAFF 100%);
-  --bg-orb1:  rgba(59,130,246,0.10);
-  --bg-orb2:  rgba(96,165,250,0.08);
-  --bg-orb3:  rgba(59,130,246,0.06);
+  --bg-page:        linear-gradient(160deg, #FFFFFF 0%, #F8FAFF 100%);
+  --bg-orb1:        rgba(59,130,246,0.10);
+  --bg-orb2:        rgba(96,165,250,0.08);
+  --bg-orb3:        rgba(59,130,246,0.06);
+  --bg-orb1-strong: rgba(59,130,246,0.20);
+  --bg-orb2-strong: rgba(96,165,250,0.14);
+  --bg-orb3-light:  rgba(59,130,246,0.08);
 }
 
 [data-theme="sunset"] {
@@ -98,10 +104,13 @@
   --vela-orange: #FB8C42;
   --vela-rose:   #FBA94C;
   --vela-cream:  #FFF7ED;
-  --bg-page:  linear-gradient(160deg, #FFFFFF 0%, #FFFBF7 100%);
-  --bg-orb1:  rgba(251,140,66,0.10);
-  --bg-orb2:  rgba(251,169,76,0.08);
-  --bg-orb3:  rgba(251,140,66,0.06);
+  --bg-page:        linear-gradient(160deg, #FFFFFF 0%, #FFFBF7 100%);
+  --bg-orb1:        rgba(251,140,66,0.10);
+  --bg-orb2:        rgba(251,169,76,0.08);
+  --bg-orb3:        rgba(251,140,66,0.06);
+  --bg-orb1-strong: rgba(251,140,66,0.20);
+  --bg-orb2-strong: rgba(251,169,76,0.14);
+  --bg-orb3-light:  rgba(251,140,66,0.08);
 }
 
 * {
@@ -115,11 +124,26 @@ html {
 body {
   font-family: "Inter", sans-serif;
   color: var(--vela-night);
-  background: #ffffff;
+  background: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
+
+/* Global premium themed background — position:fixed so it spans all pages */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 78% 68% at 90% 5%,  var(--bg-orb1-strong) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 58% at 6%  92%,  var(--bg-orb2-strong) 0%, transparent 60%),
+    radial-gradient(ellipse 42% 36% at 52% 52%,  var(--bg-orb3-light)  0%, transparent 55%),
+    var(--bg-page);
+}
+html.dark body::before { display: none; }
 
 @layer components {
   .vela-heading {
@@ -241,6 +265,17 @@ canvas {
 }
 .section-tint {
   background: var(--vt-color);
+}
+
+/* FIX 3 — Arabic RTL: letter-spacing breaks Arabic character joining */
+[dir="rtl"] .vela-heading {
+  letter-spacing: 0;
+  word-spacing: normal;
+}
+
+/* FIX 4a — Logo wordmark: white in dark mode */
+html.dark .logo-wordmark {
+  color: var(--dm-text) !important;
 }
 
 /* ═══════════════════════════════════════════════════

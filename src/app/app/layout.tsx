@@ -176,7 +176,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <I18nProvider>
-    <div className="flex h-screen overflow-hidden bg-[#F8F9FA]">
+    <div className="flex h-screen overflow-hidden bg-transparent">
       {/* Command palette */}
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
 

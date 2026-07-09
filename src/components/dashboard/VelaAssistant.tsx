@@ -53,7 +53,7 @@ function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
 
 export function VelaAssistant() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [open, setOpen]           = useState(false);
   const [messages, setMessages]   = useState<Message[]>([]);
   const [input, setInput]         = useState("");
@@ -120,7 +120,7 @@ export function VelaAssistant() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: messages.slice(-10), interviewMode: isInterview }),
+        body: JSON.stringify({ message: text, history: messages.slice(-10), interviewMode: isInterview, locale }),
       });
       const data = await res.json() as { reply?: string; error?: string };
 

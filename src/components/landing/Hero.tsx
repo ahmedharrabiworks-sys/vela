@@ -23,13 +23,10 @@ export default function Hero() {
 
   return (
     <>
-      <section className="relative min-h-screen flex items-center pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen overflow-hidden" style={{ background: "var(--bg-page)" }}>
+      <section className="relative min-h-screen flex items-center pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen overflow-hidden">
 
-        {/* Themed background layer — orbs + grid */}
+        {/* Subtle grid texture over the global body::before gradient */}
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-          <div className="landing-orb landing-orb-1" />
-          <div className="landing-orb landing-orb-2" />
-          <div className="landing-orb landing-orb-3" />
           <div className="landing-grid" />
         </div>
 

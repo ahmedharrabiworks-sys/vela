@@ -39,11 +39,8 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
 
       {showText && (
         <span
-          className="text-xl font-extrabold tracking-tightest transition-all duration-300"
-          style={{
-            letterSpacing: "-0.04em",
-            color: light ? "#ffffff" : "#1A0A00",
-          }}
+          className={`logo-wordmark text-xl font-extrabold tracking-tightest transition-all duration-300${light ? " !text-white" : ""}`}
+          style={{ letterSpacing: "-0.04em", color: light ? undefined : "#1A0A00" }}
         >
           vela
         </span>
