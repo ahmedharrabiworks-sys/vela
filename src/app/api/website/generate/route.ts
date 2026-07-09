@@ -138,15 +138,14 @@ DEFAULT / OTHER:
        Secondary: border:1px solid rgba(255,255,255,0.25); color:white; same padding; border-radius:6px; background:transparent
 
    RIGHT COLUMN — photo side:
-     position:relative; overflow:hidden; background:#111
-     ⚠ CRITICAL: If a HERO_IMAGE URL is provided below, you MUST include this exact img element inside the right column div:
-       <img src="THE_EXACT_URL" alt="[business] photo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
-     Do NOT use CSS background-image — use an <img> tag so the photo is guaranteed to load.
-     If no hero URL is given, use a CSS gradient matching the industry palette.
+     style="position:relative; overflow:hidden; background:linear-gradient(135deg, [industry-dark-color-1], [industry-dark-color-2])"
+     ALWAYS output this EXACT img tag inside the right column div — write the token verbatim, do NOT change it:
+       <img src="{{HERO_IMAGE}}" alt="hero photo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+     The token {{HERO_IMAGE}} is replaced server-side with a real photo. Include the CSS gradient as a background fallback on the column div.
 
    MOBILE (@media (max-width:768px)):
      grid-template-columns:1fr (stack)
-     Right col (image): height:280px; position:relative (image is absolute inside, still works)
+     Right col (image): height:280px; position:relative (img absolute inside still works)
      Left col: padding:52px 24px; order:-1 (text first on mobile)
 
 3. SERVICES
@@ -167,9 +166,9 @@ DEFAULT / OTHER:
 4. ABOUT / WHY US
    background:white; padding:80px 32px
    Inner: max-width:1100px; margin:0 auto; display:flex; gap:64px; align-items:center
-   ⚠ ABOUT IMAGE: If an ABOUT_IMAGE URL is provided, you MUST place this img in the left side:
-     <img src="THE_EXACT_URL" alt="Our team" style="width:100%;height:420px;object-fit:cover;border-radius:12px;display:block;flex-shrink:0;max-width:480px">
-   If no URL: use a styled div placeholder (accent-tinted bg with centered icon)
+   ALWAYS output this EXACT img tag as the first child of the inner flex div — write the token verbatim, do NOT change it:
+     <img src="{{ABOUT_IMAGE}}" alt="our team" style="width:100%;height:420px;object-fit:cover;border-radius:12px;display:block;flex-shrink:0;max-width:480px">
+   The token {{ABOUT_IMAGE}} is replaced server-side with a real photo.
    Right side: flex:1; min-width:0
      Eyebrow label + heading (font-size:clamp(1.5rem,2.5vw,2.2rem); font-weight:700; margin-bottom:20px)
      3-4 feature rows: display:flex; gap:14px; margin-bottom:20px
@@ -283,6 +282,9 @@ export async function POST(req: NextRequest) {
 
     let userContent: string;
     let systemPrompt: string;
+    // Declared at outer scope so the post-processing block can access them
+    let heroSrc: string | null = null;
+    let aboutUrl: string | null = null;
 
     if (isRevision) {
       systemPrompt = REVISE_SYSTEM;
@@ -299,41 +301,30 @@ export async function POST(req: NextRequest) {
       const bizType = detectBusinessType(industry, msgText);
       const queries = TYPE_QUERIES[bizType] ?? TYPE_QUERIES.default;
 
-      const [heroUrl, aboutUrl, servicesUrl] = await Promise.all([
+      const [heroUrl, fetchedAboutUrl, servicesUrl] = await Promise.all([
         fetchUnsplashPhoto(queries.hero),
         fetchUnsplashPhoto(queries.about),
         fetchUnsplashPhoto(queries.services),
       ]);
+      aboutUrl = fetchedAboutUrl;
 
       // User-uploaded image takes priority for hero
-      const heroSrc = validImages.length > 0
+      heroSrc = validImages.length > 0
         ? `data:${validImages[0].mimeType};base64,${validImages[0].data}`
         : heroUrl;
 
-      // Build explicit img-tag snippets so GPT-4o can copy-paste them directly
-      const heroImgTag = heroSrc
-        ? `<img src="${heroSrc}" alt="${industry || "business"} photo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">`
-        : null;
-      const aboutImgTag = aboutUrl
-        ? `<img src="${aboutUrl}" alt="Our team" style="width:100%;height:420px;object-fit:cover;border-radius:12px;display:block;flex-shrink:0;max-width:480px">`
-        : null;
+      console.log(`[website/generate] heroSrc=${heroSrc ? "✓ " + (heroSrc.startsWith("data:") ? "user-upload" : heroSrc.slice(0, 60)) : "none"} aboutUrl=${aboutUrl ? "✓ " + aboutUrl.slice(0, 60) : "none"}`);
 
-      console.log(`[website/generate] heroSrc=${heroSrc ? "✓ " + heroSrc.slice(0, 60) : "none"} aboutUrl=${aboutUrl ? "✓" : "none"}`);
-
+      // Tokens {{HERO_IMAGE}} and {{ABOUT_IMAGE}} are written by GPT-4o and replaced
+      // server-side below — GPT-4o never sees the actual URLs.
       userContent = [
         `Business name: ${businessName}`,
         `Industry: ${industry || "service business"}`,
         `City: ${city || ""}`,
         `User instruction: ${msgText}`,
         ``,
-        `━━━ MANDATORY PHOTOS — COPY THESE EXACT TAGS INTO THE HTML ━━━`,
-        heroImgTag
-          ? `HERO PHOTO (REQUIRED — do NOT skip):\nPlace this exact img tag inside the right column div of the hero section:\n${heroImgTag}`
-          : `HERO PHOTO: Not available. Use a CSS gradient for the right column.`,
-        ``,
-        aboutImgTag
-          ? `ABOUT PHOTO (REQUIRED — do NOT skip):\nPlace this exact img tag as the left element in the about section flex row:\n${aboutImgTag}`
-          : `ABOUT PHOTO: Not available. Use a styled accent-tinted placeholder div instead.`,
+        `Image tokens: use {{HERO_IMAGE}} and {{ABOUT_IMAGE}} exactly as instructed in the system prompt.`,
+        `Both tokens will be replaced server-side — write them verbatim in the src attributes.`,
       ].join("\n");
     }
 
@@ -361,6 +352,35 @@ export async function POST(req: NextRequest) {
 
     if (!html.includes("<!DOCTYPE") && !html.includes("<html")) {
       return NextResponse.json({ error: "Generation failed — please try again." }, { status: 500 });
+    }
+
+    // ── Deterministic token replacement ───────────────────────────────────────
+    // GPT-4o writes {{HERO_IMAGE}} / {{ABOUT_IMAGE}} as placeholders.
+    // We substitute the real URLs here, guaranteeing photos appear regardless
+    // of whether GPT-4o would have used a URL correctly on its own.
+    if (!isRevision) {
+      // HERO_IMAGE
+      if (heroSrc) {
+        html = html.replaceAll("{{HERO_IMAGE}}", heroSrc);
+        console.log(`[website/generate] replaced {{HERO_IMAGE}} → ${heroSrc.startsWith("data:") ? "user-upload data URI" : heroSrc.slice(0, 60)}`);
+      } else {
+        // No photo: remove any img tag with the stray token so the gradient shows
+        html = html.replace(/<img\b[^>]*src=["']?\{\{HERO_IMAGE\}\}["']?[^>]*\/?>/gi, "");
+        html = html.replaceAll("{{HERO_IMAGE}}", "");
+        console.log("[website/generate] {{HERO_IMAGE}} not available — token removed");
+      }
+
+      // ABOUT_IMAGE
+      if (aboutUrl) {
+        html = html.replaceAll("{{ABOUT_IMAGE}}", aboutUrl);
+        console.log(`[website/generate] replaced {{ABOUT_IMAGE}} → ${aboutUrl.slice(0, 60)}`);
+      } else {
+        // Replace with a neutral styled placeholder div
+        const placeholderImg = `<div style="width:100%;max-width:480px;height:420px;flex-shrink:0;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);border-radius:12px;display:flex;align-items:center;justify-content:center"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div>`;
+        html = html.replace(/<img\b[^>]*src=["']?\{\{ABOUT_IMAGE\}\}["']?[^>]*\/?>/gi, placeholderImg);
+        html = html.replaceAll("{{ABOUT_IMAGE}}", "");
+        console.log("[website/generate] {{ABOUT_IMAGE}} not available — placeholder inserted");
+      }
     }
 
     // Save to Supabase (fire-and-forget)
