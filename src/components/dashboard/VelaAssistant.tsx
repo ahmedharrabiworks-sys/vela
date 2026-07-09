@@ -8,9 +8,12 @@ import { useI18n } from "@/lib/i18n";
 type Message = {
   role: "user" | "assistant";
   content: string;
+  images?: string[]; // data-URL previews shown in the bubble
   isError?: boolean;
   retryText?: string;
 };
+
+type AttachedImage = { preview: string; base64: string; mimeType: string };
 
 const QUICK_ACTION_KEYS = [
   { labelKey: "velaAssistant.quickActions.todayAppointments", messageKey: "velaAssistant.quickMessages.todayAppointments" },
@@ -60,9 +63,30 @@ export function VelaAssistant() {
   const [loading, setLoading]     = useState(false);
   const [firstName, setFirstName] = useState("");
   const [interviewMode, setInterviewMode] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef  = useRef<HTMLTextAreaElement>(null);
-  const panelRef  = useRef<HTMLDivElement>(null);
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const bottomRef  = useRef<HTMLDivElement>(null);
+  const inputRef   = useRef<HTMLTextAreaElement>(null);
+  const panelRef   = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_ATTACH   = 4;
+  const MAX_IMG_SIZE = 5 * 1024 * 1024; // 5 MB
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const remaining = MAX_ATTACH - attachedImages.length;
+    files.slice(0, remaining).forEach((file) => {
+      if (!file.type.startsWith("image/") || file.size > MAX_IMG_SIZE) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const base64 = dataUrl.split(",")[1] ?? "";
+        setAttachedImages((prev) => [...prev, { preview: dataUrl, base64, mimeType: file.type }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const QUICK_ACTIONS = QUICK_ACTION_KEYS.map((qa) => ({
     label: t(qa.labelKey),
@@ -109,10 +133,18 @@ export function VelaAssistant() {
   }, []);
 
   const send = useCallback(async (text: string, startInterview = false) => {
-    if (!text.trim() || loading) return;
+    if ((!text.trim() && attachedImages.length === 0) || loading) return;
     const isInterview = startInterview || interviewMode;
     if (startInterview) setInterviewMode(true);
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+
+    const imagesToSend = attachedImages.map(({ base64, mimeType }) => ({ data: base64, mimeType }));
+    const imagePreviews = attachedImages.map((img) => img.preview);
+    setAttachedImages([]);
+    setMessages((prev) => [...prev, {
+      role: "user",
+      content: text,
+      images: imagePreviews.length > 0 ? imagePreviews : undefined,
+    }]);
     setInput("");
     setLoading(true);
 
@@ -120,7 +152,13 @@ export function VelaAssistant() {
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: messages.slice(-10), interviewMode: isInterview, locale }),
+        body: JSON.stringify({
+          message: text,
+          history: messages.slice(-10),
+          interviewMode: isInterview,
+          locale,
+          images: imagesToSend.length > 0 ? imagesToSend : undefined,
+        }),
       });
       const data = await res.json() as { reply?: string; error?: string };
 
@@ -176,7 +214,7 @@ export function VelaAssistant() {
       }]);
     }
     setLoading(false);
-  }, [loading, messages, router, interviewMode]);
+  }, [loading, messages, router, interviewMode, attachedImages, locale, t]);
 
   // Update ref whenever send changes (useCallback deps may change)
   useEffect(() => { sendRef.current = send; }, [send]);
@@ -298,9 +336,22 @@ export function VelaAssistant() {
                       }`}
                       style={msg.role === "user" ? { background: "var(--vela-gradient)" } : {}}
                     >
-                      {msg.content.split("\n").map((line, j, arr) => (
+                      {msg.content && msg.content.split("\n").map((line, j, arr) => (
                         <span key={j}>{line}{j < arr.length - 1 && <br />}</span>
                       ))}
+                      {msg.images && msg.images.length > 0 && (
+                        <div className={`flex gap-1.5 flex-wrap${msg.content ? " mt-2" : ""}`}>
+                          {msg.images.map((src, imgIdx) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={imgIdx}
+                              src={src}
+                              alt=""
+                              className="w-14 h-14 rounded-lg object-cover border border-white/30"
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                     {msg.isError && msg.retryText && (
                       <button
@@ -338,7 +389,55 @@ export function VelaAssistant() {
 
             {/* Input */}
             <div className="px-3 pt-3 border-t border-[#F3F4F6] shrink-0 bg-white" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
-              <div className="flex items-end gap-2">
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+
+              {/* Thumbnail preview strip */}
+              {attachedImages.length > 0 && (
+                <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
+                  {attachedImages.map((img, i) => (
+                    <div key={i} className="relative shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.preview}
+                        alt=""
+                        className="w-12 h-12 rounded-lg object-cover border border-[#E5E7EB]"
+                      />
+                      <button
+                        onClick={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#374151] text-white flex items-center justify-center hover:bg-[#111111] transition-colors"
+                        aria-label="Remove image"
+                      >
+                        <svg width="6" height="6" viewBox="0 0 8 8" fill="none">
+                          <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-end gap-1.5">
+                {/* Paperclip / attach button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading || attachedImages.length >= MAX_ATTACH}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#9CA3AF] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 disabled:opacity-40 shrink-0 transition-all"
+                  aria-label="Attach image"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M13.5 7.5l-5.5 5.5a4 4 0 01-5.657-5.657l6-6a2.5 2.5 0 013.536 3.536L5.88 10.88a1 1 0 01-1.414-1.414L10.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -347,13 +446,13 @@ export function VelaAssistant() {
                   placeholder={t("velaAssistant.inputPlaceholder")}
                   rows={1}
                   disabled={loading}
-                  className="flex-1 resize-none text-sm border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors disabled:opacity-60"
+                  className="flex-1 resize-none text-sm border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors disabled:opacity-60"
                   style={{ minHeight: "40px", maxHeight: "100px" }}
                 />
                 <button
                   onClick={() => send(input)}
-                  disabled={!input.trim() || loading}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white disabled:opacity-40 shrink-0 hover:opacity-90 transition-opacity"
+                  disabled={(!input.trim() && attachedImages.length === 0) || loading}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white disabled:opacity-40 shrink-0 hover:opacity-90 transition-opacity"
                   style={{ background: "var(--vp-color)" }}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
