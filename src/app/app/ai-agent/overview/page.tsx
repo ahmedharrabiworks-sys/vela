@@ -268,8 +268,9 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: VELA_SYSTEM }] },
         voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed: 0.85 },
         firstMessage: "Welcome, boss. I've been waiting for you. Before we dive in — which language would you like to continue in?",
-        transcriber: { provider: "deepgram", model: "nova-2", smartFormat: true },
-        stopSpeakingPlan: { numWords: 0, voiceSeconds: 0.2, backoffSeconds: 1.5 },
+        transcriber: { provider: "deepgram", model: "nova-2", language: "multi", smartFormat: true },
+        stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
+        startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
       });
     } catch (err) { console.error("[call]", err); setCallStatus("idle"); resetBars(); }
   }, [callStatus, voiceId, VELA_SYSTEM]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -51,15 +51,17 @@ export async function POST(req: NextRequest) {
   const { data, error } = await admin
     .from("agent_calls")
     .insert({
-      tenant_id:        tenant.id,
-      call_type:        body.call_type ?? "training",
-      ended_at:         body.ended_at ?? new Date().toISOString(),
-      duration_seconds: body.duration_seconds ?? null,
-      language:         body.language ?? null,
-      transcript:       body.transcript ?? [],
-      summary:          body.summary ?? null,
-      outcome:          body.outcome ?? "completed",
-      kb_extracted:     body.kb_extracted ?? null,
+      tenant_id:          tenant.id,
+      call_type:          body.call_type ?? "training",
+      ended_at:           body.ended_at ?? new Date().toISOString(),
+      duration_seconds:   body.duration_seconds ?? null,
+      language:           body.language ?? null,
+      caller_number:      (body.caller_number as string | undefined) ?? null,
+      transcript:         body.transcript ?? [],
+      summary:            body.summary ?? null,
+      outcome:            body.outcome ?? "completed",
+      kb_extracted:       body.kb_extracted ?? null,
+      appointment_booked: (body.appointment_booked as Record<string,unknown> | undefined) ?? null,
     })
     .select("id")
     .single();
