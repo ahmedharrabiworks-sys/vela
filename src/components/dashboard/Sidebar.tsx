@@ -185,12 +185,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     loadAuth();
   }, []);
 
-  // Auto-collapse sidebar when entering the AI Agent immersive page, restore on leave
+  // Hide sidebar entirely when entering the AI Agent section (it has its own sub-nav)
   useEffect(() => {
-    if (pathname === "/app/ai-agent" && agentCollapseRef.current === null) {
+    const isAgent = pathname?.startsWith("/app/ai-agent") ?? false;
+    if (isAgent && agentCollapseRef.current === null) {
       agentCollapseRef.current = { wasCollapsed: collapsed };
-      setCollapsed(true);
-    } else if (pathname !== "/app/ai-agent" && agentCollapseRef.current !== null) {
+    } else if (!isAgent && agentCollapseRef.current !== null) {
       setCollapsed(agentCollapseRef.current.wasCollapsed);
       agentCollapseRef.current = null;
     }
@@ -229,6 +229,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const planLabel = PLAN_LABELS[displayPlan] ?? t("sidebar.plans.starter");
   const isPremium = displayPlan === "premium";
 
+  const isAgentPath = pathname?.startsWith("/app/ai-agent") ?? false;
+
   return (
     <aside
       className={`
@@ -236,11 +238,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         fixed inset-y-0 left-0 md:relative md:inset-auto
         z-50 md:z-auto
         bg-white border-r border-[#E5E7EB]
-        transition-transform duration-300 ease-in-out
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        transition-all duration-300 ease-in-out
+        ${isOpen && !isAgentPath ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0
         w-72 md:w-auto
-        ${collapsed ? "md:w-16" : "md:w-60"}
+        ${isAgentPath ? "md:w-0 md:overflow-hidden md:border-0 md:opacity-0" : (collapsed ? "md:w-16" : "md:w-60")}
       `}
     >
       {/* Logo row */}
