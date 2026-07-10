@@ -6,8 +6,13 @@ export const dynamic = "force-dynamic";
 
 interface AgentSettings {
   voiceId?: string;
+  speed?: number;
   tone?: string;
   customInstructions?: string;
+  agentName?: string;
+  personality?: string;
+  greetingStyle?: string;
+  language?: string;
 }
 
 async function getAuthAndTenant(req: NextRequest) {
@@ -61,9 +66,14 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as AgentSettings;
   const settings: AgentSettings = {
-    voiceId:            body.voiceId ?? undefined,
-    tone:               body.tone ?? undefined,
+    voiceId:            body.voiceId            ?? undefined,
+    speed:              body.speed              ?? undefined,
+    tone:               body.tone               ?? undefined,
     customInstructions: body.customInstructions ?? "",
+    agentName:          body.agentName          ?? undefined,
+    personality:        body.personality        ?? undefined,
+    greetingStyle:      body.greetingStyle      ?? undefined,
+    language:           body.language           ?? undefined,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

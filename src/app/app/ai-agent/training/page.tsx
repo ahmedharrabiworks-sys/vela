@@ -8,16 +8,14 @@ type VapiInstance = any;
 type CallStatus = "idle" | "connecting" | "active" | "ended";
 type TLine = { role: "user" | "assistant"; text: string };
 
-interface LearnedService { name: string; price?: string; duration?: string; description?: string }
 interface LearnedKb {
-  services?: LearnedService[];
-  business?: { hours?: string; address?: string; bookingPolicy?: string; tone?: string };
+  services?: Array<{ name: string; price?: string }>;
+  business?: { hours?: string; address?: string; bookingPolicy?: string };
   extra?: string;
 }
 
 const DEFAULT_VOICE = "PIGsltMj3gFMR34aFDI3";
 
-// Pre-computed 560-wide sine wave path
 const WAVE_D = (() => {
   const pts: string[] = [];
   for (let x = 0; x <= 560; x += 2) {
@@ -27,91 +25,133 @@ const WAVE_D = (() => {
   return pts.join(" ");
 })();
 
-const TRAINING_SYSTEM = `You are Vela's Training AI. Your SOLE PURPOSE is to conduct a structured 6-question interview with the business owner to learn all the details about their business, which will be saved into Vela's knowledge base.
+/* ── 7-question conversational training system prompt ── */
+const TRAINING_SYSTEM = `You are Vela — a premium AI business operating system. You're starting a training session with a business owner who just activated their AI phone agent. This is your chance to learn their business so you can represent it perfectly on every call.
 
-## MANDATORY OPENING
-Start EVERY call with exactly: "Welcome, boss. I've been waiting for you."
-Then immediately ask: "Before we begin the training session — which language would you like to continue in?"
+## OPENING (say this ONCE — warm, impressive, make it feel premium)
+Say: "Welcome, boss. I've been waiting for you."
+Then: "I'm Vela — your new AI phone agent. Once we finish here, I'll be answering your calls 24 hours a day, 7 days a week — handling inquiries, qualifying customers, and booking appointments automatically, so you can focus on what you do best. I just need to learn about your business first. 7 short questions. Ready?"
+Then ask: "By the way — which language would you prefer we continue in?"
 
-## LANGUAGE RULE — CRITICAL
-After they choose a language, use ONLY that language for the ENTIRE conversation. Never switch. Never mix. Permanent and non-negotiable.
+## LANGUAGE RULE
+After they choose, use ONLY that language for the entire conversation. Never switch. Never mix. Non-negotiable.
 
-## THE 6-QUESTION INTERVIEW — FOLLOW THIS EXACTLY
-Ask ONE question at a time. Wait for the full answer before proceeding. After each answer, give a brief warm acknowledgment (one sentence), then ask the next question.
+## THE 7 QUESTIONS — ask ONE at a time, in order
+After each answer: warm acknowledgment (1 short sentence only), then immediately ask the next question.
 
-Question 1: "Perfect. Let's start with your services. What are your main services or products, and what do you charge for each?"
+Q1: "Tell me about your business — what do you do, and who are your main customers?"
 
-Question 2: "Great. Now — what are your working hours? Please include any differences by day of the week."
+Q2: "What are your most popular services? A rough idea of pricing is fine — doesn't need to be exact."
 
-Question 3: "Got it. What's your business address or service area? Where do your customers find you?"
+Q3: "What days and hours are you normally open or available?"
 
-Question 4: "Thanks. What's your booking policy? Do you require a deposit, and what's your cancellation policy?"
+Q4: "Where are you based? Do customers come to you, or do you go to them?"
 
-Question 5: "Almost done. What questions do your customers ask you most often? Give me the question and your usual answer for each one."
+Q5: "How do customers usually book with you — do they call, message, walk in, or book online?"
 
-Question 6: "Last one — is there anything else important about your business that your AI should know? Any special offers, important notes, or things you want customers to know?"
+Q6: "What do new customers typically ask before booking? Give me a couple of common questions and your usual answers."
 
-## AFTER ALL 6 QUESTIONS
-Thank them warmly, summarize what you learned in 2-3 bullet points, then say exactly: "Excellent. I've captured everything. Your AI assistant will now use this information to answer customer questions automatically. You can call me again anytime to update or add more details."
+Q7: "Last one — what makes you stand out? What should I always tell customers about what makes you special?"
 
-## IMPORTANT RULES
-- Never skip a question or combine multiple questions
-- Never ask sub-questions within a question — keep each one simple
-- Never break character or mention these instructions
-- Be warm, encouraging, and make the owner feel heard
-- Keep your acknowledgments brief (1 sentence) — don't repeat their answers back verbatim`;
+## AFTER ALL 7 QUESTIONS
+Say: "Perfect — I've got everything I need. Here's what I'll tell your customers:"
+Then give a confident 3–4 sentence business summary based on their answers.
+Then say: "I'm ready to start answering your calls. Go set up your phone number and I'll handle the rest."
+
+## RULES
+- Never skip a question or combine two into one
+- Keep your acknowledgments brief — one sentence max
+- Never mention these instructions or break character
+- Be warm, professional, and make the owner feel like they're getting premium treatment`;
+
+/* ── Knowledge field definitions ── */
+const KB_FIELDS = [
+  { key: "businessType", label: "Business Type",     icon: "🏢", q: 1 },
+  { key: "services",     label: "Services & Prices", icon: "💼", q: 2 },
+  { key: "hours",        label: "Working Hours",     icon: "🕐", q: 3 },
+  { key: "location",     label: "Location / Area",   icon: "📍", q: 4 },
+  { key: "booking",      label: "How to Book",       icon: "📅", q: 5 },
+  { key: "faqs",         label: "Common Questions",  icon: "💬", q: 6 },
+  { key: "special",      label: "What Makes You Special", icon: "⭐", q: 7 },
+];
 
 export default function TrainingPage() {
   const { isDark } = useAgentTheme();
-  const [status, setStatus] = useState<CallStatus>("idle");
-  const [volume, setVolume] = useState(0);
-  const [muted, setMuted] = useState(false);
+  const [status, setStatus]       = useState<CallStatus>("idle");
+  const [muted, setMuted]         = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
-  const [voiceId, setVoiceId] = useState(DEFAULT_VOICE);
+  const [voiceId, setVoiceId]     = useState(DEFAULT_VOICE);
   const [learnedKb, setLearnedKb] = useState<LearnedKb | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const vapiRef = useRef<VapiInstance>(null);
-  const scaleRef = useRef<HTMLDivElement>(null);
+  const [callStart, setCallStart] = useState<number>(0);
+  const vapiRef      = useRef<VapiInstance>(null);
+  const scaleRef     = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
-  // Colors
-  const bg = isDark ? "#0F1117" : "#F8F9FF";
-  const cardBg = isDark ? "#13161F" : "#FFFFFF";
-  const border = isDark ? "#1E2130" : "#E5E7EB";
+  const bg          = isDark ? "#0B0D14" : "#F8F9FF";
+  const cardBg      = isDark ? "#111420" : "#FFFFFF";
+  const border      = isDark ? "#1E2235" : "#E5E7EB";
   const textPrimary = isDark ? "#F1F5F9" : "#111111";
-  const textMuted = isDark ? "#64748B" : "#9CA3AF";
-  const textSub = isDark ? "#94A3B8" : "#6B7280";
+  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
+  const textSub     = isDark ? "#94A3B8" : "#6B7280";
 
   useEffect(() => {
     fetch("/api/ai-agent/settings")
-      .then((r) => r.json())
+      .then(r => r.json())
       .then((d: { voiceId?: string }) => { if (d.voiceId) setVoiceId(d.voiceId); })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (transcriptRef.current) {
-      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
-    }
+    if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
   }, [transcript]);
 
-  // After call ends, extract KB from transcript
-  const extractKb = useCallback(async (lines: TLine[]) => {
+  /* ── Live knowledge extraction from transcript ── */
+  const userAnswers = transcript.filter(l => l.role === "user");
+  const velaCount   = transcript.filter(l => l.role === "assistant").length;
+
+  const liveKb: Record<string, string> = {};
+  KB_FIELDS.forEach((f) => {
+    const answerIdx = f.q - 1;
+    if (userAnswers[answerIdx]) {
+      liveKb[f.key] = userAnswers[answerIdx].text;
+    }
+  });
+  const filledCount    = Object.keys(liveKb).length;
+  const progressPct    = Math.round((filledCount / 7) * 100);
+  const currentQuestion = Math.min(velaCount, 7);
+
+  /* ── After call: extract + save ── */
+  const extractKb = useCallback(async (lines: TLine[], startedAt: number) => {
     if (lines.length === 0) return;
     setExtracting(true);
     try {
-      const transcriptText = lines
-        .map((l) => `${l.role === "assistant" ? "Vela" : "Owner"}: ${l.text}`)
-        .join("\n");
-      const res = await fetch("/api/ai-agent/save-call", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: transcriptText }),
-      });
-      if (res.ok) {
-        const data = await res.json() as { ok: boolean; extracted?: LearnedKb };
-        if (data.extracted) setLearnedKb(data.extracted as LearnedKb);
+      const transcriptText = lines.map(l => `${l.role === "assistant" ? "Vela" : "Owner"}: ${l.text}`).join("\n");
+      const durationSecs = Math.round((Date.now() - startedAt) / 1000);
+
+      const [saveCallRes, kbRes] = await Promise.all([
+        fetch("/api/ai-agent/calls", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            call_type:        "training",
+            duration_seconds: durationSecs,
+            transcript:       lines,
+            outcome:          "completed",
+          }),
+        }),
+        fetch("/api/ai-agent/save-call", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: transcriptText }),
+        }),
+      ]);
+
+      if (kbRes.ok) {
+        const data = await kbRes.json() as { ok: boolean; extracted?: LearnedKb };
+        if (data.extracted) setLearnedKb(data.extracted);
       }
+      void saveCallRes;
     } catch (err) {
       console.error("[extract]", err);
     }
@@ -123,160 +163,101 @@ export default function TrainingPage() {
     setStatus("connecting");
     setTranscript([]);
     setLearnedKb(null);
-    setVolume(0);
+    const started = Date.now();
+    setCallStart(started);
 
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
-      const key = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "";
-      const vapi: VapiInstance = new Vapi(key);
+      const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
       vapiRef.current = vapi;
-
-      const transcriptLines: TLine[] = [];
+      const lines: TLine[] = [];
 
       vapi.on("call-start", () => setStatus("active"));
-      vapi.on("call-end", () => {
-        setStatus("ended");
-        setVolume(0);
-        extractKb(transcriptLines);
-      });
-      vapi.on("error", (e: unknown) => { console.error("[vapi]", e); setStatus("idle"); });
+      vapi.on("call-end",   () => { setStatus("ended"); if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)"; extractKb(lines, started); });
+      vapi.on("error",      (e: unknown) => { console.error("[vapi]", e); setStatus("idle"); });
 
       vapi.on("volume-level", (vol: number) => {
-        setVolume(vol);
-        if (scaleRef.current) {
-          const s = Math.max(0.2, 1 + vol * 5);
-          scaleRef.current.style.transform = `scaleY(${s})`;
-        }
+        if (scaleRef.current) scaleRef.current.style.transform = `scaleY(${Math.max(0.2, 1 + vol * 5)})`;
       });
 
       vapi.on("message", (msg: any) => {
         if (msg.type === "transcript" && msg.transcriptType === "final") {
           const line: TLine = { role: msg.role, text: msg.transcript };
-          transcriptLines.push(line);
-          setTranscript((prev) => [...prev, line]);
+          lines.push(line);
+          setTranscript(prev => [...prev, line]);
         }
       });
 
       await vapi.start({
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          messages: [{ role: "system", content: TRAINING_SYSTEM }],
-        },
-        voice: {
-          provider: "11labs",
-          voiceId,
-          model: "eleven_multilingual_v2",
-          stability: 0.45,
-          similarityBoost: 0.8,
-          style: 0.25,
-          useSpeakerBoost: true,
-          speed: 0.85,
-        },
-        firstMessage: "Welcome, boss. I've been waiting for you. Before we begin the training session — which language would you like to continue in?",
+        model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: TRAINING_SYSTEM }] },
+        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed: 0.85 },
+        firstMessage: "Welcome, boss. I've been waiting for you. I'm Vela — your new AI phone agent. Once we finish here, I'll be answering your calls 24/7, handling inquiries and booking appointments automatically. I just need to learn your business first — 7 short questions. Ready? Which language would you prefer?",
         transcriber: { provider: "deepgram", model: "nova-2", smartFormat: true },
         stopSpeakingPlan: { numWords: 0, voiceSeconds: 0.2, backoffSeconds: 1.5 },
       });
-    } catch (err) {
-      console.error("[call]", err);
-      setStatus("idle");
-    }
+    } catch (err) { console.error("[call]", err); setStatus("idle"); }
   }, [status, voiceId, extractKb]);
 
-  const endCall = useCallback(() => {
-    vapiRef.current?.stop();
-  }, []);
-
+  const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
   const toggleMute = useCallback(() => {
     if (!vapiRef.current) return;
-    const next = !muted;
-    setMuted(next);
-    vapiRef.current.setMuted(next);
+    const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
   }, [muted]);
-
   const reset = useCallback(() => {
-    setStatus("idle");
-    setTranscript([]);
-    setLearnedKb(null);
-    setMuted(false);
-    setVolume(0);
-    vapiRef.current = null;
+    setStatus("idle"); setTranscript([]); setLearnedKb(null); setMuted(false); vapiRef.current = null;
   }, []);
 
-  const isActive = status === "active";
+  const isActive     = status === "active";
   const isConnecting = status === "connecting";
-  const showKb = status === "ended" && learnedKb !== null;
-
-  // Progress tracker (which question we're on based on Vela's turns)
-  const velaLines = transcript.filter((l) => l.role === "assistant").length;
-  const questionNum = Math.min(velaLines, 6);
+  const showFinalKb  = status === "ended" && learnedKb !== null;
+  const showLiveKb   = isActive || isConnecting;
 
   return (
-    <div className="flex flex-col p-5 md:p-8" style={{ background: bg, minHeight: "calc(100vh - 64px)" }}>
+    <div style={{ background: bg, margin: "-20px -16px -32px", padding: "20px 16px 32px" }}>
       <style>{`
-        @keyframes waveFlow { from { transform: translateX(0); } to { transform: translateX(-280px); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes waveFlow { from{transform:translateX(0)} to{transform:translateX(-280px)} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes kbFadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+        @media(min-width:768px) { .tr-pad { padding: 20px 24px 32px; margin: -20px -24px -32px; } }
       `}</style>
 
-      <div className="max-w-4xl mx-auto w-full space-y-5">
+      <div className="max-w-5xl mx-auto space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold" style={{ color: textPrimary }}>Training</h1>
-            <p className="text-xs" style={{ color: textMuted }}>Teach Vela everything about your business in a 6-question interview</p>
+            <h1 className="text-lg font-bold" style={{ color: textPrimary }}>Business Training</h1>
+            <p className="text-xs mt-0.5" style={{ color: textMuted }}>
+              {isActive ? `Question ${currentQuestion} of 7 — keep talking…` : "Teach Vela your business in 7 natural questions"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{
-                background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : status === "ended" ? "#6B7280" : "#E5E7EB",
-                boxShadow: isActive ? "0 0 8px #22C55E" : "none",
-              }}
-            />
+            <div className="w-2 h-2 rounded-full" style={{
+              background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : status==="ended" ? "#6B7280" : isDark?"#1E2235":"#E5E7EB",
+              boxShadow: isActive ? "0 0 8px #22C55E" : "none",
+            }}/>
             <span className="text-xs font-medium" style={{ color: textMuted }}>
-              {isActive ? "Interview live" : isConnecting ? "Connecting…" : status === "ended" ? "Interview complete" : "Ready"}
+              {isActive ? "Interview live" : isConnecting ? "Connecting…" : status==="ended" ? "Interview complete" : "Ready"}
             </span>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {/* Left + center: waveform + transcript */}
-          <div className="md:col-span-2 space-y-5">
+        {/* Main 2-col grid */}
+        <div className="grid md:grid-cols-5 gap-5">
+
+          {/* LEFT: waveform + controls + compact transcript (2/5) */}
+          <div className="md:col-span-2 space-y-4">
             {/* Waveform card */}
-            <div
-              className="rounded-2xl border p-6 flex flex-col items-center gap-4"
-              style={{ background: cardBg, borderColor: border }}
-            >
-              {/* Wave */}
-              <div className="relative flex items-center justify-center" style={{ width: 280, height: 56 }}>
-                <div
-                  className="absolute inset-0 rounded-full blur-2xl"
-                  style={{
-                    background: "radial-gradient(ellipse, rgba(255,51,102,0.25) 0%, transparent 70%)",
-                    opacity: isActive ? Math.max(0.3, volume * 2) : 0.08,
-                    transition: "opacity 0.1s",
-                  }}
-                />
-                <div style={{ width: 280, height: 40, overflow: "hidden", borderRadius: 4 }}>
-                  <div
-                    style={{
-                      width: 560,
-                      height: 40,
-                      animation: (isActive || isConnecting) ? "waveFlow 2.2s linear infinite" : "none",
-                      opacity: isActive ? 1 : isConnecting ? 0.5 : 0.15,
-                      transition: "opacity 0.4s",
-                    }}
-                  >
-                    <div
-                      ref={scaleRef}
-                      style={{
-                        width: 560,
-                        height: 40,
-                        transform: "scaleY(0.2)",
-                        transformOrigin: "280px 20px",
-                        transition: "transform 0.05s",
-                      }}
-                    >
+            <div className="rounded-2xl border p-5 flex flex-col items-center gap-4" style={{ background: cardBg, borderColor: border }}>
+              {/* Wave container */}
+              <div className="relative flex items-center justify-center" style={{ width: 240, height: 48 }}>
+                <div className="absolute inset-0 rounded-full blur-2xl" style={{
+                  background: "radial-gradient(ellipse, rgba(255,51,102,0.2) 0%, transparent 70%)",
+                  opacity: isActive ? 0.8 : 0.1,
+                  transition: "opacity 0.3s",
+                }}/>
+                <div style={{ width: 240, height: 36, overflow: "hidden", borderRadius: 4 }}>
+                  <div style={{ width: 560, height: 36, animation: (isActive||isConnecting) ? "waveFlow 2.2s linear infinite" : "none", opacity: isActive ? 1 : isConnecting ? 0.5 : 0.12, transition: "opacity 0.4s" }}>
+                    <div ref={scaleRef} style={{ width: 560, height: 36, transform: "scaleY(0.2)", transformOrigin: "280px 18px", transition: "transform 0.05s" }}>
                       <svg viewBox="0 0 560 40" width="560" height="40">
                         <defs>
                           <linearGradient id="wg-tr" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -292,138 +273,84 @@ export default function TrainingPage() {
                 </div>
               </div>
 
-              <div className="text-center">
-                {isConnecting && <p className="text-sm animate-pulse" style={{ color: "#FF6B35" }}>Connecting to Vela…</p>}
-                {isActive && (
-                  <p className="text-sm font-medium" style={{ color: textPrimary }}>
-                    {muted ? "🔇 Microphone muted" : "Interview in progress"}
-                  </p>
-                )}
-                {status === "idle" && <p className="text-sm" style={{ color: textMuted }}>Ready to start your training interview</p>}
-                {status === "ended" && !extracting && <p className="text-sm" style={{ color: textMuted }}>Interview complete</p>}
-                {extracting && (
-                  <p className="text-sm animate-pulse" style={{ color: "#FF6B35" }}>
-                    Saving knowledge to Vela…
-                  </p>
-                )}
-              </div>
+              {/* Status text */}
+              <p className="text-sm text-center" style={{ color: isConnecting?"#FF6B35":isActive?textPrimary:textMuted }}>
+                {isConnecting ? "Connecting to Vela…" : isActive ? (muted ? "🔇 Microphone muted" : "Speak naturally…") : status==="ended" ? "Interview complete" : extracting ? "Saving knowledge…" : "Ready to train your agent"}
+              </p>
 
               {/* Controls */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap justify-center">
                 {status === "idle" && (
-                  <button
-                    onClick={startCall}
-                    className="flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95"
-                    style={{ background: "linear-gradient(135deg, #FF3366, #FF6B35)", boxShadow: "0 4px 20px rgba(255,51,102,0.35)" }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <circle cx="8" cy="8" r="6.5" stroke="white" strokeWidth="1.4"/>
-                      <path d="M6.5 5.5l4 2.5-4 2.5V5.5z" fill="white"/>
+                  <button onClick={startCall}
+                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95"
+                    style={{ background:"linear-gradient(135deg,#FF3366,#FF6B35)", boxShadow:"0 4px 20px rgba(255,51,102,0.35)" }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
+                      <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
                     </svg>
                     Start Training
                   </button>
                 )}
                 {isConnecting && (
-                  <div className="flex items-center gap-2 px-5 py-3">
-                    <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+                  <div className="flex items-center gap-2 px-4 py-2.5">
+                    <div style={{ width:14, height:14, borderRadius:"50%", border:"2px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
                     <span className="text-sm" style={{ color: textMuted }}>Connecting…</span>
                   </div>
                 )}
                 {isActive && (
                   <>
-                    <button
-                      onClick={toggleMute}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-                      style={{
-                        background: muted ? (isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0") : (isDark ? "#1E2130" : "#F3F4F6"),
-                        color: muted ? "#FF6B35" : textMuted,
-                        border: `1px solid ${muted ? "#FF6B35" : border}`,
-                      }}
-                    >
-                      {muted ? (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <rect x="4" y="1" width="6" height="8" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                          <path d="M2 7c0 2.76 2.24 5 5 5M7 12v1.5M11.5 3L2.5 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <rect x="4" y="1" width="6" height="8" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                          <path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5M7 12v1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      )}
+                    <button onClick={toggleMute}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                      style={{ background: muted?(isDark?"rgba(255,107,53,0.15)":"#FFF5F0"):(isDark?"#1E2235":"#F3F4F6"), color: muted?"#FF6B35":textMuted, border:`1px solid ${muted?"#FF6B35":border}` }}>
                       {muted ? "Unmute" : "Mute"}
                     </button>
-                    <button
-                      onClick={endCall}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 transition-all"
-                      style={{ background: isDark ? "rgba(239,68,68,0.1)" : "#FEF2F2", border: "1px solid rgba(239,68,68,0.3)" }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M2.5 2.5l9 9M11.5 2.5l-9 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                      </svg>
+                    <button onClick={endCall}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                      style={{ background: isDark?"rgba(239,68,68,0.1)":"#FEF2F2", color:"#EF4444", border:"1px solid rgba(239,68,68,0.3)" }}>
                       End Interview
                     </button>
                   </>
                 )}
-                {status === "ended" && (
-                  <button
-                    onClick={reset}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={{ background: isDark ? "#1E2130" : "#F3F4F6", color: textSub }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M1.5 7A5.5 5.5 0 0112 3.5M12.5 1v2.5H10M12.5 7A5.5 5.5 0 012 10.5M1.5 13v-2.5H4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                {status === "ended" && !extracting && (
+                  <button onClick={reset}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium transition-all"
+                    style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
                     New Interview
                   </button>
+                )}
+                {extracting && (
+                  <div className="flex items-center gap-2 px-4 py-2">
+                    <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
+                    <span className="text-xs" style={{ color: "#FF6B35" }}>Saving knowledge…</span>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Transcript */}
-            <div
-              className="rounded-2xl border flex flex-col"
-              style={{ background: cardBg, borderColor: border, maxHeight: 320 }}
-            >
-              <div className="flex items-center justify-between px-5 py-3.5 border-b" style={{ borderColor: border }}>
-                <span className="text-xs font-semibold" style={{ color: textPrimary }}>Live Transcript</span>
+            {/* Compact transcript */}
+            <div className="rounded-2xl border flex flex-col" style={{ background: cardBg, borderColor: border }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
+                <span className="text-xs font-semibold" style={{ color: textPrimary }}>Transcript</span>
                 {isActive && (
-                  <span className="flex items-center gap-1.5 text-[10px]" style={{ color: "#22C55E" }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    Recording
+                  <span className="flex items-center gap-1.5 text-[9px]" style={{ color: "#22C55E" }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>Recording
                   </span>
                 )}
               </div>
-              <div
-                ref={transcriptRef}
-                className="flex-1 overflow-y-auto px-5 py-4 space-y-3"
-                style={{ minHeight: 120 }}
-              >
+              <div ref={transcriptRef} className="overflow-y-auto px-4 py-3 space-y-2" style={{ maxHeight: 240 }}>
                 {transcript.length === 0 ? (
-                  <p className="text-xs text-center py-6" style={{ color: textMuted }}>
-                    {status === "idle" ? "Transcript will appear here once the interview starts" : "Listening…"}
+                  <p className="text-xs text-center py-4" style={{ color: textMuted }}>
+                    {status === "idle" ? "Transcript will appear here when the interview starts" : "Listening…"}
                   </p>
                 ) : (
-                  transcript.map((line, i) => (
-                    <div key={i} className={`flex gap-2.5 ${line.role === "user" ? "flex-row-reverse" : ""}`}>
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold"
-                        style={{
-                          background: line.role === "assistant" ? "linear-gradient(135deg, #FF3366, #FF6B35)" : (isDark ? "#2A2D3A" : "#F3F4F6"),
-                          color: line.role === "assistant" ? "white" : textMuted,
-                        }}
-                      >
+                  transcript.slice(-20).map((line, i) => (
+                    <div key={i} className={`flex gap-2 ${line.role === "user" ? "flex-row-reverse" : ""}`}>
+                      <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[7px] font-bold"
+                        style={{ background: line.role==="assistant"?"linear-gradient(135deg,#FF3366,#FF6B35)":isDark?"#2A2D3A":"#F3F4F6", color: line.role==="assistant"?"white":textMuted }}>
                         {line.role === "assistant" ? "V" : "Y"}
                       </div>
-                      <div
-                        className="max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed"
-                        style={{
-                          background: line.role === "assistant"
-                            ? (isDark ? "rgba(255,51,102,0.1)" : "#FFF0F5")
-                            : (isDark ? "#1E2130" : "#F3F4F6"),
-                          color: textSub,
-                        }}
-                      >
+                      <div className="max-w-[88%] rounded-xl px-2.5 py-1.5 text-[10px] leading-relaxed"
+                        style={{ background: line.role==="assistant"?(isDark?"rgba(255,51,102,0.08)":"#FFF0F5"):(isDark?"#1E2235":"#F3F4F6"), color: textSub }}>
                         {line.text}
                       </div>
                     </div>
@@ -433,165 +360,172 @@ export default function TrainingPage() {
             </div>
           </div>
 
-          {/* Right column */}
-          <div className="space-y-4">
-            {/* Progress tracker */}
-            {(isActive || status === "ended") && (
-              <div
-                className="rounded-2xl border p-5"
-                style={{ background: cardBg, borderColor: border }}
-              >
-                <h3 className="text-xs font-semibold mb-3" style={{ color: textPrimary }}>Interview Progress</h3>
-                <div className="space-y-2">
-                  {[
-                    "Services & prices",
-                    "Working hours",
-                    "Address / area",
-                    "Booking policy",
-                    "Common questions",
-                    "Other details",
-                  ].map((q, i) => {
-                    const done = i < questionNum;
-                    const current = i === questionNum && isActive;
-                    return (
-                      <div key={i} className="flex items-center gap-2.5">
+          {/* RIGHT: Live Business Knowledge panel (3/5 — the star) */}
+          <div className="md:col-span-3">
+            <div className="rounded-2xl border h-full" style={{ background: cardBg, borderColor: border }}>
+              {/* Panel header */}
+              <div className="px-5 py-4 border-b" style={{ borderColor: border }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M7 1L8.5 5H13L9.5 7.5l1.5 4L7 9l-4 2.5 1.5-4L1 5h4.5L7 1z" stroke="white" strokeWidth="1.2" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: textPrimary }}>Business Knowledge</p>
+                      <p className="text-[10px]" style={{ color: textMuted }}>Fills in live as you answer each question</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold" style={{ color: filledCount > 0 ? "#FF6B35" : textMuted }}>
+                      {progressPct}%
+                    </p>
+                    <p className="text-[9px]" style={{ color: textMuted }}>{filledCount}/7 complete</p>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 rounded-full" style={{ background: isDark?"#1E2235":"#F1F5F9" }}>
+                  <div
+                    className="h-1.5 rounded-full transition-all duration-700"
+                    style={{ width:`${progressPct}%`, background:"linear-gradient(to right,#FF6B35,#FF3366)" }}
+                  />
+                </div>
+              </div>
+
+              {/* Knowledge cards grid */}
+              <div className="p-5">
+                {status === "idle" && (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <circle cx="10" cy="8" r="4" stroke="white" strokeWidth="1.4"/>
+                        <path d="M4 17s0-3 6-3 6 3 6 3" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <p className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>Your business knowledge will appear here</p>
+                    <p className="text-xs max-w-xs" style={{ color: textMuted }}>
+                      Start the training interview and watch this panel fill in live as you answer each question. Vela will remember everything.
+                    </p>
+                    <div className="mt-5 space-y-2 w-full max-w-xs">
+                      {KB_FIELDS.map((f, i) => (
+                        <div key={f.key} className="flex items-center gap-2.5 px-3 py-2 rounded-xl" style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB" }}>
+                          <span className="text-sm opacity-40">{f.icon}</span>
+                          <span className="text-xs" style={{ color: textMuted }}>Q{i+1}: {f.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(showLiveKb || status === "ended") && (
+                  <div className="space-y-3">
+                    {KB_FIELDS.map((f) => {
+                      const answered = liveKb[f.key];
+                      const isCurrent = currentQuestion === f.q && isActive;
+                      const isPending = !answered && currentQuestion < f.q;
+                      return (
                         <div
-                          className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                          key={f.key}
+                          className="rounded-xl border transition-all"
                           style={{
-                            background: done ? "#22C55E" : current ? "#FF6B35" : (isDark ? "#2A2D3A" : "#F3F4F6"),
+                            background: answered
+                              ? (isDark?"rgba(255,107,53,0.06)":"rgba(255,107,53,0.03)")
+                              : isCurrent
+                              ? (isDark?"rgba(255,107,53,0.10)":"#FFF5F0")
+                              : (isDark?"rgba(255,255,255,0.02)":"#FAFAFA"),
+                            borderColor: answered
+                              ? "rgba(255,107,53,0.25)"
+                              : isCurrent
+                              ? "rgba(255,107,53,0.4)"
+                              : border,
+                            animation: answered ? "kbFadeIn 0.4s ease-out" : "none",
                           }}
                         >
-                          {done ? (
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                              <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          ) : (
-                            <span className="text-[7px] font-bold" style={{ color: current ? "white" : textMuted }}>{i + 1}</span>
-                          )}
+                          <div className="flex items-start gap-3 p-3.5">
+                            <div
+                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm"
+                              style={{
+                                background: answered
+                                  ? "linear-gradient(135deg,#FF6B35,#FF3366)"
+                                  : isCurrent
+                                  ? "rgba(255,107,53,0.15)"
+                                  : isDark?"#1E2235":"#F3F4F6",
+                              }}
+                            >
+                              {answered ? (
+                                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                                  <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              ) : (
+                                <span style={{ opacity: isCurrent ? 1 : 0.4 }}>{f.icon}</span>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: answered?"#FF6B35":isCurrent?"#FF6B35":textMuted }}>
+                                  {f.label}
+                                </p>
+                                {isCurrent && !answered && (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full animate-pulse"
+                                    style={{ background:"rgba(255,107,53,0.15)", color:"#FF6B35" }}>
+                                    Listening…
+                                  </span>
+                                )}
+                              </div>
+                              {answered ? (
+                                <p className="text-xs leading-relaxed line-clamp-3" style={{ color: textSub }}>
+                                  {answered}
+                                </p>
+                              ) : (
+                                <p className="text-[10px]" style={{ color: isDark?"#374151":textMuted }}>
+                                  {isCurrent ? "Answer this question…" : isPending ? `Question ${f.q} — coming up` : "Waiting…"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-xs" style={{ color: done ? "#22C55E" : current ? "#FF6B35" : textMuted }}>
-                          {q}
-                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Post-call final KB from AI extraction */}
+                {showFinalKb && (
+                  <div className="mt-4 rounded-xl border p-4" style={{ background: isDark?"rgba(34,197,94,0.05)":"#F0FDF4", borderColor: isDark?"rgba(34,197,94,0.2)":"#BBF7D0" }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* What Vela Learned — shows after call + extraction */}
-            {showKb && (
-              <div
-                className="rounded-2xl border p-5"
-                style={{ background: isDark ? "rgba(34,197,94,0.05)" : "#F0FDF4", borderColor: isDark ? "rgba(34,197,94,0.2)" : "#BBF7D0" }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <span className="text-xs font-semibold text-green-600">What Vela Learned</span>
-                </div>
-
-                {learnedKb?.services && learnedKb.services.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-[10px] font-semibold mb-1.5" style={{ color: textMuted }}>SERVICES</p>
-                    {learnedKb.services.slice(0, 4).map((s, i) => (
-                      <div key={i} className="flex items-start gap-1.5 mb-1">
-                        <span className="text-[10px] mt-0.5" style={{ color: "#FF6B35" }}>•</span>
-                        <span className="text-[11px]" style={{ color: textSub }}>
-                          {s.name}{s.price ? ` — ${s.price}` : ""}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {learnedKb?.business?.hours && (
-                  <div className="mb-2">
-                    <p className="text-[10px] font-semibold mb-0.5" style={{ color: textMuted }}>HOURS</p>
-                    <p className="text-[11px]" style={{ color: textSub }}>{learnedKb.business.hours}</p>
-                  </div>
-                )}
-
-                {learnedKb?.extra && (
-                  <div>
-                    <p className="text-[10px] font-semibold mb-0.5" style={{ color: textMuted }}>NOTES</p>
-                    <p className="text-[11px] leading-relaxed line-clamp-3" style={{ color: textSub }}>{learnedKb.extra}</p>
-                  </div>
-                )}
-
-                <p className="text-[10px] mt-3" style={{ color: "#22C55E" }}>
-                  ✓ Saved to your AI knowledge base
-                </p>
-              </div>
-            )}
-
-            {/* Extracting state */}
-            {extracting && (
-              <div
-                className="rounded-2xl border p-5 flex items-center gap-3"
-                style={{ background: cardBg, borderColor: border }}
-              >
-                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
-                <p className="text-xs" style={{ color: textMuted }}>Extracting business knowledge…</p>
-              </div>
-            )}
-
-            {/* Info card */}
-            {status === "idle" && (
-              <div
-                className="rounded-2xl border p-5"
-                style={{ background: cardBg, borderColor: border }}
-              >
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                  style={{ background: "linear-gradient(135deg, #FF3366, #FF6B35)" }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="6" r="3.5" stroke="white" strokeWidth="1.4"/>
-                    <path d="M6 6a2 2 0 014 0" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
-                    <circle cx="8" cy="6" r="1" fill="white"/>
-                    <path d="M5 11l1-1M11 11l-1-1M8 10v2.5M5.5 13h5" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <h3 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>Business Training</h3>
-                <p className="text-xs leading-relaxed" style={{ color: textMuted }}>
-                  Vela will ask you 6 questions about your business. Answer them naturally and Vela saves everything to your AI knowledge base automatically.
-                </p>
-              </div>
-            )}
-
-            {/* What it covers */}
-            {status === "idle" && (
-              <div
-                className="rounded-2xl border p-5"
-                style={{ background: cardBg, borderColor: border }}
-              >
-                <h3 className="text-xs font-semibold mb-3" style={{ color: textPrimary }}>What we&apos;ll cover</h3>
-                <div className="space-y-2">
-                  {[
-                    "Services & prices",
-                    "Working hours",
-                    "Address or area",
-                    "Booking policy",
-                    "Common questions",
-                    "Extra details",
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span
-                        className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-                        style={{ background: isDark ? "#1E2130" : "#F3F4F6", color: "#FF6B35" }}
-                      >
-                        {i + 1}
-                      </span>
-                      <span className="text-xs" style={{ color: textMuted }}>{item}</span>
+                      <span className="text-xs font-semibold text-green-600">Saved to AI Knowledge Base</span>
                     </div>
-                  ))}
-                </div>
+                    {learnedKb?.services && learnedKb.services.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: textMuted }}>Services</p>
+                        {learnedKb.services.slice(0,4).map((s, i) => (
+                          <p key={i} className="text-[10px]" style={{ color: textSub }}>• {s.name}{s.price?` — ${s.price}`:""}</p>
+                        ))}
+                      </div>
+                    )}
+                    {learnedKb?.business?.hours && (
+                      <div className="mb-1">
+                        <p className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: textMuted }}>Hours</p>
+                        <p className="text-[10px]" style={{ color: textSub }}>{learnedKb.business.hours}</p>
+                      </div>
+                    )}
+                    {learnedKb?.extra && (
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: textMuted }}>Extra notes</p>
+                        <p className="text-[10px] line-clamp-2" style={{ color: textSub }}>{learnedKb.extra}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

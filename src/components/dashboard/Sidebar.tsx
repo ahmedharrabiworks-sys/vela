@@ -149,7 +149,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
-  const agentCollapseRef = useRef<{ wasCollapsed: boolean } | null>(null);
+  const agentCollapseRef = useRef<{ wasCollapsed: boolean } | null>(null); // unused; kept for ref stability
 
   useEffect(() => {
     const profile = getProfile();
@@ -185,16 +185,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     loadAuth();
   }, []);
 
-  // Hide sidebar entirely when entering the AI Agent section (it has its own sub-nav)
-  useEffect(() => {
-    const isAgent = pathname?.startsWith("/app/ai-agent") ?? false;
-    if (isAgent && agentCollapseRef.current === null) {
-      agentCollapseRef.current = { wasCollapsed: collapsed };
-    } else if (!isAgent && agentCollapseRef.current !== null) {
-      setCollapsed(agentCollapseRef.current.wasCollapsed);
-      agentCollapseRef.current = null;
-    }
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  // agentCollapseRef kept for potential future use
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -229,8 +220,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const planLabel = PLAN_LABELS[displayPlan] ?? t("sidebar.plans.starter");
   const isPremium = displayPlan === "premium";
 
-  const isAgentPath = pathname?.startsWith("/app/ai-agent") ?? false;
-
   return (
     <aside
       className={`
@@ -239,10 +228,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         z-50 md:z-auto
         bg-white border-r border-[#E5E7EB]
         transition-all duration-300 ease-in-out
-        ${isOpen && !isAgentPath ? "translate-x-0" : "-translate-x-full"}
+        ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0
         w-72 md:w-auto
-        ${isAgentPath ? "md:w-0 md:overflow-hidden md:border-0 md:opacity-0" : (collapsed ? "md:w-16" : "md:w-60")}
+        ${collapsed ? "md:w-16" : "md:w-60"}
       `}
     >
       {/* Logo row */}
