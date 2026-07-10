@@ -140,6 +140,7 @@ export default function OverviewPage() {
 
   /* Vapi state */
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const [callError, setCallError]   = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const [voiceId, setVoiceId] = useState(DEFAULT_VOICE_ID);
   const [speed, setSpeed] = useState(0.85);
@@ -259,13 +260,27 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
   const startCall = useCallback(async () => {
     if (callStatus !== "idle") return;
     setCallStatus("connecting");
+    setCallError(null);
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
       vapiRef.current = vapi;
       vapi.on("call-start", () => setCallStatus("active"));
       vapi.on("call-end",   () => { setCallStatus("ended"); resetBars(); });
-      vapi.on("error",      (e: unknown) => { console.error("[vapi]", e); setCallStatus("idle"); resetBars(); });
+      vapi.on("call-start-failed", (e: any) => {
+        const msg = e?.error || "Call failed to start — check mic permissions and try again.";
+        console.error("[vapi call-start-failed]", e);
+        setCallError(msg);
+        setCallStatus("idle");
+        resetBars();
+      });
+      vapi.on("error", (e: any) => {
+        const msg = typeof e === "string" ? e : (e?.message || e?.error || "An unexpected error occurred");
+        console.error("[vapi error]", e);
+        setCallError(msg);
+        setCallStatus("idle");
+        resetBars();
+      });
       vapi.on("volume-level", (vol: number) => {
         BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${Math.max(3, b*(5+vol*18))}px`; });
         if (scaleRef.current) scaleRef.current.style.transform = `scaleY(${Math.max(0.25, 1+vol*5)})`;
@@ -279,7 +294,12 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
         stopSpeakingPlan,
         startSpeakingPlan,
       });
-    } catch (err) { console.error("[call]", err); setCallStatus("idle"); resetBars(); }
+    } catch (err: any) {
+      console.error("[call]", err);
+      setCallError(err?.message || "Failed to start call — please try again.");
+      setCallStatus("idle");
+      resetBars();
+    }
   }, [callStatus, voiceId, speed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
@@ -288,7 +308,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
     const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
   }, [muted]);
   const resetCall = useCallback(() => {
-    setCallStatus("idle"); setMuted(false); resetBars(); vapiRef.current = null;
+    setCallStatus("idle"); setCallError(null); setMuted(false); resetBars(); vapiRef.current = null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isActive     = callStatus === "active";
@@ -604,6 +624,13 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                     style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
                     {t("aiAgent.overview.newCall")}
                   </button>
+                )}
+                {callError && (
+                  <div className="mt-2 rounded-xl p-2.5" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
+                    <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
+                    <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
+                  </div>
                 )}
               </div>
             </div>

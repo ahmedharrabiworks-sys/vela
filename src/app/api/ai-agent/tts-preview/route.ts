@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { DEFAULT_VOICE_ID } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, clampSpeed } from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
-const SAMPLE_TEXT =
-  "Hello! I'm Vela, your AI phone agent. I'll be handling your business calls with a natural, professional voice — 24 hours a day, 7 days a week.";
+// Short text — less to generate = less latency for preview
+const SAMPLE_TEXT = "Hi, I'm Vela — your AI phone agent. How can I help you today?";
 
 export async function POST(req: NextRequest) {
   const supabase = createSupabaseServerClient();
@@ -22,9 +22,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as { voiceId?: string; speed?: number; text?: string };
   const voiceId = body.voiceId ?? DEFAULT_VOICE_ID;
-  const speed   = Math.min(Math.max(body.speed ?? 0.85, 0.5), 2.0);
+  const speed   = clampSpeed(body.speed ?? 0.85);
   const text    = body.text ?? SAMPLE_TEXT;
 
+  // eleven_turbo_v2_5: faster generation than eleven_multilingual_v2, still multilingual
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
     method: "POST",
     headers: {
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       text,
-      model_id: "eleven_multilingual_v2",
+      model_id: "eleven_turbo_v2_5",
       voice_settings: {
         stability:         0.45,
         similarity_boost:  0.8,

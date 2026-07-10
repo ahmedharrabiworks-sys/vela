@@ -47,6 +47,7 @@ export default function TrainingPage() {
   const { isDark } = useAgentTheme();
   const { t } = useI18n();
   const [status, setStatus]       = useState<CallStatus>("idle");
+  const [callError, setCallError] = useState<string | null>(null);
   const [muted, setMuted]         = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
   const [voiceId, setVoiceId]     = useState(DEFAULT_VOICE_ID);
@@ -137,6 +138,7 @@ export default function TrainingPage() {
     const started = Date.now();
     setCallStart(started);
 
+    setCallError(null);
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
@@ -151,7 +153,18 @@ export default function TrainingPage() {
         if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
         extractKb(lines, started, { ...toolKb });
       });
-      vapi.on("error",      (e: unknown) => { console.error("[vapi]", e); setStatus("idle"); });
+      vapi.on("call-start-failed", (e: any) => {
+        const msg = e?.error || "Call failed to start — check mic permissions and try again.";
+        console.error("[vapi call-start-failed]", e);
+        setCallError(msg);
+        setStatus("idle");
+      });
+      vapi.on("error", (e: any) => {
+        const msg = typeof e === "string" ? e : (e?.message || e?.error || "An unexpected error occurred");
+        console.error("[vapi error]", e);
+        setCallError(msg);
+        setStatus("idle");
+      });
 
       vapi.on("volume-level", (vol: number) => {
         if (scaleRef.current) scaleRef.current.style.transform = `scaleY(${Math.max(0.2, 1 + vol * 5)})`;
@@ -198,7 +211,11 @@ export default function TrainingPage() {
         stopSpeakingPlan,
         startSpeakingPlan,
       });
-    } catch (err) { console.error("[call]", err); setStatus("idle"); }
+    } catch (err: any) {
+      console.error("[call]", err);
+      setCallError(err?.message || "Failed to start call — please try again.");
+      setStatus("idle");
+    }
   }, [status, voiceId, speed, extractKb]);
 
   const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
@@ -207,7 +224,7 @@ export default function TrainingPage() {
     const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
   }, [muted]);
   const reset = useCallback(() => {
-    setStatus("idle"); setTranscript([]); setLearnedKb(null); setLiveKb({}); setMuted(false); vapiRef.current = null;
+    setStatus("idle"); setCallError(null); setTranscript([]); setLearnedKb(null); setLiveKb({}); setMuted(false); vapiRef.current = null;
   }, []);
 
   const isActive     = status === "active";
@@ -328,6 +345,15 @@ export default function TrainingPage() {
                   </div>
                 )}
               </div>
+
+              {/* Visible error below controls */}
+              {callError && (
+                <div className="mx-5 mb-4 rounded-xl p-3" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
+                  <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed to start</p>
+                  <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
+                  <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
+                </div>
+              )}
             </div>
 
             {/* Compact transcript */}
@@ -399,22 +425,27 @@ export default function TrainingPage() {
               {/* Knowledge cards grid */}
               <div className="p-5">
                 {status === "idle" && (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="8" r="4" stroke="white" strokeWidth="1.4"/>
-                        <path d="M4 17s0-3 6-3 6 3 6 3" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
-                      </svg>
+                  <div className="py-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="6.5" r="3" stroke="white" strokeWidth="1.3"/>
+                          <path d="M3 13s0-2.5 5-2.5 5 2.5 5 2.5" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.training.idlePlaceholder")}</p>
+                        <p className="text-xs" style={{ color: textMuted }}>{t("aiAgent.training.idleDesc")}</p>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.training.idlePlaceholder")}</p>
-                    <p className="text-xs max-w-xs" style={{ color: textMuted }}>
-                      {t("aiAgent.training.idleDesc")}
-                    </p>
-                    <div className="mt-5 space-y-2 w-full max-w-xs">
+                    <div className="grid grid-cols-2 gap-2">
                       {KB_FIELDS.map((f, i) => (
-                        <div key={f.key} className="flex items-center gap-2.5 px-3 py-2 rounded-xl" style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB" }}>
-                          <span className="text-sm opacity-40">{f.icon}</span>
-                          <span className="text-xs" style={{ color: textMuted }}>Q{i+1}: {f.label}</span>
+                        <div key={f.key} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB", border:`1px solid ${border}` }}>
+                          <span className="text-base opacity-35">{f.icon}</span>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Q{i+1}</p>
+                            <p className="text-[10px] font-medium truncate" style={{ color: textSub }}>{f.label}</p>
+                          </div>
                         </div>
                       ))}
                     </div>

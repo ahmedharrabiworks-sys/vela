@@ -6,35 +6,32 @@
  */
 
 // ── Default ElevenLabs voice ID used across all Vapi contexts ─────────────────
-// "Marcus" — deep authoritative male voice
 export const DEFAULT_VOICE_ID = "PIGsltMj3gFMR34aFDI3";
 
+// ── Speed clamp ───────────────────────────────────────────────────────────────
+// ElevenLabs only accepts speed in [0.7, 1.2]. Any value outside this range
+// returns a 422 validation_error. Clamp here so no caller can accidentally send
+// an out-of-range value regardless of what the slider or saved settings contain.
+export function clampSpeed(speed: number): number {
+  return Math.min(1.2, Math.max(0.7, speed));
+}
+
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// Deepgram Nova-3 with language: "multi" for automatic multilingual detection.
-// Confirmed field names from DeepgramTranscriber interface in api.d.ts line 234.
-// Nova-3 is the current flagship model; "multi" is the explicit multilingual language code.
-// smartFormat disabled intentionally (can mangle numbers as times).
+// Deepgram nova-2 with language: "multi" for automatic multilingual detection.
+// nova-2 is used (not nova-3) because nova-3 is too new for Vapi's managed
+// Deepgram account in browser web-SDK calls, causing ~3s silent termination.
+// nova-2 with "multi" is the production-proven multilingual option.
+// "multi" is explicitly in the DeepgramTranscriber language union (api.d.ts:240).
 export function getTranscriberConfig() {
   return {
     provider: "deepgram" as const,
-    model: "nova-3" as const,
+    model: "nova-2" as const,
     language: "multi" as const,
     smartFormat: false,
   };
 }
 
 // ── Speaking plan (barge-in / interruption) ───────────────────────────────────
-// stopSpeakingPlan: interrupt immediately when caller starts speaking.
-//   numWords: 0  → don't wait for a word count, use VAD spike instead.
-//   voiceSeconds: 0.1 → interrupt after 100ms of detected voice (SDK default is 0.2;
-//                        lowering to 0.1 gives near-instant barge-in without false triggers).
-//   backoffSeconds: 0.3 → resume speaking 300ms after interruption ends (was 0.5 — tighter).
-//
-// startSpeakingPlan: how the assistant decides the caller has finished speaking.
-//   waitSeconds: 0.3 → how long assistant waits before starting to speak (SDK default 0.4).
-//   smartEndpointingEnabled is @deprecated per SDK (line 2470); use smartEndpointingPlan.
-//   provider "vapi" = Vapi's own smart endpointing model (the "Vapi" option in the dashboard).
-//   This replaces the old boolean smartEndpointingEnabled: true.
 export function getSpeakingPlanConfig() {
   return {
     stopSpeakingPlan: {
@@ -50,7 +47,7 @@ export function getSpeakingPlanConfig() {
 }
 
 // ── Shared voice config builder ───────────────────────────────────────────────
-// Builds the ElevenLabs voice object. Pass voiceId and speed from saved settings.
+// Speed is clamped to [0.7, 1.2] — ElevenLabs' only valid range.
 export function getVoiceConfig(voiceId: string, speed: number) {
   return {
     provider: "11labs" as const,
@@ -60,13 +57,11 @@ export function getVoiceConfig(voiceId: string, speed: number) {
     similarityBoost: 0.8,
     style: 0.25,
     useSpeakerBoost: true,
-    speed,
+    speed: clampSpeed(speed),
   };
 }
 
 // ── Inbound call system prompt ────────────────────────────────────────────────
-// Used by BOTH phone/route.ts (assistant provisioning) and call-webhook/route.ts
-// (dynamic assistant returned on every real live call). They now share one function.
 export function buildInboundSystem(
   agentName: string,
   businessName: string,
@@ -131,8 +126,7 @@ ${extra ? `Additional info: ${extra}` : ""}
 ## PERSONALITY
 ${personalityLine}
 
-${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}
-## RULES
+${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}## RULES
 - Never invent information not in your knowledge above
 - Keep responses short — this is a phone call, not a chat
 - Never mention you are AI unless directly asked
@@ -140,9 +134,6 @@ ${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}
 }
 
 // ── Training system prompt ────────────────────────────────────────────────────
-// Used by training/page.tsx. Kept here for co-location with the inbound prompt.
-// Instructs GPT-4o to call recordBusinessAnswer() via function-calling
-// instead of free-form conversation so the KB capture is reliable.
 export const TRAINING_SYSTEM = `You are Vela — an AI phone agent having a structured training conversation with a business owner to learn their business thoroughly.
 
 ## YOUR GOAL
@@ -176,12 +167,9 @@ If the owner responds in Arabic, French, German, Spanish, or any other language 
 After all 7 topics are covered and recorded, give a confident 3–4 sentence business pitch based on their answers, then tell them you are ready to start handling their calls.`;
 
 // ── Training function-call tool definition ────────────────────────────────────
-// Passed to vapi.start() model.tools so GPT-4o can call recordBusinessAnswer().
-// Shape matches CreateFunctionToolDTO from api.d.ts line 1719.
-// The function property matches OpenAIFunction (name, description, parameters as JSON Schema).
 export const RECORD_ANSWER_TOOL = {
   type: "function" as const,
-  async: true, // fire-and-forget: don't pause the conversation waiting for our response
+  async: true,
   function: {
     name: "recordBusinessAnswer",
     description:
