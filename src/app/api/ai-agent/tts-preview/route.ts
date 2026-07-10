@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { DEFAULT_VOICE_ID } from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({})) as { voiceId?: string; speed?: number; text?: string };
-  const voiceId = body.voiceId ?? "PIGsltMj3gFMR34aFDI3";
+  const voiceId = body.voiceId ?? DEFAULT_VOICE_ID;
   const speed   = Math.min(Math.max(body.speed ?? 0.85, 0.5), 2.0);
   const text    = body.text ?? SAMPLE_TEXT;
 

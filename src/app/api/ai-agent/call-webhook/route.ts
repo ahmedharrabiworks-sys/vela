@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  DEFAULT_VOICE_ID,
+  getTranscriberConfig,
+  getSpeakingPlanConfig,
+  getVoiceConfig,
+  buildInboundSystem,
+} from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
@@ -79,35 +86,13 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* ignore */ }
 
-    const agentName = (settings.agentName as string | undefined) || "Vela";
-    const voiceId   = (settings.voiceId as string | undefined) || "PIGsltMj3gFMR34aFDI3";
-    const speed     = (settings.speed as number | undefined) ?? 0.85;
+    const agentName    = (settings.agentName as string | undefined) || "Vela";
+    const voiceId      = (settings.voiceId as string | undefined) || DEFAULT_VOICE_ID;
+    const speed        = typeof settings.speed === "number" ? settings.speed : 0.85;
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
-    const services = (kb.services as Array<{ name: string; price?: string }> | undefined) ?? [];
-    const biz = (kb.business as Record<string, string> | undefined) ?? {};
-    const extra = (kb.extra as string | undefined) ?? "";
-    const svcList = services.map(s => `${s.name}${s.price ? ` (${s.price})` : ""}`).join(", ");
-
-    const systemPrompt = `You are ${agentName}, the AI phone agent for ${businessName}. Handle inbound calls professionally, answer questions, and book appointments.
-
-## GREETING
-Say: "Hi, thanks for calling ${businessName}. How can I help you today?"
-
-## LANGUAGE RULE
-Detect the caller's language from their first message and respond in it immediately. Support all languages — especially Arabic, French, German, Spanish. Never mix languages.
-
-## BUSINESS KNOWLEDGE
-${svcList ? `Services: ${svcList}` : ""}
-${biz.hours ? `Hours: ${biz.hours}` : ""}
-${biz.address ? `Location: ${biz.address}` : ""}
-${extra ? `Additional: ${extra}` : ""}
-
-## RULES
-- Keep responses short — this is a phone call
-- Never invent information not listed above
-- If they want to book: collect name, preferred date/time, service — confirm back to them
-- Never mention you are AI unless directly asked`;
+    const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings);
+    const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
 
     return NextResponse.json({
       assistant: {
@@ -116,17 +101,10 @@ ${extra ? `Additional: ${extra}` : ""}
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }],
         },
-        voice: {
-          provider: "11labs",
-          voiceId,
-          model: "eleven_multilingual_v2",
-          stability: 0.45,
-          similarityBoost: 0.8,
-          speed,
-        },
-        transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
-        stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
-        startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
+        voice: getVoiceConfig(voiceId, speed),
+        transcriber: getTranscriberConfig(),
+        stopSpeakingPlan,
+        startSpeakingPlan,
       },
     });
   }

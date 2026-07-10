@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
+import {
+  DEFAULT_VOICE_ID,
+  getTranscriberConfig,
+  getSpeakingPlanConfig,
+  getVoiceConfig,
+  buildInboundSystem,
+} from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +28,8 @@ async function vapiRequest(path: string, method: string, body?: unknown) {
   return data;
 }
 
+/* buildInboundSystem moved to src/lib/vapi-agent-config.ts */
+
 async function getAuthAndTenant(req: NextRequest) {
   void req;
   const supabase = createSupabaseServerClient();
@@ -34,61 +43,6 @@ async function getAuthAndTenant(req: NextRequest) {
   }
 }
 
-function buildInboundSystem(
-  agentName: string,
-  businessName: string,
-  kb: Record<string, any>,
-  settings: Record<string, any>
-): string {
-  const services = (kb.services as Array<{ name: string; price?: string }> | undefined) ?? [];
-  const biz = (kb.business as Record<string, string> | undefined) ?? {};
-  const extra = (kb.extra as string | undefined) ?? "";
-  const personality = (settings.personality as string | undefined) ?? "professional";
-  const greetingStyle = (settings.greetingStyle as string | undefined) ?? "warm";
-  const customInstructions = (settings.customInstructions as string | undefined) ?? "";
-
-  const greetingLine =
-    greetingStyle === "pro"
-      ? `Good day, you've reached ${businessName}. How may I help you?`
-      : `Hi! Thanks for calling ${businessName}. How can I help you today?`;
-
-  const svcList = services.length > 0
-    ? services.map(s => `${s.name}${s.price ? ` (${s.price})` : ""}`).join(", ")
-    : "";
-
-  return `You are ${agentName}, the AI phone agent for ${businessName}. You handle inbound calls professionally, answer questions, and book appointments.
-
-## GREETING
-When the call starts, say: "${greetingLine}"
-
-## LANGUAGE RULE
-Detect the caller's language from their first message and switch to it immediately. Support all languages — especially Arabic (العربية), French, German, Spanish. Never mix languages within a call.
-
-## BUSINESS KNOWLEDGE
-${svcList ? `Services: ${svcList}` : ""}
-${biz.hours ? `Hours: ${biz.hours}` : ""}
-${biz.address ? `Location: ${biz.address}` : ""}
-${biz.bookingPolicy ? `Booking: ${biz.bookingPolicy}` : ""}
-${extra ? `Additional info: ${extra}` : ""}
-
-## CALL FLOW
-1. Greet warmly
-2. Understand what the caller needs
-3. Answer questions using your business knowledge above
-4. If they want to book: collect their name, preferred date/time, and service — confirm back to them
-5. Close warmly, let them know someone will confirm their booking
-
-## PERSONALITY
-${personality === "professional" ? "Formal, precise, and business-focused." : personality === "friendly" ? "Warm, approachable, builds rapport." : personality === "persuasive" ? "Confident, highlights value, drives action." : "Concise and efficient — respects the caller's time."}
-
-${customInstructions ? `## CUSTOM RULES\n${customInstructions}` : ""}
-
-## RULES
-- Never invent information not in your knowledge
-- Keep responses short — this is a phone call, not a chat
-- Never mention you are AI unless directly asked
-- Always confirm bookings back to the caller before ending the call`;
-}
 
 export async function GET(req: NextRequest) {
   const result = await getAuthAndTenant(req);
@@ -141,8 +95,8 @@ export async function POST(req: NextRequest) {
   } catch { /* ignore parse errors */ }
 
   const agentName = (agentSettings.agentName as string | undefined) || "Vela";
-  const voiceId   = (agentSettings.voiceId as string | undefined) || "PIGsltMj3gFMR34aFDI3";
-  const speed     = (agentSettings.speed   as number | undefined) ?? 0.85;
+  const voiceId   = (agentSettings.voiceId as string | undefined) || DEFAULT_VOICE_ID;
+  const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : 0.85;
 
   // App URL for webhook serverUrl
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -152,6 +106,7 @@ export async function POST(req: NextRequest) {
     : "";
 
   const systemPrompt = buildInboundSystem(agentName, tenant.business_name || "your business", kb, agentSettings);
+  const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
 
   try {
     // Create or update the Vapi assistant
@@ -163,19 +118,10 @@ export async function POST(req: NextRequest) {
         model: "gpt-4o",
         messages: [{ role: "system", content: systemPrompt }],
       },
-      voice: {
-        provider: "11labs",
-        voiceId,
-        model: "eleven_multilingual_v2",
-        stability: 0.45,
-        similarityBoost: 0.8,
-        style: 0.25,
-        useSpeakerBoost: true,
-        speed,
-      },
-      transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
-      stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
-      startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
+      voice: getVoiceConfig(voiceId, speed),
+      transcriber: getTranscriberConfig(),
+      stopSpeakingPlan,
+      startSpeakingPlan,
       ...(webhookUrl ? { serverUrl: webhookUrl } : {}),
     };
 

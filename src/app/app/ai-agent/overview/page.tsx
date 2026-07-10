@@ -5,12 +5,16 @@ import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
+import {
+  DEFAULT_VOICE_ID,
+  getTranscriberConfig,
+  getSpeakingPlanConfig,
+  getVoiceConfig,
+} from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
 type CallStatus = "idle" | "connecting" | "active" | "ended";
-
-const DEFAULT_VOICE = "PIGsltMj3gFMR34aFDI3";
 
 /* Wave path */
 const WAVE_D = (() => {
@@ -137,7 +141,7 @@ export default function OverviewPage() {
   /* Vapi state */
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [muted, setMuted] = useState(false);
-  const [voiceId, setVoiceId] = useState(DEFAULT_VOICE);
+  const [voiceId, setVoiceId] = useState(DEFAULT_VOICE_ID);
   const [speed, setSpeed] = useState(0.85);
   const [liveContext, setLiveContext] = useState<LiveContext | null>(null);
   const vapiRef = useRef<VapiInstance>(null);
@@ -192,7 +196,7 @@ export default function OverviewPage() {
       .then(r => r.json())
       .then((d: { voiceId?: string; speed?: number }) => {
         if (d.voiceId) setVoiceId(d.voiceId);
-        if (d.speed) setSpeed(d.speed);
+        if (typeof d.speed === "number") setSpeed(d.speed);
       })
       .catch(() => {});
   }, []);
@@ -266,13 +270,14 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
         BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${Math.max(3, b*(5+vol*18))}px`; });
         if (scaleRef.current) scaleRef.current.style.transform = `scaleY(${Math.max(0.25, 1+vol*5)})`;
       });
+      const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
       await vapi.start({
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: VELA_SYSTEM }] },
-        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed },
-        firstMessage: "Hi! I'm Vela, your AI business partner. Which language would you prefer for our conversation?",
-        transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
-        stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
-        startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
+        voice: getVoiceConfig(voiceId, speed),
+        firstMessage: "Hey — good to have you back. Which language would you like to use?",
+        transcriber: getTranscriberConfig(),
+        stopSpeakingPlan,
+        startSpeakingPlan,
       });
     } catch (err) { console.error("[call]", err); setCallStatus("idle"); resetBars(); }
   }, [callStatus, voiceId, speed]); // eslint-disable-line react-hooks/exhaustive-deps

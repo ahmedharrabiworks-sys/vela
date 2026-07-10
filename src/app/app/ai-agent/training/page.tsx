@@ -3,6 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
+import {
+  DEFAULT_VOICE_ID,
+  getTranscriberConfig,
+  getSpeakingPlanConfig,
+  getVoiceConfig,
+  TRAINING_SYSTEM,
+  RECORD_ANSWER_TOOL,
+} from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
@@ -15,8 +23,6 @@ interface LearnedKb {
   extra?: string;
 }
 
-const DEFAULT_VOICE = "PIGsltMj3gFMR34aFDI3";
-
 const WAVE_D = (() => {
   const pts: string[] = [];
   for (let x = 0; x <= 560; x += 2) {
@@ -25,33 +31,6 @@ const WAVE_D = (() => {
   }
   return pts.join(" ");
 })();
-
-/* ── Conversational training system prompt ── */
-const TRAINING_SYSTEM = `You are Vela — an AI phone agent having a training conversation with a business owner to learn their business thoroughly.
-
-## YOUR GOAL
-Cover 7 business topics through natural conversation. Ask one topic at a time. Listen carefully and adapt — if an answer is vague or off-topic, ask a natural follow-up rather than saving bad data. Short, focused questions only.
-
-## TOPICS TO COVER (in natural conversational order)
-1. What the business does and who their main customers are
-2. Main services or products, and rough pricing
-3. Business hours and availability
-4. Location — do customers come to you, or do you go to them?
-5. How customers book or get in touch
-6. Common questions callers ask and typical answers
-7. What makes this business special compared to competitors
-
-## LANGUAGE RULE
-If the owner responds in Arabic, French, German, Spanish, or any other language — switch to it immediately and stay in it the entire conversation. Never mix languages.
-
-## STYLE
-- One question at a time — never combine two
-- One brief acknowledgment after each answer (one sentence max), then next question
-- Conversational and warm, not robotic or scripted
-- Do NOT say "Welcome" or "boss" — those belong only in the Overview agent
-
-## CLOSING
-After all topics are covered, give a confident 3–4 sentence business pitch based on their answers, then tell them you are ready to start handling their calls.`;
 
 /* ── Knowledge field definitions ── */
 const KB_FIELDS = [
@@ -70,9 +49,10 @@ export default function TrainingPage() {
   const [status, setStatus]       = useState<CallStatus>("idle");
   const [muted, setMuted]         = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
-  const [voiceId, setVoiceId]     = useState(DEFAULT_VOICE);
+  const [voiceId, setVoiceId]     = useState(DEFAULT_VOICE_ID);
   const [speed, setSpeed]         = useState(0.85);
   const [learnedKb, setLearnedKb] = useState<LearnedKb | null>(null);
+  const [liveKb, setLiveKb]       = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
   const [callStart, setCallStart] = useState<number>(0);
   const vapiRef      = useRef<VapiInstance>(null);
@@ -91,7 +71,7 @@ export default function TrainingPage() {
       .then(r => r.json())
       .then((d: { voiceId?: string; speed?: number }) => {
         if (d.voiceId) setVoiceId(d.voiceId);
-        if (d.speed) setSpeed(d.speed);
+        if (typeof d.speed === "number") setSpeed(d.speed);
       })
       .catch(() => {});
   }, []);
@@ -100,26 +80,18 @@ export default function TrainingPage() {
     if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight;
   }, [transcript]);
 
-  /* ── Live knowledge extraction from transcript ── */
-  const TRIVIAL = /^(hi|hello|hey|ok|okay|yes|no|yeah|sure|thanks|thank you|english|arabic|french|german|spanish|مرحبا|أهلا|نعم|لا|حسنا|بالعربي|بالعربية|en|ar|fr|de|es)\s*[.!,]*$/i;
-  const userAnswers = transcript
-    .filter(l => l.role === "user")
-    .filter(l => l.text.trim().split(/\s+/).length >= 3 && !TRIVIAL.test(l.text.trim()));
-  const velaCount   = transcript.filter(l => l.role === "assistant").length;
-
-  const liveKb: Record<string, string> = {};
-  KB_FIELDS.forEach((f) => {
-    const answerIdx = f.q - 1;
-    if (userAnswers[answerIdx]) {
-      liveKb[f.key] = userAnswers[answerIdx].text;
-    }
-  });
-  const filledCount    = Object.keys(liveKb).length;
-  const progressPct    = Math.round((filledCount / 7) * 100);
+  /* ── Live KB: populated by GPT tool-call events, not positional transcript slicing ── */
+  const filledCount     = Object.keys(liveKb).length;
+  const progressPct     = Math.round((filledCount / 7) * 100);
+  const velaCount       = transcript.filter(l => l.role === "assistant").length;
   const currentQuestion = Math.min(velaCount, 7);
 
   /* ── After call: extract + save ── */
-  const extractKb = useCallback(async (lines: TLine[], startedAt: number) => {
+  const extractKb = useCallback(async (
+    lines: TLine[],
+    startedAt: number,
+    toolCallKb: Record<string, string>
+  ) => {
     if (lines.length === 0) return;
     setExtracting(true);
     try {
@@ -135,6 +107,7 @@ export default function TrainingPage() {
             duration_seconds: durationSecs,
             transcript:       lines,
             outcome:          "completed",
+            kb_extracted:     toolCallKb,
           }),
         }),
         fetch("/api/ai-agent/save-call", {
@@ -160,6 +133,7 @@ export default function TrainingPage() {
     setStatus("connecting");
     setTranscript([]);
     setLearnedKb(null);
+    setLiveKb({});
     const started = Date.now();
     setCallStart(started);
 
@@ -168,9 +142,15 @@ export default function TrainingPage() {
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
       vapiRef.current = vapi;
       const lines: TLine[] = [];
+      // Accumulate tool-call KB in a local ref so call-end closure always sees latest
+      const toolKb: Record<string, string> = {};
 
       vapi.on("call-start", () => setStatus("active"));
-      vapi.on("call-end",   () => { setStatus("ended"); if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)"; extractKb(lines, started); });
+      vapi.on("call-end",   () => {
+        setStatus("ended");
+        if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
+        extractKb(lines, started, { ...toolKb });
+      });
       vapi.on("error",      (e: unknown) => { console.error("[vapi]", e); setStatus("idle"); });
 
       vapi.on("volume-level", (vol: number) => {
@@ -178,20 +158,45 @@ export default function TrainingPage() {
       });
 
       vapi.on("message", (msg: any) => {
+        // Transcript lines
         if (msg.type === "transcript" && msg.transcriptType === "final") {
           const line: TLine = { role: msg.role, text: msg.transcript };
           lines.push(line);
           setTranscript(prev => [...prev, line]);
         }
+        // GPT function/tool calls — recordBusinessAnswer fired by the model
+        if (msg.type === "tool-calls" && Array.isArray(msg.toolCallList)) {
+          msg.toolCallList.forEach((tc: any) => {
+            if (tc?.function?.name === "recordBusinessAnswer") {
+              try {
+                const args = typeof tc.function.arguments === "string"
+                  ? JSON.parse(tc.function.arguments)
+                  : tc.function.arguments;
+                const topic = args?.topic as string | undefined;
+                const value = args?.value as string | undefined;
+                if (topic && value) {
+                  toolKb[topic] = value;
+                  setLiveKb(prev => ({ ...prev, [topic]: value }));
+                }
+              } catch { /* ignore malformed args */ }
+            }
+          });
+        }
       });
 
+      const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
       await vapi.start({
-        model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: TRAINING_SYSTEM }] },
-        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed },
-        firstMessage: "Hi! I'm Vela. I'll ask you about 7 topics to learn your business — takes about 3 minutes. Which language would you prefer?",
-        transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
-        stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
-        startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
+        model: {
+          provider: "openai",
+          model: "gpt-4o",
+          messages: [{ role: "system", content: TRAINING_SYSTEM }],
+          tools: [RECORD_ANSWER_TOOL],
+        },
+        voice: getVoiceConfig(voiceId, speed),
+        firstMessage: "Hi! I'm Vela — I'll learn your business through a quick conversation covering 7 topics. Which language would you prefer?",
+        transcriber: getTranscriberConfig(),
+        stopSpeakingPlan,
+        startSpeakingPlan,
       });
     } catch (err) { console.error("[call]", err); setStatus("idle"); }
   }, [status, voiceId, speed, extractKb]);
@@ -202,7 +207,7 @@ export default function TrainingPage() {
     const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
   }, [muted]);
   const reset = useCallback(() => {
-    setStatus("idle"); setTranscript([]); setLearnedKb(null); setMuted(false); vapiRef.current = null;
+    setStatus("idle"); setTranscript([]); setLearnedKb(null); setLiveKb({}); setMuted(false); vapiRef.current = null;
   }, []);
 
   const isActive     = status === "active";

@@ -74,7 +74,7 @@ export default function PhonePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-8">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>{t("aiAgent.phone.pageTitle")}</h1>
         <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.phone.subtitle")}</p>

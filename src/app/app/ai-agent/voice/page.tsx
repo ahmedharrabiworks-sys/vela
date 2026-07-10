@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
+import { DEFAULT_VOICE_ID } from "@/lib/vapi-agent-config";
 
 const VOICES = [
   { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus", description: "Deep, authoritative male", gender: "M" },
@@ -15,7 +16,7 @@ const VOICES = [
 export default function VoicePage() {
   const { isDark } = useAgentTheme();
   const { t } = useI18n();
-  const [selectedVoice, setSelectedVoice] = useState("PIGsltMj3gFMR34aFDI3");
+  const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE_ID);
   const [speed, setSpeed]   = useState(0.85);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);

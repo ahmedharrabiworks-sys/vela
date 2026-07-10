@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
+import { DEFAULT_VOICE_ID } from "@/lib/vapi-agent-config";
 
 const VOICES = [
   { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus — Deep male" },
@@ -48,7 +49,7 @@ export default function SettingsPage() {
   const { t } = useI18n();
   const [settings, setSettings] = useState<Settings>({
     agentName:          "Vela",
-    voiceId:            "PIGsltMj3gFMR34aFDI3",
+    voiceId:            DEFAULT_VOICE_ID,
     speed:              0.85,
     personality:        "professional",
     customInstructions: "",
@@ -110,7 +111,7 @@ export default function SettingsPage() {
   const inputStyle = { background: inputBg, borderColor: border, color: inputText };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-8">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>{t("aiAgent.settings.pageTitle")}</h1>
         <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.settings.subtitle")}</p>

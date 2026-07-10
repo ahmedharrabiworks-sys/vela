@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as AgentSettings;
   const settings: AgentSettings = {
     voiceId:            body.voiceId            ?? undefined,
-    speed:              body.speed              ?? undefined,
+    speed:              typeof body.speed === "number" ? body.speed : undefined,
     tone:               body.tone               ?? undefined,
     customInstructions: body.customInstructions ?? "",
     agentName:          body.agentName          ?? undefined,
