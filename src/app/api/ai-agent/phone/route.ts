@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
         useSpeakerBoost: true,
         speed,
       },
-      transcriber: { provider: "deepgram", model: "nova-2", language: "multi", smartFormat: true },
+      transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
       stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
       startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
       ...(webhookUrl ? { serverUrl: webhookUrl } : {}),

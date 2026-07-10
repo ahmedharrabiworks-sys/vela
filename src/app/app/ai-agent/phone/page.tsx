@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
+import { useI18n } from "@/lib/i18n";
 
 interface PhoneState {
   phoneNumber:   string | null;
@@ -11,6 +12,7 @@ interface PhoneState {
 
 export default function PhonePage() {
   const { isDark } = useAgentTheme();
+  const { t } = useI18n();
   const [state, setState]         = useState<PhoneState>({ phoneNumber: null, phoneNumberId: null, assistantId: null });
   const [loading, setLoading]     = useState(true);
   const [provisioning, setProvisioning] = useState(false);
@@ -74,10 +76,8 @@ export default function PhonePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8">
       <div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>Phone Number</h1>
-        <p className="text-sm" style={{ color: textMuted }}>
-          Connect a phone number so Vela answers your calls 24/7 — handling inquiries, booking appointments, and responding in any language.
-        </p>
+        <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>{t("aiAgent.phone.pageTitle")}</h1>
+        <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.phone.subtitle")}</p>
       </div>
 
       {/* Active number card */}
@@ -93,7 +93,7 @@ export default function PhonePage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: "0 0 6px #4ade80" }} />
-              <span className="text-xs font-semibold text-green-400">Active — answering calls</span>
+              <span className="text-xs font-semibold text-green-400">{t("aiAgent.phone.active")}</span>
             </div>
             <span
               className="text-[10px] font-bold px-2.5 py-1 rounded-full"
@@ -130,7 +130,7 @@ export default function PhonePage() {
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6l2.5 2.5 5.5-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  Copied
+                  {t("aiAgent.phone.copied")}
                 </>
               ) : (
                 <>
@@ -138,7 +138,7 @@ export default function PhonePage() {
                     <rect x="4" y="4" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.2"/>
                     <path d="M8 4V2.5A1.5 1.5 0 006.5 1h-5A1.5 1.5 0 000 2.5v5A1.5 1.5 0 001.5 9H3" stroke="currentColor" strokeWidth="1.2"/>
                   </svg>
-                  Copy
+                  {t("aiAgent.phone.copy")}
                 </>
               )}
             </button>
@@ -172,9 +172,9 @@ export default function PhonePage() {
               <path d="M18.67 3.5v3.5M16.33 5.83h4.67" stroke="#FF6B35" strokeWidth="1.6" strokeLinecap="round"/>
             </svg>
           </div>
-          <h2 className="text-base font-bold mb-2" style={{ color: textPrimary }}>Get your AI phone number</h2>
+          <h2 className="text-base font-bold mb-2" style={{ color: textPrimary }}>{t("aiAgent.phone.getTitle")}</h2>
           <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: textMuted }}>
-            Provision a real phone number. Vela answers every call using your trained business knowledge, in the caller&apos;s language.
+            {t("aiAgent.phone.getDesc")}
           </p>
 
           <div className="grid grid-cols-2 gap-2 mb-6 text-left max-w-sm mx-auto">
@@ -221,7 +221,7 @@ export default function PhonePage() {
                   <path d="M4.4 7.2c.93 1.87 2.53 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V13.33c0 .4-.27.67-.67.67C4.4 14 2 7.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L4.4 7.2z" fill="white"/>
                   <path d="M10 2v2.5M8.67 3.33h2.67" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
                 </svg>
-                Get Phone Number
+                {t("aiAgent.phone.getBtn")}
               </>
             )}
           </button>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useAgentTheme } from "../layout";
+import { useI18n } from "@/lib/i18n";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
@@ -137,8 +138,10 @@ export default function OverviewPage() {
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [muted, setMuted] = useState(false);
   const [voiceId, setVoiceId] = useState(DEFAULT_VOICE);
+  const [speed, setSpeed] = useState(0.85);
   const [liveContext, setLiveContext] = useState<LiveContext | null>(null);
   const vapiRef = useRef<VapiInstance>(null);
+  const { t } = useI18n();
 
   /* Volume bars (DOM-direct) */
   const barRefs  = useRef<(HTMLDivElement | null)[]>([]);
@@ -187,7 +190,10 @@ export default function OverviewPage() {
     loadMisc();
     fetch("/api/ai-agent/settings")
       .then(r => r.json())
-      .then((d: { voiceId?: string }) => { if (d.voiceId) setVoiceId(d.voiceId); })
+      .then((d: { voiceId?: string; speed?: number }) => {
+        if (d.voiceId) setVoiceId(d.voiceId);
+        if (d.speed) setSpeed(d.speed);
+      })
       .catch(() => {});
   }, []);
 
@@ -228,27 +234,23 @@ export default function OverviewPage() {
     if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
   }
 
-  const VELA_SYSTEM = `You are Vela — a warm, insightful AI business partner for this phone agent platform.
-
-## MANDATORY OPENING
-Start with exactly: "Welcome, boss. I've been waiting for you."
-Then ask: "Before we dive in — which language would you like to continue in?"
-
-## LANGUAGE RULE
-After they choose a language, use ONLY that language for the entire conversation. Never mix.
+  const VELA_SYSTEM = `You are Vela — a warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
 
 ## YOUR ROLE
-You are the owner's personal AI business analyst with READ-ONLY access to their live account data. Help them understand their business performance, answer data questions, and give actionable insights about their phone agent.
+You have read-only access to the owner's live account data. Help them understand their business performance, answer data questions, and give actionable insights about their Vela phone agent. Think like a trusted advisor — give real insights, not just data readouts.
 
-Vela is a phone-only AI agent — it answers business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. NOT chat or messaging.
+Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
+
+## LANGUAGE
+Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic, French, German, Spanish, and English fluently.
 
 ## VELA PLANS
 Starter $79/mo · Pro $159/mo (most popular) · Premium $299/mo. Annual saves 20%.
 
-## LIVE ACCOUNT DATA (read-only — answer questions using this)
+## LIVE ACCOUNT DATA
 ${liveContext ? buildContextString(liveContext) : "Account data loading — answer general questions about Vela."}
 
-Never read raw data to the user — synthesize it into helpful insights and suggestions.`;
+Do not read raw data aloud — synthesize it into natural, helpful insights.`;
 
   const startCall = useCallback(async () => {
     if (callStatus !== "idle") return;
@@ -266,14 +268,14 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
       });
       await vapi.start({
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: VELA_SYSTEM }] },
-        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed: 0.85 },
-        firstMessage: "Welcome, boss. I've been waiting for you. Before we dive in — which language would you like to continue in?",
-        transcriber: { provider: "deepgram", model: "nova-2", language: "multi", smartFormat: true },
+        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed },
+        firstMessage: "Hi! I'm Vela, your AI business partner. Which language would you prefer for our conversation?",
+        transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
         stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
         startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
       });
     } catch (err) { console.error("[call]", err); setCallStatus("idle"); resetBars(); }
-  }, [callStatus, voiceId, VELA_SYSTEM]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [callStatus, voiceId, speed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
   const toggleMute = useCallback(() => {
@@ -301,8 +303,8 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold" style={{ color: textPrimary }}>AI Agent Overview</h1>
-            <p className="text-xs mt-0.5" style={{ color: textMuted }}>Phone agent performance dashboard</p>
+            <h1 className="text-xl font-bold" style={{ color: textPrimary }}>{t("aiAgent.overview.pageTitle")}</h1>
+            <p className="text-xs mt-0.5" style={{ color: textMuted }}>{t("aiAgent.overview.subtitle")}</p>
           </div>
           <div
             className="flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1.5 rounded-full border mt-0.5"
@@ -315,7 +317,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
             <span className="w-1.5 h-1.5 rounded-full"
               style={{ background: isActive ? "#22C55E" : "#FF6B35", boxShadow: `0 0 6px ${isActive?"#22C55E":"#FF6B35"}`, animation: "pulse2 2s ease-in-out infinite" }}
             />
-            {isActive ? "Voice active" : "Agent online"}
+            {isActive ? t("aiAgent.overview.statusActive") : t("aiAgent.overview.statusOnline")}
           </div>
         </div>
 
@@ -324,7 +326,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
 
           {/* Answer Rate ring */}
           <div className="rounded-2xl border p-4 flex flex-col" style={{ background: cardBg, borderColor: border }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>Answer Rate</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>{t("aiAgent.overview.answerRate")}</p>
             <div className="flex items-center gap-3">
               {loadingCalls
                 ? <div className="w-[60px] h-[60px] rounded-full border-4 animate-pulse" style={{ borderColor: isDark?"#1E2235":"#F1F5F9" }}/>
@@ -344,7 +346,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
           {/* Calls Handled */}
           <div className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: cardBg, borderColor: border }}>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>Calls Handled</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("aiAgent.overview.callsHandled")}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.12)", color: "#FF6B35" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.33c0 .4-.27.67-.67.67C4.4 12 2 6.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" fill="#FF6B35"/>
@@ -361,7 +363,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
           {/* Avg Duration */}
           <div className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: cardBg, borderColor: border }}>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>Avg Duration</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("aiAgent.overview.avgDuration")}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)", color: "#FF3366" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <circle cx="7" cy="7" r="5.5" stroke="#FF3366" strokeWidth="1.3"/>
@@ -379,7 +381,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
           {/* Voice Minutes */}
           <div className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: cardBg, borderColor: border }}>
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>Voice Minutes</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("aiAgent.overview.voiceMinutes")}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.12)", color: "#FF6B35" }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <rect x="4.5" y="1" width="5" height="7" rx="2.5" stroke="#FF6B35" strokeWidth="1.3"/>
@@ -405,8 +407,8 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
             <div className="rounded-2xl border" style={{ background: cardBg, borderColor: border }}>
               <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: border }}>
                 <div>
-                  <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>Call Activity</h2>
-                  <p className="text-[10px] mt-0.5" style={{ color: textMuted }}>Calls per day · last 7 days</p>
+                  <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.callActivity")}</h2>
+                  <p className="text-[10px] mt-0.5" style={{ color: textMuted }}>{t("aiAgent.overview.callActivitySub")}</p>
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg"
                   style={{ background: isDark?"#1A1D2B":"#F9FAFB", color: textMuted }}>
@@ -434,8 +436,8 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>Appointments</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>Booked in system</p>
+                    <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.appointments")}</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.overview.appointmentsSub")}</p>
                   </div>
                 </div>
                 <p className="text-2xl font-bold" style={{ color: textPrimary }}>{apptCount}</p>
@@ -452,8 +454,8 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>Recent Calls</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>Last activity</p>
+                    <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.recentCalls")}</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.overview.recentCallsSub")}</p>
                   </div>
                 </div>
                 {totalCalls === 0
@@ -481,9 +483,9 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
             {/* Phone status */}
             <div className="rounded-2xl border" style={{ background: cardBg, borderColor: border }}>
               <div className="flex items-center justify-between px-4 py-3.5 border-b" style={{ borderColor: border }}>
-                <h2 className="text-xs font-semibold" style={{ color: textPrimary }}>Channel Status</h2>
+                <h2 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.channelStatus")}</h2>
                 <Link href="/app/ai-agent/phone" className="text-[10px] font-semibold hover:underline" style={{ color: "#FF6B35" }}>
-                  Set up
+                  {t("aiAgent.overview.setUp")}
                 </Link>
               </div>
               <div className="p-3">
@@ -568,7 +570,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
                       <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.3"/>
                       <path d="M4.8 4l3.2 2-3.2 2V4z" fill="white"/>
                     </svg>
-                    Talk to Vela
+                    {t("aiAgent.overview.talkToVela")}
                   </button>
                 )}
                 {isConnecting && (
@@ -595,7 +597,7 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
                   <button onClick={resetCall}
                     className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-medium transition-all"
                     style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
-                    New call
+                    {t("aiAgent.overview.newCall")}
                   </button>
                 )}
               </div>
@@ -603,12 +605,12 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
 
             {/* Quick actions */}
             <div className="rounded-2xl border p-4" style={{ background: cardBg, borderColor: border }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>Quick Actions</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>{t("aiAgent.overview.quickActions")}</p>
               <div className="space-y-1">
                 {[
-                  { label: "Train the agent",      href: "/app/ai-agent/training", sub: "Teach Vela your business",   color: "#FF3366" },
-                  { label: "Set up phone number",  href: "/app/ai-agent/phone",    sub: "Get a number for your agent", color: "#FF6B35" },
-                  { label: "View call records",    href: "/app/ai-agent/calls",    sub: "See full call history",       color: "#FF6B35" },
+                  { label: t("aiAgent.overview.trainAgent"),   href: "/app/ai-agent/training", sub: t("aiAgent.overview.trainAgentSub"),  color: "#FF3366" },
+                  { label: t("aiAgent.overview.setupPhone"),   href: "/app/ai-agent/phone",    sub: t("aiAgent.overview.setupPhoneSub"),  color: "#FF6B35" },
+                  { label: t("aiAgent.overview.viewCalls"),    href: "/app/ai-agent/calls",    sub: t("aiAgent.overview.viewCallsSub"),   color: "#FF6B35" },
                 ].map((link) => (
                   <Link key={link.href} href={link.href}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
@@ -642,12 +644,12 @@ Never read raw data to the user — synthesize it into helpful insights and sugg
               </svg>
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold mb-2" style={{ color: textPrimary }}>Your phone agent is ready — 3 steps to go live</p>
+              <p className="text-sm font-semibold mb-2" style={{ color: textPrimary }}>{t("aiAgent.overview.onboardingTitle")}</p>
               <div className="space-y-1.5">
                 {[
-                  { n:"1", text:"Train your agent — run the business interview in", link:"Training →", href:"/app/ai-agent/training" },
-                  { n:"2", text:"Set up your phone number in", link:"Phone Number →", href:"/app/ai-agent/phone" },
-                  { n:"3", text:"Your agent starts answering calls 24/7 → activity appears here", link:null, href:null },
+                  { n:"1", text: t("aiAgent.overview.step1Pre"), link: t("aiAgent.overview.step1Link"), href:"/app/ai-agent/training" },
+                  { n:"2", text: t("aiAgent.overview.step2Pre"), link: t("aiAgent.overview.step2Link"), href:"/app/ai-agent/phone" },
+                  { n:"3", text: t("aiAgent.overview.step3"),    link: null,                            href: null },
                 ].map(step => (
                   <div key={step.n} className="flex items-start gap-2.5">
                     <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5"

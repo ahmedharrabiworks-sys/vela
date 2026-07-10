@@ -124,7 +124,7 @@ ${extra ? `Additional: ${extra}` : ""}
           similarityBoost: 0.8,
           speed,
         },
-        transcriber: { provider: "deepgram", model: "nova-2", language: "multi", smartFormat: true },
+        transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
         stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
         startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
       },

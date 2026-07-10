@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
+import { useI18n } from "@/lib/i18n";
 
 const VOICES = [
   { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus", description: "Deep, authoritative male", gender: "M" },
@@ -13,6 +14,7 @@ const VOICES = [
 
 export default function VoicePage() {
   const { isDark } = useAgentTheme();
+  const { t } = useI18n();
   const [selectedVoice, setSelectedVoice] = useState("PIGsltMj3gFMR34aFDI3");
   const [speed, setSpeed]   = useState(0.85);
   const [saving, setSaving] = useState(false);
@@ -105,13 +107,13 @@ export default function VoicePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>Voice Settings</h1>
-        <p className="text-sm" style={{ color: textMuted }}>Choose how your AI Agent sounds to callers. Click Test to hear a sample.</p>
+        <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>{t("aiAgent.voice.pageTitle")}</h1>
+        <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.voice.subtitle")}</p>
       </div>
 
       {/* Voice picker */}
       <div className="rounded-2xl border p-6" style={{ background: cardBg, borderColor: border }}>
-        <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>Select Voice</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>{t("aiAgent.voice.selectVoice")}</h2>
         <div className="space-y-2">
           {VOICES.map((v) => {
             const active    = selectedVoice === v.id;
@@ -160,14 +162,14 @@ export default function VoicePage() {
                         <rect x="2" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
                         <rect x="5.5" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
                       </svg>
-                      Stop
+                      {t("aiAgent.voice.stop")}
                     </>
                   ) : (
                     <>
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                         <path d="M3 2l5 3-5 3V2z" fill="currentColor"/>
                       </svg>
-                      Test
+                      {t("aiAgent.voice.test")}
                     </>
                   )}
                 </button>
@@ -194,7 +196,7 @@ export default function VoicePage() {
       {/* Speed slider */}
       <div className="rounded-2xl border p-6" style={{ background: cardBg, borderColor: border }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>Speaking Speed</h2>
+          <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.voice.speakingSpeed")}</h2>
           <div className="flex items-center gap-2">
             <span
               className="text-xs font-bold px-2.5 py-1 rounded-full"
@@ -215,7 +217,7 @@ export default function VoicePage() {
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M3 2l5 3-5 3V2z" fill="currentColor"/>
               </svg>
-              Preview speed
+              {t("aiAgent.voice.previewSpeed")}
             </button>
           </div>
         </div>
@@ -258,7 +260,7 @@ export default function VoicePage() {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Saved
+            {t("aiAgent.voice.saved")}
           </span>
         )}
         <button
@@ -267,7 +269,7 @@ export default function VoicePage() {
           className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
           style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}
         >
-          {saving ? "Saving…" : "Save Voice Settings"}
+          {saving ? t("common.saving") : t("aiAgent.voice.save")}
         </button>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAgentTheme } from "../layout";
+import { useI18n } from "@/lib/i18n";
 
 interface CallRecord {
   id: string;
@@ -69,6 +70,7 @@ function OutcomeBadge({ outcome, isDark }: { outcome?: string; isDark: boolean }
 
 export default function CallsPage() {
   const { isDark } = useAgentTheme();
+  const { t } = useI18n();
   const [calls, setCalls]       = useState<CallRecord[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
@@ -98,8 +100,9 @@ export default function CallsPage() {
       setError(null);
     } catch {
       setError("Could not load call records.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -126,7 +129,7 @@ export default function CallsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: textPrimary }}>Calls & Appointments</h1>
+          <h1 className="text-xl font-bold" style={{ color: textPrimary }}>{t("aiAgent.calls.pageTitle")}</h1>
           <p className="text-xs mt-0.5" style={{ color: textMuted }}>
             {calls.length === 0 ? "No calls yet" : `${calls.length} record${calls.length !== 1 ? "s" : ""}`}
             {" · "}
@@ -142,14 +145,14 @@ export default function CallsPage() {
             <path d="M9.5 2A5 5 0 109 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
             <path d="M9.5 2v3h-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Refresh
+          {t("aiAgent.calls.refresh")}
         </button>
       </div>
 
       {/* SQL hint */}
       {error && error.includes("migration") && (
         <div className="rounded-2xl border p-5" style={{ background: isDark ? "rgba(255,107,53,0.05)" : "#FFF5F0", borderColor: "rgba(255,107,53,0.3)" }}>
-          <p className="text-sm font-semibold mb-2" style={{ color: "#FF6B35" }}>Database setup required</p>
+          <p className="text-sm font-semibold mb-2" style={{ color: "#FF6B35" }}>{t("aiAgent.calls.dbRequired")}</p>
           <pre className="text-[10px] p-3 rounded-lg overflow-x-auto" style={{ background: isDark ? "#0F1117" : "#F3F4F6", color: textSub }}>
 {`CREATE TABLE IF NOT EXISTS agent_calls (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -181,16 +184,16 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
               <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <h2 className="text-base font-bold mb-2" style={{ color: textPrimary }}>No calls yet</h2>
+          <h2 className="text-base font-bold mb-2" style={{ color: textPrimary }}>{t("aiAgent.calls.emptyTitle")}</h2>
           <p className="text-sm mb-6 max-w-xs mx-auto" style={{ color: textMuted }}>
-            Calls appear here after a training session or when your phone agent handles a live call.
+            {t("aiAgent.calls.emptyDesc")}
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <a href="/app/ai-agent/training" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
-              Start training interview
+              {t("aiAgent.calls.startTraining")}
             </a>
             <a href="/app/ai-agent/phone" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium" style={{ background: isDark ? "#1E2130" : "#F3F4F6", color: textSub }}>
-              Set up phone number
+              {t("aiAgent.calls.setupPhone")}
             </a>
           </div>
         </div>

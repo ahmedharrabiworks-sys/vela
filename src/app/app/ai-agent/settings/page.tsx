@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
+import { useI18n } from "@/lib/i18n";
 
 const VOICES = [
   { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus — Deep male" },
@@ -44,6 +45,7 @@ interface Settings {
 
 export default function SettingsPage() {
   const { isDark } = useAgentTheme();
+  const { t } = useI18n();
   const [settings, setSettings] = useState<Settings>({
     agentName:          "Vela",
     voiceId:            "PIGsltMj3gFMR34aFDI3",
@@ -110,30 +112,30 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8">
       <div>
-        <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>Agent Settings</h1>
-        <p className="text-sm" style={{ color: textMuted }}>Configure your AI phone agent — how it sounds, behaves, and represents your business.</p>
+        <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>{t("aiAgent.settings.pageTitle")}</h1>
+        <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.settings.subtitle")}</p>
       </div>
 
       {/* Identity */}
       <div className="rounded-2xl border p-6 space-y-4" style={{ background: cardBg, borderColor: border }}>
-        <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>Identity</h2>
+        <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.settings.identity")}</h2>
 
         <div>
-          <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Agent Name</label>
+          <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>{t("aiAgent.settings.agentName")}</label>
           <input
             type="text"
             value={settings.agentName ?? ""}
             onChange={(e) => set("agentName", e.target.value)}
-            placeholder="e.g. Vela"
+            placeholder={t("aiAgent.settings.agentNamePlaceholder")}
             className={inputClass}
             style={inputStyle}
           />
-          <p className="text-[10px] mt-1.5" style={{ color: textMuted }}>The name your agent uses when answering calls.</p>
+          <p className="text-[10px] mt-1.5" style={{ color: textMuted }}>{t("aiAgent.settings.agentNameHint")}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Voice</label>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>{t("aiAgent.settings.voice")}</label>
             <select
               value={settings.voiceId ?? ""}
               onChange={(e) => set("voiceId", e.target.value)}
@@ -146,7 +148,7 @@ export default function SettingsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Language</label>
+            <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>{t("aiAgent.settings.language")}</label>
             <select
               value={settings.language ?? "en"}
               onChange={(e) => set("language", e.target.value)}
@@ -186,7 +188,7 @@ export default function SettingsPage() {
 
       {/* Personality */}
       <div className="rounded-2xl border p-6" style={{ background: cardBg, borderColor: border }}>
-        <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>Personality & Tone</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>{t("aiAgent.settings.personality")}</h2>
         <div className="grid grid-cols-2 gap-2">
           {PERSONALITIES.map((p) => {
             const active = settings.personality === p.value;
@@ -216,7 +218,7 @@ export default function SettingsPage() {
 
       {/* Greeting */}
       <div className="rounded-2xl border p-6" style={{ background: cardBg, borderColor: border }}>
-        <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>Greeting Style</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>{t("aiAgent.settings.greeting")}</h2>
         <div className="space-y-2">
           {GREETING_STYLES.map((g) => {
             const active = settings.greetingStyle === g.value;
@@ -246,7 +248,7 @@ export default function SettingsPage() {
 
       {/* Custom instructions */}
       <div className="rounded-2xl border p-6" style={{ background: cardBg, borderColor: border }}>
-        <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>Custom Instructions</h2>
+        <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.settings.customInstructions")}</h2>
         <p className="text-xs mb-4" style={{ color: textMuted }}>
           Add specific rules or notes. For example: &quot;Always mention our free consultation.&quot; or &quot;Never discuss pricing on the first call.&quot;
         </p>
@@ -271,7 +273,7 @@ export default function SettingsPage() {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            Settings saved
+            {t("aiAgent.settings.saved")}
           </span>
         )}
         <button
@@ -280,7 +282,7 @@ export default function SettingsPage() {
           className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
           style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}
         >
-          {saving ? "Saving…" : "Save Settings"}
+          {saving ? t("common.saving") : t("aiAgent.settings.save")}
         </button>
       </div>
     </div>

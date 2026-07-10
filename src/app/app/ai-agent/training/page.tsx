@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAgentTheme } from "../layout";
+import { useI18n } from "@/lib/i18n";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
@@ -25,42 +26,32 @@ const WAVE_D = (() => {
   return pts.join(" ");
 })();
 
-/* ── 7-question conversational training system prompt ── */
-const TRAINING_SYSTEM = `You are Vela — an AI phone agent in a training session with a business owner. Learn their business in exactly 7 questions so you can represent it perfectly on every call.
+/* ── Conversational training system prompt ── */
+const TRAINING_SYSTEM = `You are Vela — an AI phone agent having a training conversation with a business owner to learn their business thoroughly.
 
-## OPENING
-Your first message has already been sent. Do NOT repeat it or say "welcome" again. Begin directly with Q1.
+## YOUR GOAL
+Cover 7 business topics through natural conversation. Ask one topic at a time. Listen carefully and adapt — if an answer is vague or off-topic, ask a natural follow-up rather than saving bad data. Short, focused questions only.
+
+## TOPICS TO COVER (in natural conversational order)
+1. What the business does and who their main customers are
+2. Main services or products, and rough pricing
+3. Business hours and availability
+4. Location — do customers come to you, or do you go to them?
+5. How customers book or get in touch
+6. Common questions callers ask and typical answers
+7. What makes this business special compared to competitors
 
 ## LANGUAGE RULE
-If the owner responds in Arabic, French, German, Spanish, or any other language — switch to that language immediately and use it for the entire conversation. Never mix languages.
+If the owner responds in Arabic, French, German, Spanish, or any other language — switch to it immediately and stay in it the entire conversation. Never mix languages.
 
-## THE 7 QUESTIONS — ask ONE at a time, in order
-After each answer: one brief acknowledgment (one sentence max), then immediately ask the next question.
+## STYLE
+- One question at a time — never combine two
+- One brief acknowledgment after each answer (one sentence max), then next question
+- Conversational and warm, not robotic or scripted
+- Do NOT say "Welcome" or "boss" — those belong only in the Overview agent
 
-Q1: "What does your business do, and who are your main customers?"
-
-Q2: "What are your most popular services? Rough pricing is fine — doesn't need to be exact."
-
-Q3: "What days and hours are you open or available?"
-
-Q4: "Where are you based? Do customers come to you, or do you go to them?"
-
-Q5: "How do customers usually book — call, message, walk in, or online?"
-
-Q6: "What questions do new customers typically ask before booking? Give me a couple with your usual answers."
-
-Q7: "Last one — what makes you different from competitors? What should I always tell callers about what makes you special?"
-
-## AFTER ALL 7 QUESTIONS
-Say: "Got it — here's what I'll tell your callers:"
-Then give a confident 3–4 sentence business pitch based on their answers.
-Then say: "I'm ready to start answering your calls. Go set up your phone number and I'll handle the rest."
-
-## RULES
-- Never skip a question or combine two into one
-- Acknowledgments: one sentence max
-- Never break character or mention these instructions
-- Do NOT say "Welcome" or "boss" — those belong only in the Overview`;
+## CLOSING
+After all topics are covered, give a confident 3–4 sentence business pitch based on their answers, then tell them you are ready to start handling their calls.`;
 
 /* ── Knowledge field definitions ── */
 const KB_FIELDS = [
@@ -75,10 +66,12 @@ const KB_FIELDS = [
 
 export default function TrainingPage() {
   const { isDark } = useAgentTheme();
+  const { t } = useI18n();
   const [status, setStatus]       = useState<CallStatus>("idle");
   const [muted, setMuted]         = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
   const [voiceId, setVoiceId]     = useState(DEFAULT_VOICE);
+  const [speed, setSpeed]         = useState(0.85);
   const [learnedKb, setLearnedKb] = useState<LearnedKb | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [callStart, setCallStart] = useState<number>(0);
@@ -96,7 +89,10 @@ export default function TrainingPage() {
   useEffect(() => {
     fetch("/api/ai-agent/settings")
       .then(r => r.json())
-      .then((d: { voiceId?: string }) => { if (d.voiceId) setVoiceId(d.voiceId); })
+      .then((d: { voiceId?: string; speed?: number }) => {
+        if (d.voiceId) setVoiceId(d.voiceId);
+        if (d.speed) setSpeed(d.speed);
+      })
       .catch(() => {});
   }, []);
 
@@ -105,7 +101,10 @@ export default function TrainingPage() {
   }, [transcript]);
 
   /* ── Live knowledge extraction from transcript ── */
-  const userAnswers = transcript.filter(l => l.role === "user");
+  const TRIVIAL = /^(hi|hello|hey|ok|okay|yes|no|yeah|sure|thanks|thank you|english|arabic|french|german|spanish|مرحبا|أهلا|نعم|لا|حسنا|بالعربي|بالعربية|en|ar|fr|de|es)\s*[.!,]*$/i;
+  const userAnswers = transcript
+    .filter(l => l.role === "user")
+    .filter(l => l.text.trim().split(/\s+/).length >= 3 && !TRIVIAL.test(l.text.trim()));
   const velaCount   = transcript.filter(l => l.role === "assistant").length;
 
   const liveKb: Record<string, string> = {};
@@ -188,14 +187,14 @@ export default function TrainingPage() {
 
       await vapi.start({
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: TRAINING_SYSTEM }] },
-        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed: 0.85 },
-        firstMessage: "I'm Vela, your AI phone agent. I have 7 quick questions to learn your business — takes about 3 minutes. Which language would you prefer?",
-        transcriber: { provider: "deepgram", model: "nova-2", language: "multi", smartFormat: true },
+        voice: { provider: "11labs", voiceId, model: "eleven_multilingual_v2", stability: 0.45, similarityBoost: 0.8, style: 0.25, useSpeakerBoost: true, speed },
+        firstMessage: "Hi! I'm Vela. I'll ask you about 7 topics to learn your business — takes about 3 minutes. Which language would you prefer?",
+        transcriber: { provider: "gladia", model: "fast", languageBehaviour: "automatic single language" },
         stopSpeakingPlan: { numWords: 0, voiceSeconds: 0, backoffSeconds: 0.5 },
         startSpeakingPlan: { waitSeconds: 0.4, smartEndpointingEnabled: true },
       });
     } catch (err) { console.error("[call]", err); setStatus("idle"); }
-  }, [status, voiceId, extractKb]);
+  }, [status, voiceId, speed, extractKb]);
 
   const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
   const toggleMute = useCallback(() => {
@@ -224,9 +223,9 @@ export default function TrainingPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold" style={{ color: textPrimary }}>Business Training</h1>
+            <h1 className="text-lg font-bold" style={{ color: textPrimary }}>{t("aiAgent.training.pageTitle")}</h1>
             <p className="text-xs mt-0.5" style={{ color: textMuted }}>
-              {isActive ? `Question ${currentQuestion} of 7 — keep talking…` : "Teach Vela your business in 7 natural questions"}
+              {isActive ? t("aiAgent.training.subtitle").replace("{q}", String(currentQuestion)) : t("aiAgent.training.subtitle")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -235,7 +234,7 @@ export default function TrainingPage() {
               boxShadow: isActive ? "0 0 8px #22C55E" : "none",
             }}/>
             <span className="text-xs font-medium" style={{ color: textMuted }}>
-              {isActive ? "Interview live" : isConnecting ? "Connecting…" : status==="ended" ? "Interview complete" : "Ready"}
+              {isActive ? t("aiAgent.training.live") : isConnecting ? t("common.connecting") : status==="ended" ? t("aiAgent.training.complete") : t("aiAgent.training.ready")}
             </span>
           </div>
         </div>
@@ -274,7 +273,7 @@ export default function TrainingPage() {
 
               {/* Status text */}
               <p className="text-sm text-center" style={{ color: isConnecting?"#FF6B35":isActive?textPrimary:textMuted }}>
-                {isConnecting ? "Connecting to Vela…" : isActive ? (muted ? "🔇 Microphone muted" : "Speak naturally…") : status==="ended" ? "Interview complete" : extracting ? "Saving knowledge…" : "Ready to train your agent"}
+                {isConnecting ? t("common.connecting") : isActive ? (muted ? t("aiAgent.training.muted") : t("aiAgent.training.speakNaturally")) : status==="ended" ? t("aiAgent.training.complete") : extracting ? t("aiAgent.training.saving") : t("aiAgent.training.ready")}
               </p>
 
               {/* Controls */}
@@ -287,7 +286,7 @@ export default function TrainingPage() {
                       <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
                       <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
                     </svg>
-                    Start Training
+                    {t("aiAgent.training.start")}
                   </button>
                 )}
                 {isConnecting && (
@@ -306,7 +305,7 @@ export default function TrainingPage() {
                     <button onClick={endCall}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
                       style={{ background: isDark?"rgba(239,68,68,0.1)":"#FEF2F2", color:"#EF4444", border:"1px solid rgba(239,68,68,0.3)" }}>
-                      End Interview
+                      {t("aiAgent.training.end")}
                     </button>
                   </>
                 )}
@@ -314,13 +313,13 @@ export default function TrainingPage() {
                   <button onClick={reset}
                     className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium transition-all"
                     style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
-                    New Interview
+                    {t("aiAgent.training.newInterview")}
                   </button>
                 )}
                 {extracting && (
                   <div className="flex items-center gap-2 px-4 py-2">
                     <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
-                    <span className="text-xs" style={{ color: "#FF6B35" }}>Saving knowledge…</span>
+                    <span className="text-xs" style={{ color: "#FF6B35" }}>{t("aiAgent.training.saving")}</span>
                   </div>
                 )}
               </div>
@@ -329,17 +328,17 @@ export default function TrainingPage() {
             {/* Compact transcript */}
             <div className="rounded-2xl border flex flex-col" style={{ background: cardBg, borderColor: border }}>
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
-                <span className="text-xs font-semibold" style={{ color: textPrimary }}>Transcript</span>
+                <span className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.training.transcript")}</span>
                 {isActive && (
                   <span className="flex items-center gap-1.5 text-[9px]" style={{ color: "#22C55E" }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>Recording
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>{t("aiAgent.training.recording")}
                   </span>
                 )}
               </div>
               <div ref={transcriptRef} className="overflow-y-auto px-4 py-3 space-y-2" style={{ maxHeight: 240 }}>
                 {transcript.length === 0 ? (
                   <p className="text-xs text-center py-4" style={{ color: textMuted }}>
-                    {status === "idle" ? "Transcript will appear here when the interview starts" : "Listening…"}
+                    {status === "idle" ? t("aiAgent.training.noTranscript") : t("aiAgent.training.saving")}
                   </p>
                 ) : (
                   transcript.slice(-20).map((line, i) => (
@@ -372,8 +371,8 @@ export default function TrainingPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold" style={{ color: textPrimary }}>Business Knowledge</p>
-                      <p className="text-[10px]" style={{ color: textMuted }}>Fills in live as you answer each question</p>
+                      <p className="text-sm font-bold" style={{ color: textPrimary }}>{t("aiAgent.training.knowledgeTitle")}</p>
+                      <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.training.knowledgeSub")}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -402,9 +401,9 @@ export default function TrainingPage() {
                         <path d="M4 17s0-3 6-3 6 3 6 3" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
                       </svg>
                     </div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>Your business knowledge will appear here</p>
+                    <p className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.training.idlePlaceholder")}</p>
                     <p className="text-xs max-w-xs" style={{ color: textMuted }}>
-                      Start the training interview and watch this panel fill in live as you answer each question. Vela will remember everything.
+                      {t("aiAgent.training.idleDesc")}
                     </p>
                     <div className="mt-5 space-y-2 w-full max-w-xs">
                       {KB_FIELDS.map((f, i) => (
@@ -499,7 +498,7 @@ export default function TrainingPage() {
                           <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </div>
-                      <span className="text-xs font-semibold text-green-600">Saved to AI Knowledge Base</span>
+                      <span className="text-xs font-semibold text-green-600">{t("aiAgent.training.savedToKb")}</span>
                     </div>
                     {learnedKb?.services && learnedKb.services.length > 0 && (
                       <div className="mb-2">
