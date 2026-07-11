@@ -143,7 +143,7 @@ ${languageInstruction}
 
 ## OPENING
 ${greetingInstruction}
-Generate your greeting naturally — vary the wording call to call. Never recite a fixed script. You speak first.
+Generate your greeting naturally. Vary your exact wording every call — never open with the same phrase twice, and never use a fixed word like "مرحبا" or "Hello" as a rote opener. You speak first.
 
 ## BUSINESS KNOWLEDGE
 ${svcList ? `Services: ${svcList}` : "No services listed — let callers ask about what you offer."}
@@ -172,7 +172,7 @@ ${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}## RULES
 export function buildTrainingSystem(savedLanguage?: string): string {
   const langSetup =
     savedLanguage && savedLanguage !== "en"
-      ? `The owner's preferred language is already set to ${LANG_NAMES[savedLanguage] ?? savedLanguage}. Open the conversation IMMEDIATELY in ${LANG_NAMES[savedLanguage] ?? savedLanguage} with question 1 — do NOT ask about language preferences.`
+      ? `The owner's preferred language is already set to ${LANG_NAMES[savedLanguage] ?? savedLanguage}. Open the conversation IMMEDIATELY in ${LANG_NAMES[savedLanguage] ?? savedLanguage} with question 1 — do NOT ask about language preferences. Vary your opening greeting — never use the same first word twice.`
       : savedLanguage === "en"
       ? `The owner's preferred language is English. Open immediately with question 1 in English — do NOT ask about language preferences.`
       : `Begin by greeting the owner briefly and asking which language they prefer: Arabic (العربية), French, German, Spanish, or English. Once they answer, switch to that language immediately.`;
@@ -182,6 +182,7 @@ export function buildTrainingSystem(savedLanguage?: string): string {
 ## LANGUAGE (STRICT — READ FIRST)
 ${langSetup}
 Once the language is established: stay in it for the ENTIRE interview, no exceptions.
+IMPORTANT: The topic keys (businessType, services, hours, location, booking, faqs, special) are internal code identifiers only — they do NOT indicate the required conversation language. Ask all questions and give ALL responses in the established language.
 CRITICAL: If the owner types an answer instead of speaking — respond in the SAME language you established. Arabic typed → Arabic response. French typed → French response. Never deviate.
 
 ## INTERVIEW QUESTIONS (ask in order, one at a time)

@@ -48,9 +48,10 @@ export default function SettingsPage() {
     greetingStyle:      "warm",
     language:           "en",
   });
-  const [saving, setSaving]   = useState(false);
-  const [saved, setSaved]     = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [saved, setSaved]         = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [loading, setLoading]     = useState(true);
 
   const bg          = isDark ? "#0B0D14" : "#F8F9FF";
   const cardBg      = isDark ? "#111420" : "#FFFFFF";
@@ -79,15 +80,24 @@ export default function SettingsPage() {
 
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch("/api/ai-agent/settings", {
+      const res = await fetch("/api/ai-agent/settings", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(settings),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setSaveError(data.error ?? "Save failed — please try again");
+        setSaving(false);
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch { /* ignore */ }
+    } catch {
+      setSaveError("Network error — please check your connection");
+    }
     setSaving(false);
   };
 
@@ -146,7 +156,7 @@ export default function SettingsPage() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  <optgroup label="English">
+                  <optgroup label="Multilingual — English, French, German, Spanish & more">
                     {VOICES.filter((v) => v.language === "en").map((v) => (
                       <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
                     ))}
@@ -289,6 +299,9 @@ export default function SettingsPage() {
               </svg>
               {t("aiAgent.settings.saved")}
             </span>
+          )}
+          {saveError && (
+            <span className="text-xs text-red-400 leading-snug">{saveError}</span>
           )}
           <button
             onClick={save}

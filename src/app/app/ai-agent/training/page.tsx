@@ -67,8 +67,9 @@ export default function TrainingPage() {
   const { isDark } = useAgentTheme();
   const { t } = useI18n();
   const [status, setStatus]       = useState<CallStatus>("idle");
-  const [callError, setCallError] = useState<string | null>(null);
-  const [muted, setMuted]         = useState(false);
+  const [callError, setCallError]         = useState<string | null>(null);
+  const [muted, setMuted]                 = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
   const [typedAnswer, setTypedAnswer] = useState("");
   const [learnedKb, setLearnedKb] = useState<LearnedKb | null>(null);
@@ -98,15 +99,16 @@ export default function TrainingPage() {
     // The phone agent settings default language to "en", which would lock training
     // to English even when the owner has set Arabic in their Assistant Settings.
     Promise.all([
-      fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({}) as object),
-      fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({}) as object),
+      fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({})),
+      fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({})),
     ]).then(([d, a]: [{ voiceId?: string; speed?: number }, { preferredLanguage?: string }]) => {
       const lang = a.preferredLanguage ?? undefined;
       // Owner's explicit choice wins; smart Arabic default only when nothing is saved
       voiceIdRef.current = d.voiceId || getDefaultVoiceId(lang);
       if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
       agentLanguageRef.current = lang;
-    }).catch(() => {});
+      setSettingsReady(true);
+    }).catch(() => { setSettingsReady(true); });
   }, []);
 
   useEffect(() => {
@@ -352,12 +354,16 @@ export default function TrainingPage() {
               <div className="flex items-center gap-2 flex-wrap justify-center">
                 {status === "idle" && (
                   <button onClick={startCall}
-                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95"
+                    disabled={!settingsReady}
+                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:hover:scale-100"
                     style={{ background:"linear-gradient(135deg,#FF3366,#FF6B35)", boxShadow:"0 4px 20px rgba(255,51,102,0.35)" }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
-                      <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
-                    </svg>
+                    {!settingsReady
+                      ? <div className="w-3.5 h-3.5 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" />
+                      : <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
+                          <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
+                        </svg>
+                    }
                     {t("aiAgent.training.start")}
                   </button>
                 )}

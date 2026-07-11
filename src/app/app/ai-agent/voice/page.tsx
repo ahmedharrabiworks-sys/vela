@@ -16,6 +16,7 @@ export default function VoicePage() {
   const [playing, setPlaying]     = useState<string | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
   const [previewNote, setPreviewNote] = useState<string | null>(null);
+  const [saveError, setSaveError]     = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const bg          = isDark ? "#0B0D14" : "#F8F9FF";
@@ -84,15 +85,24 @@ export default function VoicePage() {
 
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch("/api/ai-agent/settings", {
+      const res = await fetch("/api/ai-agent/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ voiceId: selectedVoice, speed }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setSaveError(data.error ?? "Save failed — please try again");
+        setSaving(false);
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch { /* ignore */ }
+    } catch {
+      setSaveError("Network error — please check your connection");
+    }
     setSaving(false);
   };
 
@@ -133,7 +143,7 @@ export default function VoicePage() {
             {(["en", "ar"] as const).map((lang) => (
               <div key={lang} className={lang === "ar" ? "mt-4" : ""}>
                 <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: textMuted }}>
-                  {lang === "en" ? "English" : "Arabic (العربية)"}
+                  {lang === "en" ? "Multilingual — English, French, German, Spanish & more" : "Arabic (العربية)"}
                 </p>
                 <div className="space-y-2">
                   {VOICES.filter((v) => v.language === lang).map((v) => {
@@ -290,6 +300,9 @@ export default function VoicePage() {
                   </svg>
                   {t("aiAgent.voice.saved")}
                 </span>
+              )}
+              {saveError && (
+                <span className="text-xs text-red-400 leading-snug">{saveError}</span>
               )}
               <button
                 onClick={save}

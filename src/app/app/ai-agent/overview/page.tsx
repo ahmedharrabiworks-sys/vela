@@ -159,9 +159,10 @@ export default function OverviewPage() {
   const [apptCount, setApptCount] = useState(0);
 
   /* Vapi state */
-  const [callStatus, setCallStatus] = useState<CallStatus>("idle");
-  const [callError, setCallError]   = useState<string | null>(null);
-  const [muted, setMuted] = useState(false);
+  const [callStatus, setCallStatus]     = useState<CallStatus>("idle");
+  const [callError, setCallError]       = useState<string | null>(null);
+  const [muted, setMuted]               = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
   const voiceIdRef     = useRef(DEFAULT_VOICE_ID);
   const speedRef       = useRef(0.85);
   const convStyleRef   = useRef("warm");
@@ -224,8 +225,9 @@ export default function OverviewPage() {
         if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
         if (d.conversationStyle) convStyleRef.current = d.conversationStyle;
         prefLangRef.current = lang;
+        setSettingsReady(true);
       })
-      .catch(() => {});
+      .catch(() => { setSettingsReady(true); });
   }, []);
 
   /* Prefetch agent context (for smart system prompt) */
@@ -291,7 +293,7 @@ You have read-only access to the owner's live account data. Help them understand
 Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
 
 ## OPENING
-Open the conversation immediately — greet the owner warmly and briefly, then wait for their question. You speak first. Keep it to one sentence.
+Open the conversation immediately — greet the owner warmly and briefly, then wait for their question. You speak first. Keep it to one sentence. Vary your exact wording every session — never open with "مرحبا" or any other fixed phrase two sessions in a row.
 
 ## LANGUAGE
 ${langInstruction}
@@ -643,12 +645,16 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                 {callStatus === "idle" && (
                   <>
                     <button onClick={startCall}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                      disabled={!settingsReady}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60"
                       style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow:"0 3px 12px rgba(255,107,53,0.4)" }}>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.3"/>
-                        <path d="M4.8 4l3.2 2-3.2 2V4z" fill="white"/>
-                      </svg>
+                      {!settingsReady
+                        ? <div className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" />
+                        : <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.3"/>
+                            <path d="M4.8 4l3.2 2-3.2 2V4z" fill="white"/>
+                          </svg>
+                      }
                       {t("aiAgent.overview.talkToVela")}
                     </button>
                   </>
