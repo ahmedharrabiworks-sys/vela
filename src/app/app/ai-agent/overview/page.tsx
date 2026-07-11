@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   DEFAULT_VOICE_ID,
   clampSpeed,
+  getDefaultVoiceId,
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
@@ -217,10 +218,12 @@ export default function OverviewPage() {
     fetch("/api/ai-agent/assistant-settings")
       .then(r => r.json())
       .then((d: { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string }) => {
-        if (d.voiceId) voiceIdRef.current = d.voiceId;
+        const lang = d.preferredLanguage ?? undefined;
+        // Owner's explicit choice wins; smart Arabic default only when nothing is saved
+        voiceIdRef.current = d.voiceId || getDefaultVoiceId(lang);
         if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
         if (d.conversationStyle) convStyleRef.current = d.conversationStyle;
-        if (d.preferredLanguage) prefLangRef.current = d.preferredLanguage;
+        prefLangRef.current = lang;
       })
       .catch(() => {});
   }, []);
@@ -328,7 +331,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
       const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
       await vapi.start({
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: velaSystem }] },
-        voice: getVoiceConfig(voiceIdRef.current, speedRef.current, prefLangRef.current),
+        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,

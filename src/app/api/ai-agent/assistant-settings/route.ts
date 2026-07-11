@@ -61,22 +61,36 @@ export async function POST(req: NextRequest) {
   const { tenant } = result;
 
   const body = await req.json().catch(() => ({})) as AssistantSettings;
-  const settings: AssistantSettings = {
-    voiceId:           body.voiceId ?? undefined,
-    speed:             typeof body.speed === "number" ? body.speed : undefined,
-    conversationStyle: body.conversationStyle ?? undefined,
-    preferredLanguage: body.preferredLanguage ?? undefined,
-  };
 
   const admin = createSupabaseAdmin() as any;
-  const { error: updateErr } = await admin
-    .from("tenant_config")
-    .update({ assistant_settings: settings })
-    .eq("tenant_id", tenant.id);
 
-  if (updateErr) {
-    console.error("[ai-agent/assistant-settings] update error:", updateErr.code, updateErr.message);
-    if (updateErr.code === "42703") {
+  // Read existing settings to merge (prevents partial saves from clobbering other fields)
+  const { data: existingCfg } = await admin
+    .from("tenant_config")
+    .select("assistant_settings")
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+
+  const existing = ((existingCfg?.assistant_settings as Record<string, unknown>) ?? {}) as AssistantSettings;
+
+  const settings: AssistantSettings = {
+    ...existing,
+    ...(body.voiceId            !== undefined ? { voiceId:            body.voiceId }            : {}),
+    ...(typeof body.speed === "number"        ? { speed:              body.speed }              : {}),
+    ...(body.conversationStyle  !== undefined ? { conversationStyle:  body.conversationStyle }  : {}),
+    ...(body.preferredLanguage  !== undefined ? { preferredLanguage:  body.preferredLanguage }  : {}),
+  };
+
+  const { error: upsertErr } = await admin
+    .from("tenant_config")
+    .upsert(
+      { tenant_id: tenant.id, assistant_settings: settings },
+      { onConflict: "tenant_id" }
+    );
+
+  if (upsertErr) {
+    console.error("[ai-agent/assistant-settings] upsert error:", upsertErr.code, upsertErr.message);
+    if (upsertErr.code === "42703") {
       return NextResponse.json(
         { error: "Run SQL migration: ALTER TABLE tenant_config ADD COLUMN IF NOT EXISTS assistant_settings JSONB DEFAULT '{}'::jsonb" },
         { status: 422 }

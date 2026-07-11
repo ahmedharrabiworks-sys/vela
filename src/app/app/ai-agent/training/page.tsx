@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   DEFAULT_VOICE_ID,
   clampSpeed,
+  getDefaultVoiceId,
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
@@ -100,9 +101,11 @@ export default function TrainingPage() {
       fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({}) as object),
       fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({}) as object),
     ]).then(([d, a]: [{ voiceId?: string; speed?: number }, { preferredLanguage?: string }]) => {
-      if (d.voiceId) voiceIdRef.current = d.voiceId;
+      const lang = a.preferredLanguage ?? undefined;
+      // Owner's explicit choice wins; smart Arabic default only when nothing is saved
+      voiceIdRef.current = d.voiceId || getDefaultVoiceId(lang);
       if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
-      if (a.preferredLanguage) agentLanguageRef.current = a.preferredLanguage;
+      agentLanguageRef.current = lang;
     }).catch(() => {});
   }, []);
 
@@ -228,7 +231,7 @@ export default function TrainingPage() {
           messages: [{ role: "system", content: buildTrainingSystem(agentLanguageRef.current) }],
           tools: [RECORD_ANSWER_TOOL],
         },
-        voice: getVoiceConfig(voiceIdRef.current, speedRef.current, agentLanguageRef.current),
+        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import {
   DEFAULT_VOICE_ID,
+  getDefaultVoiceId,
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
@@ -87,9 +88,10 @@ export async function POST(req: NextRequest) {
     } catch { /* ignore */ }
 
     const agentName    = (settings.agentName as string | undefined) || "Vela";
-    const voiceId      = (settings.voiceId as string | undefined) || DEFAULT_VOICE_ID;
-    const speed        = typeof settings.speed === "number" ? settings.speed : 0.85;
     const language     = (settings.language as string | undefined) || "";
+    // Owner's explicit choice wins; smart Arabic default only when nothing is saved
+    const voiceId      = (settings.voiceId as string | undefined) || getDefaultVoiceId(language);
+    const speed        = typeof settings.speed === "number" ? settings.speed : 0.85;
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
     const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings);
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }],
         },
-        voice: getVoiceConfig(voiceId, speed, language),
+        voice: getVoiceConfig(voiceId, speed),
         transcriber: getTranscriberConfig(),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         stopSpeakingPlan,

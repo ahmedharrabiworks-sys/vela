@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
+import { getDefaultVoiceId, getVoiceConfig, clampSpeed } from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
@@ -65,34 +66,65 @@ export async function POST(req: NextRequest) {
   const { tenant } = result;
 
   const body = await req.json().catch(() => ({})) as AgentSettings;
-  const settings: AgentSettings = {
-    voiceId:            body.voiceId            ?? undefined,
-    speed:              typeof body.speed === "number" ? body.speed : undefined,
-    tone:               body.tone               ?? undefined,
-    customInstructions: body.customInstructions ?? "",
-    agentName:          body.agentName          ?? undefined,
-    personality:        body.personality        ?? undefined,
-    greetingStyle:      body.greetingStyle      ?? undefined,
-    language:           body.language           ?? undefined,
-  };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
-  const { error: updateErr } = await admin
-    .from("tenant_config")
-    .update({ agent_settings: settings })
-    .eq("tenant_id", tenant.id);
 
-  if (updateErr) {
-    // Column may not exist yet — report but don't hard fail
-    console.error("[ai-agent/settings] update error:", updateErr.code, updateErr.message);
-    if (updateErr.code === "42703") {
+  // Read existing settings + vapi_assistant_id in one query
+  const { data: existingCfg } = await admin
+    .from("tenant_config")
+    .select("agent_settings, vapi_assistant_id")
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+
+  const existing = ((existingCfg?.agent_settings as Record<string, unknown>) ?? {}) as AgentSettings;
+
+  // Merge: only override fields explicitly present in the request body.
+  // This prevents voice/page.tsx (which only sends voiceId+speed) from
+  // clobbering agentName/personality/language saved via settings/page.tsx.
+  const settings: AgentSettings = {
+    ...existing,
+    ...(body.voiceId            !== undefined ? { voiceId:            body.voiceId }            : {}),
+    ...(typeof body.speed === "number"        ? { speed:              body.speed }              : {}),
+    ...(body.tone               !== undefined ? { tone:               body.tone }               : {}),
+    ...(body.customInstructions !== undefined ? { customInstructions: body.customInstructions } : {}),
+    ...(body.agentName          !== undefined ? { agentName:          body.agentName }          : {}),
+    ...(body.personality        !== undefined ? { personality:        body.personality }        : {}),
+    ...(body.greetingStyle      !== undefined ? { greetingStyle:      body.greetingStyle }      : {}),
+    ...(body.language           !== undefined ? { language:           body.language }           : {}),
+  };
+
+  const { error: upsertErr } = await admin
+    .from("tenant_config")
+    .upsert(
+      { tenant_id: tenant.id, agent_settings: settings },
+      { onConflict: "tenant_id" }
+    );
+
+  if (upsertErr) {
+    console.error("[ai-agent/settings] upsert error:", upsertErr.code, upsertErr.message);
+    if (upsertErr.code === "42703") {
       return NextResponse.json(
         { error: "Run SQL migration: ALTER TABLE tenant_config ADD COLUMN IF NOT EXISTS agent_settings JSONB DEFAULT '{}'::jsonb" },
         { status: 422 }
       );
     }
     return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
+  }
+
+  // Sync voice to the Vapi assistant immediately so inbound calls hear the new voice
+  // without requiring a re-provision. Fire-and-forget — never block the settings save.
+  const assistantId = existingCfg?.vapi_assistant_id as string | null | undefined;
+  const vapiKey = process.env.VAPI_API_KEY;
+  if (assistantId && vapiKey) {
+    const lang    = (settings.language as string | undefined) || "";
+    const voiceId = (settings.voiceId  as string | undefined) || getDefaultVoiceId(lang);
+    const speed   = typeof settings.speed === "number" ? settings.speed : 0.85;
+    fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${vapiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ voice: getVoiceConfig(voiceId, clampSpeed(speed)) }),
+    }).catch(() => {});
   }
 
   return NextResponse.json({ ok: true });

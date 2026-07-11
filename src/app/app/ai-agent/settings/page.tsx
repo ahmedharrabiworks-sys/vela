@@ -3,16 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_VOICE_ID, ARABIC_VOICE_ID } from "@/lib/vapi-agent-config";
-
-const VOICES = [
-  { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus — Deep male" },
-  { id: "EST9Ui6982FZPSi7gCHi", name: "Aria — Warm female" },
-  { id: "Wq15xSaY3gWvazBRaGEU", name: "Dylan — Energetic male" },
-  { id: "f5HLTX707KIM4SzJYzSz", name: "Luna — Calm female" },
-  { id: "6aDn1KB0hjpdcocrUkmq", name: "Cole — Confident male" },
-  { id: ARABIC_VOICE_ID,        name: "Arabic Voice — Best for Arabic callers ★" },
-];
+import { DEFAULT_VOICE_ID, VOICES } from "@/lib/vapi-agent-config";
 
 const PERSONALITIES = [
   { value: "friendly",     label: "Friendly",     description: "Warm, approachable, builds rapport quickly" },
@@ -155,9 +146,16 @@ export default function SettingsPage() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  {VOICES.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
+                  <optgroup label="English">
+                    {VOICES.filter((v) => v.language === "en").map((v) => (
+                      <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Arabic (العربية)">
+                    {VOICES.filter((v) => v.language === "ar").map((v) => (
+                      <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
               <div>

@@ -3,15 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_VOICE_ID } from "@/lib/vapi-agent-config";
-
-const VOICES = [
-  { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus", description: "Deep, authoritative male", gender: "M" },
-  { id: "EST9Ui6982FZPSi7gCHi", name: "Aria",   description: "Warm, professional female", gender: "F" },
-  { id: "Wq15xSaY3gWvazBRaGEU", name: "Dylan",  description: "Clear, energetic male", gender: "M" },
-  { id: "f5HLTX707KIM4SzJYzSz", name: "Luna",   description: "Calm, elegant female", gender: "F" },
-  { id: "6aDn1KB0hjpdcocrUkmq", name: "Cole",   description: "Confident, smooth male", gender: "M" },
-];
+import { DEFAULT_VOICE_ID, VOICES, getDefaultVoiceId } from "@/lib/vapi-agent-config";
 
 export default function VoicePage() {
   const { isDark } = useAgentTheme();
@@ -38,9 +30,10 @@ export default function VoicePage() {
       try {
         const res = await fetch("/api/ai-agent/settings");
         if (res.ok) {
-          const data = await res.json() as { voiceId?: string; speed?: number };
-          if (data.voiceId) setSelectedVoice(data.voiceId);
-          if (data.speed)   setSpeed(data.speed);
+          const data = await res.json() as { voiceId?: string; speed?: number; language?: string };
+          // Owner's explicit choice wins; smart Arabic default only when nothing is saved
+          setSelectedVoice(data.voiceId || getDefaultVoiceId(data.language));
+          if (data.speed) setSpeed(data.speed);
         }
       } catch { /* ignore */ }
       setLoading(false);
@@ -136,80 +129,89 @@ export default function VoicePage() {
           {/* Voice list — 3/5 */}
           <div className="lg:col-span-3 rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>{t("aiAgent.voice.selectVoice")}</h2>
-            <div className="space-y-2">
-              {VOICES.map((v) => {
-                const active       = selectedVoice === v.id;
-                const isPlaying    = playing === v.id;
-                const isGenerating = generating === v.id;
-                return (
-                  <div
-                    key={v.id}
-                    className="flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer"
-                    style={{
-                      background:  active ? (isDark ? "rgba(255,107,53,0.09)" : "#FFF5F0") : inputBg,
-                      borderColor: active ? "#FF6B35" : border,
-                    }}
-                    onClick={() => setSelectedVoice(v.id)}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{
-                        background: active ? "linear-gradient(135deg,#FF6B35,#FF3366)" : (isDark ? "#1A1D2A" : "#F3F4F6"),
-                        color: active ? "white" : textMuted,
-                      }}
-                    >
-                      {v.gender}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: textPrimary }}>{v.name}</p>
-                      <p className="text-xs" style={{ color: textMuted }}>{v.description}</p>
-                    </div>
 
-                    <button
-                      onClick={(e) => { e.stopPropagation(); playPreview(v.id); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0"
-                      style={{
-                        background: (isPlaying || isGenerating) ? (isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0") : (isDark ? "#1A1D2A" : "#F3F4F6"),
-                        color: (isPlaying || isGenerating) ? "#FF6B35" : textMuted,
-                        border: `1px solid ${(isPlaying || isGenerating) ? "#FF6B35" : border}`,
-                      }}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                          <span>…</span>
-                        </>
-                      ) : isPlaying ? (
-                        <>
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <rect x="2" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
-                            <rect x="5.5" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
-                          </svg>
-                          {t("aiAgent.voice.stop")}
-                        </>
-                      ) : (
-                        <>
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M3 2l5 3-5 3V2z" fill="currentColor"/>
-                          </svg>
-                          {t("aiAgent.voice.test")}
-                        </>
-                      )}
-                    </button>
+            {(["en", "ar"] as const).map((lang) => (
+              <div key={lang} className={lang === "ar" ? "mt-4" : ""}>
+                <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: textMuted }}>
+                  {lang === "en" ? "English" : "Arabic (العربية)"}
+                </p>
+                <div className="space-y-2">
+                  {VOICES.filter((v) => v.language === lang).map((v) => {
+                    const active       = selectedVoice === v.id;
+                    const isPlaying    = playing === v.id;
+                    const isGenerating = generating === v.id;
+                    return (
+                      <div
+                        key={v.id}
+                        className="flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer"
+                        style={{
+                          background:  active ? (isDark ? "rgba(255,107,53,0.09)" : "#FFF5F0") : inputBg,
+                          borderColor: active ? "#FF6B35" : border,
+                        }}
+                        onClick={() => setSelectedVoice(v.id)}
+                      >
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{
+                            background: active ? "linear-gradient(135deg,#FF6B35,#FF3366)" : (isDark ? "#1A1D2A" : "#F3F4F6"),
+                            color: active ? "white" : textMuted,
+                          }}
+                        >
+                          {v.name[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold" style={{ color: textPrimary }}>{v.name}</p>
+                          <p className="text-xs" style={{ color: textMuted }}>{v.description}</p>
+                        </div>
 
-                    {active && (
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "#FF6B35" }}>
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); playPreview(v.id); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0"
+                          style={{
+                            background: (isPlaying || isGenerating) ? (isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0") : (isDark ? "#1A1D2A" : "#F3F4F6"),
+                            color: (isPlaying || isGenerating) ? "#FF6B35" : textMuted,
+                            border: `1px solid ${(isPlaying || isGenerating) ? "#FF6B35" : border}`,
+                          }}
+                        >
+                          {isGenerating ? (
+                            <>
+                              <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                              <span>…</span>
+                            </>
+                          ) : isPlaying ? (
+                            <>
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <rect x="2" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
+                                <rect x="5.5" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
+                              </svg>
+                              {t("aiAgent.voice.stop")}
+                            </>
+                          ) : (
+                            <>
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M3 2l5 3-5 3V2z" fill="currentColor"/>
+                              </svg>
+                              {t("aiAgent.voice.test")}
+                            </>
+                          )}
+                        </button>
+
+                        {active && (
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "#FF6B35" }}>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
             {previewNote && (
-              <p className="text-xs mt-3 px-1" style={{ color: textMuted }}>ℹ {previewNote}</p>
+              <p className="text-xs mt-3 px-1" style={{ color: textMuted }}>&#x2139; {previewNote}</p>
             )}
           </div>
 

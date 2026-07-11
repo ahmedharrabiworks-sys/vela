@@ -3,6 +3,7 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { ensureTenant } from "@/lib/ensure-tenant";
 import {
   DEFAULT_VOICE_ID,
+  getDefaultVoiceId,
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
@@ -95,9 +96,10 @@ export async function POST(req: NextRequest) {
   } catch { /* ignore parse errors */ }
 
   const agentName = (agentSettings.agentName as string | undefined) || "Vela";
-  const voiceId   = (agentSettings.voiceId as string | undefined) || DEFAULT_VOICE_ID;
-  const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : 0.85;
   const language  = (agentSettings.language as string | undefined) || "";
+  // Owner's explicit choice wins; smart Arabic default only when nothing is saved
+  const voiceId   = (agentSettings.voiceId as string | undefined) || getDefaultVoiceId(language);
+  const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : 0.85;
 
   // App URL for webhook serverUrl
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -119,7 +121,7 @@ export async function POST(req: NextRequest) {
         model: "gpt-4o",
         messages: [{ role: "system", content: systemPrompt }],
       },
-      voice: getVoiceConfig(voiceId, speed, language),
+      voice: getVoiceConfig(voiceId, speed),
       transcriber: getTranscriberConfig(),
       firstMessageMode: "assistant-speaks-first-with-model-generated-message",
       stopSpeakingPlan,
@@ -150,13 +152,25 @@ export async function POST(req: NextRequest) {
     let phoneNumberId = (cfg as any)?.vapi_phone_number_id as string | null ?? null;
 
     if (!phoneNumberId) {
-      const numRes = await vapiRequest("/phone-number", "POST", {
+      // Create phone number with serverUrl for dynamic assistant-request resolution —
+      // every inbound call will read fresh settings from Supabase via the webhook.
+      const numPayload: Record<string, unknown> = {
         provider: "vapi",
         name: `${tenant.business_name || "Business"} — Vela`,
-        assistantId,
-      }) as any;
+      };
+      if (webhookUrl) {
+        numPayload.serverUrl = webhookUrl;
+      } else {
+        numPayload.assistantId = assistantId;
+      }
+      const numRes = await vapiRequest("/phone-number", "POST", numPayload) as any;
       phoneNumber   = (numRes.number ?? numRes.id) as string;
       phoneNumberId = numRes.id as string;
+    } else if (webhookUrl) {
+      // Upgrade existing phone number to dynamic resolution (best-effort)
+      try {
+        await vapiRequest(`/phone-number/${phoneNumberId}`, "PATCH", { serverUrl: webhookUrl });
+      } catch { /* ignore — non-fatal */ }
     }
 
     // Save to tenant_config — upsert so a missing row doesn't cause a silent no-op

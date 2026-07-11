@@ -3,17 +3,31 @@
  * Verified against @vapi-ai/web@2.6.1 SDK types (node_modules/@vapi-ai/web/dist/api.d.ts).
  */
 
-// ── Default ElevenLabs voice ID ───────────────────────────────────────────────
+// ── Centralized voice list ────────────────────────────────────────────────────
+export interface VoiceEntry {
+  id: string;
+  name: string;
+  description: string;
+  language: "en" | "ar";
+}
+
+export const VOICES: VoiceEntry[] = [
+  { id: "egTToTzW6GojvddLj0zd", name: "Eric",     description: "Calm, youthful American male",        language: "en" },
+  { id: "PIGsltMj3gFMR34aFDI3", name: "Jonathan", description: "Calm, trustworthy, confident male",   language: "en" },
+  { id: "EST9Ui6982FZPSi7gCHi", name: "Elise",    description: "Warm, natural conversational female", language: "en" },
+  { id: "yXEnnEln9armDCyhkXcA", name: "Mohammed", description: "Natural Arabic male, Hijazi accent",  language: "ar" },
+  { id: "rUaPbzcZIu8df8iNL9WZ", name: "Sultan",   description: "Authentic Gulf Arabic male",          language: "ar" },
+  { id: "u0TsaWvt0v8migutHM3M", name: "Ghizlan",  description: "Smooth, balanced Arabic female",     language: "ar" },
+];
+
+// ── Default ElevenLabs voice ID (Jonathan) ────────────────────────────────────
 export const DEFAULT_VOICE_ID = "PIGsltMj3gFMR34aFDI3";
 
-// ── Arabic-optimized ElevenLabs voice ID ─────────────────────────────────────
-// TODO: Fill this in from elevenlabs.io/voice-library
-// Filter by language "Arabic" and pick a voice with Arabic training data.
-// eleven_multilingual_v2 (used below) is the correct model — do NOT switch to
-// eleven_turbo_v2_5 or eleven_flash_v2_5, those are English-primary and will
-// produce poor Arabic even with an Arabic-native voice.
-// Once filled in, this ID is used automatically when language === "ar" on any call.
-export const ARABIC_VOICE_ID = "YOUR_ARABIC_VOICE_ID_HERE";
+// ── Language-aware default — only used when NO voice is explicitly saved ──────
+// Owner's explicit choice always wins. This only applies when voiceId is absent.
+export function getDefaultVoiceId(language?: string): string {
+  return language === "ar" ? "yXEnnEln9armDCyhkXcA" : DEFAULT_VOICE_ID;
+}
 
 // ── Speed clamp ───────────────────────────────────────────────────────────────
 // ElevenLabs only accepts speed in [0.7, 1.2].
@@ -55,16 +69,12 @@ export function getSpeakingPlanConfig() {
 }
 
 // ── Shared voice config builder ───────────────────────────────────────────────
-// When language === "ar" and ARABIC_VOICE_ID is set, switches to Arabic-optimized
-// voice automatically. All other languages use the caller's/owner's selected voice.
-export function getVoiceConfig(voiceId: string, speed: number, language?: string) {
-  const effectiveVoiceId =
-    language === "ar" && ARABIC_VOICE_ID && ARABIC_VOICE_ID !== "YOUR_ARABIC_VOICE_ID_HERE"
-      ? ARABIC_VOICE_ID
-      : voiceId;
+// voiceId is always used as-is — the language-aware default is applied BEFORE
+// calling this function (via getDefaultVoiceId). Owner's explicit choice wins.
+export function getVoiceConfig(voiceId: string, speed: number) {
   return {
     provider: "11labs" as const,
-    voiceId: effectiveVoiceId,
+    voiceId,
     model: "eleven_multilingual_v2" as const,
     stability: 0.45,
     similarityBoost: 0.8,
