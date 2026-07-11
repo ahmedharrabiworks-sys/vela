@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme";
 import { useI18n } from "@/lib/i18n";
 
@@ -10,18 +10,32 @@ type AgentTheme = { isDark: boolean };
 export const AgentThemeContext = createContext<AgentTheme>({ isDark: false });
 export function useAgentTheme() { return useContext(AgentThemeContext); }
 
+const ASSISTANT_HREFS = ["/app/ai-agent/overview", "/app/ai-agent/assistant-voice"];
+const PHONE_HREFS = [
+  "/app/ai-agent/training",
+  "/app/ai-agent/voice",
+  "/app/ai-agent/phone",
+  "/app/ai-agent/calls",
+  "/app/ai-agent/settings",
+];
+
 export default function AIAgentLayout({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const { t } = useI18n();
   const isDark = theme === "dark";
   const pathname = usePathname();
+  const router = useRouter();
 
   const border      = isDark ? "#1E2235" : "#E5E7EB";
   const textMuted   = isDark ? "#64748B" : "#9CA3AF";
   const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
 
+  const isAssistantSection = pathname === "/app/ai-agent" || ASSISTANT_HREFS.includes(pathname);
+  const isPhoneSection     = PHONE_HREFS.includes(pathname);
+
   const ASSISTANT_TABS = [
     { label: t("aiAgent.tabs.overview"), href: "/app/ai-agent/overview" },
+    { label: "Assistant Voice",           href: "/app/ai-agent/assistant-voice" },
   ];
 
   const PHONE_TABS = [
@@ -33,12 +47,23 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
   ];
 
   const tabCls = "flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors";
-  const labelCls = "flex items-center px-2 py-2.5 text-[9px] font-semibold uppercase tracking-[0.07em] whitespace-nowrap border-b-2 border-transparent cursor-default select-none";
+
+  /* ── Chevron icon — right when collapsed, down when expanded ── */
+  function Chevron({ open }: { open: boolean }) {
+    return (
+      <svg
+        width="8" height="8" viewBox="0 0 8 8" fill="none"
+        style={{ flexShrink: 0, transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
+      >
+        <path d="M2.5 1.5L5.5 4l-3 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+  }
 
   return (
     <AgentThemeContext.Provider value={{ isDark }}>
-      {/* Header + grouped tab bar */}
       <div className="-mx-4 md:-mx-6 px-4 md:px-6 border-b mb-3" style={{ borderColor: border }}>
+
         {/* Identity row */}
         <div className="flex items-center gap-3 pt-1 pb-3">
           <div
@@ -60,16 +85,24 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
           </span>
         </div>
 
-        {/* Two-group tab row — scrollable on mobile */}
+        {/* Two-group nav — scrollable on mobile */}
         <div className="flex items-end overflow-x-auto scrollbar-none" style={{ marginBottom: -1 }}>
 
-          {/* Group 1 label */}
-          <span className={labelCls} style={{ color: textMuted, opacity: 0.6 }}>
-            Your Assistant
-          </span>
+          {/* ── Your Assistant ── */}
+          <button
+            onClick={() => router.push("/app/ai-agent/overview")}
+            className="flex items-center gap-1 px-2 py-2.5 whitespace-nowrap border-b-2 transition-colors hover:opacity-80"
+            style={{
+              borderBottomColor: isAssistantSection ? "#FF6B35" : "transparent",
+              color: isAssistantSection ? "#FF6B35" : textMuted,
+              cursor: "pointer",
+            }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.06em]">Your Assistant</span>
+            <Chevron open={isAssistantSection} />
+          </button>
 
-          {/* Assistant tabs */}
-          {ASSISTANT_TABS.map((tab) => {
+          {isAssistantSection && ASSISTANT_TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link
@@ -83,18 +116,26 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
             );
           })}
 
-          {/* Group separator */}
+          {/* Separator */}
           <div className="self-stretch flex items-center px-2" style={{ borderBottom: "2px solid transparent" }}>
-            <div className="w-px h-3.5" style={{ background: border, opacity: 0.5 }} />
+            <div className="w-px h-3.5" style={{ background: border, opacity: 0.4 }} />
           </div>
 
-          {/* Group 2 label */}
-          <span className={labelCls} style={{ color: textMuted, opacity: 0.6 }}>
-            Phone Agent
-          </span>
+          {/* ── Phone Agent ── */}
+          <button
+            onClick={() => router.push("/app/ai-agent/training")}
+            className="flex items-center gap-1 px-2 py-2.5 whitespace-nowrap border-b-2 transition-colors hover:opacity-80"
+            style={{
+              borderBottomColor: isPhoneSection ? "#FF6B35" : "transparent",
+              color: isPhoneSection ? "#FF6B35" : textMuted,
+              cursor: "pointer",
+            }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.06em]">Phone Agent</span>
+            <Chevron open={isPhoneSection} />
+          </button>
 
-          {/* Phone agent tabs */}
-          {PHONE_TABS.map((tab) => {
+          {isPhoneSection && PHONE_TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link

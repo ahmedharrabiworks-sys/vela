@@ -211,7 +211,7 @@ export default function OverviewPage() {
       } catch { /* ignore */ }
     }
     loadMisc();
-    fetch("/api/ai-agent/settings")
+    fetch("/api/ai-agent/assistant-settings")
       .then(r => r.json())
       .then((d: { voiceId?: string; speed?: number }) => {
         if (d.voiceId) setVoiceId(d.voiceId);
