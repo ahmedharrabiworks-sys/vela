@@ -13,17 +13,18 @@ export function clampSpeed(speed: number): number {
 }
 
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// "nova-3-general" is confirmed in the DeepgramTranscriber model union (api.d.ts:238).
-// It is the general-purpose nova-3 variant; we use it instead of plain "nova-3"
-// because Vapi's platform routes "nova-3" (conversational) to nova-2 for multi-language
-// calls — "nova-3-general" stays on nova-3 reliably.
-// "multi" confirmed in language union (api.d.ts:240).
-// endpointing:300 adds minimal latency but prevents missed short words (critical for Arabic).
+// Deepgram Flux General Multilingual — confirmed in Vapi dashboard (410ms, 2.3% WER).
+// SDK enum (api.d.ts:238) only explicitly lists "flux-general-en" for the English variant.
+// The multilingual counterpart "flux-general-multilingual" is passed via the | string
+// escape hatch in the same union — naming pattern: flux-general-{lang}.
+// language field is OMITTED: multilingual capability is baked into the model name;
+// passing language:"multi" alongside a model already named "multilingual" is redundant
+// and was a strong candidate for causing Vapi's silent downgrade to nova-2.
+// endpointing:300 is a valid SDK field (api.d.ts:810) — kept for Arabic reliability.
 export function getTranscriberConfig() {
   return {
     provider: "deepgram" as const,
-    model: "nova-3-general" as const,
-    language: "multi" as const,
+    model: "flux-general-multilingual" as string,
     endpointing: 300,
   };
 }
