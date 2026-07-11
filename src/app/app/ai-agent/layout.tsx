@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, Fragment } from "react";
+import { createContext, useContext } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme";
@@ -20,8 +20,11 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
   const textMuted   = isDark ? "#64748B" : "#9CA3AF";
   const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
 
-  const TABS = [
+  const ASSISTANT_TABS = [
     { label: t("aiAgent.tabs.overview"), href: "/app/ai-agent/overview" },
+  ];
+
+  const PHONE_TABS = [
     { label: t("aiAgent.tabs.training"), href: "/app/ai-agent/training" },
     { label: t("aiAgent.tabs.voice"),    href: "/app/ai-agent/voice" },
     { label: t("aiAgent.tabs.phone"),    href: "/app/ai-agent/phone", badge: t("aiAgent.tabs.soon") },
@@ -29,9 +32,12 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
     { label: t("aiAgent.tabs.settings"), href: "/app/ai-agent/settings" },
   ];
 
+  const tabCls = "flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors";
+  const labelCls = "flex items-center px-2 py-2.5 text-[9px] font-semibold uppercase tracking-[0.07em] whitespace-nowrap border-b-2 border-transparent cursor-default select-none";
+
   return (
     <AgentThemeContext.Provider value={{ isDark }}>
-      {/* Header + horizontal tab bar */}
+      {/* Header + grouped tab bar */}
       <div className="-mx-4 md:-mx-6 px-4 md:px-6 border-b mb-3" style={{ borderColor: border }}>
         {/* Identity row */}
         <div className="flex items-center gap-3 pt-1 pb-3">
@@ -54,39 +60,59 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
           </span>
         </div>
 
-        {/* Scrollable tab row */}
+        {/* Two-group tab row — scrollable on mobile */}
         <div className="flex items-end overflow-x-auto scrollbar-none" style={{ marginBottom: -1 }}>
-          {TABS.map((tab, idx) => {
+
+          {/* Group 1 label */}
+          <span className={labelCls} style={{ color: textMuted, opacity: 0.6 }}>
+            Your Assistant
+          </span>
+
+          {/* Assistant tabs */}
+          {ASSISTANT_TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
-              <Fragment key={tab.href}>
-                {idx === 1 && (
-                  <div className="self-stretch flex items-center px-1" style={{ borderBottom: "2px solid transparent" }}>
-                    <div className="w-px h-3.5" style={{ background: border, opacity: 0.4 }} />
-                  </div>
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={tabCls}
+                style={{ borderBottomColor: active ? "#FF6B35" : "transparent", color: active ? "#FF6B35" : textMuted }}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+
+          {/* Group separator */}
+          <div className="self-stretch flex items-center px-2" style={{ borderBottom: "2px solid transparent" }}>
+            <div className="w-px h-3.5" style={{ background: border, opacity: 0.5 }} />
+          </div>
+
+          {/* Group 2 label */}
+          <span className={labelCls} style={{ color: textMuted, opacity: 0.6 }}>
+            Phone Agent
+          </span>
+
+          {/* Phone agent tabs */}
+          {PHONE_TABS.map((tab) => {
+            const active = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={tabCls}
+                style={{ borderBottomColor: active ? "#FF6B35" : "transparent", color: active ? "#FF6B35" : textMuted }}
+              >
+                {tab.label}
+                {tab.badge && (
+                  <span
+                    className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: isDark ? "rgba(100,116,139,0.2)" : "#F3F4F6", color: textMuted }}
+                  >
+                    {tab.badge}
+                  </span>
                 )}
-                <Link
-                  href={tab.href}
-                  className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors"
-                  style={{
-                    borderBottomColor: active ? "#FF6B35" : "transparent",
-                    color: active ? "#FF6B35" : textMuted,
-                  }}
-                >
-                  {tab.label}
-                  {tab.badge && (
-                    <span
-                      className="text-[8px] font-bold px-1.5 py-0.5 rounded"
-                      style={{
-                        background: isDark ? "rgba(100,116,139,0.2)" : "#F3F4F6",
-                        color: textMuted,
-                      }}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </Link>
-              </Fragment>
+              </Link>
             );
           })}
         </div>

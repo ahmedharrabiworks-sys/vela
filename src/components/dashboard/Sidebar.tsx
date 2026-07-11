@@ -10,6 +10,19 @@ import { useI18n, LANGUAGES } from "@/lib/i18n";
 
 const NAV = [
   {
+    labelKey: "nav.aiAgent",
+    href: "/app/ai-agent",
+    badge: "NEW",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M1.5 9h2M14.5 9h2M9 1.5v2M9 14.5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M4.1 4.1l1.4 1.4M12.5 12.5l1.4 1.4M4.1 13.9l1.4-1.4M12.5 5.5l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+        <circle cx="9" cy="9" r="1.2" fill="currentColor"/>
+      </svg>
+    ),
+  },
+  {
     labelKey: "nav.dashboard",
     href: "/app",
     icon: (
@@ -84,19 +97,6 @@ const NAV = [
         <rect x="1.5" y="2.25" width="15" height="10.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
         <path d="M6 15.75h6M9 12.75v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
         <path d="M5.25 6.75h2.25M5.25 9h7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    labelKey: "nav.aiAgent",
-    href: "/app/ai-agent",
-    badge: "NEW",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <circle cx="9" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.4"/>
-        <path d="M1.5 9h2M14.5 9h2M9 1.5v2M9 14.5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-        <path d="M4.1 4.1l1.4 1.4M12.5 12.5l1.4 1.4M4.1 13.9l1.4-1.4M12.5 5.5l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-        <circle cx="9" cy="9" r="1.2" fill="currentColor"/>
       </svg>
     ),
   },
