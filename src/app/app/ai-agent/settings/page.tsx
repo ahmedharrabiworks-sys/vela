@@ -125,6 +125,16 @@ export default function SettingsPage() {
           <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.settings.subtitle")}</p>
         </div>
 
+        {/* Phone agent framing */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: isDark ? "rgba(255,107,53,0.05)" : "rgba(255,107,53,0.04)", border: `1px solid ${isDark ? "rgba(255,107,53,0.12)" : "rgba(255,107,53,0.10)"}` }}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M2.8 4.6c.8 1.6 2 2.9 3.7 3.7l1.2-1.2c.2-.2.4-.2.6-.1.6.2 1.3.3 2 .3.3 0 .5.2.5.5v1.9c0 .3-.2.5-.5.5C3.8 10 2 5.5 2 2.3c0-.3.2-.5.5-.5h1.9c.3 0 .5.2.5.5 0 .7.1 1.4.3 2-.1.2-.1.4-.4.3z" fill="#FF6B35"/>
+          </svg>
+          <p className="text-[10px]" style={{ color: textMuted }}>
+            This configures your <span style={{ color: "#FF6B35", fontWeight: 600 }}>phone agent</span> — the Vela that answers your customers' calls.
+          </p>
+        </div>
+
         {/* Two-column row */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 

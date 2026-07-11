@@ -16,6 +16,24 @@ import {
 type VapiInstance = any;
 type CallStatus = "idle" | "connecting" | "active" | "ended";
 
+function toErrorText(e: unknown): string {
+  if (typeof e === "string") return e;
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const anyE = e as Record<string, unknown>;
+    if (typeof anyE.message === "string") return anyE.message;
+    if (typeof anyE.error === "string") return anyE.error;
+    if (anyE.error && typeof anyE.error === "object") {
+      const inner = anyE.error as Record<string, unknown>;
+      if (typeof inner.message === "string") return inner.message;
+      if (typeof inner.msg === "string") return inner.msg;
+      try { return JSON.stringify(anyE.error); } catch { /* ignore */ }
+    }
+    try { return JSON.stringify(e); } catch { /* ignore */ }
+  }
+  return "An unexpected error occurred. Please try again.";
+}
+
 /* Wave path */
 const WAVE_D = (() => {
   const pts: string[] = [];
@@ -268,16 +286,14 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
       vapi.on("call-start", () => setCallStatus("active"));
       vapi.on("call-end",   () => { setCallStatus("ended"); resetBars(); });
       vapi.on("call-start-failed", (e: any) => {
-        const msg = e?.error || "Call failed to start — check mic permissions and try again.";
         console.error("[vapi call-start-failed]", e);
-        setCallError(msg);
+        setCallError(toErrorText(e));
         setCallStatus("idle");
         resetBars();
       });
       vapi.on("error", (e: any) => {
-        const msg = typeof e === "string" ? e : (e?.message || e?.error || "An unexpected error occurred");
         console.error("[vapi error]", e);
-        setCallError(msg);
+        setCallError(toErrorText(e));
         setCallStatus("idle");
         resetBars();
       });
@@ -294,9 +310,9 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
         stopSpeakingPlan,
         startSpeakingPlan,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[call]", err);
-      setCallError(err?.message || "Failed to start call — please try again.");
+      setCallError(toErrorText(err));
       setCallStatus("idle");
       resetBars();
     }
@@ -541,9 +557,9 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
               <div className="px-4 pt-4 pb-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Vela Voice</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Talk to Vela</p>
                     <p className="text-[9px]" style={{ color: textMuted }}>
-                      {isActive ? (muted?"Muted":"Listening…") : isConnecting?"Connecting…" : callStatus==="ended"?"Call ended" : "Ask me anything"}
+                      {isActive ? (muted?"Muted":"Listening…") : isConnecting?"Connecting…" : callStatus==="ended"?"Call ended" : "Your business advisor"}
                     </p>
                   </div>
                   <div className="w-2 h-2 rounded-full" style={{
@@ -588,15 +604,20 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
 
                 {/* Controls */}
                 {callStatus === "idle" && (
-                  <button onClick={startCall}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                    style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow:"0 3px 12px rgba(255,107,53,0.4)" }}>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.3"/>
-                      <path d="M4.8 4l3.2 2-3.2 2V4z" fill="white"/>
-                    </svg>
-                    {t("aiAgent.overview.talkToVela")}
-                  </button>
+                  <>
+                    <button onClick={startCall}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                      style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow:"0 3px 12px rgba(255,107,53,0.4)" }}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.3"/>
+                        <path d="M4.8 4l3.2 2-3.2 2V4z" fill="white"/>
+                      </svg>
+                      {t("aiAgent.overview.talkToVela")}
+                    </button>
+                    <p className="text-[9px] text-center" style={{ color: textMuted }}>
+                      Reads your live data — not your phone agent
+                    </p>
+                  </>
                 )}
                 {isConnecting && (
                   <div className="flex items-center justify-center gap-2 py-2.5">
@@ -628,7 +649,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                 {callError && (
                   <div className="mt-2 rounded-xl p-2.5" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
                     <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{typeof callError === "string" ? callError : "An unexpected error occurred."}</p>
                     <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
                   </div>
                 )}

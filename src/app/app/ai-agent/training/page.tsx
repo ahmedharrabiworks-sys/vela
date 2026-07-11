@@ -17,6 +17,24 @@ type VapiInstance = any;
 type CallStatus = "idle" | "connecting" | "active" | "ended";
 type TLine = { role: "user" | "assistant"; text: string };
 
+function toErrorText(e: unknown): string {
+  if (typeof e === "string") return e;
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const anyE = e as Record<string, unknown>;
+    if (typeof anyE.message === "string") return anyE.message;
+    if (typeof anyE.error === "string") return anyE.error;
+    if (anyE.error && typeof anyE.error === "object") {
+      const inner = anyE.error as Record<string, unknown>;
+      if (typeof inner.message === "string") return inner.message;
+      if (typeof inner.msg === "string") return inner.msg;
+      try { return JSON.stringify(anyE.error); } catch { /* ignore */ }
+    }
+    try { return JSON.stringify(e); } catch { /* ignore */ }
+  }
+  return "An unexpected error occurred. Please try again.";
+}
+
 interface LearnedKb {
   services?: Array<{ name: string; price?: string }>;
   business?: { hours?: string; address?: string; bookingPolicy?: string };
@@ -154,15 +172,13 @@ export default function TrainingPage() {
         extractKb(lines, started, { ...toolKb });
       });
       vapi.on("call-start-failed", (e: any) => {
-        const msg = e?.error || "Call failed to start — check mic permissions and try again.";
         console.error("[vapi call-start-failed]", e);
-        setCallError(msg);
+        setCallError(toErrorText(e));
         setStatus("idle");
       });
       vapi.on("error", (e: any) => {
-        const msg = typeof e === "string" ? e : (e?.message || e?.error || "An unexpected error occurred");
         console.error("[vapi error]", e);
-        setCallError(msg);
+        setCallError(toErrorText(e));
         setStatus("idle");
       });
 
@@ -211,9 +227,9 @@ export default function TrainingPage() {
         stopSpeakingPlan,
         startSpeakingPlan,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[call]", err);
-      setCallError(err?.message || "Failed to start call — please try again.");
+      setCallError(toErrorText(err));
       setStatus("idle");
     }
   }, [status, voiceId, speed, extractKb]);
@@ -259,6 +275,16 @@ export default function TrainingPage() {
               {isActive ? t("aiAgent.training.live") : isConnecting ? t("common.connecting") : status==="ended" ? t("aiAgent.training.complete") : t("aiAgent.training.ready")}
             </span>
           </div>
+        </div>
+
+        {/* Phone agent framing */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: isDark ? "rgba(255,107,53,0.05)" : "rgba(255,107,53,0.04)", border: `1px solid ${isDark ? "rgba(255,107,53,0.12)" : "rgba(255,107,53,0.10)"}` }}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M2.8 4.6c.8 1.6 2 2.9 3.7 3.7l1.2-1.2c.2-.2.4-.2.6-.1.6.2 1.3.3 2 .3.3 0 .5.2.5.5v1.9c0 .3-.2.5-.5.5C3.8 10 2 5.5 2 2.3c0-.3.2-.5.5-.5h1.9c.3 0 .5.2.5.5 0 .7.1 1.4.3 2-.1.2-.1.4-.4.3z" fill="#FF6B35"/>
+          </svg>
+          <p className="text-[10px]" style={{ color: textMuted }}>
+            This trains your <span style={{ color: "#FF6B35", fontWeight: 600 }}>phone agent</span> — the Vela that answers your customers' calls.
+          </p>
         </div>
 
         {/* Main 2-col grid */}
@@ -350,7 +376,7 @@ export default function TrainingPage() {
               {callError && (
                 <div className="mx-5 mb-4 rounded-xl p-3" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
                   <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed to start</p>
-                  <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
+                  <p className="text-[10px]" style={{ color: textMuted }}>{typeof callError === "string" ? callError : "An unexpected error occurred."}</p>
                   <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
                 </div>
               )}

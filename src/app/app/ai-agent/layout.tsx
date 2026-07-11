@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme";
@@ -56,31 +56,37 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
 
         {/* Scrollable tab row */}
         <div className="flex items-end overflow-x-auto scrollbar-none" style={{ marginBottom: -1 }}>
-          {TABS.map((tab) => {
+          {TABS.map((tab, idx) => {
             const active = pathname === tab.href;
             return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors"
-                style={{
-                  borderBottomColor: active ? "#FF6B35" : "transparent",
-                  color: active ? "#FF6B35" : textMuted,
-                }}
-              >
-                {tab.label}
-                {tab.badge && (
-                  <span
-                    className="text-[8px] font-bold px-1.5 py-0.5 rounded"
-                    style={{
-                      background: isDark ? "rgba(100,116,139,0.2)" : "#F3F4F6",
-                      color: textMuted,
-                    }}
-                  >
-                    {tab.badge}
-                  </span>
+              <Fragment key={tab.href}>
+                {idx === 1 && (
+                  <div className="self-stretch flex items-center px-1" style={{ borderBottom: "2px solid transparent" }}>
+                    <div className="w-px h-3.5" style={{ background: border, opacity: 0.4 }} />
+                  </div>
                 )}
-              </Link>
+                <Link
+                  href={tab.href}
+                  className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors"
+                  style={{
+                    borderBottomColor: active ? "#FF6B35" : "transparent",
+                    color: active ? "#FF6B35" : textMuted,
+                  }}
+                >
+                  {tab.label}
+                  {tab.badge && (
+                    <span
+                      className="text-[8px] font-bold px-1.5 py-0.5 rounded"
+                      style={{
+                        background: isDark ? "rgba(100,116,139,0.2)" : "#F3F4F6",
+                        color: textMuted,
+                      }}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </Link>
+              </Fragment>
             );
           })}
         </div>

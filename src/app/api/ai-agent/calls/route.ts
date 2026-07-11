@@ -15,13 +15,17 @@ async function getAuthAndTenant(req: NextRequest) {
     const tenant = await ensureTenant(user.id, user.email, user.user_metadata);
     return { user, tenant };
   } catch {
-    return { error: "Account setup required", status: 500 };
+    return { error: "Account setup required", status: 503 };
   }
 }
 
 export async function GET(req: NextRequest) {
   const result = await getAuthAndTenant(req);
-  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  if ("error" in result) {
+    if (result.status === 401) return NextResponse.json({ error: result.error }, { status: 401 });
+    // Tenant setup failure → return empty list gracefully (never 500 on GET)
+    return NextResponse.json({ calls: [] });
+  }
   const { tenant } = result;
 
   const admin = createSupabaseAdmin() as any;
@@ -32,11 +36,8 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) {
-    if (error.code === "42P01") return NextResponse.json({ calls: [] });
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  // Any DB error (table missing, column missing, etc.) → return empty gracefully
+  if (error) return NextResponse.json({ calls: [] });
   return NextResponse.json({ calls: data ?? [] });
 }
 
@@ -67,13 +68,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    if (error.code === "42P01") {
-      return NextResponse.json(
-        { error: "Table not found. Run the agent_calls SQL migration." },
-        { status: 422 }
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error.code === "42P01" ? 422 : 500;
+    return NextResponse.json({ error: error.message }, { status });
   }
 
   return NextResponse.json({ ok: true, id: (data as any)?.id });
