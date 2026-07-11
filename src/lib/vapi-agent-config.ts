@@ -6,6 +6,15 @@
 // ── Default ElevenLabs voice ID ───────────────────────────────────────────────
 export const DEFAULT_VOICE_ID = "PIGsltMj3gFMR34aFDI3";
 
+// ── Arabic-optimized ElevenLabs voice ID ─────────────────────────────────────
+// TODO: Fill this in from elevenlabs.io/voice-library
+// Filter by language "Arabic" and pick a voice with Arabic training data.
+// eleven_multilingual_v2 (used below) is the correct model — do NOT switch to
+// eleven_turbo_v2_5 or eleven_flash_v2_5, those are English-primary and will
+// produce poor Arabic even with an Arabic-native voice.
+// Once filled in, this ID is used automatically when language === "ar" on any call.
+export const ARABIC_VOICE_ID = "YOUR_ARABIC_VOICE_ID_HERE";
+
 // ── Speed clamp ───────────────────────────────────────────────────────────────
 // ElevenLabs only accepts speed in [0.7, 1.2].
 export function clampSpeed(speed: number): number {
@@ -13,18 +22,15 @@ export function clampSpeed(speed: number): number {
 }
 
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// Deepgram Flux General Multilingual — confirmed in Vapi dashboard (410ms, 2.3% WER).
-// SDK enum (api.d.ts:238) only explicitly lists "flux-general-en" for the English variant.
-// The multilingual counterpart "flux-general-multilingual" is passed via the | string
-// escape hatch in the same union — naming pattern: flux-general-{lang}.
-// language field is OMITTED: multilingual capability is baked into the model name;
-// passing language:"multi" alongside a model already named "multilingual" is redundant
-// and was a strong candidate for causing Vapi's silent downgrade to nova-2.
-// endpointing:300 is a valid SDK field (api.d.ts:810) — kept for Arabic reliability.
+// nova-3-general confirmed working in production (Overview successfully understands
+// Arabic with this config). Reverted from flux-general-multilingual which was
+// unverified. Confirmed valid SDK fields: model union (api.d.ts:238), language
+// union (api.d.ts:240), endpointing (api.d.ts:810).
 export function getTranscriberConfig() {
   return {
     provider: "deepgram" as const,
-    model: "flux-general-multilingual" as string,
+    model: "nova-3-general" as const,
+    language: "multi" as const,
     endpointing: 300,
   };
 }
@@ -49,10 +55,16 @@ export function getSpeakingPlanConfig() {
 }
 
 // ── Shared voice config builder ───────────────────────────────────────────────
-export function getVoiceConfig(voiceId: string, speed: number) {
+// When language === "ar" and ARABIC_VOICE_ID is set, switches to Arabic-optimized
+// voice automatically. All other languages use the caller's/owner's selected voice.
+export function getVoiceConfig(voiceId: string, speed: number, language?: string) {
+  const effectiveVoiceId =
+    language === "ar" && ARABIC_VOICE_ID && ARABIC_VOICE_ID !== "YOUR_ARABIC_VOICE_ID_HERE"
+      ? ARABIC_VOICE_ID
+      : voiceId;
   return {
     provider: "11labs" as const,
-    voiceId,
+    voiceId: effectiveVoiceId,
     model: "eleven_multilingual_v2" as const,
     stability: 0.45,
     similarityBoost: 0.8,

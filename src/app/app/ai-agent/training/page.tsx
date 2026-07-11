@@ -91,14 +91,19 @@ export default function TrainingPage() {
   const textSub     = isDark ? "#94A3B8" : "#6B7280";
 
   useEffect(() => {
-    fetch("/api/ai-agent/settings")
-      .then(r => r.json())
-      .then((d: { voiceId?: string; speed?: number; language?: string }) => {
-        if (d.voiceId) voiceIdRef.current = d.voiceId;
-        if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
-        if (d.language) agentLanguageRef.current = d.language;
-      })
-      .catch(() => {});
+    // Voice/speed come from the phone agent settings (owner hears what callers hear).
+    // Language comes from the owner's personal assistant settings — same source as
+    // the Overview page — so Training and Overview always match on language.
+    // The phone agent settings default language to "en", which would lock training
+    // to English even when the owner has set Arabic in their Assistant Settings.
+    Promise.all([
+      fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({}) as object),
+      fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({}) as object),
+    ]).then(([d, a]: [{ voiceId?: string; speed?: number }, { preferredLanguage?: string }]) => {
+      if (d.voiceId) voiceIdRef.current = d.voiceId;
+      if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
+      if (a.preferredLanguage) agentLanguageRef.current = a.preferredLanguage;
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -223,7 +228,7 @@ export default function TrainingPage() {
           messages: [{ role: "system", content: buildTrainingSystem(agentLanguageRef.current) }],
           tools: [RECORD_ANSWER_TOOL],
         },
-        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
+        voice: getVoiceConfig(voiceIdRef.current, speedRef.current, agentLanguageRef.current),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,

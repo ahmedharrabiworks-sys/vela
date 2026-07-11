@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
-import { DEFAULT_VOICE_ID, clampSpeed } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, ARABIC_VOICE_ID, clampSpeed } from "@/lib/vapi-agent-config";
 
 const VOICES = [
-  { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus", description: "Deep, authoritative male",    gender: "M" },
-  { id: "EST9Ui6982FZPSi7gCHi", name: "Aria",   description: "Warm, professional female",   gender: "F" },
-  { id: "Wq15xSaY3gWvazBRaGEU", name: "Dylan",  description: "Clear, energetic male",       gender: "M" },
-  { id: "f5HLTX707KIM4SzJYzSz", name: "Luna",   description: "Calm, elegant female",        gender: "F" },
-  { id: "6aDn1KB0hjpdcocrUkmq", name: "Cole",   description: "Confident, smooth male",      gender: "M" },
+  { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus",       description: "Deep, authoritative male",          gender: "M" },
+  { id: "EST9Ui6982FZPSi7gCHi", name: "Aria",         description: "Warm, professional female",         gender: "F" },
+  { id: "Wq15xSaY3gWvazBRaGEU", name: "Dylan",        description: "Clear, energetic male",             gender: "M" },
+  { id: "f5HLTX707KIM4SzJYzSz", name: "Luna",         description: "Calm, elegant female",              gender: "F" },
+  { id: "6aDn1KB0hjpdcocrUkmq", name: "Cole",         description: "Confident, smooth male",            gender: "M" },
+  { id: ARABIC_VOICE_ID,        name: "Arabic Voice", description: "Natural Arabic — best for Arabic ★", gender: "M" },
 ];
 
 const CONV_STYLES = [

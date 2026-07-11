@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
   const agentName = (agentSettings.agentName as string | undefined) || "Vela";
   const voiceId   = (agentSettings.voiceId as string | undefined) || DEFAULT_VOICE_ID;
   const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : 0.85;
+  const language  = (agentSettings.language as string | undefined) || "";
 
   // App URL for webhook serverUrl
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
         model: "gpt-4o",
         messages: [{ role: "system", content: systemPrompt }],
       },
-      voice: getVoiceConfig(voiceId, speed),
+      voice: getVoiceConfig(voiceId, speed, language),
       transcriber: getTranscriberConfig(),
       firstMessageMode: "assistant-speaks-first-with-model-generated-message",
       stopSpeakingPlan,

@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
     const agentName    = (settings.agentName as string | undefined) || "Vela";
     const voiceId      = (settings.voiceId as string | undefined) || DEFAULT_VOICE_ID;
     const speed        = typeof settings.speed === "number" ? settings.speed : 0.85;
+    const language     = (settings.language as string | undefined) || "";
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
     const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings);
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }],
         },
-        voice: getVoiceConfig(voiceId, speed),
+        voice: getVoiceConfig(voiceId, speed, language),
         transcriber: getTranscriberConfig(),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         stopSpeakingPlan,

@@ -328,7 +328,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
       const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
       await vapi.start({
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: velaSystem }] },
-        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
+        voice: getVoiceConfig(voiceIdRef.current, speedRef.current, prefLangRef.current),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,

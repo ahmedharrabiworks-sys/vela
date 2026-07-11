@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_VOICE_ID } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, ARABIC_VOICE_ID } from "@/lib/vapi-agent-config";
 
 const VOICES = [
   { id: "PIGsltMj3gFMR34aFDI3", name: "Marcus — Deep male" },
@@ -11,6 +11,7 @@ const VOICES = [
   { id: "Wq15xSaY3gWvazBRaGEU", name: "Dylan — Energetic male" },
   { id: "f5HLTX707KIM4SzJYzSz", name: "Luna — Calm female" },
   { id: "6aDn1KB0hjpdcocrUkmq", name: "Cole — Confident male" },
+  { id: ARABIC_VOICE_ID,        name: "Arabic Voice — Best for Arabic callers ★" },
 ];
 
 const PERSONALITIES = [
