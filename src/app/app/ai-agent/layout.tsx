@@ -10,7 +10,9 @@ type AgentTheme = { isDark: boolean };
 export const AgentThemeContext = createContext<AgentTheme>({ isDark: false });
 export function useAgentTheme() { return useContext(AgentThemeContext); }
 
-const ASSISTANT_HREFS = ["/app/ai-agent/overview", "/app/ai-agent/assistant-voice"];
+interface Tab { label: string; href: string; badge?: string; }
+
+const ASSISTANT_HREFS = ["/app/ai-agent/overview", "/app/ai-agent/assistant-settings"];
 const PHONE_HREFS = [
   "/app/ai-agent/training",
   "/app/ai-agent/voice",
@@ -29,16 +31,17 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
   const border      = isDark ? "#1E2235" : "#E5E7EB";
   const textMuted   = isDark ? "#64748B" : "#9CA3AF";
   const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
+  const cardBg      = isDark ? "#111420" : "#FFFFFF";
 
   const isAssistantSection = pathname === "/app/ai-agent" || ASSISTANT_HREFS.includes(pathname);
   const isPhoneSection     = PHONE_HREFS.includes(pathname);
 
-  const ASSISTANT_TABS = [
-    { label: t("aiAgent.tabs.overview"), href: "/app/ai-agent/overview" },
-    { label: "Assistant Voice",           href: "/app/ai-agent/assistant-voice" },
+  const ASSISTANT_TABS: Tab[] = [
+    { label: t("aiAgent.tabs.overview"),   href: "/app/ai-agent/overview" },
+    { label: "Assistant Settings",          href: "/app/ai-agent/assistant-settings" },
   ];
 
-  const PHONE_TABS = [
+  const PHONE_TABS: Tab[] = [
     { label: t("aiAgent.tabs.training"), href: "/app/ai-agent/training" },
     { label: t("aiAgent.tabs.voice"),    href: "/app/ai-agent/voice" },
     { label: t("aiAgent.tabs.phone"),    href: "/app/ai-agent/phone", badge: t("aiAgent.tabs.soon") },
@@ -46,19 +49,8 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
     { label: t("aiAgent.tabs.settings"), href: "/app/ai-agent/settings" },
   ];
 
+  const activeTabs: Tab[] = isPhoneSection ? PHONE_TABS : ASSISTANT_TABS;
   const tabCls = "flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors";
-
-  /* ── Chevron icon — right when collapsed, down when expanded ── */
-  function Chevron({ open }: { open: boolean }) {
-    return (
-      <svg
-        width="8" height="8" viewBox="0 0 8 8" fill="none"
-        style={{ flexShrink: 0, transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
-      >
-        <path d="M2.5 1.5L5.5 4l-3 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    );
-  }
 
   return (
     <AgentThemeContext.Provider value={{ isDark }}>
@@ -85,57 +77,80 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
           </span>
         </div>
 
-        {/* Two-group nav — scrollable on mobile */}
-        <div className="flex items-end overflow-x-auto scrollbar-none" style={{ marginBottom: -1 }}>
+        {/* Agent switcher — two side-by-side cards; single column on mobile */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
 
-          {/* ── Your Assistant ── */}
+          {/* Card A — Vela · Your Assistant */}
           <button
             onClick={() => router.push("/app/ai-agent/overview")}
-            className="flex items-center gap-1 px-2 py-2.5 whitespace-nowrap border-b-2 transition-colors hover:opacity-80"
+            className="flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all hover:opacity-90"
             style={{
-              borderBottomColor: isAssistantSection ? "#FF6B35" : "transparent",
-              color: isAssistantSection ? "#FF6B35" : textMuted,
-              cursor: "pointer",
+              background:  isAssistantSection
+                ? (isDark ? "rgba(255,107,53,0.09)" : "#FFF8F5")
+                : cardBg,
+              borderColor: isAssistantSection ? "#FF6B35" : border,
             }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-[0.06em]">Your Assistant</span>
-            <Chevron open={isAssistantSection} />
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: isAssistantSection
+                  ? "linear-gradient(135deg,#FF6B35,#FF3366)"
+                  : (isDark ? "#1A1D2A" : "#F3F4F6"),
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <rect x="4" y="0.5" width="5" height="7.5" rx="2.5" stroke={isAssistantSection ? "white" : textMuted} strokeWidth="1.2"/>
+                <path d="M1.5 6c0 3 2.25 5 5 5s5-2 5-5M6.5 11v1.5" stroke={isAssistantSection ? "white" : textMuted} strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold leading-tight" style={{ color: isAssistantSection ? "#FF6B35" : textPrimary }}>
+                Vela · Your Assistant
+              </p>
+              <p className="text-[10px] mt-0.5 leading-snug" style={{ color: textMuted }}>
+                Talks to you. Reads your live data.
+              </p>
+            </div>
           </button>
 
-          {isAssistantSection && ASSISTANT_TABS.map((tab) => {
-            const active = pathname === tab.href;
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={tabCls}
-                style={{ borderBottomColor: active ? "#FF6B35" : "transparent", color: active ? "#FF6B35" : textMuted }}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-
-          {/* Separator */}
-          <div className="self-stretch flex items-center px-2" style={{ borderBottom: "2px solid transparent" }}>
-            <div className="w-px h-3.5" style={{ background: border, opacity: 0.4 }} />
-          </div>
-
-          {/* ── Phone Agent ── */}
+          {/* Card B — Your Phone Agent */}
           <button
             onClick={() => router.push("/app/ai-agent/training")}
-            className="flex items-center gap-1 px-2 py-2.5 whitespace-nowrap border-b-2 transition-colors hover:opacity-80"
+            className="flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all hover:opacity-90"
             style={{
-              borderBottomColor: isPhoneSection ? "#FF6B35" : "transparent",
-              color: isPhoneSection ? "#FF6B35" : textMuted,
-              cursor: "pointer",
+              background:  isPhoneSection
+                ? (isDark ? "rgba(255,107,53,0.09)" : "#FFF8F5")
+                : cardBg,
+              borderColor: isPhoneSection ? "#FF6B35" : border,
             }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-[0.06em]">Phone Agent</span>
-            <Chevron open={isPhoneSection} />
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+              style={{
+                background: isPhoneSection
+                  ? "linear-gradient(135deg,#FF6B35,#FF3366)"
+                  : (isDark ? "#1A1D2A" : "#F3F4F6"),
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2.5 3.5c.5 1.8 2.2 3.5 4 4l1-1c.2-.2.4-.2.6-.1.5.2 1.1.3 1.7.3.3 0 .5.2.5.5v1.6c0 .3-.2.5-.5.5C4.5 9.3 2.7 5.5 2.7 3c0-.3.2-.5.5-.5H4.8c.3 0 .5.2.5.5 0 .6.1 1.2.3 1.7.1.2.1.4-.1.6l-1 1z" fill={isPhoneSection ? "white" : textMuted}/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold leading-tight" style={{ color: isPhoneSection ? "#FF6B35" : textPrimary }}>
+                Your Phone Agent
+              </p>
+              <p className="text-[10px] mt-0.5 leading-snug" style={{ color: textMuted }}>
+                Answers customers. Books appointments.
+              </p>
+            </div>
           </button>
+        </div>
 
-          {isPhoneSection && PHONE_TABS.map((tab) => {
+        {/* Contextual tab row — tabs for the active agent only */}
+        <div className="flex items-end overflow-x-auto scrollbar-none" style={{ marginBottom: -1 }}>
+          {activeTabs.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link

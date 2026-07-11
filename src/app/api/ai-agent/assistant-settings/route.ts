@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 interface AssistantSettings {
   voiceId?: string;
   speed?: number;
+  conversationStyle?: string;
 }
 
 async function getAuthAndTenant(req: NextRequest) {
@@ -60,8 +61,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as AssistantSettings;
   const settings: AssistantSettings = {
-    voiceId: body.voiceId ?? undefined,
-    speed:   typeof body.speed === "number" ? body.speed : undefined,
+    voiceId:           body.voiceId ?? undefined,
+    speed:             typeof body.speed === "number" ? body.speed : undefined,
+    conversationStyle: body.conversationStyle ?? undefined,
   };
 
   const admin = createSupabaseAdmin() as any;

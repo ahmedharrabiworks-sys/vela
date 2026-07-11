@@ -162,6 +162,7 @@ export default function OverviewPage() {
   const [muted, setMuted] = useState(false);
   const [voiceId, setVoiceId] = useState(DEFAULT_VOICE_ID);
   const [speed, setSpeed] = useState(0.85);
+  const [convStyle, setConvStyle] = useState("warm");
   const [liveContext, setLiveContext] = useState<LiveContext | null>(null);
   const vapiRef = useRef<VapiInstance>(null);
   const { t } = useI18n();
@@ -213,9 +214,10 @@ export default function OverviewPage() {
     loadMisc();
     fetch("/api/ai-agent/assistant-settings")
       .then(r => r.json())
-      .then((d: { voiceId?: string; speed?: number }) => {
+      .then((d: { voiceId?: string; speed?: number; conversationStyle?: string }) => {
         if (d.voiceId) setVoiceId(d.voiceId);
         if (typeof d.speed === "number") setSpeed(d.speed);
+        if (d.conversationStyle) setConvStyle(d.conversationStyle);
       })
       .catch(() => {});
   }, []);
@@ -257,6 +259,13 @@ export default function OverviewPage() {
     if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
   }
 
+  const STYLE_LINES: Record<string, string> = {
+    direct:   "Be direct. Answer immediately with no preamble. Skip filler phrases like \"Great question\" or \"Of course\". One clear answer, nothing more.",
+    warm:     "Be warm and conversational. Natural, friendly language — like a trusted colleague. A brief acknowledgment before answering is fine.",
+    thorough: "Be thorough. Provide full context when it adds value. Walk through reasoning where helpful. Err on the side of completeness over brevity.",
+    brief:    "Be maximally brief. Every word must earn its place. Compress to the minimum required for clarity and accuracy.",
+  };
+
   const VELA_SYSTEM = `You are Vela — a warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
 
 ## YOUR ROLE
@@ -266,6 +275,9 @@ Vela is a phone-only service: it answers inbound business calls 24/7, handles in
 
 ## LANGUAGE
 Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic, French, German, Spanish, and English fluently.
+
+## COMMUNICATION STYLE
+${STYLE_LINES[convStyle] ?? STYLE_LINES.warm}
 
 ## VELA PLANS
 Starter $79/mo · Pro $159/mo (most popular) · Premium $299/mo. Annual saves 20%.
