@@ -5,9 +5,11 @@ import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
 import {
   DEFAULT_VOICE_ID,
+  clampSpeed,
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
+  getTrainingFirstMessage,
   TRAINING_SYSTEM,
   RECORD_ANSWER_TOOL,
 } from "@/lib/vapi-agent-config";
@@ -68,12 +70,16 @@ export default function TrainingPage() {
   const [callError, setCallError] = useState<string | null>(null);
   const [muted, setMuted]         = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
-  const [voiceId, setVoiceId]     = useState(DEFAULT_VOICE_ID);
-  const [speed, setSpeed]         = useState(0.85);
+  const [typedAnswer, setTypedAnswer] = useState("");
   const [learnedKb, setLearnedKb] = useState<LearnedKb | null>(null);
   const [liveKb, setLiveKb]       = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
   const [callStart, setCallStart] = useState<number>(0);
+  const voiceIdRef       = useRef(DEFAULT_VOICE_ID);
+  const speedRef         = useRef(0.85);
+  const agentLanguageRef = useRef<string | undefined>(undefined);
+  const linesRef         = useRef<TLine[]>([]);
+  const toolKbRef        = useRef<Record<string, string>>({});
   const vapiRef      = useRef<VapiInstance>(null);
   const scaleRef     = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -88,9 +94,10 @@ export default function TrainingPage() {
   useEffect(() => {
     fetch("/api/ai-agent/settings")
       .then(r => r.json())
-      .then((d: { voiceId?: string; speed?: number }) => {
-        if (d.voiceId) setVoiceId(d.voiceId);
-        if (typeof d.speed === "number") setSpeed(d.speed);
+      .then((d: { voiceId?: string; speed?: number; language?: string }) => {
+        if (d.voiceId) voiceIdRef.current = d.voiceId;
+        if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
+        if (d.language) agentLanguageRef.current = d.language;
       })
       .catch(() => {});
   }, []);
@@ -153,23 +160,21 @@ export default function TrainingPage() {
     setTranscript([]);
     setLearnedKb(null);
     setLiveKb({});
+    linesRef.current = [];
+    toolKbRef.current = {};
     const started = Date.now();
     setCallStart(started);
-
     setCallError(null);
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
       vapiRef.current = vapi;
-      const lines: TLine[] = [];
-      // Accumulate tool-call KB in a local ref so call-end closure always sees latest
-      const toolKb: Record<string, string> = {};
 
       vapi.on("call-start", () => setStatus("active"));
       vapi.on("call-end",   () => {
         setStatus("ended");
         if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
-        extractKb(lines, started, { ...toolKb });
+        extractKb([...linesRef.current], started, { ...toolKbRef.current });
       });
       vapi.on("call-start-failed", (e: any) => {
         console.error("[vapi call-start-failed]", e);
@@ -187,13 +192,11 @@ export default function TrainingPage() {
       });
 
       vapi.on("message", (msg: any) => {
-        // Transcript lines
         if (msg.type === "transcript" && msg.transcriptType === "final") {
           const line: TLine = { role: msg.role, text: msg.transcript };
-          lines.push(line);
+          linesRef.current.push(line);
           setTranscript(prev => [...prev, line]);
         }
-        // GPT function/tool calls — recordBusinessAnswer fired by the model
         if (msg.type === "tool-calls" && Array.isArray(msg.toolCallList)) {
           msg.toolCallList.forEach((tc: any) => {
             if (tc?.function?.name === "recordBusinessAnswer") {
@@ -204,7 +207,7 @@ export default function TrainingPage() {
                 const topic = args?.topic as string | undefined;
                 const value = args?.value as string | undefined;
                 if (topic && value) {
-                  toolKb[topic] = value;
+                  toolKbRef.current[topic] = value;
                   setLiveKb(prev => ({ ...prev, [topic]: value }));
                 }
               } catch { /* ignore malformed args */ }
@@ -221,8 +224,9 @@ export default function TrainingPage() {
           messages: [{ role: "system", content: TRAINING_SYSTEM }],
           tools: [RECORD_ANSWER_TOOL],
         },
-        voice: getVoiceConfig(voiceId, speed),
-        firstMessage: "Hi! I'm Vela — I'll learn your business through a quick conversation covering 7 topics. Which language would you prefer?",
+        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
+        firstMessage: getTrainingFirstMessage(agentLanguageRef.current),
+        firstMessageInterruptionsEnabled: true,
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,
         startSpeakingPlan,
@@ -232,7 +236,7 @@ export default function TrainingPage() {
       setCallError(toErrorText(err));
       setStatus("idle");
     }
-  }, [status, voiceId, speed, extractKb]);
+  }, [status, extractKb]);
 
   const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
   const toggleMute = useCallback(() => {
@@ -240,8 +244,32 @@ export default function TrainingPage() {
     const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
   }, [muted]);
   const reset = useCallback(() => {
-    setStatus("idle"); setCallError(null); setTranscript([]); setLearnedKb(null); setLiveKb({}); setMuted(false); vapiRef.current = null;
+    setStatus("idle"); setCallError(null); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); vapiRef.current = null;
   }, []);
+
+  const sendTypedAnswer = useCallback(() => {
+    const text = typedAnswer.trim();
+    if (!text || !vapiRef.current) return;
+    vapiRef.current.send({
+      type: "add-message",
+      message: { role: "user", content: text },
+      triggerResponseEnabled: true,
+    });
+    const line: TLine = { role: "user", text };
+    linesRef.current.push(line);
+    setTranscript(prev => [...prev, line]);
+    setTypedAnswer("");
+  }, [typedAnswer]);
+
+  useEffect(() => {
+    function onVisChange() {
+      if (!document.hidden && vapiRef.current && status === "active") {
+        vapiRef.current.setMuted(muted);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisChange);
+    return () => document.removeEventListener("visibilitychange", onVisChange);
+  }, [status, muted]);
 
   const isActive     = status === "active";
   const isConnecting = status === "connecting";
@@ -403,6 +431,32 @@ export default function TrainingPage() {
                 )}
               </div>
             </div>
+
+            {/* Typed answer input (visible during active call) */}
+            {isActive && (
+              <div className="rounded-2xl border p-3" style={{ background: cardBg, borderColor: border }}>
+                <p className="text-[10px] font-semibold mb-2" style={{ color: textMuted }}>Type your answer</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={typedAnswer}
+                    onChange={e => setTypedAnswer(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") sendTypedAnswer(); }}
+                    placeholder="Type here if you prefer not to speak…"
+                    className="flex-1 rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ background: isDark ? "#0B0D14" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
+                  />
+                  <button
+                    onClick={sendTypedAnswer}
+                    disabled={!typedAnswer.trim()}
+                    className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 transition-all"
+                    style={{ background: "linear-gradient(135deg,#FF3366,#FF6B35)" }}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* RIGHT: Live Business Knowledge panel (3/5 — the star) */}

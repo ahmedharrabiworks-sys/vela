@@ -19,11 +19,21 @@ const CONV_STYLES = [
   { value: "brief",    label: "Brief",    description: "Ultra-short. Maximum information density." },
 ];
 
+const LANGUAGES = [
+  { value: "",   label: "Auto-detect",  description: "Ask each session" },
+  { value: "en", label: "English",      description: "Always English" },
+  { value: "ar", label: "Arabic",       description: "دائماً بالعربية" },
+  { value: "fr", label: "French",       description: "Toujours en français" },
+  { value: "de", label: "German",       description: "Immer Deutsch" },
+  { value: "es", label: "Spanish",      description: "Siempre español" },
+];
+
 export default function AssistantSettingsPage() {
   const { isDark } = useAgentTheme();
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE_ID);
   const [speed, setSpeed]           = useState(0.85);
   const [convStyle, setConvStyle]   = useState("warm");
+  const [language, setLanguage]     = useState("");
   const [saving, setSaving]         = useState(false);
   const [saved, setSaved]           = useState(false);
   const [loading, setLoading]       = useState(true);
@@ -44,10 +54,11 @@ export default function AssistantSettingsPage() {
       try {
         const res = await fetch("/api/ai-agent/assistant-settings");
         if (res.ok) {
-          const data = await res.json() as { voiceId?: string; speed?: number; conversationStyle?: string };
+          const data = await res.json() as { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string };
           if (data.voiceId) setSelectedVoice(data.voiceId);
           if (typeof data.speed === "number") setSpeed(clampSpeed(data.speed));
           if (data.conversationStyle) setConvStyle(data.conversationStyle);
+          if (data.preferredLanguage !== undefined) setLanguage(data.preferredLanguage ?? "");
         }
       } catch { /* ignore */ }
       setLoading(false);
@@ -99,7 +110,7 @@ export default function AssistantSettingsPage() {
       await fetch("/api/ai-agent/assistant-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voiceId: selectedVoice, speed: clampSpeed(speed), conversationStyle: convStyle }),
+        body: JSON.stringify({ voiceId: selectedVoice, speed: clampSpeed(speed), conversationStyle: convStyle, preferredLanguage: language }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -293,6 +304,36 @@ export default function AssistantSettingsPage() {
                         <span className="text-xs font-semibold" style={{ color: textPrimary }}>{s.label}</span>
                       </div>
                       <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{s.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Language card */}
+            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+              <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>Language</h2>
+              <div className="space-y-1.5">
+                {LANGUAGES.map((lang) => {
+                  const active = language === lang.value;
+                  return (
+                    <button
+                      key={lang.value}
+                      onClick={() => setLanguage(lang.value)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all"
+                      style={{
+                        background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
+                        borderColor: active ? "#FF6B35" : border,
+                      }}
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
+                        style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
+                      />
+                      <div className="min-w-0">
+                        <span className="text-xs font-semibold" style={{ color: textPrimary }}>{lang.label}</span>
+                        <span className="text-[10px] ml-2" style={{ color: textMuted }}>{lang.description}</span>
+                      </div>
                     </button>
                   );
                 })}

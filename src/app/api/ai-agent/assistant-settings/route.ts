@@ -10,6 +10,7 @@ interface AssistantSettings {
   voiceId?: string;
   speed?: number;
   conversationStyle?: string;
+  preferredLanguage?: string;
 }
 
 async function getAuthAndTenant(req: NextRequest) {
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
     voiceId:           body.voiceId ?? undefined,
     speed:             typeof body.speed === "number" ? body.speed : undefined,
     conversationStyle: body.conversationStyle ?? undefined,
+    preferredLanguage: body.preferredLanguage ?? undefined,
   };
 
   const admin = createSupabaseAdmin() as any;

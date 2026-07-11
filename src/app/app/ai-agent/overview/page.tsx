@@ -7,9 +7,11 @@ import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
 import {
   DEFAULT_VOICE_ID,
+  clampSpeed,
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
+  getAssistantFirstMessage,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -160,10 +162,11 @@ export default function OverviewPage() {
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [callError, setCallError]   = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
-  const [voiceId, setVoiceId] = useState(DEFAULT_VOICE_ID);
-  const [speed, setSpeed] = useState(0.85);
-  const [convStyle, setConvStyle] = useState("warm");
-  const [liveContext, setLiveContext] = useState<LiveContext | null>(null);
+  const voiceIdRef     = useRef(DEFAULT_VOICE_ID);
+  const speedRef       = useRef(0.85);
+  const convStyleRef   = useRef("warm");
+  const liveContextRef = useRef<LiveContext | null>(null);
+  const prefLangRef    = useRef<string | undefined>(undefined);
   const vapiRef = useRef<VapiInstance>(null);
   const { t } = useI18n();
 
@@ -214,10 +217,11 @@ export default function OverviewPage() {
     loadMisc();
     fetch("/api/ai-agent/assistant-settings")
       .then(r => r.json())
-      .then((d: { voiceId?: string; speed?: number; conversationStyle?: string }) => {
-        if (d.voiceId) setVoiceId(d.voiceId);
-        if (typeof d.speed === "number") setSpeed(d.speed);
-        if (d.conversationStyle) setConvStyle(d.conversationStyle);
+      .then((d: { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string }) => {
+        if (d.voiceId) voiceIdRef.current = d.voiceId;
+        if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
+        if (d.conversationStyle) convStyleRef.current = d.conversationStyle;
+        if (d.preferredLanguage) prefLangRef.current = d.preferredLanguage;
       })
       .catch(() => {});
   }, []);
@@ -226,7 +230,7 @@ export default function OverviewPage() {
   useEffect(() => {
     fetch("/api/ai-agent/context")
       .then(r => r.ok ? r.json() : null)
-      .then((ctx: LiveContext | null) => { if (ctx) setLiveContext(ctx); })
+      .then((ctx: LiveContext | null) => { if (ctx) liveContextRef.current = ctx; })
       .catch(() => {});
   }, []);
 
@@ -259,14 +263,22 @@ export default function OverviewPage() {
     if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
   }
 
-  const STYLE_LINES: Record<string, string> = {
-    direct:   "Be direct. Answer immediately with no preamble. Skip filler phrases like \"Great question\" or \"Of course\". One clear answer, nothing more.",
-    warm:     "Be warm and conversational. Natural, friendly language — like a trusted colleague. A brief acknowledgment before answering is fine.",
-    thorough: "Be thorough. Provide full context when it adds value. Walk through reasoning where helpful. Err on the side of completeness over brevity.",
-    brief:    "Be maximally brief. Every word must earn its place. Compress to the minimum required for clarity and accuracy.",
-  };
-
-  const VELA_SYSTEM = `You are Vela — a warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
+  const startCall = useCallback(async () => {
+    if (callStatus !== "idle") return;
+    setCallStatus("connecting");
+    setCallError(null);
+    const STYLE_LINES: Record<string, string> = {
+      direct:   "Be direct. Answer immediately with no preamble. Skip filler phrases like \"Great question\" or \"Of course\". One clear answer, nothing more.",
+      warm:     "Be warm and conversational. Natural, friendly language — like a trusted colleague. A brief acknowledgment before answering is fine.",
+      thorough: "Be thorough. Provide full context when it adds value. Walk through reasoning where helpful. Err on the side of completeness over brevity.",
+      brief:    "Be maximally brief. Every word must earn its place. Compress to the minimum required for clarity and accuracy.",
+    };
+    const ctx  = liveContextRef.current;
+    const lang = prefLangRef.current;
+    const langInstruction = lang
+      ? `Always speak in ${lang === "ar" ? "Arabic (العربية)" : lang === "fr" ? "French" : lang === "de" ? "German" : lang === "es" ? "Spanish" : "English"} throughout the entire conversation. Never switch languages.`
+      : "Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic, French, German, Spanish, and English fluently.";
+    const velaSystem = `You are Vela — a warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
 
 ## YOUR ROLE
 You have read-only access to the owner's live account data. Help them understand their business performance, answer data questions, and give actionable insights about their Vela phone agent. Think like a trusted advisor — give real insights, not just data readouts.
@@ -274,23 +286,18 @@ You have read-only access to the owner's live account data. Help them understand
 Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
 
 ## LANGUAGE
-Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic, French, German, Spanish, and English fluently.
+${langInstruction}
 
 ## COMMUNICATION STYLE
-${STYLE_LINES[convStyle] ?? STYLE_LINES.warm}
+${STYLE_LINES[convStyleRef.current] ?? STYLE_LINES.warm}
 
 ## VELA PLANS
 Starter $79/mo · Pro $159/mo (most popular) · Premium $299/mo. Annual saves 20%.
 
 ## LIVE ACCOUNT DATA
-${liveContext ? buildContextString(liveContext) : "Account data loading — answer general questions about Vela."}
+${ctx ? buildContextString(ctx) : "Account data loading — answer general questions about Vela."}
 
 Do not read raw data aloud — synthesize it into natural, helpful insights.`;
-
-  const startCall = useCallback(async () => {
-    if (callStatus !== "idle") return;
-    setCallStatus("connecting");
-    setCallError(null);
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
@@ -315,9 +322,10 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
       });
       const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
       await vapi.start({
-        model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: VELA_SYSTEM }] },
-        voice: getVoiceConfig(voiceId, speed),
-        firstMessage: "Hey — good to have you back. Which language would you like to use?",
+        model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: velaSystem }] },
+        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
+        firstMessage: getAssistantFirstMessage(prefLangRef.current),
+        firstMessageInterruptionsEnabled: true,
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,
         startSpeakingPlan,
@@ -328,7 +336,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
       setCallStatus("idle");
       resetBars();
     }
-  }, [callStatus, voiceId, speed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [callStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
   const toggleMute = useCallback(() => {
@@ -338,6 +346,16 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
   const resetCall = useCallback(() => {
     setCallStatus("idle"); setCallError(null); setMuted(false); resetBars(); vapiRef.current = null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    function onVisChange() {
+      if (!document.hidden && vapiRef.current && callStatus === "active") {
+        vapiRef.current.setMuted(muted);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisChange);
+    return () => document.removeEventListener("visibilitychange", onVisChange);
+  }, [callStatus, muted]);
 
   const isActive     = callStatus === "active";
   const isConnecting = callStatus === "connecting";
@@ -626,9 +644,6 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                       </svg>
                       {t("aiAgent.overview.talkToVela")}
                     </button>
-                    <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      Reads your live data — not your phone agent
-                    </p>
                   </>
                 )}
                 {isConnecting && (
