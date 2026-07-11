@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
         },
         voice: getVoiceConfig(voiceId, speed),
         transcriber: getTranscriberConfig(),
-        firstMessageInterruptionsEnabled: true,
+        firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         stopSpeakingPlan,
         startSpeakingPlan,
       },

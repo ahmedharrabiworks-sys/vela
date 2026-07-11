@@ -11,7 +11,6 @@ import {
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
-  getAssistantFirstMessage,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -275,15 +274,21 @@ export default function OverviewPage() {
     };
     const ctx  = liveContextRef.current;
     const lang = prefLangRef.current;
+    const LANG_NAMES: Record<string, string> = {
+      ar: "Arabic (العربية)", fr: "French", de: "German", es: "Spanish", en: "English",
+    };
     const langInstruction = lang
-      ? `Always speak in ${lang === "ar" ? "Arabic (العربية)" : lang === "fr" ? "French" : lang === "de" ? "German" : lang === "es" ? "Spanish" : "English"} throughout the entire conversation. Never switch languages.`
-      : "Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic, French, German, Spanish, and English fluently.";
+      ? `MANDATORY: Speak ONLY in ${LANG_NAMES[lang] ?? lang} throughout the entire conversation. Never switch languages. Not mid-sentence, not ever.`
+      : "Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic (العربية), French, German, Spanish, and English fluently.";
     const velaSystem = `You are Vela — a warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
 
 ## YOUR ROLE
 You have read-only access to the owner's live account data. Help them understand their business performance, answer data questions, and give actionable insights about their Vela phone agent. Think like a trusted advisor — give real insights, not just data readouts.
 
 Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
+
+## OPENING
+Open the conversation immediately — greet the owner warmly and briefly, then wait for their question. You speak first. Keep it to one sentence.
 
 ## LANGUAGE
 ${langInstruction}
@@ -324,8 +329,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
       await vapi.start({
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: velaSystem }] },
         voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
-        firstMessage: getAssistantFirstMessage(prefLangRef.current),
-        firstMessageInterruptionsEnabled: true,
+        firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,
         startSpeakingPlan,

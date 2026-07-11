@@ -9,8 +9,7 @@ import {
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
-  getTrainingFirstMessage,
-  TRAINING_SYSTEM,
+  buildTrainingSystem,
   RECORD_ANSWER_TOOL,
 } from "@/lib/vapi-agent-config";
 
@@ -221,12 +220,11 @@ export default function TrainingPage() {
         model: {
           provider: "openai",
           model: "gpt-4o",
-          messages: [{ role: "system", content: TRAINING_SYSTEM }],
+          messages: [{ role: "system", content: buildTrainingSystem(agentLanguageRef.current) }],
           tools: [RECORD_ANSWER_TOOL],
         },
         voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
-        firstMessage: getTrainingFirstMessage(agentLanguageRef.current),
-        firstMessageInterruptionsEnabled: true,
+        firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         transcriber: getTranscriberConfig(),
         stopSpeakingPlan,
         startSpeakingPlan,

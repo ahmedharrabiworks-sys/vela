@@ -120,14 +120,25 @@ export async function POST(req: NextRequest) {
       },
       voice: getVoiceConfig(voiceId, speed),
       transcriber: getTranscriberConfig(),
-      firstMessageInterruptionsEnabled: true,
+      firstMessageMode: "assistant-speaks-first-with-model-generated-message",
       stopSpeakingPlan,
       startSpeakingPlan,
       ...(webhookUrl ? { serverUrl: webhookUrl } : {}),
     };
 
     if (assistantId) {
-      await vapiRequest(`/assistant/${assistantId}`, "PATCH", assistantBody);
+      try {
+        await vapiRequest(`/assistant/${assistantId}`, "PATCH", assistantBody);
+      } catch (patchErr: any) {
+        // Stored ID no longer exists in Vapi (e.g. manually deleted from dashboard)
+        const msg = (patchErr?.message ?? "") as string;
+        if (/not found|404/i.test(msg)) {
+          const created = await vapiRequest("/assistant", "POST", assistantBody) as any;
+          assistantId = created.id as string;
+        } else {
+          throw patchErr;
+        }
+      }
     } else {
       const created = await vapiRequest("/assistant", "POST", assistantBody) as any;
       assistantId = created.id as string;
@@ -147,15 +158,18 @@ export async function POST(req: NextRequest) {
       phoneNumberId = numRes.id as string;
     }
 
-    // Save to tenant_config
+    // Save to tenant_config — upsert so a missing row doesn't cause a silent no-op
     await admin
       .from("tenant_config")
-      .update({
-        vapi_assistant_id:    assistantId,
-        vapi_phone_number:    phoneNumber,
-        vapi_phone_number_id: phoneNumberId,
-      })
-      .eq("tenant_id", tenant.id);
+      .upsert(
+        {
+          tenant_id:            tenant.id,
+          vapi_assistant_id:    assistantId,
+          vapi_phone_number:    phoneNumber,
+          vapi_phone_number_id: phoneNumberId,
+        },
+        { onConflict: "tenant_id" }
+      );
 
     return NextResponse.json({ phoneNumber, phoneNumberId, assistantId });
   } catch (err: any) {
