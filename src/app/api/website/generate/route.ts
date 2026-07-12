@@ -535,7 +535,14 @@ export async function POST(req: NextRequest) {
     const html = renderWebsite(spec, imageMap);
 
     if (tenant?.id) {
-      await admin.from("tenant_config").upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
+      const { error: upsertErr } = await admin
+        .from("tenant_config")
+        .upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
+      if (upsertErr) {
+        console.error("[website/generate] DB upsert failed:", upsertErr.message);
+        // Surface the failure so the client knows the publish step may also fail.
+        return NextResponse.json({ error: `Site generated but could not be saved: ${upsertErr.message}` }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ html });

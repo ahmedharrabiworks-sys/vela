@@ -64,17 +64,20 @@ export default function WebsitePage() {
 
   const bottomRef    = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Ref always holds the latest generated HTML — avoids stale closure in handlePublish.
+  // useCallback with `html` as dependency has a window where built=true but the
+  // closure still holds html="" — reading from a ref is always current.
+  const htmlRef = useRef<string>("");
 
   const handlePublish = useCallback(async () => {
-    if (!built || publishing || !html) return;
+    const currentHtml = htmlRef.current;
+    if (!built || publishing || !currentHtml) return;
     setPublishing(true);
     try {
-      // Send the current HTML directly — publish route saves it and returns the URL.
-      // This bypasses any timing gap between the generate route's DB write and now.
       const res = await fetch("/api/website/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html }),
+        body: JSON.stringify({ html: currentHtml }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -87,7 +90,7 @@ export default function WebsitePage() {
     } finally {
       setPublishing(false);
     }
-  }, [built, publishing, html]);
+  }, [built, publishing]); // html not needed here — reads from ref
 
   const copyPublishUrl = useCallback(async () => {
     const full = `${window.location.origin}${publishedUrl}`;
@@ -195,6 +198,7 @@ export default function WebsitePage() {
       }
 
       setHtml(data.html);
+      htmlRef.current = data.html;   // keep ref in sync — publish handler reads this
       setBuilt(true);
       setViewMode("preview");
       setActiveTab("preview");
