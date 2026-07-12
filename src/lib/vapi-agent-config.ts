@@ -42,22 +42,30 @@ export function clampSpeed(speed: number): number {
 }
 
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// When a specific language is known, pass it explicitly to Deepgram — accuracy
-// is dramatically better than "multi" auto-detect (which mis-identifies Arabic
-// as Hindi/Devanagari). Only fall back to "multi" when language is unknown
-// (inbound calls from unknown callers, or owner chose "Auto-detect").
+// IMPORTANT MODEL SELECTION:
+//   nova-3-general → valid for en/fr/de/es/multi and 50+ other codes, but
+//                    REJECTS "ar" at runtime (Vapi returns 400 Bad Request).
+//   nova-3         → the base multilingual model; accepts "ar" and all others.
 //
-// Valid Deepgram language codes from @vapi-ai/web api.d.ts line 240.
-type DgLang = "ar" | "fr" | "de" | "es" | "en" | "multi";
-const DG_LANG_MAP: Partial<Record<string, DgLang>> = {
+// Language code mapping: app stores "ar"/"fr"/"de"/"es"/"en"/""
+// Map to Deepgram codes; fall back to "multi" for any unrecognised value so a
+// bad/missing value never sends an invalid string that kills the call.
+//
+// Verified against @vapi-ai/web api.d.ts line 238-240:
+//   model: "nova-3" | "nova-3-general" | ... (both are valid SDK values)
+//   language: "ar" | "fr" | "de" | "es" | "en" | "multi" | ... (all valid)
+const LANG_MAP: Partial<Record<string, string>> = {
   ar: "ar", fr: "fr", de: "de", es: "es", en: "en",
 };
 
 export function getTranscriberConfig(language?: string) {
-  const lang: DgLang = (language && DG_LANG_MAP[language]) ?? "multi";
+  const normalized = (language ?? "").trim().toLowerCase();
+  const lang = LANG_MAP[normalized] ?? "multi";
+  // nova-3-general rejects "ar" — route Arabic to the base nova-3 model.
+  const model: "nova-3" | "nova-3-general" = lang === "ar" ? "nova-3" : "nova-3-general";
   return {
     provider: "deepgram" as const,
-    model: "nova-3-general" as const,
+    model,
     language: lang,
     endpointing: 300,
   };

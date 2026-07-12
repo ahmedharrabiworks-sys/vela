@@ -368,14 +368,14 @@ export default function TrainingPage() {
         </div>
 
         {/* Main 2-col grid */}
-        <div className="grid md:grid-cols-5 gap-5">
+        <div className="grid md:grid-cols-5 gap-5 md:min-h-[560px]">
 
           {/* LEFT: unified card — waveform + controls + transcript + typed input (2/5) */}
-          <div className="md:col-span-2">
-            <div className="rounded-2xl border flex flex-col" style={{ background: cardBg, borderColor: border }}>
+          <div className="md:col-span-2 flex flex-col">
+            <div className="rounded-2xl border flex flex-col flex-1 h-full" style={{ background: cardBg, borderColor: border }}>
 
               {/* Waveform */}
-              <div className="flex flex-col items-center gap-4 px-5 pt-6 pb-5 border-b" style={{ borderColor: border }}>
+              <div className="flex flex-col items-center gap-4 px-5 pt-6 pb-5 border-b shrink-0" style={{ borderColor: border }}>
                 <div className="relative flex items-center justify-center" style={{ width: 240, height: 48 }}>
                   <div className="absolute inset-0 rounded-full blur-2xl" style={{
                     background: "radial-gradient(ellipse, rgba(255,51,102,0.22) 0%, transparent 70%)",
@@ -465,7 +465,7 @@ export default function TrainingPage() {
               </div>
 
               {/* Transcript */}
-              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b shrink-0" style={{ borderColor: border }}>
                 <span className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.training.transcript")}</span>
                 {isActive && (
                   <span className="flex items-center gap-1.5 text-[9px]" style={{ color: "#22C55E" }}>
@@ -473,7 +473,7 @@ export default function TrainingPage() {
                   </span>
                 )}
               </div>
-              <div ref={transcriptRef} className="overflow-y-auto px-4 py-3 space-y-2 flex-1" style={{ minHeight: 120, maxHeight: 220 }}>
+              <div ref={transcriptRef} className="overflow-y-auto px-4 py-3 space-y-2 flex-1" style={{ minHeight: 80 }}>
                 {transcript.length === 0 ? (
                   <p className="text-xs text-center py-4" style={{ color: textMuted }}>
                     {status === "idle" ? t("aiAgent.training.noTranscript") : t("aiAgent.training.saving")}
@@ -495,7 +495,7 @@ export default function TrainingPage() {
               </div>
 
               {/* Typed input — always visible, active when call is live */}
-              <div className="px-4 py-3 border-t" style={{ borderColor: border }}>
+              <div className="px-4 py-3 border-t shrink-0" style={{ borderColor: border }}>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -522,11 +522,11 @@ export default function TrainingPage() {
           </div>
 
           {/* RIGHT: Business Knowledge panel (3/5 — the centerpiece) */}
-          <div className="md:col-span-3">
-            <div className="rounded-2xl border h-full" style={{ background: cardBg, borderColor: border }}>
+          <div className="md:col-span-3 flex flex-col">
+            <div className="rounded-2xl border flex flex-col flex-1 h-full" style={{ background: cardBg, borderColor: border }}>
 
               {/* Panel header — 4xl counter as emotional anchor */}
-              <div className="px-6 py-5 border-b" style={{ borderColor: border }}>
+              <div className="px-6 py-5 border-b shrink-0" style={{ borderColor: border }}>
                 <div className="flex items-end justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: textMuted }}>Business Knowledge</p>
@@ -567,8 +567,8 @@ export default function TrainingPage() {
                 </div>
               </div>
 
-              {/* Knowledge cards */}
-              <div className="p-5">
+              {/* Knowledge cards — flex-1 fills remaining panel height */}
+              <div className="p-5 flex-1 overflow-y-auto">
                 {status === "idle" && (
                   <div className="grid grid-cols-2 gap-2">
                     {KB_FIELDS.map((f, i) => (

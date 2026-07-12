@@ -292,7 +292,7 @@ export default function AssistantSettingsPage() {
               </button>
             </div>
 
-            {/* Language card — now above "How it talks" */}
+            {/* Language card */}
             <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
               <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>Language</h2>
               <div className="space-y-1.5">
@@ -321,40 +321,40 @@ export default function AssistantSettingsPage() {
                 })}
               </div>
             </div>
+
+            {/* How it talks — 2×2 grid fits the narrow right column */}
+            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+              <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>How it talks</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {CONV_STYLES.map((s) => {
+                  const active = convStyle === s.value;
+                  return (
+                    <button
+                      key={s.value}
+                      onClick={() => setConvStyle(s.value)}
+                      className="flex flex-col gap-1 p-3 rounded-xl border text-left transition-all"
+                      style={{
+                        background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
+                        borderColor: active ? "#FF6B35" : border,
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
+                          style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
+                        />
+                        <span className="text-xs font-semibold" style={{ color: textPrimary }}>{s.label}</span>
+                      </div>
+                      <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{s.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Row 2: How it talks — full width, 4 options in a horizontal row */}
-        <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-          <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>How it talks</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {CONV_STYLES.map((s) => {
-              const active = convStyle === s.value;
-              return (
-                <button
-                  key={s.value}
-                  onClick={() => setConvStyle(s.value)}
-                  className="flex flex-col gap-1 p-3 rounded-xl border text-left transition-all"
-                  style={{
-                    background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
-                    borderColor: active ? "#FF6B35" : border,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
-                      style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
-                    />
-                    <span className="text-xs font-semibold" style={{ color: textPrimary }}>{s.label}</span>
-                  </div>
-                  <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{s.description}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Row 3: Save */}
+        {/* Save row */}
         <div className="flex items-center justify-end gap-3">
           {saved && (
             <span className="text-sm text-green-500 flex items-center gap-1.5">
