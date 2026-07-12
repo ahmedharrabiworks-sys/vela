@@ -42,52 +42,41 @@ export function clampSpeed(speed: number): number {
 }
 
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// Model selection — runtime-validated against Vapi error responses:
+// Using ElevenLabs Scribe — the only transcriber in Vapi's stack that supports
+// Arabic. Deepgram (nova-2, nova-3, nova-3-general) all reject "ar" at runtime.
 //
-//   nova-3 / nova-3-general → both REJECT "ar" (Arabic not in their language
-//     set at all — they can't detect or transcribe Arabic even with "multi").
+// Verified from @vapi-ai/web api.d.ts lines 317-325:
+//   interface ElevenLabsTranscriber {
+//     provider: "11labs";
+//     model?: "scribe_v1";        ← only valid model value
+//     language?: "ar" | "en" | "fr" | "de" | "es" | ...;  ← ISO 639-1
+//     fallbackPlan?: ...;
+//   }
+//   "ar" is an explicit valid value. No Deepgram-style endpointing field.
 //
-//   nova-2 → supports "ar" explicitly. Arabic is in nova-2's language set,
-//     so nova-2 + "multi" can also auto-detect Arabic. This is the only
-//     Deepgram model exposed through Vapi that handles Arabic.
+// Language mapping (app stores "ar"/"en"/"fr"/"de"/"es"/""):
+//   ar → "ar"  en → "en"  fr → "fr"  de → "de"  es → "es"
+//   unknown / empty → "en" (English fallback, per product requirement)
 //
-// Strategy:
-//   • Arabic (ar)        → nova-2 + "ar"      (explicit, highest accuracy)
-//   • Other known langs  → nova-3-general + exact code (best accuracy for those)
-//   • Unknown / auto     → nova-2 + "multi"   (nova-2 can detect Arabic;
-//                           nova-3 + multi silently mis-transcribes Arabic)
-//
-// Input normalisation: trim + lowercase so "ar"/"AR"/" ar " all resolve correctly.
-// Fallback: any unrecognised value → nova-2 + "multi" so no bad string can
-// reach Vapi and kill the call.
-//
-// Verified: "nova-2", "nova-3-general", "ar", "fr", "de", "es", "en", "multi"
-// are all valid values in @vapi-ai/web api.d.ts lines 238-240.
-type TranscriberCfg = { model: "nova-2" | "nova-3-general"; language: string };
+// Input is trim+lowercase so "AR", " ar ", etc. all resolve correctly.
+// Any unrecognised value falls back to "en" — no invalid string can reach Vapi.
+type ScribeLang = "ar" | "en" | "fr" | "de" | "es";
 
-const TRANSCRIBER_MAP: Record<string, TranscriberCfg> = {
-  ar: { model: "nova-2",         language: "ar" },
-  en: { model: "nova-3-general", language: "en" },
-  fr: { model: "nova-3-general", language: "fr" },
-  de: { model: "nova-3-general", language: "de" },
-  es: { model: "nova-3-general", language: "es" },
+const SCRIBE_LANG_MAP: Partial<Record<string, ScribeLang>> = {
+  ar: "ar", en: "en", fr: "fr", de: "de", es: "es",
 };
 
-const TRANSCRIBER_FALLBACK: TranscriberCfg = { model: "nova-2", language: "multi" };
-
 export function getTranscriberConfig(language?: string): {
-  provider: "deepgram";
-  model: "nova-2" | "nova-3-general";
-  language: string;
-  endpointing: number;
+  provider: "11labs";
+  model: "scribe_v1";
+  language: ScribeLang;
 } {
   const normalized = (language ?? "").trim().toLowerCase();
-  const cfg = TRANSCRIBER_MAP[normalized] ?? TRANSCRIBER_FALLBACK;
+  const lang: ScribeLang = SCRIBE_LANG_MAP[normalized] ?? "en";
   return {
-    provider: "deepgram" as const,
-    model: cfg.model,
-    language: cfg.language,
-    endpointing: 300,
+    provider: "11labs" as const,
+    model: "scribe_v1" as const,
+    language: lang,
   };
 }
 
