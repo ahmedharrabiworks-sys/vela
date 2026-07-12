@@ -48,7 +48,6 @@ export default function AssistantSettingsPage() {
         const res = await fetch("/api/ai-agent/assistant-settings");
         if (res.ok) {
           const data = await res.json() as { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string };
-          // Owner's explicit choice wins; smart Arabic default only when nothing is saved
           setSelectedVoice(data.voiceId || getDefaultVoiceId(data.preferredLanguage ?? undefined));
           if (typeof data.speed === "number") setSpeed(clampSpeed(data.speed));
           if (data.conversationStyle) setConvStyle(data.conversationStyle);
@@ -150,19 +149,20 @@ export default function AssistantSettingsPage() {
           </p>
         </div>
 
+        {/* Row 1: Voice (3/5) + Speed (2/5) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
           {/* Voice list — 3/5 */}
           <div className="lg:col-span-3 rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>Voice</h2>
 
-            {(["en", "ar"] as const).map((lang) => (
-              <div key={lang} className={lang === "ar" ? "mt-4" : ""}>
+            {(["male", "female"] as const).map((gender) => (
+              <div key={gender} className={gender === "female" ? "mt-4" : ""}>
                 <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: textMuted }}>
-                  {lang === "en" ? "Multilingual — English, French, German, Spanish & more" : "Arabic (العربية)"}
+                  {gender === "male" ? "Male" : "Female"}
                 </p>
                 <div className="space-y-2">
-                  {VOICES.filter((v) => v.language === lang).map((v) => {
+                  {VOICES.filter((v) => v.gender === gender).map((v) => {
                     const active       = selectedVoice === v.id;
                     const isPlaying    = playing    === v.id;
                     const isGenerating = generating === v.id;
@@ -236,7 +236,7 @@ export default function AssistantSettingsPage() {
             )}
           </div>
 
-          {/* Right column — speed + style + save (2/5) */}
+          {/* Right — Speed (2/5) */}
           <div className="lg:col-span-2 flex flex-col gap-5">
 
             {/* Speed card */}
@@ -292,37 +292,7 @@ export default function AssistantSettingsPage() {
               </button>
             </div>
 
-            {/* Conversation style card */}
-            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>How it talks</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {CONV_STYLES.map((s) => {
-                  const active = convStyle === s.value;
-                  return (
-                    <button
-                      key={s.value}
-                      onClick={() => setConvStyle(s.value)}
-                      className="flex flex-col gap-1 p-3 rounded-xl border text-left transition-all"
-                      style={{
-                        background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
-                        borderColor: active ? "#FF6B35" : border,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
-                          style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
-                        />
-                        <span className="text-xs font-semibold" style={{ color: textPrimary }}>{s.label}</span>
-                      </div>
-                      <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{s.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Language card */}
+            {/* Language card — now above "How it talks" */}
             <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
               <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>Language</h2>
               <div className="space-y-1.5">
@@ -351,33 +321,60 @@ export default function AssistantSettingsPage() {
                 })}
               </div>
             </div>
-
-            {/* Save card */}
-            <div className="rounded-2xl border p-5 flex flex-col gap-3" style={{ background: cardBg, borderColor: border }}>
-              <p className="text-xs" style={{ color: textMuted }}>
-                Changes apply to your next &ldquo;Talk to Vela&rdquo; session.
-              </p>
-              {saved && (
-                <span className="text-sm text-green-500 flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Saved
-                </span>
-              )}
-              {saveError && (
-                <span className="text-xs text-red-400 leading-snug">{saveError}</span>
-              )}
-              <button
-                onClick={save}
-                disabled={saving}
-                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-              >
-                {saving ? "Saving…" : "Save Settings"}
-              </button>
-            </div>
           </div>
+        </div>
+
+        {/* Row 2: How it talks — full width, 4 options in a horizontal row */}
+        <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>How it talks</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {CONV_STYLES.map((s) => {
+              const active = convStyle === s.value;
+              return (
+                <button
+                  key={s.value}
+                  onClick={() => setConvStyle(s.value)}
+                  className="flex flex-col gap-1 p-3 rounded-xl border text-left transition-all"
+                  style={{
+                    background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
+                    borderColor: active ? "#FF6B35" : border,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
+                      style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
+                    />
+                    <span className="text-xs font-semibold" style={{ color: textPrimary }}>{s.label}</span>
+                  </div>
+                  <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{s.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Row 3: Save */}
+        <div className="flex items-center justify-end gap-3">
+          {saved && (
+            <span className="text-sm text-green-500 flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2.5 7l3 3 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Saved
+            </span>
+          )}
+          {saveError && (
+            <span className="text-xs text-red-400 leading-snug max-w-xs text-right">{saveError}</span>
+          )}
+          <button
+            onClick={save}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+          >
+            {saving ? "Saving…" : "Save Settings"}
+          </button>
         </div>
       </div>
     </div>

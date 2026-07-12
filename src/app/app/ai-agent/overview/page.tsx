@@ -335,7 +335,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
         model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: velaSystem }] },
         voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-        transcriber: getTranscriberConfig(),
+        transcriber: getTranscriberConfig(prefLangRef.current),
         stopSpeakingPlan,
         startSpeakingPlan,
       });

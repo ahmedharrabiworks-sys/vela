@@ -156,13 +156,13 @@ export default function SettingsPage() {
                   className={inputClass}
                   style={inputStyle}
                 >
-                  <optgroup label="Multilingual — English, French, German, Spanish & more">
-                    {VOICES.filter((v) => v.language === "en").map((v) => (
+                  <optgroup label="Male">
+                    {VOICES.filter((v) => v.gender === "male").map((v) => (
                       <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Arabic (العربية)">
-                    {VOICES.filter((v) => v.language === "ar").map((v) => (
+                  <optgroup label="Female">
+                    {VOICES.filter((v) => v.gender === "female").map((v) => (
                       <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
                     ))}
                   </optgroup>

@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
         messages: [{ role: "system", content: systemPrompt }],
       },
       voice: getVoiceConfig(voiceId, speed),
-      transcriber: getTranscriberConfig(),
+      transcriber: getTranscriberConfig(language),
       firstMessageMode: "assistant-speaks-first-with-model-generated-message",
       stopSpeakingPlan,
       startSpeakingPlan,

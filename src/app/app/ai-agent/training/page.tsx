@@ -53,14 +53,65 @@ const WAVE_D = (() => {
 })();
 
 /* ── Knowledge field definitions ── */
+function KbIcon({ field, filled, current }: { field: string; filled: boolean; current: boolean }) {
+  const color = filled ? "white" : current ? "#FF6B35" : "#64748B";
+  const icons: Record<string, JSX.Element> = {
+    businessType: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="4" width="10" height="7" rx="1" stroke={color} strokeWidth="1.2"/>
+        <path d="M4 4V3a2 2 0 0 1 4 0v1" stroke={color} strokeWidth="1.2"/>
+        <path d="M1 7h10" stroke={color} strokeWidth="1.2"/>
+      </svg>
+    ),
+    services: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="3" width="10" height="7" rx="1" stroke={color} strokeWidth="1.2"/>
+        <path d="M4 3V2.5a2 1.5 0 0 1 4 0V3" stroke={color} strokeWidth="1.2"/>
+        <path d="M4 6h4M4 8h2" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+      </svg>
+    ),
+    hours: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="4.5" stroke={color} strokeWidth="1.2"/>
+        <path d="M6 3.5V6l2 1.5" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    location: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M6 1C4.07 1 2.5 2.57 2.5 4.5c0 2.63 3.5 6.5 3.5 6.5s3.5-3.87 3.5-6.5C9.5 2.57 7.93 1 6 1z" stroke={color} strokeWidth="1.2"/>
+        <circle cx="6" cy="4.5" r="1.2" stroke={color} strokeWidth="1.1"/>
+      </svg>
+    ),
+    booking: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1.5" y="2.5" width="9" height="8" rx="1" stroke={color} strokeWidth="1.2"/>
+        <path d="M4 1.5v2M8 1.5v2M1.5 5.5h9" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+        <path d="M4 7.5h1M7 7.5h1" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    ),
+    faqs: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M2 2h8a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H7l-2 2V9H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke={color} strokeWidth="1.2"/>
+        <path d="M4.5 5h3M4.5 7h2" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
+      </svg>
+    ),
+    special: (
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M6 1.5l1.3 2.7 2.9.4-2.1 2 .5 2.9L6 8.1l-2.6 1.4.5-2.9-2.1-2 2.9-.4L6 1.5z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+      </svg>
+    ),
+  };
+  return icons[field] ?? null;
+}
+
 const KB_FIELDS = [
-  { key: "businessType", label: "Business Type",     icon: "🏢", q: 1 },
-  { key: "services",     label: "Services & Prices", icon: "💼", q: 2 },
-  { key: "hours",        label: "Working Hours",     icon: "🕐", q: 3 },
-  { key: "location",     label: "Location / Area",   icon: "📍", q: 4 },
-  { key: "booking",      label: "How to Book",       icon: "📅", q: 5 },
-  { key: "faqs",         label: "Common Questions",  icon: "💬", q: 6 },
-  { key: "special",      label: "What Makes You Special", icon: "⭐", q: 7 },
+  { key: "businessType", label: "Business Type",     q: 1 },
+  { key: "services",     label: "Services & Prices", q: 2 },
+  { key: "hours",        label: "Working Hours",     q: 3 },
+  { key: "location",     label: "Location / Area",   q: 4 },
+  { key: "booking",      label: "How to Book",       q: 5 },
+  { key: "faqs",         label: "Common Questions",  q: 6 },
+  { key: "special",      label: "What Makes You Special", q: 7 },
 ];
 
 export default function TrainingPage() {
@@ -235,7 +286,7 @@ export default function TrainingPage() {
         },
         voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-        transcriber: getTranscriberConfig(),
+        transcriber: getTranscriberConfig(agentLanguageRef.current),
         stopSpeakingPlan,
         startSpeakingPlan,
       });
@@ -289,8 +340,11 @@ export default function TrainingPage() {
       <style>{`
         @keyframes waveFlow { from{transform:translateX(0)} to{transform:translateX(-280px)} }
         @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes kbFadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
-        @media(min-width:768px) { .tr-pad { padding: 20px 24px 32px; margin: -20px -24px -32px; } }
+        @keyframes kbPop {
+          0%   { opacity:0; transform:scale(0.92) translateY(6px); }
+          60%  { opacity:1; transform:scale(1.03) translateY(-1px); }
+          100% { opacity:1; transform:scale(1) translateY(0); }
+        }
       `}</style>
 
       <div className="max-w-5xl mx-auto space-y-5">
@@ -316,104 +370,101 @@ export default function TrainingPage() {
         {/* Main 2-col grid */}
         <div className="grid md:grid-cols-5 gap-5">
 
-          {/* LEFT: waveform + controls + compact transcript (2/5) */}
-          <div className="md:col-span-2 space-y-4">
-            {/* Waveform card */}
-            <div className="rounded-2xl border p-5 flex flex-col items-center gap-4" style={{ background: cardBg, borderColor: border }}>
-              {/* Wave container */}
-              <div className="relative flex items-center justify-center" style={{ width: 240, height: 48 }}>
-                <div className="absolute inset-0 rounded-full blur-2xl" style={{
-                  background: "radial-gradient(ellipse, rgba(255,51,102,0.2) 0%, transparent 70%)",
-                  opacity: isActive ? 0.8 : 0.1,
-                  transition: "opacity 0.3s",
-                }}/>
-                <div style={{ width: 240, height: 36, overflow: "hidden", borderRadius: 4 }}>
-                  <div style={{ width: 560, height: 36, animation: (isActive||isConnecting) ? "waveFlow 2.2s linear infinite" : "none", opacity: isActive ? 1 : isConnecting ? 0.5 : 0.12, transition: "opacity 0.4s" }}>
-                    <div ref={scaleRef} style={{ width: 560, height: 36, transform: "scaleY(0.2)", transformOrigin: "280px 18px", transition: "transform 0.05s" }}>
-                      <svg viewBox="0 0 560 40" width="560" height="40">
-                        <defs>
-                          <linearGradient id="wg-tr" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#FF6B35"/>
-                            <stop offset="50%" stopColor="#FF3366"/>
-                            <stop offset="100%" stopColor="#FF6B35"/>
-                          </linearGradient>
-                        </defs>
-                        <path d={WAVE_D} fill="none" stroke="url(#wg-tr)" strokeWidth="2.5" strokeLinecap="round"/>
-                      </svg>
+          {/* LEFT: unified card — waveform + controls + transcript + typed input (2/5) */}
+          <div className="md:col-span-2">
+            <div className="rounded-2xl border flex flex-col" style={{ background: cardBg, borderColor: border }}>
+
+              {/* Waveform */}
+              <div className="flex flex-col items-center gap-4 px-5 pt-6 pb-5 border-b" style={{ borderColor: border }}>
+                <div className="relative flex items-center justify-center" style={{ width: 240, height: 48 }}>
+                  <div className="absolute inset-0 rounded-full blur-2xl" style={{
+                    background: "radial-gradient(ellipse, rgba(255,51,102,0.22) 0%, transparent 70%)",
+                    opacity: isActive ? 0.9 : 0.1,
+                    transition: "opacity 0.3s",
+                  }}/>
+                  <div style={{ width: 240, height: 36, overflow: "hidden", borderRadius: 4 }}>
+                    <div style={{ width: 560, height: 36, animation: (isActive||isConnecting) ? "waveFlow 2.2s linear infinite" : "none", opacity: isActive ? 1 : isConnecting ? 0.5 : 0.12, transition: "opacity 0.4s" }}>
+                      <div ref={scaleRef} style={{ width: 560, height: 36, transform: "scaleY(0.2)", transformOrigin: "280px 18px", transition: "transform 0.05s" }}>
+                        <svg viewBox="0 0 560 40" width="560" height="40">
+                          <defs>
+                            <linearGradient id="wg-tr" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#FF6B35"/>
+                              <stop offset="50%" stopColor="#FF3366"/>
+                              <stop offset="100%" stopColor="#FF6B35"/>
+                            </linearGradient>
+                          </defs>
+                          <path d={WAVE_D} fill="none" stroke="url(#wg-tr)" strokeWidth="2.5" strokeLinecap="round"/>
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Status text */}
-              <p className="text-sm text-center" style={{ color: isConnecting?"#FF6B35":isActive?textPrimary:textMuted }}>
-                {isConnecting ? t("common.connecting") : isActive ? (muted ? t("aiAgent.training.muted") : t("aiAgent.training.speakNaturally")) : status==="ended" ? t("aiAgent.training.complete") : extracting ? t("aiAgent.training.saving") : t("aiAgent.training.ready")}
-              </p>
+                <p className="text-sm text-center" style={{ color: isConnecting?"#FF6B35":isActive?textPrimary:textMuted }}>
+                  {isConnecting ? t("common.connecting") : isActive ? (muted ? t("aiAgent.training.muted") : t("aiAgent.training.speakNaturally")) : status==="ended" ? t("aiAgent.training.complete") : extracting ? t("aiAgent.training.saving") : t("aiAgent.training.ready")}
+                </p>
 
-              {/* Controls */}
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                {status === "idle" && (
-                  <button onClick={startCall}
-                    disabled={!settingsReady}
-                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:hover:scale-100"
-                    style={{ background:"linear-gradient(135deg,#FF3366,#FF6B35)", boxShadow:"0 4px 20px rgba(255,51,102,0.35)" }}>
-                    {!settingsReady
-                      ? <div className="w-3.5 h-3.5 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" />
-                      : <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
-                          <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
-                        </svg>
-                    }
-                    {t("aiAgent.training.start")}
-                  </button>
-                )}
-                {isConnecting && (
-                  <div className="flex items-center gap-2 px-4 py-2.5">
-                    <div style={{ width:14, height:14, borderRadius:"50%", border:"2px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
-                    <span className="text-sm" style={{ color: textMuted }}>Connecting…</span>
-                  </div>
-                )}
-                {isActive && (
-                  <>
-                    <button onClick={toggleMute}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
-                      style={{ background: muted?(isDark?"rgba(255,107,53,0.15)":"#FFF5F0"):(isDark?"#1E2235":"#F3F4F6"), color: muted?"#FF6B35":textMuted, border:`1px solid ${muted?"#FF6B35":border}` }}>
-                      {muted ? "Unmute" : "Mute"}
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                  {status === "idle" && (
+                    <button onClick={startCall}
+                      disabled={!settingsReady}
+                      className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:hover:scale-100"
+                      style={{ background:"linear-gradient(135deg,#FF3366,#FF6B35)", boxShadow:"0 4px 20px rgba(255,51,102,0.35)" }}>
+                      {!settingsReady
+                        ? <div className="w-3.5 h-3.5 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" />
+                        : <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
+                            <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
+                          </svg>
+                      }
+                      {t("aiAgent.training.start")}
                     </button>
-                    <button onClick={endCall}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
-                      style={{ background: isDark?"rgba(239,68,68,0.1)":"#FEF2F2", color:"#EF4444", border:"1px solid rgba(239,68,68,0.3)" }}>
-                      {t("aiAgent.training.end")}
+                  )}
+                  {isConnecting && (
+                    <div className="flex items-center gap-2 px-4 py-2.5">
+                      <div style={{ width:14, height:14, borderRadius:"50%", border:"2px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
+                      <span className="text-sm" style={{ color: textMuted }}>Connecting…</span>
+                    </div>
+                  )}
+                  {isActive && (
+                    <>
+                      <button onClick={toggleMute}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                        style={{ background: muted?(isDark?"rgba(255,107,53,0.15)":"#FFF5F0"):(isDark?"#1E2235":"#F3F4F6"), color: muted?"#FF6B35":textMuted, border:`1px solid ${muted?"#FF6B35":border}` }}>
+                        {muted ? "Unmute" : "Mute"}
+                      </button>
+                      <button onClick={endCall}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                        style={{ background: isDark?"rgba(239,68,68,0.1)":"#FEF2F2", color:"#EF4444", border:"1px solid rgba(239,68,68,0.3)" }}>
+                        {t("aiAgent.training.end")}
+                      </button>
+                    </>
+                  )}
+                  {status === "ended" && !extracting && (
+                    <button onClick={reset}
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium transition-all"
+                      style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
+                      {t("aiAgent.training.newInterview")}
                     </button>
-                  </>
-                )}
-                {status === "ended" && !extracting && (
-                  <button onClick={reset}
-                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium transition-all"
-                    style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
-                    {t("aiAgent.training.newInterview")}
-                  </button>
-                )}
-                {extracting && (
-                  <div className="flex items-center gap-2 px-4 py-2">
-                    <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
-                    <span className="text-xs" style={{ color: "#FF6B35" }}>{t("aiAgent.training.saving")}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Visible error below controls */}
-              {callError && (
-                <div className="mx-5 mb-4 rounded-xl p-3" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
-                  <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed to start</p>
-                  <p className="text-[10px]" style={{ color: textMuted }}>{typeof callError === "string" ? callError : "An unexpected error occurred."}</p>
-                  <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
+                  )}
+                  {extracting && (
+                    <div className="flex items-center gap-2 px-4 py-2">
+                      <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
+                      <span className="text-xs" style={{ color: "#FF6B35" }}>{t("aiAgent.training.saving")}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Compact transcript */}
-            <div className="rounded-2xl border flex flex-col" style={{ background: cardBg, borderColor: border }}>
+                {callError && (
+                  <div className="w-full rounded-xl p-3" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
+                    <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed to start</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{typeof callError === "string" ? callError : "An unexpected error occurred."}</p>
+                    <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Transcript */}
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
                 <span className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.training.transcript")}</span>
                 {isActive && (
@@ -422,7 +473,7 @@ export default function TrainingPage() {
                   </span>
                 )}
               </div>
-              <div ref={transcriptRef} className="overflow-y-auto px-4 py-3 space-y-2" style={{ maxHeight: 240 }}>
+              <div ref={transcriptRef} className="overflow-y-auto px-4 py-3 space-y-2 flex-1" style={{ minHeight: 120, maxHeight: 220 }}>
                 {transcript.length === 0 ? (
                   <p className="text-xs text-center py-4" style={{ color: textMuted }}>
                     {status === "idle" ? t("aiAgent.training.noTranscript") : t("aiAgent.training.saving")}
@@ -442,25 +493,23 @@ export default function TrainingPage() {
                   ))
                 )}
               </div>
-            </div>
 
-            {/* Typed answer input (visible during active call) */}
-            {isActive && (
-              <div className="rounded-2xl border p-3" style={{ background: cardBg, borderColor: border }}>
-                <p className="text-[10px] font-semibold mb-2" style={{ color: textMuted }}>Type your answer</p>
+              {/* Typed input — always visible, active when call is live */}
+              <div className="px-4 py-3 border-t" style={{ borderColor: border }}>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={typedAnswer}
                     onChange={e => setTypedAnswer(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") sendTypedAnswer(); }}
-                    placeholder="Type here if you prefer not to speak…"
-                    className="flex-1 rounded-lg px-3 py-2 text-xs outline-none"
+                    placeholder={isActive ? "Type your answer…" : "Start the session to type…"}
+                    disabled={!isActive}
+                    className="flex-1 rounded-lg px-3 py-2 text-xs outline-none disabled:opacity-40"
                     style={{ background: isDark ? "#0B0D14" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
                   />
                   <button
                     onClick={sendTypedAnswer}
-                    disabled={!typedAnswer.trim()}
+                    disabled={!typedAnswer.trim() || !isActive}
                     className="px-3 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 transition-all"
                     style={{ background: "linear-gradient(135deg,#FF3366,#FF6B35)" }}
                   >
@@ -468,74 +517,76 @@ export default function TrainingPage() {
                   </button>
                 </div>
               </div>
-            )}
+
+            </div>
           </div>
 
-          {/* RIGHT: Live Business Knowledge panel (3/5 — the star) */}
+          {/* RIGHT: Business Knowledge panel (3/5 — the centerpiece) */}
           <div className="md:col-span-3">
             <div className="rounded-2xl border h-full" style={{ background: cardBg, borderColor: border }}>
-              {/* Panel header */}
-              <div className="px-5 py-4 border-b" style={{ borderColor: border }}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M7 1L8.5 5H13L9.5 7.5l1.5 4L7 9l-4 2.5 1.5-4L1 5h4.5L7 1z" stroke="white" strokeWidth="1.2" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: textPrimary }}>{t("aiAgent.training.knowledgeTitle")}</p>
-                      <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.training.knowledgeSub")}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold" style={{ color: filledCount > 0 ? "#FF6B35" : textMuted }}>
-                      {progressPct}%
+
+              {/* Panel header — 4xl counter as emotional anchor */}
+              <div className="px-6 py-5 border-b" style={{ borderColor: border }}>
+                <div className="flex items-end justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-widest mb-0.5" style={{ color: textMuted }}>Business Knowledge</p>
+                    <p className="text-sm" style={{ color: textMuted }}>
+                      {status === "idle"
+                        ? t("aiAgent.training.idleDesc")
+                        : status === "ended"
+                        ? t("aiAgent.training.savedToKb")
+                        : t("aiAgent.training.knowledgeSub")}
                     </p>
-                    <p className="text-[9px]" style={{ color: textMuted }}>{filledCount}/7 complete</p>
+                    {/* Progress bar */}
+                    <div className="h-1 rounded-full mt-3" style={{ background: isDark?"#1E2235":"#F1F5F9" }}>
+                      <div
+                        className="h-1 rounded-full transition-all duration-700"
+                        style={{ width:`${progressPct}%`, background:"linear-gradient(to right,#FF6B35,#FF3366)" }}
+                      />
+                    </div>
                   </div>
-                </div>
-                {/* Progress bar */}
-                <div className="h-1.5 rounded-full" style={{ background: isDark?"#1E2235":"#F1F5F9" }}>
-                  <div
-                    className="h-1.5 rounded-full transition-all duration-700"
-                    style={{ width:`${progressPct}%`, background:"linear-gradient(to right,#FF6B35,#FF3366)" }}
-                  />
+                  {/* The big counter */}
+                  <div className="text-right shrink-0">
+                    <p
+                      className="font-black leading-none"
+                      style={{
+                        fontSize: "2.75rem",
+                        background: filledCount > 0 ? "linear-gradient(135deg,#FF6B35,#FF3366)" : "none",
+                        WebkitBackgroundClip: filledCount > 0 ? "text" : "unset",
+                        WebkitTextFillColor: filledCount > 0 ? "transparent" : textMuted,
+                        color: filledCount > 0 ? "transparent" : textMuted,
+                        transition: "color 0.4s",
+                      }}
+                    >
+                      {filledCount}<span style={{ fontSize: "1.5rem", opacity: 0.55 }}>/7</span>
+                    </p>
+                    <p className="text-[9px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: textMuted }}>
+                      {filledCount === 7 ? "complete" : "filled"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Knowledge cards grid */}
+              {/* Knowledge cards */}
               <div className="p-5">
                 {status === "idle" && (
-                  <div className="py-4">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:"linear-gradient(135deg,#FF6B35,#FF3366)" }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                          <circle cx="8" cy="6.5" r="3" stroke="white" strokeWidth="1.3"/>
-                          <path d="M3 13s0-2.5 5-2.5 5 2.5 5 2.5" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.training.idlePlaceholder")}</p>
-                        <p className="text-xs" style={{ color: textMuted }}>{t("aiAgent.training.idleDesc")}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {KB_FIELDS.map((f, i) => (
-                        <div key={f.key} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB", border:`1px solid ${border}` }}>
-                          <span className="text-base opacity-35">{f.icon}</span>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Q{i+1}</p>
-                            <p className="text-[10px] font-medium truncate" style={{ color: textSub }}>{f.label}</p>
-                          </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {KB_FIELDS.map((f, i) => (
+                      <div key={f.key} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB", border:`1px solid ${border}` }}>
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: isDark?"#1E2235":"#F3F4F6" }}>
+                          <KbIcon field={f.key} filled={false} current={false}/>
                         </div>
-                      ))}
-                    </div>
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Q{i+1}</p>
+                          <p className="text-[10px] font-medium truncate" style={{ color: textSub }}>{f.label}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
                 {(showLiveKb || status === "ended") && (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {KB_FIELDS.map((f) => {
                       const answered = liveKb[f.key];
                       const isCurrent = currentQuestion === f.q && isActive;
@@ -551,16 +602,16 @@ export default function TrainingPage() {
                               ? (isDark?"rgba(255,107,53,0.10)":"#FFF5F0")
                               : (isDark?"rgba(255,255,255,0.02)":"#FAFAFA"),
                             borderColor: answered
-                              ? "rgba(255,107,53,0.25)"
+                              ? "rgba(255,107,53,0.3)"
                               : isCurrent
-                              ? "rgba(255,107,53,0.4)"
+                              ? "rgba(255,107,53,0.45)"
                               : border,
-                            animation: answered ? "kbFadeIn 0.4s ease-out" : "none",
+                            animation: answered ? "kbPop 0.38s cubic-bezier(0.34,1.56,0.64,1) both" : "none",
                           }}
                         >
                           <div className="flex items-start gap-3 p-3.5">
                             <div
-                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                               style={{
                                 background: answered
                                   ? "linear-gradient(135deg,#FF6B35,#FF3366)"
@@ -574,7 +625,7 @@ export default function TrainingPage() {
                                   <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
                               ) : (
-                                <span style={{ opacity: isCurrent ? 1 : 0.4 }}>{f.icon}</span>
+                                <KbIcon field={f.key} filled={false} current={isCurrent}/>
                               )}
                             </div>
 
@@ -607,7 +658,7 @@ export default function TrainingPage() {
                   </div>
                 )}
 
-                {/* Post-call final KB from AI extraction */}
+                {/* Post-call AI-extracted summary */}
                 {showFinalKb && (
                   <div className="mt-4 rounded-xl border p-4" style={{ background: isDark?"rgba(34,197,94,0.05)":"#F0FDF4", borderColor: isDark?"rgba(34,197,94,0.2)":"#BBF7D0" }}>
                     <div className="flex items-center gap-2 mb-3">

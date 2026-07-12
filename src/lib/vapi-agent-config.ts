@@ -8,25 +8,31 @@ export interface VoiceEntry {
   id: string;
   name: string;
   description: string;
-  language: "en" | "ar";
+  gender: "male" | "female";
 }
 
 export const VOICES: VoiceEntry[] = [
-  { id: "egTToTzW6GojvddLj0zd", name: "Eric",     description: "Calm, youthful American male",        language: "en" },
-  { id: "PIGsltMj3gFMR34aFDI3", name: "Jonathan", description: "Calm, trustworthy, confident male",   language: "en" },
-  { id: "EST9Ui6982FZPSi7gCHi", name: "Elise",    description: "Warm, natural conversational female", language: "en" },
-  { id: "yXEnnEln9armDCyhkXcA", name: "Mohammed", description: "Natural Arabic male, Hijazi accent",  language: "ar" },
-  { id: "rUaPbzcZIu8df8iNL9WZ", name: "Sultan",   description: "Authentic Gulf Arabic male",          language: "ar" },
-  { id: "u0TsaWvt0v8migutHM3M", name: "Ghizlan",  description: "Smooth, balanced Arabic female",     language: "ar" },
+  // Male
+  { id: "Qrl71rx6Yg8RvyPYRGCQ", name: "Théo",      description: "Warm and expressive, natural ease",          gender: "male" },
+  { id: "HKFOb9iktHA85uKXydRT", name: "Mateo",     description: "Smooth and confident, clear delivery",       gender: "male" },
+  { id: "Czw3Dn181ypdrCOnPfif", name: "Felix",     description: "Crisp and measured, calm authority",         gender: "male" },
+  { id: "TUKJhQmz3RPYBNAgC5A1", name: "Miles",     description: "Natural and grounded, easy to trust",        gender: "male" },
+  { id: "DANw8bnAVbjDEHwZIoYa", name: "Sami",      description: "Deep and resonant, commanding presence",     gender: "male" },
+  // Female
+  { id: "Qggl4b0xRMiqOwhPtVWT", name: "Céline",    description: "Warm and articulate, engaging tone",         gender: "female" },
+  { id: "FvmvwvObRqIHojkEGh5N", name: "Valentina", description: "Bright and confident, effortlessly clear",   gender: "female" },
+  { id: "22VndfJPBU7AZORAZZTT", name: "Hanna",     description: "Precise and composed, professional warmth",  gender: "female" },
+  { id: "iFSsEDGbm0FiEd2IVH4w", name: "Ava",       description: "Friendly and natural, easy to listen to",    gender: "female" },
+  { id: "u0TsaWvt0v8migutHM3M", name: "Nour",      description: "Smooth and expressive, balanced tone",       gender: "female" },
 ];
 
-// ── Default ElevenLabs voice ID (Jonathan) ────────────────────────────────────
-export const DEFAULT_VOICE_ID = "PIGsltMj3gFMR34aFDI3";
+// ── Default ElevenLabs voice ID (Miles — English male) ────────────────────────
+export const DEFAULT_VOICE_ID = "TUKJhQmz3RPYBNAgC5A1";
 
 // ── Language-aware default — only used when NO voice is explicitly saved ──────
 // Owner's explicit choice always wins. This only applies when voiceId is absent.
 export function getDefaultVoiceId(language?: string): string {
-  return language === "ar" ? "yXEnnEln9armDCyhkXcA" : DEFAULT_VOICE_ID;
+  return language === "ar" ? "DANw8bnAVbjDEHwZIoYa" : DEFAULT_VOICE_ID;
 }
 
 // ── Speed clamp ───────────────────────────────────────────────────────────────
@@ -36,15 +42,23 @@ export function clampSpeed(speed: number): number {
 }
 
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// nova-3-general confirmed working in production (Overview successfully understands
-// Arabic with this config). Reverted from flux-general-multilingual which was
-// unverified. Confirmed valid SDK fields: model union (api.d.ts:238), language
-// union (api.d.ts:240), endpointing (api.d.ts:810).
-export function getTranscriberConfig() {
+// When a specific language is known, pass it explicitly to Deepgram — accuracy
+// is dramatically better than "multi" auto-detect (which mis-identifies Arabic
+// as Hindi/Devanagari). Only fall back to "multi" when language is unknown
+// (inbound calls from unknown callers, or owner chose "Auto-detect").
+//
+// Valid Deepgram language codes from @vapi-ai/web api.d.ts line 240.
+type DgLang = "ar" | "fr" | "de" | "es" | "en" | "multi";
+const DG_LANG_MAP: Partial<Record<string, DgLang>> = {
+  ar: "ar", fr: "fr", de: "de", es: "es", en: "en",
+};
+
+export function getTranscriberConfig(language?: string) {
+  const lang: DgLang = (language && DG_LANG_MAP[language]) ?? "multi";
   return {
     provider: "deepgram" as const,
     model: "nova-3-general" as const,
-    language: "multi" as const,
+    language: lang,
     endpointing: 300,
   };
 }
@@ -171,9 +185,11 @@ ${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}## RULES
 // ── Training interview system prompt ──────────────────────────────────────────
 export function buildTrainingSystem(savedLanguage?: string): string {
   const langSetup =
-    savedLanguage && savedLanguage !== "en"
-      ? `The owner's preferred language is already set to ${LANG_NAMES[savedLanguage] ?? savedLanguage}. Open the conversation IMMEDIATELY in ${LANG_NAMES[savedLanguage] ?? savedLanguage} with question 1 — do NOT ask about language preferences. Vary your opening greeting — never use the same first word twice.`
-      : savedLanguage === "en"
+    savedLanguage === "ar"
+      ? `The owner's preferred language is Arabic (العربية). Open IMMEDIATELY in Arabic with question 1. Do NOT say "مرحبا" — use a varied, natural Arabic opener or go straight to your first question. Never open the same way twice.`
+    : savedLanguage && savedLanguage !== "en"
+      ? `The owner's preferred language is already set to ${LANG_NAMES[savedLanguage] ?? savedLanguage}. Open IMMEDIATELY in ${LANG_NAMES[savedLanguage] ?? savedLanguage} with question 1 — do NOT ask about language preferences. Vary your opening — never open with the same phrase twice.`
+    : savedLanguage === "en"
       ? `The owner's preferred language is English. Open immediately with question 1 in English — do NOT ask about language preferences.`
       : `Detect the owner's language from their very first words — do NOT ask which language they prefer.
 Arabic (العربية) is your HIGHEST priority: if you hear or read any Arabic at all — even a single word — respond in Arabic IMMEDIATELY and stay in Arabic for the entire interview.

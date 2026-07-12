@@ -140,13 +140,13 @@ export default function VoicePage() {
           <div className="lg:col-span-3 rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>{t("aiAgent.voice.selectVoice")}</h2>
 
-            {(["en", "ar"] as const).map((lang) => (
-              <div key={lang} className={lang === "ar" ? "mt-4" : ""}>
+            {(["male", "female"] as const).map((gender) => (
+              <div key={gender} className={gender === "female" ? "mt-4" : ""}>
                 <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: textMuted }}>
-                  {lang === "en" ? "Multilingual — English, French, German, Spanish & more" : "Arabic (العربية)"}
+                  {gender === "male" ? "Male" : "Female"}
                 </p>
                 <div className="space-y-2">
-                  {VOICES.filter((v) => v.language === lang).map((v) => {
+                  {VOICES.filter((v) => v.gender === gender).map((v) => {
                     const active       = selectedVoice === v.id;
                     const isPlaying    = playing === v.id;
                     const isGenerating = generating === v.id;
