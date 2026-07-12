@@ -339,6 +339,18 @@ export function renderCtaBanner(
 </section>`;
 }
 
+// ── Map a footer link label to the closest section ID ────────────────────────
+function linkHref(text: string): string {
+  const t = text.toLowerCase().replace(/[^a-z]/g, "");
+  if (["services", "service", "treatments", "treatment", "offers"].includes(t)) return "#services";
+  if (["about", "story", "ourstory", "whoweare", "us"].includes(t)) return "#about";
+  if (["faq", "faqs", "questions"].includes(t)) return "#faq";
+  if (["contact", "contactus", "booking", "book", "appointment", "consultation", "enquiry"].includes(t)) return "#booking";
+  if (["gallery", "work", "portfolio", "ourwork"].includes(t)) return "#gallery";
+  if (["team", "staff", "ourteam"].includes(t)) return "#team";
+  return "#booking"; // safe fallback — better than bare #
+}
+
 // ── Footer ────────────────────────────────────────────────────────────────────
 export function renderFooter(
   businessName: string,
@@ -355,7 +367,7 @@ export function renderFooter(
       </div>
       <div>
         <p class="ws-footer-heading">Navigation</p>
-        ${links.map((l) => `<a href="#" class="ws-footer-link">${esc(l)}</a>`).join("")}
+        ${links.map((l) => `<a href="${linkHref(l)}" class="ws-footer-link">${esc(l)}</a>`).join("")}
       </div>
       <div>
         <p class="ws-footer-heading">Contact</p>

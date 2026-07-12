@@ -241,10 +241,13 @@ PRESETS:
 PART 3 — SECTION STRUCTURE
 ═══════════════════════════════════════════════════════
 
-REQUIRED: hero (first) + footer (last)
-RECOMMENDED: services, about, booking
+REQUIRED: hero (first) + booking (contact form — always include) + footer (last)
+RECOMMENDED: services, about
 OPTIONAL: gallery (visual businesses), team (if staff relevant), faq (medical/legal/service), cta_banner (before footer)
 NEVER: testimonials
+
+The booking section is MANDATORY on every site — it is the contact and enquiry form.
+Every visitor needs a way to reach the business. Include it even if no contact info was provided.
 
 SectionSpec structure:
 { "type": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
@@ -504,6 +507,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Guarantee booking section exists — every site must have a contact/enquiry form
+    if (!spec.sections.some((s) => s.type === "booking")) {
+      // Insert before footer
+      const footerIdx = spec.sections.findIndex((s) => s.type === "footer");
+      const insertAt = footerIdx >= 0 ? footerIdx : spec.sections.length;
+      spec.sections.splice(insertAt, 0, {
+        type: "booking",
+        content: {
+          eyebrow: "Get In Touch",
+          headline: "Start Your Project",
+          subheadline: "Tell us about your vision and we'll be in touch within 24 hours.",
+          ctaText: "Send Enquiry",
+          services: [],
+          ...(contactInfo?.phone   ? { phone:   contactInfo.phone }   : {}),
+          ...(contactInfo?.email   ? { email:   contactInfo.email }   : {}),
+          ...(contactInfo?.address ? { address: contactInfo.address } : {}),
+          ...(contactInfo?.hours   ? { hours:   contactInfo.hours }   : {}),
+        },
+      });
+    }
+
     // Server-side fallback: inject imageQuery for any visual section GPT missed
     ensureImageQueries(spec, industry, city, msgText);
 
@@ -511,7 +535,7 @@ export async function POST(req: NextRequest) {
     const html = renderWebsite(spec, imageMap);
 
     if (tenant?.id) {
-      void admin.from("tenant_config").upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
+      await admin.from("tenant_config").upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
     }
 
     return NextResponse.json({ html });

@@ -66,10 +66,16 @@ export default function WebsitePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePublish = useCallback(async () => {
-    if (!built || publishing) return;
+    if (!built || publishing || !html) return;
     setPublishing(true);
     try {
-      const res = await fetch("/api/website/publish", { method: "POST" });
+      // Send the current HTML directly — publish route saves it and returns the URL.
+      // This bypasses any timing gap between the generate route's DB write and now.
+      const res = await fetch("/api/website/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html }),
+      });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
         alert(data.error ?? "Publish failed — please try again.");
@@ -81,7 +87,7 @@ export default function WebsitePage() {
     } finally {
       setPublishing(false);
     }
-  }, [built, publishing]);
+  }, [built, publishing, html]);
 
   const copyPublishUrl = useCallback(async () => {
     const full = `${window.location.origin}${publishedUrl}`;

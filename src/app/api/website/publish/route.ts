@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 type AdminClient = any;
 
 export async function POST(req: NextRequest) {
-  void req;
+  // Client sends the current rendered HTML so publish is not dependent on whether
+  // the generate route's background upsert has completed.
+  const body = await req.json().catch(() => ({})) as { html?: string };
 
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -23,14 +25,27 @@ export async function POST(req: NextRequest) {
 
   if (!tenant?.id) return NextResponse.json({ error: "No tenant found" }, { status: 404 });
 
-  const { data: config } = await admin
-    .from("tenant_config")
-    .select("website_html")
-    .eq("tenant_id", tenant.id)
-    .maybeSingle();
+  const htmlToSave = typeof body.html === "string" ? body.html.trim() : "";
 
-  if (!config?.website_html) {
-    return NextResponse.json({ error: "No website built yet — generate a site first" }, { status: 400 });
+  if (htmlToSave) {
+    // Primary path: client sent the HTML — save it now (authoritative)
+    const { error } = await admin
+      .from("tenant_config")
+      .upsert({ tenant_id: tenant.id, website_html: htmlToSave }, { onConflict: "tenant_id" });
+    if (error) {
+      console.error("[website/publish] upsert error:", error.message);
+      return NextResponse.json({ error: "Failed to save site — please try again." }, { status: 500 });
+    }
+  } else {
+    // Fallback: HTML not sent — check if database already has it
+    const { data: config } = await admin
+      .from("tenant_config")
+      .select("website_html")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    if (!config?.website_html) {
+      return NextResponse.json({ error: "No website built yet — generate a site first" }, { status: 400 });
+    }
   }
 
   const siteUrl = `/site/${tenant.id}`;
