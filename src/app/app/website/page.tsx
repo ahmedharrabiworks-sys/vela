@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
 
 type AttachedImage = { preview: string; base64: string; mimeType: string };
+type ContactInfo = { phone: string; email: string; address: string; hours: string };
 
 type Msg = {
   role: "ai" | "user";
@@ -55,9 +56,40 @@ export default function WebsitePage() {
   const [codeCopied, setCodeCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [contactInfo, setContactInfo] = useState<ContactInfo>({ phone: "", email: "", address: "", hours: "" });
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState("");
+  const [publishCopied, setPublishCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
-  const bottomRef  = useRef<HTMLDivElement>(null);
+  const bottomRef    = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePublish = useCallback(async () => {
+    if (!built || publishing) return;
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/website/publish", { method: "POST" });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        alert(data.error ?? "Publish failed — please try again.");
+        return;
+      }
+      setPublishedUrl(data.url);
+    } catch {
+      alert("Connection error. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
+  }, [built, publishing]);
+
+  const copyPublishUrl = useCallback(async () => {
+    const full = `${window.location.origin}${publishedUrl}`;
+    try { await navigator.clipboard.writeText(full); }
+    catch { /* clipboard API may require HTTPS */ }
+    setPublishCopied(true);
+    setTimeout(() => setPublishCopied(false), 2000);
+  }, [publishedUrl]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -139,6 +171,7 @@ export default function WebsitePage() {
           currentHtml: built ? html : undefined,
           history: apiHistory,
           images: capturedImages.map((i) => ({ data: i.base64, mimeType: i.mimeType })),
+          contactInfo: (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
         }),
       });
       const data = await res.json() as { html?: string; error?: string };
@@ -198,13 +231,28 @@ export default function WebsitePage() {
               </button>
             ))}
           </div>
-          <button
-            className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-            style={{ background: "var(--vp-color)" }}
-            disabled={!built}
-          >
-            {t("website.publish")}
-          </button>
+          {publishedUrl ? (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+              <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
+                className="text-[11px] font-mono text-green-700 truncate max-w-[180px] hover:underline">
+                {typeof window !== "undefined" ? window.location.origin : ""}{publishedUrl}
+              </a>
+              <button onClick={copyPublishUrl}
+                className="text-[10px] font-semibold text-green-700 hover:text-green-900 shrink-0">
+                {publishCopied ? "✓" : "Copy"}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handlePublish}
+              className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+              style={{ background: "var(--vp-color)" }}
+              disabled={!built || publishing}
+            >
+              {publishing ? "Publishing…" : t("website.publish")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -267,6 +315,41 @@ export default function WebsitePage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Contact info intake — shown before first build */}
+          {!built && (
+            <div className="px-4 pb-2">
+              <button
+                onClick={() => setShowContactForm((v) => !v)}
+                className="flex items-center gap-1.5 text-[10px] font-semibold text-[#6B7280] hover:text-[#FF6B35] transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 16.92z"/>
+                </svg>
+                {showContactForm ? "Hide" : "Add"} real contact details
+                <span className="text-[#9CA3AF] font-normal">(optional)</span>
+              </button>
+              {showContactForm && (
+                <div className="mt-2 space-y-1.5">
+                  {(["phone", "email", "address", "hours"] as const).map((field) => (
+                    <input
+                      key={field}
+                      value={contactInfo[field]}
+                      onChange={(e) => setContactInfo((prev) => ({ ...prev, [field]: e.target.value }))}
+                      placeholder={
+                        field === "phone" ? "Phone  e.g. +971 4 000 0000" :
+                        field === "email" ? "Email  e.g. hello@clinic.ae" :
+                        field === "address" ? "Address  e.g. Dubai Marina, UAE" :
+                        "Hours  e.g. Mon–Sat 9am–7pm"
+                      }
+                      className="w-full text-[11px] px-2.5 py-1.5 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+                    />
+                  ))}
+                  <p className="text-[9px] text-[#9CA3AF]">Only what you enter will appear on the site — nothing is invented.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -437,7 +520,7 @@ export default function WebsitePage() {
                   title="Website preview"
                   className={`bg-white ${device === "mobile" ? "max-w-[375px] w-full m-3 rounded-xl border border-[#E5E7EB]" : "w-full h-full"}`}
                   style={device === "mobile" ? { height: "calc(100% - 24px)" } : { height: "100%" }}
-                  sandbox="allow-scripts allow-same-origin"
+                  sandbox="allow-scripts allow-same-origin allow-popups"
                 />
               </div>
             )}
