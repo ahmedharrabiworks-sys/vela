@@ -10,34 +10,64 @@ const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "imag
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));
 const MAX_MSG_LEN = 5000;
 
-// ── Unsplash ──────────────────────────────────────────────────────────────────
+// ── Unsplash: single query attempt ───────────────────────────────────────────
+async function tryUnsplash(query: string): Promise<string | null> {
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  if (!key) return null;
+  try {
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=8&orientation=landscape`;
+    const res = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
+    if (!res.ok) return null;
+    const data = await res.json() as { results?: { urls?: { regular?: string } }[] };
+    const results = data.results ?? [];
+    if (!results.length) return null;
+    const pick = results[Math.floor(Math.random() * Math.min(results.length, 5))];
+    return pick?.urls?.regular ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Unsplash: try primary, then fallback, then broad fallback ────────────────
+// If specific query yields nothing, broaden progressively rather than
+// accepting a colour block. Three-tier: specific → simplified → category.
 async function fetchUnsplashPhoto(query: string): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) {
     console.warn("[website] UNSPLASH_ACCESS_KEY not set — skipping image fetch");
     return null;
   }
-  try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=5&orientation=landscape`;
-    const res = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
-    if (!res.ok) {
-      console.warn("[website] Unsplash error", res.status, "for query:", query);
-      return null;
+
+  // Tier 1: exact query GPT generated
+  const result1 = await tryUnsplash(query);
+  if (result1) return result1;
+
+  // Tier 2: first 3 words of the original query (strip adjectives to core nouns)
+  const words = query.trim().split(/\s+/);
+  if (words.length > 3) {
+    const simplified = words.slice(0, 3).join(" ");
+    const result2 = await tryUnsplash(simplified);
+    if (result2) {
+      console.warn(`[website] primary query "${query}" failed — used simplified "${simplified}"`);
+      return result2;
     }
-    const data = await res.json() as { results?: { urls?: { regular?: string } }[] };
-    const results = data.results ?? [];
-    if (!results.length) return null;
-    const pick = results[Math.floor(Math.random() * Math.min(results.length, 5))];
-    return pick?.urls?.regular ?? null;
-  } catch (e) {
-    console.warn("[website] Unsplash fetch failed:", e);
-    return null;
   }
+
+  // Tier 3: last single noun/keyword (most searchable term)
+  const lastWord = words[words.length - 1] ?? words[0];
+  if (lastWord && lastWord !== words[0]) {
+    const result3 = await tryUnsplash(lastWord);
+    if (result3) {
+      console.warn(`[website] simplified query failed — used single-word fallback "${lastWord}"`);
+      return result3;
+    }
+  }
+
+  console.warn(`[website] all fallbacks exhausted for query: "${query}"`);
+  return null;
 }
 
 // ── Resolve imageQuery from section (top-level OR inside content) ─────────────
-// GPT-4o sometimes places imageQuery inside content{} rather than as a sibling.
-// We check both locations so images always resolve.
 function getImageQuery(s: { imageQuery?: string; content?: Record<string, unknown> }): string | null {
   if (typeof s.imageQuery === "string" && s.imageQuery.trim()) return s.imageQuery.trim();
   if (s.content && typeof s.content.imageQuery === "string" && (s.content.imageQuery as string).trim()) {
@@ -66,7 +96,7 @@ async function fetchSpecImages(spec: WebsiteSpec, heroOverride?: string): Promis
     qs.forEach((query, j) => tasks.push({ key: `${i}_${j}`, query }));
   }
 
-  console.log(`[website] fetching ${tasks.length} images:`, tasks.map((t) => t.query));
+  console.log(`[website] fetching ${tasks.length} images:`, tasks.map((t) => `${t.key}="${t.query}"`).join(", "));
 
   const settled = await Promise.all(
     tasks.map(async ({ key, query }) => ({ key, url: await fetchUnsplashPhoto(query) }))
@@ -74,21 +104,58 @@ async function fetchSpecImages(spec: WebsiteSpec, heroOverride?: string): Promis
 
   const map: ImageMap = {};
   for (const { key, url } of settled) {
-    if (url) {
-      map[key] = url;
-      console.log(`[website] image[${key}] resolved`);
-    } else {
-      console.warn(`[website] image[${key}] failed — will use gradient placeholder`);
-    }
+    if (url) map[key] = url;
   }
 
-  // Hero owner upload overrides Unsplash
   if (heroOverride) {
     const heroIdx = spec.sections.findIndex((s) => s.type === "hero");
     if (heroIdx >= 0) map[String(heroIdx)] = heroOverride;
   }
 
   return map;
+}
+
+// ── Server-side safety net: inject imageQuery for visual sections that GPT missed
+function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, msgText: string): void {
+  // Extract 2-3 visual keywords from the owner's message for fallback queries
+  const visualHints = msgText
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 4 && !["build", "create", "make", "website", "clinic", "please", "would", "should", "their", "with"].includes(w))
+    .slice(0, 3)
+    .join(" ");
+
+  const base = (visualHints || industry || "professional interior").trim();
+
+  for (let i = 0; i < spec.sections.length; i++) {
+    const s = spec.sections[i];
+    const hasQ = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
+
+    if (!hasQ) {
+      if (s.type === "hero") {
+        (s as { imageQuery?: string }).imageQuery = `${base} bright interior ${city}`.replace(/\s+/g, " ").trim();
+      } else if (s.type === "about") {
+        (s as { imageQuery?: string }).imageQuery = `${base} professional team workspace modern`.replace(/\s+/g, " ").trim();
+      }
+    }
+
+    // Gallery sections: ensure 6 imageQueries
+    if (s.type === "gallery") {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      if (!qs.length) {
+        const fallbackGallery = [
+          `${base} interior design`,
+          `${base} team professional`,
+          `${base} detail close up`,
+          `${base} modern equipment`,
+          `${base} client experience`,
+          `${base} results before after`,
+        ].map((q) => q.replace(/\s+/g, " ").trim());
+        (s as { imageQueries?: string[] }).imageQueries = fallbackGallery;
+      }
+    }
+  }
 }
 
 // ── Extract embedded spec from generated HTML ─────────────────────────────────
@@ -108,107 +175,210 @@ function coercePreset(v: unknown): PresetName {
   return VALID_PRESETS.includes(v as PresetName) ? (v as PresetName) : "clean";
 }
 
-// ── System prompts ────────────────────────────────────────────────────────────
+// ── System prompt ─────────────────────────────────────────────────────────────
 function buildSystem(contactBlock: string): string {
-  return `You are a website content strategist. Generate a website spec as JSON.
+  return `You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business, then produce a complete website spec as JSON.
 
-STRICT OUTPUT RULE: Output ONLY valid JSON — no markdown, no explanation, no code fences.
+STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
-JSON ROOT SCHEMA:
+═══════════════════════════════════════════════════════
+PART 1 — COPYWRITING STANDARDS (read before writing a single word)
+═══════════════════════════════════════════════════════
+
+The owner's description is RAW MATERIAL — intelligence about their business. It is NEVER source text to rephrase.
+
+YOUR JOB: Read the description. Understand what this business actually does, what its customers care about, and what makes it genuinely worth choosing. Then write FRESH copy that a premium brand's in-house marketing team would be proud of.
+
+TONE MODELS — study these:
+• compass.com: "Real estate, elevated." Confident, specific, human. Never corporate-speak.
+• studio-mcgee.com: "Design is personal." Warm authority. Every line sounds considered, not generated.
+• f45training.com: "Train. Together." Bold, direct, energetic. Sentences are short and hit hard.
+
+BEFORE (bad — paraphrasing owner input):
+Owner wrote: "every treatment room has a ceiling screen so patients can watch Netflix during procedures"
+BAD headline: "Watch Your Favorite Shows During Your Treatment"
+BAD subheadline: "Netflix entertainment during dental procedures for your comfort"
+REASON: this is a verbatim reword of the owner's sentence. It doesn't position the business — it transcribes it.
+
+AFTER (good — brand copywriting):
+GOOD headline: "Dentistry That Actually Doesn't Feel Like Dentistry"
+GOOD subheadline: "We've redesigned every detail of the patient experience, from same-day digital scans to ceiling screens in every chair."
+REASON: This speaks to the customer's emotion first (dread of dental visits), then anchors it in the specific details. Sounds like a real brand.
+
+MORE BAD COPY PATTERNS — never write these:
+✗ "Quality service you can trust" — generic cliché, means nothing
+✗ "We are committed to excellence" — corporate filler
+✗ "Your [service] journey starts here" — tired template phrase
+✗ "Professional team with years of experience" — says nothing specific
+✗ "We offer a wide range of services" — describes every business ever
+✗ "Welcome to [business name]" as a headline — wasted opportunity
+✗ Directly restating what the owner typed, even in different words
+
+GOOD COPY PATTERNS — do these:
+✓ Lead with the customer's problem or desire, then your solution
+✓ Use specific numbers, materials, techniques — real details make copy credible
+✓ Active voice. Present tense. Short sentences for headlines.
+✓ Subheadlines that add information, not just repeat the headline louder
+✓ Section headlines that read like editorial titles, not navigation labels
+  BAD: "Our Services" / GOOD: "Precision, Start to Finish"
+  BAD: "About Us" / GOOD: "Built Different From Day One"
+  BAD: "Gallery" / GOOD: "The Work Speaks"
+
+═══════════════════════════════════════════════════════
+PART 2 — STYLE PRESET (pick the one that fits this specific business)
+═══════════════════════════════════════════════════════
+
+JSON ROOT:
+{ "stylePreset": "editorial"|"bold"|"clean"|"clinical", "businessName": string, "sections": SectionSpec[] }
+
+PRESETS:
+• "editorial" → luxury salons, interior design studios, boutique hotels, high-end photography, fine dining, jewellery
+• "bold"      → gyms, crossfit boxes, martial arts, fitness studios, nightclubs, automotive, sports brands
+• "clean"     → real estate agencies, law firms, financial advisors, corporate services, tech startups, architects
+• "clinical"  → dental clinics, medical practices, dermatology, cosmetic clinics, physiotherapy, wellness centres
+
+═══════════════════════════════════════════════════════
+PART 3 — SECTION STRUCTURE
+═══════════════════════════════════════════════════════
+
+REQUIRED: hero (first) + footer (last)
+RECOMMENDED: services, about, booking
+OPTIONAL: gallery (visual businesses), team (if staff relevant), faq (medical/legal/service), cta_banner (before footer)
+NEVER: testimonials
+
+SectionSpec structure:
+{ "type": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
+
+CRITICAL — imageQuery / imageQueries MUST be siblings of "content", NOT nested inside it:
+✓ CORRECT:   { "type": "hero", "imageQuery": "...", "content": { "headline": "..." } }
+✗ INCORRECT: { "type": "hero", "content": { "imageQuery": "...", "headline": "..." } }
+
+═══════════════════════════════════════════════════════
+PART 4 — IMAGE QUERY RULES (every photo must look like it belongs to THIS business)
+═══════════════════════════════════════════════════════
+
+ImageQuery is an Unsplash search string. It must be SPECIFIC to what the owner described — not a generic category label.
+
+PROCESS:
+1. Extract concrete visual details from the owner's description: specific equipment, materials, ambience, unique features, activity type
+2. Build a 4–6 word query from those specifics
+3. Ask: "Could this photo belong to any business in this category?" If yes, make it more specific.
+
+DENTAL CLINIC EXAMPLES:
+Owner mentioned: digital scanners, ceiling screens, minimal white interiors
+→ hero imageQuery: "bright minimal dental clinic digital technology white interior"  (NOT: "dentist office")
+→ about imageQuery: "modern dental examination room ceiling screen patient comfort"  (NOT: "dental team smiling")
+
+GYM EXAMPLES:
+Owner mentioned: HIIT classes, warehouse space, orange lighting
+→ hero imageQuery: "hiit group fitness class warehouse orange lighting dynamic"  (NOT: "gym interior")
+→ about imageQuery: "group training class energetic coach industrial gym high intensity"  (NOT: "personal trainer")
+
+RESTAURANT EXAMPLES:
+Owner mentioned: open fire grill, exposed brick, intimate 40-seat dining
+→ hero imageQuery: "intimate restaurant open fire grill exposed brick warm candlelight"  (NOT: "restaurant interior")
+→ about imageQuery: "chef cooking open fire wood grill restaurant kitchen"  (NOT: "restaurant chef")
+
+Rule: if the query could apply to any business in the same category, it is not specific enough. Rewrite it.
+
+═══════════════════════════════════════════════════════
+PART 5 — SECTION CONTENT SCHEMAS
+═══════════════════════════════════════════════════════
+
+hero — imageQuery REQUIRED:
 {
-  "stylePreset": "editorial"|"bold"|"clean"|"clinical",
-  "businessName": string,
-  "sections": SectionSpec[]
+  "eyebrow": string (3–5 words, e.g. "Dubai Marina · Est. 2019"),
+  "headline": string (5–8 words, punchy, brand voice — NOT "Welcome to [name]"),
+  "subheadline": string (1–2 sentences, specific, human — NOT a category description),
+  "ctaPrimary": string (e.g. "Book a Consultation"),
+  "ctaSecondary": string (e.g. "See Our Work")
 }
 
-STYLE PRESET GUIDE:
-- "editorial": Luxury studios, high-end salons, boutique hotels, interior design, fine dining, photography
-- "bold": Gyms, fitness studios, crossfit, martial arts, nightlife, sports, automotive
-- "clean": Real estate agencies, law firms, accounting, general professional, tech, corporate
-- "clinical": Dental clinics, medical clinics, dermatology, medical spa, wellness, healthcare
-
-REQUIRED sections: hero (always first), footer (always last).
-RECOMMENDED sections: services, about, booking.
-OPTIONAL sections: gallery (visual businesses), team (if staff relevant), faq (medical/legal), cta_banner (before footer).
-NEVER include: testimonials (fake testimonials are prohibited — see ABSOLUTE RULES below).
-
-SectionSpec: { "type": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
-
-CRITICAL — imageQuery / imageQueries MUST be a sibling of "content", NOT nested inside "content":
-CORRECT:   { "type": "hero", "imageQuery": "...", "content": { "headline": "..." } }
-INCORRECT: { "type": "hero", "content": { "imageQuery": "...", "headline": "..." } }
-
-SECTION CONTENT SCHEMAS — include ALL fields:
-
-hero (imageQuery required — placed at section level, not in content):
-{ "eyebrow": string, "headline": string, "subheadline": string, "ctaPrimary": string, "ctaSecondary": string }
-imageQuery: vivid Unsplash query e.g. "modern dental clinic interior white clean"
-
-about (imageQuery required — placed at section level, not in content):
-{ "eyebrow": string, "headline": string, "body": string (2 sentences), "bullets": [{title, text}] (3-4), "ctaText": string }
-imageQuery: e.g. "dental team professional smiling clinic"
-
-services (no imageQuery):
-{ "eyebrow": string, "headline": string, "subheadline": string, "items": [{icon, title, description, price?}] (3-6) }
-icon choices: tooth | dumbbell | scissors | leaf | heart | star | briefcase | home | chef | shield | clock | plus
-
-gallery (imageQueries required — 6 strings, placed at section level):
-{ "eyebrow": string, "headline": string }
-imageQueries: array of 6 distinct Unsplash queries (at section level, not in content)
-
-team (no imageQuery):
-{ "eyebrow": string, "headline": string, "members": [{name, role, bio}] (3-4) }
-
-booking (no imageQuery):
+about — imageQuery REQUIRED:
 {
-  "eyebrow": string, "headline": string, "subheadline": string,
-  "phone": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
-  "email": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
-  "address": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
-  "hours": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
-  "ctaText": string, "services": string[] (3-6)
+  "eyebrow": string,
+  "headline": string (editorial title, NOT "About Us"),
+  "body": string (2 sentences, brand voice, specific details from owner's description),
+  "bullets": [{ "title": string, "text": string }] × 3–4 (concrete differentiators, not generic claims),
+  "ctaText": string
 }
 
-faq (no imageQuery):
-{ "eyebrow": string, "headline": string, "items": [{q, a}] (5-6) }
-
-cta_banner (no imageQuery):
-{ "headline": string, "sub": string, "ctaText": string }
-
-footer (no imageQuery):
+services — no imageQuery:
 {
-  "tagline": string,
-  "links": string[] (4-5),
-  "phone": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
-  "email": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
-  "address": string (ONLY if provided in REAL CONTACT INFO — otherwise omit),
+  "eyebrow": string,
+  "headline": string (editorial — NOT "Our Services"),
+  "subheadline": string,
+  "items": [{ "icon": string, "title": string, "description": string, "price"?: string }] × 3–6
+}
+icon values: tooth | dumbbell | scissors | leaf | heart | star | briefcase | home | chef | shield | clock | plus
+
+gallery — imageQueries REQUIRED (6 strings, at section level):
+{
+  "eyebrow": string,
+  "headline": string
+}
+imageQueries: 6 distinct Unsplash queries, each specific to a visual aspect of this business
+
+team — no imageQuery:
+{
+  "eyebrow": string,
+  "headline": string,
+  "members": [{ "name": string, "role": string, "bio": string }] × 3–4
+}
+
+booking — no imageQuery:
+{
+  "eyebrow": string,
+  "headline": string,
+  "subheadline": string,
+  "phone": string (ONLY from REAL CONTACT INFO — else omit),
+  "email": string (ONLY from REAL CONTACT INFO — else omit),
+  "address": string (ONLY from REAL CONTACT INFO — else omit),
+  "hours": string (ONLY from REAL CONTACT INFO — else omit),
+  "ctaText": string,
+  "services": string[] × 3–6
+}
+
+faq — no imageQuery:
+{ "eyebrow": string, "headline": string, "items": [{ "q": string, "a": string }] × 5–6 }
+
+cta_banner — no imageQuery:
+{ "headline": string (punchy, 6–10 words), "sub": string, "ctaText": string }
+
+footer — no imageQuery:
+{
+  "tagline": string (one line brand summary),
+  "links": string[] × 4–5,
+  "phone": string (ONLY from REAL CONTACT INFO — else omit),
+  "email": string (ONLY from REAL CONTACT INFO — else omit),
+  "address": string (ONLY from REAL CONTACT INFO — else omit),
   "copyright": string
 }
 
 ${contactBlock
-  ? `REAL CONTACT INFO (copy these values EXACTLY into booking and footer sections):
-${contactBlock}`
-  : `CONTACT INFO: None provided. DO NOT include phone, email, or address fields anywhere in the spec.`
+  ? `═══════════════════════════════════════════════════════
+REAL CONTACT INFO — copy these values EXACTLY into booking + footer:
+${contactBlock}
+═══════════════════════════════════════════════════════`
+  : `CONTACT INFO: None provided. DO NOT include phone, email, or address anywhere in the spec.`
 }
 
-ABSOLUTE RULES — NEVER VIOLATE:
-1. NEVER invent phone numbers, email addresses, physical addresses, or business hours.
-   Use ONLY values explicitly given in "REAL CONTACT INFO" above. If a field is absent, omit it entirely.
-   Never write placeholder text like "555-0100", "info@business.com", or "123 Main St".
-2. NEVER generate a testimonials section. Testimonials with invented names are fake social proof.
-   If testimonials are requested, explain in the about section copy instead.
-3. NEVER put placeholder text like "NOT PROVIDED", "TBD", or "Coming Soon" in contact fields.
-   Simply omit the field entirely if the real value was not provided.
-
-COPY RULES:
-- Specific and compelling — never generic filler, never "Lorem ipsum", never "My Business"
-- Weave business name + city into copy (hero subheadline, about body)
-- Services reflect the actual industry with plausible prices in local currency`;
+═══════════════════════════════════════════════════════
+ABSOLUTE RULES — NEVER VIOLATE
+═══════════════════════════════════════════════════════
+1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
+   Use only values in "REAL CONTACT INFO". If absent, omit the field entirely.
+   Never write "555-0100", "info@business.com", "123 Main St", or any placeholder.
+2. NEVER include a testimonials section. No invented names, reviews, or star ratings.
+3. NEVER paraphrase the owner's input as copy. Extract intent and write fresh brand copy.
+4. NEVER use generic headlines: "Our Services", "About Us", "Why Choose Us", "Contact Us".
+5. imageQuery MUST be a sibling of content{}, never nested inside it.`;
 }
 
 const REVISE_SYSTEM = `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
-ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.`;
+ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
+IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
@@ -253,11 +423,10 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   const businessName = (tenant?.business_name as string) || "My Business";
-  const industry = (tenant?.industry as string) || "";
-  const city = (tenant?.city as string) || "";
-  const msgText = message?.trim() ?? "";
+  const industry     = (tenant?.industry as string) || "";
+  const city         = (tenant?.city as string) || "";
+  const msgText      = message?.trim() ?? "";
 
-  // Build contact block from intake form data
   const contactBlock = [
     contactInfo?.phone   ? `Phone: ${contactInfo.phone}`     : "",
     contactInfo?.email   ? `Email: ${contactInfo.email}`     : "",
@@ -270,16 +439,10 @@ export async function POST(req: NextRequest) {
     let spec: WebsiteSpec;
 
     if (currentHtml) {
-      // ── Revision ─────────────────────────────────────────────────────────
       const existing = extractSpec(currentHtml);
 
       if (!existing) {
-        const userContent = [
-          `Business name: ${businessName}`,
-          `Industry: ${industry || "service business"}`,
-          `City: ${city || ""}`,
-          `User instruction: ${msgText}`,
-        ].join("\n");
+        const userContent = buildUserContent(businessName, industry, city, msgText);
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
           messages: [{ role: "system", content: buildSystem(contactBlock) }, { role: "user", content: userContent }],
@@ -302,14 +465,7 @@ export async function POST(req: NextRequest) {
         spec = { ...existing, ...parsed, stylePreset: coercePreset(parsed.stylePreset ?? existing.stylePreset), sections: parsed.sections ?? existing.sections };
       }
     } else {
-      // ── Initial generation ────────────────────────────────────────────────
-      const userContent = [
-        `Business name: ${businessName}`,
-        `Industry: ${industry || "service business"}`,
-        `City: ${city || ""}`,
-        `User instruction: ${msgText}`,
-      ].join("\n");
-
+      const userContent = buildUserContent(businessName, industry, city, msgText);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "system", content: buildSystem(contactBlock) }, { role: "user", content: userContent }],
@@ -317,7 +473,6 @@ export async function POST(req: NextRequest) {
         max_tokens: 4096,
         temperature: 0.5,
       });
-
       const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
       spec = {
         stylePreset: coercePreset(parsed.stylePreset),
@@ -326,28 +481,31 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Strip testimonials that slipped through (safety net)
+    // Strip any testimonials that slipped through
     spec.sections = spec.sections.filter((s) => s.type !== "testimonials");
 
-    // Guarantee hero and footer exist
+    // Guarantee hero and footer
     if (!spec.sections.some((s) => s.type === "hero")) {
       spec.sections.unshift({
         type: "hero",
         imageQuery: `${industry} professional interior ${city}`.trim(),
-        content: { headline: businessName, subheadline: `Professional ${industry || "services"}`, ctaPrimary: "Book Now", ctaSecondary: "Learn More" },
+        content: { headline: businessName, subheadline: `${industry || "Professional services"} in ${city || "your city"}.`, ctaPrimary: "Book Now", ctaSecondary: "Learn More" },
       });
     }
     if (!spec.sections.some((s) => s.type === "footer")) {
       spec.sections.push({
         type: "footer",
         content: {
-          tagline: `Professional ${industry || "services"} in ${city || "your city"}.`,
+          tagline: `${businessName} — ${industry || "professional services"} in ${city || "your city"}.`,
           ...(contactInfo?.phone   ? { phone: contactInfo.phone }     : {}),
           ...(contactInfo?.email   ? { email: contactInfo.email }     : {}),
           ...(contactInfo?.address ? { address: contactInfo.address } : {}),
         },
       });
     }
+
+    // Server-side fallback: inject imageQuery for any visual section GPT missed
+    ensureImageQueries(spec, industry, city, msgText);
 
     const imageMap = await fetchSpecImages(spec, heroUpload);
     const html = renderWebsite(spec, imageMap);
@@ -360,7 +518,11 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const apiErr = err as { status?: number; error?: { type?: string }; message?: string };
     console.error("[website/generate] error:", apiErr.message ?? err);
-    const errType = apiErr.error?.type ?? (apiErr.status === 401 ? "invalid_api_key" : apiErr.status === 429 ? "rate_limited" : apiErr.status === 402 ? "insufficient_quota" : "unknown");
+    const errType = apiErr.error?.type ?? (
+      apiErr.status === 401 ? "invalid_api_key" :
+      apiErr.status === 429 ? "rate_limited" :
+      apiErr.status === 402 ? "insufficient_quota" : "unknown"
+    );
     const userMsg =
       errType === "invalid_api_key"    ? "AI configuration error — please contact support." :
       errType === "insufficient_quota" ? "AI quota exceeded — please top up OpenAI credits." :
@@ -368,4 +530,13 @@ export async function POST(req: NextRequest) {
                                          "Website generation temporarily unavailable — please try again.";
     return NextResponse.json({ error: userMsg }, { status: 500 });
   }
+}
+
+function buildUserContent(businessName: string, industry: string, city: string, msgText: string): string {
+  return [
+    `Business name: ${businessName}`,
+    industry ? `Industry: ${industry}` : "",
+    city     ? `City: ${city}` : "",
+    `Owner's description: ${msgText}`,
+  ].filter(Boolean).join("\n");
 }
