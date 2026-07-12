@@ -105,13 +105,13 @@ function KbIcon({ field, filled, current }: { field: string; filled: boolean; cu
 }
 
 const KB_FIELDS = [
-  { key: "businessType", label: "Business Type",     q: 1 },
-  { key: "services",     label: "Services & Prices", q: 2 },
-  { key: "hours",        label: "Working Hours",     q: 3 },
-  { key: "location",     label: "Location / Area",   q: 4 },
-  { key: "booking",      label: "How to Book",       q: 5 },
-  { key: "faqs",         label: "Common Questions",  q: 6 },
-  { key: "special",      label: "What Makes You Special", q: 7 },
+  { key: "businessType", label: "Business Type",          desc: "What you do and who your customers are",           q: 1 },
+  { key: "services",     label: "Services & Prices",      desc: "What you offer and what it costs",                 q: 2 },
+  { key: "hours",        label: "Working Hours",          desc: "When customers can reach you",                     q: 3 },
+  { key: "location",     label: "Location / Area",        desc: "Where you are, or where you go",                   q: 4 },
+  { key: "booking",      label: "How to Book",            desc: "How customers get in touch or make a booking",     q: 5 },
+  { key: "faqs",         label: "Common Questions",       desc: "What callers ask most often",                      q: 6 },
+  { key: "special",      label: "What Makes You Special", desc: "Your edge over similar businesses nearby",         q: 7 },
 ];
 
 export default function TrainingPage() {
@@ -570,15 +570,22 @@ export default function TrainingPage() {
               {/* Knowledge cards — flex-1 fills remaining panel height */}
               <div className="p-5 flex-1 overflow-y-auto">
                 {status === "idle" && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
                     {KB_FIELDS.map((f, i) => (
-                      <div key={f.key} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB", border:`1px solid ${border}` }}>
-                        <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: isDark?"#1E2235":"#F3F4F6" }}>
+                      <div
+                        key={f.key}
+                        className="flex items-start gap-3 p-3 rounded-xl border"
+                        style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB", borderColor: border }}
+                      >
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: isDark?"#1E2235":"#F3F4F6" }}>
                           <KbIcon field={f.key} filled={false} current={false}/>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Q{i+1}</p>
-                          <p className="text-[10px] font-medium truncate" style={{ color: textSub }}>{f.label}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold leading-tight" style={{ color: textSub }}>
+                            <span className="text-[9px] font-bold uppercase tracking-wide mr-1.5" style={{ color: textMuted }}>Q{i+1}</span>
+                            {f.label}
+                          </p>
+                          <p className="text-[10px] mt-0.5 leading-snug" style={{ color: textMuted }}>{f.desc}</p>
                         </div>
                       </div>
                     ))}

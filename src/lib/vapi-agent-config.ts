@@ -42,31 +42,51 @@ export function clampSpeed(speed: number): number {
 }
 
 // ── Transcriber ───────────────────────────────────────────────────────────────
-// IMPORTANT MODEL SELECTION:
-//   nova-3-general → valid for en/fr/de/es/multi and 50+ other codes, but
-//                    REJECTS "ar" at runtime (Vapi returns 400 Bad Request).
-//   nova-3         → the base multilingual model; accepts "ar" and all others.
+// Model selection — runtime-validated against Vapi error responses:
 //
-// Language code mapping: app stores "ar"/"fr"/"de"/"es"/"en"/""
-// Map to Deepgram codes; fall back to "multi" for any unrecognised value so a
-// bad/missing value never sends an invalid string that kills the call.
+//   nova-3 / nova-3-general → both REJECT "ar" (Arabic not in their language
+//     set at all — they can't detect or transcribe Arabic even with "multi").
 //
-// Verified against @vapi-ai/web api.d.ts line 238-240:
-//   model: "nova-3" | "nova-3-general" | ... (both are valid SDK values)
-//   language: "ar" | "fr" | "de" | "es" | "en" | "multi" | ... (all valid)
-const LANG_MAP: Partial<Record<string, string>> = {
-  ar: "ar", fr: "fr", de: "de", es: "es", en: "en",
+//   nova-2 → supports "ar" explicitly. Arabic is in nova-2's language set,
+//     so nova-2 + "multi" can also auto-detect Arabic. This is the only
+//     Deepgram model exposed through Vapi that handles Arabic.
+//
+// Strategy:
+//   • Arabic (ar)        → nova-2 + "ar"      (explicit, highest accuracy)
+//   • Other known langs  → nova-3-general + exact code (best accuracy for those)
+//   • Unknown / auto     → nova-2 + "multi"   (nova-2 can detect Arabic;
+//                           nova-3 + multi silently mis-transcribes Arabic)
+//
+// Input normalisation: trim + lowercase so "ar"/"AR"/" ar " all resolve correctly.
+// Fallback: any unrecognised value → nova-2 + "multi" so no bad string can
+// reach Vapi and kill the call.
+//
+// Verified: "nova-2", "nova-3-general", "ar", "fr", "de", "es", "en", "multi"
+// are all valid values in @vapi-ai/web api.d.ts lines 238-240.
+type TranscriberCfg = { model: "nova-2" | "nova-3-general"; language: string };
+
+const TRANSCRIBER_MAP: Record<string, TranscriberCfg> = {
+  ar: { model: "nova-2",         language: "ar" },
+  en: { model: "nova-3-general", language: "en" },
+  fr: { model: "nova-3-general", language: "fr" },
+  de: { model: "nova-3-general", language: "de" },
+  es: { model: "nova-3-general", language: "es" },
 };
 
-export function getTranscriberConfig(language?: string) {
+const TRANSCRIBER_FALLBACK: TranscriberCfg = { model: "nova-2", language: "multi" };
+
+export function getTranscriberConfig(language?: string): {
+  provider: "deepgram";
+  model: "nova-2" | "nova-3-general";
+  language: string;
+  endpointing: number;
+} {
   const normalized = (language ?? "").trim().toLowerCase();
-  const lang = LANG_MAP[normalized] ?? "multi";
-  // nova-3-general rejects "ar" — route Arabic to the base nova-3 model.
-  const model: "nova-3" | "nova-3-general" = lang === "ar" ? "nova-3" : "nova-3-general";
+  const cfg = TRANSCRIBER_MAP[normalized] ?? TRANSCRIBER_FALLBACK;
   return {
     provider: "deepgram" as const,
-    model,
-    language: lang,
+    model: cfg.model,
+    language: cfg.language,
     endpointing: 300,
   };
 }
