@@ -90,13 +90,19 @@ export async function POST(req: NextRequest) {
 
   if (upsertErr) {
     console.error("[ai-agent/assistant-settings] upsert error:", upsertErr.code, upsertErr.message);
-    if (upsertErr.code === "42703") {
+    const isMissingColumn =
+      upsertErr.code === "42703" ||
+      (typeof upsertErr.message === "string" && upsertErr.message.includes("does not exist"));
+    if (isMissingColumn) {
       return NextResponse.json(
-        { error: "Run SQL migration: ALTER TABLE tenant_config ADD COLUMN IF NOT EXISTS assistant_settings JSONB DEFAULT '{}'::jsonb" },
+        { error: "Database column missing — run Migration v6 in your Supabase SQL Editor to create the required columns." },
         { status: 422 }
       );
     }
-    return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
+    return NextResponse.json(
+      { error: upsertErr.message ?? "Failed to save settings", code: upsertErr.code },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });

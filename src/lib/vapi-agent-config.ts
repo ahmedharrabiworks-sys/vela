@@ -175,7 +175,10 @@ export function buildTrainingSystem(savedLanguage?: string): string {
       ? `The owner's preferred language is already set to ${LANG_NAMES[savedLanguage] ?? savedLanguage}. Open the conversation IMMEDIATELY in ${LANG_NAMES[savedLanguage] ?? savedLanguage} with question 1 — do NOT ask about language preferences. Vary your opening greeting — never use the same first word twice.`
       : savedLanguage === "en"
       ? `The owner's preferred language is English. Open immediately with question 1 in English — do NOT ask about language preferences.`
-      : `Begin by greeting the owner briefly and asking which language they prefer: Arabic (العربية), French, German, Spanish, or English. Once they answer, switch to that language immediately.`;
+      : `Detect the owner's language from their very first words — do NOT ask which language they prefer.
+Arabic (العربية) is your HIGHEST priority: if you hear or read any Arabic at all — even a single word — respond in Arabic IMMEDIATELY and stay in Arabic for the entire interview.
+IMPORTANT: If the transcription reads "Arabia" or "Arabia Arabia" — that is a speech-to-text artifact for the Arabic word "عربي" — treat it as Arabic and switch to Arabic immediately.
+Supported languages: Arabic (العربية), French (Français), German (Deutsch), Spanish (Español), English. Match the owner's language from their very first message.`;
 
   return `You are Vela — interviewing a business owner to learn what their business does so you can handle their customer calls.
 
