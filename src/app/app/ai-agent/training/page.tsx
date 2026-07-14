@@ -12,6 +12,7 @@ import {
   getVoiceConfig,
   buildTrainingSystem,
   RECORD_ANSWER_TOOL,
+  CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -289,6 +290,7 @@ export default function TrainingPage() {
         transcriber: getTranscriberConfig(agentLanguageRef.current),
         stopSpeakingPlan,
         startSpeakingPlan,
+        ...CALL_LIMITS,
       });
     } catch (err: unknown) {
       console.error("[call]", err);

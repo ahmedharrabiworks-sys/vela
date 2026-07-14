@@ -12,6 +12,7 @@ import {
   getTranscriberConfig,
   getSpeakingPlanConfig,
   getVoiceConfig,
+  CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -338,6 +339,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
         transcriber: getTranscriberConfig(prefLangRef.current),
         stopSpeakingPlan,
         startSpeakingPlan,
+        ...CALL_LIMITS,
       });
     } catch (err: unknown) {
       console.error("[call]", err);

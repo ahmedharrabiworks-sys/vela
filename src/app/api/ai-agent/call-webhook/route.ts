@@ -7,6 +7,7 @@ import {
   getSpeakingPlanConfig,
   getVoiceConfig,
   buildInboundSystem,
+  CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
         firstMessageMode: "assistant-speaks-first-with-model-generated-message",
         stopSpeakingPlan,
         startSpeakingPlan,
+        ...CALL_LIMITS,
       },
     });
   }

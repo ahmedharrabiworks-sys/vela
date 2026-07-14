@@ -35,6 +35,17 @@ export function getDefaultVoiceId(language?: string): string {
   return language === "ar" ? "DANw8bnAVbjDEHwZIoYa" : DEFAULT_VOICE_ID;
 }
 
+// ── Call duration limits ──────────────────────────────────────────────────────
+// Verified from @vapi-ai/web api.d.ts CreateAssistantDTO + AssistantOverrides:
+//   maxDurationSeconds — @default 600 (10 min), @min 10, @max 43200
+//   silenceTimeoutSeconds — NOT present on CreateAssistantDTO / AssistantOverrides;
+//     it exists only on the transfer sub-assistant type and cannot be set here.
+// Root cause of mid-call ejections: Vapi's 600s default was never overridden,
+// so any call over 10 minutes was terminated with {"type":"ejected","msg":"Meeting has ended"}.
+export const CALL_LIMITS = {
+  maxDurationSeconds: 1800,  // 30 minutes
+} as const;
+
 // ── Speed clamp ───────────────────────────────────────────────────────────────
 // ElevenLabs only accepts speed in [0.7, 1.2].
 export function clampSpeed(speed: number): number {
