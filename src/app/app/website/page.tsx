@@ -878,7 +878,7 @@ export default function WebsitePage() {
           <div className="relative" ref={publishBtnRef}>
             <button
               onClick={handlePublish}
-              disabled={!built || publishing || (isPublished && !draftDiffers)}
+              disabled={!built || publishing}
               className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               style={{ background: "var(--vp-color)" }}>
               {publishLabel}
@@ -921,29 +921,44 @@ export default function WebsitePage() {
         {/* LEFT: Chat + inline history */}
         <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
 
-          {/* Persistent Project History — rendered from versions state, always visible regardless of
-              chat messages. Covers both fresh page loads (where version-role msgs aren't in the
-              restored chat) and post-New-Website state (where the draft was cleared but history stays). */}
-          {versions.length > 0 && (
-            <div className="border-b border-[#F3F4F6] px-3 py-2.5 shrink-0">
-              <p className="text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-widest mb-2">Project History</p>
-              <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
-                {versions.slice().reverse().slice(0, 6).map((v, i) => (
-                  <VersionCard
-                    key={v.id}
-                    version={v}
-                    isFirst={i === 0}
-                    onPreview={handlePreviewVersion}
-                    onRestore={handleRestoreVersion}
-                    restoring={restoringVersion === v.id}
-                    previewing={previewingVersion === v.id}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Version history — horizontal swipe strip at top of chat feed */}
+            {versions.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+                {versions.slice().reverse().slice(0, 12).map((v, i) => {
+                  const isFirst = i === 0;
+                  return (
+                    <div key={v.id} className="shrink-0 w-[108px] bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
+                          {v.type === "publish" ? (
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          ) : (
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3 9 21 9"/></svg>
+                          )}
+                        </div>
+                        <p className="text-[10px] font-semibold text-[#111111] truncate">{v.label}</p>
+                      </div>
+                      <p className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</p>
+                      {isFirst ? (
+                        <span className="text-[9px] font-medium text-[#9CA3AF]">Current</span>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => handlePreviewVersion(v)} disabled={previewingVersion === v.id}
+                            className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40 transition-colors">
+                            Preview
+                          </button>
+                          <button onClick={() => handleRestoreVersion(v)} disabled={restoringVersion === v.id}
+                            className="text-[9px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40">
+                            {restoringVersion === v.id ? "…" : "Restore"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {msgs.map((msg, i) => {
               // Session separator — "New website" divider
               if (msg.isSeparator) {
