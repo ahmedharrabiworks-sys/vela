@@ -137,6 +137,12 @@ const BASE: Record<PresetName, DesignTokens> = {
 
 export function resolveTokens(preset: PresetName, accentOverride?: string): DesignTokens {
   const tok = { ...BASE[preset] };
-  if (accentOverride) tok.accent = accentOverride;
+  if (accentOverride && /^#[0-9a-f]{6}$/i.test(accentOverride)) {
+    tok.accent = accentOverride;
+    const r = parseInt(accentOverride.slice(1, 3), 16);
+    const g = parseInt(accentOverride.slice(3, 5), 16);
+    const b = parseInt(accentOverride.slice(5, 7), 16);
+    tok.accentAlpha = `rgba(${r},${g},${b},0.08)`;
+  }
   return tok;
 }

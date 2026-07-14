@@ -97,7 +97,6 @@ export default function WebsitePage() {
   const [activeTab, setActiveTab]     = useState<"chat" | "preview">("chat");
   const [attachedImages, setAttachedImages]   = useState<AttachedImage[]>([]);
   const [contactInfo, setContactInfo]         = useState<ContactInfo>({ phone: "", email: "", address: "", hours: "" });
-  const [showContactForm, setShowContactForm] = useState(false);
 
   // ── Publish state ────────────────────────────────────────────────────────────
   const [publishedUrl, setPublishedUrl]     = useState("");
@@ -369,6 +368,26 @@ export default function WebsitePage() {
     setTimeout(() => setCopiedRecord(null), 2000);
   }, []);
 
+  // ── New Website / Reset ───────────────────────────────────────────────────────
+  const handleNewWebsite = useCallback(async () => {
+    if (!confirm("This will clear your current draft. Your published site stays live until you publish again.")) return;
+    try {
+      await fetch("/api/website/reset", { method: "POST" });
+    } catch { /* ignore — clear local state regardless */ }
+    setHtml("");
+    htmlRef.current = "";
+    setBuilt(false);
+    setDraftDiffers(false);
+    setPreviewVersionHtml(null);
+    setMsgs([INITIAL_MSG(btype)]);
+    setInput("");
+    setAttachedImages([]);
+    setContactInfo({ phone: "", email: "", address: "", hours: "" });
+    setActiveTab("chat");
+    setViewMode("preview");
+    setShowPublishPopover(false);
+  }, [btype]);
+
   // ── Version preview / restore ─────────────────────────────────────────────────
   const handlePreviewVersion = useCallback((v: VersionRecord) => {
     setPreviewingVersion(v.id);
@@ -478,12 +497,22 @@ export default function WebsitePage() {
 
       const data = await res.json() as {
         html?: string;
+        question?: string;
         error?: string;
         websiteId?: string;
         slug?: string;
         name?: string;
         isPublished?: boolean;
       };
+
+      // Conversational intake: GPT is asking a follow-up question before generating
+      if (res.ok && data.question && !data.html) {
+        const finalMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: data.question }];
+        setMsgs(finalMsgs);
+        persistChat(finalMsgs, contactInfo);
+        setBuilding(false);
+        return;
+      }
 
       if (!res.ok || !data.html) {
         const errText =
@@ -516,7 +545,7 @@ export default function WebsitePage() {
 
       const successMsg = built
         ? "Done! Your website has been updated. Click \"Update Site\" to push it live, or keep refining."
-        : "Your website is ready! Check the preview →\n\nTry: \"Make the hero darker\", \"Change accent to green\", \"Add a gallery section\", or upload a photo.";
+        : "Got it — your website is ready! Check the preview →\n\nYou can say things like \"make the hero darker\", \"change the accent to green\", \"add a gallery section\", or upload a photo to refine it.";
 
       const finalMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: successMsg }];
       setMsgs(finalMsgs);
@@ -599,6 +628,15 @@ export default function WebsitePage() {
               </button>
             ))}
           </div>
+
+          {/* New Website button — only when a site exists */}
+          {built && (
+            <button
+              onClick={handleNewWebsite}
+              className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors">
+              New Website
+            </button>
+          )}
 
           {/* Publish button + popover */}
           <div className="relative" ref={publishBtnRef}>
@@ -747,37 +785,6 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* Contact info intake */}
-          {!built && (
-            <div className="px-4 pb-2">
-              <button onClick={() => setShowContactForm((v) => !v)}
-                className="flex items-center gap-1.5 text-[10px] font-semibold text-[#6B7280] hover:text-[#FF6B35] transition-colors">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.06 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21 16.92z"/>
-                </svg>
-                {showContactForm ? "Hide" : "Add"} real contact details
-                <span className="text-[#9CA3AF] font-normal">(optional)</span>
-              </button>
-              {showContactForm && (
-                <div className="mt-2 space-y-1.5">
-                  {(["phone", "email", "address", "hours"] as const).map((field) => (
-                    <input key={field}
-                      value={contactInfo[field]}
-                      onChange={(e) => setContactInfo((prev) => ({ ...prev, [field]: e.target.value }))}
-                      placeholder={
-                        field === "phone"   ? "Phone  e.g. +971 4 000 0000" :
-                        field === "email"   ? "Email  e.g. hello@clinic.ae" :
-                        field === "address" ? "Address  e.g. Dubai Marina, UAE" :
-                                             "Hours  e.g. Mon–Sat 9am–7pm"
-                      }
-                      className="w-full text-[11px] px-2.5 py-1.5 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-                    />
-                  ))}
-                  <p className="text-[9px] text-[#9CA3AF]">Only what you enter will appear on the site — nothing is invented.</p>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Attached image thumbnails */}
           {attachedImages.length > 0 && (
@@ -807,7 +814,7 @@ export default function WebsitePage() {
               </button>
               <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" multiple className="hidden" onChange={handleFileSelect} />
               <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder={built ? "What would you like to change?" : "Describe your business…"}
+                placeholder={built ? "What would you like to change?" : "Tell me about your business…"}
                 rows={1} disabled={building}
                 className="flex-1 bg-transparent text-xs text-[#111111] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
                 style={{ lineHeight: "1.5" }}

@@ -360,8 +360,11 @@ const PAGE_SCRIPT = `
 })();
 
 function wsFaqToggle(i){
-  var el=document.getElementById('faq-'+i);
-  if(el)el.classList.toggle('open');
+  var wrap=document.getElementById('faq-wrap-'+i);
+  if(!wrap)return;
+  var isOpen=wrap.classList.toggle('open');
+  var btn=wrap.querySelector('[role="button"]');
+  if(btn)btn.setAttribute('aria-expanded',isOpen?'true':'false');
 }
 
 function wsSubmitForm(e){

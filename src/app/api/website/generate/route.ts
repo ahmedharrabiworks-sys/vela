@@ -225,17 +225,47 @@ GOOD COPY PATTERNS — do these:
   BAD: "Gallery" / GOOD: "The Work Speaks"
 
 ═══════════════════════════════════════════════════════
-PART 2 — STYLE PRESET (pick the one that fits this specific business)
+PART 2 — STYLE PRESET + ACCENT COLOR (BOTH required)
 ═══════════════════════════════════════════════════════
 
 JSON ROOT:
-{ "stylePreset": "editorial"|"bold"|"clean"|"clinical", "businessName": string, "sections": SectionSpec[] }
+{ "stylePreset": "editorial"|"bold"|"clean"|"clinical", "accentColor": "#HEXCODE", "businessName": string, "sections": SectionSpec[] }
+
+You MUST set both "stylePreset" AND "accentColor". Never omit either.
 
 PRESETS:
 • "editorial" → luxury salons, interior design studios, boutique hotels, high-end photography, fine dining, jewellery
 • "bold"      → gyms, crossfit boxes, martial arts, fitness studios, nightclubs, automotive, sports brands
 • "clean"     → real estate agencies, law firms, financial advisors, corporate services, tech startups, architects
 • "clinical"  → dental clinics, medical practices, dermatology, cosmetic clinics, physiotherapy, wellness centres
+
+ACCENT COLOR — pick from this curated palette ONLY. Never invent a hex code outside this table.
+Two different businesses must not get the same accent unless it genuinely matches both.
+Match on industry specifics (e.g. a rustic restaurant ≠ same accent as a modern one):
+
+EARTHY / WARM (salons, spas, bakeries, warm restaurants, interior design, jewellery):
+  #8B6347 terracotta  |  #A0522D sienna  |  #C4793D amber clay  |  #9C6E3F antique gold
+
+LUXURY (high-end hotels, fine dining, premium fashion, wealth management):
+  #B8860B dark gold  |  #6B4423 walnut  |  #8D7047 champagne bronze  |  #7C5C3D warm walnut
+
+VIVID / BOLD (gyms, martial arts, sports, automotive, nightlife, street food):
+  #E8390E fire red  |  #C41E3A crimson  |  #FF4F1F coral  |  #D4380D burnt orange
+
+PROFESSIONAL / COOL (real estate, law, finance, consulting, tech, architecture):
+  #1A56DB cobalt  |  #0F52BA royal blue  |  #1E3A8A deep navy  |  #2563EB primary blue
+
+CLINICAL / HEALTH (dental, medical, dermatology, physiotherapy, health clinics):
+  #0070C9 sky blue  |  #0EA5E9 bright azure  |  #0891B2 teal blue  |  #0284C7 ocean
+
+WELLNESS / NATURE (yoga studios, holistic health, organic cafés, wellness retreats):
+  #16A34A sage  |  #059669 emerald  |  #0D9488 teal  |  #15803D forest
+
+CREATIVE / FRESH (co-working spaces, creative agencies, education, photography studios):
+  #7C3AED violet  |  #9333EA purple  |  #0EA5E9 sky  |  #0D9488 teal
+
+If the owner mentions a brand color (e.g. "our logo is green"), pick the closest hex from this table.
+Do NOT use any hex code not in this list.
 
 ═══════════════════════════════════════════════════════
 PART 3 — SECTION STRUCTURE
@@ -383,6 +413,106 @@ STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
 IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.`;
 
+// ── Conversational intake system prompt ───────────────────────────────────────
+const INTAKE_SYSTEM = `You are a friendly web designer collecting information to build a premium business website.
+Your job: analyse what you know from the conversation, then EITHER ask ONE question OR generate the complete website.
+
+RESPOND WITH VALID JSON ONLY. Two possible formats:
+
+FORMAT A — ask a question (when important info is still missing):
+{ "action": "ask", "question": "..." }
+
+FORMAT B — generate the website (when you have enough):
+[Full website spec JSON — same schema as normal generation, starting with stylePreset etc.]
+
+━━━ WHEN TO ASK vs GENERATE ━━━
+Generate immediately (no questions) when you have ALL of:
+  ✓ Business name
+  ✓ What the business does (category + brief description)
+  ✓ At least one contact detail (phone OR email OR address) OR the message is a complete brief (>30 words with real specifics)
+
+Ask ONE question (most important missing piece) when the above is not met.
+Priority of what to ask about:
+  1. Business name (if genuinely unknown)
+  2. Type of business / what services you offer
+  3. Location or contact detail (phone / email / address)
+  4. Opening hours or service prices (if core to business type)
+  NEVER ask about style preferences — you'll choose based on the business type.
+  NEVER ask about something already answered in the conversation history.
+
+━━━ QUESTION STYLE ━━━
+Write like a smart human colleague, not a form. Examples:
+  ✓ "What's the name of your business?"
+  ✓ "Where are you based, and do you have a phone number or email I should show on the site?"
+  ✓ "What are your main services, and roughly what do they cost?"
+  ✗ "Please provide your contact information including phone number, email address, and physical location."
+
+━━━ NEVER invent phone, email, address, hours, testimonials, or reviews ━━━
+━━━ NEVER include a testimonials section ━━━`;
+
+// ── Run conversational intake or generate ─────────────────────────────────────
+async function runIntakeOrGenerate(
+  openai: OpenAI,
+  chatHistory: Array<{ role: string; content: string }>,
+  currentUserMessage: string,
+  imageBase64: string | undefined,
+  imageMimeType: string | undefined,
+  businessName: string,
+  industry: string,
+  city: string,
+): Promise<{ type: "ask"; question: string } | { type: "generate"; spec: Partial<WebsiteSpec> }> {
+  // Build message array for GPT
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const messages: any[] = [{ role: "system", content: INTAKE_SYSTEM }];
+
+  // Include prior conversation (skip first AI greeting, map roles)
+  for (const m of chatHistory) {
+    if (m.role === "ai" || m.role === "assistant") {
+      messages.push({ role: "assistant", content: m.content });
+    } else if (m.role === "user") {
+      messages.push({ role: "user", content: m.content });
+    }
+  }
+
+  // Add context preamble + current user message
+  const contextLines = [
+    `Business name on file: ${businessName}`,
+    industry ? `Industry on file: ${industry}` : "",
+    city ? `City on file: ${city}` : "",
+    currentUserMessage ? `User's latest message: ${currentUserMessage}` : "",
+  ].filter(Boolean).join("\n");
+
+  if (imageBase64 && imageMimeType) {
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: contextLines },
+        { type: "image_url", image_url: { url: `data:${imageMimeType};base64,${imageBase64}`, detail: "low" } },
+      ],
+    });
+  } else {
+    messages.push({ role: "user", content: contextLines });
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages,
+    response_format: { type: "json_object" },
+    max_tokens: 4096,
+    temperature: 0.4,
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as any;
+
+  if (parsed.action === "ask" && typeof parsed.question === "string") {
+    return { type: "ask", question: parsed.question };
+  }
+
+  // Otherwise treat as full spec
+  return { type: "generate", spec: parsed as Partial<WebsiteSpec> };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
@@ -477,6 +607,7 @@ export async function POST(req: NextRequest) {
     let spec: WebsiteSpec;
 
     if (currentHtml) {
+      // ── Edit mode: apply change to existing site ──────────────────────────
       const existing = extractSpec(currentHtml);
 
       if (!existing) {
@@ -489,7 +620,7 @@ export async function POST(req: NextRequest) {
           temperature: 0.5,
         });
         const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
-        spec = { stylePreset: coercePreset(parsed.stylePreset), businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [] };
+        spec = { stylePreset: coercePreset(parsed.stylePreset), accentColor: parsed.accentColor, businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [] };
       } else {
         const revisionPrompt = `Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
         const completion = await openai.chat.completions.create({
@@ -503,17 +634,37 @@ export async function POST(req: NextRequest) {
         spec = { ...existing, ...parsed, stylePreset: coercePreset(parsed.stylePreset ?? existing.stylePreset), sections: parsed.sections ?? existing.sections };
       }
     } else {
-      const userContent = buildUserContent(businessName, industry, city, msgText);
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "system", content: buildSystem(contactBlock) }, { role: "user", content: userContent }],
-        response_format: { type: "json_object" },
-        max_tokens: 4096,
-        temperature: 0.5,
-      });
-      const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
+      // ── Initial build: conversational intake — ask OR generate ────────────
+      const intakeResult = await runIntakeOrGenerate(
+        openai,
+        (body.chat ?? []).filter(m => !m.isError),
+        msgText,
+        validImages[0]?.data,
+        validImages[0]?.mimeType,
+        businessName,
+        industry,
+        city,
+      );
+
+      if (intakeResult.type === "ask") {
+        // Persist chat update fire-and-forget, then return question
+        const chatToSave = [
+          ...(body.chat ?? []).filter(m => !m.isError && !m.isBuilding).map(m => ({ role: m.role, content: m.content })),
+          { role: "user", content: msgText || "(image uploaded)" },
+        ];
+        if (tenant?.id) {
+          createSupabaseAdmin().from("tenant_config").upsert(
+            { tenant_id: tenant.id, website_chat: chatToSave },
+            { onConflict: "tenant_id" }
+          ).then(() => {}).catch(() => {});
+        }
+        return NextResponse.json({ question: intakeResult.question });
+      }
+
+      const parsed = intakeResult.spec;
       spec = {
         stylePreset: coercePreset(parsed.stylePreset),
+        accentColor: parsed.accentColor,
         businessName: parsed.businessName ?? businessName,
         sections: parsed.sections ?? [],
       };
@@ -584,13 +735,17 @@ export async function POST(req: NextRequest) {
 
       const sites = (existingSites ?? []) as { id: string; slug: string; name: string; is_published: boolean }[];
 
+      // FIX 2: UUID slug pattern — re-derive if slug is missing or UUID-shaped
+      const slugIsUuid = (slug: string) =>
+        !slug || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+
       // Validate client-supplied websiteId belongs to this tenant
       if (clientWebsiteId) {
         const found = sites.find((s) => s.id === clientWebsiteId);
         if (found) {
-          websiteId      = found.id;
-          siteSlug       = found.slug;
-          siteName       = found.name;
+          websiteId       = found.id;
+          siteSlug        = found.slug;
+          siteName        = found.name;
           siteIsPublished = found.is_published;
         }
       }
@@ -599,9 +754,9 @@ export async function POST(req: NextRequest) {
         // Default: use the first/only existing site for this tenant
         const first = sites[0];
         if (first) {
-          websiteId      = first.id;
-          siteSlug       = first.slug;
-          siteName       = first.name;
+          websiteId       = first.id;
+          siteSlug        = first.slug;
+          siteName        = first.name;
           siteIsPublished = first.is_published;
         } else {
           // Creating a brand-new website — check plan limit
@@ -626,6 +781,15 @@ export async function POST(req: NextRequest) {
             siteSlug   = (newSite as { slug: string }).slug;
           }
         }
+      }
+      // FIX 2: If existing site has a UUID-shaped or missing slug, re-derive from business name
+      if (websiteId && slugIsUuid(siteSlug)) {
+        const freshSlug = await generateUniqueSlug(spec.businessName || businessName, admin);
+        const { error: slugErr } = await admin
+          .from("websites")
+          .update({ slug: freshSlug, updated_at: new Date().toISOString() })
+          .eq("id", websiteId);
+        if (!slugErr) siteSlug = freshSlug;
       }
     }
 
