@@ -367,15 +367,43 @@ function wsFaqToggle(i){
 function wsSubmitForm(e){
   e.preventDefault();
   var form=document.getElementById('booking-form');
+  var errEl=document.getElementById('booking-error');
   var success=document.getElementById('booking-success');
-  if(form)form.style.display='none';
-  if(success)success.style.display='block';
+  var btn=form?form.querySelector('button[type="submit"]'):null;
+  var url=typeof window.__WS_SUBMIT_URL__==='string'?window.__WS_SUBMIT_URL__:'';
+  if(!url){
+    if(form)form.style.display='none';
+    if(success)success.style.display='block';
+    return false;
+  }
+  var data={};
+  if(form){
+    var els=form.querySelectorAll('input[name],select[name],textarea[name]');
+    for(var i=0;i<els.length;i++){data[els[i].name]=els[i].value;}
+  }
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  if(errEl)errEl.style.display='none';
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,body:j};});})
+    .then(function(res){
+      if(!res.ok){
+        if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
+        if(errEl){errEl.textContent=res.body.error||'Something went wrong — please try again.';errEl.style.display='block';}
+      }else{
+        if(form)form.style.display='none';
+        if(success)success.style.display='block';
+      }
+    })
+    .catch(function(){
+      if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
+      if(errEl){errEl.textContent='Connection error — please try again.';errEl.style.display='block';}
+    });
   return false;
 }
 `.trim();
 
 // ── Main renderer ─────────────────────────────────────────────────────────────
-export function renderWebsite(spec: WebsiteSpec, images: ImageMap): string {
+export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: string): string {
   const t = resolveTokens(spec.stylePreset, spec.accentColor);
   const name = spec.businessName || "My Business";
 
@@ -438,6 +466,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap): string {
 
   const css = buildCss(t);
   const specComment = `<!-- WEBSITE_SPEC: ${JSON.stringify(spec)} -->`;
+  const submitUrl = tenantId ? `/api/site/${tenantId}/submit-form` : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -449,6 +478,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap): string {
 </head>
 <body>
 ${bodyParts.join("\n")}
+<script>window.__WS_SUBMIT_URL__='${submitUrl}';<\/script>
 <script>${PAGE_SCRIPT}<\/script>
 ${specComment}
 </body>

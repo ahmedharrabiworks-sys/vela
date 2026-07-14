@@ -255,40 +255,41 @@ export function renderBooking(
           <div class="ws-form-row">
             <div class="ws-form-group">
               <label class="ws-form-label">First Name</label>
-              <input class="ws-form-input" type="text" placeholder="Jane" required>
+              <input class="ws-form-input" type="text" name="firstName" placeholder="Jane" required>
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Last Name</label>
-              <input class="ws-form-input" type="text" placeholder="Smith" required>
+              <input class="ws-form-input" type="text" name="lastName" placeholder="Smith" required>
             </div>
           </div>
           <div class="ws-form-row">
             <div class="ws-form-group">
               <label class="ws-form-label">Phone</label>
-              <input class="ws-form-input" type="tel" placeholder="+1 555 000 0000" required>
+              <input class="ws-form-input" type="tel" name="phone" placeholder="+1 555 000 0000" required>
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Email</label>
-              <input class="ws-form-input" type="email" placeholder="jane@example.com">
+              <input class="ws-form-input" type="email" name="email" placeholder="jane@example.com">
             </div>
           </div>
           ${services.length ? `
           <div class="ws-form-group">
             <label class="ws-form-label">Service</label>
-            <select class="ws-form-input">
+            <select class="ws-form-input" name="service">
               <option value="">Select a service…</option>
               ${services.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
             </select>
           </div>` : ""}
           <div class="ws-form-group">
             <label class="ws-form-label">Preferred Date &amp; Time</label>
-            <input class="ws-form-input" type="text" placeholder="e.g. Mon 3 July, 10am">
+            <input class="ws-form-input" type="text" name="datetime" placeholder="e.g. Mon 3 July, 10am">
           </div>
           <div class="ws-form-group">
             <label class="ws-form-label">Message</label>
-            <textarea class="ws-form-input" rows="3" placeholder="Any questions or notes…"></textarea>
+            <textarea class="ws-form-input" name="message" rows="3" placeholder="Any questions or notes…"></textarea>
           </div>
-          <button type="submit" class="ws-btn ws-btn-primary" style="width:100%;justify-content:center;">${esc(c.ctaText || "Request Appointment")}</button>
+          <div id="booking-error" style="display:none;color:#DC2626;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#FEF2F2;border-radius:8px;"></div>
+          <button type="submit" class="ws-btn ws-btn-primary" style="width:100%;justify-content:center;" data-label="${esc(c.ctaText || "Request Appointment")}">${esc(c.ctaText || "Request Appointment")}</button>
         </form>
         <div id="booking-success" class="ws-form-success">
           <div class="ws-form-success-icon">${icon("check", 28)}</div>

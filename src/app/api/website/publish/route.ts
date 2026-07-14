@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 type AdminClient = any;
 
 export async function POST(req: NextRequest) {
-  // Client sends the current rendered HTML so publish is not dependent on whether
-  // the generate route's background upsert has completed.
-  const body = await req.json().catch(() => ({})) as { html?: string };
+  const body = await req.json().catch(() => ({})) as {
+    html?:      string;
+    websiteId?: string;
+  };
 
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,32 +23,84 @@ export async function POST(req: NextRequest) {
     .select("id")
     .eq("owner_id", user.id)
     .maybeSingle();
-
   if (!tenant?.id) return NextResponse.json({ error: "No tenant found" }, { status: 404 });
 
-  const htmlToSave = typeof body.html === "string" ? body.html.trim() : "";
+  // ── Resolve the website to publish ───────────────────────────────────────
+  type SiteRow = { id: string; slug: string; draft_html: string | null; draft_spec: unknown };
+  let site: SiteRow | null = null;
 
-  if (htmlToSave) {
-    // Primary path: client sent the HTML — save it now (authoritative)
-    const { error } = await admin
-      .from("tenant_config")
-      .upsert({ tenant_id: tenant.id, website_html: htmlToSave }, { onConflict: "tenant_id" });
-    if (error) {
-      console.error("[website/publish] upsert error:", error.message);
-      return NextResponse.json({ error: "Failed to save site — please try again." }, { status: 500 });
-    }
-  } else {
-    // Fallback: HTML not sent — check if database already has it
-    const { data: config } = await admin
-      .from("tenant_config")
-      .select("website_html")
+  const clientWebsiteId = typeof body.websiteId === "string" ? body.websiteId : null;
+
+  if (clientWebsiteId) {
+    const { data } = await admin
+      .from("websites")
+      .select("id, slug, draft_html, draft_spec")
+      .eq("id", clientWebsiteId)
       .eq("tenant_id", tenant.id)
       .maybeSingle();
-    if (!config?.website_html) {
-      return NextResponse.json({ error: "No website built yet — generate a site first" }, { status: 400 });
-    }
+    site = data as SiteRow | null;
   }
 
-  const siteUrl = `/site/${tenant.id}`;
-  return NextResponse.json({ url: siteUrl });
+  if (!site) {
+    // Fall back to most-recently-updated website for this tenant
+    const { data } = await admin
+      .from("websites")
+      .select("id, slug, draft_html, draft_spec")
+      .eq("tenant_id", tenant.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    site = data as SiteRow | null;
+  }
+
+  // Determine what HTML to publish: prefer draft_html from DB, fall back to body.html
+  const bodyHtml     = typeof body.html === "string" ? body.html.trim() : "";
+  const htmlToPublish = (site?.draft_html?.trim()) || bodyHtml || null;
+
+  if (!htmlToPublish) {
+    return NextResponse.json(
+      { error: "No website draft found — generate a site first." },
+      { status: 400 }
+    );
+  }
+
+  // ── Promote draft → published in websites table ───────────────────────────
+  if (site?.id) {
+    const { error: publishErr } = await admin
+      .from("websites")
+      .update({
+        published_html: htmlToPublish,
+        published_spec: site.draft_spec,
+        is_published:   true,
+        published_at:   new Date().toISOString(),
+        updated_at:     new Date().toISOString(),
+      })
+      .eq("id", site.id);
+
+    if (publishErr) {
+      console.error("[website/publish] websites update error:", publishErr.message);
+      return NextResponse.json({ error: "Failed to publish — please try again." }, { status: 500 });
+    }
+
+    // Save a publish snapshot to version history
+    await admin.from("website_versions").insert({
+      website_id: site.id,
+      spec:       site.draft_spec ?? {},
+      html:       htmlToPublish,
+      label:      "Published",
+    });
+  }
+
+  // ── Keep tenant_config.website_html in sync (site route backward compat) ──
+  const { error: configErr } = await admin
+    .from("tenant_config")
+    .upsert({ tenant_id: tenant.id, website_html: htmlToPublish }, { onConflict: "tenant_id" });
+  if (configErr) {
+    console.error("[website/publish] tenant_config upsert error:", configErr.message);
+    return NextResponse.json({ error: "Failed to save site — please try again." }, { status: 500 });
+  }
+
+  const slug    = site?.slug ?? null;
+  const siteUrl = slug ? `/site/${slug}` : `/site/${tenant.id}`;
+  return NextResponse.json({ url: siteUrl, slug });
 }

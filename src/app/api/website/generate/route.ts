@@ -386,16 +386,40 @@ IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specif
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
+// ── Plan-level website limits (matches plans.ts PLAN_CONFIG) ─────────────────
+const PLAN_WEBSITE_LIMITS: Record<string, number> = { starter: 1, pro: 2, premium: 3 };
+
+// ── Generate a URL-safe slug unique in the websites table ─────────────────────
+async function generateUniqueSlug(baseName: string, admin: AdminClient): Promise<string> {
+  const base = baseName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "my-site";
+
+  const { data: existing } = await admin.from("websites").select("id").eq("slug", base).maybeSingle();
+  if (!existing) return base;
+
+  for (let n = 1; n <= 9; n++) {
+    const candidate = `${base}-${n}`;
+    const { data: taken } = await admin.from("websites").select("id").eq("slug", candidate).maybeSingle();
+    if (!taken) return candidate;
+  }
+  return `${base}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     message?: string;
     currentHtml?: string;
+    websiteId?: string;
     history?: { role: string; content: string }[];
     images?: { data: string; mimeType: string }[];
     contactInfo?: { phone?: string; email?: string; address?: string; hours?: string };
   };
 
   const { message, currentHtml, images = [], contactInfo } = body;
+  const clientWebsiteId = typeof body.websiteId === "string" ? body.websiteId : null;
 
   if (!message?.trim() && images.length === 0) {
     return NextResponse.json({ error: "Message required" }, { status: 400 });
@@ -532,20 +556,104 @@ export async function POST(req: NextRequest) {
     ensureImageQueries(spec, industry, city, msgText);
 
     const imageMap = await fetchSpecImages(spec, heroUpload);
-    const html = renderWebsite(spec, imageMap);
+
+    // ── Resolve / create the websites record ─────────────────────────────────
+    let websiteId: string | null = null;
+    let siteSlug = "";
+    let siteName = spec.businessName || businessName;
+    let siteIsPublished = false;
 
     if (tenant?.id) {
-      const { error: upsertErr } = await admin
-        .from("tenant_config")
-        .upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
-      if (upsertErr) {
-        console.error("[website/generate] DB upsert failed:", upsertErr.message);
-        // Surface the failure so the client knows the publish step may also fail.
-        return NextResponse.json({ error: `Site generated but could not be saved: ${upsertErr.message}` }, { status: 500 });
+      // Find existing websites for this tenant
+      const { data: existingSites } = await admin
+        .from("websites")
+        .select("id, slug, name, is_published")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: true });
+
+      const sites = (existingSites ?? []) as { id: string; slug: string; name: string; is_published: boolean }[];
+
+      // Validate client-supplied websiteId belongs to this tenant
+      if (clientWebsiteId) {
+        const found = sites.find((s) => s.id === clientWebsiteId);
+        if (found) {
+          websiteId      = found.id;
+          siteSlug       = found.slug;
+          siteName       = found.name;
+          siteIsPublished = found.is_published;
+        }
+      }
+
+      if (!websiteId) {
+        // Default: use the first/only existing site for this tenant
+        const first = sites[0];
+        if (first) {
+          websiteId      = first.id;
+          siteSlug       = first.slug;
+          siteName       = first.name;
+          siteIsPublished = first.is_published;
+        } else {
+          // Creating a brand-new website — check plan limit
+          const planId = (tenant?.plan as string | undefined) ?? "starter";
+          const limit  = PLAN_WEBSITE_LIMITS[planId] ?? 1;
+          if (sites.length >= limit) {
+            return NextResponse.json({
+              error: `Your ${planId} plan allows ${limit} website${limit === 1 ? "" : "s"}. Upgrade your plan or delete an existing site to create a new one.`,
+            }, { status: 403 });
+          }
+          // Generate slug from business name
+          const slug = await generateUniqueSlug(spec.businessName || businessName, admin);
+          const { data: newSite, error: createErr } = await admin
+            .from("websites")
+            .insert({ tenant_id: tenant.id, name: siteName, slug })
+            .select("id, slug, name, is_published")
+            .single();
+          if (createErr) {
+            console.error("[website/generate] website create error:", createErr.message);
+          } else if (newSite) {
+            websiteId  = (newSite as { id: string }).id;
+            siteSlug   = (newSite as { slug: string }).slug;
+          }
+        }
       }
     }
 
-    return NextResponse.json({ html });
+    // Render HTML with tenantId so the booking form knows where to POST
+    const html = renderWebsite(spec, imageMap, tenant?.id as string | undefined);
+
+    if (tenant?.id && websiteId) {
+      // Save draft (not published yet)
+      const { error: draftErr } = await admin
+        .from("websites")
+        .update({
+          name:       siteName,
+          draft_html: html,
+          draft_spec: spec as unknown as Record<string, unknown>,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", websiteId);
+      if (draftErr) console.error("[website/generate] draft save error:", draftErr.message);
+
+      // Save version snapshot for history
+      const versionLabel = (msgText.slice(0, 60) || "Initial version").trim();
+      const { error: versionErr } = await admin
+        .from("website_versions")
+        .insert({
+          website_id: websiteId,
+          spec:       spec as unknown as Record<string, unknown>,
+          html,
+          label:      versionLabel,
+        });
+      if (versionErr) console.error("[website/generate] version save error:", versionErr.message);
+
+      // Also keep tenant_config.website_html as the draft (for backward-compat fallback in site route)
+      const { error: configErr } = await admin
+        .from("tenant_config")
+        .upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
+      if (configErr) console.error("[website/generate] tenant_config upsert error:", configErr.message);
+    }
+
+    return NextResponse.json({ html, websiteId, slug: siteSlug, name: siteName, isPublished: siteIsPublished });
   } catch (err) {
     const apiErr = err as { status?: number; error?: { type?: string }; message?: string };
     console.error("[website/generate] error:", apiErr.message ?? err);
