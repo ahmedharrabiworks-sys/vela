@@ -529,21 +529,31 @@ export default function WebsitePage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
-  // ── FIX 1: Auto-refresh domain status when publish panel opens ────────────────
-  // Ensures the panel never shows stale "Connected" state from DB cache.
-  // Only fires if a domain is already on record; skips if no domain or 503.
+  // Auto-refresh when publish panel opens: domain status + live visit count
   useEffect(() => {
-    if (!showPublishPanel || !customDomain || checkingDomain) return;
-    // Fire the status check silently — updates domainStatus/domainRecords in state
+    if (!showPublishPanel) return;
     (async () => {
+      // 1. Refresh visit count from DB
+      try {
+        const stateRes = await fetch("/api/website/state");
+        if (stateRes.ok) {
+          const stateData = await stateRes.json() as { visitCount?: number };
+          if (typeof stateData.visitCount === "number") setVisitCount(stateData.visitCount);
+        }
+      } catch { /* non-critical */ }
+
+      // 2. Refresh domain status (skips if no domain configured or API not set up)
+      if (!customDomain || checkingDomain) return;
       setCheckingDomain(true);
       try {
-        const res  = await fetch("/api/website/domain");
+        const res = await fetch("/api/website/domain");
         if (res.status === 503) { setDomainConfigured(false); return; }
         if (res.ok) {
-          const data = await res.json() as { status?: "pending" | "verified" | null; records?: DnsRecord[] };
+          const data = await res.json() as { status?: "pending" | "verified" | null; domain?: string | null; records?: DnsRecord[] };
           if (data.status !== undefined) setDomainStatus(data.status ?? null);
           if (Array.isArray(data.records)) setDomainRecords(data.records);
+          // If the domain was cleared (Vercel 404), clear local state too
+          if (data.domain === null) { setCustomDomain(null); setDomainInput(""); }
         }
       } catch { /* non-critical */ }
       finally { setCheckingDomain(false); }
@@ -651,9 +661,16 @@ export default function WebsitePage() {
     setInput(""); setAttachedImages([]);
     setContactInfo({ phone: "", email: "", address: "", hours: "" });
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
-    // Append separator + fresh greeting — old messages stay visible above
-    const sep: Msg       = { role: "ai", content: "", isSeparator: true };
-    const greet: Msg     = INITIAL_MSG(btype);
+    // Clear site identity so the panel won't show the previous site's URL
+    setIsPublished(false);
+    setPublishedUrl("");
+    setSiteName("");
+    setSiteSlug("");
+    setWebsiteId(null);
+    websiteIdRef.current = null;
+    // Append separator + fresh greeting — old messages (and version cards) stay visible above
+    const sep: Msg   = { role: "ai", content: "", isSeparator: true };
+    const greet: Msg = INITIAL_MSG(btype);
     setMsgs((prev) => [...prev, sep, greet]);
   }, [btype]);
 
@@ -700,7 +717,8 @@ export default function WebsitePage() {
     setBuilding(true);
 
     try {
-      const chatToSend = [...msgs, userMsg].filter(m => !m.isBuilding && m.role !== "version").map(stripImages);
+      // isSeparator messages have content:"" — filter them so OpenAI never receives an empty assistant message
+      const chatToSend = [...msgs, userMsg].filter(m => !m.isBuilding && m.role !== "version" && !m.isSeparator).map(stripImages);
 
       const res = await fetch("/api/website/generate", {
         method: "POST",
@@ -902,6 +920,29 @@ export default function WebsitePage() {
 
         {/* LEFT: Chat + inline history */}
         <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
+
+          {/* Persistent Project History — rendered from versions state, always visible regardless of
+              chat messages. Covers both fresh page loads (where version-role msgs aren't in the
+              restored chat) and post-New-Website state (where the draft was cleared but history stays). */}
+          {versions.length > 0 && (
+            <div className="border-b border-[#F3F4F6] px-3 py-2.5 shrink-0">
+              <p className="text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-widest mb-2">Project History</p>
+              <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+                {versions.slice().reverse().slice(0, 6).map((v, i) => (
+                  <VersionCard
+                    key={v.id}
+                    version={v}
+                    isFirst={i === 0}
+                    onPreview={handlePreviewVersion}
+                    onRestore={handleRestoreVersion}
+                    restoring={restoringVersion === v.id}
+                    previewing={previewingVersion === v.id}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => {
               // Session separator — "New website" divider

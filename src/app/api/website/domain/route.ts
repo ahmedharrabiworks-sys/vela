@@ -204,6 +204,16 @@ export async function GET(req: NextRequest) {
   }
 
   if (!domainRes.ok) {
+    if (domainRes.status === 404) {
+      // Domain no longer exists on this Vercel project — clear stale state from DB
+      await admin.from("tenant_config").upsert({
+        tenant_id:              tenant.id,
+        website_custom_domain:  null,
+        website_domain_status:  null,
+        website_domain_records: null,
+      }, { onConflict: "tenant_id" });
+      return NextResponse.json({ domain: null, status: null, records: [] });
+    }
     return NextResponse.json({
       domain,
       status: tc?.website_domain_status ?? "pending",

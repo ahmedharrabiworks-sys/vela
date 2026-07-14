@@ -5,8 +5,8 @@ import { renderWebsite, type WebsiteSpec, type ImageMap } from "@/lib/website-re
 import type { PresetName } from "@/lib/website-design-system";
 
 export const dynamic = "force-dynamic";
-// Extend serverless timeout: GPT-4o + Unsplash + DB writes can exceed 10s default
-export const maxDuration = 60;
+// 300s: two sequential GPT-4o calls + Unsplash fetches can exceed 60s on cold starts
+export const maxDuration = 300;
 
 const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));
@@ -636,7 +636,10 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // ── Initial build: ask ONE question OR generate with full context ──────
-      const priorChat = (body.chat ?? []).filter((m) => !m.isError);
+      // Filter: remove error messages AND empty-content messages (e.g. isSeparator
+      // markers that slip through client-side filtering as { role:"ai", content:"" }).
+      // OpenAI rejects assistant messages with empty string content with a 400 error.
+      const priorChat = (body.chat ?? []).filter((m) => !m.isError && Boolean(m.content?.trim()));
 
       const question = await checkNeedsMoreInfo(
         openai,
@@ -887,8 +890,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ html, websiteId, slug: siteSlug, name: siteName, isPublished: siteIsPublished });
   } catch (err) {
-    const apiErr = err as { status?: number; error?: { type?: string }; message?: string };
-    console.error("[website/generate] error:", apiErr.message ?? err);
+    // Log the full error so Vercel function logs show the real cause, not just the message
+    const apiErr = err as { status?: number; error?: { type?: string; message?: string }; message?: string };
+    console.error("[website/generate] FATAL ERROR", {
+      message:  apiErr.message,
+      status:   apiErr.status,
+      errType:  apiErr.error?.type,
+      errMsg:   apiErr.error?.message,
+      stack:    err instanceof Error ? err.stack : undefined,
+      raw:      String(err),
+    });
     const errType = apiErr.error?.type ?? (
       apiErr.status === 401 ? "invalid_api_key" :
       apiErr.status === 429 ? "rate_limited" :
