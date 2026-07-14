@@ -413,59 +413,34 @@ STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
 IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.`;
 
-// ── Conversational intake system prompt ───────────────────────────────────────
-const INTAKE_SYSTEM = `You are a friendly web designer collecting information to build a premium business website.
-Your job: analyse what you know from the conversation, then EITHER ask ONE question OR generate the complete website.
+// ── Conversational intake: DECISION only (ask vs generate) ───────────────────
+// This prompt is intentionally minimal — it ONLY decides whether to ask a
+// clarifying question. Actual spec generation always uses the full buildSystem
+// prompt with all accumulated context, so no quality is lost.
+const INTAKE_DECISION_SYSTEM = `You are deciding whether to ask one more question or proceed to build a website.
+Respond with valid JSON only — two options:
+  { "action": "ask", "question": "..." }  when a critical piece is missing
+  { "action": "generate" }               when you have enough to build
 
-RESPOND WITH VALID JSON ONLY. Two possible formats:
+Proceed to generate when you have: business name + what they do + (at least one of: location, phone, email) OR the brief is >30 words with concrete specifics.
+Ask in this priority: business name → business type/services → location or contact detail → prices/hours.
+NEVER ask about style. NEVER repeat something already answered in the conversation.
+Write questions naturally: "What's the business called?" not "Please provide the business name."`;
 
-FORMAT A — ask a question (when important info is still missing):
-{ "action": "ask", "question": "..." }
-
-FORMAT B — generate the website (when you have enough):
-[Full website spec JSON — same schema as normal generation, starting with stylePreset etc.]
-
-━━━ WHEN TO ASK vs GENERATE ━━━
-Generate immediately (no questions) when you have ALL of:
-  ✓ Business name
-  ✓ What the business does (category + brief description)
-  ✓ At least one contact detail (phone OR email OR address) OR the message is a complete brief (>30 words with real specifics)
-
-Ask ONE question (most important missing piece) when the above is not met.
-Priority of what to ask about:
-  1. Business name (if genuinely unknown)
-  2. Type of business / what services you offer
-  3. Location or contact detail (phone / email / address)
-  4. Opening hours or service prices (if core to business type)
-  NEVER ask about style preferences — you'll choose based on the business type.
-  NEVER ask about something already answered in the conversation history.
-
-━━━ QUESTION STYLE ━━━
-Write like a smart human colleague, not a form. Examples:
-  ✓ "What's the name of your business?"
-  ✓ "Where are you based, and do you have a phone number or email I should show on the site?"
-  ✓ "What are your main services, and roughly what do they cost?"
-  ✗ "Please provide your contact information including phone number, email address, and physical location."
-
-━━━ NEVER invent phone, email, address, hours, testimonials, or reviews ━━━
-━━━ NEVER include a testimonials section ━━━`;
-
-// ── Run conversational intake or generate ─────────────────────────────────────
-async function runIntakeOrGenerate(
+// ── Returns a clarifying question, or null (=enough info, proceed to generate) ─
+async function checkNeedsMoreInfo(
   openai: OpenAI,
-  chatHistory: Array<{ role: string; content: string }>,
+  chatHistory: Array<{ role: string; content: string; isError?: boolean }>,
   currentUserMessage: string,
   imageBase64: string | undefined,
   imageMimeType: string | undefined,
   businessName: string,
   industry: string,
   city: string,
-): Promise<{ type: "ask"; question: string } | { type: "generate"; spec: Partial<WebsiteSpec> }> {
-  // Build message array for GPT
+): Promise<string | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const messages: any[] = [{ role: "system", content: INTAKE_SYSTEM }];
+  const messages: any[] = [{ role: "system", content: INTAKE_DECISION_SYSTEM }];
 
-  // Include prior conversation (skip first AI greeting, map roles)
   for (const m of chatHistory) {
     if (m.role === "ai" || m.role === "assistant") {
       messages.push({ role: "assistant", content: m.content });
@@ -474,7 +449,6 @@ async function runIntakeOrGenerate(
     }
   }
 
-  // Add context preamble + current user message
   const contextLines = [
     `Business name on file: ${businessName}`,
     industry ? `Industry on file: ${industry}` : "",
@@ -498,19 +472,44 @@ async function runIntakeOrGenerate(
     model: "gpt-4o",
     messages,
     response_format: { type: "json_object" },
-    max_tokens: 4096,
-    temperature: 0.4,
+    max_tokens: 200,
+    temperature: 0.2,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as any;
-
   if (parsed.action === "ask" && typeof parsed.question === "string") {
-    return { type: "ask", question: parsed.question };
+    return parsed.question;
   }
+  return null;
+}
 
-  // Otherwise treat as full spec
-  return { type: "generate", spec: parsed as Partial<WebsiteSpec> };
+// ── Concatenate ALL user answers from the full conversation ───────────────────
+// When intake is collected across multiple turns, this ensures the final
+// generation prompt receives the complete business context, not just last msg.
+function buildAccumulatedDescription(
+  chatHistory: Array<{ role: string; content: string; isError?: boolean }>,
+  currentMessage: string,
+): string {
+  const userMsgs = chatHistory
+    .filter((m) => m.role === "user" && !m.isError)
+    .map((m) => m.content);
+  return [...userMsgs, currentMessage].filter(Boolean).join("\n\n");
+}
+
+// ── Extract real contact details from free-text conversation ──────────────────
+// Scans the full conversation for email/phone patterns the user typed.
+function extractContactFromText(text: string): string {
+  const lines: string[] = [];
+  const emailMatch = text.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
+  if (emailMatch) lines.push(`Email: ${emailMatch[0]}`);
+  // Phone: digit string with optional +/spaces/dashes, at least 7 digits total
+  const phoneMatch = text.match(/(?:\+|00)?[\d][\d\s\-\(\)\.]{6,}\d/);
+  if (phoneMatch) {
+    const p = phoneMatch[0].trim();
+    if (p.replace(/\D/g, "").length >= 7) lines.push(`Phone: ${p}`);
+  }
+  return lines.join("\n");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -634,10 +633,12 @@ export async function POST(req: NextRequest) {
         spec = { ...existing, ...parsed, stylePreset: coercePreset(parsed.stylePreset ?? existing.stylePreset), sections: parsed.sections ?? existing.sections };
       }
     } else {
-      // ── Initial build: conversational intake — ask OR generate ────────────
-      const intakeResult = await runIntakeOrGenerate(
+      // ── Initial build: ask ONE question OR generate with full context ──────
+      const priorChat = (body.chat ?? []).filter((m) => !m.isError);
+
+      const question = await checkNeedsMoreInfo(
         openai,
-        (body.chat ?? []).filter(m => !m.isError),
+        priorChat,
         msgText,
         validImages[0]?.data,
         validImages[0]?.mimeType,
@@ -646,10 +647,10 @@ export async function POST(req: NextRequest) {
         city,
       );
 
-      if (intakeResult.type === "ask") {
-        // Persist chat update fire-and-forget, then return question
+      if (question) {
+        // Save chat history fire-and-forget, return question to client
         const chatToSave = [
-          ...(body.chat ?? []).filter(m => !m.isError && !m.isBuilding).map(m => ({ role: m.role, content: m.content })),
+          ...priorChat.filter((m) => !m.isBuilding).map((m) => ({ role: m.role, content: m.content })),
           { role: "user", content: msgText || "(image uploaded)" },
         ];
         if (tenant?.id) {
@@ -658,10 +659,31 @@ export async function POST(req: NextRequest) {
             { onConflict: "tenant_id" }
           ).then(() => {}).catch(() => {});
         }
-        return NextResponse.json({ question: intakeResult.question });
+        return NextResponse.json({ question });
       }
 
-      const parsed = intakeResult.spec;
+      // ── Ready to generate — concatenate ALL user answers from every turn ───
+      // This is the fix: the full conversational history is collapsed into one
+      // rich description, then fed into buildSystem (with copywriting + image
+      // rules) rather than the stripped-down INTAKE_SYSTEM.
+      const fullDescription = buildAccumulatedDescription(priorChat, msgText);
+
+      // Extract any contact details the user mentioned across the conversation
+      const chatContactBlock = extractContactFromText(fullDescription);
+      const effectiveContactBlock = chatContactBlock || contactBlock;
+
+      const userContent = buildUserContent(businessName, industry, city, fullDescription);
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: buildSystem(effectiveContactBlock) },
+          { role: "user", content: userContent },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 4096,
+        temperature: 0.5,
+      });
+      const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
       spec = {
         stylePreset: coercePreset(parsed.stylePreset),
         accentColor: parsed.accentColor,

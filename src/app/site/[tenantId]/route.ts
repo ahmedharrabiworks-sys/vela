@@ -8,7 +8,23 @@ type AdminClient = any;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function htmlResponse(html: string) {
+function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClient) {
+  // Increment visit counter fire-and-forget (best-effort read-modify-write)
+  if (tenantIdForCount && admin) {
+    (async () => {
+      try {
+        const { data } = await admin
+          .from("tenant_config")
+          .select("website_visit_count")
+          .eq("tenant_id", tenantIdForCount)
+          .maybeSingle();
+        const next = ((data as Record<string, unknown> | null)?.website_visit_count as number ?? 0) + 1;
+        await admin
+          .from("tenant_config")
+          .upsert({ tenant_id: tenantIdForCount, website_visit_count: next }, { onConflict: "tenant_id" });
+      } catch { /* non-critical */ }
+    })();
+  }
   return new NextResponse(html, {
     status: 200,
     headers: {
@@ -32,7 +48,7 @@ export async function GET(
   const admin = createSupabaseAdmin() as AdminClient;
 
   if (UUID_RE.test(tenantId)) {
-    // UUID lookup: check websites table first (published_html), then tenant_config fallback
+    // UUID lookup: tenantId IS the tenant UUID — count directly
     const { data: site } = await admin
       .from("websites")
       .select("published_html")
@@ -42,7 +58,7 @@ export async function GET(
       .limit(1)
       .maybeSingle();
 
-    if (site?.published_html) return htmlResponse(site.published_html as string);
+    if (site?.published_html) return htmlResponse(site.published_html as string, tenantId, admin);
 
     // Backward compat: sites published before v7 migration live in tenant_config
     const { data: config } = await admin
@@ -51,17 +67,19 @@ export async function GET(
       .eq("tenant_id", tenantId)
       .maybeSingle();
 
-    if (config?.website_html) return htmlResponse(config.website_html as string);
+    if (config?.website_html) return htmlResponse(config.website_html as string, tenantId, admin);
   } else {
-    // Slug lookup
+    // Slug lookup — need to resolve tenant_id for the counter
     const { data: site } = await admin
       .from("websites")
-      .select("published_html")
+      .select("published_html, tenant_id")
       .eq("slug", tenantId)
       .eq("is_published", true)
       .maybeSingle();
 
-    if (site?.published_html) return htmlResponse(site.published_html as string);
+    if (site?.published_html) {
+      return htmlResponse(site.published_html as string, site.tenant_id as string | undefined, admin);
+    }
   }
 
   return new NextResponse("Site not found", { status: 404 });

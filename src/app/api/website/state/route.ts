@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest) {
   // Fetch tenant_config for chat, intake, versions, domain
   const { data: config } = await admin
     .from("tenant_config")
-    .select("website_html, website_chat, website_intake, website_versions, website_custom_domain, website_domain_status, website_domain_records")
+    .select("website_html, website_chat, website_intake, website_versions, website_custom_domain, website_domain_status, website_domain_records, website_visit_count")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
@@ -53,6 +53,8 @@ export async function GET(_req: NextRequest) {
     customDomain:  tc?.website_custom_domain ?? null,
     domainStatus:  tc?.website_domain_status ?? null,
     domainRecords: tc?.website_domain_records ?? null,
+    visitCount:    (tc?.website_visit_count as number | null) ?? 0,
+    plan:          (tenant?.plan as string | null) ?? "starter",
   });
 }
 
