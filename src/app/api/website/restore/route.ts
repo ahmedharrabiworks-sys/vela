@@ -6,15 +6,24 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// POST /api/website/restore — restore a specific version as the current draft
+// POST /api/website/restore — restore a specific version as the current draft.
+// Accepts either:
+//   { websiteId, versionId } — looks up by website_versions table (server-side IDs)
+//   { websiteId, html }      — restores directly from client-provided HTML
+//                              (used for client-generated version cards whose IDs
+//                               are crypto.randomUUID() and don't exist in the table)
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     websiteId?: string;
     versionId?: string;
+    html?:      string;
   };
 
-  if (!body.websiteId || !body.versionId) {
-    return NextResponse.json({ error: "websiteId and versionId required" }, { status: 400 });
+  if (!body.websiteId) {
+    return NextResponse.json({ error: "websiteId required" }, { status: 400 });
+  }
+  if (!body.versionId && !body.html) {
+    return NextResponse.json({ error: "versionId or html required" }, { status: 400 });
   }
 
   const supabase = createSupabaseServerClient();
@@ -36,21 +45,38 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (!site) return NextResponse.json({ error: "Website not found" }, { status: 404 });
 
-  // Fetch the requested version
-  const { data: version } = await admin
-    .from("website_versions")
-    .select("id, html, spec")
-    .eq("id", body.versionId)
-    .eq("website_id", body.websiteId)
-    .maybeSingle();
-  if (!version) return NextResponse.json({ error: "Version not found" }, { status: 404 });
+  // Resolve HTML — try DB lookup first, fall back to body.html
+  let htmlToRestore: string | null = null;
 
-  // Restore: set this version as the current draft + save a "Restored" version entry
+  if (body.versionId) {
+    const { data: version } = await admin
+      .from("website_versions")
+      .select("html, spec")
+      .eq("id", body.versionId)
+      .eq("website_id", body.websiteId)
+      .maybeSingle();
+
+    if (version) {
+      htmlToRestore = (version as { html: string }).html;
+    }
+  }
+
+  // Fall back to client-supplied HTML (for client-generated version records)
+  if (!htmlToRestore && body.html) {
+    htmlToRestore = body.html;
+  }
+
+  if (!htmlToRestore) {
+    return NextResponse.json({ error: "Version not found" }, { status: 404 });
+  }
+
+  const finalHtml = htmlToRestore;
+
+  // Restore: set this version as the current draft
   const { error: restoreErr } = await admin
     .from("websites")
     .update({
-      draft_html: (version as { html: string }).html,
-      draft_spec: (version as { spec: unknown }).spec,
+      draft_html: finalHtml,
       updated_at: new Date().toISOString(),
     })
     .eq("id", body.websiteId);
@@ -60,18 +86,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Restore failed — please try again." }, { status: 500 });
   }
 
+  // Record a restore snapshot in website_versions table
   await admin.from("website_versions").insert({
     website_id: body.websiteId,
-    spec:       (version as { spec: unknown }).spec,
-    html:       (version as { html: string }).html,
+    spec:       {},
+    html:       finalHtml,
     label:      "Restored",
   });
 
-  // Also update tenant_config draft for backward compat
+  // Keep tenant_config in sync
   await admin.from("tenant_config").upsert(
-    { tenant_id: tenant.id, website_html: (version as { html: string }).html },
+    { tenant_id: tenant.id, website_html: finalHtml },
     { onConflict: "tenant_id" }
   );
 
-  return NextResponse.json({ html: (version as { html: string }).html });
+  return NextResponse.json({ html: finalHtml });
 }
