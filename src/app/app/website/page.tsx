@@ -16,12 +16,13 @@ type VersionRecord = {
   html:       string;
 };
 
-// Chat messages include both AI/user text and inline version cards
+// Chat messages include both AI/user text, inline version cards, and session separators
 type Msg = {
   role:        "ai" | "user" | "version";
   content:     string;
   isBuilding?: boolean;
   isError?:    boolean;
+  isSeparator?: boolean;    // "New website" divider in the chat feed
   images?:     string[];
   // for role === "version"
   version?:    VersionRecord;
@@ -528,10 +529,32 @@ export default function WebsitePage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
+  // ── FIX 1: Auto-refresh domain status when publish panel opens ────────────────
+  // Ensures the panel never shows stale "Connected" state from DB cache.
+  // Only fires if a domain is already on record; skips if no domain or 503.
+  useEffect(() => {
+    if (!showPublishPanel || !customDomain || checkingDomain) return;
+    // Fire the status check silently — updates domainStatus/domainRecords in state
+    (async () => {
+      setCheckingDomain(true);
+      try {
+        const res  = await fetch("/api/website/domain");
+        if (res.status === 503) { setDomainConfigured(false); return; }
+        if (res.ok) {
+          const data = await res.json() as { status?: "pending" | "verified" | null; records?: DnsRecord[] };
+          if (data.status !== undefined) setDomainStatus(data.status ?? null);
+          if (Array.isArray(data.records)) setDomainRecords(data.records);
+        }
+      } catch { /* non-critical */ }
+      finally { setCheckingDomain(false); }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPublishPanel]);
+
   // ── Persist chat + intake ─────────────────────────────────────────────────────
   const persistChat = useCallback((finalMsgs: Msg[], intake: ContactInfo) => {
     const chatToSave = finalMsgs
-      .filter(m => !m.isBuilding && m.role !== "version")
+      .filter(m => !m.isBuilding && m.role !== "version" && !m.isSeparator)
       .map(stripImages);
     fetch("/api/website/state", {
       method: "PATCH",
@@ -618,14 +641,20 @@ export default function WebsitePage() {
   }, [contactInfo, persistChat]);
 
   // ── New Website / Reset ───────────────────────────────────────────────────────
+  // Lovable pattern: keep old chat history visible as read-only context,
+  // insert a visual separator, then start fresh below it.
   const handleNewWebsite = useCallback(async () => {
-    if (!confirm("This will clear your current draft. Your published site stays live until you publish again.")) return;
+    if (!confirm("This will clear your current draft. Your published site stays live. Old conversation history stays visible above.")) return;
     try { await fetch("/api/website/reset", { method: "POST" }); } catch { /* ignore */ }
     setHtml(""); htmlRef.current = "";
     setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
-    setMsgs([INITIAL_MSG(btype)]); setInput(""); setAttachedImages([]);
+    setInput(""); setAttachedImages([]);
     setContactInfo({ phone: "", email: "", address: "", hours: "" });
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
+    // Append separator + fresh greeting — old messages stay visible above
+    const sep: Msg       = { role: "ai", content: "", isSeparator: true };
+    const greet: Msg     = INITIAL_MSG(btype);
+    setMsgs((prev) => [...prev, sep, greet]);
   }, [btype]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
@@ -875,6 +904,19 @@ export default function WebsitePage() {
         <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => {
+              // Session separator — "New website" divider
+              if (msg.isSeparator) {
+                return (
+                  <div key={i} className="flex items-center gap-3 py-1">
+                    <div className="flex-1 h-px bg-[#E5E7EB]" />
+                    <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] rounded-full border border-[#E5E7EB]">
+                      New website
+                    </span>
+                    <div className="flex-1 h-px bg-[#E5E7EB]" />
+                  </div>
+                );
+              }
+
               // Inline version card
               if (msg.role === "version" && msg.version) {
                 const versionIndex = versions.slice().reverse().findIndex(v => v.id === msg.version!.id);

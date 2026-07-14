@@ -25,15 +25,17 @@ export async function GET() {
   // Fetch 180 days so we can compute period-over-period for any range
   const oneEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [leadsRes, convsRes, apptsRes] = await Promise.all([
+  const [leadsRes, convsRes, apptsRes, configRes] = await Promise.all([
     admin.from("leads").select("created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
     admin.from("conversations").select("channel, created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
     admin.from("appointments").select("created_at, status").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("tenant_config").select("website_visit_count").eq("tenant_id", tenantId).maybeSingle(),
   ]);
 
   if (leadsRes.error) console.error("[analytics] leads query error:", leadsRes.error.message, leadsRes.error.code);
   if (convsRes.error) console.error("[analytics] conversations query error:", convsRes.error.message, convsRes.error.code);
   if (apptsRes.error) console.error("[analytics] appointments query error:", apptsRes.error.message, apptsRes.error.code);
+  const websiteVisits = ((configRes.data as Record<string, unknown> | null)?.website_visit_count as number | null) ?? 0;
 
   const leads: { created_at: string }[] = leadsRes.data ?? [];
   const conversations: { channel: string; created_at: string }[] = convsRes.data ?? [];
@@ -88,5 +90,6 @@ export async function GET() {
     dailyConvCounts,
     dailyApptCounts,
     channelBreakdown,
+    websiteVisits,
   });
 }

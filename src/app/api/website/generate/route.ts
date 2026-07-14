@@ -5,6 +5,8 @@ import { renderWebsite, type WebsiteSpec, type ImageMap } from "@/lib/website-re
 import type { PresetName } from "@/lib/website-design-system";
 
 export const dynamic = "force-dynamic";
+// Extend serverless timeout: GPT-4o + Unsplash + DB writes can exceed 10s default
+export const maxDuration = 60;
 
 const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));

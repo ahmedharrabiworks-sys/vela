@@ -16,6 +16,7 @@ type AnalyticsData = {
   dailyConvCounts: Record<string, number>;
   dailyApptCounts: Record<string, number>;
   channelBreakdown: { channel: string; conversations: number }[];
+  websiteVisits: number;
 };
 
 function buildDayArray(dailyCounts: Record<string, number>, days: number, offsetDays = 0): number[] {
@@ -170,6 +171,7 @@ export default function AnalyticsPage() {
   const channelTable = analytics?.channelBreakdown ?? [];
   const totalLeads = analytics?.totalLeads ?? 0;
   const totalAppts = analytics?.totalAppointments ?? 0;
+  const websiteVisits = analytics?.websiteVisits ?? 0;
   const convRate = totalConvs > 0 ? Math.round((totalAppts / totalConvs) * 100) : 0;
 
   const leadsChange    = analytics ? computeChange(periodSum(analytics.dailyCounts,     days), periodSum(analytics.dailyCounts,     days, days)) : null;
@@ -182,10 +184,10 @@ export default function AnalyticsPage() {
 
   // Values: always real (when analytics loaded) or "—" (no data). NEVER hardcoded fake numbers.
   const kpiItems = [
-    { label: t("analytics.totalLeads"),     value: analytics ? String(totalLeads) : "—", change: leadsChange    },
-    { label: t("analytics.appointments"),   value: analytics ? String(totalAppts) : "—", change: apptsChange    },
-    { label: t("analytics.conversations"),  value: analytics ? String(totalConvs) : "—", change: convsChange    },
-    { label: t("analytics.conversionRate"), value: analytics ? `${convRate}%`     : "—", change: convRateChange },
+    { label: t("analytics.totalLeads"),     value: analytics ? String(totalLeads)    : "—", change: leadsChange,    note: "From AI agent channels"   },
+    { label: t("analytics.appointments"),   value: analytics ? String(totalAppts)    : "—", change: apptsChange,    note: "AI-booked appointments"    },
+    { label: t("analytics.conversations"),  value: analytics ? String(totalConvs)    : "—", change: convsChange,    note: "WhatsApp / Instagram / Web" },
+    { label: "Website Visits",              value: analytics ? String(websiteVisits) : "—", change: null,           note: "Unique published site views" },
   ];
 
   const hasChannelData = channelTable.some((r) => r.conversations > 0);
@@ -263,10 +265,10 @@ export default function AnalyticsPage() {
                 <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl p-5">
                   <p className="text-[11px] text-[#6B7280] mb-3">{k.label}</p>
                   <p className="text-3xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
-                  {analytics ? (
+                  {analytics && k.change !== null ? (
                     <TrendBadge change={k.change ?? null} />
                   ) : (
-                    <p className="text-xs text-[#9CA3AF]">vs prior period</p>
+                    <p className="text-[10px] text-[#9CA3AF]">{k.note}</p>
                   )}
                 </div>
               ))}
