@@ -2,20 +2,29 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
-import { getSupabase } from "@/lib/supabase";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 type AttachedImage = { preview: string; base64: string; mimeType: string };
 type ContactInfo   = { phone: string; email: string; address: string; hours: string };
-type Version       = { id: string; label: string; created_at: string };
+type DnsRecord     = { type: string; name: string; value: string };
 
-type Msg = {
-  role: "ai" | "user";
-  content: string;
-  isBuilding?: boolean;
-  isError?: boolean;
-  images?: string[];
+type VersionRecord = {
+  id:         string;
+  label:      string;
+  created_at: string;
+  type:       "generate" | "publish";
+  html:       string;
 };
 
+type Msg = {
+  role:        "ai" | "user";
+  content:     string;
+  isBuilding?: boolean;
+  isError?:    boolean;
+  images?:     string[];
+};
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_ATTACH   = 4;
 const MAX_IMG_SIZE = 5 * 1024 * 1024;
 
@@ -40,6 +49,14 @@ const DEFAULT_SUGGESTIONS = [
 
 const PLAN_WEBSITE_LIMITS: Record<string, number> = { starter: 1, pro: 2, premium: 3 };
 
+const INITIAL_MSG = (btype: string | null): Msg => ({
+  role: "ai",
+  content: btype && INDUSTRY_SUGGESTIONS[btype]
+    ? `Hi! I see you run a ${btype} business. Tell me your business name and location — I'll build your website in seconds with real photos.\n\nOr pick a suggestion below:`
+    : "Hi! Describe your business and I'll build a premium booking website instantly — real photos, professional design, booking buttons included.\n\nOr pick a suggestion below:",
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(ts: string): string {
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
   if (diff < 60)    return "just now";
@@ -48,115 +65,179 @@ function timeAgo(ts: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+function stripImages(m: Msg): { role: string; content: string; isError?: boolean } {
+  return { role: m.role, content: m.content, isError: m.isError };
+}
+
+async function copyText(text: string) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta);
+  }
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function WebsitePage() {
   const { t } = useI18n();
   const btype       = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
   const suggestions = (btype && INDUSTRY_SUGGESTIONS[btype]) ? INDUSTRY_SUGGESTIONS[btype] : DEFAULT_SUGGESTIONS;
 
-  const [msgs, setMsgs] = useState<Msg[]>([{
-    role: "ai",
-    content: btype && INDUSTRY_SUGGESTIONS[btype]
-      ? `Hi! I see you run a ${btype} business. Tell me your business name and location — I'll build your website in seconds with real photos.\n\nOr pick a suggestion below:`
-      : "Hi! Describe your business and I'll build a premium booking website instantly — real photos, professional design, booking buttons included.\n\nOr pick a suggestion below:",
-  }]);
-
-  // Core builder state
-  const [input, setInput]           = useState("");
-  const [html, setHtml]             = useState("");
-  const [device, setDevice]         = useState<"desktop" | "mobile">("desktop");
-  const [viewMode, setViewMode]     = useState<"preview" | "code" | "settings" | "history">("preview");
-  const [building, setBuilding]     = useState(false);
-  const [built, setBuilt]           = useState(false);
-  const [codeCopied, setCodeCopied] = useState(false);
-  const [activeTab, setActiveTab]   = useState<"chat" | "preview">("chat");
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
-  const [contactInfo, setContactInfo]       = useState<ContactInfo>({ phone: "", email: "", address: "", hours: "" });
+  // ── Core state ──────────────────────────────────────────────────────────────
+  const [loading, setLoading]         = useState(true);
+  const [msgs, setMsgs]               = useState<Msg[]>([INITIAL_MSG(btype)]);
+  const [input, setInput]             = useState("");
+  const [html, setHtml]               = useState("");
+  const [device, setDevice]           = useState<"desktop" | "mobile">("desktop");
+  const [viewMode, setViewMode]       = useState<"preview" | "code" | "settings" | "history">("preview");
+  const [building, setBuilding]       = useState(false);
+  const [built, setBuilt]             = useState(false);
+  const [codeCopied, setCodeCopied]   = useState(false);
+  const [activeTab, setActiveTab]     = useState<"chat" | "preview">("chat");
+  const [attachedImages, setAttachedImages]   = useState<AttachedImage[]>([]);
+  const [contactInfo, setContactInfo]         = useState<ContactInfo>({ phone: "", email: "", address: "", hours: "" });
   const [showContactForm, setShowContactForm] = useState(false);
 
-  // Publish state
+  // ── Publish state ────────────────────────────────────────────────────────────
   const [publishedUrl, setPublishedUrl]     = useState("");
   const [publishCopied, setPublishCopied]   = useState(false);
   const [publishing, setPublishing]         = useState(false);
   const [isPublished, setIsPublished]       = useState(false);
+  const [showPublishPopover, setShowPublishPopover] = useState(false);
+  // true when draft was generated/restored after last publish
+  const [draftDiffers, setDraftDiffers]     = useState(false);
 
-  // Website / FIX 2-4 state
-  const [websiteId, setWebsiteId]           = useState<string | null>(null);
-  const [siteName, setSiteName]             = useState("");
-  const [siteSlug, setSiteSlug]             = useState("");
-  const [siteDomain, setSiteDomain]         = useState("");
-  const [slugError, setSlugError]           = useState("");
+  // ── Website metadata state ───────────────────────────────────────────────────
+  const [websiteId, setWebsiteId]       = useState<string | null>(null);
+  const [siteName, setSiteName]         = useState("");
+  const [siteSlug, setSiteSlug]         = useState("");
+  const [slugError, setSlugError]       = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsError, setSettingsError]   = useState("");
 
-  // FIX 4: version history
-  const [versions, setVersions]             = useState<Version[]>([]);
-  const [loadingVersions, setLoadingVersions] = useState(false);
-  const [restoringVersion, setRestoringVersion] = useState<string | null>(null);
+  // ── Version history state ────────────────────────────────────────────────────
+  const [versions, setVersions]             = useState<VersionRecord[]>([]);
+  const [previewVersionHtml, setPreviewVersionHtml] = useState<string | null>(null);
+  const [restoringVersion, setRestoringVersion]     = useState<string | null>(null);
+  const [previewingVersion, setPreviewingVersion]   = useState<string | null>(null);
 
-  // FIX 3: plan limits
-  const [websiteLimit, setWebsiteLimit]     = useState(1);
-  const [websiteCount, setWebsiteCount]     = useState(0);
+  // ── Plan limits state ────────────────────────────────────────────────────────
+  const [websiteLimit, setWebsiteLimit] = useState(1);
+  const [websiteCount, setWebsiteCount] = useState(0);
 
-  // Refs
+  // ── Domain state ─────────────────────────────────────────────────────────────
+  const [domainInput, setDomainInput]       = useState("");
+  const [customDomain, setCustomDomain]     = useState<string | null>(null);
+  const [domainStatus, setDomainStatus]     = useState<"pending" | "verified" | null>(null);
+  const [domainRecords, setDomainRecords]   = useState<DnsRecord[]>([]);
+  const [domainConfigured, setDomainConfigured] = useState(true); // false if Vercel env missing
+  const [connectingDomain, setConnectingDomain] = useState(false);
+  const [checkingDomain, setCheckingDomain]     = useState(false);
+  const [removingDomain, setRemovingDomain]     = useState(false);
+  const [domainError, setDomainError]           = useState("");
+  const [copiedRecord, setCopiedRecord]         = useState<string | null>(null);
+
+  // ── Refs ─────────────────────────────────────────────────────────────────────
   const bottomRef    = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const htmlRef      = useRef<string>("");
   const websiteIdRef = useRef<string | null>(null);
+  const publishBtnRef = useRef<HTMLDivElement>(null);
 
-  // ── Load plan info on mount ──────────────────────────────────────────────
+  // ── Mount: load persisted state ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const db = getSupabase() as any;
-        const { data: { user } } = await db.auth.getUser();
-        if (!user) return;
-        const { data: tenant } = await db.from("tenants").select("id, plan").eq("owner_id", user.id).single();
-        if (!tenant) return;
-        const plan = (tenant.plan as string | undefined) ?? "starter";
-        setWebsiteLimit(PLAN_WEBSITE_LIMITS[plan] ?? 1);
-        const { count } = await db.from("websites").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id);
-        setWebsiteCount(count ?? 0);
-      } catch { /* ignore */ }
+        const res  = await fetch("/api/website/state");
+        const data = await res.json() as {
+          websiteId?:    string | null;
+          html?:         string | null;
+          slug?:         string | null;
+          name?:         string | null;
+          isPublished?:  boolean;
+          publishedUrl?: string | null;
+          chat?:         Msg[] | null;
+          intake?:       ContactInfo | null;
+          versions?:     VersionRecord[];
+          customDomain?: string | null;
+          domainStatus?: "pending" | "verified" | null;
+          domainRecords?: DnsRecord[] | null;
+        };
+
+        if (data.websiteId) {
+          setWebsiteId(data.websiteId);
+          websiteIdRef.current = data.websiteId;
+          setWebsiteCount(1);
+        }
+        if (data.html) {
+          setHtml(data.html);
+          htmlRef.current = data.html;
+          setBuilt(true);
+          setActiveTab("preview");
+        }
+        if (data.slug)        setSiteSlug(data.slug);
+        if (data.name)        setSiteName(data.name);
+        if (data.isPublished) setIsPublished(true);
+        if (data.publishedUrl) setPublishedUrl(data.publishedUrl);
+        if (Array.isArray(data.chat) && data.chat.length > 1) {
+          // Restore chat but skip any isBuilding stubs
+          setMsgs((data.chat as Msg[]).filter(m => !m.isBuilding));
+        }
+        if (data.intake) {
+          setContactInfo(data.intake);
+        }
+        if (Array.isArray(data.versions)) {
+          setVersions(data.versions as VersionRecord[]);
+        }
+        if (data.customDomain) {
+          setCustomDomain(data.customDomain);
+          setDomainInput(data.customDomain);
+        }
+        if (data.domainStatus)  setDomainStatus(data.domainStatus);
+        if (Array.isArray(data.domainRecords)) setDomainRecords(data.domainRecords as DnsRecord[]);
+
+        // Load plan limits
+        const supaRes  = await fetch("/api/website/settings").catch(() => null);
+        const planData = supaRes && supaRes.ok ? await supaRes.json() as { plan?: string } : null;
+        if (planData?.plan) setWebsiteLimit(PLAN_WEBSITE_LIMITS[planData.plan] ?? 1);
+
+      } catch { /* ignore — show empty state */ }
+      setLoading(false);
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Auto-scroll chat ─────────────────────────────────────────────────────
+  // ── Auto-scroll chat ─────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
-  // ── Load version history when switching to history tab ───────────────────
-  useEffect(() => {
-    if (viewMode === "history" && websiteId) {
-      loadVersions(websiteId);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, websiteId]);
-
-  const loadVersions = useCallback(async (wId: string) => {
-    setLoadingVersions(true);
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = getSupabase() as any;
-      const { data } = await db
-        .from("website_versions")
-        .select("id, label, created_at")
-        .eq("website_id", wId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      setVersions((data ?? []) as Version[]);
-    } catch { /* ignore */ }
-    setLoadingVersions(false);
+  // ── Persist chat + intake after state settles ─────────────────────────────────
+  const persistChat = useCallback((finalMsgs: Msg[], intake: ContactInfo) => {
+    const chatToSave = finalMsgs.filter(m => !m.isBuilding).map(stripImages);
+    fetch("/api/website/state", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat: chatToSave, intake }),
+    }).catch(() => {});
   }, []);
 
-  // ── Publish / Update ──────────────────────────────────────────────────────
+  // ── Publish / Update ──────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
     const currentHtml = htmlRef.current;
     if (!built || publishing || !currentHtml) return;
+
+    // If already published, toggle popover instead of re-publishing
+    if (isPublished && !draftDiffers) {
+      setShowPublishPopover((v) => !v);
+      return;
+    }
+
     setPublishing(true);
+    setShowPublishPopover(false);
     try {
-      const res = await fetch("/api/website/publish", {
+      const res  = await fetch("/api/website/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ html: currentHtml, websiteId: websiteIdRef.current }),
@@ -169,33 +250,42 @@ export default function WebsitePage() {
       const finalUrl = data.slug ? `/site/${data.slug}` : (data.url ?? "");
       setPublishedUrl(finalUrl);
       setIsPublished(true);
+      setDraftDiffers(false);
       if (data.slug) setSiteSlug(data.slug);
+      setShowPublishPopover(true);
+      // Refresh versions
+      const updatedVersions = [...versions, {
+        id: crypto.randomUUID(),
+        label: "Published",
+        created_at: new Date().toISOString(),
+        type: "publish" as const,
+        html: currentHtml,
+      }].slice(-20);
+      setVersions(updatedVersions);
     } catch {
       alert("Connection error. Please try again.");
     } finally {
       setPublishing(false);
     }
-  }, [built, publishing]);
+  }, [built, publishing, isPublished, draftDiffers, versions]);
 
   const copyPublishUrl = useCallback(async () => {
     const full = `${window.location.origin}${publishedUrl}`;
-    try { await navigator.clipboard.writeText(full); } catch { /* */ }
+    await copyText(full);
     setPublishCopied(true);
     setTimeout(() => setPublishCopied(false), 2000);
   }, [publishedUrl]);
 
-  // ── Settings ──────────────────────────────────────────────────────────────
+  // ── Settings ──────────────────────────────────────────────────────────────────
   const handleSaveSettings = useCallback(async () => {
     const wId = websiteIdRef.current;
     if (!wId) return;
-    setSlugError("");
-    setSettingsError("");
-    setSavingSettings(true);
+    setSlugError(""); setSettingsError(""); setSavingSettings(true);
     try {
-      const res = await fetch("/api/website/settings", {
+      const res  = await fetch("/api/website/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ websiteId: wId, name: siteName, slug: siteSlug, domain: siteDomain }),
+        body: JSON.stringify({ websiteId: wId, name: siteName, slug: siteSlug }),
       });
       const data = await res.json() as { slug?: string; error?: string };
       if (!res.ok) {
@@ -208,57 +298,130 @@ export default function WebsitePage() {
           if (publishedUrl) setPublishedUrl(`/site/${data.slug}`);
         }
       }
-    } catch {
-      setSettingsError("Connection error.");
-    } finally {
-      setSavingSettings(false);
-    }
-  }, [siteName, siteSlug, siteDomain, publishedUrl]);
+    } catch { setSettingsError("Connection error."); }
+    finally { setSavingSettings(false); }
+  }, [siteName, siteSlug, publishedUrl]);
 
-  // ── Restore a version ─────────────────────────────────────────────────────
-  const handleRestoreVersion = useCallback(async (versionId: string) => {
-    const wId = websiteIdRef.current;
-    if (!wId) return;
-    setRestoringVersion(versionId);
+  // ── Domain ────────────────────────────────────────────────────────────────────
+  const handleConnectDomain = useCallback(async () => {
+    setDomainError(""); setConnectingDomain(true);
     try {
-      const res = await fetch("/api/website/restore", {
+      const res  = await fetch("/api/website/domain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ websiteId: wId, versionId }),
+        body: JSON.stringify({ domain: domainInput.trim() }),
+      });
+      const data = await res.json() as {
+        error?: string;
+        domain?: string;
+        status?: "pending" | "verified";
+        records?: DnsRecord[];
+      };
+      if (!res.ok) {
+        if (res.status === 503) { setDomainConfigured(false); return; }
+        setDomainError(data.error ?? "Failed to connect domain.");
+      } else {
+        setCustomDomain(data.domain ?? domainInput.trim());
+        setDomainStatus(data.status ?? "pending");
+        setDomainRecords(data.records ?? []);
+      }
+    } catch { setDomainError("Connection error — please try again."); }
+    finally { setConnectingDomain(false); }
+  }, [domainInput]);
+
+  const handleCheckDomainStatus = useCallback(async () => {
+    setDomainError(""); setCheckingDomain(true);
+    try {
+      const res  = await fetch("/api/website/domain");
+      const data = await res.json() as {
+        error?: string;
+        status?: "pending" | "verified" | null;
+        records?: DnsRecord[];
+        domain?: string | null;
+      };
+      if (!res.ok) {
+        if (res.status === 503) { setDomainConfigured(false); return; }
+        setDomainError(data.error ?? "Could not check status.");
+      } else {
+        if (data.status) setDomainStatus(data.status);
+        if (Array.isArray(data.records)) setDomainRecords(data.records);
+      }
+    } catch { setDomainError("Connection error — please try again."); }
+    finally { setCheckingDomain(false); }
+  }, []);
+
+  const handleRemoveDomain = useCallback(async () => {
+    if (!confirm(`Remove ${customDomain ?? "this domain"} from your project?`)) return;
+    setRemovingDomain(true);
+    try {
+      const res = await fetch("/api/website/domain", { method: "DELETE" });
+      if (res.ok) {
+        setCustomDomain(null); setDomainStatus(null);
+        setDomainRecords([]); setDomainInput("");
+      }
+    } catch { /* ignore */ }
+    finally { setRemovingDomain(false); }
+  }, [customDomain]);
+
+  const handleCopyRecord = useCallback(async (value: string) => {
+    await copyText(value);
+    setCopiedRecord(value);
+    setTimeout(() => setCopiedRecord(null), 2000);
+  }, []);
+
+  // ── Version preview / restore ─────────────────────────────────────────────────
+  const handlePreviewVersion = useCallback((v: VersionRecord) => {
+    setPreviewingVersion(v.id);
+    setPreviewVersionHtml(v.html);
+    setViewMode("preview");
+    setActiveTab("preview");
+    setTimeout(() => setPreviewingVersion(null), 500);
+  }, []);
+
+  const handleRestoreVersion = useCallback(async (v: VersionRecord) => {
+    const wId = websiteIdRef.current;
+    if (!wId) return;
+    setRestoringVersion(v.id);
+    try {
+      const res  = await fetch("/api/website/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: wId, versionId: v.id }),
       });
       const data = await res.json() as { html?: string; error?: string };
       if (data.html) {
         setHtml(data.html);
         htmlRef.current = data.html;
+        setPreviewVersionHtml(null);
         setBuilt(true);
+        setDraftDiffers(true);
         setViewMode("preview");
         setActiveTab("preview");
-        setMsgs((prev) => [...prev, { role: "ai", content: "Previous version restored to draft. Click \"Update Live Site\" to push it live." }]);
-        // Refresh version list
-        await loadVersions(wId);
+        const finalMsgs: Msg[] = [...msgs, {
+          role: "ai",
+          content: `Restored "${v.label}". Click "Update Site" to push it live.`,
+        }];
+        setMsgs(finalMsgs);
+        persistChat(finalMsgs, contactInfo);
       } else {
         alert(data.error ?? "Restore failed.");
       }
-    } catch {
-      alert("Connection error.");
-    } finally {
-      setRestoringVersion(null);
-    }
-  }, [loadVersions]);
+    } catch { alert("Connection error."); }
+    finally { setRestoringVersion(null); }
+  }, [msgs, contactInfo, persistChat]);
 
-  // ── File attachment ───────────────────────────────────────────────────────
+  // ── File attachment ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    const remaining = MAX_ATTACH - attachedImages.length;
-    files.slice(0, remaining).forEach((file) => {
-      if (!file.type.startsWith("image/")) return;
-      if (file.size > MAX_IMG_SIZE) return;
+    files.slice(0, MAX_ATTACH - attachedImages.length).forEach((file) => {
+      if (!file.type.startsWith("image/") || file.size > MAX_IMG_SIZE) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
-        const base64  = dataUrl.split(",")[1] ?? "";
         setAttachedImages((prev) =>
-          prev.length < MAX_ATTACH ? [...prev, { preview: dataUrl, base64, mimeType: file.type }] : prev
+          prev.length < MAX_ATTACH
+            ? [...prev, { preview: dataUrl, base64: dataUrl.split(",")[1] ?? "", mimeType: file.type }]
+            : prev,
         );
       };
       reader.readAsDataURL(file);
@@ -268,20 +431,12 @@ export default function WebsitePage() {
 
   const copyCode = useCallback(async () => {
     if (!html) return;
-    try { await navigator.clipboard.writeText(html); }
-    catch {
-      const ta = document.createElement("textarea");
-      ta.value = html;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
+    await copyText(html);
     setCodeCopied(true);
     setTimeout(() => setCodeCopied(false), 2000);
   }, [html]);
 
-  // ── Generate / Send ───────────────────────────────────────────────────────
+  // ── Generate / Send ───────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if ((!text && attachedImages.length === 0) || building) return;
@@ -293,18 +448,19 @@ export default function WebsitePage() {
     const apiHistory = msgs
       .slice(1)
       .filter((m) => !m.isBuilding)
-      .map((m) => ({
-        role: m.role === "user" ? "user" as const : "assistant" as const,
-        content: m.content,
-      }));
+      .map((m) => ({ role: m.role === "user" ? "user" as const : "assistant" as const, content: m.content }));
 
     const userMsg:    Msg = { role: "user", content: text || "Please use the uploaded image(s) on the website.", images: capturedImages.map((i) => i.preview) };
     const loadingMsg: Msg = { role: "ai",  content: built ? "Updating your website…" : "Building your website…", isBuilding: true };
 
-    setMsgs([...msgs, userMsg, loadingMsg]);
+    const msgsWithLoading = [...msgs, userMsg, loadingMsg];
+    setMsgs(msgsWithLoading);
     setBuilding(true);
 
     try {
+      // Strip images from chat to persist (base64 is too large)
+      const chatToSend = [...msgs, userMsg].filter(m => !m.isBuilding).map(stripImages);
+
       const res = await fetch("/api/website/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -315,8 +471,11 @@ export default function WebsitePage() {
           history:     apiHistory,
           images:      capturedImages.map((i) => ({ data: i.base64, mimeType: i.mimeType })),
           contactInfo: (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
+          chat:        chatToSend,
+          intake:      (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
         }),
       });
+
       const data = await res.json() as {
         html?: string;
         error?: string;
@@ -328,10 +487,11 @@ export default function WebsitePage() {
 
       if (!res.ok || !data.html) {
         const errText =
-          data.error === "Unauthorized"     ? "Please sign in to use the website builder." :
-          data.error === "AI not configured" ? "The AI service isn't set up yet — contact support." :
+          data.error === "Unauthorized"      ? "Please sign in to use the website builder." :
+          data.error === "AI not configured"  ? "The AI service isn't set up yet — contact support." :
           (data.error ?? "Something went wrong. Please try again.");
-        setMsgs([...msgs, userMsg, { role: "ai", content: errText, isError: true }]);
+        const errMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: errText, isError: true }];
+        setMsgs(errMsgs);
         setBuilding(false);
         return;
       }
@@ -349,33 +509,71 @@ export default function WebsitePage() {
       if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
 
       setBuilt(true);
+      setDraftDiffers(true);
+      setPreviewVersionHtml(null);
       setViewMode("preview");
       setActiveTab("preview");
 
-      // Refresh version list when history tab is open
-      if (viewMode === "history" && data.websiteId) {
-        await loadVersions(data.websiteId);
-      }
-
       const successMsg = built
-        ? "Done! Your website has been updated.\n\nClick \"Update Live Site\" to push it to the public URL, or keep refining."
+        ? "Done! Your website has been updated. Click \"Update Site\" to push it live, or keep refining."
         : "Your website is ready! Check the preview →\n\nTry: \"Make the hero darker\", \"Change accent to green\", \"Add a gallery section\", or upload a photo.";
 
-      setMsgs([...msgs, userMsg, { role: "ai", content: successMsg }]);
+      const finalMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: successMsg }];
+      setMsgs(finalMsgs);
+
+      // Append the new generate version to local versions state
+      if (data.html) {
+        setVersions((prev) => [...prev, {
+          id:         crypto.randomUUID(),
+          label:      (text.slice(0, 60) || "Initial version").trim(),
+          created_at: new Date().toISOString(),
+          type:       "generate",
+          html:       data.html!,
+        }].slice(-20));
+      }
+
+      // Fire-and-forget: persist final chat + intake
+      persistChat(finalMsgs, contactInfo);
+
     } catch {
-      setMsgs([...msgs, userMsg, { role: "ai", content: "Connection error. Check your internet and try again.", isError: true }]);
+      const errMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: "Connection error. Check your internet and try again.", isError: true }];
+      setMsgs(errMsgs);
     }
     setBuilding(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, attachedImages, building, built, html, msgs, contactInfo, viewMode, loadVersions]);
+  }, [input, attachedImages, building, built, html, msgs, contactInfo, persistChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // ── Derived values ────────────────────────────────────────────────────────────
+  const origin       = typeof window !== "undefined" ? window.location.origin : "";
+  const previewHtml  = previewVersionHtml ?? html;
+  const publishLabel = publishing ? (isPublished ? "Updating…" : "Publishing…")
+                     : isPublished ? (draftDiffers ? "Update Site" : "Published")
+                     : t("website.publish");
 
+  // ── Loading skeleton ──────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1400px] mx-auto animate-pulse">
+        <div className="flex items-center justify-between pb-4 shrink-0">
+          <div>
+            <div className="h-6 w-40 bg-[#E5E7EB] rounded-lg" />
+            <div className="h-3 w-64 bg-[#F3F4F6] rounded mt-1.5" />
+          </div>
+          <div className="h-9 w-28 bg-[#E5E7EB] rounded-xl" />
+        </div>
+        <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+          <div className="w-full md:w-[320px] bg-white border border-[#E5E7EB] rounded-2xl shrink-0" />
+          <div className="hidden md:block flex-1 bg-white border border-[#E5E7EB] rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1400px] mx-auto">
 
@@ -386,7 +584,6 @@ export default function WebsitePage() {
           <p className="text-xs text-[#6B7280] mt-0.5">{t("website.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* FIX 3: Plan limit badge */}
           {websiteCount > 0 && (
             <span className="hidden md:block text-[10px] text-[#9CA3AF] font-medium">
               {websiteCount}/{websiteLimit} site{websiteLimit !== 1 ? "s" : ""}
@@ -403,40 +600,88 @@ export default function WebsitePage() {
             ))}
           </div>
 
-          {/* Publish / Update button area */}
-          {publishedUrl ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
-                <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-[11px] font-mono text-green-700 truncate max-w-[160px] hover:underline">
-                  {origin}{publishedUrl}
-                </a>
-                <button onClick={copyPublishUrl}
-                  className="text-[10px] font-semibold text-green-700 hover:text-green-900 shrink-0">
-                  {publishCopied ? "✓" : "Copy"}
-                </button>
-              </div>
-              {/* FIX 4: Update button — only when there's an unPublished draft */}
-              {built && (
-                <button
-                  onClick={handlePublish}
-                  disabled={publishing}
-                  className="text-xs font-semibold px-3 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-                  style={{ background: "var(--vp-color)" }}>
-                  {publishing ? "Updating…" : "Update Site"}
-                </button>
-              )}
-            </div>
-          ) : (
+          {/* Publish button + popover */}
+          <div className="relative" ref={publishBtnRef}>
             <button
               onClick={handlePublish}
-              className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-              style={{ background: "var(--vp-color)" }}
-              disabled={!built || publishing}>
-              {publishing ? "Publishing…" : t("website.publish")}
+              disabled={!built || publishing || (isPublished && !draftDiffers)}
+              className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              style={{ background: "var(--vp-color)" }}>
+              {publishLabel}
             </button>
-          )}
+
+            {/* FIX 4: Publish popover */}
+            {showPublishPopover && isPublished && (
+              <>
+                {/* Backdrop for mobile sheet */}
+                <div
+                  className="fixed inset-0 z-30 md:hidden bg-black/20"
+                  onClick={() => setShowPublishPopover(false)}
+                />
+                {/* Popover — anchored on desktop, bottom sheet on mobile */}
+                <div className="
+                  fixed bottom-0 left-0 right-0 z-40 rounded-t-2xl
+                  md:absolute md:bottom-auto md:top-full md:right-0 md:left-auto md:mt-2
+                  md:w-[340px] md:rounded-2xl
+                  bg-white border border-[#E5E7EB] shadow-xl
+                  p-5 space-y-4
+                ">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-400" />
+                      <span className="text-sm font-bold text-[#111111]">Published</span>
+                    </div>
+                    <button onClick={() => setShowPublishPopover(false)}
+                      className="w-6 h-6 flex items-center justify-center rounded-full text-[#9CA3AF] hover:text-[#374151] hover:bg-[#F3F4F6] text-xs font-bold transition-colors">
+                      ×
+                    </button>
+                  </div>
+
+                  {/* Live URL */}
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide">Website URL</p>
+                    <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
+                      <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
+                        className="text-[11px] font-mono text-[#374151] truncate flex-1 hover:text-[#FF6B35] transition-colors">
+                        {origin}{publishedUrl}
+                      </a>
+                      <button onClick={copyPublishUrl}
+                        className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
+                        {publishCopied ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Visibility */}
+                  <div className="flex items-center gap-2 py-2 border-t border-[#F3F4F6]">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    <span className="text-xs text-[#6B7280]"><strong className="text-[#374151]">Public</strong> — Anyone with the URL</span>
+                  </div>
+
+                  {/* Custom domain shortcut */}
+                  <button
+                    onClick={() => { setShowPublishPopover(false); setViewMode("settings"); setActiveTab("preview"); }}
+                    className="w-full text-left text-xs text-[#FF6B35] font-semibold hover:opacity-80 transition-opacity flex items-center gap-1.5">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    {customDomain && domainStatus === "verified" ? `Connected: ${customDomain}` : "Add custom domain"}
+                  </button>
+
+                  {/* Update / Up to date */}
+                  <button
+                    onClick={() => { setShowPublishPopover(false); if (draftDiffers) handlePublish(); }}
+                    disabled={!draftDiffers || publishing}
+                    className="w-full text-xs font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+                    style={{ background: "var(--vp-color)" }}>
+                    {draftDiffers ? "Update Site" : "Up to date"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -487,7 +732,7 @@ export default function WebsitePage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Quick-start suggestions */}
+          {/* Quick-start suggestions — only before first user message */}
           {msgs.filter((m) => m.role === "user").length === 0 && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">{t("website.quickStarts")}</p>
@@ -554,8 +799,7 @@ export default function WebsitePage() {
           <div className="p-3 border-t border-[#F3F4F6]">
             <div className="flex items-end gap-2 bg-[#F9FAFB] rounded-xl px-3 py-2.5 border border-[#E5E7EB] focus-within:border-[#FF6B35]/50 transition-colors">
               <button type="button" onClick={() => fileInputRef.current?.click()}
-                disabled={building || attachedImages.length >= MAX_ATTACH}
-                title="Attach image"
+                disabled={building || attachedImages.length >= MAX_ATTACH} title="Attach image"
                 className="shrink-0 text-[#9CA3AF] hover:text-[#FF6B35] transition-colors disabled:opacity-40 pb-0.5">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
@@ -586,26 +830,31 @@ export default function WebsitePage() {
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full shrink-0 ${isPublished ? "bg-green-400" : built ? "bg-yellow-400 animate-pulse" : "bg-[#9CA3AF]"}`} />
               <p className="text-xs font-medium text-[#6B7280]">
-                {isPublished ? "Live" : built ? t("website.livePreview") : t("website.previewEmpty")}
+                {previewVersionHtml ? "Previewing version — not your draft" :
+                 isPublished ? "Live" : built ? t("website.livePreview") : t("website.previewEmpty")}
               </p>
+              {previewVersionHtml && (
+                <button onClick={() => setPreviewVersionHtml(null)}
+                  className="text-[10px] text-[#FF6B35] font-semibold hover:opacity-80">
+                  Back to draft
+                </button>
+              )}
             </div>
             {built && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* View mode tabs */}
                 <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
                   {(["preview", "code", "settings", "history"] as const).map((mode) => (
-                    <button key={mode} onClick={() => setViewMode(mode)}
+                    <button key={mode} onClick={() => { setViewMode(mode); if (previewVersionHtml && mode !== "preview") setPreviewVersionHtml(null); }}
                       className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${viewMode === mode ? "bg-[#111111] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
                       {mode === "code" ? "</>" : mode === "settings" ? "Settings" : mode === "history" ? "History" : "Preview"}
                     </button>
                   ))}
                 </div>
-                {/* Device toggle — only in preview mode */}
                 {viewMode === "preview" && (
                   <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
                     {(["desktop", "mobile"] as const).map((d) => (
                       <button key={d} onClick={() => setDevice(d)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all capitalize ${device === d ? "bg-[#111111] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold capitalize transition-all ${device === d ? "bg-[#111111] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
                         {d}
                       </button>
                     ))}
@@ -659,7 +908,7 @@ export default function WebsitePage() {
               <div className="flex-1 overflow-hidden min-h-0 relative">
                 <button onClick={copyCode}
                   className="absolute top-3 right-3 z-10 text-[10px] px-3 py-1.5 bg-[#374151] text-[#D1D5DB] rounded-lg hover:bg-[#4B5563] transition-colors font-semibold">
-                  {codeCopied ? "✓ Copied!" : "Copy Code"}
+                  {codeCopied ? "Copied!" : "Copy Code"}
                 </button>
                 <pre className="w-full h-full overflow-auto bg-[#1E1E1E] text-[#D4D4D4] text-[11px] font-mono p-4 leading-relaxed whitespace-pre break-normal">
                   {html}
@@ -667,8 +916,8 @@ export default function WebsitePage() {
               </div>
 
             ) : viewMode === "settings" ? (
-              /* ── FIX 2: Site Settings ── */
-              <div className="flex-1 overflow-y-auto p-5 space-y-5 min-h-0">
+              /* ── Settings panel ── */
+              <div className="flex-1 overflow-y-auto p-5 space-y-6 min-h-0">
                 <h3 className="text-sm font-bold text-[#111111]">Site Settings</h3>
 
                 {/* Site Name */}
@@ -695,7 +944,7 @@ export default function WebsitePage() {
                   <p className="text-[11px] text-[#9CA3AF]">Lowercase letters, numbers, and hyphens only (3–50 characters).</p>
                 </div>
 
-                {/* Live URL display */}
+                {/* Live URL */}
                 {publishedUrl && (
                   <div className="p-3 bg-green-50 rounded-xl border border-green-100">
                     <p className="text-[10px] font-semibold text-green-600 mb-1">Live URL</p>
@@ -706,21 +955,6 @@ export default function WebsitePage() {
                   </div>
                 )}
 
-                {/* Custom domain */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[#374151]">Custom Domain <span className="text-[#9CA3AF] font-normal">(optional)</span></label>
-                  <input value={siteDomain} onChange={(e) => setSiteDomain(e.target.value)}
-                    placeholder="www.yourbusiness.com"
-                    className="w-full text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-                  />
-                  {siteDomain && (
-                    <div className="flex items-center gap-1.5 bg-yellow-50 rounded-lg px-3 py-2 border border-yellow-100">
-                      <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
-                      <p className="text-[11px] text-yellow-700">Pending — DNS setup required. Contact support to connect your domain.</p>
-                    </div>
-                  )}
-                </div>
-
                 {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
 
                 <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
@@ -729,63 +963,168 @@ export default function WebsitePage() {
                   {savingSettings ? "Saving…" : "Save Settings"}
                 </button>
 
-                {/* FIX 3: Plan limits display */}
-                <div className="p-4 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
-                  <p className="text-xs font-bold text-[#374151] mb-1">Plan Limits</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-[#E5E7EB] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, (websiteCount / websiteLimit) * 100)}%`, background: "var(--vp-color)" }} />
+                {/* ── FIX 3: Custom Domain ── */}
+                <div className="border-t border-[#F3F4F6] pt-5 space-y-4">
+                  <h4 className="text-xs font-bold text-[#374151]">Custom Domain</h4>
+
+                  {!domainConfigured ? (
+                    <div className="p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl">
+                      <p className="text-xs text-[#6B7280]">Custom domains not configured — contact your administrator to enable this feature.</p>
                     </div>
-                    <span className="text-[11px] text-[#6B7280] whitespace-nowrap">{websiteCount}/{websiteLimit} site{websiteLimit !== 1 ? "s" : ""}</span>
-                  </div>
-                  {websiteCount >= websiteLimit && (
-                    <p className="text-[11px] text-[#FF6B35] mt-2">You&apos;re at your plan&apos;s site limit. Upgrade to create additional websites.</p>
+                  ) : customDomain ? (
+                    /* Domain connected — show status + records */
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${domainStatus === "verified" ? "bg-green-400" : "bg-yellow-400"}`} />
+                        <span className="text-xs font-semibold text-[#111111]">{customDomain}</span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          domainStatus === "verified"
+                            ? "bg-green-50 text-green-700"
+                            : "bg-yellow-50 text-yellow-700"
+                        }`}>
+                          {domainStatus === "verified" ? "Connected" : "Pending verification"}
+                        </span>
+                      </div>
+
+                      {domainStatus === "verified" && (
+                        <a href={`https://${customDomain}`} target="_blank" rel="noopener noreferrer"
+                          className="text-[11px] font-mono text-[#FF6B35] hover:underline block">
+                          https://{customDomain}
+                        </a>
+                      )}
+
+                      {domainStatus !== "verified" && domainRecords.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[11px] text-[#6B7280]">Add these records at your domain registrar. Verification usually takes a few minutes, up to 48 hours.</p>
+                          <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+                            <table className="min-w-full text-[11px]">
+                              <thead className="bg-[#F9FAFB]">
+                                <tr>
+                                  {["Type", "Name", "Value"].map((h) => (
+                                    <th key={h} className="text-left px-3 py-2 font-semibold text-[#374151] whitespace-nowrap">{h}</th>
+                                  ))}
+                                  <th className="px-3 py-2" />
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#F3F4F6]">
+                                {domainRecords.map((r, i) => (
+                                  <tr key={i} className="bg-white">
+                                    <td className="px-3 py-2 font-mono text-[#374151] whitespace-nowrap">{r.type}</td>
+                                    <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[120px] truncate">{r.name}</td>
+                                    <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[160px] truncate">{r.value}</td>
+                                    <td className="px-3 py-2">
+                                      <button onClick={() => handleCopyRecord(r.value)}
+                                        className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 whitespace-nowrap">
+                                        {copiedRecord === r.value ? "Copied" : "Copy"}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {domainStatus !== "verified" && (
+                          <button onClick={handleCheckDomainStatus} disabled={checkingDomain}
+                            className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
+                            {checkingDomain ? "Checking…" : "Check Status"}
+                          </button>
+                        )}
+                        <button onClick={handleRemoveDomain} disabled={removingDomain}
+                          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors">
+                          {removingDomain ? "Removing…" : "Remove domain"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* No domain connected */
+                    <div className="space-y-2">
+                      <div className="flex items-stretch gap-2">
+                        <input
+                          value={domainInput}
+                          onChange={(e) => { setDomainInput(e.target.value); setDomainError(""); }}
+                          placeholder="www.yourbusiness.com"
+                          className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+                          onKeyDown={(e) => { if (e.key === "Enter") handleConnectDomain(); }}
+                        />
+                        <button onClick={handleConnectDomain} disabled={connectingDomain || !domainInput.trim()}
+                          className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-40 transition-opacity whitespace-nowrap"
+                          style={{ background: "var(--vp-color)" }}>
+                          {connectingDomain ? "Connecting…" : "Connect Domain"}
+                        </button>
+                      </div>
+                      {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
+                    </div>
                   )}
+                </div>
+
+                {/* Plan limits */}
+                <div className="border-t border-[#F3F4F6] pt-5">
+                  <div className="p-4 bg-[#F9FAFB] rounded-xl border border-[#E5E7EB]">
+                    <p className="text-xs font-bold text-[#374151] mb-2">Plan Limits</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-[#E5E7EB] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (websiteCount / websiteLimit) * 100)}%`, background: "var(--vp-color)" }} />
+                      </div>
+                      <span className="text-[11px] text-[#6B7280] whitespace-nowrap">{websiteCount}/{websiteLimit} site{websiteLimit !== 1 ? "s" : ""}</span>
+                    </div>
+                    {websiteCount >= websiteLimit && (
+                      <p className="text-[11px] text-[#FF6B35] mt-2">You&apos;re at your plan&apos;s limit. Upgrade to create additional websites.</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
             ) : viewMode === "history" ? (
-              /* ── FIX 4: Version History ── */
+              /* ── FIX 2: Version History ── */
               <div className="flex-1 overflow-y-auto p-5 min-h-0">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-[#111111]">Version History</h3>
-                  {websiteId && (
-                    <button onClick={() => loadVersions(websiteId)}
-                      className="text-[11px] text-[#FF6B35] font-semibold hover:opacity-80">
-                      Refresh
-                    </button>
-                  )}
-                </div>
-                {loadingVersions ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-16 bg-[#F3F4F6] rounded-xl animate-pulse" />
-                    ))}
-                  </div>
-                ) : versions.length === 0 ? (
+                <h3 className="text-sm font-bold text-[#111111] mb-4">Version History</h3>
+
+                {versions.length === 0 ? (
                   <div className="text-center py-10">
                     <p className="text-sm font-semibold text-[#374151] mb-1">No versions yet</p>
                     <p className="text-xs text-[#9CA3AF]">A version is saved each time you generate or publish your site.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {versions.map((v, i) => (
-                      <div key={v.id} className="bg-white border border-[#E5E7EB] rounded-xl p-3.5 hover:border-[#FF6B35]/30 transition-colors">
+                    {[...versions].reverse().map((v, i) => (
+                      <div key={v.id}
+                        className={`bg-white border rounded-xl p-3.5 transition-colors ${previewVersionHtml && previewingVersion === v.id ? "border-[#FF6B35]/40" : "border-[#E5E7EB] hover:border-[#E5E7EB]"}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-[#111111] truncate">{v.label}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-xs font-semibold text-[#111111] truncate">{v.label}</p>
+                              {v.type === "publish" && (
+                                <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">Published</span>
+                              )}
+                            </div>
                             <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
                           </div>
-                          {i === 0 ? (
-                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">Current</span>
-                          ) : (
-                            <button
-                              onClick={() => handleRestoreVersion(v.id)}
-                              disabled={restoringVersion === v.id}
-                              className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40 shrink-0">
-                              {restoringVersion === v.id ? "Restoring…" : "Restore"}
-                            </button>
-                          )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {i === 0 ? (
+                              <span className="text-[10px] font-bold text-[#9CA3AF]">Current</span>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handlePreviewVersion(v)}
+                                  disabled={previewingVersion === v.id}
+                                  className="text-[11px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40 transition-colors">
+                                  Preview
+                                </button>
+                                <button
+                                  onClick={() => handleRestoreVersion(v)}
+                                  disabled={restoringVersion === v.id}
+                                  className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40">
+                                  {restoringVersion === v.id ? "Restoring…" : "Restore"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -800,8 +1139,8 @@ export default function WebsitePage() {
               /* ── Preview iframe ── */
               <div className={`flex-1 min-h-0 flex overflow-hidden ${device === "mobile" ? "bg-[#F9FAFB] justify-center items-start" : ""}`}>
                 <iframe
-                  key={html}
-                  srcDoc={html}
+                  key={previewHtml}
+                  srcDoc={previewHtml}
                   title="Website preview"
                   className={`bg-white ${device === "mobile" ? "max-w-[375px] w-full m-3 rounded-xl border border-[#E5E7EB]" : "w-full h-full"}`}
                   style={device === "mobile" ? { height: "calc(100% - 24px)" } : { height: "100%" }}

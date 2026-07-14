@@ -408,6 +408,15 @@ async function generateUniqueSlug(baseName: string, admin: AdminClient): Promise
   return `${base}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+type VersionEntry = {
+  id: string;
+  created_at: string;
+  label: string;
+  type: "generate" | "publish";
+  html: string;
+  structure: Record<string, unknown>;
+};
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     message?: string;
@@ -416,6 +425,8 @@ export async function POST(req: NextRequest) {
     history?: { role: string; content: string }[];
     images?: { data: string; mimeType: string }[];
     contactInfo?: { phone?: string; email?: string; address?: string; hours?: string };
+    chat?: Array<{ role: string; content: string; isError?: boolean }>;
+    intake?: { phone?: string; email?: string; address?: string; hours?: string };
   };
 
   const { message, currentHtml, images = [], contactInfo } = body;
@@ -634,8 +645,32 @@ export async function POST(req: NextRequest) {
         .eq("id", websiteId);
       if (draftErr) console.error("[website/generate] draft save error:", draftErr.message);
 
-      // Save version snapshot for history
+      // Append version to tenant_config.website_versions (capped at 20)
       const versionLabel = (msgText.slice(0, 60) || "Initial version").trim();
+
+      const { data: tcData } = await admin
+        .from("tenant_config")
+        .select("website_versions")
+        .eq("tenant_id", tenant.id)
+        .maybeSingle();
+
+      const existingVersions: VersionEntry[] =
+        Array.isArray((tcData as Record<string, unknown> | null)?.website_versions)
+          ? ((tcData as Record<string, unknown>).website_versions as VersionEntry[])
+          : [];
+
+      const newVersion: VersionEntry = {
+        id:         crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        label:      versionLabel,
+        type:       "generate",
+        html,
+        structure:  spec as unknown as Record<string, unknown>,
+      };
+
+      const updatedVersions = [...existingVersions, newVersion].slice(-20);
+
+      // Also keep website_versions table for backward compat
       const { error: versionErr } = await admin
         .from("website_versions")
         .insert({
@@ -646,10 +681,19 @@ export async function POST(req: NextRequest) {
         });
       if (versionErr) console.error("[website/generate] version save error:", versionErr.message);
 
-      // Also keep tenant_config.website_html as the draft (for backward-compat fallback in site route)
+      // Single upsert: html + slug + versions + chat + intake
+      const tcUpsert: Record<string, unknown> = {
+        tenant_id:        tenant.id,
+        website_html:     html,
+        website_slug:     siteSlug || null,
+        website_versions: updatedVersions,
+      };
+      if (Array.isArray(body.chat))  tcUpsert.website_chat   = body.chat;
+      if (body.intake != null)       tcUpsert.website_intake = body.intake;
+
       const { error: configErr } = await admin
         .from("tenant_config")
-        .upsert({ tenant_id: tenant.id, website_html: html }, { onConflict: "tenant_id" });
+        .upsert(tcUpsert, { onConflict: "tenant_id" });
       if (configErr) console.error("[website/generate] tenant_config upsert error:", configErr.message);
     }
 

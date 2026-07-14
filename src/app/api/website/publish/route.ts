@@ -6,6 +6,15 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
+type VersionEntry = {
+  id: string;
+  created_at: string;
+  label: string;
+  type: "generate" | "publish";
+  html: string;
+  structure: Record<string, unknown>;
+};
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     html?:      string;
@@ -91,10 +100,37 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ── Keep tenant_config.website_html in sync (site route backward compat) ──
+  // ── Append "Published" version to tenant_config.website_versions ────────────
+  const { data: tcData } = await admin
+    .from("tenant_config")
+    .select("website_versions")
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+
+  const existingVersions: VersionEntry[] =
+    Array.isArray((tcData as Record<string, unknown> | null)?.website_versions)
+      ? ((tcData as Record<string, unknown>).website_versions as VersionEntry[])
+      : [];
+
+  const publishedVersion: VersionEntry = {
+    id:         crypto.randomUUID(),
+    created_at: new Date().toISOString(),
+    label:      "Published",
+    type:       "publish",
+    html:       htmlToPublish,
+    structure:  {},
+  };
+
+  const updatedVersions = [...existingVersions, publishedVersion].slice(-20);
+
+  // ── Keep tenant_config in sync (backward compat + chat/intake preserved) ──
   const { error: configErr } = await admin
     .from("tenant_config")
-    .upsert({ tenant_id: tenant.id, website_html: htmlToPublish }, { onConflict: "tenant_id" });
+    .upsert({
+      tenant_id:        tenant.id,
+      website_html:     htmlToPublish,
+      website_versions: updatedVersions,
+    }, { onConflict: "tenant_id" });
   if (configErr) {
     console.error("[website/publish] tenant_config upsert error:", configErr.message);
     return NextResponse.json({ error: "Failed to save site — please try again." }, { status: 500 });
