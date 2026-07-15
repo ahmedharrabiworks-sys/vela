@@ -405,8 +405,35 @@ function wsSubmitForm(e){
 }
 `.trim();
 
+// ── Language / RTL helpers ────────────────────────────────────────────────────
+const LANG_CODE: Record<string, string> = {
+  Arabic: "ar", French: "fr", Spanish: "es", German: "de",
+  Italian: "it", Portuguese: "pt", Russian: "ru", English: "en",
+};
+const RTL_LANGS = new Set(["Arabic", "Hebrew", "Persian", "Urdu"]);
+
+function htmlLangAttr(language: string | undefined): string {
+  return LANG_CODE[language ?? ""] ?? "en";
+}
+
+// Arabic font (Cairo) + RTL layout overrides injected only when needed.
+function buildRtlExtra(language: string | undefined): string {
+  if (!RTL_LANGS.has(language ?? "")) return "";
+  return `
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+:root{--font-heading:'Cairo',sans-serif;--font-body:'Cairo',sans-serif;}
+html[dir="rtl"] body{text-align:right;}
+html[dir="rtl"] .ws-hero-content{text-align:right;}
+html[dir="rtl"] .ws-about-inner{flex-direction:row-reverse;}
+html[dir="rtl"] .ws-hero-ctas{flex-direction:row-reverse;}
+html[dir="rtl"] .ws-bullet{flex-direction:row-reverse;text-align:right;}
+html[dir="rtl"] .ws-nav-links{flex-direction:row-reverse;}
+html[dir="rtl"] .ws-service-card{text-align:right;}
+`.trim();
+}
+
 // ── Main renderer ─────────────────────────────────────────────────────────────
-export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: string): string {
+export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: string, language?: string): string {
   const t = resolveTokens(spec.stylePreset, spec.accentColor);
   const name = spec.businessName || "My Business";
 
@@ -468,16 +495,19 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
   bodyParts.push(renderFooter(name, footerContent as Parameters<typeof renderFooter>[1]));
 
   const css = buildCss(t);
+  const rtlExtra = buildRtlExtra(language);
   const specComment = `<!-- WEBSITE_SPEC: ${JSON.stringify(spec)} -->`;
   const submitUrl = tenantId ? `/api/site/${tenantId}/submit-form` : "";
+  const htmlLang = htmlLangAttr(language);
+  const dirAttr = RTL_LANGS.has(language ?? "") ? ` dir="rtl"` : "";
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${htmlLang}"${dirAttr}>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${name}</title>
-<style>${css}</style>
+<style>${css}${rtlExtra ? `\n${rtlExtra}` : ""}</style>
 </head>
 <body>
 ${bodyParts.join("\n")}

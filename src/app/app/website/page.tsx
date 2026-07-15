@@ -648,7 +648,15 @@ export default function WebsitePage() {
           const cleanChat = (data.chat as Msg[]).filter(m => !m.isBuilding);
           setMsgs(cleanChat);
         }
-        if (data.intake) setContactInfo(data.intake);
+        if (data.intake) {
+          setContactInfo(data.intake);
+          // Restore language from DB intake if localStorage was cleared (e.g. new browser/session)
+          const savedLang = (data.intake as Record<string, string>)?.language;
+          if (savedLang && !siteLanguage) {
+            setSiteLanguage(savedLang);
+            if (typeof window !== "undefined") localStorage.setItem("vela_site_language", savedLang);
+          }
+        }
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
         if (Array.isArray(data.projects)) setProjects(data.projects as WebsiteProject[]);
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
@@ -804,6 +812,12 @@ export default function WebsitePage() {
   // remains clickable in the sidebar — nothing is deleted.
   const handleNewWebsite = useCallback(() => {
     if (!confirm("Start a new website? Your current project stays saved in the sidebar.")) return;
+
+    // Clear server-side state (website_chat, website_html, website_intake, draft_html, draft_spec).
+    // Without this the next page load rehydrates the old conversation + HTML from the DB,
+    // which corrupts the new session's priorChat and triggers revision mode on the old spec.
+    fetch("/api/website/reset", { method: "POST" }).catch(() => {});
+
     setHtml(""); htmlRef.current = "";
     setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
@@ -890,18 +904,28 @@ export default function WebsitePage() {
       // isSeparator messages have content:"" — filter them so OpenAI never receives an empty assistant message
       const chatToSend = [...msgs, userMsg].filter(m => !m.isBuilding && m.role !== "version" && !m.isSeparator).map(stripImages);
 
+      // Build intake payload — always include language so the server can persist it and
+      // restore it on the next page load (handles cases where user chose language verbally).
+      const intakePayload: Record<string, string> = {};
+      if (contactInfo.phone)   intakePayload.phone   = contactInfo.phone;
+      if (contactInfo.email)   intakePayload.email   = contactInfo.email;
+      if (contactInfo.address) intakePayload.address = contactInfo.address;
+      if (contactInfo.hours)   intakePayload.hours   = contactInfo.hours;
+      if (siteLanguage)        intakePayload.language = siteLanguage;
+
       const res = await fetch("/api/website/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message:     text,
-          currentHtml: built ? html : undefined,
-          websiteId:   websiteIdRef.current ?? undefined,
-          language:    siteLanguage || "English",
-          images:      capturedImages.map((i) => ({ data: i.base64, mimeType: i.mimeType })),
-          contactInfo: (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
-          chat:        chatToSend,
-          intake:      (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
+          message:         text,
+          currentHtml:     built ? html : undefined,
+          websiteId:       websiteIdRef.current ?? undefined,
+          language:        siteLanguage || "English",
+          languageChosen:  !!siteLanguage,
+          images:          capturedImages.map((i) => ({ data: i.base64, mimeType: i.mimeType })),
+          contactInfo:     (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
+          chat:            chatToSend,
+          intake:          Object.keys(intakePayload).length ? intakePayload : undefined,
         }),
       });
 

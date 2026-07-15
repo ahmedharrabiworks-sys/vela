@@ -410,7 +410,38 @@ ABSOLUTE RULES — NEVER VIOLATE
 2. NEVER include a testimonials section. No invented names, reviews, or star ratings.
 3. NEVER paraphrase the owner's input as copy. Extract intent and write fresh brand copy.
 4. NEVER use generic headlines: "Our Services", "About Us", "Why Choose Us", "Contact Us".
-5. imageQuery MUST be a sibling of content{}, never nested inside it.`;
+5. imageQuery MUST be a sibling of content{}, never nested inside it.
+
+═══════════════════════════════════════════════════════
+PART 6 — REQUIRED SECTION ORDER PER PRESET
+═══════════════════════════════════════════════════════
+
+The section sequence is part of the design. Follow the required order for the chosen preset.
+Deviate ONLY if the business genuinely has no content for an optional section — mark it omitted, don't pad with invented content.
+
+"clinical" (dental, medical, dermatology, physio, wellness clinics):
+  REQUIRED:    hero → services → faq → team → booking → footer
+  REASONING:   Patients need to know what's offered and have questions answered before they trust a practice.
+  OPTIONAL:    about (after services), gallery (after team — before/after treatment photos)
+  NEVER:       cta_banner, gallery before trust sections
+
+"bold" (gyms, crossfit, martial arts, fitness studios, nightclubs, sports brands):
+  REQUIRED:    hero → cta_banner → services → team → gallery → booking → footer
+  REASONING:   Energy first, then urgency, then what you offer, then the people and proof, then conversion.
+  OPTIONAL:    about (after services — keep it short, brand story only)
+  NEVER:       faq (kills the energy), gallery before team
+
+"editorial" (luxury salons, fine dining, boutique hotels, high-end photography, interior design, jewellery):
+  REQUIRED:    hero → gallery → services → about → booking → footer
+  REASONING:   Aesthetics sell first. Show the work before explaining it. Story comes after.
+  OPTIONAL:    team (after about — stylist/chef intros), cta_banner (before booking only)
+  NEVER:       faq, cta_banner at the top
+
+"clean" (real estate, law firms, financial advisors, tech startups, architects, corporate services):
+  REQUIRED:    hero → services → about → faq → booking → footer
+  REASONING:   Credibility-first. Lead with the offer, build context, answer objections, then convert.
+  OPTIONAL:    team (after about), cta_banner (before booking only), gallery (for real estate/architecture only)
+  NEVER:       gallery for non-visual businesses`;
 }
 
 const REVISE_SYSTEM = `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
@@ -419,18 +450,36 @@ ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all
 IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.`;
 
 // ── Conversational intake: DECISION only (ask vs generate) ───────────────────
-// This prompt is intentionally minimal — it ONLY decides whether to ask a
-// clarifying question. Actual spec generation always uses the full buildSystem
-// prompt with all accumulated context, so no quality is lost.
-const INTAKE_DECISION_SYSTEM = `You are deciding whether to ask one more question or proceed to build a website.
-Respond with valid JSON only — two options:
-  { "action": "ask", "question": "..." }  when a critical piece is missing
-  { "action": "generate" }               when you have enough to build
+const INTAKE_DECISION_SYSTEM = `You are deciding whether to ask ONE clarifying question before building a website, or whether you already have enough to proceed.
 
-Proceed to generate when you have: business name + what they do + (at least one of: location, phone, email) OR the brief is >30 words with concrete specifics.
-Ask in this priority: business name → business type/services → location or contact detail → prices/hours.
-NEVER ask about style. NEVER ask about site language (the user already chose it via the UI). NEVER repeat something already answered in the conversation.
-Write questions naturally: "What's the business called?" not "Please provide the business name."`;
+Respond ONLY with valid JSON — exactly one of:
+  { "action": "ask", "question": "..." }   ← ask ONE question when a required field is missing
+  { "action": "generate" }                 ← ONLY when ALL required fields are genuinely present
+
+REQUIRED FIELDS — collect in this exact order, one question per turn:
+
+1. LANGUAGE — "Which language should your website be in? (English, Arabic, French, Spanish…)"
+   Skip ONLY if: (a) context says user already selected a language via the UI, OR
+                 (b) the user's messages explicitly name a language (e.g. "in Arabic", "en français"),  OR
+                 (c) the user is writing in a non-English language (their message language is the answer).
+
+2. BUSINESS NAME — "What's your [business type] called?"
+   Skip ONLY if: a specific proper name is already stated in the conversation.
+
+3. WHAT THEY DO — their main services, specialties, or products
+   Skip ONLY if: clearly described in the conversation.
+   Also skip if the business type is a universally-understood category (e.g. "dental clinic", "hair salon", "gym", "restaurant") — the category itself implies the services.
+
+4. LOCATION OR CONTACT — city, neighbourhood, phone, or email
+   Skip ONLY if: any location or contact detail already appears in the conversation.
+
+ABSOLUTE RULES:
+- Ask ONE question per turn in the order above. Never combine two questions.
+- A long first message does NOT automatically skip the flow. Each field must be explicitly present.
+- ONLY respond { "action": "generate" } when all 4 fields are genuinely known from the conversation.
+- NEVER ask about style, colors, fonts, or layout.
+- NEVER repeat a question already answered.
+- Write questions naturally: "What should we call your clinic?" not "Please provide the business name."`;
 
 // ── Returns a clarifying question, or null (=enough info, proceed to generate) ─
 async function checkNeedsMoreInfo(
@@ -439,6 +488,8 @@ async function checkNeedsMoreInfo(
   currentUserMessage: string,
   imageBase64: string | undefined,
   imageMimeType: string | undefined,
+  languageChosen: boolean,
+  chosenLanguage: string,
 ): Promise<string | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messages: any[] = [{ role: "system", content: INTAKE_DECISION_SYSTEM }];
@@ -451,10 +502,12 @@ async function checkNeedsMoreInfo(
     }
   }
 
-  // Only surface the user's actual words — never inject stale account profile data
-  // (business_name / industry / city from the tenant record may belong to a completely
-  // different business than what the user is currently trying to build).
+  // Tell the intake whether language was already selected via the UI picker.
+  // Never inject stale account-profile data — only the live conversation matters.
   const contextLines = [
+    languageChosen
+      ? `LANGUAGE ALREADY SELECTED via UI: "${chosenLanguage}" — skip the language question.`
+      : "",
     currentUserMessage ? `User's latest message: ${currentUserMessage}` : "",
   ].filter(Boolean).join("\n");
 
@@ -497,6 +550,44 @@ function buildAccumulatedDescription(
     .filter((m) => m.role === "user" && !m.isError)
     .map((m) => m.content);
   return [...userMsgs, currentMessage].filter(Boolean).join("\n\n");
+}
+
+// ── Detect language stated verbally (bypassed UI picker) ──────────────────────
+// When the intake asks "Which language?" and the user types "Arabic" instead of
+// clicking the chip, siteLanguage stays "" on the client and body.language = "English"
+// (default). This function finds the real language from the conversation text.
+function extractLanguageFromConversation(
+  chatHistory: Array<{ role: string; content: string }>,
+  currentMessage: string,
+): string | null {
+  const userText = [
+    ...chatHistory.filter((m) => m.role === "user").map((m) => m.content),
+    currentMessage,
+  ].join(" ").toLowerCase();
+
+  const MATCHES: [string, string][] = [
+    ["arabic",     "Arabic"],
+    ["عربي",       "Arabic"],
+    ["بالعربي",    "Arabic"],
+    ["french",     "French"],
+    ["français",   "French"],
+    ["en français","French"],
+    ["spanish",    "Spanish"],
+    ["español",    "Spanish"],
+    ["german",     "German"],
+    ["deutsch",    "German"],
+    ["italian",    "Italian"],
+    ["italiano",   "Italian"],
+    ["portuguese", "Portuguese"],
+    ["português",  "Portuguese"],
+    ["russian",    "Russian"],
+    ["русский",    "Russian"],
+  ];
+
+  for (const [keyword, lang] of MATCHES) {
+    if (userText.includes(keyword)) return lang;
+  }
+  return null;
 }
 
 // ── Extract real contact details from free-text conversation ──────────────────
@@ -554,11 +645,12 @@ export async function POST(req: NextRequest) {
     currentHtml?: string;
     websiteId?: string;
     language?: string;
+    languageChosen?: boolean;
     history?: { role: string; content: string }[];
     images?: { data: string; mimeType: string }[];
     contactInfo?: { phone?: string; email?: string; address?: string; hours?: string };
     chat?: Array<{ role: string; content: string; isError?: boolean }>;
-    intake?: { phone?: string; email?: string; address?: string; hours?: string };
+    intake?: { phone?: string; email?: string; address?: string; hours?: string; language?: string };
   };
 
   const { message, currentHtml, images = [], contactInfo } = body;
@@ -608,6 +700,7 @@ export async function POST(req: NextRequest) {
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     let spec: WebsiteSpec;
+    let effectiveLanguage = language;
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -652,6 +745,8 @@ export async function POST(req: NextRequest) {
         msgText,
         validImages[0]?.data,
         validImages[0]?.mimeType,
+        body.languageChosen === true,
+        language,
       );
 
       if (question) {
@@ -670,10 +765,13 @@ export async function POST(req: NextRequest) {
       }
 
       // ── Ready to generate — concatenate ALL user answers from every turn ───
-      // This is the fix: the full conversational history is collapsed into one
-      // rich description, then fed into buildSystem (with copywriting + image
-      // rules) rather than the stripped-down INTAKE_SYSTEM.
       const fullDescription = buildAccumulatedDescription(priorChat, msgText);
+
+      // If the user stated language verbally (e.g. replied "Arabic" to the intake
+      // question) instead of clicking the UI chip, detect it from the conversation.
+      // This overrides the client default of "English".
+      const conversationLanguage = extractLanguageFromConversation(priorChat, msgText);
+      effectiveLanguage = conversationLanguage || language;
 
       // Extract any contact details the user mentioned across the conversation
       const chatContactBlock = extractContactFromText(fullDescription);
@@ -682,11 +780,11 @@ export async function POST(req: NextRequest) {
       // Don't inject tenant-profile fields — the accumulated description already contains
       // everything the user told us. Injecting a stale account businessName/industry would
       // override what the user is actually building right now.
-      const userContent = buildUserContent("", "", "", fullDescription, language);
+      const userContent = buildUserContent("", "", "", fullDescription, effectiveLanguage);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildSystem(effectiveContactBlock, language) },
+          { role: "system", content: buildSystem(effectiveContactBlock, effectiveLanguage) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -826,7 +924,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Render HTML with tenantId so the booking form knows where to POST
-    const html = renderWebsite(spec, imageMap, tenant?.id as string | undefined);
+    const html = renderWebsite(spec, imageMap, tenant?.id as string | undefined, effectiveLanguage);
 
     if (tenant?.id && websiteId) {
       // Save draft (not published yet)
@@ -885,7 +983,8 @@ export async function POST(req: NextRequest) {
         website_versions: updatedVersions,
       };
       if (Array.isArray(body.chat))  tcUpsert.website_chat   = body.chat;
-      if (body.intake != null)       tcUpsert.website_intake = body.intake;
+      // Always persist the effective language (may have been verbally stated instead of UI-picked)
+      tcUpsert.website_intake = { ...(body.intake ?? {}), language: effectiveLanguage };
 
       const { error: configErr } = await admin
         .from("tenant_config")
