@@ -49,7 +49,13 @@ export async function GET(_req: NextRequest) {
     .select("id, name, slug, is_published")
     .eq("tenant_id", tenant.id)
     .order("updated_at", { ascending: false });
-  const projects = (allSites ?? []) as { id: string; name: string | null; slug: string | null; is_published: boolean }[];
+  const projects = (allSites ?? []).map((s: { id: string; name: string | null; slug: string | null; is_published: boolean }) => ({
+    id: s.id,
+    name: s.name,
+    slug: s.slug,
+    is_published: s.is_published,
+    published_url: s.is_published ? (s.slug ? `/site/${s.slug}` : `/site/${tenant.id}`) : null,
+  }));
 
   // Fetch tenant_config for chat, intake, versions, domain
   const { data: config } = await admin
@@ -69,7 +75,9 @@ export async function GET(_req: NextRequest) {
     slug,
     name,
     isPublished:   site?.is_published ?? false,
-    publishedUrl:  slug ? `/site/${slug}` : (site?.id ? `/site/${site.id}` : null),
+    publishedUrl:  (site?.is_published ?? false)
+      ? (slug ? `/site/${slug}` : `/site/${tenant.id}`)
+      : null,
     projects,
     chat:          tc?.website_chat ?? null,
     intake:        tc?.website_intake ?? null,

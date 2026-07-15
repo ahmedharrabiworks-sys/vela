@@ -16,7 +16,7 @@ type VersionRecord = {
   html:       string;
 };
 
-type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean };
+type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean; published_url?: string | null };
 
 // Chat messages include both AI/user text, inline version cards, and session separators
 type Msg = {
@@ -119,6 +119,7 @@ function PublishPanel({
   removingDomain: boolean; setRemovingDomain: (v: boolean) => void;
   draftDiffers: boolean; publishing: boolean;
   onPublish: () => void; onClose: () => void;
+  setPublishedUrl: (v: string) => void;
 }) {
   // step 1=details, 2=security check, 3=live/published view
   const [step, setStep] = useState<1 | 2 | 3>(() => (isPublished ? 3 : 1));
@@ -159,7 +160,10 @@ function PublishPanel({
         if (msg.toLowerCase().includes("slug")) setSlugError(msg);
         else setSettingsError(msg);
       } else {
-        if (data.slug) setSiteSlug(data.slug);
+        if (data.slug) {
+          setSiteSlug(data.slug);
+          if (isPublished) setPublishedUrl(`/site/${data.slug}`);
+        }
       }
     } catch { setSettingsError("Connection error."); }
     finally { setSavingSettings(false); }
@@ -217,7 +221,8 @@ function PublishPanel({
   };
 
   // Domain section — shared between step 1 and step 3 settings
-  const DomainSection = () => (
+  // Defined as a render helper (not a React component) so React never unmounts/remounts it on re-render.
+  const renderDomainSection = () => (
     <div className="space-y-3">
       <button onClick={() => setShowDomain((v) => !v)}
         className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
@@ -296,8 +301,8 @@ function PublishPanel({
     </div>
   );
 
-  // Site details form — used in step 1 and in step 3 settings accordion
-  const SiteDetailsForm = () => (
+  // Site details form — render helper (not a React component) to avoid re-mount on every keystroke.
+  const renderSiteDetailsForm = () => (
     <div className="space-y-3">
       <div className="space-y-1">
         <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">Site Name</label>
@@ -371,8 +376,8 @@ function PublishPanel({
         {/* ── STEP 1: Site Details ─────────────────────────────────────────── */}
         {step === 1 && (
           <>
-            <SiteDetailsForm />
-            <DomainSection />
+            {renderSiteDetailsForm()}
+            {renderDomainSection()}
             <div className="border-t border-[#F3F4F6] pt-3">
               <button onClick={() => setStep(2)}
                 className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
@@ -471,8 +476,8 @@ function PublishPanel({
               </button>
               {showSettings && (
                 <div className="space-y-4">
-                  <SiteDetailsForm />
-                  <DomainSection />
+                  {renderSiteDetailsForm()}
+                  {renderDomainSection()}
                 </div>
               )}
             </div>
@@ -844,7 +849,7 @@ export default function WebsitePage() {
     setWebsiteId(p.id); websiteIdRef.current = p.id;
     setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? "");
     setIsPublished(p.is_published);
-    setPublishedUrl(p.is_published ? (p.slug ? `/site/${p.slug}` : `/site/${p.id}`) : "");
+    setPublishedUrl(p.is_published ? (p.published_url ?? (p.slug ? `/site/${p.slug}` : "")) : "");
     try {
       const res = await fetch(`/api/website/state?websiteId=${encodeURIComponent(p.id)}`);
       if (res.ok) {
@@ -974,6 +979,7 @@ export default function WebsitePage() {
             name: data.name ?? siteName ?? null,
             slug: data.slug ?? null,
             is_published: data.isPublished ?? false,
+            published_url: (data.isPublished && data.slug) ? `/site/${data.slug}` : undefined,
           };
           const idx = prev.findIndex((p) => p.id === wId);
           return idx >= 0 ? prev.map((p, i) => i === idx ? entry : p) : [...prev, entry];
@@ -1119,6 +1125,7 @@ export default function WebsitePage() {
                   draftDiffers={draftDiffers} publishing={publishing}
                   onPublish={handleDoPublish}
                   onClose={() => setShowPublishPanel(false)}
+                  setPublishedUrl={setPublishedUrl}
                 />
               </>
             )}

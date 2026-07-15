@@ -17,13 +17,13 @@ async function tryUnsplash(query: string): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return null;
   try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=8&orientation=landscape`;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape&content_filter=high`;
     const res = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
     if (!res.ok) return null;
     const data = await res.json() as { results?: { urls?: { regular?: string } }[] };
     const results = data.results ?? [];
     if (!results.length) return null;
-    const pick = results[Math.floor(Math.random() * Math.min(results.length, 5))];
+    const pick = results[Math.floor(Math.random() * Math.min(results.length, 3))];
     return pick?.urls?.regular ?? null;
   } catch {
     return null;
@@ -85,7 +85,11 @@ function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, 
 }
 
 // ── Fetch all images for a spec ───────────────────────────────────────────────
-async function fetchSpecImages(spec: WebsiteSpec, heroOverride?: string): Promise<ImageMap> {
+async function fetchSpecImages(
+  spec: WebsiteSpec,
+  heroOverride?: string,
+  uploadSlot: "hero" | "about" | "team" | "gallery" = "hero",
+): Promise<ImageMap> {
   type Task = { key: string; query: string };
   const tasks: Task[] = [];
 
@@ -110,11 +114,48 @@ async function fetchSpecImages(spec: WebsiteSpec, heroOverride?: string): Promis
   }
 
   if (heroOverride) {
-    const heroIdx = spec.sections.findIndex((s) => s.type === "hero");
-    if (heroIdx >= 0) map[String(heroIdx)] = heroOverride;
+    // Place in the classified slot; fall back to hero if that section type isn't in the spec
+    const slotIdx = uploadSlot !== "hero"
+      ? spec.sections.findIndex((s) => s.type === uploadSlot)
+      : -1;
+    if (slotIdx >= 0) {
+      map[String(slotIdx)] = heroOverride;
+      if (uploadSlot === "gallery") map[`${slotIdx}_0`] = heroOverride;
+    } else {
+      const heroIdx = spec.sections.findIndex((s) => s.type === "hero");
+      if (heroIdx >= 0) map[String(heroIdx)] = heroOverride;
+    }
   }
 
   return map;
+}
+
+// ── Vision-classify uploaded image to route it to the right section ───────────
+async function classifyUploadedImage(
+  openai: OpenAI,
+  imageBase64: string,
+  mimeType: string,
+): Promise<"hero" | "about" | "team" | "gallery"> {
+  try {
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: 'Reply with ONE word — the website section this image suits best:\n"hero" = building, storefront, product, abstract scene\n"about" = single person (owner/professional portrait)\n"team" = group of people or staff\n"gallery" = food, dishes, products, work samples\nOne word only.',
+          },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
+        ],
+      }],
+      max_tokens: 5,
+      temperature: 0,
+    });
+    const word = (res.choices[0]?.message?.content ?? "").trim().toLowerCase();
+    if (word === "about" || word === "team" || word === "gallery") return word;
+  } catch { /* default to hero */ }
+  return "hero";
 }
 
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
@@ -318,6 +359,13 @@ Owner mentioned: open fire grill, exposed brick, intimate 40-seat dining
 → about imageQuery: "chef cooking open fire wood grill restaurant kitchen"  (NOT: "restaurant chef")
 
 Rule: if the query could apply to any business in the same category, it is not specific enough. Rewrite it.
+
+GALLERY: All 6 imageQueries MUST be distinct — vary subject, angle, detail level, and moment. Never repeat the same scene or composition.
+
+QUALITY: append one of these to every imageQuery to sharpen Unsplash results:
+  hero/about  → "bright natural light" or "professional photography" or "modern interior"
+  gallery     → "editorial" or "close-up detail" or "product shot clean background"
+  team/about  → "professional headshot studio light" or "team natural light workspace"
 
 ═══════════════════════════════════════════════════════
 PART 5 — SECTION CONTENT SCHEMAS
@@ -590,6 +638,27 @@ function extractLanguageFromConversation(
   return null;
 }
 
+// ── Detect explicit language override in a single revision message ────────────
+// Looks ONLY at the current message (not history) to avoid stale matches from
+// earlier in the conversation. Requires an action verb near the language name.
+function detectRevisionLanguage(msgText: string): string | null {
+  const text = msgText.toLowerCase();
+  if (!/(switch|translat|chang|use|to\s+|in\s+|write|make it)/.test(text)) return null;
+  const LANGS: [string, string][] = [
+    ["english", "English"], ["arabic", "Arabic"], ["عربي", "Arabic"],
+    ["french", "French"], ["français", "French"],
+    ["spanish", "Spanish"], ["español", "Spanish"],
+    ["german", "German"], ["deutsch", "German"],
+    ["italian", "Italian"], ["italiano", "Italian"],
+    ["portuguese", "Portuguese"], ["português", "Portuguese"],
+    ["russian", "Russian"],
+  ];
+  for (const [kw, lang] of LANGS) {
+    if (text.includes(kw)) return lang;
+  }
+  return null;
+}
+
 // ── Extract real contact details from free-text conversation ──────────────────
 // Scans the full conversation for email/phone patterns the user typed.
 function extractContactFromText(text: string): string {
@@ -704,13 +773,17 @@ export async function POST(req: NextRequest) {
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
+      // Detect explicit language switch in this revision message ("switch to Arabic", "use French", etc.)
+      const revisionLang = detectRevisionLanguage(msgText);
+      if (revisionLang) effectiveLanguage = revisionLang;
+
       const existing = extractSpec(currentHtml);
 
       if (!existing) {
-        const userContent = buildUserContent(businessName, industry, city, msgText, language);
+        const userContent = buildUserContent(businessName, industry, city, msgText, effectiveLanguage);
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [{ role: "system", content: buildSystem(contactBlock, language) }, { role: "user", content: userContent }],
+          messages: [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage) }, { role: "user", content: userContent }],
           response_format: { type: "json_object" },
           max_tokens: 4096,
           temperature: 0.5,
@@ -718,8 +791,8 @@ export async function POST(req: NextRequest) {
         const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
         spec = { stylePreset: coercePreset(parsed.stylePreset), accentColor: parsed.accentColor, businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [] };
       } else {
-        const langLine = language && language.toLowerCase() !== "english"
-          ? `LANGUAGE: ALL copy must be written in ${language}. Translate every text field.\n\n`
+        const langLine = effectiveLanguage && effectiveLanguage.toLowerCase() !== "english"
+          ? `LANGUAGE: ALL copy must be written in ${effectiveLanguage}. Translate every text field.\n\n`
           : "";
         const revisionPrompt = `${langLine}Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
         const completion = await openai.chat.completions.create({
@@ -847,7 +920,11 @@ export async function POST(req: NextRequest) {
     // Server-side fallback: inject imageQuery for any visual section GPT missed
     ensureImageQueries(spec, industry, city, msgText);
 
-    const imageMap = await fetchSpecImages(spec, heroUpload);
+    let uploadSlot: "hero" | "about" | "team" | "gallery" = "hero";
+    if (heroUpload && validImages[0]) {
+      uploadSlot = await classifyUploadedImage(openai, validImages[0].data, validImages[0].mimeType);
+    }
+    const imageMap = await fetchSpecImages(spec, heroUpload, uploadSlot);
 
     // ── Resolve / create the websites record ─────────────────────────────────
     let websiteId: string | null = null;

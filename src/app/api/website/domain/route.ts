@@ -223,7 +223,8 @@ export async function GET(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const domainData = await domainRes.json() as any;
-  const verified = domainData?.verified === true;
+  // Only "Connected" when Vercel has verified the domain AND it is not misconfigured (DNS not yet set up)
+  const verified = domainData?.verified === true && domainData?.misconfigured !== true;
   const status   = verified ? "verified" : "pending";
 
   // Update status in tenant_config
