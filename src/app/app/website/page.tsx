@@ -16,6 +16,8 @@ type VersionRecord = {
   html:       string;
 };
 
+type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean };
+
 // Chat messages include both AI/user text, inline version cards, and session separators
 type Msg = {
   role:        "ai" | "user" | "version";
@@ -194,7 +196,7 @@ function PublishPanel({
   const publishBtnLabel = publishing
     ? (isPublished ? "Updating…" : "Publishing…")
     : !isPublished ? "Publish"
-    : draftDiffers ? "Update Site" : "Up to date";
+    : "Update Site";
 
   return (
     <div className="absolute top-full right-0 mt-2 w-[360px] bg-white border border-[#E5E7EB] rounded-2xl shadow-xl z-50 overflow-hidden
@@ -345,15 +347,22 @@ function PublishPanel({
           )}
         </div>
 
-        {/* Publish / Update / Up to date button */}
+        {/* Publish / Update button */}
         <div className="border-t border-[#F3F4F6] pt-4">
-          <button
-            onClick={onPublish}
-            disabled={publishing || (isPublished && !draftDiffers)}
-            className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-            style={{ background: "var(--vp-color)" }}>
-            {publishBtnLabel}
-          </button>
+          {isPublished && !draftDiffers ? (
+            <p className="text-center text-xs py-1.5">
+              <span className="text-green-600 font-semibold">✓ Your site is live</span>
+              <span className="text-[#9CA3AF]"> and up to date</span>
+            </p>
+          ) : (
+            <button
+              onClick={onPublish}
+              disabled={publishing}
+              className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+              style={{ background: "var(--vp-color)" }}>
+              {publishBtnLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -439,6 +448,9 @@ export default function WebsitePage() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsError, setSettingsError]   = useState("");
 
+  // ── Projects sidebar ─────────────────────────────────────────────────────────
+  const [projects, setProjects] = useState<WebsiteProject[]>([]);
+
   // ── Version history ──────────────────────────────────────────────────────────
   const [versions, setVersions]             = useState<VersionRecord[]>([]);
   const [previewVersionHtml, setPreviewVersionHtml] = useState<string | null>(null);
@@ -479,6 +491,7 @@ export default function WebsitePage() {
           name?:         string | null;
           isPublished?:  boolean;
           publishedUrl?: string | null;
+          projects?:     WebsiteProject[];
           chat?:         Msg[] | null;
           intake?:       ContactInfo | null;
           versions?:     VersionRecord[];
@@ -514,6 +527,7 @@ export default function WebsitePage() {
         }
         if (data.intake) setContactInfo(data.intake);
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
+        if (Array.isArray(data.projects)) setProjects(data.projects as WebsiteProject[]);
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
         if (data.domainStatus)  setDomainStatus(data.domainStatus);
         if (Array.isArray(data.domainRecords)) setDomainRecords(data.domainRecords as DnsRecord[]);
@@ -650,28 +664,46 @@ export default function WebsitePage() {
     finally { setRestoringVersion(null); }
   }, [contactInfo, persistChat]);
 
-  // ── New Website / Reset ───────────────────────────────────────────────────────
-  // Lovable pattern: keep old chat history visible as read-only context,
-  // insert a visual separator, then start fresh below it.
-  const handleNewWebsite = useCallback(async () => {
-    if (!confirm("This will clear your current draft. Your published site stays live. Old conversation history stays visible above.")) return;
-    try { await fetch("/api/website/reset", { method: "POST" }); } catch { /* ignore */ }
+  // ── New Website ───────────────────────────────────────────────────────────────
+  // Clears local state for a fresh start. The previous project stays in DB and
+  // remains clickable in the sidebar — nothing is deleted.
+  const handleNewWebsite = useCallback(() => {
+    if (!confirm("Start a new website? Your current project stays saved in the sidebar.")) return;
     setHtml(""); htmlRef.current = "";
     setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
     setContactInfo({ phone: "", email: "", address: "", hours: "" });
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
-    // Clear site identity so the panel won't show the previous site's URL
-    setIsPublished(false);
-    setPublishedUrl("");
-    setSiteName("");
-    setSiteSlug("");
-    setWebsiteId(null);
-    websiteIdRef.current = null;
-    // Append separator + fresh greeting — old messages (and version cards) stay visible above
-    const sep: Msg   = { role: "ai", content: "", isSeparator: true };
-    const greet: Msg = INITIAL_MSG(btype);
-    setMsgs((prev) => [...prev, sep, greet]);
+    setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug("");
+    setWebsiteId(null); websiteIdRef.current = null;
+    setVersions([]);
+    setMsgs([INITIAL_MSG(btype)]);
+  }, [btype]);
+
+  // ── Switch to an existing project ────────────────────────────────────────────
+  const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
+    if (p.id === websiteIdRef.current) return;
+    setBuilding(false); setBuilt(false); setDraftDiffers(false);
+    setHtml(""); htmlRef.current = ""; setPreviewVersionHtml(null);
+    setInput(""); setAttachedImages([]);
+    setContactInfo({ phone: "", email: "", address: "", hours: "" });
+    setVersions([]); setMsgs([INITIAL_MSG(btype)]);
+    setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
+    setWebsiteId(p.id); websiteIdRef.current = p.id;
+    setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? "");
+    setIsPublished(p.is_published);
+    setPublishedUrl(p.is_published ? (p.slug ? `/site/${p.slug}` : `/site/${p.id}`) : "");
+    try {
+      const res = await fetch(`/api/website/state?websiteId=${encodeURIComponent(p.id)}`);
+      if (res.ok) {
+        const data = await res.json() as { html?: string | null; versions?: VersionRecord[] };
+        if (data.html) {
+          setHtml(data.html); htmlRef.current = data.html;
+          setBuilt(true); setActiveTab("preview");
+        }
+        if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
+      }
+    } catch { /* ignore */ }
   }, [btype]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
@@ -770,6 +802,21 @@ export default function WebsitePage() {
       if (data.name)  setSiteName(data.name);
       if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
 
+      // Keep projects sidebar in sync
+      const wId = data.websiteId;
+      if (wId) {
+        setProjects((prev) => {
+          const entry: WebsiteProject = {
+            id: wId,
+            name: data.name ?? siteName ?? null,
+            slug: data.slug ?? null,
+            is_published: data.isPublished ?? false,
+          };
+          const idx = prev.findIndex((p) => p.id === wId);
+          return idx >= 0 ? prev.map((p, i) => i === idx ? entry : p) : [...prev, entry];
+        });
+      }
+
       setBuilt(true);
       setDraftDiffers(true);
       setPreviewVersionHtml(null);
@@ -830,6 +877,7 @@ export default function WebsitePage() {
           <div className="h-9 w-28 bg-[#E5E7EB] rounded-xl" />
         </div>
         <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+          <div className="hidden md:block w-[180px] bg-white border border-[#E5E7EB] rounded-2xl shrink-0" />
           <div className="w-full md:w-[320px] bg-white border border-[#E5E7EB] rounded-2xl shrink-0" />
           <div className="hidden md:block flex-1 bg-white border border-[#E5E7EB] rounded-2xl" />
         </div>
@@ -866,10 +914,10 @@ export default function WebsitePage() {
             ))}
           </div>
 
-          {/* New Website button */}
+          {/* New Website button — visible on mobile only; desktop uses the sidebar */}
           {built && (
             <button onClick={handleNewWebsite}
-              className="text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors">
+              className="md:hidden text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors">
               New Website
             </button>
           )}
@@ -915,37 +963,64 @@ export default function WebsitePage() {
         </div>
       </div>
 
-      {/* Main two-panel layout */}
+      {/* Main layout: sidebar + chat + preview */}
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
-        {/* LEFT: Chat + inline history */}
-        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
+        {/* SIDEBAR: Project list + version history (desktop only) */}
+        <div className="hidden md:flex w-[180px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0">
+          {/* Projects header */}
+          <div className="px-3 pt-3 pb-2 border-b border-[#F3F4F6] shrink-0">
+            <p className="text-[8px] font-semibold text-[#9CA3AF] uppercase tracking-widest">Projects</p>
+          </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {/* Version history — horizontal swipe strip at top of chat feed */}
+          {/* Scrollable project + version list */}
+          <div className="flex-1 overflow-y-auto">
+            {/* "New Project" placeholder when nothing is saved yet */}
+            {!websiteId && (
+              <div className="px-3 py-2.5 flex items-center gap-2 bg-[#FFF7F5]">
+                <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#D1D5DB]" />
+                <span className="text-[11px] font-semibold text-[#111111] truncate">New Project</span>
+              </div>
+            )}
+
+            {/* Saved projects */}
+            {projects.map((p) => {
+              const isActive = p.id === websiteId;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => handleSwitchProject(p)}
+                  className={`w-full text-left px-3 py-2.5 flex items-center gap-2 transition-colors hover:bg-[#F9FAFB] ${isActive ? "bg-[#FFF7F5]" : ""}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.is_published ? "bg-green-400" : "bg-[#D1D5DB]"}`} />
+                  <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111]" : "text-[#374151]"}`}>
+                    {p.name || "Untitled"}
+                  </span>
+                </button>
+              );
+            })}
+
+            {projects.length === 0 && !!websiteId && (
+              <p className="px-3 py-3 text-[10px] text-[#9CA3AF]">No saved projects yet</p>
+            )}
+
+            {/* Version history for the active project */}
             {versions.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
-                {versions.slice().reverse().slice(0, 12).map((v, i) => {
-                  const isFirst = i === 0;
-                  return (
-                    <div key={v.id} className="shrink-0 w-[108px] bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
-                          {v.type === "publish" ? (
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          ) : (
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3 9 21 9"/></svg>
-                          )}
-                        </div>
-                        <p className="text-[10px] font-semibold text-[#111111] truncate">{v.label}</p>
-                      </div>
-                      <p className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</p>
-                      {isFirst ? (
-                        <span className="text-[9px] font-medium text-[#9CA3AF]">Current</span>
+              <>
+                <div className="px-3 pt-3 pb-1.5 mt-1 border-t border-[#F3F4F6] shrink-0">
+                  <p className="text-[8px] font-semibold text-[#9CA3AF] uppercase tracking-widest">History</p>
+                </div>
+                {versions.slice().reverse().slice(0, 6).map((v, i) => (
+                  <div key={v.id} className="px-3 py-2 border-b border-[#F9FAFB] last:border-0">
+                    <p className="text-[10px] text-[#374151] truncate leading-tight">{v.label}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</span>
+                      {i === 0 ? (
+                        <span className="text-[9px] text-[#9CA3AF]">Current</span>
                       ) : (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex gap-2">
                           <button onClick={() => handlePreviewVersion(v)} disabled={previewingVersion === v.id}
-                            className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40 transition-colors">
+                            className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40">
                             Preview
                           </button>
                           <button onClick={() => handleRestoreVersion(v)} disabled={restoringVersion === v.id}
@@ -955,10 +1030,30 @@ export default function WebsitePage() {
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                ))}
+              </>
             )}
+          </div>
+
+          {/* New Website button */}
+          <div className="p-2 border-t border-[#F3F4F6] shrink-0">
+            <button
+              onClick={handleNewWebsite}
+              className="w-full py-2 text-[10px] font-semibold rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors flex items-center justify-center gap-1"
+            >
+              <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+              New Website
+            </button>
+          </div>
+        </div>
+
+        {/* LEFT: Chat */}
+        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => {
               // Session separator — "New website" divider
               if (msg.isSeparator) {
@@ -973,22 +1068,8 @@ export default function WebsitePage() {
                 );
               }
 
-              // Inline version card
-              if (msg.role === "version" && msg.version) {
-                const versionIndex = versions.slice().reverse().findIndex(v => v.id === msg.version!.id);
-                const isFirst = versionIndex === 0;
-                return (
-                  <VersionCard
-                    key={msg.version.id}
-                    version={msg.version}
-                    isFirst={isFirst}
-                    onPreview={handlePreviewVersion}
-                    onRestore={handleRestoreVersion}
-                    restoring={restoringVersion === msg.version.id}
-                    previewing={previewingVersion === msg.version.id}
-                  />
-                );
-              }
+              // Version cards are shown in the sidebar — skip them in the chat feed
+              if (msg.role === "version") return null;
 
               return (
                 <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>

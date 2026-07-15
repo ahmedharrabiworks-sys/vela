@@ -8,6 +8,7 @@ type AdminClient = any;
 
 // ── GET /api/website/state ─────────────────────────────────────────────────────
 // Returns everything needed to fully rehydrate the Website Builder on mount.
+// ?websiteId=xxx → returns that specific website's html (for project switching).
 export async function GET(_req: NextRequest) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,14 +20,36 @@ export async function GET(_req: NextRequest) {
     .from("tenants").select("id, plan").eq("owner_id", user.id).maybeSingle();
   if (!tenant?.id) return NextResponse.json({ html: null, chat: null });
 
-  // Fetch the most-recently-updated website for this tenant
-  const { data: site } = await admin
+  const requestedWebsiteId = new URL(_req.url).searchParams.get("websiteId");
+
+  // Fetch the target website (specific or most-recently-updated)
+  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_at: string | null } | null = null;
+  if (requestedWebsiteId) {
+    const { data } = await admin
+      .from("websites")
+      .select("id, name, slug, is_published, draft_html, published_at")
+      .eq("tenant_id", tenant.id)
+      .eq("id", requestedWebsiteId)
+      .maybeSingle();
+    site = data as typeof site;
+  } else {
+    const { data } = await admin
+      .from("websites")
+      .select("id, name, slug, is_published, draft_html, published_at")
+      .eq("tenant_id", tenant.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    site = data as typeof site;
+  }
+
+  // All websites for this tenant (project sidebar)
+  const { data: allSites } = await admin
     .from("websites")
-    .select("id, name, slug, is_published, draft_html, published_at")
+    .select("id, name, slug, is_published")
     .eq("tenant_id", tenant.id)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("updated_at", { ascending: false });
+  const projects = (allSites ?? []) as { id: string; name: string | null; slug: string | null; is_published: boolean }[];
 
   // Fetch tenant_config for chat, intake, versions, domain
   const { data: config } = await admin
@@ -47,6 +70,7 @@ export async function GET(_req: NextRequest) {
     name,
     isPublished:   site?.is_published ?? false,
     publishedUrl:  slug ? `/site/${slug}` : (site?.id ? `/site/${site.id}` : null),
+    projects,
     chat:          tc?.website_chat ?? null,
     intake:        tc?.website_intake ?? null,
     versions:      tc?.website_versions ?? [],

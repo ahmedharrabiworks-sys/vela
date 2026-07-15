@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!tenant?.id) return NextResponse.json({ error: "No tenant found" }, { status: 404 });
 
   // ── Resolve the website to publish ───────────────────────────────────────
-  type SiteRow = { id: string; slug: string; draft_html: string | null; draft_spec: unknown };
+  type SiteRow = { id: string; slug: string | null; name: string | null; draft_html: string | null; draft_spec: unknown };
   let site: SiteRow | null = null;
 
   const clientWebsiteId = typeof body.websiteId === "string" ? body.websiteId : null;
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (clientWebsiteId) {
     const { data } = await admin
       .from("websites")
-      .select("id, slug, draft_html, draft_spec")
+      .select("id, slug, name, draft_html, draft_spec")
       .eq("id", clientWebsiteId)
       .eq("tenant_id", tenant.id)
       .maybeSingle();
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     // Fall back to most-recently-updated website for this tenant
     const { data } = await admin
       .from("websites")
-      .select("id, slug, draft_html, draft_spec")
+      .select("id, slug, name, draft_html, draft_spec")
       .eq("tenant_id", tenant.id)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -136,7 +136,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save site — please try again." }, { status: 500 });
   }
 
-  const slug    = site?.slug ?? null;
+  // Derive a human-readable slug from the site name if the current slug is missing or UUID-shaped
+  const slugIsUuid = (s: string | null | undefined) =>
+    !s || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
+  let slug = site?.slug ?? null;
+  if (site?.id && slugIsUuid(slug)) {
+    const rawName = site.name ?? "";
+    const base = rawName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "my-site";
+    const { data: conflict } = await admin
+      .from("websites").select("id").eq("slug", base).neq("id", site.id).maybeSingle();
+    const freshSlug = conflict
+      ? `${base}-${Math.random().toString(36).slice(2, 6)}`
+      : base;
+    await admin.from("websites").update({ slug: freshSlug }).eq("id", site.id);
+    slug = freshSlug;
+  }
+
   const siteUrl = slug ? `/site/${slug}` : `/site/${tenant.id}`;
   return NextResponse.json({ url: siteUrl, slug });
 }
