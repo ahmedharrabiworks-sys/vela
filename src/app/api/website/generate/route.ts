@@ -178,8 +178,11 @@ function coercePreset(v: unknown): PresetName {
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
-function buildSystem(contactBlock: string): string {
-  return `You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business, then produce a complete website spec as JSON.
+function buildSystem(contactBlock: string, language = "English"): string {
+  const langLine = language && language.toLowerCase() !== "english"
+    ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
+    : "";
+  return `${langLine}You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business, then produce a complete website spec as JSON.
 
 STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
@@ -426,7 +429,7 @@ Respond with valid JSON only — two options:
 
 Proceed to generate when you have: business name + what they do + (at least one of: location, phone, email) OR the brief is >30 words with concrete specifics.
 Ask in this priority: business name → business type/services → location or contact detail → prices/hours.
-NEVER ask about style. NEVER repeat something already answered in the conversation.
+NEVER ask about style. NEVER ask about site language (the user already chose it via the UI). NEVER repeat something already answered in the conversation.
 Write questions naturally: "What's the business called?" not "Please provide the business name."`;
 
 // ── Returns a clarifying question, or null (=enough info, proceed to generate) ─
@@ -553,6 +556,7 @@ export async function POST(req: NextRequest) {
     message?: string;
     currentHtml?: string;
     websiteId?: string;
+    language?: string;
     history?: { role: string; content: string }[];
     images?: { data: string; mimeType: string }[];
     contactInfo?: { phone?: string; email?: string; address?: string; hours?: string };
@@ -561,6 +565,7 @@ export async function POST(req: NextRequest) {
   };
 
   const { message, currentHtml, images = [], contactInfo } = body;
+  const language = (typeof body.language === "string" ? body.language.trim() : "") || "English";
   const clientWebsiteId = typeof body.websiteId === "string" ? body.websiteId : null;
 
   if (!message?.trim() && images.length === 0) {
@@ -612,10 +617,10 @@ export async function POST(req: NextRequest) {
       const existing = extractSpec(currentHtml);
 
       if (!existing) {
-        const userContent = buildUserContent(businessName, industry, city, msgText);
+        const userContent = buildUserContent(businessName, industry, city, msgText, language);
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [{ role: "system", content: buildSystem(contactBlock) }, { role: "user", content: userContent }],
+          messages: [{ role: "system", content: buildSystem(contactBlock, language) }, { role: "user", content: userContent }],
           response_format: { type: "json_object" },
           max_tokens: 4096,
           temperature: 0.5,
@@ -677,11 +682,11 @@ export async function POST(req: NextRequest) {
       const chatContactBlock = extractContactFromText(fullDescription);
       const effectiveContactBlock = chatContactBlock || contactBlock;
 
-      const userContent = buildUserContent(businessName, industry, city, fullDescription);
+      const userContent = buildUserContent(businessName, industry, city, fullDescription, language);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildSystem(effectiveContactBlock) },
+          { role: "system", content: buildSystem(effectiveContactBlock, language) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -914,11 +919,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function buildUserContent(businessName: string, industry: string, city: string, msgText: string): string {
+function buildUserContent(businessName: string, industry: string, city: string, msgText: string, language = "English"): string {
   return [
     `Business name: ${businessName}`,
     industry ? `Industry: ${industry}` : "",
     city     ? `City: ${city}` : "",
+    language && language.toLowerCase() !== "english" ? `Site language: ${language}` : "",
     `Owner's description: ${msgText}`,
   ].filter(Boolean).join("\n");
 }

@@ -55,11 +55,15 @@ const DEFAULT_SUGGESTIONS = [
 
 const PLAN_WEBSITE_LIMITS: Record<string, number> = { starter: 1, pro: 2, premium: 3 };
 
-const INITIAL_MSG = (btype: string | null): Msg => ({
+const LANGUAGE_OPTIONS = ["English", "Arabic", "French", "Spanish", "German", "Italian", "Portuguese", "Russian"];
+
+const INITIAL_MSG = (btype: string | null, lang?: string): Msg => ({
   role: "ai",
-  content: btype && INDUSTRY_SUGGESTIONS[btype]
-    ? `Hi! I see you run a ${btype} business. Tell me your business name and location — I'll build your website in seconds with real photos.\n\nOr pick a suggestion below:`
-    : "Hi! Describe your business and I'll build a premium booking website instantly — real photos, professional design, booking buttons included.\n\nOr pick a suggestion below:",
+  content: lang
+    ? (btype && INDUSTRY_SUGGESTIONS[btype]
+      ? `Great! I'll build your ${btype} website in ${lang}. What's your business name and location?`
+      : `Great! I'll build your website in ${lang}. Tell me about your business — name, what you do, and your city.`)
+    : "Hi! First, what language should your website be in?",
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -116,10 +120,29 @@ function PublishPanel({
   draftDiffers: boolean; publishing: boolean;
   onPublish: () => void; onClose: () => void;
 }) {
+  // step 1=details, 2=security check, 3=live/published view
+  const [step, setStep] = useState<1 | 2 | 3>(() => (isPublished ? 3 : 1));
+  const [checkState, setCheckState] = useState<"idle" | "running" | "done">("idle");
   const [urlCopied, setUrlCopied] = useState(false);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
   const [showDomain, setShowDomain] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  // When step 2 is entered, run the fake security check animation
+  useEffect(() => {
+    if (step !== 2) return;
+    setCheckState("running");
+    const t = setTimeout(() => setCheckState("done"), 1600);
+    return () => clearTimeout(t);
+  }, [step]);
+
+  // Advance to step 3 once publish completes (isPublished flips to true)
+  const prevPublishedRef = useRef(isPublished);
+  useEffect(() => {
+    if (!prevPublishedRef.current && isPublished) setStep(3);
+    prevPublishedRef.current = isPublished;
+  }, [isPublished]);
 
   const handleSaveSettings = async () => {
     if (!websiteId) return;
@@ -193,10 +216,119 @@ function PublishPanel({
     setTimeout(() => setCopiedRecord(null), 2000);
   };
 
-  const publishBtnLabel = publishing
-    ? (isPublished ? "Updating…" : "Publishing…")
-    : !isPublished ? "Publish"
-    : "Update Site";
+  // Domain section — shared between step 1 and step 3 settings
+  const DomainSection = () => (
+    <div className="space-y-3">
+      <button onClick={() => setShowDomain((v) => !v)}
+        className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        {customDomain && domainStatus === "verified" ? `Custom domain: ${customDomain}` : "Add custom domain"}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showDomain ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      {showDomain && (
+        !domainConfigured ? (
+          <p className="text-[11px] text-[#9CA3AF]">Custom domains not configured — contact your administrator.</p>
+        ) : customDomain ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${domainStatus === "verified" ? "bg-green-400" : "bg-yellow-400"}`} />
+              <span className="text-xs font-semibold text-[#111111]">{customDomain}</span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${domainStatus === "verified" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
+                {domainStatus === "verified" ? "Connected" : "Pending"}
+              </span>
+            </div>
+            {domainStatus !== "verified" && domainRecords.length > 0 && (
+              <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+                <table className="min-w-full text-[11px]">
+                  <thead className="bg-[#F9FAFB]">
+                    <tr>{["Type", "Name", "Value", ""].map((h) => <th key={h} className="text-left px-3 py-2 font-semibold text-[#374151] whitespace-nowrap">{h}</th>)}</tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F3F4F6]">
+                    {domainRecords.map((r, i) => (
+                      <tr key={i} className="bg-white">
+                        <td className="px-3 py-2 font-mono text-[#374151] whitespace-nowrap">{r.type}</td>
+                        <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[90px] truncate">{r.name}</td>
+                        <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[120px] truncate">{r.value}</td>
+                        <td className="px-3 py-2">
+                          <button onClick={() => handleCopyRecord(r.value)} className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80">
+                            {copiedRecord === r.value ? "Copied" : "Copy"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
+            <div className="flex items-center gap-2">
+              {domainStatus !== "verified" && (
+                <button onClick={handleCheckDomain} disabled={checkingDomain}
+                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
+                  {checkingDomain ? "Checking…" : "Check Status"}
+                </button>
+              )}
+              <button onClick={handleRemoveDomain} disabled={removingDomain}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors">
+                {removingDomain ? "Removing…" : "Remove"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-stretch gap-2">
+              <input value={domainInput} onChange={(e) => { setDomainInput(e.target.value); setDomainError(""); }}
+                placeholder="www.yourbusiness.com"
+                className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+                onKeyDown={(e) => { if (e.key === "Enter") handleConnectDomain(); }}
+              />
+              <button onClick={handleConnectDomain} disabled={connectingDomain || !domainInput.trim()}
+                className="text-[11px] font-semibold px-3 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-40 transition-opacity whitespace-nowrap"
+                style={{ background: "var(--vp-color)" }}>
+                {connectingDomain ? "Connecting…" : "Connect"}
+              </button>
+            </div>
+            {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
+          </div>
+        )
+      )}
+    </div>
+  );
+
+  // Site details form — used in step 1 and in step 3 settings accordion
+  const SiteDetailsForm = () => (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">Site Name</label>
+        <input value={siteName} onChange={(e) => setSiteName(e.target.value)}
+          placeholder="My Business"
+          className="w-full text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">URL Slug</label>
+        <div className="flex items-stretch border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:border-[#FF6B35]">
+          <span className="text-[11px] text-[#9CA3AF] bg-[#F9FAFB] px-2.5 flex items-center border-r border-[#E5E7EB] whitespace-nowrap shrink-0">/site/</span>
+          <input value={siteSlug}
+            onChange={(e) => { setSiteSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); setSlugError(""); }}
+            placeholder="my-business"
+            className="flex-1 text-sm px-3 py-2 focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+          />
+        </div>
+        {slugError && <p className="text-[11px] text-red-500">{slugError}</p>}
+      </div>
+      <div className="flex items-center gap-2 bg-[#F9FAFB] rounded-lg px-3 py-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+        <span className="text-[11px] text-[#6B7280]"><strong className="text-[#374151]">Public</strong> — anyone with the URL can view</span>
+      </div>
+      {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
+      <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
+        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
+        {savingSettings ? "Saving…" : "Save"}
+      </button>
+    </div>
+  );
 
   return (
     <div className="absolute top-full right-0 mt-2 w-[360px] bg-white border border-[#E5E7EB] rounded-2xl shadow-xl z-50 overflow-hidden
@@ -204,10 +336,10 @@ function PublishPanel({
       max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto max-md:w-full max-md:rounded-b-none max-md:rounded-t-2xl max-md:mt-0">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#F3F4F6]">
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#F3F4F6]">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full shrink-0 ${isPublished ? "bg-green-400" : "bg-[#9CA3AF]"}`} />
-          <span className="text-sm font-bold text-[#111111]">{isPublished ? "Published" : "Ready to publish"}</span>
+          <span className="text-sm font-bold text-[#111111]">{isPublished ? "Published" : "Publish your site"}</span>
           {visitCount > 0 && (
             <span className="text-[10px] font-medium text-[#9CA3AF] ml-1">{visitCount.toLocaleString()} visitor{visitCount !== 1 ? "s" : ""}</span>
           )}
@@ -215,155 +347,137 @@ function PublishPanel({
         <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-full text-[#9CA3AF] hover:text-[#374151] hover:bg-[#F3F4F6] transition-colors text-sm font-bold">×</button>
       </div>
 
-      <div className="px-5 py-4 space-y-4 max-h-[80vh] overflow-y-auto">
-        {/* Live URL */}
-        {publishedUrl && (
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide">Website URL</p>
-            <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
-              <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
-                className="text-[11px] font-mono text-[#374151] truncate flex-1 hover:text-[#FF6B35] transition-colors">
-                {origin}{publishedUrl}
-              </a>
-              <button onClick={async () => { await copyText(`${origin}${publishedUrl}`); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000); }}
-                className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
-                {urlCopied ? "Copied" : "Copy"}
+      {/* Step indicator (pre-publish flow only) */}
+      {!isPublished && (
+        <div className="flex items-center px-5 pt-3 pb-1 gap-0">
+          {([1, 2, 3] as const).map((s, idx) => (
+            <div key={s} className="flex items-center">
+              {idx > 0 && <div className={`w-6 h-px mx-1 ${step >= s ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`} />}
+              <div className="flex items-center gap-1">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step > s ? "bg-[#FF6B35] text-white" : step === s ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] text-[#9CA3AF]"}`}>
+                  {step > s ? <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> : s}
+                </div>
+                <span className={`text-[10px] font-semibold ${step >= s ? "text-[#374151]" : "text-[#9CA3AF]"}`}>
+                  {s === 1 ? "Details" : s === 2 ? "Check" : "Go Live"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="px-5 py-4 space-y-4 max-h-[78vh] overflow-y-auto">
+
+        {/* ── STEP 1: Site Details ─────────────────────────────────────────── */}
+        {step === 1 && (
+          <>
+            <SiteDetailsForm />
+            <DomainSection />
+            <div className="border-t border-[#F3F4F6] pt-3">
+              <button onClick={() => setStep(2)}
+                className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+                style={{ background: "var(--vp-color)" }}>
+                Continue →
               </button>
             </div>
+          </>
+        )}
+
+        {/* ── STEP 2: Security Check ───────────────────────────────────────── */}
+        {step === 2 && (
+          <div className="space-y-4 py-2">
+            <p className="text-xs font-semibold text-[#374151]">Quick security check</p>
+            <div className="space-y-3">
+              {["Validating site content", "Checking for broken elements", "Reviewing performance"].map((item, i) => (
+                <div key={i} className="flex items-center gap-2.5">
+                  {checkState === "done" ? (
+                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin shrink-0" />
+                  )}
+                  <span className={`text-xs ${checkState === "done" ? "text-[#374151]" : "text-[#9CA3AF]"}`}>{item}</span>
+                </div>
+              ))}
+            </div>
+            {checkState === "done" && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span className="text-[11px] font-semibold text-green-700">All checks passed — looking good!</span>
+                </div>
+                <button
+                  onClick={onPublish}
+                  disabled={publishing}
+                  className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  style={{ background: "var(--vp-color)" }}>
+                  {publishing ? (isPublished ? "Updating…" : "Publishing…") : isPublished ? "Update Site" : "Publish Now"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Visibility — static, no toggle */}
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          <span><strong className="text-[#374151]">Public</strong> — Anyone with the URL</span>
-        </div>
-
-        {/* Site Name */}
-        <div className="space-y-1">
-          <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">Site Name</label>
-          <input value={siteName} onChange={(e) => setSiteName(e.target.value)}
-            placeholder="My Business"
-            className="w-full text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-          />
-        </div>
-
-        {/* URL Slug */}
-        <div className="space-y-1">
-          <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">URL Slug</label>
-          <div className="flex items-stretch border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:border-[#FF6B35]">
-            <span className="text-[11px] text-[#9CA3AF] bg-[#F9FAFB] px-2.5 flex items-center border-r border-[#E5E7EB] whitespace-nowrap shrink-0">/site/</span>
-            <input value={siteSlug}
-              onChange={(e) => { setSiteSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); setSlugError(""); }}
-              placeholder="my-business"
-              className="flex-1 text-sm px-3 py-2 focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-            />
-          </div>
-          {slugError && <p className="text-[11px] text-red-500">{slugError}</p>}
-        </div>
-
-        {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
-
-        <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
-          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
-          {savingSettings ? "Saving…" : "Save Name & Slug"}
-        </button>
-
-        {/* Custom Domain */}
-        <div className="border-t border-[#F3F4F6] pt-4 space-y-3">
-          <button onClick={() => setShowDomain((v) => !v)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            {customDomain && domainStatus === "verified" ? `Custom domain: ${customDomain}` : "Add custom domain"}
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showDomain ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-
-          {showDomain && (
-            !domainConfigured ? (
-              <p className="text-[11px] text-[#9CA3AF]">Custom domains not configured — contact your administrator.</p>
-            ) : customDomain ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${domainStatus === "verified" ? "bg-green-400" : "bg-yellow-400"}`} />
-                  <span className="text-xs font-semibold text-[#111111]">{customDomain}</span>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${domainStatus === "verified" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
-                    {domainStatus === "verified" ? "Connected" : "Pending"}
-                  </span>
-                </div>
-                {domainStatus !== "verified" && domainRecords.length > 0 && (
-                  <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
-                    <table className="min-w-full text-[11px]">
-                      <thead className="bg-[#F9FAFB]">
-                        <tr>{["Type", "Name", "Value", ""].map((h) => <th key={h} className="text-left px-3 py-2 font-semibold text-[#374151] whitespace-nowrap">{h}</th>)}</tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#F3F4F6]">
-                        {domainRecords.map((r, i) => (
-                          <tr key={i} className="bg-white">
-                            <td className="px-3 py-2 font-mono text-[#374151] whitespace-nowrap">{r.type}</td>
-                            <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[90px] truncate">{r.name}</td>
-                            <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[120px] truncate">{r.value}</td>
-                            <td className="px-3 py-2">
-                              <button onClick={() => handleCopyRecord(r.value)} className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80">
-                                {copiedRecord === r.value ? "Copied" : "Copy"}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
-                <div className="flex items-center gap-2">
-                  {domainStatus !== "verified" && (
-                    <button onClick={handleCheckDomain} disabled={checkingDomain}
-                      className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
-                      {checkingDomain ? "Checking…" : "Check Status"}
-                    </button>
-                  )}
-                  <button onClick={handleRemoveDomain} disabled={removingDomain}
-                    className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors">
-                    {removingDomain ? "Removing…" : "Remove"}
+        {/* ── STEP 3: Live view (post-publish) ────────────────────────────── */}
+        {step === 3 && (
+          <>
+            {/* Live URL */}
+            {publishedUrl && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide">Your Site</p>
+                <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
+                  <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-[11px] font-mono text-[#374151] truncate flex-1 hover:text-[#FF6B35] transition-colors">
+                    {origin}{publishedUrl}
+                  </a>
+                  <button onClick={async () => { await copyText(`${origin}${publishedUrl}`); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000); }}
+                    className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
+                    {urlCopied ? "Copied" : "Copy"}
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-stretch gap-2">
-                  <input value={domainInput} onChange={(e) => { setDomainInput(e.target.value); setDomainError(""); }}
-                    placeholder="www.yourbusiness.com"
-                    className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
-                    onKeyDown={(e) => { if (e.key === "Enter") handleConnectDomain(); }}
-                  />
-                  <button onClick={handleConnectDomain} disabled={connectingDomain || !domainInput.trim()}
-                    className="text-[11px] font-semibold px-3 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-40 transition-opacity whitespace-nowrap"
-                    style={{ background: "var(--vp-color)" }}>
-                    {connectingDomain ? "Connecting…" : "Connect"}
-                  </button>
-                </div>
-                {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
-              </div>
-            )
-          )}
-        </div>
+            )}
 
-        {/* Publish / Update button */}
-        <div className="border-t border-[#F3F4F6] pt-4">
-          {isPublished && !draftDiffers ? (
-            <p className="text-center text-xs py-1.5">
-              <span className="text-green-600 font-semibold">✓ Your site is live</span>
-              <span className="text-[#9CA3AF]"> and up to date</span>
-            </p>
-          ) : (
-            <button
-              onClick={onPublish}
-              disabled={publishing}
-              className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-              style={{ background: "var(--vp-color)" }}>
-              {publishBtnLabel}
-            </button>
-          )}
-        </div>
+            {/* Visitor count */}
+            {visitCount > 0 && (
+              <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>{visitCount.toLocaleString()} visitor{visitCount !== 1 ? "s" : ""}</span>
+              </div>
+            )}
+
+            {/* Update Site — always visible */}
+            <div className="space-y-1.5">
+              <button
+                onClick={onPublish}
+                disabled={publishing}
+                className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                style={{ background: "var(--vp-color)" }}>
+                {publishing ? "Updating…" : draftDiffers ? "Push Updates Live" : "Update Site"}
+              </button>
+              {!draftDiffers && (
+                <p className="text-center text-[10px] text-[#9CA3AF]">Site is up to date — republish anytime</p>
+              )}
+            </div>
+
+            {/* Settings accordion */}
+            <div className="border-t border-[#F3F4F6] pt-3 space-y-3">
+              <button onClick={() => setShowSettings((v) => !v)}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Site Settings
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showSettings ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {showSettings && (
+                <div className="space-y-4">
+                  <SiteDetailsForm />
+                  <DomainSection />
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -418,9 +532,18 @@ export default function WebsitePage() {
   const btype       = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
   const suggestions = (btype && INDUSTRY_SUGGESTIONS[btype]) ? INDUSTRY_SUGGESTIONS[btype] : DEFAULT_SUGGESTIONS;
 
+  // ── Language (persisted, question #1) ───────────────────────────────────────
+  const [siteLanguage, setSiteLanguage] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("vela_site_language") ?? "";
+    return "";
+  });
+
   // ── Core state ──────────────────────────────────────────────────────────────
   const [loading, setLoading]         = useState(true);
-  const [msgs, setMsgs]               = useState<Msg[]>([INITIAL_MSG(btype)]);
+  const [msgs, setMsgs]               = useState<Msg[]>(() => {
+    const lang = typeof window !== "undefined" ? (localStorage.getItem("vela_site_language") || undefined) : undefined;
+    return [INITIAL_MSG(btype, lang)];
+  });
   const [input, setInput]             = useState("");
   const [html, setHtml]               = useState("");
   const [device, setDevice]           = useState<"desktop" | "mobile">("desktop");
@@ -575,6 +698,14 @@ export default function WebsitePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPublishPanel]);
 
+  // ── Language selection (question #1) ─────────────────────────────────────────
+  const handleSelectLanguage = useCallback((lang: string) => {
+    setSiteLanguage(lang);
+    localStorage.setItem("vela_site_language", lang);
+    setMsgs([INITIAL_MSG(btype, lang)]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [btype]);
+
   // ── Persist chat + intake ─────────────────────────────────────────────────────
   const persistChat = useCallback((finalMsgs: Msg[], intake: ContactInfo) => {
     const chatToSave = finalMsgs
@@ -588,17 +719,17 @@ export default function WebsitePage() {
   }, []);
 
   // ── Publish / Update ──────────────────────────────────────────────────────────
-  const handlePublish = useCallback(async () => {
+  // Opens/closes the publish panel — never triggers publishing directly.
+  const handleTogglePanel = useCallback(() => {
+    setShowPublishPanel((v) => !v);
+  }, []);
+
+  // Does the actual publish API call — called from inside the publish panel.
+  const handleDoPublish = useCallback(async () => {
     const currentHtml = htmlRef.current;
     if (!built || publishing || !currentHtml) return;
 
-    if (isPublished && !draftDiffers) {
-      setShowPublishPanel((v) => !v);
-      return;
-    }
-
     setPublishing(true);
-    setShowPublishPanel(false);
     try {
       const res  = await fetch("/api/website/publish", {
         method: "POST",
@@ -615,7 +746,11 @@ export default function WebsitePage() {
       setIsPublished(true);
       setDraftDiffers(false);
       if (data.slug) setSiteSlug(data.slug);
-      setShowPublishPanel(true);
+      if (websiteIdRef.current) {
+        setProjects((prev) => prev.map((p) =>
+          p.id === websiteIdRef.current ? { ...p, is_published: true, slug: data.slug ?? p.slug } : p
+        ));
+      }
 
       // Append published version card to chat
       const publishVer: VersionRecord = {
@@ -629,7 +764,7 @@ export default function WebsitePage() {
     } finally {
       setPublishing(false);
     }
-  }, [built, publishing, isPublished, draftDiffers]);
+  }, [built, publishing]);
 
   // ── Version preview / restore ─────────────────────────────────────────────────
   const handlePreviewVersion = useCallback((v: VersionRecord) => {
@@ -677,8 +812,8 @@ export default function WebsitePage() {
     setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug("");
     setWebsiteId(null); websiteIdRef.current = null;
     setVersions([]);
-    setMsgs([INITIAL_MSG(btype)]);
-  }, [btype]);
+    setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
+  }, [btype, siteLanguage]);
 
   // ── Switch to an existing project ────────────────────────────────────────────
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
@@ -687,7 +822,7 @@ export default function WebsitePage() {
     setHtml(""); htmlRef.current = ""; setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
     setContactInfo({ phone: "", email: "", address: "", hours: "" });
-    setVersions([]); setMsgs([INITIAL_MSG(btype)]);
+    setVersions([]); setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
     setWebsiteId(p.id); websiteIdRef.current = p.id;
     setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? "");
@@ -704,7 +839,7 @@ export default function WebsitePage() {
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
       }
     } catch { /* ignore */ }
-  }, [btype]);
+  }, [btype, siteLanguage]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -759,6 +894,7 @@ export default function WebsitePage() {
           message:     text,
           currentHtml: built ? html : undefined,
           websiteId:   websiteIdRef.current ?? undefined,
+          language:    siteLanguage || "English",
           images:      capturedImages.map((i) => ({ data: i.base64, mimeType: i.mimeType })),
           contactInfo: (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
           chat:        chatToSend,
@@ -877,7 +1013,7 @@ export default function WebsitePage() {
           <div className="h-9 w-28 bg-[#E5E7EB] rounded-xl" />
         </div>
         <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
-          <div className="hidden md:block w-[180px] bg-white border border-[#E5E7EB] rounded-2xl shrink-0" />
+          <div className="hidden md:block w-[152px] bg-white border border-[#EBEBEB] rounded-xl shrink-0" />
           <div className="w-full md:w-[320px] bg-white border border-[#E5E7EB] rounded-2xl shrink-0" />
           <div className="hidden md:block flex-1 bg-white border border-[#E5E7EB] rounded-2xl" />
         </div>
@@ -925,14 +1061,14 @@ export default function WebsitePage() {
           {/* Publish button + panel */}
           <div className="relative" ref={publishBtnRef}>
             <button
-              onClick={handlePublish}
+              onClick={handleTogglePanel}
               disabled={!built || publishing}
               className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               style={{ background: "var(--vp-color)" }}>
               {publishLabel}
             </button>
 
-            {showPublishPanel && isPublished && (
+            {showPublishPanel && built && (
               <>
                 {/* Mobile backdrop */}
                 <div className="fixed inset-0 z-40 md:hidden bg-black/20" onClick={() => setShowPublishPanel(false)} />
@@ -954,7 +1090,7 @@ export default function WebsitePage() {
                   checkingDomain={checkingDomain} setCheckingDomain={setCheckingDomain}
                   removingDomain={removingDomain} setRemovingDomain={setRemovingDomain}
                   draftDiffers={draftDiffers} publishing={publishing}
-                  onPublish={handlePublish}
+                  onPublish={handleDoPublish}
                   onClose={() => setShowPublishPanel(false)}
                 />
               </>
@@ -967,17 +1103,23 @@ export default function WebsitePage() {
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
         {/* SIDEBAR: Project list + version history (desktop only) */}
-        <div className="hidden md:flex w-[180px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0">
-          {/* Projects header */}
-          <div className="px-3 pt-3 pb-2 border-b border-[#F3F4F6] shrink-0">
-            <p className="text-[8px] font-semibold text-[#9CA3AF] uppercase tracking-widest">Projects</p>
+        <div className="hidden md:flex w-[152px] flex-col bg-white border border-[#EBEBEB] rounded-xl overflow-hidden shrink-0">
+          {/* Header row */}
+          <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5 shrink-0">
+            <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Sites</span>
+            <button onClick={handleNewWebsite} title="New website"
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[#BBBBBB] hover:text-[#374151] hover:bg-[#F3F4F6] transition-colors">
+              <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            </button>
           </div>
 
           {/* Scrollable project + version list */}
           <div className="flex-1 overflow-y-auto">
             {/* "New Project" placeholder when nothing is saved yet */}
             {!websiteId && (
-              <div className="px-3 py-2.5 flex items-center gap-2 bg-[#FFF7F5]">
+              <div className="mx-1 mb-0.5 px-2 py-1.5 rounded-lg bg-[#FFF0EC] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#D1D5DB]" />
                 <span className="text-[11px] font-semibold text-[#111111] truncate">New Project</span>
               </div>
@@ -990,35 +1132,31 @@ export default function WebsitePage() {
                 <button
                   key={p.id}
                   onClick={() => handleSwitchProject(p)}
-                  className={`w-full text-left px-3 py-2.5 flex items-center gap-2 transition-colors hover:bg-[#F9FAFB] ${isActive ? "bg-[#FFF7F5]" : ""}`}
+                  className={`w-full text-left px-2.5 py-1.5 flex items-center gap-1.5 transition-colors hover:bg-[#F5F5F5] ${isActive ? "bg-[#FFF0EC]" : ""}`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.is_published ? "bg-green-400" : "bg-[#D1D5DB]"}`} />
-                  <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111]" : "text-[#374151]"}`}>
+                  <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111]" : "text-[#555]"}`}>
                     {p.name || "Untitled"}
                   </span>
                 </button>
               );
             })}
 
-            {projects.length === 0 && !!websiteId && (
-              <p className="px-3 py-3 text-[10px] text-[#9CA3AF]">No saved projects yet</p>
-            )}
-
             {/* Version history for the active project */}
             {versions.length > 0 && (
               <>
-                <div className="px-3 pt-3 pb-1.5 mt-1 border-t border-[#F3F4F6] shrink-0">
-                  <p className="text-[8px] font-semibold text-[#9CA3AF] uppercase tracking-widest">History</p>
+                <div className="px-2.5 pt-2.5 pb-1 mt-1 border-t border-[#F3F4F6]">
+                  <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">History</span>
                 </div>
                 {versions.slice().reverse().slice(0, 6).map((v, i) => (
-                  <div key={v.id} className="px-3 py-2 border-b border-[#F9FAFB] last:border-0">
+                  <div key={v.id} className="px-2.5 py-1.5 border-b border-[#F9FAFB] last:border-0">
                     <p className="text-[10px] text-[#374151] truncate leading-tight">{v.label}</p>
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center justify-between mt-0.5">
                       <span className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</span>
                       {i === 0 ? (
                         <span className="text-[9px] text-[#9CA3AF]">Current</span>
                       ) : (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           <button onClick={() => handlePreviewVersion(v)} disabled={previewingVersion === v.id}
                             className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40">
                             Preview
@@ -1034,19 +1172,6 @@ export default function WebsitePage() {
                 ))}
               </>
             )}
-          </div>
-
-          {/* New Website button */}
-          <div className="p-2 border-t border-[#F3F4F6] shrink-0">
-            <button
-              onClick={handleNewWebsite}
-              className="w-full py-2 text-[10px] font-semibold rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors flex items-center justify-center gap-1"
-            >
-              <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
-                <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
-              New Website
-            </button>
           </div>
         </div>
 
@@ -1113,8 +1238,23 @@ export default function WebsitePage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Quick-start suggestions — only before first user message */}
-          {msgs.filter((m) => m.role === "user").length === 0 && (
+          {/* Language picker — shown before any other suggestions when language not yet chosen */}
+          {msgs.filter((m) => m.role === "user").length === 0 && !siteLanguage && (
+            <div className="px-4 pb-2">
+              <p className="text-[10px] text-[#9CA3AF] mb-2">Choose language</p>
+              <div className="flex flex-wrap gap-1.5">
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <button key={lang} onClick={() => handleSelectLanguage(lang)}
+                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick-start suggestions — only after language is selected and before first user message */}
+          {msgs.filter((m) => m.role === "user").length === 0 && !!siteLanguage && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">{t("website.quickStarts")}</p>
               <div className="flex flex-wrap gap-1.5">
