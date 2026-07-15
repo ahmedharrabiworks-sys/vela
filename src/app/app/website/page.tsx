@@ -812,8 +812,11 @@ export default function WebsitePage() {
     setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug("");
     setWebsiteId(null); websiteIdRef.current = null;
     setVersions([]);
-    setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
-  }, [btype, siteLanguage]);
+    // Clear persisted language so the language picker re-appears for this new project
+    setSiteLanguage("");
+    if (typeof window !== "undefined") localStorage.removeItem("vela_site_language");
+    setMsgs([INITIAL_MSG(btype, undefined)]);
+  }, [btype]);
 
   // ── Switch to an existing project ────────────────────────────────────────────
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
@@ -1238,8 +1241,8 @@ export default function WebsitePage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* Language picker — shown before any other suggestions when language not yet chosen */}
-          {msgs.filter((m) => m.role === "user").length === 0 && !siteLanguage && (
+          {/* Language picker — only for fresh (not-yet-built) sessions */}
+          {!built && msgs.filter((m) => m.role === "user").length === 0 && !siteLanguage && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">Choose language</p>
               <div className="flex flex-wrap gap-1.5">

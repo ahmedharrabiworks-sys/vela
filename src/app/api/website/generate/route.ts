@@ -439,9 +439,6 @@ async function checkNeedsMoreInfo(
   currentUserMessage: string,
   imageBase64: string | undefined,
   imageMimeType: string | undefined,
-  businessName: string,
-  industry: string,
-  city: string,
 ): Promise<string | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messages: any[] = [{ role: "system", content: INTAKE_DECISION_SYSTEM }];
@@ -454,10 +451,10 @@ async function checkNeedsMoreInfo(
     }
   }
 
+  // Only surface the user's actual words — never inject stale account profile data
+  // (business_name / industry / city from the tenant record may belong to a completely
+  // different business than what the user is currently trying to build).
   const contextLines = [
-    `Business name on file: ${businessName}`,
-    industry ? `Industry on file: ${industry}` : "",
-    city ? `City on file: ${city}` : "",
     currentUserMessage ? `User's latest message: ${currentUserMessage}` : "",
   ].filter(Boolean).join("\n");
 
@@ -628,7 +625,10 @@ export async function POST(req: NextRequest) {
         const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
         spec = { stylePreset: coercePreset(parsed.stylePreset), accentColor: parsed.accentColor, businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [] };
       } else {
-        const revisionPrompt = `Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
+        const langLine = language && language.toLowerCase() !== "english"
+          ? `LANGUAGE: ALL copy must be written in ${language}. Translate every text field.\n\n`
+          : "";
+        const revisionPrompt = `${langLine}Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
           messages: [{ role: "system", content: REVISE_SYSTEM }, { role: "user", content: revisionPrompt }],
@@ -652,9 +652,6 @@ export async function POST(req: NextRequest) {
         msgText,
         validImages[0]?.data,
         validImages[0]?.mimeType,
-        businessName,
-        industry,
-        city,
       );
 
       if (question) {
@@ -682,7 +679,10 @@ export async function POST(req: NextRequest) {
       const chatContactBlock = extractContactFromText(fullDescription);
       const effectiveContactBlock = chatContactBlock || contactBlock;
 
-      const userContent = buildUserContent(businessName, industry, city, fullDescription, language);
+      // Don't inject tenant-profile fields — the accumulated description already contains
+      // everything the user told us. Injecting a stale account businessName/industry would
+      // override what the user is actually building right now.
+      const userContent = buildUserContent("", "", "", fullDescription, language);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -920,11 +920,14 @@ export async function POST(req: NextRequest) {
 }
 
 function buildUserContent(businessName: string, industry: string, city: string, msgText: string, language = "English"): string {
+  // User's description is the authoritative source — profile fields are fallback hints only.
+  // By putting the description first, GPT extracts brand/type/location from what the user
+  // actually said rather than from stale account-profile metadata.
   return [
-    `Business name: ${businessName}`,
-    industry ? `Industry: ${industry}` : "",
-    city     ? `City: ${city}` : "",
     language && language.toLowerCase() !== "english" ? `Site language: ${language}` : "",
-    `Owner's description: ${msgText}`,
+    `Owner's description:\n${msgText}`,
+    businessName ? `Business name (account profile — use only if not already clear from description): ${businessName}` : "",
+    industry ? `Industry (account profile): ${industry}` : "",
+    city ? `City (account profile): ${city}` : "",
   ].filter(Boolean).join("\n");
 }
