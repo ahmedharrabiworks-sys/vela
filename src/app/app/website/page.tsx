@@ -600,6 +600,23 @@ export default function WebsitePage() {
   const [removingDomain, setRemovingDomain]     = useState(false);
   const [domainError, setDomainError]           = useState("");
 
+  // ── Sidebar resize ────────────────────────────────────────────────────────────
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const stored = parseInt(localStorage.getItem("vela_sidebar_width") ?? "", 10);
+      return isNaN(stored) ? 160 : Math.max(160, Math.min(340, stored));
+    }
+    return 160;
+  });
+  const isDraggingRef     = useRef(false);
+  const dragStartXRef     = useRef(0);
+  const dragStartWidthRef = useRef(0);
+
+  // ── Project menu / inline rename ──────────────────────────────────────────────
+  const [menuOpenId, setMenuOpenId]   = useState<string | null>(null);
+  const [renamingId, setRenamingId]   = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const bottomRef    = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -861,6 +878,83 @@ export default function WebsitePage() {
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
       }
     } catch { /* ignore */ }
+  }, [btype, siteLanguage]);
+
+  // ── Sidebar drag-resize ───────────────────────────────────────────────────────
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current     = true;
+    dragStartXRef.current     = e.clientX;
+    dragStartWidthRef.current = sidebarWidth;
+    document.body.style.cursor     = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const newW = Math.max(160, Math.min(340, dragStartWidthRef.current + e.clientX - dragStartXRef.current));
+      setSidebarWidth(newW);
+    };
+    const onMouseUp = () => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current          = false;
+      document.body.style.cursor     = "";
+      document.body.style.userSelect = "";
+      setSidebarWidth((w) => { localStorage.setItem("vela_sidebar_width", String(w)); return w; });
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup",   onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup",   onMouseUp);
+    };
+  }, []);
+
+  // Close project ⋯ menu on outside click
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const handler = () => setMenuOpenId(null);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpenId]);
+
+  // ── Project rename / delete ───────────────────────────────────────────────────
+  const handleStartRename = useCallback((p: WebsiteProject) => {
+    setMenuOpenId(null);
+    setRenamingId(p.id);
+    setRenameValue(p.name ?? "");
+  }, []);
+
+  const handleSaveRename = useCallback(async (projectId: string, name: string) => {
+    const trimmed = name.trim();
+    setRenamingId(null);
+    if (!trimmed) return;
+    setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, name: trimmed } : p));
+    if (projectId === websiteIdRef.current) setSiteName(trimmed);
+    try {
+      await fetch("/api/website/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: projectId, name: trimmed }),
+      });
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleDeleteProject = useCallback((p: WebsiteProject) => {
+    setMenuOpenId(null);
+    if (!confirm(`Delete "${p.name ?? "this site"}"? This cannot be undone.`)) return;
+    const wasActive = p.id === websiteIdRef.current;
+    setProjects((prev) => prev.filter((proj) => proj.id !== p.id));
+    if (wasActive) {
+      setHtml(""); htmlRef.current = "";
+      setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
+      setWebsiteId(null); websiteIdRef.current = null;
+      setVersions([]); setSiteName(""); setSiteSlug("");
+      setIsPublished(false); setPublishedUrl("");
+      setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
+      setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
+    }
   }, [btype, siteLanguage]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
@@ -1137,7 +1231,10 @@ export default function WebsitePage() {
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
         {/* SIDEBAR: Project list + version history (desktop only) */}
-        <div className="hidden md:flex w-[152px] flex-col bg-white dark:bg-[#17171C] border-r border-[#EBEBEB] dark:border-[#2A2A32] overflow-hidden shrink-0">
+        <div
+          className="hidden md:flex flex-col bg-white dark:bg-[#17171C] border-r border-[#EBEBEB] dark:border-[#2A2A32] overflow-hidden shrink-0 relative"
+          style={{ width: sidebarWidth }}
+        >
           {/* Header row */}
           <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Sites</span>
@@ -1153,7 +1250,7 @@ export default function WebsitePage() {
           <div className="flex-1 overflow-y-auto">
             {/* "New Project" placeholder when nothing is saved yet */}
             {!websiteId && (
-              <div className="mx-1 mb-0.5 px-2 py-1.5 rounded-lg bg-[#FFF0EC] dark:bg-[#2A1A14] flex items-center gap-1.5">
+              <div className="border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14] pl-2 pr-2.5 py-1.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#D1D5DB]" />
                 <span className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">New Project</span>
               </div>
@@ -1161,18 +1258,66 @@ export default function WebsitePage() {
 
             {/* Saved projects */}
             {projects.map((p) => {
-              const isActive = p.id === websiteId;
+              const isActive   = p.id === websiteId;
+              const isRenaming = renamingId === p.id;
+              const menuOpen   = menuOpenId === p.id;
               return (
-                <button
+                <div
                   key={p.id}
-                  onClick={() => handleSwitchProject(p)}
-                  className={`w-full text-left px-2.5 py-1.5 flex items-center gap-1.5 transition-colors hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24] ${isActive ? "bg-[#FFF0EC] dark:bg-[#2A1A14]" : ""}`}
+                  className={`group relative flex items-center transition-colors hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24] ${isActive ? "border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14]" : "border-l-2 border-transparent"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.is_published ? "bg-green-400" : "bg-[#D1D5DB]"}`} />
-                  <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111] dark:text-white" : "text-[#555] dark:text-[#9CA3AF]"}`}>
-                    {p.name || "Untitled"}
-                  </span>
-                </button>
+                  {isRenaming ? (
+                    <div className="flex-1 px-2 py-1.5">
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter")  handleSaveRename(p.id, renameValue);
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        onBlur={() => handleSaveRename(p.id, renameValue)}
+                        className="w-full text-[11px] px-1.5 py-0.5 border border-[#FF6B35] rounded outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-white"
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleSwitchProject(p)}
+                      className="flex-1 text-left pl-2 pr-1 py-1.5 flex items-center gap-1.5 min-w-0"
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.is_published ? "bg-green-400" : "bg-[#D1D5DB]"}`} />
+                      <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111] dark:text-white" : "text-[#555] dark:text-[#9CA3AF]"}`}>
+                        {p.name || "Untitled"}
+                      </span>
+                    </button>
+                  )}
+                  {/* ⋯ menu trigger */}
+                  {!isRenaming && (
+                    <button
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpen ? null : p.id); }}
+                      className="shrink-0 w-5 h-5 mr-1 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded hover:bg-[#E5E7EB] dark:hover:bg-[#2A2A32] transition-all text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white"
+                    >
+                      <svg width="10" height="3" viewBox="0 0 16 4" fill="currentColor">
+                        <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="14" cy="2" r="1.5"/>
+                      </svg>
+                    </button>
+                  )}
+                  {/* ⋯ dropdown */}
+                  {menuOpen && (
+                    <div
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="absolute right-0 top-full mt-0.5 z-50 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-lg py-1 w-24"
+                    >
+                      <button onClick={() => handleStartRename(p)} className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+                        Rename
+                      </button>
+                      <button onClick={() => handleDeleteProject(p)} className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               );
             })}
 
@@ -1183,29 +1328,39 @@ export default function WebsitePage() {
                   <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">History</span>
                 </div>
                 {versions.slice().reverse().slice(0, 6).map((v, i) => (
-                  <div key={v.id} className="group px-2.5 py-1.5 border-b border-[#F9FAFB] dark:border-[#1E1E24] last:border-0">
-                    <p className="text-[10px] text-[#374151] dark:text-[#9CA3AF] truncate leading-tight">{v.label}</p>
+                  <div
+                    key={v.id}
+                    className={`group px-2.5 py-1.5 border-b border-[#F9FAFB] dark:border-[#1E1E24] last:border-0 ${i !== 0 ? "cursor-pointer hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24]" : ""}`}
+                    onClick={i !== 0 ? () => handlePreviewVersion(v) : undefined}
+                  >
+                    <p className="text-[10px] font-medium text-[#374151] dark:text-[#9CA3AF] truncate leading-tight">
+                      {siteName || v.label}
+                    </p>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</span>
                       {i === 0 ? (
                         <span className="text-[9px] text-[#9CA3AF]">Current</span>
                       ) : (
-                        <div className="hidden group-hover:flex gap-1.5">
-                          <button onClick={() => handlePreviewVersion(v)} disabled={previewingVersion === v.id}
-                            className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] dark:hover:text-white disabled:opacity-40">
-                            Preview
-                          </button>
-                          <button onClick={() => handleRestoreVersion(v)} disabled={restoringVersion === v.id}
-                            className="text-[9px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40">
-                            {restoringVersion === v.id ? "…" : "Restore"}
-                          </button>
-                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRestoreVersion(v); }}
+                          disabled={restoringVersion === v.id}
+                          className="hidden group-hover:block text-[9px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40">
+                          {restoringVersion === v.id ? "…" : "Restore"}
+                        </button>
                       )}
                     </div>
                   </div>
                 ))}
               </>
             )}
+          </div>
+
+          {/* Drag-to-resize handle */}
+          <div
+            onMouseDown={handleResizeMouseDown}
+            className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 flex items-center justify-center group/handle"
+          >
+            <div className="w-px h-10 bg-transparent group-hover/handle:bg-[#FF6B35]/40 transition-colors rounded-full" />
           </div>
         </div>
 
