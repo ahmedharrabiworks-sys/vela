@@ -225,7 +225,7 @@ function PublishPanel({
   const renderDomainSection = () => (
     <div className="space-y-3">
       <button onClick={() => setShowDomain((v) => !v)}
-        className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
+        className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] dark:text-[#9CA3AF] hover:text-[#FF6B35] transition-colors w-full text-left">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         {customDomain && domainStatus === "verified" ? `Custom domain: ${customDomain}` : "Add custom domain"}
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showDomain ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
@@ -238,21 +238,21 @@ function PublishPanel({
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`w-2 h-2 rounded-full shrink-0 ${domainStatus === "verified" ? "bg-green-400" : "bg-yellow-400"}`} />
-              <span className="text-xs font-semibold text-[#111111]">{customDomain}</span>
+              <span className="text-xs font-semibold text-[#111111] dark:text-white">{customDomain}</span>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${domainStatus === "verified" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
                 {domainStatus === "verified" ? "Connected" : "Pending"}
               </span>
             </div>
             {domainStatus !== "verified" && domainRecords.length > 0 && (
-              <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+              <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32]">
                 <table className="min-w-full text-[11px]">
-                  <thead className="bg-[#F9FAFB]">
-                    <tr>{["Type", "Name", "Value", ""].map((h) => <th key={h} className="text-left px-3 py-2 font-semibold text-[#374151] whitespace-nowrap">{h}</th>)}</tr>
+                  <thead className="bg-[#F9FAFB] dark:bg-[#1E1E24]">
+                    <tr>{["Type", "Name", "Value", ""].map((h) => <th key={h} className="text-left px-3 py-2 font-semibold text-[#374151] dark:text-[#9CA3AF] whitespace-nowrap">{h}</th>)}</tr>
                   </thead>
-                  <tbody className="divide-y divide-[#F3F4F6]">
+                  <tbody className="divide-y divide-[#F3F4F6] dark:divide-[#2A2A32]">
                     {domainRecords.map((r, i) => (
-                      <tr key={i} className="bg-white">
-                        <td className="px-3 py-2 font-mono text-[#374151] whitespace-nowrap">{r.type}</td>
+                      <tr key={i} className="bg-white dark:bg-[#17171C]">
+                        <td className="px-3 py-2 font-mono text-[#374151] dark:text-[#9CA3AF] whitespace-nowrap">{r.type}</td>
                         <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[90px] truncate">{r.name}</td>
                         <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[120px] truncate">{r.value}</td>
                         <td className="px-3 py-2">
@@ -270,7 +270,7 @@ function PublishPanel({
             <div className="flex items-center gap-2">
               {domainStatus !== "verified" && (
                 <button onClick={handleCheckDomain} disabled={checkingDomain}
-                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
+                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-40 transition-colors">
                   {checkingDomain ? "Checking…" : "Check Status"}
                 </button>
               )}
@@ -285,7 +285,7 @@ function PublishPanel({
             <div className="flex items-stretch gap-2">
               <input value={domainInput} onChange={(e) => { setDomainInput(e.target.value); setDomainError(""); }}
                 placeholder="www.yourbusiness.com"
-                className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+                className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
                 onKeyDown={(e) => { if (e.key === "Enter") handleConnectDomain(); }}
               />
               <button onClick={handleConnectDomain} disabled={connectingDomain || !domainInput.trim()}
@@ -305,51 +305,51 @@ function PublishPanel({
   const renderSiteDetailsForm = () => (
     <div className="space-y-3">
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">Site Name</label>
+        <label className="text-[10px] font-semibold text-[#374151] dark:text-[#9CA3AF] uppercase tracking-wide">Site Name</label>
         <input value={siteName} onChange={(e) => setSiteName(e.target.value)}
           placeholder="My Business"
-          className="w-full text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+          className="w-full text-sm px-3 py-2 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
         />
       </div>
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">URL Slug</label>
-        <div className="flex items-stretch border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:border-[#FF6B35]">
-          <span className="text-[11px] text-[#9CA3AF] bg-[#F9FAFB] px-2.5 flex items-center border-r border-[#E5E7EB] whitespace-nowrap shrink-0">/site/</span>
+        <label className="text-[10px] font-semibold text-[#374151] dark:text-[#9CA3AF] uppercase tracking-wide">URL Slug</label>
+        <div className="flex items-stretch border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg overflow-hidden focus-within:border-[#FF6B35]">
+          <span className="text-[11px] text-[#9CA3AF] bg-[#F9FAFB] dark:bg-[#101014] px-2.5 flex items-center border-r border-[#E5E7EB] dark:border-[#2A2A32] whitespace-nowrap shrink-0">/site/</span>
           <input value={siteSlug}
             onChange={(e) => { setSiteSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); setSlugError(""); }}
             placeholder="my-business"
-            className="flex-1 text-sm px-3 py-2 focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
+            className="flex-1 text-sm px-3 py-2 focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
           />
         </div>
         {slugError && <p className="text-[11px] text-red-500">{slugError}</p>}
       </div>
-      <div className="flex items-center gap-2 bg-[#F9FAFB] rounded-lg px-3 py-2">
+      <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-lg px-3 py-2">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-        <span className="text-[11px] text-[#6B7280]"><strong className="text-[#374151]">Public</strong> — anyone with the URL can view</span>
+        <span className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]"><strong className="text-[#374151] dark:text-[#E5E7EB]">Public</strong> — anyone with the URL can view</span>
       </div>
       {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
       <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
-        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
+        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-40 transition-colors">
         {savingSettings ? "Saving…" : "Save"}
       </button>
     </div>
   );
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-[360px] bg-white border border-[#E5E7EB] rounded-2xl shadow-xl z-50 overflow-hidden
+    <div className="absolute top-full right-0 mt-2 w-[360px] bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl shadow-xl z-50 overflow-hidden
       md:w-[360px]
       max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto max-md:w-full max-md:rounded-b-none max-md:rounded-t-2xl max-md:mt-0">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#F3F4F6]">
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#F3F4F6] dark:border-[#2A2A32]">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full shrink-0 ${isPublished ? "bg-green-400" : "bg-[#9CA3AF]"}`} />
-          <span className="text-sm font-bold text-[#111111]">{isPublished ? "Published" : "Publish your site"}</span>
+          <span className="text-sm font-bold text-[#111111] dark:text-white">{isPublished ? "Published" : "Publish your site"}</span>
           {visitCount > 0 && (
             <span className="text-[10px] font-medium text-[#9CA3AF] ml-1">{visitCount.toLocaleString()} visitor{visitCount !== 1 ? "s" : ""}</span>
           )}
         </div>
-        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-full text-[#9CA3AF] hover:text-[#374151] hover:bg-[#F3F4F6] transition-colors text-sm font-bold">×</button>
+        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-full text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors text-sm font-bold">×</button>
       </div>
 
       {/* Step indicator (pre-publish flow only) */}
@@ -357,12 +357,12 @@ function PublishPanel({
         <div className="flex items-center px-5 pt-3 pb-1 gap-0">
           {([1, 2, 3] as const).map((s, idx) => (
             <div key={s} className="flex items-center">
-              {idx > 0 && <div className={`w-6 h-px mx-1 ${step >= s ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`} />}
+              {idx > 0 && <div className={`w-6 h-px mx-1 ${step >= s ? "bg-[#FF6B35]" : "bg-[#E5E7EB] dark:bg-[#2A2A32]"}`} />}
               <div className="flex items-center gap-1">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step > s ? "bg-[#FF6B35] text-white" : step === s ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] text-[#9CA3AF]"}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step > s ? "bg-[#FF6B35] text-white" : step === s ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#9CA3AF]"}`}>
                   {step > s ? <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> : s}
                 </div>
-                <span className={`text-[10px] font-semibold ${step >= s ? "text-[#374151]" : "text-[#9CA3AF]"}`}>
+                <span className={`text-[10px] font-semibold ${step >= s ? "text-[#374151] dark:text-[#E5E7EB]" : "text-[#9CA3AF]"}`}>
                   {s === 1 ? "Details" : s === 2 ? "Check" : "Go Live"}
                 </span>
               </div>
@@ -391,7 +391,7 @@ function PublishPanel({
         {/* ── STEP 2: Security Check ───────────────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-4 py-2">
-            <p className="text-xs font-semibold text-[#374151]">Quick security check</p>
+            <p className="text-xs font-semibold text-[#374151] dark:text-[#E5E7EB]">Quick security check</p>
             <div className="space-y-3">
               {["Validating site content", "Checking for broken elements", "Reviewing performance"].map((item, i) => (
                 <div key={i} className="flex items-center gap-2.5">
@@ -402,15 +402,15 @@ function PublishPanel({
                   ) : (
                     <div className="w-4 h-4 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin shrink-0" />
                   )}
-                  <span className={`text-xs ${checkState === "done" ? "text-[#374151]" : "text-[#9CA3AF]"}`}>{item}</span>
+                  <span className={`text-xs ${checkState === "done" ? "text-[#374151] dark:text-[#E5E7EB]" : "text-[#9CA3AF]"}`}>{item}</span>
                 </div>
               ))}
             </div>
             {checkState === "done" && (
               <div className="space-y-3 pt-1">
-                <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 border border-green-100 dark:border-green-900/50 rounded-lg px-3 py-2">
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="text-[11px] font-semibold text-green-700">All checks passed — looking good!</span>
+                  <span className="text-[11px] font-semibold text-green-700 dark:text-green-400">All checks passed — looking good!</span>
                 </div>
                 <button
                   onClick={onPublish}
@@ -431,9 +431,9 @@ function PublishPanel({
             {publishedUrl && (
               <div className="space-y-1">
                 <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide">Your Site</p>
-                <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-2">
                   <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-[11px] font-mono text-[#374151] truncate flex-1 hover:text-[#FF6B35] transition-colors">
+                    className="text-[11px] font-mono text-[#374151] dark:text-[#9CA3AF] truncate flex-1 hover:text-[#FF6B35] transition-colors">
                     {origin}{publishedUrl}
                   </a>
                   <button onClick={async () => { await copyText(`${origin}${publishedUrl}`); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000); }}
@@ -467,9 +467,9 @@ function PublishPanel({
             </div>
 
             {/* Settings accordion */}
-            <div className="border-t border-[#F3F4F6] pt-3 space-y-3">
+            <div className="border-t border-[#F3F4F6] dark:border-[#2A2A32] pt-3 space-y-3">
               <button onClick={() => setShowSettings((v) => !v)}
-                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] dark:text-[#9CA3AF] hover:text-[#FF6B35] transition-colors w-full text-left">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 Site Settings
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showSettings ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
@@ -1037,7 +1037,7 @@ export default function WebsitePage() {
   // ── Loading skeleton ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1400px] mx-auto animate-pulse">
+      <div className="flex flex-col h-[calc(100vh-80px)] animate-pulse">
         <div className="flex items-center justify-between pb-4 shrink-0">
           <div>
             <div className="h-6 w-40 bg-[#E5E7EB] rounded-lg" />
@@ -1056,12 +1056,12 @@ export default function WebsitePage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] max-w-[1400px] mx-auto">
+    <div className="flex flex-col h-[calc(100vh-80px)]">
 
       {/* Header */}
       <div className="flex items-center justify-between pb-4 shrink-0 flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-[#111111]">
+          <h1 className="text-xl font-bold text-[#111111] dark:text-white">
             {siteName || t("website.title")}
           </h1>
           <p className="text-xs text-[#6B7280] mt-0.5">{t("website.subtitle")}</p>
@@ -1074,10 +1074,10 @@ export default function WebsitePage() {
           )}
 
           {/* Mobile tab toggle */}
-          <div className="flex md:hidden gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
+          <div className="flex md:hidden gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
             {(["chat", "preview"] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-[#FF6B35] text-white" : "text-[#6B7280]"}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-[#FF6B35] text-white" : "text-[#6B7280] dark:text-[#9CA3AF]"}`}>
                 {tab}
               </button>
             ))}
@@ -1137,12 +1137,12 @@ export default function WebsitePage() {
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
         {/* SIDEBAR: Project list + version history (desktop only) */}
-        <div className="hidden md:flex w-[152px] flex-col bg-white border border-[#EBEBEB] rounded-xl overflow-hidden shrink-0">
+        <div className="hidden md:flex w-[152px] flex-col bg-white dark:bg-[#17171C] border-r border-[#EBEBEB] dark:border-[#2A2A32] overflow-hidden shrink-0">
           {/* Header row */}
           <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Sites</span>
             <button onClick={handleNewWebsite} title="New website"
-              className="w-5 h-5 flex items-center justify-center rounded-md text-[#BBBBBB] hover:text-[#374151] hover:bg-[#F3F4F6] transition-colors">
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[#BBBBBB] hover:text-[#374151] dark:hover:text-[#E5E7EB] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors">
               <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
               </svg>
@@ -1153,9 +1153,9 @@ export default function WebsitePage() {
           <div className="flex-1 overflow-y-auto">
             {/* "New Project" placeholder when nothing is saved yet */}
             {!websiteId && (
-              <div className="mx-1 mb-0.5 px-2 py-1.5 rounded-lg bg-[#FFF0EC] flex items-center gap-1.5">
+              <div className="mx-1 mb-0.5 px-2 py-1.5 rounded-lg bg-[#FFF0EC] dark:bg-[#2A1A14] flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#D1D5DB]" />
-                <span className="text-[11px] font-semibold text-[#111111] truncate">New Project</span>
+                <span className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">New Project</span>
               </div>
             )}
 
@@ -1166,10 +1166,10 @@ export default function WebsitePage() {
                 <button
                   key={p.id}
                   onClick={() => handleSwitchProject(p)}
-                  className={`w-full text-left px-2.5 py-1.5 flex items-center gap-1.5 transition-colors hover:bg-[#F5F5F5] ${isActive ? "bg-[#FFF0EC]" : ""}`}
+                  className={`w-full text-left px-2.5 py-1.5 flex items-center gap-1.5 transition-colors hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24] ${isActive ? "bg-[#FFF0EC] dark:bg-[#2A1A14]" : ""}`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.is_published ? "bg-green-400" : "bg-[#D1D5DB]"}`} />
-                  <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111]" : "text-[#555]"}`}>
+                  <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111] dark:text-white" : "text-[#555] dark:text-[#9CA3AF]"}`}>
                     {p.name || "Untitled"}
                   </span>
                 </button>
@@ -1179,20 +1179,20 @@ export default function WebsitePage() {
             {/* Version history for the active project */}
             {versions.length > 0 && (
               <>
-                <div className="px-2.5 pt-2.5 pb-1 mt-1 border-t border-[#F3F4F6]">
+                <div className="px-2.5 pt-2.5 pb-1 mt-1 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
                   <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">History</span>
                 </div>
                 {versions.slice().reverse().slice(0, 6).map((v, i) => (
-                  <div key={v.id} className="px-2.5 py-1.5 border-b border-[#F9FAFB] last:border-0">
-                    <p className="text-[10px] text-[#374151] truncate leading-tight">{v.label}</p>
+                  <div key={v.id} className="group px-2.5 py-1.5 border-b border-[#F9FAFB] dark:border-[#1E1E24] last:border-0">
+                    <p className="text-[10px] text-[#374151] dark:text-[#9CA3AF] truncate leading-tight">{v.label}</p>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</span>
                       {i === 0 ? (
                         <span className="text-[9px] text-[#9CA3AF]">Current</span>
                       ) : (
-                        <div className="flex gap-1.5">
+                        <div className="hidden group-hover:flex gap-1.5">
                           <button onClick={() => handlePreviewVersion(v)} disabled={previewingVersion === v.id}
-                            className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40">
+                            className="text-[9px] font-semibold text-[#6B7280] hover:text-[#111111] dark:hover:text-white disabled:opacity-40">
                             Preview
                           </button>
                           <button onClick={() => handleRestoreVersion(v)} disabled={restoringVersion === v.id}
@@ -1210,7 +1210,7 @@ export default function WebsitePage() {
         </div>
 
         {/* LEFT: Chat */}
-        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0`}>
+        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0`}>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => {
@@ -1218,11 +1218,11 @@ export default function WebsitePage() {
               if (msg.isSeparator) {
                 return (
                   <div key={i} className="flex items-center gap-3 py-1">
-                    <div className="flex-1 h-px bg-[#E5E7EB]" />
-                    <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] rounded-full border border-[#E5E7EB]">
+                    <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
+                    <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-full border border-[#E5E7EB] dark:border-[#2A2A32]">
                       New website
                     </span>
-                    <div className="flex-1 h-px bg-[#E5E7EB]" />
+                    <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
                   </div>
                 );
               }
@@ -1244,13 +1244,13 @@ export default function WebsitePage() {
                     msg.role === "user"
                       ? "bg-[#FF6B35] text-white rounded-tr-sm"
                       : msg.isError
-                      ? "bg-red-50 text-[#991B1B] rounded-tl-sm border border-red-100"
-                      : "bg-[#F9FAFB] text-[#111111] rounded-tl-sm border border-[#F3F4F6]"
+                      ? "bg-red-50 dark:bg-red-950/40 text-[#991B1B] dark:text-red-400 rounded-tl-sm border border-red-100 dark:border-red-900/50"
+                      : "bg-[#F9FAFB] dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] rounded-tl-sm border border-[#F3F4F6] dark:border-[#2A2A32]"
                   } ${msg.isBuilding ? "animate-pulse" : ""}`}>
                     {msg.isBuilding ? (
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                        <span className="text-[#6B7280]">{msg.content}</span>
+                        <span className="text-[#6B7280] dark:text-[#9CA3AF]">{msg.content}</span>
                       </div>
                     ) : (
                       <>
@@ -1279,7 +1279,7 @@ export default function WebsitePage() {
               <div className="flex flex-wrap gap-1.5">
                 {LANGUAGE_OPTIONS.map((lang) => (
                   <button key={lang} onClick={() => handleSelectLanguage(lang)}
-                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
                     {lang}
                   </button>
                 ))}
@@ -1294,7 +1294,7 @@ export default function WebsitePage() {
               <div className="flex flex-wrap gap-1.5">
                 {suggestions.map((s) => (
                   <button key={s} onClick={() => setInput(s)}
-                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors text-left">
+                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors text-left">
                     {s}
                   </button>
                 ))}
@@ -1319,8 +1319,8 @@ export default function WebsitePage() {
           )}
 
           {/* Input bar */}
-          <div className="p-3 border-t border-[#F3F4F6]">
-            <div className="flex items-end gap-2 bg-[#F9FAFB] rounded-xl px-3 py-2.5 border border-[#E5E7EB] focus-within:border-[#FF6B35]/50 transition-colors">
+          <div className="p-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+            <div className="flex items-end gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-xl px-3 py-2.5 border border-[#E5E7EB] dark:border-[#2A2A32] focus-within:border-[#FF6B35]/50 transition-colors">
               <button type="button" onClick={() => fileInputRef.current?.click()}
                 disabled={building || attachedImages.length >= MAX_ATTACH} title="Attach image"
                 className="shrink-0 text-[#9CA3AF] hover:text-[#FF6B35] transition-colors disabled:opacity-40 pb-0.5">
@@ -1332,7 +1332,7 @@ export default function WebsitePage() {
               <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
                 placeholder={built ? "What would you like to change?" : "Tell me about your business…"}
                 rows={1} disabled={building}
-                className="flex-1 bg-transparent text-xs text-[#111111] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
+                className="flex-1 bg-transparent text-xs text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
                 style={{ lineHeight: "1.5" }}
               />
               <button onClick={handleSend} disabled={(!input.trim() && attachedImages.length === 0) || building}
@@ -1366,19 +1366,19 @@ export default function WebsitePage() {
             {built && (
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Preview / Code toggle — Settings and History removed */}
-                <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
+                <div className="flex items-center gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
                   {(["preview", "code"] as const).map((mode) => (
                     <button key={mode} onClick={() => { setViewMode(mode); if (previewVersionHtml && mode !== "preview") setPreviewVersionHtml(null); }}
-                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${viewMode === mode ? "bg-[#111111] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
+                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${viewMode === mode ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
                       {mode === "code" ? "</>" : "Preview"}
                     </button>
                   ))}
                 </div>
                 {viewMode === "preview" && (
-                  <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
+                  <div className="flex items-center gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
                     {(["desktop", "mobile"] as const).map((d) => (
                       <button key={d} onClick={() => setDevice(d)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold capitalize transition-all ${device === d ? "bg-[#111111] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold capitalize transition-all ${device === d ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
                         {d}
                       </button>
                     ))}
@@ -1389,16 +1389,16 @@ export default function WebsitePage() {
           </div>
 
           {/* Browser chrome + content */}
-          <div className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
+          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Chrome bar */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F3F4F6] shrink-0 bg-[#F9FAFB]">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F3F4F6] dark:border-[#2A2A32] shrink-0 bg-[#F9FAFB] dark:bg-[#1E1E24]">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
                 <span className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
                 <span className="w-3 h-3 rounded-full bg-[#28C840]" />
               </div>
               <div className="flex-1 mx-4">
-                <div className="bg-white border border-[#E5E7EB] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono truncate">
+                <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono truncate">
                   {publishedUrl ? `${origin}${publishedUrl}` : "yoursite.vela.ai"}
                 </div>
               </div>
@@ -1406,16 +1406,16 @@ export default function WebsitePage() {
 
             {/* Content area */}
             {building ? (
-              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex flex-col items-center justify-center gap-4 min-h-0">
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] dark:bg-[#101014] flex flex-col items-center justify-center gap-4 min-h-0">
                 <div className="w-10 h-10 rounded-full border-[3px] border-[#FF6B35] border-t-transparent animate-spin" />
                 <div className="space-y-1 text-center">
-                  <p className="text-sm font-semibold text-[#111111]">{t("website.building")}</p>
+                  <p className="text-sm font-semibold text-[#111111] dark:text-white">{t("website.building")}</p>
                   <p className="text-xs text-[#6B7280]">Generating design, real photos, and booking flow…</p>
                 </div>
               </div>
 
             ) : !built ? (
-              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex items-center justify-center min-h-0">
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] dark:bg-[#101014] flex items-center justify-center min-h-0">
                 <div className="text-center space-y-3 max-w-xs p-4">
                   <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#E5E7EB] flex items-center justify-center mx-auto">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -1423,7 +1423,7 @@ export default function WebsitePage() {
                       <path d="M8 21h8M12 18v3" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   </div>
-                  <p className="text-sm font-semibold text-[#374151]">Your website preview</p>
+                  <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Your website preview</p>
                   <p className="text-xs text-[#9CA3AF]">Describe your business in the chat — I&apos;ll build a premium site with real photos in seconds</p>
                 </div>
               </div>
