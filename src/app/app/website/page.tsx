@@ -600,17 +600,32 @@ export default function WebsitePage() {
   const [removingDomain, setRemovingDomain]     = useState(false);
   const [domainError, setDomainError]           = useState("");
 
+  // ── New Website modal ─────────────────────────────────────────────────────────
+  const [showNewWebsiteModal, setShowNewWebsiteModal] = useState(false);
+
   // ── Sidebar resize ────────────────────────────────────────────────────────────
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window !== "undefined") {
-      const stored = parseInt(localStorage.getItem("vela_sidebar_width") ?? "", 10);
-      return isNaN(stored) ? 160 : Math.max(160, Math.min(340, stored));
+      const stored = parseInt(localStorage.getItem("wb-left-panel-width") ?? "", 10);
+      return isNaN(stored) ? 160 : Math.max(140, Math.min(320, stored));
     }
     return 160;
   });
   const isDraggingRef     = useRef(false);
   const dragStartXRef     = useRef(0);
   const dragStartWidthRef = useRef(0);
+
+  // ── Chat panel resize ─────────────────────────────────────────────────────────
+  const [chatWidth, setChatWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const stored = parseInt(localStorage.getItem("wb-chat-width") ?? "", 10);
+      return isNaN(stored) ? 320 : Math.max(280, Math.min(520, stored));
+    }
+    return 320;
+  });
+  const isChatDraggingRef     = useRef(false);
+  const chatDragStartXRef     = useRef(0);
+  const chatDragStartWidthRef = useRef(0);
 
   // ── Project menu / inline rename ──────────────────────────────────────────────
   const [menuOpenId, setMenuOpenId]   = useState<string | null>(null);
@@ -830,14 +845,33 @@ export default function WebsitePage() {
   }, [contactInfo, persistChat]);
 
   // ── New Website ───────────────────────────────────────────────────────────────
-  // Clears local state for a fresh start. The previous project stays in DB and
-  // remains clickable in the sidebar — nothing is deleted.
+  // Opens the confirmation modal. The previous project stays in DB and sidebar.
   const handleNewWebsite = useCallback(() => {
-    if (!confirm("Start a new website? Your current project stays saved in the sidebar.")) return;
+    setShowNewWebsiteModal(true);
+  }, []);
 
-    // Clear server-side state (website_chat, website_html, website_intake, draft_html, draft_spec).
-    // Without this the next page load rehydrates the old conversation + HTML from the DB,
-    // which corrupts the new session's priorChat and triggers revision mode on the old spec.
+  // Confirmed: upsert current project into sidebar, then reset all draft state.
+  const handleConfirmNewWebsite = useCallback(() => {
+    setShowNewWebsiteModal(false);
+
+    // Ensure the active project is in the sidebar before clearing websiteId
+    if (websiteId) {
+      const currentProject: WebsiteProject = {
+        id:            websiteId,
+        name:          siteName || null,
+        slug:          siteSlug || null,
+        is_published:  isPublished,
+        published_url: isPublished ? (siteSlug ? `/site/${siteSlug}` : null) : null,
+      };
+      setProjects((prev) => {
+        const idx = prev.findIndex((p) => p.id === websiteId);
+        return idx >= 0
+          ? prev.map((p, i) => i === idx ? currentProject : p)
+          : [...prev, currentProject];
+      });
+    }
+
+    // Clear server-side state so the next page load doesn't rehydrate the old session.
     fetch("/api/website/reset", { method: "POST" }).catch(() => {});
 
     setHtml(""); htmlRef.current = "";
@@ -848,11 +882,11 @@ export default function WebsitePage() {
     setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug("");
     setWebsiteId(null); websiteIdRef.current = null;
     setVersions([]);
-    // Clear persisted language so the language picker re-appears for this new project
+    // Clear persisted language so the language picker re-appears for the new project
     setSiteLanguage("");
     if (typeof window !== "undefined") localStorage.removeItem("vela_site_language");
     setMsgs([INITIAL_MSG(btype, undefined)]);
-  }, [btype]);
+  }, [btype, websiteId, siteName, siteSlug, isPublished]);
 
   // ── Switch to an existing project ────────────────────────────────────────────
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
@@ -880,7 +914,7 @@ export default function WebsitePage() {
     } catch { /* ignore */ }
   }, [btype, siteLanguage]);
 
-  // ── Sidebar drag-resize ───────────────────────────────────────────────────────
+  // ── Panel drag-resize ─────────────────────────────────────────────────────────
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isDraggingRef.current     = true;
@@ -890,18 +924,39 @@ export default function WebsitePage() {
     document.body.style.userSelect = "none";
   }, [sidebarWidth]);
 
+  const handleChatResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isChatDraggingRef.current     = true;
+    chatDragStartXRef.current     = e.clientX;
+    chatDragStartWidthRef.current = chatWidth;
+    document.body.style.cursor     = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [chatWidth]);
+
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      const newW = Math.max(160, Math.min(340, dragStartWidthRef.current + e.clientX - dragStartXRef.current));
-      setSidebarWidth(newW);
+      if (isDraggingRef.current) {
+        const newW = Math.max(140, Math.min(320, dragStartWidthRef.current + e.clientX - dragStartXRef.current));
+        setSidebarWidth(newW);
+      }
+      if (isChatDraggingRef.current) {
+        const newW = Math.max(280, Math.min(520, chatDragStartWidthRef.current + e.clientX - chatDragStartXRef.current));
+        setChatWidth(newW);
+      }
     };
     const onMouseUp = () => {
-      if (!isDraggingRef.current) return;
-      isDraggingRef.current          = false;
-      document.body.style.cursor     = "";
-      document.body.style.userSelect = "";
-      setSidebarWidth((w) => { localStorage.setItem("vela_sidebar_width", String(w)); return w; });
+      if (isDraggingRef.current) {
+        isDraggingRef.current          = false;
+        document.body.style.cursor     = "";
+        document.body.style.userSelect = "";
+        setSidebarWidth((w) => { localStorage.setItem("wb-left-panel-width", String(w)); return w; });
+      }
+      if (isChatDraggingRef.current) {
+        isChatDraggingRef.current      = false;
+        document.body.style.cursor     = "";
+        document.body.style.userSelect = "";
+        setChatWidth((w) => { localStorage.setItem("wb-chat-width", String(w)); return w; });
+      }
     };
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup",   onMouseUp);
@@ -1090,19 +1145,22 @@ export default function WebsitePage() {
         ? "Done! Your website has been updated. Click \"Update Site\" to push it live, or keep refining."
         : "Got it — your website is ready! Check the preview →\n\nYou can say things like \"make the hero darker\", \"add a gallery section\", or upload a photo to refine it.";
 
-      // Append version card for this generation
-      const newVer: VersionRecord = {
-        id: crypto.randomUUID(),
-        label: (text.slice(0, 60) || "Initial version").trim(),
-        created_at: new Date().toISOString(), type: "generate", html: data.html,
-      };
-      setVersions((prev) => [...prev, newVer].slice(-20));
-
       const finalMsgs: Msg[] = [
         ...msgs, userMsg,
         { role: "ai", content: successMsg },
-        { role: "version" as const, content: "", version: newVer },
       ];
+
+      // Only record a version entry on initial generate, not on revisions
+      if (!built) {
+        const newVer: VersionRecord = {
+          id: crypto.randomUUID(),
+          label: (text.slice(0, 60) || "Initial version").trim(),
+          created_at: new Date().toISOString(), type: "generate", html: data.html,
+        };
+        setVersions((prev) => [...prev, newVer].slice(-20));
+        finalMsgs.push({ role: "version" as const, content: "", version: newVer });
+      }
+
       setMsgs(finalMsgs);
       persistChat(finalMsgs, contactInfo);
 
@@ -1365,7 +1423,10 @@ export default function WebsitePage() {
         </div>
 
         {/* LEFT: Chat */}
-        <div className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full md:w-[320px] flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0`}>
+        <div
+          className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0 relative`}
+          style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
+        >
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {msgs.map((msg, i) => {
@@ -1499,10 +1560,18 @@ export default function WebsitePage() {
               </button>
             </div>
           </div>
+
+          {/* Chat drag-to-resize handle */}
+          <div
+            onMouseDown={handleChatResizeMouseDown}
+            className="hidden md:flex absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 items-center justify-center group/chat-handle"
+          >
+            <div className="w-px h-10 bg-transparent group-hover/chat-handle:bg-[#FF6B35]/40 transition-colors rounded-full" />
+          </div>
         </div>
 
         {/* RIGHT: Preview / Code */}
-        <div className={`${activeTab === "chat" ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden min-h-0`}>
+        <div className={`${activeTab === "chat" ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden min-h-0 min-w-[400px]`}>
           {/* Top bar */}
           <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -1610,6 +1679,31 @@ export default function WebsitePage() {
           </div>
         </div>
       </div>
+
+      {/* New Website Confirmation Modal */}
+      {showNewWebsiteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">Start a new website?</h2>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+              Your current project will be saved in the sidebar — you can switch back anytime.
+            </p>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setShowNewWebsiteModal(false)}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmNewWebsite}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+                style={{ background: "var(--vp-color)" }}>
+                New Website
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

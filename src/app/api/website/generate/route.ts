@@ -725,6 +725,7 @@ export async function POST(req: NextRequest) {
   const { message, currentHtml, images = [], contactInfo } = body;
   const language = (typeof body.language === "string" ? body.language.trim() : "") || "English";
   const clientWebsiteId = typeof body.websiteId === "string" ? body.websiteId : null;
+  const isGenerate = !currentHtml;
 
   if (!message?.trim() && images.length === 0) {
     return NextResponse.json({ error: "Message required" }, { status: 400 });
@@ -1016,52 +1017,57 @@ export async function POST(req: NextRequest) {
         .eq("id", websiteId);
       if (draftErr) console.error("[website/generate] draft save error:", draftErr.message);
 
-      // Append version to tenant_config.website_versions (capped at 20)
-      const versionLabel = (msgText.slice(0, 60) || "Initial version").trim();
-
-      const { data: tcData } = await admin
-        .from("tenant_config")
-        .select("website_versions")
-        .eq("tenant_id", tenant.id)
-        .maybeSingle();
-
-      const existingVersions: VersionEntry[] =
-        Array.isArray((tcData as Record<string, unknown> | null)?.website_versions)
-          ? ((tcData as Record<string, unknown>).website_versions as VersionEntry[])
-          : [];
-
-      const newVersion: VersionEntry = {
-        id:         crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-        label:      versionLabel,
-        type:       "generate",
-        html,
-        structure:  spec as unknown as Record<string, unknown>,
-      };
-
-      const updatedVersions = [...existingVersions, newVersion].slice(-20);
-
-      // Also keep website_versions table for backward compat
-      const { error: versionErr } = await admin
-        .from("website_versions")
-        .insert({
-          website_id: websiteId,
-          spec:       spec as unknown as Record<string, unknown>,
-          html,
-          label:      versionLabel,
-        });
-      if (versionErr) console.error("[website/generate] version save error:", versionErr.message);
-
-      // Single upsert: html + slug + versions + chat + intake
+      // Single upsert: html + slug + chat + intake (versions only on initial generate)
       const tcUpsert: Record<string, unknown> = {
-        tenant_id:        tenant.id,
-        website_html:     html,
-        website_slug:     siteSlug || null,
-        website_versions: updatedVersions,
+        tenant_id:    tenant.id,
+        website_html: html,
+        website_slug: siteSlug || null,
       };
       if (Array.isArray(body.chat))  tcUpsert.website_chat   = body.chat;
       // Always persist the effective language (may have been verbally stated instead of UI-picked)
       tcUpsert.website_intake = { ...(body.intake ?? {}), language: effectiveLanguage };
+
+      // Only record a version entry on initial generate, not on revisions
+      if (isGenerate) {
+        const versionLabel = (msgText.slice(0, 60) || "Initial version").trim();
+
+        const { data: tcData } = await admin
+          .from("tenant_config")
+          .select("website_versions")
+          .eq("tenant_id", tenant.id)
+          .maybeSingle();
+
+        const existingVersions: VersionEntry[] =
+          Array.isArray((tcData as Record<string, unknown> | null)?.website_versions)
+            ? ((tcData as Record<string, unknown>).website_versions as VersionEntry[])
+            : [];
+
+        // Deduplication: skip if the last entry already has this label
+        const lastLabel = existingVersions[existingVersions.length - 1]?.label;
+        if (lastLabel !== versionLabel) {
+          const newVersion: VersionEntry = {
+            id:         crypto.randomUUID(),
+            created_at: new Date().toISOString(),
+            label:      versionLabel,
+            type:       "generate",
+            html,
+            structure:  spec as unknown as Record<string, unknown>,
+          };
+
+          tcUpsert.website_versions = [...existingVersions, newVersion].slice(-20);
+
+          // Also keep website_versions table for backward compat
+          const { error: versionErr } = await admin
+            .from("website_versions")
+            .insert({
+              website_id: websiteId,
+              spec:       spec as unknown as Record<string, unknown>,
+              html,
+              label:      versionLabel,
+            });
+          if (versionErr) console.error("[website/generate] version save error:", versionErr.message);
+        }
+      }
 
       const { error: configErr } = await admin
         .from("tenant_config")
