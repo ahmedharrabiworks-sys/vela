@@ -516,10 +516,13 @@ REQUIRED FIELDS — collect in this exact order, one question per turn:
 
 3. WHAT THEY DO — their main services, specialties, or products
    Skip ONLY if: clearly described in the conversation.
-   Also skip if the business type is a universally-understood category (e.g. "dental clinic", "hair salon", "gym", "restaurant") — the category itself implies the services.
+   Also skip ONLY for truly self-explanatory businesses where the category name alone tells you everything needed for website copy. ONLY these qualify: dentist / dental clinic, hair salon, barbershop, gym / fitness studio, restaurant, café, coffee shop, bakery, pharmacy, supermarket, hotel, nail salon.
+   NEVER skip for: real estate agency, law firm / legal services, accounting firm, financial advisor, consulting firm, architecture firm, construction company, medical clinic (non-dentist), specialist doctor, IT company, marketing agency, e-commerce store, or any business where the specific offerings materially affect the website copy.
 
-4. LOCATION OR CONTACT — city, neighbourhood, phone, or email
-   Skip ONLY if: any location or contact detail already appears in the conversation.
+4. CONTACT DETAILS — phone number or email address
+   Skip ONLY if: a phone number OR an email address is already stated in the conversation.
+   A city name, country name, or neighbourhood alone does NOT satisfy this — contact means reachable via phone or email.
+   Exception: if the user explicitly says they don't want to add contact info (e.g. "skip", "no", "I'll add it later"), that counts as answered — proceed to generate.
 
 ABSOLUTE RULES:
 - Ask ONE question per turn in the order above. Never combine two questions.
@@ -959,14 +962,18 @@ export async function POST(req: NextRequest) {
       }
 
       if (!websiteId) {
-        // Default: use the first/only existing site for this tenant
-        const first = sites[0];
-        if (first) {
-          websiteId       = first.id;
-          siteSlug        = first.slug;
-          siteName        = first.name;
-          siteIsPublished = first.is_published;
-        } else {
+        // For revisions without a websiteId (edge case), fall back to the existing site.
+        // For new generates (isGenerate=true), always create a fresh website — never reuse.
+        if (!isGenerate) {
+          const first = sites[0];
+          if (first) {
+            websiteId       = first.id;
+            siteSlug        = first.slug;
+            siteName        = first.name;
+            siteIsPublished = first.is_published;
+          }
+        }
+        if (!websiteId) {
           // Creating a brand-new website — check plan limit
           const planId = (tenant?.plan as string | undefined) ?? "starter";
           const limit  = PLAN_WEBSITE_LIMITS[planId] ?? 1;

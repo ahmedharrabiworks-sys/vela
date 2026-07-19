@@ -11,6 +11,7 @@ type DnsRecord     = { type: string; name: string; value: string };
 type VersionRecord = {
   id:         string;
   label:      string;
+  siteName?:  string;
   created_at: string;
   type:       "generate" | "publish";
   html:       string;
@@ -800,6 +801,7 @@ export default function WebsitePage() {
       // Append published version card to chat
       const publishVer: VersionRecord = {
         id: crypto.randomUUID(), label: "Published",
+        siteName: siteName || undefined,
         created_at: new Date().toISOString(), type: "publish", html: currentHtml,
       };
       setVersions((prev) => [...prev, publishVer].slice(-20));
@@ -881,7 +883,6 @@ export default function WebsitePage() {
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
     setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug("");
     setWebsiteId(null); websiteIdRef.current = null;
-    setVersions([]);
     // Clear persisted language so the language picker re-appears for the new project
     setSiteLanguage("");
     if (typeof window !== "undefined") localStorage.removeItem("vela_site_language");
@@ -1155,6 +1156,7 @@ export default function WebsitePage() {
         const newVer: VersionRecord = {
           id: crypto.randomUUID(),
           label: (text.slice(0, 60) || "Initial version").trim(),
+          siteName: data.name || siteName || undefined,
           created_at: new Date().toISOString(), type: "generate", html: data.html,
         };
         setVersions((prev) => [...prev, newVer].slice(-20));
@@ -1392,7 +1394,7 @@ export default function WebsitePage() {
                     onClick={i !== 0 ? () => handlePreviewVersion(v) : undefined}
                   >
                     <p className="text-[10px] font-medium text-[#374151] dark:text-[#9CA3AF] truncate leading-tight">
-                      {siteName || v.label}
+                      {v.siteName || siteName || v.label}
                     </p>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</span>
