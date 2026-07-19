@@ -213,9 +213,21 @@ function extractSpec(html: string): WebsiteSpec | null {
 }
 
 // ── Coerce preset ─────────────────────────────────────────────────────────────
-const VALID_PRESETS: PresetName[] = ["editorial", "bold", "clean", "clinical"];
+const VALID_PRESETS: PresetName[] = [
+  "editorial-luxury", "minimal-warm", "saas-sharp", "estate-elegant", "clinical-bright",
+  // legacy names — resolveTokens maps them to new names
+  "editorial", "bold", "clean", "clinical",
+];
+const LEGACY_PRESET: Record<string, PresetName> = {
+  editorial: "editorial-luxury",
+  bold:      "saas-sharp",
+  clean:     "estate-elegant",
+  clinical:  "clinical-bright",
+};
 function coercePreset(v: unknown): PresetName {
-  return VALID_PRESETS.includes(v as PresetName) ? (v as PresetName) : "clean";
+  const s = String(v ?? "");
+  if (VALID_PRESETS.includes(s as PresetName)) return (LEGACY_PRESET[s] ?? s) as PresetName;
+  return "estate-elegant";
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -275,40 +287,67 @@ PART 2 — STYLE PRESET + ACCENT COLOR (BOTH required)
 ═══════════════════════════════════════════════════════
 
 JSON ROOT:
-{ "stylePreset": "editorial"|"bold"|"clean"|"clinical", "accentColor": "#HEXCODE", "businessName": string, "sections": SectionSpec[] }
+{ "stylePreset": "editorial-luxury"|"minimal-warm"|"saas-sharp"|"estate-elegant"|"clinical-bright", "accentColor": "#HEXCODE", "businessName": string, "sections": SectionSpec[] }
 
 You MUST set both "stylePreset" AND "accentColor". Never omit either.
 
-PRESETS:
-• "editorial" → luxury salons, interior design studios, boutique hotels, high-end photography, fine dining, jewellery
-• "bold"      → gyms, crossfit boxes, martial arts, fitness studios, nightclubs, automotive, sports brands
-• "clean"     → real estate agencies, law firms, financial advisors, corporate services, tech startups, architects
-• "clinical"  → dental clinics, medical practices, dermatology, cosmetic clinics, physiotherapy, wellness centres
+FIVE DESIGN PRESETS — each produces a structurally different site:
+
+• "editorial-luxury"
+  LOOK: Dark near-black bg, oversized Cormorant Garamond (light weight), full-bleed photography with text at bottom-left, champagne-gold accent, zero chrome. Modelled on Kelly Wearstler.
+  USE FOR: Luxury salons, interior design studios, boutique hotels, fine dining, jewellery, high-end photography, luxury fashion boutiques.
+
+• "minimal-warm"
+  LOOK: Warm parchment/cream bg (#F5F0E8), DM Serif Display at restrained scale, split-layout hero (text left + photo right), very generous whitespace. Modelled on Aesop.
+  USE FOR: Spas, yoga studios, organic cafés, bakeries, artisan food & drink, holistic wellness, home décor, florists.
+
+• "saas-sharp"
+  LOOK: Cool near-black bg, tight Inter, centered hero with radial violet/accent glow (no full-bleed photo), feature grid cards with gradient borders. Modelled on Linear.
+  USE FOR: Tech startups, SaaS products, digital agencies, co-working spaces, gyms (modern), fitness studios, sports brands, automotive.
+
+• "estate-elegant"
+  LOOK: Warm near-white bg, Cormorant Garamond at medium weight, full-bleed landscape hero with centered text overlay, gold/navy restraint. Modelled on Sotheby's Realty.
+  USE FOR: Real estate agencies, law firms, financial advisors, architects, wealth management, corporate consulting, luxury property developers.
+
+• "clinical-bright"
+  LOOK: Pure white bg, bright sky-blue accent, rounded friendly cards with icon circles, split hero with photo, clear CTA hierarchy. Modelled on SmileSet dental.
+  USE FOR: Dental clinics, medical practices, dermatology, physiotherapy, cosmetic clinics, opticians, veterinary clinics, health & wellness centres.
+
+CATEGORY → PRESET MAPPING (pick from candidates; style words from the owner break ties):
+  Real estate agency, property developer → "estate-elegant" (default) or "editorial-luxury" (luxury/boutique angle)
+  Law firm, financial advisor, architect, consultant → "estate-elegant"
+  Dental, medical, physio, dermatology, cosmetic clinic → "clinical-bright"
+  Gym, CrossFit, martial arts, sports brand, fitness studio → "saas-sharp"
+  Tech startup, SaaS, digital agency, co-working → "saas-sharp"
+  Luxury salon, interior design, boutique hotel, fine dining, jewellery → "editorial-luxury"
+  Spa, yoga, organic café, bakery, holistic wellness, florist → "minimal-warm"
+  Restaurant (casual/modern) → "minimal-warm" (warm/artisanal) or "editorial-luxury" (luxury)
+  Hair salon / barbershop → "editorial-luxury" (premium) or "minimal-warm" (soft/organic)
 
 ACCENT COLOR — pick from this curated palette ONLY. Never invent a hex code outside this table.
 Two different businesses must not get the same accent unless it genuinely matches both.
 Match on industry specifics (e.g. a rustic restaurant ≠ same accent as a modern one):
 
-EARTHY / WARM (salons, spas, bakeries, warm restaurants, interior design, jewellery):
+EARTHY / WARM (spas, bakeries, warm restaurants, interior design, organic cafés, florists):
   #8B6347 terracotta  |  #A0522D sienna  |  #C4793D amber clay  |  #9C6E3F antique gold
 
-LUXURY (high-end hotels, fine dining, premium fashion, wealth management):
-  #B8860B dark gold  |  #6B4423 walnut  |  #8D7047 champagne bronze  |  #7C5C3D warm walnut
+LUXURY (high-end hotels, fine dining, premium fashion, wealth management, jewellery):
+  #C4A882 champagne  |  #B8860B dark gold  |  #8D7047 champagne bronze  |  #7C5C3D warm walnut
 
 VIVID / BOLD (gyms, martial arts, sports, automotive, nightlife, street food):
   #E8390E fire red  |  #C41E3A crimson  |  #FF4F1F coral  |  #D4380D burnt orange
 
-PROFESSIONAL / COOL (real estate, law, finance, consulting, tech, architecture):
-  #1A56DB cobalt  |  #0F52BA royal blue  |  #1E3A8A deep navy  |  #2563EB primary blue
+SAAS / TECH / FITNESS (tech startups, SaaS, digital agencies, modern gyms, co-working):
+  #7C3AED violet  |  #9333EA purple  |  #6366F1 indigo  |  #4F46E5 deep indigo
+
+PROFESSIONAL / COOL (real estate, law, finance, consulting, architecture):
+  #8D6E3F aged gold  |  #1A56DB cobalt  |  #1E3A8A deep navy  |  #2563EB primary blue
 
 CLINICAL / HEALTH (dental, medical, dermatology, physiotherapy, health clinics):
   #0070C9 sky blue  |  #0EA5E9 bright azure  |  #0891B2 teal blue  |  #0284C7 ocean
 
 WELLNESS / NATURE (yoga studios, holistic health, organic cafés, wellness retreats):
   #16A34A sage  |  #059669 emerald  |  #0D9488 teal  |  #15803D forest
-
-CREATIVE / FRESH (co-working spaces, creative agencies, education, photography studios):
-  #7C3AED violet  |  #9333EA purple  |  #0EA5E9 sky  |  #0D9488 teal
 
 If the owner mentions a brand color (e.g. "our logo is green"), pick the closest hex from this table.
 Do NOT use any hex code not in this list.
@@ -467,29 +506,35 @@ PART 6 — REQUIRED SECTION ORDER PER PRESET
 The section sequence is part of the design. Follow the required order for the chosen preset.
 Deviate ONLY if the business genuinely has no content for an optional section — mark it omitted, don't pad with invented content.
 
-"clinical" (dental, medical, dermatology, physio, wellness clinics):
+"clinical-bright" (dental, medical, dermatology, physio, opticians, vet clinics, health centres):
   REQUIRED:    hero → services → faq → team → booking → footer
   REASONING:   Patients need to know what's offered and have questions answered before they trust a practice.
   OPTIONAL:    about (after services), gallery (after team — before/after treatment photos)
   NEVER:       cta_banner, gallery before trust sections
 
-"bold" (gyms, crossfit, martial arts, fitness studios, nightclubs, sports brands):
-  REQUIRED:    hero → cta_banner → services → team → gallery → booking → footer
-  REASONING:   Energy first, then urgency, then what you offer, then the people and proof, then conversion.
-  OPTIONAL:    about (after services — keep it short, brand story only)
-  NEVER:       faq (kills the energy), gallery before team
+"saas-sharp" (gyms, CrossFit, fitness studios, tech startups, SaaS, digital agencies, sports brands, co-working):
+  REQUIRED:    hero → services → cta_banner → about → booking → footer
+  REASONING:   Hook with the hero glow, show features, create urgency, give brief context, then convert.
+  OPTIONAL:    team (after about), gallery (after team — action/lifestyle photos for gyms)
+  NEVER:       faq (kills momentum for energy brands)
 
-"editorial" (luxury salons, fine dining, boutique hotels, high-end photography, interior design, jewellery):
+"editorial-luxury" (luxury salons, fine dining, boutique hotels, interior design, jewellery, high-end photography):
   REQUIRED:    hero → gallery → services → about → booking → footer
   REASONING:   Aesthetics sell first. Show the work before explaining it. Story comes after.
   OPTIONAL:    team (after about — stylist/chef intros), cta_banner (before booking only)
   NEVER:       faq, cta_banner at the top
 
-"clean" (real estate, law firms, financial advisors, tech startups, architects, corporate services):
+"minimal-warm" (spas, yoga studios, organic cafés, bakeries, florists, holistic wellness, artisan food & drink):
+  REQUIRED:    hero → services → about → gallery → booking → footer
+  REASONING:   Gentle entry, calm rhythm. Let the products/offerings land, then the brand story, then visuals, then CTA.
+  OPTIONAL:    team (after gallery), cta_banner (before booking only)
+  NEVER:       faq, cta_banner at the top
+
+"estate-elegant" (real estate agencies, law firms, financial advisors, architects, corporate consultants):
   REQUIRED:    hero → services → about → faq → booking → footer
   REASONING:   Credibility-first. Lead with the offer, build context, answer objections, then convert.
   OPTIONAL:    team (after about), cta_banner (before booking only), gallery (for real estate/architecture only)
-  NEVER:       gallery for non-visual businesses`;
+  NEVER:       gallery for non-visual businesses (no gallery for law firms, finance, etc.)`;
 }
 
 const REVISE_SYSTEM = `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
