@@ -63,19 +63,19 @@ function resolveLocale(saved: string | null): string {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<string>("en");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("vela_lang");
-    const code = resolveLocale(saved);
-    setLocaleState(code);
-    applyDir(code);
-  }, []);
+  const [locale, setLocaleState] = useState<string>(() => {
+    if (typeof window === "undefined") return "en";
+    return resolveLocale(localStorage.getItem("vela_lang"));
+  });
 
   function applyDir(code: string) {
     document.documentElement.setAttribute("dir", code === "ar" ? "rtl" : "ltr");
     document.documentElement.setAttribute("lang", code);
   }
+
+  useEffect(() => {
+    applyDir(locale);
+  }, [locale]);
 
   const setLocale = (lang: string) => {
     const code = resolveLocale(lang);

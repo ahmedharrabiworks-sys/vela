@@ -228,7 +228,7 @@ export function VelaAssistant() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 end-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+        className="fixed bottom-6 right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
         style={{ background: "var(--vela-gradient)" }}
         aria-label="Open Vela AI Assistant"
       >
@@ -255,7 +255,7 @@ export function VelaAssistant() {
           {/* Panel */}
           <div
             ref={panelRef}
-            className="fixed z-[142] inset-0 sm:inset-auto sm:end-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
+            className="fixed z-[142] inset-0 sm:inset-auto sm:right-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
             style={{ maxHeight: "calc(100vh - 120px)", minHeight: "400px" }}
           >
             {/* Header */}
@@ -302,13 +302,7 @@ export function VelaAssistant() {
                   {QUICK_ACTIONS.map((qa) => (
                     <button
                       key={qa.label}
-                      onClick={() => {
-                        if (qa.isInterview) {
-                          send("I want to train my AI — please start the interview now.", true);
-                        } else {
-                          send(qa.message);
-                        }
-                      }}
+                      onClick={() => send(qa.message, qa.isInterview)}
                       className={`text-[11px] px-2.5 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
                         qa.isInterview
                           ? "border-[#FF6B35] text-[#FF6B35] bg-[#FFF5F0] hover:bg-[#FF6B35] hover:text-white font-semibold"
@@ -327,6 +321,7 @@ export function VelaAssistant() {
                   {msg.role === "assistant" && <VAvatar size={24} mt />}
                   <div className={`flex flex-col max-w-[82%]${msg.role === "assistant" ? " ml-2" : ""}`}>
                     <div
+                      dir="auto"
                       className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                         msg.role === "user"
                           ? "text-white rounded-br-sm"

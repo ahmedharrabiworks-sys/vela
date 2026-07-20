@@ -222,6 +222,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <aside
+      dir="ltr"
       className={`
         flex flex-col h-screen shrink-0
         fixed inset-y-0 left-0 md:relative md:inset-auto
