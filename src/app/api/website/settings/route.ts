@@ -121,3 +121,37 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json(updated);
 }
+
+// ── DELETE /api/website/settings ──────────────────────────────────────────────
+export async function DELETE(req: NextRequest) {
+  const body = await req.json().catch(() => ({})) as { websiteId?: string };
+
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const admin = createSupabaseAdmin() as AdminClient;
+
+  const { data: tenant } = await admin
+    .from("tenants").select("id").eq("owner_id", user.id).maybeSingle();
+  if (!tenant?.id) return NextResponse.json({ error: "No tenant found" }, { status: 404 });
+
+  const websiteId = typeof body.websiteId === "string" ? body.websiteId.trim() : "";
+  if (!websiteId) return NextResponse.json({ error: "websiteId required" }, { status: 400 });
+
+  // Verify ownership before deletion
+  const { data: site } = await admin
+    .from("websites")
+    .select("id")
+    .eq("id", websiteId)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+  if (!site) return NextResponse.json({ error: "Website not found" }, { status: 404 });
+
+  // Delete version history first (FK constraint)
+  await admin.from("website_versions").delete().eq("website_id", websiteId);
+  // Delete the website record
+  await admin.from("websites").delete().eq("id", websiteId);
+
+  return NextResponse.json({ ok: true });
+}

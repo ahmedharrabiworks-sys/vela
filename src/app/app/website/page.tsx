@@ -17,7 +17,7 @@ type VersionRecord = {
   html:       string;
 };
 
-type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean; published_url?: string | null };
+type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean; published_url?: string | null; updated_at?: string | null };
 
 // Chat messages include both AI/user text, inline version cards, and session separators
 type Msg = {
@@ -633,6 +633,10 @@ export default function WebsitePage() {
   const [renamingId, setRenamingId]   = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  // ── Versions panel (inside chat) + Delete confirm modal ───────────────────────
+  const [showVersionsPanel, setShowVersionsPanel] = useState(false);
+  const [deleteTarget, setDeleteTarget]           = useState<WebsiteProject | null>(null);
+
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const bottomRef    = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -841,6 +845,8 @@ export default function WebsitePage() {
   const handleConfirmNewWebsite = useCallback(() => {
     setShowNewWebsiteModal(false);
 
+    setShowVersionsPanel(false);
+
     // Ensure the active project is in the sidebar before clearing websiteId
     if (websiteId) {
       const currentProject: WebsiteProject = {
@@ -849,6 +855,7 @@ export default function WebsitePage() {
         slug:          siteSlug || null,
         is_published:  isPublished,
         published_url: isPublished ? (siteSlug ? `/site/${siteSlug}` : null) : null,
+        updated_at:    new Date().toISOString(),
       };
       setProjects((prev) => {
         const idx = prev.findIndex((p) => p.id === websiteId);
@@ -877,6 +884,7 @@ export default function WebsitePage() {
   // ── Switch to an existing project ────────────────────────────────────────────
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
     if (p.id === websiteIdRef.current) return;
+    setShowVersionsPanel(false);
     setBuilding(false); setBuilt(false); setDraftDiffers(false);
     setHtml(""); htmlRef.current = ""; setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
@@ -984,19 +992,32 @@ export default function WebsitePage() {
 
   const handleDeleteProject = useCallback((p: WebsiteProject) => {
     setMenuOpenId(null);
-    if (!confirm(`Delete "${p.name ?? "this site"}"? This cannot be undone.`)) return;
+    setDeleteTarget(p);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    const p = deleteTarget;
+    if (!p) return;
+    setDeleteTarget(null);
     const wasActive = p.id === websiteIdRef.current;
     setProjects((prev) => prev.filter((proj) => proj.id !== p.id));
     if (wasActive) {
       setHtml(""); htmlRef.current = "";
       setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
       setWebsiteId(null); websiteIdRef.current = null;
-      setVersions([]); setSiteName(""); setSiteSlug("");
+      setVersions([]); setSiteName(""); setSiteSlug(""); setShowVersionsPanel(false);
       setIsPublished(false); setPublishedUrl("");
       setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
       setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
     }
-  }, [btype, siteLanguage]);
+    try {
+      await fetch("/api/website/settings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: p.id }),
+      });
+    } catch { /* ignore — UI already updated */ }
+  }, [deleteTarget, btype, siteLanguage]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1115,6 +1136,7 @@ export default function WebsitePage() {
             slug: data.slug ?? null,
             is_published: data.isPublished ?? false,
             published_url: (data.isPublished && data.slug) ? `/site/${data.slug}` : undefined,
+            updated_at: new Date().toISOString(),
           };
           const idx = prev.findIndex((p) => p.id === wId);
           return idx >= 0 ? prev.map((p, i) => i === idx ? entry : p) : [...prev, entry];
@@ -1275,12 +1297,12 @@ export default function WebsitePage() {
       {/* Main layout: sidebar + chat + preview */}
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
-        {/* SIDEBAR: Project list + version history (desktop only) */}
+        {/* SIDEBAR: Sites list (desktop only) — one row per site, Lovable-style */}
         <div
           className="hidden md:flex flex-col bg-white dark:bg-[#17171C] border-r border-[#EBEBEB] dark:border-[#2A2A32] overflow-hidden shrink-0 relative"
           style={{ width: sidebarWidth }}
         >
-          {/* Header row */}
+          {/* Header */}
           <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Sites</span>
             <button onClick={handleNewWebsite} title="New website"
@@ -1291,17 +1313,19 @@ export default function WebsitePage() {
             </button>
           </div>
 
-          {/* Scrollable project + version list */}
+          {/* Scrollable site list — one row per site */}
           <div className="flex-1 overflow-y-auto">
-            {/* "New Project" placeholder when nothing is saved yet */}
+
+            {/* "New Project" placeholder: active unsaved session (no websiteId yet) */}
             {!websiteId && (
-              <div className="border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14] pl-2 pr-2.5 py-1.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#D1D5DB]" />
-                <span className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">New Project</span>
+              <div className="border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14] pl-2.5 pr-2 flex items-center" style={{ minHeight: 34 }}>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] font-semibold text-[#111111] dark:text-white truncate block leading-tight">New Project</span>
+                </div>
               </div>
             )}
 
-            {/* Saved projects */}
+            {/* Site rows */}
             {projects.map((p) => {
               const isActive   = p.id === websiteId;
               const isRenaming = renamingId === p.id;
@@ -1309,10 +1333,13 @@ export default function WebsitePage() {
               return (
                 <div
                   key={p.id}
-                  className={`group relative flex items-center transition-colors hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24] ${isActive ? "border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14]" : "border-l-2 border-transparent"}`}
+                  className={`group relative flex items-center transition-colors hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24] ${
+                    isActive ? "border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14]" : "border-l-2 border-transparent"
+                  }`}
+                  style={{ minHeight: 34 }}
                 >
                   {isRenaming ? (
-                    <div className="flex-1 px-2 py-1.5">
+                    <div className="flex-1 px-2 py-1">
                       <input
                         autoFocus
                         value={renameValue}
@@ -1328,14 +1355,21 @@ export default function WebsitePage() {
                   ) : (
                     <button
                       onClick={() => handleSwitchProject(p)}
-                      className="flex-1 text-left pl-2 pr-1 py-1.5 flex items-center gap-1.5 min-w-0"
+                      className="flex-1 text-left pl-2.5 pr-1 py-1.5 flex flex-col justify-center min-w-0"
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.is_published ? "bg-green-400" : "bg-[#D1D5DB]"}`} />
-                      <span className={`text-[11px] truncate leading-tight ${isActive ? "font-semibold text-[#111111] dark:text-white" : "text-[#555] dark:text-[#9CA3AF]"}`}>
+                      <span className={`text-[13px] leading-tight truncate ${
+                        isActive ? "font-semibold text-[#111111] dark:text-white" : "font-medium text-[#374151] dark:text-[#9CA3AF]"
+                      }`}>
                         {p.name || "Untitled"}
                       </span>
+                      {p.updated_at && (
+                        <span className="text-[11px] text-[#9CA3AF] leading-tight mt-0.5">
+                          {timeAgo(p.updated_at)}
+                        </span>
+                      )}
                     </button>
                   )}
+
                   {/* ⋯ menu trigger */}
                   {!isRenaming && (
                     <button
@@ -1348,16 +1382,26 @@ export default function WebsitePage() {
                       </svg>
                     </button>
                   )}
-                  {/* ⋯ dropdown */}
+
+                  {/* ⋯ dropdown — Open / Rename / Delete */}
                   {menuOpen && (
                     <div
                       onMouseDown={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-full mt-0.5 z-50 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-lg py-1 w-24"
+                      className="absolute right-0 top-full mt-0.5 z-50 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-lg py-1 w-28"
                     >
-                      <button onClick={() => handleStartRename(p)} className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+                      <button
+                        onClick={() => { setMenuOpenId(null); handleSwitchProject(p); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+                        Open
+                      </button>
+                      <button
+                        onClick={() => handleStartRename(p)}
+                        className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
                         Rename
                       </button>
-                      <button onClick={() => handleDeleteProject(p)} className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
+                      <button
+                        onClick={() => handleDeleteProject(p)}
+                        className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
                         Delete
                       </button>
                     </div>
@@ -1365,39 +1409,6 @@ export default function WebsitePage() {
                 </div>
               );
             })}
-
-            {/* Version history for the active project */}
-            {versions.length > 0 && (
-              <>
-                <div className="px-2.5 pt-2.5 pb-1 mt-1 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
-                  <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">History</span>
-                </div>
-                {versions.slice().reverse().slice(0, 6).map((v, i) => (
-                  <div
-                    key={v.id}
-                    className={`group px-2.5 py-1.5 border-b border-[#F9FAFB] dark:border-[#1E1E24] last:border-0 ${i !== 0 ? "cursor-pointer hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24]" : ""}`}
-                    onClick={i !== 0 ? () => handlePreviewVersion(v) : undefined}
-                  >
-                    <p className="text-[10px] font-medium text-[#374151] dark:text-[#9CA3AF] truncate leading-tight">
-                      {v.siteName || siteName || v.label}
-                    </p>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <span className="text-[9px] text-[#9CA3AF]">{timeAgo(v.created_at)}</span>
-                      {i === 0 ? (
-                        <span className="text-[9px] text-[#9CA3AF]">Current</span>
-                      ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRestoreVersion(v); }}
-                          disabled={restoringVersion === v.id}
-                          className="hidden group-hover:block text-[9px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40">
-                          {restoringVersion === v.id ? "…" : "Restore"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
           </div>
 
           {/* Drag-to-resize handle */}
@@ -1415,65 +1426,126 @@ export default function WebsitePage() {
           style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
         >
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {msgs.map((msg, i) => {
-              // Session separator — "New website" divider
-              if (msg.isSeparator) {
-                return (
-                  <div key={i} className="flex items-center gap-3 py-1">
-                    <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
-                    <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-full border border-[#E5E7EB] dark:border-[#2A2A32]">
-                      New website
-                    </span>
-                    <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
-                  </div>
-                );
-              }
+          {/* Versions toggle — only shown when the site is built and has version history */}
+          {built && versions.length > 0 && (
+            <div className="flex items-center justify-end px-4 pt-2.5 pb-0 shrink-0">
+              <button
+                onClick={() => setShowVersionsPanel((v) => !v)}
+                className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {showVersionsPanel ? "← Chat" : `Versions (${versions.length})`}
+              </button>
+            </div>
+          )}
 
-              // Version cards are shown in the sidebar — skip them in the chat feed
-              if (msg.role === "version") return null;
-
-              return (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "ai" && (
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5"
-                      style={{ background: "var(--vela-gradient)" }}>
-                      <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                        <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  )}
-                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-[#FF6B35] text-white rounded-tr-sm"
-                      : msg.isError
-                      ? "bg-red-50 dark:bg-red-950/40 text-[#991B1B] dark:text-red-400 rounded-tl-sm border border-red-100 dark:border-red-900/50"
-                      : "bg-[#F9FAFB] dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] rounded-tl-sm border border-[#F3F4F6] dark:border-[#2A2A32]"
-                  } ${msg.isBuilding ? "animate-pulse" : ""}`}>
-                    {msg.isBuilding ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                        <span className="text-[#6B7280] dark:text-[#9CA3AF]">{msg.content}</span>
-                      </div>
+          {showVersionsPanel ? (
+            /* ── Versions panel ──────────────────────────────────────────── */
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest mb-2 px-1">Version History</p>
+              {versions.slice().reverse().map((v, i) => (
+                <div key={v.id} className="flex items-start gap-3 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
+                    {v.type === "publish" ? (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                     ) : (
-                      <>
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                        {msg.images && msg.images.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {msg.images.map((src, idx) => (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img key={idx} src={src} alt="" className="w-14 h-14 rounded-lg object-cover border border-white/30" />
-                            ))}
-                          </div>
-                        )}
-                      </>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3 9 21 9"/></svg>
                     )}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">{v.label}</p>
+                      {v.type === "publish" && <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">Published</span>}
+                    </div>
+                    <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
+                  </div>
+                  {i === 0 ? (
+                    <span className="text-[10px] font-medium text-[#9CA3AF] shrink-0 mt-0.5">Current</span>
+                  ) : (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => { handlePreviewVersion(v); setShowVersionsPanel(false); }}
+                        disabled={previewingVersion === v.id}
+                        className="text-[10px] font-semibold text-[#6B7280] hover:text-[#111111] dark:hover:text-white disabled:opacity-40 transition-colors"
+                      >
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => { handleRestoreVersion(v); setShowVersionsPanel(false); }}
+                        disabled={restoringVersion === v.id}
+                        className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40"
+                      >
+                        {restoringVersion === v.id ? "…" : "Restore"}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-            <div ref={bottomRef} />
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* ── Chat messages ───────────────────────────────────────────── */
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {msgs.map((msg, i) => {
+                // Session separator — "New website" divider
+                if (msg.isSeparator) {
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-1">
+                      <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
+                      <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-full border border-[#E5E7EB] dark:border-[#2A2A32]">
+                        New website
+                      </span>
+                      <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
+                    </div>
+                  );
+                }
+
+                // Version role is not rendered in the chat feed
+                if (msg.role === "version") return null;
+
+                return (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {msg.role === "ai" && (
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5"
+                        style={{ background: "var(--vela-gradient)" }}>
+                        <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                          <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    )}
+                    <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-[#FF6B35] text-white rounded-tr-sm"
+                        : msg.isError
+                        ? "bg-red-50 dark:bg-red-950/40 text-[#991B1B] dark:text-red-400 rounded-tl-sm border border-red-100 dark:border-red-900/50"
+                        : "bg-[#F9FAFB] dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] rounded-tl-sm border border-[#F3F4F6] dark:border-[#2A2A32]"
+                    } ${msg.isBuilding ? "animate-pulse" : ""}`}>
+                      {msg.isBuilding ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                          <span className="text-[#6B7280] dark:text-[#9CA3AF]">{msg.content}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                          {msg.images && msg.images.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {msg.images.map((src, idx) => (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img key={idx} src={src} alt="" className="w-14 h-14 rounded-lg object-cover border border-white/30" />
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+          )}
 
           {/* Language picker — only for fresh (not-yet-built) sessions */}
           {!built && msgs.filter((m) => m.role === "user").length === 0 && !siteLanguage && (
@@ -1686,6 +1758,32 @@ export default function WebsitePage() {
                 className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
                 style={{ background: "var(--vp-color)" }}>
                 New Website
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Site Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">
+              Delete &ldquo;{deleteTarget.name ?? "this site"}&rdquo;?
+            </h2>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+              Its published page will go offline. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors">
+                Delete
               </button>
             </div>
           </div>
