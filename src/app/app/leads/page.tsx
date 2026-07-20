@@ -119,7 +119,11 @@ export default function LeadsPage() {
             </p>
           )}
         </div>
-        <button className="text-xs font-bold px-4 py-2.5 min-h-[40px] rounded-xl text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>
+        <button
+          disabled
+          title="Leads are captured automatically when customers contact you through connected channels"
+          className="text-xs font-bold px-4 py-2.5 min-h-[40px] rounded-xl text-white opacity-40 cursor-not-allowed"
+          style={{ background: "var(--vp-color)" }}>
           {t("leads.addLead")}
         </button>
       </div>

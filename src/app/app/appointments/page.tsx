@@ -69,15 +69,30 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
   );
 }
 
-function MessageModal({ apt, onSend, onClose }: { apt: Appointment; onSend: (msg: string) => void; onClose: () => void }) {
-  const [text, setText] = useState("");
+function MessageModal({ apt, onClose }: { apt: Appointment; onClose: () => void }) {
+  const [text, setText]     = useState("");
+  const [copied, setCopied] = useState(false);
   const ta = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { ta.current?.focus(); }, []);
+
   const SUGGESTIONS = [
     `Hi ${apt.name.split(" ")[0]}, your ${apt.service} is confirmed for ${apt.dateLabel} at ${apt.time}.`,
     `Hi ${apt.name.split(" ")[0]}, reminder about your appointment tomorrow at ${apt.time}. See you soon!`,
     `Hi ${apt.name.split(" ")[0]}, please arrive 5 minutes early for your ${apt.service}.`,
   ];
+
+  const handleCopy = () => {
+    if (!text.trim()) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const whatsappHref =
+    apt.channel === "whatsapp" && apt.phone
+      ? `https://wa.me/${apt.phone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(text)}`
+      : null;
+
   return (
     <Modal onClose={onClose}>
       <div className="p-6">
@@ -103,10 +118,22 @@ function MessageModal({ apt, onSend, onClose }: { apt: Appointment; onSend: (msg
           className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none mb-4" />
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
-          <button onClick={() => { if (text.trim()) onSend(text.trim()); }} disabled={!text.trim()}
-            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ background: "var(--vp-color)" }}>
-            Send Message
+          {whatsappHref && text.trim() && (
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
+              style={{ background: "#25D366" }}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1a5.5 5.5 0 014.76 8.28L12 12l-2.77-.74A5.5 5.5 0 116.5 1z" stroke="white" strokeWidth="1.2" strokeLinejoin="round"/>
+              </svg>
+              WhatsApp
+            </a>
+          )}
+          <button onClick={handleCopy} disabled={!text.trim()}
+            className={`flex-[2] py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 ${
+              copied ? "bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]" : "text-white hover:opacity-90"
+            }`}
+            style={!copied ? { background: "var(--vp-color)" } : {}}>
+            {copied ? "Copied!" : "Copy Message"}
           </button>
         </div>
       </div>
@@ -199,7 +226,6 @@ export default function AppointmentsPage() {
   const [sortDir, setSortDir]         = useState<SortDir>("asc");
   const [modal, setModal]             = useState<{ type: "message" | "reschedule" | "cancel"; id: string } | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [msgSentId, setMsgSentId]     = useState<string | null>(null);
   const { isStarter, config }         = usePlan();
   const { t }                         = useI18n();
 
@@ -251,13 +277,27 @@ export default function AppointmentsPage() {
     setTimeout(() => setHighlightId(null), 1400);
   };
 
-  const handleSendMessage = () => {
-    if (!modal) return;
-    const id = modal.id;
-    setModal(null);
-    setMsgSentId(id);
-    flashRow(id);
-    setTimeout(() => setMsgSentId(null), 2500);
+  const exportCSV = () => {
+    const headers = ["Name", "Phone", "Service", "Date", "Time", "Channel", "Status"];
+    const csvRows = appointments.map((a) =>
+      [
+        `"${a.name.replace(/"/g, '""')}"`,
+        `"${a.phone}"`,
+        `"${a.service.replace(/"/g, '""')}"`,
+        `"${a.dateLabel}"`,
+        `"${a.time}"`,
+        `"${a.channel}"`,
+        `"${a.status}"`,
+      ].join(",")
+    );
+    const csv = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `appointments-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleReschedule = async (date: string, time: string) => {
@@ -328,7 +368,7 @@ export default function AppointmentsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-20">
-      {modal?.type === "message"    && modalApt && <MessageModal    apt={modalApt} onSend={handleSendMessage}  onClose={() => setModal(null)} />}
+      {modal?.type === "message"    && modalApt && <MessageModal    apt={modalApt} onClose={() => setModal(null)} />}
       {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
       {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
 
@@ -352,13 +392,20 @@ export default function AppointmentsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px]">
+          <button
+            onClick={exportCSV}
+            disabled={appointments.length === 0}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#E5E7EB] disabled:hover:text-[#6B7280]">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Export CSV
           </button>
-          <button className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity min-h-[40px]" style={{ background: "var(--vp-color)" }}>
+          <button
+            disabled
+            title="Appointments are created automatically when customers book through your AI"
+            className="text-xs font-bold px-4 py-2.5 rounded-xl text-white opacity-40 cursor-not-allowed min-h-[40px]"
+            style={{ background: "var(--vp-color)" }}>
             + New Appointment
           </button>
         </div>
@@ -447,7 +494,6 @@ export default function AppointmentsPage() {
                   rows.map((apt, i) => {
                     const s = STATUS_CONFIG[apt.status] ?? STATUS_CONFIG.pending;
                     const isHighlighted = highlightId === apt.id;
-                    const isMsgSent = msgSentId === apt.id;
                     return (
                       <tr key={apt.id}
                         className={`border-b border-[#E5E7EB] last:border-none transition-colors duration-500 ${
@@ -471,32 +517,25 @@ export default function AppointmentsPage() {
                           </span>
                         </td>
                         <td className="py-3.5 pr-5">
-                          {isMsgSent ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600">
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 6l3 3 6-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              Sent
-                            </span>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              {apt.status !== "cancelled" && (
-                                <>
-                                  <button onClick={() => setModal({ type: "reschedule", id: apt.id })}
-                                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all whitespace-nowrap min-h-[30px]">
-                                    Reschedule
-                                  </button>
-                                  <button onClick={() => setModal({ type: "cancel", id: apt.id })}
-                                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-all whitespace-nowrap min-h-[30px]">
-                                    Cancel
-                                  </button>
-                                </>
-                              )}
-                              <button onClick={() => setModal({ type: "message", id: apt.id })}
-                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white hover:opacity-90 whitespace-nowrap min-h-[30px]"
-                                style={{ background: "var(--vela-gradient)" }}>
-                                Message
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {apt.status !== "cancelled" && (
+                              <>
+                                <button onClick={() => setModal({ type: "reschedule", id: apt.id })}
+                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all whitespace-nowrap min-h-[30px]">
+                                  Reschedule
+                                </button>
+                                <button onClick={() => setModal({ type: "cancel", id: apt.id })}
+                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-all whitespace-nowrap min-h-[30px]">
+                                  Cancel
+                                </button>
+                              </>
+                            )}
+                            <button onClick={() => setModal({ type: "message", id: apt.id })}
+                              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white hover:opacity-90 whitespace-nowrap min-h-[30px]"
+                              style={{ background: "var(--vela-gradient)" }}>
+                              Message
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
