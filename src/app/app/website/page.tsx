@@ -92,7 +92,7 @@ async function copyText(text: string) {
 // ── Publish Panel ─────────────────────────────────────────────────────────────
 function PublishPanel({
   isPublished, publishedUrl, visitCount,
-  siteName, setSiteName, siteSlug, setSiteSlug,
+  siteName, setSiteName, siteSlug, setSiteSlug, savedSlug, setSavedSlug,
   slugError, setSlugError, settingsError, setSettingsError,
   savingSettings, setSavingSettings, websiteId,
   customDomain, setCustomDomain, domainStatus, setDomainStatus,
@@ -105,6 +105,7 @@ function PublishPanel({
   isPublished: boolean; publishedUrl: string; visitCount: number;
   siteName: string; setSiteName: (v: string) => void;
   siteSlug: string; setSiteSlug: (v: string) => void;
+  savedSlug: string; setSavedSlug: (v: string) => void;
   slugError: string; setSlugError: (v: string) => void;
   settingsError: string; setSettingsError: (v: string) => void;
   savingSettings: boolean; setSavingSettings: (v: boolean) => void;
@@ -133,6 +134,7 @@ function PublishPanel({
   const [showDomain, setShowDomain] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const isDirty = siteSlug !== savedSlug;
 
   // Run real pre-publish checks when entering step 2
   useEffect(() => {
@@ -179,9 +181,10 @@ function PublishPanel({
     prevPublishedRef.current = isPublished;
   }, [isPublished]);
 
-  const handleSaveSettings = async () => {
-    if (!websiteId) return;
+  const handleSaveSettings = async (): Promise<boolean> => {
+    if (!websiteId) return false;
     setSlugError(""); setSettingsError(""); setSavingSettings(true);
+    let succeeded = false;
     try {
       const res  = await fetch("/api/website/settings", {
         method: "PUT",
@@ -196,11 +199,14 @@ function PublishPanel({
       } else {
         if (data.slug) {
           setSiteSlug(data.slug);
+          setSavedSlug(data.slug);
           if (isPublished) setPublishedUrl(`/site/${data.slug}`);
         }
+        succeeded = true;
       }
     } catch { setSettingsError("Connection error."); }
     finally { setSavingSettings(false); }
+    return succeeded;
   };
 
   const handleConnectDomain = async () => {
@@ -216,7 +222,7 @@ function PublishPanel({
         setDomainError(data.error ?? "Failed to connect domain.");
       } else {
         setCustomDomain(data.domain ?? domainInput.trim());
-        setDomainStatus(data.status ?? "pending");
+        setDomainStatus("pending");
         setDomainRecords(data.records ?? []);
       }
     } catch { setDomainError("Connection error — please try again."); }
@@ -357,10 +363,21 @@ function PublishPanel({
         </div>
         {slugError && <p className="text-[11px] text-red-500">{slugError}</p>}
         {siteSlug.length >= 3 && (
-          <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-2.5 py-1.5 overflow-hidden">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" className="shrink-0"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            <span className="text-[10px] font-mono text-[#6B7280] dark:text-[#9CA3AF] truncate">{origin}/site/{siteSlug}</span>
-          </div>
+          isDirty ? (
+            <p className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280] truncate italic px-0.5">
+              Will become: {origin}/site/{siteSlug}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-2.5 py-1.5 overflow-hidden">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" className="shrink-0"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              <span className="text-[10px] font-mono text-[#6B7280] dark:text-[#9CA3AF] truncate">{origin}/site/{siteSlug}</span>
+            </div>
+          )
+        )}
+        {isDirty && savedSlug.length >= 3 && (
+          <p className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 rounded-lg px-2.5 py-1.5 leading-snug">
+            Unsaved — your site is still at <span className="font-mono">/site/{savedSlug}</span>
+          </p>
         )}
       </div>
       <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-lg px-3 py-2">
@@ -369,8 +386,8 @@ function PublishPanel({
       </div>
       {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
       <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
-        className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-40 transition-colors">
-        {savingSettings ? "Saving…" : "Save"}
+        className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 ${isDirty ? "bg-[#FF6B35] text-white hover:opacity-90" : "border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24]"}`}>
+        {savingSettings ? "Saving…" : isDirty ? "Save" : "Saved"}
       </button>
     </div>
   );
@@ -419,10 +436,18 @@ function PublishPanel({
             {renderSiteDetailsForm()}
             {renderDomainSection()}
             <div className="border-t border-[#F3F4F6] pt-3">
-              <button onClick={() => setStep(2)}
-                className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+              <button onClick={async () => {
+                if (isDirty && websiteId) {
+                  const ok = await handleSaveSettings();
+                  if (ok) setStep(2);
+                } else {
+                  setStep(2);
+                }
+              }}
+                disabled={savingSettings}
+                className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-60"
                 style={{ background: "var(--vp-color)" }}>
-                Continue →
+                {savingSettings ? "Saving…" : "Continue →"}
               </button>
             </div>
           </>
@@ -621,6 +646,7 @@ export default function WebsitePage() {
   const [websiteId, setWebsiteId]       = useState<string | null>(null);
   const [siteName, setSiteName]         = useState("");
   const [siteSlug, setSiteSlug]         = useState("");
+  const [savedSlug, setSavedSlug]       = useState("");
   const [slugError, setSlugError]       = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsError, setSettingsError]   = useState("");
@@ -726,7 +752,7 @@ export default function WebsitePage() {
           setBuilt(true);
           setActiveTab("preview");
         }
-        if (data.slug)        setSiteSlug(data.slug);
+        if (data.slug) { setSiteSlug(data.slug); setSavedSlug(data.slug); }
         if (data.name)        setSiteName(data.name);
         if (data.isPublished) setIsPublished(true);
         if (data.publishedUrl) setPublishedUrl(data.publishedUrl);
@@ -828,7 +854,7 @@ export default function WebsitePage() {
       setPublishedUrl(finalUrl);
       setIsPublished(true);
       setDraftDiffers(false);
-      if (data.slug) setSiteSlug(data.slug);
+      if (data.slug) { setSiteSlug(data.slug); setSavedSlug(data.slug); }
       if (websiteIdRef.current) {
         setProjects((prev) => prev.map((p) =>
           p.id === websiteIdRef.current ? { ...p, is_published: true, slug: data.slug ?? p.slug } : p
@@ -900,9 +926,9 @@ export default function WebsitePage() {
       const currentProject: WebsiteProject = {
         id:            websiteId,
         name:          siteName || null,
-        slug:          siteSlug || null,
+        slug:          savedSlug || null,
         is_published:  isPublished,
-        published_url: isPublished ? (siteSlug ? `/site/${siteSlug}` : null) : null,
+        published_url: isPublished ? (savedSlug ? `/site/${savedSlug}` : null) : null,
         updated_at:    new Date().toISOString(),
       };
       setProjects((prev) => {
@@ -921,13 +947,13 @@ export default function WebsitePage() {
     setInput(""); setAttachedImages([]);
     setContactInfo({ phone: "", email: "", address: "", hours: "" });
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
-    setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug("");
+    setIsPublished(false); setPublishedUrl(""); setSiteName(""); setSiteSlug(""); setSavedSlug("");
     setWebsiteId(null); websiteIdRef.current = null;
     // Clear persisted language so the language picker re-appears for the new project
     setSiteLanguage("");
     if (typeof window !== "undefined") localStorage.removeItem("vela_site_language");
     setMsgs([INITIAL_MSG(btype, undefined)]);
-  }, [btype, websiteId, siteName, siteSlug, isPublished]);
+  }, [btype, websiteId, siteName, siteSlug, savedSlug, isPublished]);
 
   // ── Switch to an existing project ────────────────────────────────────────────
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
@@ -940,7 +966,7 @@ export default function WebsitePage() {
     setVersions([]); setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
     setWebsiteId(p.id); websiteIdRef.current = p.id;
-    setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? "");
+    setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? ""); setSavedSlug(p.slug ?? "");
     setIsPublished(p.is_published);
     setPublishedUrl(p.is_published ? (p.published_url ?? (p.slug ? `/site/${p.slug}` : "")) : "");
     try {
@@ -1170,7 +1196,7 @@ export default function WebsitePage() {
         websiteIdRef.current = data.websiteId;
         setWebsiteCount((c) => Math.max(c, 1));
       }
-      if (data.slug)  setSiteSlug(data.slug);
+      if (data.slug) { setSiteSlug(data.slug); setSavedSlug(data.slug); }
       if (data.name)  setSiteName(data.name);
       if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
 
@@ -1318,6 +1344,7 @@ export default function WebsitePage() {
                   isPublished={isPublished} publishedUrl={publishedUrl} visitCount={visitCount}
                   siteName={siteName} setSiteName={setSiteName}
                   siteSlug={siteSlug} setSiteSlug={setSiteSlug}
+                  savedSlug={savedSlug} setSavedSlug={setSavedSlug}
                   slugError={slugError} setSlugError={setSlugError}
                   settingsError={settingsError} setSettingsError={setSettingsError}
                   savingSettings={savingSettings} setSavingSettings={setSavingSettings}
