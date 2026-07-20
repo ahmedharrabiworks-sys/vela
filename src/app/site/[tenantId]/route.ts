@@ -28,9 +28,13 @@ function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClie
   return new NextResponse(html, {
     status: 200,
     headers: {
-      "Content-Type":           "text/html; charset=utf-8",
-      "Cache-Control":          "public, max-age=60, stale-while-revalidate=300",
-      "X-Content-Type-Options": "nosniff",
+      "Content-Type":             "text/html; charset=utf-8",
+      "Cache-Control":            "public, max-age=60, stale-while-revalidate=300",
+      "X-Content-Type-Options":   "nosniff",
+      "X-Frame-Options":          "SAMEORIGIN",
+      "X-XSS-Protection":         "1; mode=block",
+      "Referrer-Policy":          "strict-origin-when-cross-origin",
+      "Permissions-Policy":       "camera=(), microphone=(), geolocation=()",
     },
   });
 }

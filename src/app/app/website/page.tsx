@@ -100,7 +100,7 @@ function PublishPanel({
   domainInput, setDomainInput, domainError, setDomainError,
   connectingDomain, setConnectingDomain, checkingDomain, setCheckingDomain,
   removingDomain, setRemovingDomain,
-  draftDiffers, publishing, onPublish, onClose,
+  draftDiffers, publishing, hasDraft, hasContactInfo, onPublish, onClose,
 }: {
   isPublished: boolean; publishedUrl: string; visitCount: number;
   siteName: string; setSiteName: (v: string) => void;
@@ -119,25 +119,58 @@ function PublishPanel({
   checkingDomain: boolean; setCheckingDomain: (v: boolean) => void;
   removingDomain: boolean; setRemovingDomain: (v: boolean) => void;
   draftDiffers: boolean; publishing: boolean;
+  hasDraft: boolean; hasContactInfo: boolean;
   onPublish: () => void; onClose: () => void;
   setPublishedUrl: (v: string) => void;
 }) {
-  // step 1=details, 2=security check, 3=live/published view
+  // step 1=details, 2=pre-publish checks, 3=live/published view
   const [step, setStep] = useState<1 | 2 | 3>(() => (isPublished ? 3 : 1));
-  const [checkState, setCheckState] = useState<"idle" | "running" | "done">("idle");
+  type CheckItem = { id: string; label: string; status: "running" | "pass" | "warn" | "fail"; detail?: string };
+  const [checks, setChecks] = useState<CheckItem[]>([]);
+  const [checksRunning, setChecksRunning] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
   const [showDomain, setShowDomain] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  // When step 2 is entered, run the fake security check animation
+  // Run real pre-publish checks when entering step 2
   useEffect(() => {
     if (step !== 2) return;
-    setCheckState("running");
-    const t = setTimeout(() => setCheckState("done"), 1600);
-    return () => clearTimeout(t);
-  }, [step]);
+    const ITEMS = [
+      { id: "draft",    label: "Website draft ready" },
+      { id: "contact",  label: "Contact info present" },
+      { id: "endpoint", label: "Booking endpoint reachable" },
+      { id: "slug",     label: "URL slug configured" },
+    ];
+    setChecks(ITEMS.map(c => ({ ...c, status: "running" as const })));
+    setChecksRunning(true);
+    (async () => {
+      const done: CheckItem[] = [];
+      const push = (item: CheckItem) => {
+        done.push(item);
+        setChecks([...done, ...ITEMS.slice(done.length).map(c => ({ ...c, status: "running" as const }))]);
+      };
+      push({ id: "draft", label: "Website draft ready",
+        status: hasDraft ? "pass" : "fail",
+        detail: !hasDraft ? "Generate your website first." : undefined });
+      await new Promise(r => setTimeout(r, 220));
+      push({ id: "contact", label: "Contact info present",
+        status: hasContactInfo ? "pass" : "warn",
+        detail: !hasContactInfo ? "No phone or email — visitors won't be able to call or email you." : undefined });
+      await new Promise(r => setTimeout(r, 220));
+      let endpointOk = false;
+      try { const r = await fetch("/api/health"); endpointOk = r.ok; } catch { endpointOk = false; }
+      push({ id: "endpoint", label: "Booking endpoint reachable",
+        status: endpointOk ? "pass" : "fail",
+        detail: !endpointOk ? "Cannot reach the API — try refreshing the page." : undefined });
+      await new Promise(r => setTimeout(r, 220));
+      push({ id: "slug", label: "URL slug configured",
+        status: siteSlug.length >= 3 ? "pass" : "warn",
+        detail: siteSlug.length < 3 ? "No slug set — your site will use a generated URL." : undefined });
+      setChecksRunning(false);
+    })();
+  }, [step, hasDraft, hasContactInfo, siteSlug]);
 
   // Advance to step 3 once publish completes (isPublished flips to true)
   const prevPublishedRef = useRef(isPublished);
@@ -323,6 +356,12 @@ function PublishPanel({
           />
         </div>
         {slugError && <p className="text-[11px] text-red-500">{slugError}</p>}
+        {siteSlug.length >= 3 && (
+          <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-2.5 py-1.5 overflow-hidden">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" className="shrink-0"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            <span className="text-[10px] font-mono text-[#6B7280] dark:text-[#9CA3AF] truncate">{origin}/site/{siteSlug}</span>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-lg px-3 py-2">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
@@ -389,37 +428,42 @@ function PublishPanel({
           </>
         )}
 
-        {/* ── STEP 2: Security Check ───────────────────────────────────────── */}
+        {/* ── STEP 2: Pre-publish checks ───────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-4 py-2">
-            <p className="text-xs font-semibold text-[#374151] dark:text-[#E5E7EB]">Quick security check</p>
+            <p className="text-xs font-semibold text-[#374151] dark:text-[#E5E7EB]">Pre-publish checks</p>
             <div className="space-y-3">
-              {["Validating site content", "Checking for broken elements", "Reviewing performance"].map((item, i) => (
-                <div key={i} className="flex items-center gap-2.5">
-                  {checkState === "done" ? (
-                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin shrink-0" />
-                  )}
-                  <span className={`text-xs ${checkState === "done" ? "text-[#374151] dark:text-[#E5E7EB]" : "text-[#9CA3AF]"}`}>{item}</span>
+              {checks.map((c) => (
+                <div key={c.id} className="flex items-start gap-2.5">
+                  {c.status === "running" && <div className="w-4 h-4 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin shrink-0 mt-0.5" />}
+                  {c.status === "pass" && <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
+                  {c.status === "warn" && <div className="w-4 h-4 rounded-full bg-yellow-100 flex items-center justify-center shrink-0 mt-0.5"><span className="text-yellow-700 text-[8px] font-bold leading-none">!</span></div>}
+                  {c.status === "fail" && <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><line x1="2" y1="2" x2="10" y2="10" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/><line x1="10" y1="2" x2="2" y2="10" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/></svg></div>}
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-xs ${c.status === "running" ? "text-[#9CA3AF]" : c.status === "fail" ? "text-red-700 dark:text-red-400" : c.status === "warn" ? "text-yellow-700 dark:text-yellow-500" : "text-[#374151] dark:text-[#E5E7EB]"}`}>{c.label}</span>
+                    {c.detail && <p className="text-[10px] text-[#9CA3AF] mt-0.5">{c.detail}</p>}
+                  </div>
                 </div>
               ))}
             </div>
-            {checkState === "done" && (
+            {!checksRunning && checks.length > 0 && (
               <div className="space-y-3 pt-1">
-                <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/30 border border-green-100 dark:border-green-900/50 rounded-lg px-3 py-2">
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="text-[11px] font-semibold text-green-700 dark:text-green-400">All checks passed — looking good!</span>
-                </div>
-                <button
-                  onClick={onPublish}
-                  disabled={publishing}
-                  className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                  style={{ background: "var(--vp-color)" }}>
-                  {publishing ? (isPublished ? "Updating…" : "Publishing…") : isPublished ? "Update Site" : "Publish Now"}
-                </button>
+                {checks.some(c => c.status === "fail") ? (
+                  <p className="text-[11px] text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">Fix the issues above before publishing.</p>
+                ) : (
+                  <>
+                    {checks.some(c => c.status === "warn") && (
+                      <p className="text-[10px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg px-3 py-2">
+                        Some info is missing — your site will still publish.
+                      </p>
+                    )}
+                    <button onClick={onPublish} disabled={publishing}
+                      className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                      style={{ background: "var(--vp-color)" }}>
+                      {publishing ? (isPublished ? "Updating…" : "Publishing…") : isPublished ? "Update Site" : "Publish Now"}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -432,15 +476,19 @@ function PublishPanel({
             {publishedUrl && (
               <div className="space-y-1">
                 <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide">Your Site</p>
-                <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-2">
-                  <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-[11px] font-mono text-[#374151] dark:text-[#9CA3AF] truncate flex-1 hover:text-[#FF6B35] transition-colors">
-                    {origin}{publishedUrl}
-                  </a>
+                <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-2">
+                  <span className="text-[11px] font-mono text-[#6B7280] dark:text-[#9CA3AF] truncate block">{origin}{publishedUrl}</span>
+                </div>
+                <div className="flex gap-2">
                   <button onClick={async () => { await copyText(`${origin}${publishedUrl}`); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000); }}
-                    className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
-                    {urlCopied ? "Copied" : "Copy"}
+                    className="flex-1 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                    {urlCopied ? "Copied!" : "Copy Link"}
                   </button>
+                  <a href={`${origin}${publishedUrl}`} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 text-center text-[11px] font-semibold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity"
+                    style={{ background: "var(--vp-color)" }}>
+                    Open ↗
+                  </a>
                 </div>
               </div>
             )}
@@ -1284,6 +1332,8 @@ export default function WebsitePage() {
                   checkingDomain={checkingDomain} setCheckingDomain={setCheckingDomain}
                   removingDomain={removingDomain} setRemovingDomain={setRemovingDomain}
                   draftDiffers={draftDiffers} publishing={publishing}
+                  hasDraft={built && html.length > 50}
+                  hasContactInfo={!!(contactInfo.phone || contactInfo.email)}
                   onPublish={handleDoPublish}
                   onClose={() => setShowPublishPanel(false)}
                   setPublishedUrl={setPublishedUrl}
