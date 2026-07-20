@@ -159,7 +159,7 @@ async function classifyUploadedImage(
 }
 
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
-function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, msgText: string): void {
+function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, msgText: string, hasOwnerPhoto: boolean): void {
   // Extract 2-3 visual keywords from the owner's message for fallback queries
   const visualHints = msgText
     .toLowerCase()
@@ -169,7 +169,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
     .slice(0, 3)
     .join(" ");
 
-  const base = (visualHints || industry || "professional interior").trim();
+  const base = (visualHints || industry || "professional").trim();
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
@@ -177,9 +177,15 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
 
     if (!hasQ) {
       if (s.type === "hero") {
-        (s as { imageQuery?: string }).imageQuery = `${base} bright interior ${city}`.replace(/\s+/g, " ").trim();
+        // When owner has no photos, use atmospheric/abstract queries that read as editorial
+        // design choices — not photos that could be mistaken for THIS specific business.
+        (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
+          ? `${base} bright interior ${city}`.replace(/\s+/g, " ").trim()
+          : `${base} atmospheric bokeh warm light texture abstract`.replace(/\s+/g, " ").trim();
       } else if (s.type === "about") {
-        (s as { imageQuery?: string }).imageQuery = `${base} professional team workspace modern`.replace(/\s+/g, " ").trim();
+        (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
+          ? `${base} professional team workspace modern`.replace(/\s+/g, " ").trim()
+          : `${base} lifestyle editorial warm light natural`.replace(/\s+/g, " ").trim();
       }
     }
 
@@ -187,15 +193,25 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
     if (s.type === "gallery") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       if (!qs.length) {
-        const fallbackGallery = [
-          `${base} interior design`,
-          `${base} team professional`,
-          `${base} detail close up`,
-          `${base} modern equipment`,
-          `${base} client experience`,
-          `${base} results before after`,
-        ].map((q) => q.replace(/\s+/g, " ").trim());
-        (s as { imageQueries?: string[] }).imageQueries = fallbackGallery;
+        const fallbackGallery = hasOwnerPhoto
+          ? [
+              `${base} interior design`,
+              `${base} team professional`,
+              `${base} detail close up`,
+              `${base} modern equipment`,
+              `${base} client experience`,
+              `${base} results before after`,
+            ]
+          : [
+              // No owner photos → use texture/detail/editorial that won't be mistaken for their business
+              `${base} close-up texture detail editorial`,
+              `${base} product detail minimal clean`,
+              `${base} material texture abstract light`,
+              `${base} bokeh warm light lifestyle`,
+              `${base} flat lay arrangement elegant`,
+              `${base} abstract mood atmosphere`,
+            ];
+        (s as { imageQueries?: string[] }).imageQueries = fallbackGallery.map((q) => q.replace(/\s+/g, " ").trim());
       }
     }
   }
@@ -231,7 +247,7 @@ function coercePreset(v: unknown): PresetName {
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
-function buildSystem(contactBlock: string, language = "English"): string {
+function buildSystem(contactBlock: string, language = "English", hasOwnerPhoto = true): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
     : "";
@@ -372,12 +388,39 @@ CRITICAL — imageQuery / imageQueries MUST be siblings of "content", NOT nested
 ✗ INCORRECT: { "type": "hero", "content": { "imageQuery": "...", "headline": "..." } }
 
 ═══════════════════════════════════════════════════════
-PART 4 — IMAGE QUERY RULES (every photo must look like it belongs to THIS business)
+PART 4 — IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-ImageQuery is an Unsplash search string. It must be SPECIFIC to what the owner described — not a generic category label.
+ImageQuery is an Unsplash search string.
 
-PROCESS:
+${!hasOwnerPhoto ? `⚠ NO OWNER PHOTOS UPLOADED — MANDATORY RULE FOR ALL IMAGE QUERIES:
+The owner has NOT provided any business photos. Generated sites MUST NOT use photos that could be mistaken for THIS specific business — no fake "this is our café" storefront shots, no identifiable waiting rooms, no team-at-our-location photos.
+
+FORBIDDEN (looks like a photo of their actual business):
+✗ "[business type] interior with tables/chairs/equipment"
+✗ "café interior" / "dental clinic room" / "gym workout floor" / "restaurant dining room"
+✗ "[business type] staff smiling" / "[business type] professional team at location"
+✗ Any specific storefront, reception, entrance, or branded environment
+
+REQUIRED — atmospheric, editorial, or abstract (reads as intentional design imagery):
+✓ hero: texture, ambient light, material close-up, abstract mood — the emotional world of this industry
+✓ about: lifestyle editorial, conceptual — NOT "our team at our location"
+✓ gallery: product/detail close-ups, textures, abstract compositions
+
+ATMOSPHERIC QUERY EXAMPLES — use this pattern:
+• café / bakery hero    → "warm coffee steam bokeh morning light close-up"
+• dental hero           → "clean white minimal geometric abstract light"
+• gym / fitness hero    → "motion blur dynamic light dramatic fitness abstract"
+• restaurant hero       → "candlelight warm bokeh dining atmosphere evening abstract"
+• hair salon / luxury   → "mirror reflection bokeh champagne abstract light"
+• spa / wellness hero   → "smooth stone water ripple natural light zen texture"
+• real estate / law     → "architectural window light geometric shadow abstract"
+• bakery gallery        → "croissant flaky layers close-up editorial light"
+
+SELF-TEST: Ask "Could this photo appear in a design mood-board for ANY business in this category?"
+If yes → SAFE to use. If it would look like a photo of a SPECIFIC establishment → FORBIDDEN.
+
+` : `PROCESS:
 1. Extract concrete visual details from the owner's description: specific equipment, materials, ambience, unique features, activity type
 2. Build a 4–6 word query from those specifics
 3. Ask: "Could this photo belong to any business in this category?" If yes, make it more specific.
@@ -398,7 +441,7 @@ Owner mentioned: open fire grill, exposed brick, intimate 40-seat dining
 → about imageQuery: "chef cooking open fire wood grill restaurant kitchen"  (NOT: "restaurant chef")
 
 Rule: if the query could apply to any business in the same category, it is not specific enough. Rewrite it.
-
+`}
 GALLERY: All 6 imageQueries MUST be distinct — vary subject, angle, detail level, and moment. Never repeat the same scene or composition.
 
 QUALITY: append one of these to every imageQuery to sharpen Unsplash results:
@@ -537,10 +580,14 @@ Deviate ONLY if the business genuinely has no content for an optional section �
   NEVER:       gallery for non-visual businesses (no gallery for law firms, finance, etc.)`;
 }
 
-const REVISE_SYSTEM = `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
+function buildReviseSystem(hasOwnerPhoto: boolean): string {
+  const noPhotoNote = hasOwnerPhoto ? "" :
+    "\nNO OWNER PHOTOS: When regenerating imageQuery values, use atmospheric/abstract queries — never identifiable business-specific shots (no specific interiors, storefronts, or team-at-location). Use the same atmospheric-query rule as original generation.";
+  return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
-IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.`;
+IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.${noPhotoNote}`;
+}
 
 // ── Conversational intake: DECISION only (ask vs generate) ───────────────────
 const INTAKE_DECISION_SYSTEM = `You are deciding whether to ask ONE clarifying question before building a website, or whether you already have enough to proceed.
@@ -842,7 +889,7 @@ export async function POST(req: NextRequest) {
         const userContent = buildUserContent(businessName, industry, city, msgText, effectiveLanguage);
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage) }, { role: "user", content: userContent }],
+          messages: [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage, !!heroUpload) }, { role: "user", content: userContent }],
           response_format: { type: "json_object" },
           max_tokens: 4096,
           temperature: 0.5,
@@ -856,7 +903,7 @@ export async function POST(req: NextRequest) {
         const revisionPrompt = `${langLine}Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [{ role: "system", content: REVISE_SYSTEM }, { role: "user", content: revisionPrompt }],
+          messages: [{ role: "system", content: buildReviseSystem(!!heroUpload) }, { role: "user", content: revisionPrompt }],
           response_format: { type: "json_object" },
           max_tokens: 4096,
           temperature: 0.3,
@@ -916,7 +963,7 @@ export async function POST(req: NextRequest) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildSystem(effectiveContactBlock, effectiveLanguage) },
+          { role: "system", content: buildSystem(effectiveContactBlock, effectiveLanguage, !!heroUpload) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -939,7 +986,9 @@ export async function POST(req: NextRequest) {
     if (!spec.sections.some((s) => s.type === "hero")) {
       spec.sections.unshift({
         type: "hero",
-        imageQuery: `${industry} professional interior ${city}`.trim(),
+        imageQuery: heroUpload
+          ? `${industry} professional interior ${city}`.trim()
+          : `${industry} atmospheric light texture abstract`.trim(),
         content: { headline: businessName, subheadline: `${industry || "Professional services"} in ${city || "your city"}.`, ctaPrimary: "Book Now", ctaSecondary: "Learn More" },
       });
     }
@@ -977,7 +1026,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Server-side fallback: inject imageQuery for any visual section GPT missed
-    ensureImageQueries(spec, industry, city, msgText);
+    ensureImageQueries(spec, industry, city, msgText, !!heroUpload);
 
     let uploadSlot: "hero" | "about" | "team" | "gallery" = "hero";
     if (heroUpload && validImages[0]) {

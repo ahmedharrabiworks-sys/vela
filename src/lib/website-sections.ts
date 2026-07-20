@@ -67,7 +67,7 @@ function renderHeroBleedBottom(
   return `<section class="ws-hero ws-hero--el" id="hero">
   ${imageUrl
     ? `<img src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" class="ws-hero-img" fetchpriority="high">`
-    : `<div class="ws-hero-img" style="background:${t.heroBg};"></div>`}
+    : `<div class="ws-hero-img" style="background:linear-gradient(160deg,${t.heroBg} 0%,${t.heroBg} 55%,${t.accent}20 100%);"></div>`}
   <div class="ws-hero-overlay" style="background:${t.heroOverlay};"></div>
   <div class="ws-hero-content ws-hero-content--el">
     ${c.eyebrow ? `<p class="ws-hero-eyebrow"><span class="ws-hero-eyebrow-rule"></span>${esc(c.eyebrow)}</p>` : ""}
@@ -90,7 +90,7 @@ function renderHeroBleedCenter(
   return `<section class="ws-hero ws-hero--ee" id="hero">
   ${imageUrl
     ? `<img src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" class="ws-hero-img" fetchpriority="high">`
-    : `<div class="ws-hero-img" style="background:${t.heroBg};"></div>`}
+    : `<div class="ws-hero-img" style="background:linear-gradient(160deg,${t.heroBg} 0%,${t.heroBg} 55%,${t.accent}20 100%);"></div>`}
   <div class="ws-hero-overlay" style="background:${t.heroOverlay};"></div>
   <div class="ws-hero-content ws-hero-content--ee">
     ${c.eyebrow ? `<p class="ws-hero-eyebrow ws-hero-eyebrow--ee">${esc(c.eyebrow)}</p>` : ""}
