@@ -26,17 +26,35 @@ export async function POST(req: NextRequest) {
 
   const { data: cfg } = await admin
     .from("tenant_config")
-    .select("services_json, ai_tone")
+    .select("services_json, ai_tone, knowledge_base")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
-  const businessCtx = `
-Business: ${tenant.business_name || "the business"}
-Industry: ${tenant.industry || "service business"}
-City: ${tenant.city || ""}
-Services: ${JSON.stringify(cfg?.services_json || [])}
-Preferred tone: ${cfg?.ai_tone || tone || "Professional"}
-`.trim();
+  type KbService = { name: string; price?: string; description?: string };
+  type Kb = { services?: KbService[]; business?: { hours?: string; address?: string; bookingPolicy?: string }; extra?: string };
+  let kb: Kb = {};
+  if (cfg?.knowledge_base) {
+    try { kb = JSON.parse(cfg.knowledge_base as string) as Kb; } catch { /* ignore */ }
+  }
+
+  const kbSvcs = (kb.services ?? []).filter((s): s is KbService => Boolean(s?.name));
+  const svcBlock = kbSvcs.length > 0
+    ? kbSvcs.map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`).join("\n")
+    : (Array.isArray(cfg?.services_json) && (cfg.services_json as unknown[]).length > 0
+        ? (cfg.services_json as Array<{ name?: string }>).map((s) => `• ${s.name ?? JSON.stringify(s)}`).join("\n")
+        : "");
+
+  const businessCtx = [
+    `Business: ${tenant.business_name || "the business"}`,
+    `Industry: ${tenant.industry || "service business"}`,
+    tenant.city ? `City: ${tenant.city}` : "",
+    svcBlock ? `Services:\n${svcBlock}` : "",
+    kb.business?.hours        ? `Hours: ${kb.business.hours}`                 : "",
+    kb.business?.address      ? `Location: ${kb.business.address}`            : "",
+    kb.business?.bookingPolicy ? `Booking policy: ${kb.business.bookingPolicy}` : "",
+    kb.extra?.trim()          ? `Additional info: ${kb.extra.trim()}`         : "",
+    `Preferred tone: ${cfg?.ai_tone || tone || "Professional"}`,
+  ].filter(Boolean).join("\n");
 
   let systemPrompt = "";
   let userPrompt = "";

@@ -210,7 +210,7 @@ function BroadcastTool({ onGenerate }: { onGenerate: () => void }) {
   const [message, setMessage]   = useState("");
   const [channel, setChannel]   = useState("WhatsApp");
   const [aiLoading, setAiLoading] = useState(false);
-  const [sent, setSent]         = useState(false);
+  const [copied, setCopied]     = useState(false);
   const [error, setError]       = useState("");
 
   const audienceOptions = [
@@ -295,32 +295,34 @@ function BroadcastTool({ onGenerate }: { onGenerate: () => void }) {
 
       {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
-      {!sent ? (
-        <div className="flex items-center justify-between pt-2 border-t border-[#E5E7EB]">
-          <p className="text-sm text-[#6B7280]">
-            Sending to <span className="font-bold text-[#111827]">{audienceOptions.find((a) => a.id === audience)?.label}</span> via {channel}
+      <div className="flex flex-col gap-3 pt-2 border-t border-[#E5E7EB]">
+        {message.trim() && (
+          <button
+            onClick={() => { navigator.clipboard.writeText(message); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            className={`self-start px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+              copied ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#059669]" : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+            }`}>
+            {copied ? "Copied!" : "Copy Message"}
+          </button>
+        )}
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-[#9CA3AF] flex items-center gap-1.5">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <rect x="2" y="5.5" width="9" height="6.5" rx="1.5" stroke="#9CA3AF" strokeWidth="1.2"/>
+              <path d="M4.5 5.5V3.5a2 2 0 014 0v2" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <Link href="/app/channels" className="underline underline-offset-2 hover:text-[#374151]">Connect a channel</Link>
+            {" "}to enable sending
           </p>
-          <button onClick={() => setSent(true)} disabled={!message.trim()}
-            className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+          <button
+            disabled
+            title="Connect WhatsApp or Instagram in Channels to enable sending"
+            className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm opacity-40 cursor-not-allowed"
             style={{ background: "var(--vp-color)" }}>
             Send Broadcast
           </button>
         </div>
-      ) : (
-        <div className="flex items-center gap-3 p-4 bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="9" fill="#059669"/>
-            <path d="M6 10l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <div>
-            <p className="text-sm font-semibold text-[#065F46]">Broadcast queued</p>
-            <p className="text-xs text-[#059669]">Message ready to send via {channel}</p>
-          </div>
-          <button onClick={() => { setSent(false); setMessage(""); }} className="ml-auto text-xs text-[#6B7280] hover:text-[#111827] underline">
-            Send another
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
