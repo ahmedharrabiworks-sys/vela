@@ -24,7 +24,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [colorTheme, setColorThemeState] = useState<ColorTheme>("classic");
   const pathname = usePathname();
-  const isDashboard = pathname?.startsWith("/app") ?? false;
+  const isDashboard = (pathname?.startsWith("/app") || pathname?.startsWith("/demo")) ?? false;
 
   // Apply/remove dark class whenever pathname or theme changes
   useEffect(() => {

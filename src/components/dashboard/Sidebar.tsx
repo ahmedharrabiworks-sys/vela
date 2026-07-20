@@ -134,9 +134,13 @@ const NAV = [
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Base path prefix for nav links. Defaults to "/app". Demo passes "/demo". */
+  pathPrefix?: string;
+  /** When set, skips Supabase calls and uses these values for the user area. */
+  demoProfile?: { name: string; initials: string; plan: string; email: string };
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProfile }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { t, langName, setLocale } = useI18n();
@@ -151,7 +155,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const dropRef = useRef<HTMLDivElement>(null);
   const agentCollapseRef = useRef<{ wasCollapsed: boolean } | null>(null); // unused; kept for ref stability
 
+  // Rewrite "/app/..." hrefs to use the configured prefix
+  const lk = (href: string) =>
+    href === "/app" ? pathPrefix : href.replace(/^\/app/, pathPrefix);
+
   useEffect(() => {
+    if (demoProfile) {
+      setDisplayName(demoProfile.name);
+      setInitials(demoProfile.initials);
+      setDisplayPlan(demoProfile.plan);
+      setDisplayEmail(demoProfile.email);
+      return;
+    }
     const profile = getProfile();
     if (profile?.ownerName) {
       setDisplayName(profile.ownerName);
@@ -160,9 +175,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     if (profile?.plan) setDisplayPlan(profile.plan.toLowerCase());
     if (profile?.email) setDisplayEmail(profile.email);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (demoProfile) return;
     async function loadAuth() {
       try {
         const supabase = getSupabase();
@@ -183,6 +200,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       } catch { /* no auth session */ }
     }
     loadAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // agentCollapseRef kept for potential future use
@@ -200,6 +218,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleLogout = async () => {
     setDropdownOpen(false);
+    if (demoProfile) {
+      router.push("/auth/signup");
+      return;
+    }
     try {
       const supabase = getSupabase();
       await supabase.auth.signOut();
@@ -255,11 +277,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5 overflow-y-auto">
         {NAV.map((item) => {
-          const active = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
+          const effectiveHref = lk(item.href);
+          const active = effectiveHref === pathPrefix ? pathname === pathPrefix : pathname.startsWith(effectiveHref);
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={effectiveHref}
               onClick={onClose}
               className={`flex items-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${
                 active
@@ -338,7 +361,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="py-1">
               {/* Settings */}
               <Link
-                href="/app/settings"
+                href={lk("/app/settings")}
                 onClick={() => { setDropdownOpen(false); onClose(); }}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors"
               >
@@ -417,12 +440,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               )}
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${demoProfile ? "text-[#FF6B35] font-semibold hover:bg-[#FFF5F0]" : "text-red-500 hover:bg-red-50"}`}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2M9.5 10l3-3-3-3M12.5 7H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                {t("sidebar.logout")}
+                {demoProfile ? "Create Free Account →" : t("sidebar.logout")}
               </button>
             </div>
           </div>
