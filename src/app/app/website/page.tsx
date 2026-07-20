@@ -712,11 +712,12 @@ export default function WebsitePage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
 
-  // Auto-refresh when publish panel opens: domain status + live visit count
+  // Auto-refresh visit count when publish panel opens.
+  // Domain status is NOT auto-checked here — user must click "Check Status" explicitly
+  // to avoid showing "Connected" before DNS is actually verified.
   useEffect(() => {
     if (!showPublishPanel) return;
     (async () => {
-      // 1. Refresh visit count from DB
       try {
         const stateRes = await fetch("/api/website/state");
         if (stateRes.ok) {
@@ -724,22 +725,6 @@ export default function WebsitePage() {
           if (typeof stateData.visitCount === "number") setVisitCount(stateData.visitCount);
         }
       } catch { /* non-critical */ }
-
-      // 2. Refresh domain status (skips if no domain configured or API not set up)
-      if (!customDomain || checkingDomain) return;
-      setCheckingDomain(true);
-      try {
-        const res = await fetch("/api/website/domain");
-        if (res.status === 503) { setDomainConfigured(false); return; }
-        if (res.ok) {
-          const data = await res.json() as { status?: "pending" | "verified" | null; domain?: string | null; records?: DnsRecord[] };
-          if (data.status !== undefined) setDomainStatus(data.status ?? null);
-          if (Array.isArray(data.records)) setDomainRecords(data.records);
-          // If the domain was cleared (Vercel 404), clear local state too
-          if (data.domain === null) { setCustomDomain(null); setDomainInput(""); }
-        }
-      } catch { /* non-critical */ }
-      finally { setCheckingDomain(false); }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPublishPanel]);

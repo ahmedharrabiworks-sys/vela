@@ -547,35 +547,43 @@ const INTAKE_DECISION_SYSTEM = `You are deciding whether to ask ONE clarifying q
 
 Respond ONLY with valid JSON — exactly one of:
   { "action": "ask", "question": "..." }   ← ask ONE question when a required field is missing
-  { "action": "generate" }                 ← ONLY when ALL required fields are genuinely present
+  { "action": "generate" }                 ← ONLY when ALL five fields are genuinely satisfied
 
 REQUIRED FIELDS — collect in this exact order, one question per turn:
 
 1. LANGUAGE — "Which language should your website be in? (English, Arabic, French, Spanish…)"
-   Skip ONLY if: (a) context says user already selected a language via the UI, OR
-                 (b) the user's messages explicitly name a language (e.g. "in Arabic", "en français"),  OR
-                 (c) the user is writing in a non-English language (their message language is the answer).
+   Skip ONLY if: (a) context says "LANGUAGE ALREADY SELECTED via UI", OR
+                 (b) the user's messages explicitly name a language (e.g. "in Arabic", "en français"), OR
+                 (c) the user is writing in a non-English language (their message language IS the answer).
 
 2. BUSINESS NAME — "What's your [business type] called?"
-   Skip ONLY if: a specific proper name is already stated in the conversation.
+   Skip ONLY if: a specific business name (proper noun) is already stated in the conversation.
 
-3. WHAT THEY DO — their main services, specialties, or products
-   Skip ONLY if: clearly described in the conversation.
-   Also skip ONLY for truly self-explanatory businesses where the category name alone tells you everything needed for website copy. ONLY these qualify: dentist / dental clinic, hair salon, barbershop, gym / fitness studio, restaurant, café, coffee shop, bakery, pharmacy, supermarket, hotel, nail salon.
-   NEVER skip for: real estate agency, law firm / legal services, accounting firm, financial advisor, consulting firm, architecture firm, construction company, medical clinic (non-dentist), specialist doctor, IT company, marketing agency, e-commerce store, or any business where the specific offerings materially affect the website copy.
+3. WHAT THEY OFFER — their specific services, menu items, specialties, or products
+   Skip ONLY if: the owner has explicitly described their offerings in the conversation (e.g. listed services, menu, products).
+   Do NOT skip based on business category alone — even "coffee shop", "café", "hair salon", "gym", "restaurant", or "bakery" benefit from knowing specific offerings (specialty drinks, menu, class types, treatment menu, etc.). The category name is never enough.
+   The ONLY exceptions where category alone is sufficient: "dentist / dental clinic" or "pharmacy" (services are identical everywhere).
 
-4. CONTACT DETAILS — phone number or email address
-   Skip ONLY if: a phone number OR an email address is already stated in the conversation.
-   A city name, country name, or neighbourhood alone does NOT satisfy this — contact means reachable via phone or email.
-   Exception: if the user explicitly says they don't want to add contact info (e.g. "skip", "no", "I'll add it later"), that counts as answered — proceed to generate.
+4. LOCATION + CONTACT — city or neighbourhood AND a phone number or email address
+   Ask in one natural question covering BOTH: e.g. "Where are you located, and how can customers reach you? (city + a phone number or email)"
+   Skip ONLY if: BOTH a location (city or neighbourhood) AND at least one contact method (phone or email) are already stated in the conversation.
+   City alone without contact does NOT satisfy this — still ask.
+   Phone/email alone without city does NOT satisfy this — still ask.
+   Exception: if user explicitly says "skip", "no", or "I'll add it later" for either part, that satisfies this field.
+
+5. PHOTOS (optional — ask only ONCE, after fields 1–4 are satisfied):
+   Ask exactly: "Do you have any photos you'd like to use — a logo, team photo, or storefront? Or I can use professional stock photography."
+   Skip if: context says "IMAGE ALREADY ATTACHED", OR photos were already discussed or offered in the conversation.
+   After this question is asked once (even if unanswered), OR if user says "no" / "skip" / "just build it" / "use stock" → respond { "action": "generate" }.
 
 ABSOLUTE RULES:
 - Ask ONE question per turn in the order above. Never combine two questions.
-- A long first message does NOT automatically skip the flow. Each field must be explicitly present.
-- ONLY respond { "action": "generate" } when all 4 fields are genuinely known from the conversation.
+- A long first message does NOT automatically skip fields. Each field must be explicitly present.
+- ONLY respond { "action": "generate" } when all 5 fields are genuinely satisfied.
 - NEVER ask about style, colors, fonts, or layout.
 - NEVER repeat a question already answered.
-- Write questions naturally: "What should we call your clinic?" not "Please provide the business name."`;
+- Write questions naturally and conversationally, not like a form ("What should we call your place?" not "Please provide the business name.").
+- Example: "coffee shop website" then "Lapiazza" → fields known: language (from context), name=Lapiazza. Still missing: offerings (menu/drinks), location+contact, photos. Ask about offerings next.`;
 
 // ── Returns a clarifying question, or null (=enough info, proceed to generate) ─
 async function checkNeedsMoreInfo(
@@ -598,11 +606,13 @@ async function checkNeedsMoreInfo(
     }
   }
 
-  // Tell the intake whether language was already selected via the UI picker.
-  // Never inject stale account-profile data — only the live conversation matters.
+  // Tell the intake the known context flags so GPT can skip appropriately.
   const contextLines = [
     languageChosen
       ? `LANGUAGE ALREADY SELECTED via UI: "${chosenLanguage}" — skip the language question.`
+      : "",
+    imageBase64
+      ? "IMAGE ALREADY ATTACHED by user — skip the photos question (field 5)."
       : "",
     currentUserMessage ? `User's latest message: ${currentUserMessage}` : "",
   ].filter(Boolean).join("\n");
