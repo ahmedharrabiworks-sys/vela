@@ -90,6 +90,11 @@ Do NOT include emojis unless they fit naturally.`;
     return NextResponse.json({ error: "Invalid type. Use: social, video, or broadcast" }, { status: 400 });
   }
 
+  if (!process.env.OPENAI_API_KEY) {
+    console.error("[marketing] OPENAI_API_KEY not set");
+    return NextResponse.json({ error: "AI not configured — contact support." }, { status: 500 });
+  }
+
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
@@ -115,8 +120,19 @@ Do NOT include emojis unless they fit naturally.`;
 
     return NextResponse.json({ result });
   } catch (err) {
-    console.error("Marketing AI error:", err);
-    return NextResponse.json({ error: "AI generation failed" }, { status: 500 });
+    const apiErr = err as { status?: number; error?: { type?: string } };
+    const errType = apiErr.error?.type
+      ?? (apiErr.status === 401 ? "invalid_api_key"
+        : apiErr.status === 429 ? "rate_limited"
+        : apiErr.status === 402 ? "insufficient_quota"
+        : "unknown");
+    const userMsg =
+      errType === "invalid_api_key"    ? "AI configuration error — please contact support." :
+      errType === "insufficient_quota" ? "AI quota exceeded — the site owner needs to top up OpenAI credits." :
+      errType === "rate_limited"       ? "AI is temporarily busy — please try again in a moment." :
+                                         "AI generation failed — please try again.";
+    console.error("[marketing] OpenAI error:", errType, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }
 

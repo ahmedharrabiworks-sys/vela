@@ -54,6 +54,22 @@ function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
   );
 }
 
+const LANG_CHIPS = [
+  { code: "en", label: "English" },
+  { code: "ar", label: "العربية" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+  { code: "de", label: "Deutsch" },
+] as const;
+
+function detectLocale(text: string): string | null {
+  if (/[؀-ۿ]/.test(text)) return "ar";
+  if (/[àâçéèêëîïôùûüœ]/i.test(text)) return "fr";
+  if (/[äöüß]/i.test(text)) return "de";
+  if (/[áéíóúüñ¿¡]/i.test(text)) return "es";
+  return null;
+}
+
 export function VelaAssistant() {
   const router = useRouter();
   const { t, locale } = useI18n();
@@ -64,6 +80,7 @@ export function VelaAssistant() {
   const [firstName, setFirstName] = useState("");
   const [interviewMode, setInterviewMode] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [convLocale, setConvLocale] = useState(locale);
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
   const panelRef   = useRef<HTMLDivElement>(null);
@@ -137,6 +154,17 @@ export function VelaAssistant() {
     const isInterview = startInterview || interviewMode;
     if (startInterview) setInterviewMode(true);
 
+    // Auto-detect locale from first user message if not manually chosen
+    const isFirstMessage = messages.filter(m => m.role === "user").length === 0;
+    let sendLocale = convLocale;
+    if (isFirstMessage && text.trim()) {
+      const detected = detectLocale(text);
+      if (detected && detected !== convLocale) {
+        setConvLocale(detected);
+        sendLocale = detected;
+      }
+    }
+
     const imagesToSend = attachedImages.map(({ base64, mimeType }) => ({ data: base64, mimeType }));
     const imagePreviews = attachedImages.map((img) => img.preview);
     setAttachedImages([]);
@@ -156,7 +184,7 @@ export function VelaAssistant() {
           message: text,
           history: messages.slice(-10),
           interviewMode: isInterview,
-          locale,
+          locale: sendLocale,
           images: imagesToSend.length > 0 ? imagesToSend : undefined,
         }),
       });
@@ -214,7 +242,7 @@ export function VelaAssistant() {
       }]);
     }
     setLoading(false);
-  }, [loading, messages, router, interviewMode, attachedImages, locale, t]);
+  }, [loading, messages, router, interviewMode, attachedImages, convLocale, locale, t]);
 
   // Update ref whenever send changes (useCallback deps may change)
   useEffect(() => { sendRef.current = send; }, [send]);
@@ -381,6 +409,28 @@ export function VelaAssistant() {
 
               <div ref={bottomRef} />
             </div>
+
+            {/* Language chips — shown before first user message */}
+            {messages.filter((m) => m.role === "user").length === 0 && (
+              <div className="px-3 pt-2.5 pb-1 border-t border-[#F3F4F6] shrink-0 bg-white">
+                <p className="text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-1.5">Reply in</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {LANG_CHIPS.map(({ code, label }) => (
+                    <button
+                      key={code}
+                      onClick={() => setConvLocale(code)}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors whitespace-nowrap ${
+                        convLocale === code
+                          ? "border-[#FF6B35] bg-[#FFF5F0] text-[#FF6B35] font-semibold"
+                          : "border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Input */}
             <div className="px-3 pt-3 border-t border-[#F3F4F6] shrink-0 bg-white" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>

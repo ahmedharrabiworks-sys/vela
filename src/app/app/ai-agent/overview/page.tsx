@@ -662,23 +662,54 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                   </>
                 )}
                 {isConnecting && (
-                  <div className="flex items-center justify-center gap-2 py-2.5">
-                    <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
-                    <span className="text-[10px]" style={{ color: textMuted }}>Connecting…</span>
+                  <div className="flex flex-col items-center gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
+                      <span className="text-[10px]" style={{ color: textMuted }}>Connecting…</span>
+                    </div>
+                    <button onClick={endCall}
+                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                      style={{ background:"#EF4444", boxShadow:"0 4px 12px rgba(239,68,68,0.4)" }}
+                      title="Cancel call"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2.5 4.9a10.8 10.8 0 009.6 0L13 2.8a.7.7 0 00-.2-.9C11.6 1 10.3.5 9 .5a.7.7 0 00-.5.2L7 2.3 5.5.7A.7.7 0 005 .5C3.7.5 2.4 1 1.2 1.9a.7.7 0 00-.2.9L2.5 4.9z" fill="white" transform="rotate(135 7 7)"/>
+                        <path d="M3 3l8 8M11 3l-8 8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                      </svg>
+                    </button>
                   </div>
                 )}
                 {isActive && (
-                  <div className="flex gap-2">
+                  <div className="flex items-center justify-center gap-4">
                     <button onClick={toggleMute}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-semibold transition-all"
-                      style={{ background: muted?accentBg:isDark?"#1E2235":"#F3F4F6", color: muted?"#FF6B35":textMuted, border:`1px solid ${muted?accentBorder:border}` }}>
-                      {muted ? "Unmute" : "Mute"}
+                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all hover:scale-105 active:scale-95"
+                      style={{ background: muted?accentBg:(isDark?"#1E2235":"#F3F4F6"), border:`1.5px solid ${muted?accentBorder:border}` }}
+                      title={muted ? "Unmute" : "Mute"}
+                    >
+                      {muted ? (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill="#FF6B35"/>
+                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
+                          <path d="M2 2l10 10" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill={textMuted}/>
+                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke={textMuted} strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      )}
                     </button>
                     <button onClick={endCall}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-semibold transition-all"
-                      style={{ background: isDark?"rgba(239,68,68,0.12)":"#FEF2F2", color:"#EF4444", border:"1px solid rgba(239,68,68,0.25)" }}>
-                      End
+                      className="flex items-center justify-center w-12 h-12 rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                      style={{ background:"#EF4444", boxShadow:"0 4px 16px rgba(239,68,68,0.45)" }}
+                      title="End call"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M2 9c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="white" strokeWidth="1.4"/>
+                        <path d="M4.5 9.5c.5 1 1.3 1.9 2.2 2.5l1.3-1.3a.5.5 0 0 1 .6-.1c.6.2 1.3.3 2 .3.3 0 .4.2.4.5v2a.4.4 0 0 1-.4.4C6.2 13.8 4 10.9 4 7.6c0-.3.2-.5.5-.5h2c.3 0 .5.2.5.5 0 .7.1 1.4.3 2a.5.5 0 0 1-.1.6L5.9 11.4" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
+                      </svg>
                     </button>
+                    <div style={{ width: 36 }} />
                   </div>
                 )}
                 {callStatus === "ended" && (
