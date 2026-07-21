@@ -217,6 +217,19 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
   }
 }
 
+// ── Parse phone/email from a contact block string ("Phone: x\nEmail: y") ────────
+function parseContactBlock(block: string): { phone?: string; email?: string } {
+  const result: { phone?: string; email?: string } = {};
+  for (const line of block.split("\n")) {
+    const m = line.match(/^(Phone|Email):\s*(.+)$/i);
+    if (m) {
+      if (m[1].toLowerCase() === "phone") result.phone = m[2].trim();
+      else if (m[1].toLowerCase() === "email") result.email = m[2].trim();
+    }
+  }
+  return result;
+}
+
 // ── Extract embedded spec from generated HTML ─────────────────────────────────
 function extractSpec(html: string): WebsiteSpec | null {
   try {
@@ -920,6 +933,7 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     let spec: WebsiteSpec;
     let effectiveLanguage = language;
+    let extractedContact: { phone?: string; email?: string } = {};
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -1008,6 +1022,8 @@ export async function POST(req: NextRequest) {
       // Extract any contact details the user mentioned across the conversation
       const chatContactBlock = extractContactFromText(fullDescription);
       const effectiveContactBlock = chatContactBlock || contactBlock;
+      // Parse into structured fields so we can save them to website_intake and return to client
+      if (chatContactBlock) extractedContact = parseContactBlock(chatContactBlock);
 
       // Don't inject tenant-profile fields — the accumulated description already contains
       // everything the user told us. Injecting a stale account businessName/industry would
@@ -1188,8 +1204,8 @@ export async function POST(req: NextRequest) {
         website_slug: siteSlug || null,
       };
       if (Array.isArray(body.chat))  tcUpsert.website_chat   = body.chat;
-      // Always persist the effective language (may have been verbally stated instead of UI-picked)
-      tcUpsert.website_intake = { ...(body.intake ?? {}), language: effectiveLanguage };
+      // Always persist the effective language + any phone/email extracted from conversation
+      tcUpsert.website_intake = { ...(body.intake ?? {}), ...extractedContact, language: effectiveLanguage };
 
       // Only record a version entry on initial generate, not on revisions
       if (isGenerate) {
@@ -1239,7 +1255,10 @@ export async function POST(req: NextRequest) {
       if (configErr) console.error("[website/generate] tenant_config upsert error:", configErr.message);
     }
 
-    return NextResponse.json({ html, websiteId, slug: siteSlug, name: siteName, isPublished: siteIsPublished });
+    return NextResponse.json({
+      html, websiteId, slug: siteSlug, name: siteName, isPublished: siteIsPublished,
+      ...(Object.keys(extractedContact).length > 0 ? { intake: extractedContact } : {}),
+    });
   } catch (err) {
     // Log the full error so Vercel function logs show the real cause, not just the message
     const apiErr = err as { status?: number; error?: { type?: string; message?: string }; message?: string };

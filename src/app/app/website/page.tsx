@@ -100,7 +100,7 @@ function PublishPanel({
   domainInput, setDomainInput, domainError, setDomainError,
   connectingDomain, setConnectingDomain, checkingDomain, setCheckingDomain,
   removingDomain, setRemovingDomain,
-  draftDiffers, publishing, hasDraft, hasContactInfo, onPublish, onClose,
+  draftDiffers, publishing, hasDraft, hasContactInfo, onPublish, onClose, setPublishedUrl,
 }: {
   isPublished: boolean; publishedUrl: string; visitCount: number;
   siteName: string; setSiteName: (v: string) => void;
@@ -776,7 +776,8 @@ export default function WebsitePage() {
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
         if (Array.isArray(data.projects)) setProjects(data.projects as WebsiteProject[]);
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
-        if (data.domainStatus)  setDomainStatus(data.domainStatus);
+        // Never restore "verified" on page load — user must click "Check Status" to confirm live DNS
+        if (data.domainStatus) setDomainStatus(data.domainStatus === "verified" ? "pending" : data.domainStatus);
         if (Array.isArray(data.domainRecords)) setDomainRecords(data.domainRecords as DnsRecord[]);
 
       } catch { /* ignore — show empty state */ }
@@ -1167,6 +1168,7 @@ export default function WebsitePage() {
       const data = await res.json() as {
         html?: string; question?: string; reply?: string; error?: string;
         websiteId?: string; slug?: string; name?: string; isPublished?: boolean;
+        intake?: { phone?: string; email?: string };
       };
 
       // Conversational intake: GPT is asking a follow-up question
@@ -1253,8 +1255,12 @@ export default function WebsitePage() {
         finalMsgs.push({ role: "version" as const, content: "", version: newVer });
       }
 
+      // Merge phone/email extracted from conversation by the generate route
+      const updatedContactInfo = data.intake ? { ...contactInfo, ...data.intake } : contactInfo;
+      if (data.intake) setContactInfo(updatedContactInfo);
+
       setMsgs(finalMsgs);
-      persistChat(finalMsgs, contactInfo);
+      persistChat(finalMsgs, updatedContactInfo);
 
     } catch {
       setMsgs([...msgs, userMsg, { role: "ai", content: "Connection error. Check your internet and try again.", isError: true }]);
