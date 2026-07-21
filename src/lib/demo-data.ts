@@ -1,21 +1,21 @@
-// ⚠ DEMO ONLY — Real app pages (src/app/app/*) must never import from this file.
+﻿// ⚠ DEMO ONLY — Real app pages (src/app/app/*) must never import from this file.
 
 export const DEMO_PROFILE = {
-  name: "Dr. Ahmed Al-Rashid",
-  initials: "AA",
-  plan: "pro",
+  name: "Ahmed Dental Clinic",
+  initials: "AC",
+  plan: "premium",
   email: "ahmed@ahmeddentalclinic.ae",
   business: "Ahmed Dental Clinic",
 };
 
 export type DemoKPI = { label: string; value: string; change?: number };
 export type DemoConv = { id: string; customer_name: string; channel: string; preview: string; time: string; isNew: boolean };
-export type DemoAppt = { id: string; time: string; name: string; service: string; status: string };
+export type DemoAppt = { id: string; time: string; name: string; service: string; status: string; phone: string | null; channel: string };
 
 export const DEMO_KPIS: DemoKPI[] = [
   { label: "kpiTotalLeads",        value: "184", change: 23 },
   { label: "kpiNewLeads",          value: "47",  change: 12 },
-  { label: "kpiAppointmentsToday", value: "8",   change: 5  },
+  { label: "kpiAppointmentsToday", value: "10",  change: 5  },
 ];
 
 export const DEMO_CONVS: DemoConv[] = [
@@ -27,14 +27,16 @@ export const DEMO_CONVS: DemoConv[] = [
 ];
 
 export const DEMO_APPTS: DemoAppt[] = [
-  { id: "a1", time: "09:00", name: "Sara Khalid",     service: "Dental Cleaning",   status: "confirmed" },
-  { id: "a2", time: "10:30", name: "Rania Mahmoud",   service: "Teeth Whitening",   status: "confirmed" },
-  { id: "a3", time: "11:00", name: "Mohammed Hassan", service: "Teeth Whitening",   status: "confirmed" },
-  { id: "a4", time: "12:00", name: "Khaled Ibrahim",  service: "Cavity Filling",    status: "pending"   },
-  { id: "a5", time: "13:30", name: "Fatima Nasser",   service: "Root Canal",        status: "cancelled" },
-  { id: "a6", time: "14:00", name: "Nour Al-Saad",    service: "Orthodontic Check", status: "confirmed" },
-  { id: "a7", time: "15:30", name: "Omar Al-Farsi",   service: "Root Canal",        status: "confirmed" },
-  { id: "a8", time: "16:45", name: "Aisha Qasim",     service: "Dental Cleaning",   status: "pending"   },
+  { id: "a1",  time: "09:00", name: "Sara Khalid",     service: "Dental Cleaning",   status: "confirmed", phone: "+971 50 123 4567", channel: "whatsapp"  },
+  { id: "a2",  time: "09:45", name: "Rania Mahmoud",   service: "Teeth Whitening",   status: "confirmed", phone: "+971 52 345 6789", channel: "instagram" },
+  { id: "a3",  time: "10:30", name: "Mohammed Hassan", service: "Teeth Whitening",   status: "confirmed", phone: "+971 55 456 7890", channel: "instagram" },
+  { id: "a4",  time: "11:00", name: "Layla Mansouri",  service: "Dental Cleaning",   status: "confirmed", phone: "+971 55 987 6543", channel: "whatsapp"  },
+  { id: "a5",  time: "12:00", name: "Khaled Ibrahim",  service: "Cavity Filling",    status: "pending",   phone: "+971 50 456 7890", channel: "website"   },
+  { id: "a6",  time: "13:30", name: "Fatima Nasser",   service: "Root Canal",        status: "cancelled", phone: null,               channel: "instagram" },
+  { id: "a7",  time: "14:00", name: "Nour Al-Saad",    service: "Orthodontic Check", status: "confirmed", phone: "+971 54 567 8901", channel: "website"   },
+  { id: "a8",  time: "15:00", name: "Omar Al-Farsi",   service: "Cavity Filling",    status: "confirmed", phone: "+971 56 234 5678", channel: "whatsapp"  },
+  { id: "a9",  time: "15:30", name: "Hassan Youssef",  service: "Root Canal",        status: "pending",   phone: "+971 50 678 9012", channel: "whatsapp"  },
+  { id: "a10", time: "16:45", name: "Aisha Qasim",     service: "Dental Cleaning",   status: "pending",   phone: null,               channel: "instagram" },
 ];
 
 export type DemoLead = {
