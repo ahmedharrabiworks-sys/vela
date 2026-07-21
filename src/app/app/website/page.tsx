@@ -1165,13 +1165,22 @@ export default function WebsitePage() {
       });
 
       const data = await res.json() as {
-        html?: string; question?: string; error?: string;
+        html?: string; question?: string; reply?: string; error?: string;
         websiteId?: string; slug?: string; name?: string; isPublished?: boolean;
       };
 
       // Conversational intake: GPT is asking a follow-up question
       if (res.ok && data.question && !data.html) {
         const finalMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: data.question }];
+        setMsgs(finalMsgs);
+        persistChat(finalMsgs, contactInfo);
+        setBuilding(false);
+        return;
+      }
+
+      // Conversational reply (question about the site, not a revision command)
+      if (res.ok && data.reply && !data.html) {
+        const finalMsgs: Msg[] = [...msgs, userMsg, { role: "ai", content: data.reply }];
         setMsgs(finalMsgs);
         persistChat(finalMsgs, contactInfo);
         setBuilding(false);

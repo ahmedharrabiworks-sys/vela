@@ -580,6 +580,50 @@ Deviate ONLY if the business genuinely has no content for an optional section �
   NEVER:       gallery for non-visual businesses (no gallery for law firms, finance, etc.)`;
 }
 
+// ── Classify message: revision command vs. conversational question ─────────────
+// Returns a conversational reply string if the message is a question/chat,
+// or null if it should be treated as a revision request.
+async function classifyAndChat(
+  openai: OpenAI,
+  spec: WebsiteSpec,
+  msgText: string,
+): Promise<string | null> {
+  const system = `You are an assistant in a website builder chat. The user has an existing website and sends a message.
+
+Decide:
+- If the user wants to CHANGE something on the site (redesign, update copy, change colors/fonts, add/remove sections, make it darker/lighter/more modern, etc.) → respond: { "action": "revise" }
+- If the user is asking a QUESTION or having a CONVERSATION (why a color was chosen, what font was used, design suggestions, how the builder works, small talk, etc.) → respond: { "action": "chat", "reply": "YOUR REPLY" }
+
+For "chat" replies: be warm and helpful. Reference specific aspects of the site from the spec. Keep it concise (2–4 sentences). If relevant, suggest a specific edit they could try.
+
+Respond ONLY with valid JSON.`;
+
+  const specSummary = {
+    stylePreset: spec.stylePreset,
+    accentColor: spec.accentColor,
+    businessName: spec.businessName,
+    sections: spec.sections.map((s) => ({ type: s.type })),
+  };
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `Website spec summary: ${JSON.stringify(specSummary)}\n\nUser message: ${msgText}` },
+    ],
+    response_format: { type: "json_object" },
+    max_tokens: 300,
+    temperature: 0.4,
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as any;
+  if (parsed.action === "chat" && typeof parsed.reply === "string" && parsed.reply.trim()) {
+    return parsed.reply.trim();
+  }
+  return null;
+}
+
 function buildReviseSystem(hasOwnerPhoto: boolean): string {
   const noPhotoNote = hasOwnerPhoto ? "" :
     "\nNO OWNER PHOTOS: When regenerating imageQuery values, use atmospheric/abstract queries — never identifiable business-specific shots (no specific interiors, storefronts, or team-at-location). Use the same atmospheric-query rule as original generation.";
@@ -884,6 +928,15 @@ export async function POST(req: NextRequest) {
       if (revisionLang) effectiveLanguage = revisionLang;
 
       const existing = extractSpec(currentHtml);
+
+      // Classify: conversational question vs. revision command.
+      // Only classify when there is a parsed spec and a non-empty text message.
+      if (existing && msgText && !validImages.length) {
+        const chatReply = await classifyAndChat(openai, existing, msgText);
+        if (chatReply) {
+          return NextResponse.json({ reply: chatReply });
+        }
+      }
 
       if (!existing) {
         const userContent = buildUserContent(businessName, industry, city, msgText, effectiveLanguage);
