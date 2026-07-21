@@ -321,13 +321,14 @@ export function renderBooking(
     c.hours   && { icon: "time",  label: "Hours",   value: c.hours,   href: undefined },
   ].filter(Boolean) as { icon: string; label: string; value: string; href?: string }[];
 
-  return `<section class="ws-section" id="booking">
+  const hasContact = contactItems.length > 0;
+  return `<section class="ws-section" id="booking" style="padding-bottom:80px;">
   <div class="ws-container">
     ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
     ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
-    <div class="ws-booking-inner">
-      <div>
+    <div class="ws-booking-inner"${!hasContact ? ' style="grid-template-columns:1fr;max-width:640px;"' : ""}>
+      ${hasContact ? `<div>
         ${contactItems.map((ci) => `
         <div class="ws-contact-item">
           <div class="ws-contact-icon">${icon(ci.icon, 20)}</div>
@@ -338,7 +339,7 @@ export function renderBooking(
               : `<p class="ws-contact-value">${esc(ci.value)}</p>`}
           </div>
         </div>`).join("")}
-      </div>
+      </div>` : ""}
       <div>
         <form id="booking-form" class="ws-booking-form" onsubmit="return wsSubmitForm(event)">
           <div class="ws-form-row">

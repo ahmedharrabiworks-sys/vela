@@ -32,10 +32,10 @@ function buildCss(t: DesignTokens): string {
     switch (t.preset) {
       case "editorial-luxury":
         return `
-/* editorial-luxury: near-seamless dark grid */
+/* editorial-luxury: clean light grid, warm hover */
 .ws-service-card--editorialluxury{border:none;}
 .ws-service-card--editorialluxury .ws-service-title{font-size:1.6rem;line-height:1.15;}
-.ws-service-card--editorialluxury:hover{background:${t.surface};}`;
+.ws-service-card--editorialluxury:hover{background:${t.bgAlt};}`;
       case "saas-sharp":
         return `
 /* saas-sharp: gradient-border dark cards */

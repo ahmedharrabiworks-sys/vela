@@ -177,11 +177,29 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
 
     if (!hasQ) {
       if (s.type === "hero") {
-        // When owner has no photos, use atmospheric/abstract queries that read as editorial
-        // design choices — not photos that could be mistaken for THIS specific business.
-        (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
-          ? `${base} bright interior ${city}`.replace(/\s+/g, " ").trim()
-          : `${base} atmospheric bokeh warm light texture abstract`.replace(/\s+/g, " ").trim();
+        if (hasOwnerPhoto) {
+          (s as { imageQuery?: string }).imageQuery = `${base} bright interior ${city}`.replace(/\s+/g, " ").trim();
+        } else {
+          // Industry-aware suffix so the hero image relates to the actual business type
+          const lowerCtx = (base + " " + industry).toLowerCase();
+          const heroSuffix =
+            /fashion|cloth|boutiqu|apparel|wear|abaya|dress|couture|jewel/.test(lowerCtx)
+              ? "fashion editorial studio minimal elegant"
+            : /dental|medical|clinic|physio|health|hospital|optici|cosmetic|derm/.test(lowerCtx)
+              ? "clean white minimal abstract geometric professional"
+            : /food|cafe|café|restaurant|bakery|pastry|kitchen|chef|catering|bistro/.test(lowerCtx)
+              ? "food close-up editorial warm bokeh morning light"
+            : /gym|fitness|crossfit|sport|martial|workout|training|yoga|pilates/.test(lowerCtx)
+              ? "dynamic motion athletic dramatic light editorial"
+            : /spa|wellness|holistic|massage|retreat|meditation|organic/.test(lowerCtx)
+              ? "calm water stone zen natural light serene"
+            : /tech|saas|software|app|digital|startup|code|develop|agency/.test(lowerCtx)
+              ? "dark minimal abstract technology gradient"
+            : /real.?estate|propert|architect|interior.?design|villa/.test(lowerCtx)
+              ? "architectural window light geometric modern minimal"
+              : "atmospheric bokeh warm editorial light abstract";
+          (s as { imageQuery?: string }).imageQuery = `${base} ${heroSuffix}`.replace(/\s+/g, " ").trim();
+        }
       } else if (s.type === "about") {
         (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
           ? `${base} professional team workspace modern`.replace(/\s+/g, " ").trim()
@@ -323,8 +341,8 @@ You MUST set both "stylePreset" AND "accentColor". Never omit either.
 FIVE DESIGN PRESETS — each produces a structurally different site:
 
 • "editorial-luxury"
-  LOOK: Dark near-black bg, oversized Cormorant Garamond (light weight), full-bleed photography with text at bottom-left, champagne-gold accent, zero chrome. Modelled on Kelly Wearstler.
-  USE FOR: Luxury salons, interior design studios, boutique hotels, fine dining, jewellery, high-end photography, luxury fashion boutiques.
+  LOOK: Warm off-white body (#FAF8F5), oversized Cormorant Garamond (light weight), full-bleed dark-overlay photo hero with text at bottom-left, champagne-gold accent, zero chrome. Body sections are always light; only the hero and CTA-banner use a dark overlay. Modelled on high-end fashion editorial and Kelly Wearstler interior design.
+  USE FOR: Luxury salons, interior design studios, boutique hotels, fine dining, jewellery, high-end photography, luxury fashion boutiques, abaya & modest fashion e-commerce, clothing boutiques.
 
 • "minimal-warm"
   LOOK: Warm parchment/cream bg (#F5F0E8), DM Serif Display at restrained scale, split-layout hero (text left + photo right), very generous whitespace. Modelled on Aesop.
@@ -349,6 +367,7 @@ CATEGORY → PRESET MAPPING (pick from candidates; style words from the owner br
   Gym, CrossFit, martial arts, sports brand, fitness studio → "saas-sharp"
   Tech startup, SaaS, digital agency, co-working → "saas-sharp"
   Luxury salon, interior design, boutique hotel, fine dining, jewellery → "editorial-luxury"
+  Abaya store, fashion boutique, modest fashion, clothing e-commerce → "editorial-luxury"
   Spa, yoga, organic café, bakery, holistic wellness, florist → "minimal-warm"
   Restaurant (casual/modern) → "minimal-warm" (warm/artisanal) or "editorial-luxury" (luxury)
   Hair salon / barbershop → "editorial-luxury" (premium) or "minimal-warm" (soft/organic)
@@ -421,14 +440,17 @@ REQUIRED — atmospheric, editorial, or abstract (reads as intentional design im
 ✓ gallery: product/detail close-ups, textures, abstract compositions
 
 ATMOSPHERIC QUERY EXAMPLES — use this pattern:
-• café / bakery hero    → "warm coffee steam bokeh morning light close-up"
-• dental hero           → "clean white minimal geometric abstract light"
-• gym / fitness hero    → "motion blur dynamic light dramatic fitness abstract"
-• restaurant hero       → "candlelight warm bokeh dining atmosphere evening abstract"
-• hair salon / luxury   → "mirror reflection bokeh champagne abstract light"
-• spa / wellness hero   → "smooth stone water ripple natural light zen texture"
-• real estate / law     → "architectural window light geometric shadow abstract"
-• bakery gallery        → "croissant flaky layers close-up editorial light"
+• café / bakery hero      → "warm coffee steam bokeh morning light close-up"
+• dental hero             → "clean white minimal geometric abstract light"
+• gym / fitness hero      → "motion blur dynamic light dramatic fitness abstract"
+• restaurant hero         → "candlelight warm bokeh dining atmosphere evening abstract"
+• hair salon / luxury     → "mirror reflection bokeh champagne abstract light"
+• spa / wellness hero     → "smooth stone water ripple natural light zen texture"
+• real estate / law       → "architectural window light geometric shadow abstract"
+• bakery gallery          → "croissant flaky layers close-up editorial light"
+• fashion / boutique hero → "women fashion editorial studio minimal elegant"
+• abaya / modest fashion  → "silk fabric drape luxury editorial fashion minimal"
+• clothing e-commerce     → "fashion clothing editorial flat lay product photography"
 
 SELF-TEST: Ask "Could this photo appear in a design mood-board for ANY business in this category?"
 If yes → SAFE to use. If it would look like a photo of a SPECIFIC establishment → FORBIDDEN.
@@ -1051,6 +1073,25 @@ export async function POST(req: NextRequest) {
     // Strip any testimonials that slipped through
     spec.sections = spec.sections.filter((s) => s.type !== "testimonials");
 
+    // Post-process: remove placeholder contact data GPT may have invented,
+    // then inject real contact info from conversation or client-side intake.
+    {
+      const realPhone = extractedContact.phone || contactInfo?.phone;
+      const realEmail = extractedContact.email || contactInfo?.email;
+      if (realPhone || realEmail) {
+        // Matches common AI-invented placeholder patterns
+        const PLACEHOLDER = /(\+1\s?555|\b555[- ]?\d{4}\b|000[- ]?0000|example\.com|yourname@|info@business|contact@business|name@business)/i;
+        for (const s of spec.sections) {
+          if (s.type === "booking" || s.type === "footer") {
+            if (s.content.phone && PLACEHOLDER.test(String(s.content.phone))) delete s.content.phone;
+            if (s.content.email && PLACEHOLDER.test(String(s.content.email))) delete s.content.email;
+            if (realPhone && !s.content.phone) s.content.phone = realPhone;
+            if (realEmail && !s.content.email) s.content.email = realEmail;
+          }
+        }
+      }
+    }
+
     // Guarantee hero and footer
     if (!spec.sections.some((s) => s.type === "hero")) {
       spec.sections.unshift({
@@ -1062,13 +1103,16 @@ export async function POST(req: NextRequest) {
       });
     }
     if (!spec.sections.some((s) => s.type === "footer")) {
+      const effPhone   = extractedContact.phone   || contactInfo?.phone;
+      const effEmail   = extractedContact.email   || contactInfo?.email;
+      const effAddress = contactInfo?.address;
       spec.sections.push({
         type: "footer",
         content: {
           tagline: `${businessName} — ${industry || "professional services"} in ${city || "your city"}.`,
-          ...(contactInfo?.phone   ? { phone: contactInfo.phone }     : {}),
-          ...(contactInfo?.email   ? { email: contactInfo.email }     : {}),
-          ...(contactInfo?.address ? { address: contactInfo.address } : {}),
+          ...(effPhone   ? { phone:   effPhone }   : {}),
+          ...(effEmail   ? { email:   effEmail }   : {}),
+          ...(effAddress ? { address: effAddress } : {}),
         },
       });
     }
@@ -1078,6 +1122,10 @@ export async function POST(req: NextRequest) {
       // Insert before footer
       const footerIdx = spec.sections.findIndex((s) => s.type === "footer");
       const insertAt = footerIdx >= 0 ? footerIdx : spec.sections.length;
+      const effPhone2   = extractedContact.phone   || contactInfo?.phone;
+      const effEmail2   = extractedContact.email   || contactInfo?.email;
+      const effAddress2 = contactInfo?.address;
+      const effHours2   = contactInfo?.hours;
       spec.sections.splice(insertAt, 0, {
         type: "booking",
         content: {
@@ -1086,10 +1134,10 @@ export async function POST(req: NextRequest) {
           subheadline: "Tell us about your vision and we'll be in touch within 24 hours.",
           ctaText: "Send Enquiry",
           services: [],
-          ...(contactInfo?.phone   ? { phone:   contactInfo.phone }   : {}),
-          ...(contactInfo?.email   ? { email:   contactInfo.email }   : {}),
-          ...(contactInfo?.address ? { address: contactInfo.address } : {}),
-          ...(contactInfo?.hours   ? { hours:   contactInfo.hours }   : {}),
+          ...(effPhone2   ? { phone:   effPhone2 }   : {}),
+          ...(effEmail2   ? { email:   effEmail2 }   : {}),
+          ...(effAddress2 ? { address: effAddress2 } : {}),
+          ...(effHours2   ? { hours:   effHours2 }   : {}),
         },
       });
     }
