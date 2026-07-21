@@ -6,7 +6,6 @@ import { useI18n } from "@/lib/i18n";
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AttachedImage = { preview: string; base64: string; mimeType: string };
 type ContactInfo   = { phone: string; email: string; address: string; hours: string };
-type DnsRecord     = { type: string; name: string; value: string };
 
 type VersionRecord = {
   id:         string;
@@ -96,7 +95,7 @@ function PublishPanel({
   slugError, setSlugError, settingsError, setSettingsError,
   savingSettings, setSavingSettings, websiteId,
   customDomain, setCustomDomain, domainStatus, setDomainStatus,
-  domainRecords, setDomainRecords, domainConfigured, setDomainConfigured,
+  domainCname, setDomainCname,
   domainInput, setDomainInput, domainError, setDomainError,
   connectingDomain, setConnectingDomain, checkingDomain, setCheckingDomain,
   removingDomain, setRemovingDomain,
@@ -112,8 +111,7 @@ function PublishPanel({
   websiteId: string | null;
   customDomain: string | null; setCustomDomain: (v: string | null) => void;
   domainStatus: "pending" | "verified" | null; setDomainStatus: (v: "pending" | "verified" | null) => void;
-  domainRecords: DnsRecord[]; setDomainRecords: (v: DnsRecord[]) => void;
-  domainConfigured: boolean; setDomainConfigured: (v: boolean) => void;
+  domainCname: string; setDomainCname: (v: string) => void;
   domainInput: string; setDomainInput: (v: string) => void;
   domainError: string; setDomainError: (v: string) => void;
   connectingDomain: boolean; setConnectingDomain: (v: boolean) => void;
@@ -216,14 +214,13 @@ function PublishPanel({
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domain: domainInput.trim() }),
       });
-      const data = await res.json() as { error?: string; domain?: string; status?: "pending" | "verified"; records?: DnsRecord[] };
+      const data = await res.json() as { error?: string; domain?: string; status?: "pending" | "verified"; cname?: string };
       if (!res.ok) {
-        if (res.status === 503) { setDomainConfigured(false); return; }
         setDomainError(data.error ?? "Failed to connect domain.");
       } else {
         setCustomDomain(data.domain ?? domainInput.trim());
         setDomainStatus("pending");
-        setDomainRecords(data.records ?? []);
+        if (data.cname) setDomainCname(data.cname);
       }
     } catch { setDomainError("Connection error — please try again."); }
     finally { setConnectingDomain(false); }
@@ -233,13 +230,12 @@ function PublishPanel({
     setDomainError(""); setCheckingDomain(true);
     try {
       const res  = await fetch("/api/website/domain");
-      const data = await res.json() as { error?: string; status?: "pending" | "verified" | null; records?: DnsRecord[] };
+      const data = await res.json() as { error?: string; status?: "pending" | "verified" | null; cname?: string };
       if (!res.ok) {
-        if (res.status === 503) { setDomainConfigured(false); return; }
         setDomainError(data.error ?? "Could not check status.");
       } else {
         if (data.status) setDomainStatus(data.status);
-        if (Array.isArray(data.records)) setDomainRecords(data.records);
+        if (data.cname) setDomainCname(data.cname);
       }
     } catch { setDomainError("Connection error — please try again."); }
     finally { setCheckingDomain(false); }
@@ -250,7 +246,7 @@ function PublishPanel({
     setRemovingDomain(true);
     try {
       const res = await fetch("/api/website/domain", { method: "DELETE" });
-      if (res.ok) { setCustomDomain(null); setDomainStatus(null); setDomainRecords([]); setDomainInput(""); }
+      if (res.ok) { setCustomDomain(null); setDomainStatus(null); setDomainCname(""); setDomainInput(""); }
     } catch { /* ignore */ }
     finally { setRemovingDomain(false); }
   };
@@ -272,9 +268,7 @@ function PublishPanel({
       </button>
 
       {showDomain && (
-        !domainConfigured ? (
-          <p className="text-[11px] text-[#9CA3AF]">Custom domains not configured — contact your administrator.</p>
-        ) : customDomain ? (
+        customDomain ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`w-2 h-2 rounded-full shrink-0 ${domainStatus === "verified" ? "bg-green-400" : "bg-yellow-400"}`} />
@@ -283,27 +277,16 @@ function PublishPanel({
                 {domainStatus === "verified" ? "Connected" : "Pending"}
               </span>
             </div>
-            {domainStatus !== "verified" && domainRecords.length > 0 && (
-              <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32]">
-                <table className="min-w-full text-[11px]">
-                  <thead className="bg-[#F9FAFB] dark:bg-[#1E1E24]">
-                    <tr>{["Type", "Name", "Value", ""].map((h) => <th key={h} className="text-left px-3 py-2 font-semibold text-[#374151] dark:text-[#9CA3AF] whitespace-nowrap">{h}</th>)}</tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F3F4F6] dark:divide-[#2A2A32]">
-                    {domainRecords.map((r, i) => (
-                      <tr key={i} className="bg-white dark:bg-[#17171C]">
-                        <td className="px-3 py-2 font-mono text-[#374151] dark:text-[#9CA3AF] whitespace-nowrap">{r.type}</td>
-                        <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[90px] truncate">{r.name}</td>
-                        <td className="px-3 py-2 font-mono text-[#6B7280] whitespace-nowrap max-w-[120px] truncate">{r.value}</td>
-                        <td className="px-3 py-2">
-                          <button onClick={() => handleCopyRecord(r.value)} className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80">
-                            {copiedRecord === r.value ? "Copied" : "Copy"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {domainStatus !== "verified" && (
+              <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] px-3 py-2.5 space-y-1.5">
+                <p className="text-[11px] text-[#374151] dark:text-[#9CA3AF]">Point your domain&apos;s CNAME record to:</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-[11px] font-mono text-[#374151] dark:text-[#E5E7EB] flex-1 min-w-0 truncate">{domainCname || "cname.vercel-dns.com"}</code>
+                  <button onClick={() => handleCopyRecord(domainCname || "cname.vercel-dns.com")}
+                    className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
+                    {copiedRecord === (domainCname || "cname.vercel-dns.com") ? "Copied" : "Copy"}
+                  </button>
+                </div>
               </div>
             )}
             {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
@@ -668,8 +651,7 @@ export default function WebsitePage() {
   const [domainInput, setDomainInput]       = useState("");
   const [customDomain, setCustomDomain]     = useState<string | null>(null);
   const [domainStatus, setDomainStatus]     = useState<"pending" | "verified" | null>(null);
-  const [domainRecords, setDomainRecords]   = useState<DnsRecord[]>([]);
-  const [domainConfigured, setDomainConfigured] = useState(true);
+  const [domainCname, setDomainCname]       = useState("");
   const [connectingDomain, setConnectingDomain] = useState(false);
   const [checkingDomain, setCheckingDomain]     = useState(false);
   const [removingDomain, setRemovingDomain]     = useState(false);
@@ -736,7 +718,6 @@ export default function WebsitePage() {
           versions?:     VersionRecord[];
           customDomain?: string | null;
           domainStatus?: "pending" | "verified" | null;
-          domainRecords?: DnsRecord[] | null;
           visitCount?:   number;
           plan?:         string;
         };
@@ -778,7 +759,6 @@ export default function WebsitePage() {
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
         // Never restore "verified" on page load — user must click "Check Status" to confirm live DNS
         if (data.domainStatus) setDomainStatus(data.domainStatus === "verified" ? "pending" : data.domainStatus);
-        if (Array.isArray(data.domainRecords)) setDomainRecords(data.domainRecords as DnsRecord[]);
 
       } catch { /* ignore — show empty state */ }
       setLoading(false);
@@ -1366,8 +1346,7 @@ export default function WebsitePage() {
                   websiteId={websiteId}
                   customDomain={customDomain} setCustomDomain={setCustomDomain}
                   domainStatus={domainStatus} setDomainStatus={setDomainStatus}
-                  domainRecords={domainRecords} setDomainRecords={setDomainRecords}
-                  domainConfigured={domainConfigured} setDomainConfigured={setDomainConfigured}
+                  domainCname={domainCname} setDomainCname={setDomainCname}
                   domainInput={domainInput} setDomainInput={setDomainInput}
                   domainError={domainError} setDomainError={setDomainError}
                   connectingDomain={connectingDomain} setConnectingDomain={setConnectingDomain}

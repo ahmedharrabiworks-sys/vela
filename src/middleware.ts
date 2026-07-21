@@ -49,8 +49,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
 
-    // Unknown custom domain — let Next.js render normally (404 or landing page)
-    return NextResponse.next({ request });
+    // Unknown custom domain — serve a clean "site not found" page
+    return new NextResponse(
+      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Site not found</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,-apple-system,sans-serif;background:#f9fafb;color:#374151;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}.card{text-align:center;max-width:420px}.icon{width:56px;height:56px;background:#fff;border:1.5px solid #e5e7eb;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;box-shadow:0 2px 8px rgba(0,0,0,.06)}.icon svg{width:24px;height:24px;stroke:#9ca3af;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}h1{font-size:1.25rem;font-weight:700;color:#111827;margin-bottom:.5rem}p{font-size:.875rem;color:#6b7280;line-height:1.5}</style></head><body><div class="card"><div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div><h1>This site isn't set up yet.</h1><p>The domain isn't connected to any published site. If you own this domain, check your DNS settings.</p></div></body></html>`,
+      { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } },
+    );
   }
 
   // ── Auth middleware (primary domain only) ─────────────────────────────────

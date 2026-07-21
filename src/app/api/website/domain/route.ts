@@ -24,56 +24,15 @@ function checkRateLimit(tenantId: string): boolean {
 }
 
 // ── Strict domain validation ──────────────────────────────────────────────────
-// Rejects: bare "www", protocols, paths, spaces, double dots, leading/trailing hyphens
 const LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 
 function isValidDomain(input: string): boolean {
   if (!input || input.includes(" ") || input.includes("..")) return false;
   const parts = input.split(".");
-  // Require at least 2 parts with a valid TLD
   if (parts.length < 2) return false;
   const tld = parts[parts.length - 1];
   if (!tld || tld.length < 2 || !/^[a-z]{2,}$/i.test(tld)) return false;
   return parts.every((p) => LABEL_RE.test(p));
-}
-
-// ── Map Vercel error codes to clean user-facing messages ──────────────────────
-function mapVercelError(code: string | undefined, message: string | undefined): string {
-  if (code === "domain_already_in_use")    return "This domain is already in use by another project.";
-  if (code === "invalid_domain")           return "Invalid domain — please check the spelling.";
-  if (code === "domain_already_verified")  return "This domain is already verified and connected.";
-  if (code === "forbidden")                return "You don't have permission to add this domain.";
-  if (code === "not_found")                return "Domain not found in this project.";
-  if (message?.includes("rate"))           return "Too many requests — please wait a moment.";
-  return "Could not connect domain — please try again.";
-}
-
-// ── Build DNS records the user must add ───────────────────────────────────────
-type DnsRecord = { type: string; name: string; value: string };
-
-function buildDnsInstructions(
-  domain: string,
-  verification: Array<{ type?: string; domain?: string; value?: string }>,
-): DnsRecord[] {
-  const records: DnsRecord[] = [];
-
-  // Traffic routing: CNAME for subdomains, A for apex
-  const parts = domain.split(".");
-  const isApex = parts.length === 2; // e.g. example.com
-  if (isApex) {
-    records.push({ type: "A", name: "@", value: "76.76.21.21" });
-  } else {
-    records.push({ type: "CNAME", name: parts[0], value: "cname.vercel-dns.com" });
-  }
-
-  // TXT verification records from Vercel
-  for (const v of verification) {
-    if (v.type && v.domain && v.value) {
-      records.push({ type: v.type, name: v.domain, value: v.value });
-    }
-  }
-
-  return records;
 }
 
 // ── Auth + tenant helper ──────────────────────────────────────────────────────
@@ -89,24 +48,12 @@ async function getAuthedTenant(req: NextRequest): Promise<{ tenant: { id: string
   return { tenant };
 }
 
-function vercelHeaders(token: string): HeadersInit {
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
+// CNAME target customers must point their domain to
+const CNAME_TARGET = process.env.VERCEL_PROJECT_URL ?? "cname.vercel-dns.com";
 
-function teamParam(): string {
-  return process.env.VERCEL_TEAM_ID ? `?teamId=${process.env.VERCEL_TEAM_ID}` : "";
-}
-
-// ── POST /api/website/domain ─────────────────────────────────────────────────
-// Adds domain to Vercel project + saves to tenant_config
+// ── POST /api/website/domain ──────────────────────────────────────────────────
+// Saves domain to DB and returns CNAME instruction (no Vercel API call)
 export async function POST(req: NextRequest) {
-  const token     = process.env.VERCEL_API_TOKEN;
-  const projectId = process.env.VERCEL_PROJECT_ID;
-
-  if (!token || !projectId) {
-    return NextResponse.json({ error: "not_configured" }, { status: 503 });
-  }
-
   const body = await req.json().catch(() => ({})) as { domain?: string };
   const rawDomain = (body.domain ?? "")
     .trim()
@@ -116,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   if (!isValidDomain(rawDomain)) {
     return NextResponse.json(
-      { error: "Please enter a valid domain name (e.g. www.yourbusiness.com). A bare 'www' or single word is not valid." },
+      { error: "Please enter a valid domain name (e.g. www.yourbusiness.com)." },
       { status: 400 },
     );
   }
@@ -128,51 +75,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
   }
 
-  const url = `https://api.vercel.com/v10/projects/${projectId}/domains${teamParam()}`;
-  let vercelRes: Response;
-  try {
-    vercelRes = await fetch(url, {
-      method: "POST",
-      headers: vercelHeaders(token),
-      body: JSON.stringify({ name: rawDomain }),
-    });
-  } catch {
-    return NextResponse.json({ error: "Could not reach Vercel — try again." }, { status: 502 });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const vercelData = await vercelRes.json() as any;
-
-  if (!vercelRes.ok) {
-    const code = vercelData?.error?.code as string | undefined;
-    const msg  = vercelData?.error?.message as string | undefined;
-    return NextResponse.json({ error: mapVercelError(code, msg) }, { status: 400 });
-  }
-
-  const verification = (vercelData.verification ?? []) as Array<{ type?: string; domain?: string; value?: string }>;
-  const records = buildDnsInstructions(rawDomain, verification);
-
   const admin = createSupabaseAdmin() as AdminClient;
   await admin.from("tenant_config").upsert({
-    tenant_id:             tenant.id,
-    website_custom_domain: rawDomain,
-    website_domain_status: "pending",
-    website_domain_records: records,
+    tenant_id:              tenant.id,
+    website_custom_domain:  rawDomain,
+    website_domain_status:  "pending",
+    website_domain_records: null,
   }, { onConflict: "tenant_id" });
 
-  return NextResponse.json({ domain: rawDomain, status: "pending", records });
+  return NextResponse.json({ domain: rawDomain, status: "pending", cname: CNAME_TARGET });
 }
 
 // ── GET /api/website/domain ───────────────────────────────────────────────────
-// Checks live status with Vercel and updates tenant_config
+// Checks DNS via Google's public DNS API and updates status in DB
 export async function GET(req: NextRequest) {
-  const token     = process.env.VERCEL_API_TOKEN;
-  const projectId = process.env.VERCEL_PROJECT_ID;
-
-  if (!token || !projectId) {
-    return NextResponse.json({ error: "not_configured" }, { status: 503 });
-  }
-
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
 
@@ -183,73 +99,58 @@ export async function GET(req: NextRequest) {
   const admin = createSupabaseAdmin() as AdminClient;
   const { data: config } = await admin
     .from("tenant_config")
-    .select("website_custom_domain, website_domain_status, website_domain_records")
+    .select("website_custom_domain, website_domain_status")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   const tc = config as Record<string, unknown> | null;
   const domain = tc?.website_custom_domain as string | undefined;
-  if (!domain) return NextResponse.json({ status: null, domain: null, records: [] });
+  if (!domain) return NextResponse.json({ status: null, domain: null, cname: CNAME_TARGET });
 
-  const tp = teamParam();
-
-  let domainRes: Response;
+  // DNS verification — CNAME check first (subdomains), then A record (apex)
+  let verified = false;
   try {
-    domainRes = await fetch(
-      `https://api.vercel.com/v9/projects/${projectId}/domains/${domain}${tp}`,
-      { headers: { Authorization: `Bearer ${token}` } },
+    const cnameRes = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=CNAME`,
+      { headers: { Accept: "application/json" } },
     );
-  } catch {
-    return NextResponse.json({ error: "Could not reach Vercel — try again." }, { status: 502 });
-  }
-
-  if (!domainRes.ok) {
-    if (domainRes.status === 404) {
-      // Domain no longer exists on this Vercel project — clear stale state from DB
-      await admin.from("tenant_config").upsert({
-        tenant_id:              tenant.id,
-        website_custom_domain:  null,
-        website_domain_status:  null,
-        website_domain_records: null,
-      }, { onConflict: "tenant_id" });
-      return NextResponse.json({ domain: null, status: null, records: [] });
+    if (cnameRes.ok) {
+      const cnameData = await cnameRes.json() as { Answer?: { data?: string }[] };
+      verified = (cnameData.Answer ?? []).some(
+        (a) => typeof a.data === "string" && a.data.includes("vercel"),
+      );
     }
-    return NextResponse.json({
-      domain,
-      status: tc?.website_domain_status ?? "pending",
-      records: tc?.website_domain_records ?? [],
-    });
+
+    if (!verified) {
+      const aRes = await fetch(
+        `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`,
+        { headers: { Accept: "application/json" } },
+      );
+      if (aRes.ok) {
+        const aData = await aRes.json() as { Answer?: { data?: string }[] };
+        // 76.76.21.21 is Vercel's Anycast IP for apex domains
+        verified = (aData.Answer ?? []).some((a) => a.data === "76.76.21.21");
+      }
+    }
+  } catch {
+    // Network error — return current DB status unchanged
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const domainData = await domainRes.json() as any;
-  // Only "Connected" when Vercel has verified the domain AND it is not misconfigured (DNS not yet set up)
-  const verified = domainData?.verified === true && domainData?.misconfigured !== true;
-  const status   = verified ? "verified" : "pending";
+  const status = verified ? "verified" : "pending";
 
-  // Update status in tenant_config
-  await admin.from("tenant_config").upsert({
-    tenant_id:             tenant.id,
-    website_domain_status: status,
-  }, { onConflict: "tenant_id" });
+  if (verified && tc?.website_domain_status !== "verified") {
+    await admin.from("tenant_config").upsert({
+      tenant_id:             tenant.id,
+      website_domain_status: "verified",
+    }, { onConflict: "tenant_id" });
+  }
 
-  return NextResponse.json({
-    domain,
-    status,
-    records: tc?.website_domain_records ?? [],
-  });
+  return NextResponse.json({ domain, status, cname: CNAME_TARGET });
 }
 
 // ── DELETE /api/website/domain ────────────────────────────────────────────────
-// Removes domain from Vercel project + clears tenant_config
+// Clears domain from DB (no Vercel API call)
 export async function DELETE(req: NextRequest) {
-  const token     = process.env.VERCEL_API_TOKEN;
-  const projectId = process.env.VERCEL_PROJECT_ID;
-
-  if (!token || !projectId) {
-    return NextResponse.json({ error: "not_configured" }, { status: 503 });
-  }
-
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
 
@@ -258,26 +159,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   const admin = createSupabaseAdmin() as AdminClient;
-  const { data: config } = await admin
-    .from("tenant_config")
-    .select("website_custom_domain")
-    .eq("tenant_id", tenant.id)
-    .maybeSingle();
-
-  const domain = (config as Record<string, unknown> | null)?.website_custom_domain as string | undefined;
-  if (!domain) return NextResponse.json({ ok: true }); // nothing to remove
-
-  const tp = teamParam();
-
-  try {
-    await fetch(
-      `https://api.vercel.com/v9/projects/${projectId}/domains/${domain}${tp}`,
-      { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
-    );
-  } catch {
-    // Best-effort — clear local state regardless
-  }
-
   await admin.from("tenant_config").upsert({
     tenant_id:              tenant.id,
     website_custom_domain:  null,
