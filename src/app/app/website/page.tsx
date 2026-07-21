@@ -700,6 +700,24 @@ export default function WebsitePage() {
   const websiteIdRef = useRef<string | null>(null);
   const publishBtnRef = useRef<HTMLDivElement>(null);
 
+  const refreshProjects = useCallback(async () => {
+    try {
+      const res = await fetch("/api/website/list");
+      if (!res.ok) return;
+      const data = await res.json() as { sites?: WebsiteProject[] };
+      if (Array.isArray(data.sites)) {
+        setProjects(data.sites.map((s) => ({
+          id:           s.id,
+          name:         s.name ?? null,
+          slug:         s.slug ?? null,
+          is_published: s.is_published,
+          published_url: s.is_published ? (s.slug ? `/site/${s.slug}` : null) : null,
+          updated_at:   s.updated_at ?? null,
+        })));
+      }
+    } catch { /* non-critical */ }
+  }, []);
+
   // ── Mount: load persisted state ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -762,6 +780,7 @@ export default function WebsitePage() {
 
       } catch { /* ignore — show empty state */ }
       setLoading(false);
+      void refreshProjects();
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1043,7 +1062,8 @@ export default function WebsitePage() {
         body: JSON.stringify({ websiteId: projectId, name: trimmed }),
       });
     } catch { /* ignore */ }
-  }, []);
+    void refreshProjects();
+  }, [refreshProjects]);
 
   const handleDeleteProject = useCallback((p: WebsiteProject) => {
     setMenuOpenId(null);
@@ -1072,7 +1092,8 @@ export default function WebsitePage() {
         body: JSON.stringify({ websiteId: p.id }),
       });
     } catch { /* ignore — UI already updated */ }
-  }, [deleteTarget, btype, siteLanguage]);
+    void refreshProjects();
+  }, [deleteTarget, btype, siteLanguage, refreshProjects]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1241,6 +1262,7 @@ export default function WebsitePage() {
 
       setMsgs(finalMsgs);
       persistChat(finalMsgs, updatedContactInfo);
+      void refreshProjects();
 
     } catch {
       setMsgs([...msgs, userMsg, { role: "ai", content: "Connection error. Check your internet and try again.", isError: true }]);
@@ -1387,15 +1409,6 @@ export default function WebsitePage() {
           {/* Scrollable site list — one row per site */}
           <div className="flex-1 overflow-y-auto">
 
-            {/* "New Project" placeholder: active unsaved session (no websiteId yet) */}
-            {!websiteId && (
-              <div className="border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14] pl-2.5 pr-2 flex items-center" style={{ minHeight: 34 }}>
-                <div className="flex-1 min-w-0">
-                  <span className="text-[11px] font-semibold text-[#111111] dark:text-white truncate block leading-tight">New Project</span>
-                </div>
-              </div>
-            )}
-
             {/* Site rows */}
             {projects.map((p) => {
               const isActive   = p.id === websiteId;
@@ -1480,6 +1493,12 @@ export default function WebsitePage() {
                 </div>
               );
             })}
+
+            {projects.length === 0 && (
+              <div className="px-3 py-5 text-center">
+                <p className="text-[10px] text-[#BBBBBB] dark:text-[#555]">No sites yet</p>
+              </div>
+            )}
           </div>
 
           {/* Drag-to-resize handle */}
