@@ -1,21 +1,28 @@
 export type PresetName =
+  | "hotel"
+  | "medical"
+  | "fitness"
+  | "beauty"
+  | "realestate"
+  | "restaurant"
+  // Legacy names — stored in older DB specs; resolved in resolveTokens
   | "editorial-luxury"
   | "minimal-warm"
   | "saas-sharp"
   | "estate-elegant"
   | "clinical-bright"
-  // Legacy names — stored in older DB specs; resolved in resolveTokens
   | "editorial"
   | "bold"
   | "clean"
   | "clinical";
 
 export type NewPresetName =
-  | "editorial-luxury"
-  | "minimal-warm"
-  | "saas-sharp"
-  | "estate-elegant"
-  | "clinical-bright";
+  | "hotel"
+  | "medical"
+  | "fitness"
+  | "beauty"
+  | "realestate"
+  | "restaurant";
 
 export interface DesignTokens {
   preset: NewPresetName;
@@ -46,182 +53,221 @@ export interface DesignTokens {
   radiusLg: string;
 }
 
-// ── Five design DNAs ──────────────────────────────────────────────────────────
+// ── Six category design DNAs ──────────────────────────────────────────────────
 
 const BASE: Record<NewPresetName, DesignTokens> = {
 
-  // ── Kelly Wearstler — dark editorial luxury ───────────────────────────────
-  // Near-black warm ground, oversized 300w Cormorant, full-bleed photography,
-  // champagne-gold accent, zero chrome.
-  "editorial-luxury": {
-    preset:           "editorial-luxury",
-    dark:             false,  // Body is light; hero stays dark via photo + overlay
-    heroLayout:       "full-bleed-bottom",
-    heroHeadlineSize: "clamp(5rem,12vw,11rem)",
-    heroContentAlign: "left",
-    heroOverlay:      "linear-gradient(to top,rgba(0,0,0,0.84) 0%,rgba(0,0,0,0.38) 55%,rgba(0,0,0,0.06) 100%)",
-    sectionPad:       "160px",
+  // ── Hotel — ref editionhotels.com ─────────────────────────────────────────
+  // Playfair Display + Inter. Charcoal #1A1A1A, warm sand #C9A961, off-white
+  // #FAF8F5. Full-bleed hero, 35% dark overlay, centered type. Body always light.
+  "hotel": {
+    preset:           "hotel",
+    dark:             false,
+    heroLayout:       "full-bleed-center",
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    heroContentAlign: "center",
+    heroOverlay:      "rgba(0,0,0,0.35)",
+    sectionPad:       "112px",
     bg:               "#FAF8F5",
-    bgAlt:            "#F0EBE3",
+    bgAlt:            "#F2EDE3",
     surface:          "#FFFFFF",
-    border:           "#E8E2D9",
-    heroBg:           "#050403",  // Used for hero image fallback + cta_banner
-    heading:          "#1A1714",
-    text:             "#3D3930",
-    muted:            "#7A7368",
-    accent:           "#C4A882",
-    accentFg:         "#0C0B09",
-    accentAlpha:      "rgba(196,168,130,0.10)",
-    fontHeading:      "'Cormorant Garamond', 'Playfair Display', Georgia, serif",
-    fontBody:         "'Instrument Sans', 'DM Sans', 'Helvetica Neue', Arial, sans-serif",
-    fontImport:       "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Instrument+Sans:wght@300;400;500&display=swap",
-    headingWeight:    300,
+    border:           "#E8E0D5",
+    heroBg:           "#1A1A1A",
+    heading:          "#1A1A1A",
+    text:             "#3D3830",
+    muted:            "#857D72",
+    accent:           "#C9A961",
+    accentFg:         "#1A1A1A",
+    accentAlpha:      "rgba(201,169,97,0.10)",
+    fontHeading:      "'Playfair Display', 'Cormorant Garamond', Georgia, serif",
+    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontImport:       "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=Inter:wght@300;400;500&display=swap",
+    headingWeight:    500,
     headingTransform: "none",
     headingTracking:  "-0.02em",
+    radius:           "0px",
+    radiusLg:         "2px",
+  },
+
+  // ── Medical — ref forward.com ─────────────────────────────────────────────
+  // All-Inter, clinical, generous whitespace. White, deep blue #0A2540,
+  // accent #2563EB. Split hero. ALWAYS bright, never dark.
+  "medical": {
+    preset:           "medical",
+    dark:             false,
+    heroLayout:       "split-right",
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    heroContentAlign: "left",
+    heroOverlay:      "none",
+    sectionPad:       "112px",
+    bg:               "#FFFFFF",
+    bgAlt:            "#F6F9FC",
+    surface:          "#FFFFFF",
+    border:           "#D1E3F5",
+    heroBg:           "#0A2540",
+    heading:          "#0A2540",
+    text:             "#1E3A5F",
+    muted:            "#64748B",
+    accent:           "#2563EB",
+    accentFg:         "#FFFFFF",
+    accentAlpha:      "rgba(37,99,235,0.08)",
+    fontHeading:      "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontImport:       "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap",
+    headingWeight:    700,
+    headingTransform: "none",
+    headingTracking:  "-0.025em",
+    radius:           "10px",
+    radiusLg:         "18px",
+  },
+
+  // ── Fitness — ref equinox.com ─────────────────────────────────────────────
+  // Archivo condensed bold uppercase + Inter body. Near-black #0B0B0B, white,
+  // energy accent #E8FF3A. Full-bleed dark hero. DARK throughout.
+  "fitness": {
+    preset:           "fitness",
+    dark:             true,
+    heroLayout:       "full-bleed-bottom",
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    heroContentAlign: "left",
+    heroOverlay:      "linear-gradient(to top,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.40) 50%,rgba(0,0,0,0.10) 100%)",
+    sectionPad:       "100px",
+    bg:               "#0B0B0B",
+    bgAlt:            "#111111",
+    surface:          "#161616",
+    border:           "#262626",
+    heroBg:           "#050505",
+    heading:          "#FFFFFF",
+    text:             "#D1D5DB",
+    muted:            "#6B7280",
+    accent:           "#E8FF3A",
+    accentFg:         "#0B0B0B",
+    accentAlpha:      "rgba(232,255,58,0.10)",
+    fontHeading:      "'Archivo', 'Helvetica Neue', Arial, sans-serif",
+    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontImport:       "https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=Inter:wght@300;400;500&display=swap",
+    headingWeight:    800,
+    headingTransform: "uppercase",
+    headingTracking:  "-0.01em",
+    radius:           "4px",
+    radiusLg:         "8px",
+  },
+
+  // ── Beauty — ref aesop.com ────────────────────────────────────────────────
+  // Cormorant Garamond + Inter. Warm off-white #F7F5F0, brown-black #1C1A17,
+  // muted olive #6B705C. Heavy whitespace, almost no color. Soft split hero.
+  "beauty": {
+    preset:           "beauty",
+    dark:             false,
+    heroLayout:       "split-right",
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    heroContentAlign: "left",
+    heroOverlay:      "none",
+    sectionPad:       "128px",
+    bg:               "#F7F5F0",
+    bgAlt:            "#EDE9E2",
+    surface:          "#FAF8F4",
+    border:           "#E0DAD1",
+    heroBg:           "#1C1A17",
+    heading:          "#1C1A17",
+    text:             "#3A3730",
+    muted:            "#6B705C",
+    accent:           "#6B705C",
+    accentFg:         "#F7F5F0",
+    accentAlpha:      "rgba(107,112,92,0.08)",
+    fontHeading:      "'Cormorant Garamond', 'Playfair Display', Georgia, serif",
+    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontImport:       "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500&display=swap",
+    headingWeight:    400,
+    headingTransform: "none",
+    headingTracking:  "0em",
     radius:           "0px",
     radiusLg:         "0px",
   },
 
-  // ── Aesop — minimal warm organic ─────────────────────────────────────────
-  // Warm parchment ground, DM Serif Display at modest scale, side-by-side
-  // hero with contained photography, very generous whitespace.
-  "minimal-warm": {
-    preset:           "minimal-warm",
+  // ── Real Estate — ref serhant.com ─────────────────────────────────────────
+  // Playfair Display + Inter. Black, white, gold #B8945F.
+  // Full-bleed property hero, centered editorial type.
+  "realestate": {
+    preset:           "realestate",
     dark:             false,
-    heroLayout:       "split-right",
-    heroHeadlineSize: "clamp(2.4rem,4.5vw,5rem)",
-    heroContentAlign: "left",
-    heroOverlay:      "none",
-    sectionPad:       "140px",
-    bg:               "#F5F0E8",
-    bgAlt:            "#EDE8DF",
-    surface:          "#FAF7F2",
-    border:           "#E0D9CF",
-    heroBg:           "#2C2520",
-    heading:          "#1E1A16",
-    text:             "#4A4440",
-    muted:            "#8C857D",
-    accent:           "#5C4A32",
-    accentFg:         "#F5F0E8",
-    accentAlpha:      "rgba(92,74,50,0.08)",
-    fontHeading:      "'DM Serif Display', Georgia, 'Times New Roman', serif",
-    fontBody:         "'Instrument Sans', 'Helvetica Neue', Arial, sans-serif",
-    fontImport:       "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:wght@300;400;500&display=swap",
+    heroLayout:       "full-bleed-center",
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    heroContentAlign: "center",
+    heroOverlay:      "linear-gradient(to bottom,rgba(0,0,0,0.12) 0%,rgba(0,0,0,0.54) 100%)",
+    sectionPad:       "112px",
+    bg:               "#FAFAF8",
+    bgAlt:            "#F3F1EC",
+    surface:          "#FFFFFF",
+    border:           "#E4E0D8",
+    heroBg:           "#0A0A0A",
+    heading:          "#0A0A0A",
+    text:             "#3A3830",
+    muted:            "#8A8880",
+    accent:           "#B8945F",
+    accentFg:         "#FFFFFF",
+    accentAlpha:      "rgba(184,148,95,0.08)",
+    fontHeading:      "'Playfair Display', Georgia, serif",
+    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontImport:       "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500&display=swap",
+    headingWeight:    600,
+    headingTransform: "none",
+    headingTracking:  "-0.02em",
+    radius:           "0px",
+    radiusLg:         "2px",
+  },
+
+  // ── Restaurant — ref noma.dk ──────────────────────────────────────────────
+  // Minimal editorial, image-led. Warm cream #F5F1EA, charcoal #211F1C,
+  // muted terracotta #A65D45. Playfair Display. Restrained type.
+  "restaurant": {
+    preset:           "restaurant",
+    dark:             false,
+    heroLayout:       "full-bleed-center",
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    heroContentAlign: "center",
+    heroOverlay:      "rgba(33,31,28,0.40)",
+    sectionPad:       "112px",
+    bg:               "#F5F1EA",
+    bgAlt:            "#EDE8DE",
+    surface:          "#FAF8F3",
+    border:           "#DDD8CE",
+    heroBg:           "#211F1C",
+    heading:          "#211F1C",
+    text:             "#3A3730",
+    muted:            "#7A756C",
+    accent:           "#A65D45",
+    accentFg:         "#FFFFFF",
+    accentAlpha:      "rgba(166,93,69,0.08)",
+    fontHeading:      "'Playfair Display', 'DM Serif Display', Georgia, serif",
+    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    fontImport:       "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap",
     headingWeight:    400,
     headingTransform: "none",
     headingTracking:  "-0.01em",
     radius:           "0px",
     radiusLg:         "2px",
   },
-
-  // ── Linear — dark SaaS / sports / fitness ────────────────────────────────
-  // Cool near-black ground, crisp Inter, tight feature grid, violet accent,
-  // radial glow on hero, subtle gradient borders.
-  "saas-sharp": {
-    preset:           "saas-sharp",
-    dark:             true,
-    heroLayout:       "centered-glow",
-    heroHeadlineSize: "clamp(2.8rem,6vw,5.5rem)",
-    heroContentAlign: "center",
-    heroOverlay:      "none",
-    sectionPad:       "100px",
-    bg:               "#08080A",
-    bgAlt:            "#0F0F12",
-    surface:          "#141418",
-    border:           "#232328",
-    heroBg:           "#05050A",
-    heading:          "#F9F9FB",
-    text:             "#ADADBA",
-    muted:            "#52525B",
-    accent:           "#7C3AED",
-    accentFg:         "#FFFFFF",
-    accentAlpha:      "rgba(124,58,237,0.12)",
-    fontHeading:      "'Inter', 'Helvetica Neue', Arial, sans-serif",
-    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
-    fontImport:       "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap",
-    headingWeight:    700,
-    headingTransform: "none",
-    headingTracking:  "-0.04em",
-    radius:           "8px",
-    radiusLg:         "12px",
-  },
-
-  // ── Sotheby's Realty — estate elegant ────────────────────────────────────
-  // Warm near-white ground, Cormorant Garamond at 500w, full-bleed landscape
-  // photography, centered hero text, aged-gold restraint.
-  "estate-elegant": {
-    preset:           "estate-elegant",
-    dark:             false,
-    heroLayout:       "full-bleed-center",
-    heroHeadlineSize: "clamp(3rem,5.5vw,6.5rem)",
-    heroContentAlign: "center",
-    heroOverlay:      "linear-gradient(to bottom,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.48) 100%)",
-    sectionPad:       "140px",
-    bg:               "#FAFAF8",
-    bgAlt:            "#F3F2EE",
-    surface:          "#FFFFFF",
-    border:           "#E4E2DC",
-    heroBg:           "#1A1712",
-    heading:          "#1A1712",
-    text:             "#4A4840",
-    muted:            "#8A8880",
-    accent:           "#8D6E3F",
-    accentFg:         "#FFFFFF",
-    accentAlpha:      "rgba(141,110,63,0.08)",
-    fontHeading:      "'Cormorant Garamond', 'Playfair Display', Georgia, serif",
-    fontBody:         "'Instrument Sans', 'Helvetica Neue', Arial, sans-serif",
-    fontImport:       "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Sans:wght@300;400;500&display=swap",
-    headingWeight:    500,
-    headingTransform: "none",
-    headingTracking:  "-0.02em",
-    radius:           "0px",
-    radiusLg:         "4px",
-  },
-
-  // ── SmileSet — clinical bright ────────────────────────────────────────────
-  // Pure white ground, bright sky-blue accent, rounded friendly cards,
-  // split hero with photo, clear CTA hierarchy, Plus Jakarta Sans.
-  "clinical-bright": {
-    preset:           "clinical-bright",
-    dark:             false,
-    heroLayout:       "split-right",
-    heroHeadlineSize: "clamp(2.2rem,4vw,4.2rem)",
-    heroContentAlign: "left",
-    heroOverlay:      "none",
-    sectionPad:       "100px",
-    bg:               "#FFFFFF",
-    bgAlt:            "#F0F7FF",
-    surface:          "#FFFFFF",
-    border:           "#CFE2F7",
-    heroBg:           "#0F172A",
-    heading:          "#0F172A",
-    text:             "#1E293B",
-    muted:            "#64748B",
-    accent:           "#0EA5E9",
-    accentFg:         "#FFFFFF",
-    accentAlpha:      "rgba(14,165,233,0.08)",
-    fontHeading:      "'Plus Jakarta Sans', 'Helvetica Neue', Arial, sans-serif",
-    fontBody:         "'Inter', 'Helvetica Neue', Arial, sans-serif",
-    fontImport:       "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap",
-    headingWeight:    700,
-    headingTransform: "none",
-    headingTracking:  "-0.025em",
-    radius:           "12px",
-    radiusLg:         "20px",
-  },
 };
 
 // ── Legacy preset names → new presets ────────────────────────────────────────
 const LEGACY: Record<string, NewPresetName> = {
-  editorial: "editorial-luxury",
-  bold:      "saas-sharp",
-  clean:     "estate-elegant",
-  clinical:  "clinical-bright",
+  // Old 5 preset names
+  "editorial-luxury": "hotel",
+  "minimal-warm":     "beauty",
+  "saas-sharp":       "fitness",
+  "estate-elegant":   "realestate",
+  "clinical-bright":  "medical",
+  // Even older aliases
+  "editorial":        "hotel",
+  "bold":             "fitness",
+  "clean":            "realestate",
+  "clinical":         "medical",
 };
 
 export function resolveTokens(preset: PresetName, accentOverride?: string): DesignTokens {
   const effective = (LEGACY[preset as string] ?? preset) as NewPresetName;
-  const tok = { ...BASE[effective] ?? BASE["estate-elegant"] };
+  const tok = { ...BASE[effective] ?? BASE["realestate"] };
   if (accentOverride && /^#[0-9a-f]{6}$/i.test(accentOverride)) {
     tok.accent = accentOverride;
     const r = parseInt(accentOverride.slice(1, 3), 16);

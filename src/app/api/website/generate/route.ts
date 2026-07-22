@@ -12,60 +12,77 @@ const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "imag
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));
 const MAX_MSG_LEN = 5000;
 
-// ── Unsplash: single query attempt ───────────────────────────────────────────
-async function tryUnsplash(query: string): Promise<string | null> {
+// ── Unsplash result shape ─────────────────────────────────────────────────────
+interface UnsplashResult {
+  id: string;
+  width: number;
+  height: number;
+  urls: { regular?: string };
+}
+
+// ── Unsplash: single query with quality filtering and dedup ───────────────────
+// Fetches 20 results, keeps only landscape images ≥1600px wide,
+// then picks randomly from the top-3 that haven't been used yet.
+async function tryUnsplash(query: string, usedUrls: Set<string>): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return null;
   try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&orientation=landscape&content_filter=high`;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=20&orientation=landscape&order_by=relevant&content_filter=high`;
     const res = await fetch(url, { headers: { Authorization: `Client-ID ${key}` } });
     if (!res.ok) return null;
-    const data = await res.json() as { results?: { urls?: { regular?: string } }[] };
+    const data = await res.json() as { results?: UnsplashResult[] };
     const results = data.results ?? [];
     if (!results.length) return null;
-    const pick = results[Math.floor(Math.random() * Math.min(results.length, 3))];
-    return pick?.urls?.regular ?? null;
+
+    // Quality filter: landscape ≥1600px wide
+    const qualifying = results.filter((r) => r.width >= 1600 && r.width >= r.height);
+    const pool = qualifying.length ? qualifying : results;
+
+    // Prefer top-3 not yet used on this page; fall back to first qualifying
+    const top3 = pool.slice(0, 3);
+    const available = top3.filter((r) => r.urls.regular && !usedUrls.has(r.urls.regular));
+    const candidates = available.length ? available : top3;
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+
+    const photoUrl = pick?.urls?.regular ?? null;
+    if (photoUrl) usedUrls.add(photoUrl);
+    return photoUrl;
   } catch {
     return null;
   }
 }
 
-// ── Unsplash: try primary, then fallback, then broad fallback ────────────────
-// If specific query yields nothing, broaden progressively rather than
-// accepting a colour block. Three-tier: specific → simplified → category.
-async function fetchUnsplashPhoto(query: string): Promise<string | null> {
+// ── Unsplash: try primary → simplified → single-word fallback ────────────────
+async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) {
     console.warn("[website] UNSPLASH_ACCESS_KEY not set — skipping image fetch");
     return null;
   }
 
-  // Tier 1: exact query GPT generated
-  const result1 = await tryUnsplash(query);
+  const result1 = await tryUnsplash(query, usedUrls);
   if (result1) return result1;
 
-  // Tier 2: first 3 words of the original query (strip adjectives to core nouns)
   const words = query.trim().split(/\s+/);
   if (words.length > 3) {
     const simplified = words.slice(0, 3).join(" ");
-    const result2 = await tryUnsplash(simplified);
+    const result2 = await tryUnsplash(simplified, usedUrls);
     if (result2) {
-      console.warn(`[website] primary query "${query}" failed — used simplified "${simplified}"`);
+      console.warn(`[website] primary "${query}" failed — used simplified "${simplified}"`);
       return result2;
     }
   }
 
-  // Tier 3: last single noun/keyword (most searchable term)
   const lastWord = words[words.length - 1] ?? words[0];
   if (lastWord && lastWord !== words[0]) {
-    const result3 = await tryUnsplash(lastWord);
+    const result3 = await tryUnsplash(lastWord, usedUrls);
     if (result3) {
-      console.warn(`[website] simplified query failed — used single-word fallback "${lastWord}"`);
+      console.warn(`[website] simplified failed — used single-word "${lastWord}"`);
       return result3;
     }
   }
 
-  console.warn(`[website] all fallbacks exhausted for query: "${query}"`);
+  console.warn(`[website] all Unsplash fallbacks exhausted for: "${query}"`);
   return null;
 }
 
@@ -85,6 +102,8 @@ function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, 
 }
 
 // ── Fetch all images for a spec ───────────────────────────────────────────────
+// Runs sequentially (not parallel) so the shared usedUrls set prevents
+// duplicate images appearing on the same page.
 async function fetchSpecImages(
   spec: WebsiteSpec,
   heroOverride?: string,
@@ -104,17 +123,15 @@ async function fetchSpecImages(
 
   console.log(`[website] fetching ${tasks.length} images:`, tasks.map((t) => `${t.key}="${t.query}"`).join(", "));
 
-  const settled = await Promise.all(
-    tasks.map(async ({ key, query }) => ({ key, url: await fetchUnsplashPhoto(query) }))
-  );
-
+  // Sequential to enforce the no-duplicate rule via shared usedUrls set
+  const usedUrls = new Set<string>();
   const map: ImageMap = {};
-  for (const { key, url } of settled) {
+  for (const { key, query } of tasks) {
+    const url = await fetchUnsplashPhoto(query, usedUrls);
     if (url) map[key] = url;
   }
 
   if (heroOverride) {
-    // Place in the classified slot; fall back to hero if that section type isn't in the spec
     const slotIdx = uploadSlot !== "hero"
       ? spec.sections.findIndex((s) => s.type === uploadSlot)
       : -1;
@@ -158,18 +175,96 @@ async function classifyUploadedImage(
   return "hero";
 }
 
+// ── Per-preset atmospheric image query maps ───────────────────────────────────
+// Used as server-side fallbacks when GPT omits imageQuery on a section.
+const PRESET_HERO_SUFFIX: Record<string, string> = {
+  hotel:      "warm candlelight marble texture bokeh editorial minimal",
+  medical:    "clean white minimal abstract geometric light professional",
+  fitness:    "dynamic motion blur athletic dramatic light editorial",
+  beauty:     "smooth stone water ceramic natural light serene texture",
+  realestate: "architectural window light geometric shadow glass modern",
+  restaurant: "candlelight warm bokeh evening dining atmosphere abstract",
+};
+const PRESET_ABOUT_SUFFIX: Record<string, string> = {
+  hotel:      "luxury interior detail editorial warm light",
+  medical:    "professional consultation bright modern clinic",
+  fitness:    "coach athlete training natural light editorial",
+  beauty:     "botanical detail close-up natural light lifestyle",
+  realestate: "modern architecture interior light space minimal",
+  restaurant: "chef kitchen fire grill food preparation editorial",
+};
+const PRESET_GALLERY_QUERIES: Record<string, string[]> = {
+  hotel: [
+    "luxury hotel suite detail editorial light",
+    "lobby marble texture warm bokeh minimal",
+    "hotel pool outdoor serene natural light",
+    "premium bed linen soft light detail",
+    "spa treatment room candle water stone",
+    "fine dining table setting elegant close-up",
+  ],
+  medical: [
+    "modern clinic reception bright minimal",
+    "dental chair technology equipment clean",
+    "doctor consultation natural light professional",
+    "medical technology equipment white abstract",
+    "clean white corridor light minimal geometric",
+    "patient care professional warm studio light",
+  ],
+  fitness: [
+    "gym equipment weight training industrial",
+    "group class energy motion blur dynamic",
+    "athlete stretching dramatic light editorial",
+    "functional training space open floor",
+    "protein nutrition supplement editorial flat lay",
+    "personal trainer coach energy natural light",
+  ],
+  beauty: [
+    "botanical herb close-up natural light macro",
+    "skincare product minimal flat lay editorial",
+    "candle aromatherapy warm bokeh close-up",
+    "spa stone towel water minimal texture",
+    "floral arrangement pastel editorial soft",
+    "cream texture ceramic abstract natural light",
+  ],
+  realestate: [
+    "luxury property exterior architecture daylight",
+    "interior design living room minimal modern",
+    "kitchen countertop marble detail editorial",
+    "bedroom natural light linen soft minimal",
+    "bathroom spa stone tile architectural",
+    "garden outdoor terrace minimal architectural",
+  ],
+  restaurant: [
+    "food close-up editorial bokeh warm light",
+    "dish plating artistic restaurant editorial",
+    "wine glass table setting candlelight bokeh",
+    "kitchen open fire chef cooking editorial",
+    "fresh ingredients market vegetables editorial",
+    "dessert pastry detail close-up editorial light",
+  ],
+};
+
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
 function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, msgText: string, hasOwnerPhoto: boolean): void {
-  // Extract 2-3 visual keywords from the owner's message for fallback queries
+  // Extract 2-3 visual keywords from the owner's message for additional context
   const visualHints = msgText
     .toLowerCase()
     .replace(/[^a-z\s]/g, " ")
     .split(/\s+/)
     .filter((w) => w.length > 4 && !["build", "create", "make", "website", "clinic", "please", "would", "should", "their", "with"].includes(w))
-    .slice(0, 3)
+    .slice(0, 2)
     .join(" ");
 
   const base = (visualHints || industry || "professional").trim();
+
+  // Map legacy preset names to 6 new names for query lookup
+  const PRESET_ALIAS: Record<string, string> = {
+    "editorial-luxury": "hotel", "minimal-warm": "beauty", "saas-sharp": "fitness",
+    "estate-elegant": "realestate", "clinical-bright": "medical",
+    "editorial": "hotel", "bold": "fitness", "clean": "realestate", "clinical": "medical",
+  };
+  const rawPreset = String(spec.stylePreset ?? "");
+  const preset = (PRESET_ALIAS[rawPreset] ?? rawPreset) || "realestate";
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
@@ -180,30 +275,14 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
         if (hasOwnerPhoto) {
           (s as { imageQuery?: string }).imageQuery = `${base} bright interior ${city}`.replace(/\s+/g, " ").trim();
         } else {
-          // Industry-aware suffix so the hero image relates to the actual business type
-          const lowerCtx = (base + " " + industry).toLowerCase();
-          const heroSuffix =
-            /fashion|cloth|boutiqu|apparel|wear|abaya|dress|couture|jewel/.test(lowerCtx)
-              ? "fashion editorial studio minimal elegant"
-            : /dental|medical|clinic|physio|health|hospital|optici|cosmetic|derm/.test(lowerCtx)
-              ? "clean white minimal abstract geometric professional"
-            : /food|cafe|café|restaurant|bakery|pastry|kitchen|chef|catering|bistro/.test(lowerCtx)
-              ? "food close-up editorial warm bokeh morning light"
-            : /gym|fitness|crossfit|sport|martial|workout|training|yoga|pilates/.test(lowerCtx)
-              ? "dynamic motion athletic dramatic light editorial"
-            : /spa|wellness|holistic|massage|retreat|meditation|organic/.test(lowerCtx)
-              ? "calm water stone zen natural light serene"
-            : /tech|saas|software|app|digital|startup|code|develop|agency/.test(lowerCtx)
-              ? "dark minimal abstract technology gradient"
-            : /real.?estate|propert|architect|interior.?design|villa/.test(lowerCtx)
-              ? "architectural window light geometric modern minimal"
-              : "atmospheric bokeh warm editorial light abstract";
+          const heroSuffix = PRESET_HERO_SUFFIX[preset] ?? "atmospheric bokeh warm editorial light abstract";
           (s as { imageQuery?: string }).imageQuery = `${base} ${heroSuffix}`.replace(/\s+/g, " ").trim();
         }
       } else if (s.type === "about") {
+        const aboutSuffix = PRESET_ABOUT_SUFFIX[preset] ?? "lifestyle editorial warm light natural";
         (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
           ? `${base} professional team workspace modern`.replace(/\s+/g, " ").trim()
-          : `${base} lifestyle editorial warm light natural`.replace(/\s+/g, " ").trim();
+          : `${base} ${aboutSuffix}`.replace(/\s+/g, " ").trim();
       }
     }
 
@@ -220,15 +299,14 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
               `${base} client experience`,
               `${base} results before after`,
             ]
-          : [
-              // No owner photos → use texture/detail/editorial that won't be mistaken for their business
+          : (PRESET_GALLERY_QUERIES[preset] ?? [
               `${base} close-up texture detail editorial`,
               `${base} product detail minimal clean`,
               `${base} material texture abstract light`,
               `${base} bokeh warm light lifestyle`,
               `${base} flat lay arrangement elegant`,
               `${base} abstract mood atmosphere`,
-            ];
+            ]);
         (s as { imageQueries?: string[] }).imageQueries = fallbackGallery.map((q) => q.replace(/\s+/g, " ").trim());
       }
     }
@@ -261,20 +339,27 @@ function extractSpec(html: string): WebsiteSpec | null {
 
 // ── Coerce preset ─────────────────────────────────────────────────────────────
 const VALID_PRESETS: PresetName[] = [
+  // Current 6-preset system
+  "hotel", "medical", "fitness", "beauty", "realestate", "restaurant",
+  // Legacy names — resolveTokens maps them to the 6 new presets
   "editorial-luxury", "minimal-warm", "saas-sharp", "estate-elegant", "clinical-bright",
-  // legacy names — resolveTokens maps them to new names
   "editorial", "bold", "clean", "clinical",
 ];
 const LEGACY_PRESET: Record<string, PresetName> = {
-  editorial: "editorial-luxury",
-  bold:      "saas-sharp",
-  clean:     "estate-elegant",
-  clinical:  "clinical-bright",
+  "editorial-luxury": "hotel",
+  "minimal-warm":     "beauty",
+  "saas-sharp":       "fitness",
+  "estate-elegant":   "realestate",
+  "clinical-bright":  "medical",
+  "editorial":        "hotel",
+  "bold":             "fitness",
+  "clean":            "realestate",
+  "clinical":         "medical",
 };
 function coercePreset(v: unknown): PresetName {
   const s = String(v ?? "");
   if (VALID_PRESETS.includes(s as PresetName)) return (LEGACY_PRESET[s] ?? s) as PresetName;
-  return "estate-elegant";
+  return "realestate";
 }
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -334,43 +419,47 @@ PART 2 — STYLE PRESET + ACCENT COLOR (BOTH required)
 ═══════════════════════════════════════════════════════
 
 JSON ROOT:
-{ "stylePreset": "editorial-luxury"|"minimal-warm"|"saas-sharp"|"estate-elegant"|"clinical-bright", "accentColor": "#HEXCODE", "businessName": string, "sections": SectionSpec[] }
+{ "stylePreset": "hotel"|"medical"|"fitness"|"beauty"|"realestate"|"restaurant", "accentColor": "#HEXCODE", "businessName": string, "sections": SectionSpec[] }
 
 You MUST set both "stylePreset" AND "accentColor". Never omit either.
 
-FIVE DESIGN PRESETS — each produces a structurally different site:
+SIX DESIGN PRESETS — each produces a structurally different site:
 
-• "editorial-luxury"
-  LOOK: Warm off-white body (#FAF8F5), oversized Cormorant Garamond (light weight), full-bleed dark-overlay photo hero with text at bottom-left, champagne-gold accent, zero chrome. Body sections are always light; only the hero and CTA-banner use a dark overlay. Modelled on high-end fashion editorial and Kelly Wearstler interior design.
-  USE FOR: Luxury salons, interior design studios, boutique hotels, fine dining, jewellery, high-end photography, luxury fashion boutiques, abaya & modest fashion e-commerce, clothing boutiques.
+• "hotel"
+  LOOK: Warm off-white body (#FAF8F5), Playfair Display + Inter, full-bleed dark-overlay hero with centered text, champagne-gold accent (#C9A961), zero chrome. Body sections always light. Modelled on Edition Hotels and high-end boutique hotel brands.
+  USE FOR: Boutique hotels, luxury salons, interior design studios, fine dining, jewellery, high-end photography, luxury fashion boutiques, abaya & modest fashion, clothing boutiques.
 
-• "minimal-warm"
-  LOOK: Warm parchment/cream bg (#F5F0E8), DM Serif Display at restrained scale, split-layout hero (text left + photo right), very generous whitespace. Modelled on Aesop.
-  USE FOR: Spas, yoga studios, organic cafés, bakeries, artisan food & drink, holistic wellness, home décor, florists.
-
-• "saas-sharp"
-  LOOK: Cool near-black bg, tight Inter, centered hero with radial violet/accent glow (no full-bleed photo), feature grid cards with gradient borders. Modelled on Linear.
-  USE FOR: Tech startups, SaaS products, digital agencies, co-working spaces, gyms (modern), fitness studios, sports brands, automotive.
-
-• "estate-elegant"
-  LOOK: Warm near-white bg, Cormorant Garamond at medium weight, full-bleed landscape hero with centered text overlay, gold/navy restraint. Modelled on Sotheby's Realty.
-  USE FOR: Real estate agencies, law firms, financial advisors, architects, wealth management, corporate consulting, luxury property developers.
-
-• "clinical-bright"
-  LOOK: Pure white bg, bright sky-blue accent, rounded friendly cards with icon circles, split hero with photo, clear CTA hierarchy. Modelled on SmileSet dental.
+• "medical"
+  LOOK: Pure white bg (#FFFFFF), all-Inter (weight 700 headings), split-right hero with photo panel, bright blue accent (#2563EB), rounded cards (10px), icon circles on service cards. ALWAYS bright — never dark. Modelled on Forward and modern dental brands.
   USE FOR: Dental clinics, medical practices, dermatology, physiotherapy, cosmetic clinics, opticians, veterinary clinics, health & wellness centres.
 
+• "fitness"
+  LOOK: Near-black bg (#0B0B0B), Archivo condensed 800w uppercase headings + Inter body, full-bleed gradient-bottom hero, acid-yellow accent (#E8FF3A), dark throughout. Modelled on Equinox.
+  USE FOR: Gyms, CrossFit boxes, martial arts studios, fitness studios, sports brands, athletic wear, automotive, nightlife.
+
+• "beauty"
+  LOOK: Warm off-white bg (#F7F5F0), Cormorant Garamond 400w + Inter, split-right hero (no overlay), muted olive accent (#6B705C), extreme whitespace (128px section padding), zero radius. Modelled on Aesop.
+  USE FOR: Spas, yoga studios, organic cafés, bakeries, florists, holistic wellness, artisan food & drink, hair salons (soft/organic), home décor.
+
+• "realestate"
+  LOOK: Warm near-white bg (#FAFAF8), Playfair Display 600w + Inter, full-bleed landscape hero with centered text overlay, warm gold accent (#B8945F). Modelled on Serhant.
+  USE FOR: Real estate agencies, law firms, financial advisors, architects, wealth management, corporate consulting, property developers.
+
+• "restaurant"
+  LOOK: Warm cream bg (#F5F1EA), Playfair Display 400w + Inter, full-bleed hero with dark overlay, terracotta accent (#A65D45), restrained editorial type. Modelled on Noma.
+  USE FOR: Restaurants, cafés, bistros, catering, food brands, casual dining, wine bars.
+
 CATEGORY → PRESET MAPPING (pick from candidates; style words from the owner break ties):
-  Real estate agency, property developer → "estate-elegant" (default) or "editorial-luxury" (luxury/boutique angle)
-  Law firm, financial advisor, architect, consultant → "estate-elegant"
-  Dental, medical, physio, dermatology, cosmetic clinic → "clinical-bright"
-  Gym, CrossFit, martial arts, sports brand, fitness studio → "saas-sharp"
-  Tech startup, SaaS, digital agency, co-working → "saas-sharp"
-  Luxury salon, interior design, boutique hotel, fine dining, jewellery → "editorial-luxury"
-  Abaya store, fashion boutique, modest fashion, clothing e-commerce → "editorial-luxury"
-  Spa, yoga, organic café, bakery, holistic wellness, florist → "minimal-warm"
-  Restaurant (casual/modern) → "minimal-warm" (warm/artisanal) or "editorial-luxury" (luxury)
-  Hair salon / barbershop → "editorial-luxury" (premium) or "minimal-warm" (soft/organic)
+  Boutique hotel, luxury salon, interior design, fine dining, jewellery → "hotel"
+  Abaya store, fashion boutique, modest fashion, clothing e-commerce → "hotel"
+  Dental, medical, physio, dermatology, cosmetic clinic, vet, optician → "medical"
+  Gym, CrossFit, martial arts, sports brand, fitness studio → "fitness"
+  Tech startup, SaaS, digital agency, co-working → "fitness"
+  Spa, yoga, organic café, bakery, holistic wellness, florist → "beauty"
+  Hair salon / barbershop (soft/organic angle) → "beauty"
+  Real estate agency, law firm, financial advisor, architect, consultant → "realestate"
+  Restaurant, café, bistro, catering, wine bar → "restaurant"
+  Hair salon / barbershop (premium/luxury angle) → "hotel"
 
 ACCENT COLOR — pick from this curated palette ONLY. Never invent a hex code outside this table.
 Two different businesses must not get the same accent unless it genuinely matches both.
@@ -584,35 +673,41 @@ PART 6 — REQUIRED SECTION ORDER PER PRESET
 The section sequence is part of the design. Follow the required order for the chosen preset.
 Deviate ONLY if the business genuinely has no content for an optional section — mark it omitted, don't pad with invented content.
 
-"clinical-bright" (dental, medical, dermatology, physio, opticians, vet clinics, health centres):
-  REQUIRED:    hero → services → faq → team → booking → footer
-  REASONING:   Patients need to know what's offered and have questions answered before they trust a practice.
-  OPTIONAL:    about (after services), gallery (after team — before/after treatment photos)
-  NEVER:       cta_banner, gallery before trust sections
-
-"saas-sharp" (gyms, CrossFit, fitness studios, tech startups, SaaS, digital agencies, sports brands, co-working):
-  REQUIRED:    hero → services → cta_banner → about → booking → footer
-  REASONING:   Hook with the hero glow, show features, create urgency, give brief context, then convert.
-  OPTIONAL:    team (after about), gallery (after team — action/lifestyle photos for gyms)
-  NEVER:       faq (kills momentum for energy brands)
-
-"editorial-luxury" (luxury salons, fine dining, boutique hotels, interior design, jewellery, high-end photography):
+"hotel" (boutique hotels, luxury salons, fine dining, jewellery, fashion boutiques, interior design):
   REQUIRED:    hero → gallery → services → about → booking → footer
   REASONING:   Aesthetics sell first. Show the work before explaining it. Story comes after.
   OPTIONAL:    team (after about — stylist/chef intros), cta_banner (before booking only)
   NEVER:       faq, cta_banner at the top
 
-"minimal-warm" (spas, yoga studios, organic cafés, bakeries, florists, holistic wellness, artisan food & drink):
+"medical" (dental, medical, dermatology, physio, opticians, vet clinics, health centres):
+  REQUIRED:    hero → services → faq → team → booking → footer
+  REASONING:   Patients need to know what's offered and have questions answered before they trust a practice.
+  OPTIONAL:    about (after services), gallery (after team — before/after photos)
+  NEVER:       cta_banner, gallery before trust sections
+
+"fitness" (gyms, CrossFit, fitness studios, tech startups, SaaS, sports brands, co-working):
+  REQUIRED:    hero → services → cta_banner → about → booking → footer
+  REASONING:   Hook with the hero, show features, create urgency, give brief context, then convert.
+  OPTIONAL:    team (after about), gallery (after team — action/lifestyle photos)
+  NEVER:       faq (kills momentum for energy brands)
+
+"beauty" (spas, yoga studios, organic cafés, bakeries, florists, holistic wellness, artisan food):
   REQUIRED:    hero → services → about → gallery → booking → footer
-  REASONING:   Gentle entry, calm rhythm. Let the products/offerings land, then the brand story, then visuals, then CTA.
+  REASONING:   Gentle entry, calm rhythm. Products/offerings land first, then brand story, then visuals, then CTA.
   OPTIONAL:    team (after gallery), cta_banner (before booking only)
   NEVER:       faq, cta_banner at the top
 
-"estate-elegant" (real estate agencies, law firms, financial advisors, architects, corporate consultants):
+"realestate" (real estate agencies, law firms, financial advisors, architects, consultants):
   REQUIRED:    hero → services → about → faq → booking → footer
   REASONING:   Credibility-first. Lead with the offer, build context, answer objections, then convert.
-  OPTIONAL:    team (after about), cta_banner (before booking only), gallery (for real estate/architecture only)
-  NEVER:       gallery for non-visual businesses (no gallery for law firms, finance, etc.)`;
+  OPTIONAL:    team (after about), cta_banner (before booking only), gallery (real estate/architecture only)
+  NEVER:       gallery for non-visual businesses (law, finance, etc.)
+
+"restaurant" (restaurants, cafés, bistros, catering, wine bars):
+  REQUIRED:    hero → gallery → services → about → booking → footer
+  REASONING:   Food is visual — show the atmosphere and dishes first, then the menu, then the story.
+  OPTIONAL:    team (after about — chef intro), cta_banner (before booking only)
+  NEVER:       faq`;
 }
 
 // ── Classify message: revision command vs. conversational question ─────────────

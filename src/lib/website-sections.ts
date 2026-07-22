@@ -129,13 +129,13 @@ function renderHeroCenteredGlow(
 </section>`;
 }
 
-// 4. split-right: text left, photo right — no overlay (minimal-warm, clinical-bright)
+// 4. split-right: text left, photo right — no overlay (beauty, medical)
 function renderHeroSplit(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
   imageUrl?: string
 ): string {
-  const isClinical = t.preset === "clinical-bright";
+  const isClinical = t.preset === "medical";
   return `<section class="ws-hero ws-hero--split" id="hero">
   <div class="ws-hero-split-text">
     ${c.eyebrow ? `<p class="ws-hero-eyebrow" style="color:var(--accent);">${esc(c.eyebrow)}</p>` : ""}
@@ -203,10 +203,10 @@ export function renderServices(
   const items = (c.items ?? []).slice(0, 6);
   const p = t.preset;
 
-  // clinical-bright: icon circles + rounded cards
+  // medical: icon circles + rounded cards; fitness: gradient-border dark cards
   const renderCard = (item: typeof items[0], i: number): string => {
-    const showIcon = (p === "clinical-bright") && item.icon;
-    const isSaas   = p === "saas-sharp";
+    const showIcon = (p === "medical") && item.icon;
+    const isSaas   = p === "fitness";
     return `<div class="ws-service-card ws-service-card--${p.replace(/-/g, "")}">
         ${showIcon ? `<div class="ws-service-icon">${icon(item.icon || "star", 22)}</div>` : ""}
         ${!showIcon ? `<p class="ws-service-num">${isSaas ? `<span class="ws-service-num-line"></span>` : ""}0${i + 1}</p>` : ""}
@@ -322,7 +322,7 @@ export function renderBooking(
   ].filter(Boolean) as { icon: string; label: string; value: string; href?: string }[];
 
   const hasContact = contactItems.length > 0;
-  return `<section class="ws-section" id="booking" style="padding-bottom:80px;">
+  return `<section class="ws-section" id="booking">
   <div class="ws-container">
     ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
