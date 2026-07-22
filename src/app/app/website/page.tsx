@@ -973,12 +973,21 @@ export default function WebsitePage() {
     try {
       const res = await fetch(`/api/website/state?websiteId=${encodeURIComponent(p.id)}`);
       if (res.ok) {
-        const data = await res.json() as { html?: string | null; versions?: VersionRecord[] };
+        const data = await res.json() as {
+          html?: string | null; versions?: VersionRecord[];
+          name?: string | null; slug?: string | null;
+          isPublished?: boolean; publishedUrl?: string | null;
+        };
         if (data.html) {
           setHtml(data.html); htmlRef.current = data.html;
           setBuilt(true); setActiveTab("preview");
         }
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
+        // Refresh name/slug/published from DB to override any stale project-list values
+        if (data.name) setSiteName(data.name);
+        if (data.slug) { setSiteSlug(data.slug); setSavedSlug(data.slug); }
+        if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
+        if (data.publishedUrl != null) setPublishedUrl(data.publishedUrl);
       }
     } catch { /* ignore */ }
   }, [btype, siteLanguage]);
@@ -1541,11 +1550,12 @@ export default function WebsitePage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">{v.label}</p>
-                      {v.type === "publish" && <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">Published</span>}
-                    </div>
-                    <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
+                    <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">
+                      {v.type === "publish" ? `Published — ${timeAgo(v.created_at)}` : v.label}
+                    </p>
+                    {v.type !== "publish" && (
+                      <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
+                    )}
                   </div>
                   {i === 0 ? (
                     <span className="text-[10px] font-medium text-[#9CA3AF] shrink-0 mt-0.5">Current</span>

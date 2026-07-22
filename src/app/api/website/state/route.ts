@@ -88,8 +88,9 @@ export async function GET(_req: NextRequest) {
         created_at: v.created_at,
         type:       v.label === "Published" ? "publish" : "generate",
       }));
-    } else {
-      // Backward compat: old users whose versions live only in tenant_config JSON
+    } else if (!requestedWebsiteId) {
+      // Fallback to tenant_config only on initial page load (no specific site requested).
+      // When switching between sites, never return another site's version history.
       versions = Array.isArray(tc?.website_versions) ? (tc.website_versions as unknown[]) : [];
     }
   }
