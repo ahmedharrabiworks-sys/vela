@@ -190,7 +190,7 @@ function buildCss(t: DesignTokens): string {
 }
 .ws-hero-split-text{
   flex:1 1 50%;display:flex;flex-direction:column;justify-content:center;
-  padding:80px 64px 80px 64px;max-width:620px;
+  padding:80px 72px 80px 80px;min-width:0;
 }
 .ws-hero-split-media{
   flex:1 1 50%;position:relative;min-height:480px;overflow:hidden;
@@ -607,7 +607,7 @@ ${serviceCardOverrides}
   transition:transform .25s,box-shadow .25s;
 }
 .ws-listing-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.12);}
-.ws-listing-img{aspect-ratio:4/3;overflow:hidden;background:var(--hero-bg);}
+.ws-listing-img{aspect-ratio:4/3;overflow:hidden;background:linear-gradient(135deg,var(--surface),var(--bg-alt));}
 .ws-listing-body{padding:28px 24px;}
 .ws-listing-title{
   font-family:var(--font-heading);font-size:1.15rem;font-weight:600;

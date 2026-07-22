@@ -28,6 +28,31 @@ export function createSupabaseServerClient() {
   );
 }
 
+/**
+ * Route Handler client — identical to createSupabaseServerClient but setAll
+ * does NOT catch errors, so refreshed tokens are correctly written back to the
+ * browser response. Use this in all Route Handlers (not Server Components).
+ */
+export function createSupabaseRouteHandlerClient() {
+  const cookieStore = cookies();
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+}
+
 /** Service-role admin client — for trusted server-side operations only */
 export function createSupabaseAdmin() {
   return createClient<Database>(

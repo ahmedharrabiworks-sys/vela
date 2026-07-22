@@ -30,7 +30,8 @@ function icon(name: string, size = 20): string {
 
 function photo(src: string | undefined, alt: string, cls: string, style = ""): string {
   if (src) return `<img src="${esc(src)}" alt="${esc(alt)}" class="${cls}" style="${style}" loading="lazy">`;
-  return `<div class="${cls}" style="background:var(--hero-bg);${style}" aria-label="${esc(alt)}"></div>`;
+  // Muted gradient fallback — never a solid dark color that reads as a broken element
+  return `<div class="${cls}" style="background:linear-gradient(135deg,var(--surface),var(--bg-alt));${style}" aria-label="${esc(alt)}"></div>`;
 }
 
 function esc(s: unknown): string {
@@ -234,16 +235,19 @@ export function renderGallery(
   c: { eyebrow?: string; headline?: string },
   images: (string | undefined)[]
 ): string {
-  const items = images.slice(0, 6);
-  if (!items.some(Boolean)) return "";
+  // Only render slots that have actual image URLs — never blank/fallback slots
+  const items = (images.filter(Boolean) as string[]).slice(0, 6);
+  if (!items.length) return "";
+  // Adjust column count to match available images (avoid orphaned grid cells)
+  const cols = items.length >= 4 ? 3 : items.length >= 2 ? 2 : 1;
   return `<section class="ws-section" id="gallery">
   <div class="ws-container">
     ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
-    <div class="ws-gallery-grid" style="margin-top:48px;">
+    <div class="ws-gallery-grid" style="margin-top:48px;grid-template-columns:repeat(${cols},1fr);">
       ${items.map((src, i) => `
       <div class="ws-gallery-item">
-        ${photo(src, `Gallery ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;")}
+        <img src="${esc(src)}" alt="${esc(c.headline ? `${c.headline} ${i + 1}` : `Gallery ${i + 1}`)}" class="ws-gallery-img" loading="lazy" style="width:100%;height:100%;">
       </div>`).join("")}
     </div>
   </div>
@@ -399,7 +403,7 @@ export function renderFaq(
 ): string {
   const items = (c.items ?? []).slice(0, 8);
   return `<section class="ws-section ws-section-alt" id="faq">
-  <div class="ws-container" style="max-width:720px;">
+  <div class="ws-container">
     ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
     <div class="ws-faq-list" style="margin-top:48px;">

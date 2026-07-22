@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
+import { cookies } from "next/headers";
+import { createSupabaseRouteHandlerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,19 @@ type VersionEntry = {
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
-    html?:      string;
     websiteId?: string;
   };
 
-  const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Use route-handler client so refreshed tokens are written back to browser
+  const supabase = createSupabaseRouteHandlerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (!user) {
+    const cookieNames = cookies().getAll().map(c => c.name)
+      .filter(n => n.startsWith("sb-") || n.includes("supabase"));
+    console.error("[website/publish] auth failed — error:", authError?.message ?? "none",
+      "| auth cookies:", cookieNames.length > 0 ? cookieNames.join(", ") : "NONE FOUND");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const admin = createSupabaseAdmin() as AdminClient;
 
@@ -62,11 +69,11 @@ export async function POST(req: NextRequest) {
     site = data as SiteRow | null;
   }
 
-  // Determine what HTML to publish: prefer draft_html from DB, fall back to body.html
-  const bodyHtml     = typeof body.html === "string" ? body.html.trim() : "";
-  const htmlToPublish = (site?.draft_html?.trim()) || bodyHtml || null;
+  // Always use the saved draft from DB — never trust client-submitted HTML
+  const htmlToPublish = site?.draft_html?.trim() || null;
 
   if (!htmlToPublish) {
+    console.error("[website/publish] no draft_html for site", site?.id ?? "none", "tenant", tenant.id);
     return NextResponse.json(
       { error: "No website draft found — generate a site first." },
       { status: 400 }

@@ -18,6 +18,8 @@ interface UnsplashResult {
   id: string;
   width: number;
   height: number;
+  description: string | null;
+  alt_description: string | null;
   urls: { regular?: string };
 }
 
@@ -39,10 +41,15 @@ async function tryUnsplash(query: string, usedUrls: Set<string>): Promise<string
     const qualifying = results.filter((r) => r.width >= 1600 && r.width >= r.height);
     const pool = qualifying.length ? qualifying : results;
 
-    // Prefer top-3 not yet used on this page; fall back to first qualifying
-    const top3 = pool.slice(0, 3);
-    const available = top3.filter((r) => r.urls.regular && !usedUrls.has(r.urls.regular));
-    const candidates = available.length ? available : top3;
+    // Prefer results that have a description — no-description results are usually
+    // abstract textures, gradients, or plain-color backgrounds
+    const described = pool.filter((r) => r.description || r.alt_description);
+    const finalPool = described.length >= 3 ? described : pool;
+
+    // Walk top-6 (not just top-3) to find an unused, described result
+    const top6 = finalPool.slice(0, 6);
+    const available = top6.filter((r) => r.urls.regular && !usedUrls.has(r.urls.regular));
+    const candidates = available.length ? available : top6;
     const pick = candidates[Math.floor(Math.random() * candidates.length)];
 
     const photoUrl = pick?.urls?.regular ?? null;
@@ -185,23 +192,24 @@ async function classifyUploadedImage(
   return "hero";
 }
 
-// ── Per-preset atmospheric image query maps ───────────────────────────────────
-// Used as server-side fallbacks when GPT omits imageQuery on a section.
+// ── Per-category image query suffixes ─────────────────────────────────────────
+// Subject-specific terms appended to industry+city for hero/about sections.
+// These produce real, on-topic Unsplash photos rather than abstract textures.
 const PRESET_HERO_SUFFIX: Record<string, string> = {
-  hotel:      "warm candlelight marble texture bokeh editorial minimal",
-  medical:    "clean white minimal abstract geometric light professional",
-  fitness:    "dynamic motion blur athletic dramatic light editorial",
-  beauty:     "smooth stone water ceramic natural light serene texture",
-  realestate: "architectural window light geometric shadow glass modern",
-  restaurant: "candlelight warm bokeh evening dining atmosphere abstract",
+  hotel:      "luxury hotel exterior resort pool architecture",
+  medical:    "modern clinic reception bright white professional",
+  fitness:    "gym fitness training equipment dynamic interior",
+  beauty:     "salon spa beauty interior elegant modern",
+  realestate: "luxury property interior architecture modern",
+  restaurant: "restaurant dining room elegant food atmosphere",
 };
 const PRESET_ABOUT_SUFFIX: Record<string, string> = {
-  hotel:      "luxury interior detail editorial warm light",
-  medical:    "professional consultation bright modern clinic",
-  fitness:    "coach athlete training natural light editorial",
-  beauty:     "botanical detail close-up natural light lifestyle",
-  realestate: "modern architecture interior light space minimal",
-  restaurant: "chef kitchen fire grill food preparation editorial",
+  hotel:      "hotel lobby interior warm light elegant",
+  medical:    "doctor consultation professional clinic bright",
+  fitness:    "trainer coach athlete workout natural light",
+  beauty:     "salon stylist consultation elegant interior",
+  realestate: "agent professional modern office bright",
+  restaurant: "chef kitchen cooking fire grill editorial",
 };
 const PRESET_GALLERY_QUERIES: Record<string, string[]> = {
   hotel: [
@@ -297,21 +305,28 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
+
+    // Hero: ALWAYS override with server-built query (industry + city + category context)
+    // GPT queries for heroes are often too abstract — the server has better business data
+    if (HERO_TYPES.has(s.type)) {
+      const heroSuffix = PRESET_HERO_SUFFIX[preset] ?? "professional photography editorial";
+      const locationCtx = city ? ` ${city}` : "";
+      if (hasOwnerPhoto) {
+        (s as { imageQuery?: string }).imageQuery = `${industry || base}${locationCtx} bright professional photography`.replace(/\s+/g, " ").trim();
+      } else {
+        (s as { imageQuery?: string }).imageQuery = `${industry || base}${locationCtx} ${heroSuffix}`.replace(/\s+/g, " ").trim();
+      }
+    }
+
     const hasQ = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
 
     if (!hasQ) {
-      if (HERO_TYPES.has(s.type)) {
-        if (hasOwnerPhoto) {
-          (s as { imageQuery?: string }).imageQuery = `${base} bright interior ${city}`.replace(/\s+/g, " ").trim();
-        } else {
-          const heroSuffix = PRESET_HERO_SUFFIX[preset] ?? "atmospheric bokeh warm editorial light abstract";
-          (s as { imageQuery?: string }).imageQuery = `${base} ${heroSuffix}`.replace(/\s+/g, " ").trim();
-        }
-      } else if (ABOUT_TYPES.has(s.type)) {
-        const aboutSuffix = PRESET_ABOUT_SUFFIX[preset] ?? "lifestyle editorial warm light natural";
+      if (ABOUT_TYPES.has(s.type)) {
+        const locationCtx = city ? ` ${city}` : "";
+        const aboutSuffix = PRESET_ABOUT_SUFFIX[preset] ?? "professional team editorial warm light";
         (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
-          ? `${base} professional team workspace modern`.replace(/\s+/g, " ").trim()
-          : `${base} ${aboutSuffix}`.replace(/\s+/g, " ").trim();
+          ? `${industry || base}${locationCtx} professional team workspace`.replace(/\s+/g, " ").trim()
+          : `${industry || base}${locationCtx} ${aboutSuffix}`.replace(/\s+/g, " ").trim();
       }
     }
 
@@ -623,33 +638,37 @@ PART 7 — IMAGE QUERY RULES
 
 imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
 
-${!hasOwnerPhoto ? `⚠ NO OWNER PHOTOS UPLOADED — USE ATMOSPHERIC QUERIES ONLY:
-No photos of specific business interiors, storefronts, team at location, or identifiable spaces.
+${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — do NOT use abstract textures or gradients:
 
-REQUIRED — atmospheric, editorial, or abstract:
-✓ hero: texture, ambient light, material close-up, abstract mood
-✓ about-story: lifestyle editorial, conceptual
-✓ gallery-grid / listings-grid: product detail, texture, close-ups
+imageQuery = [business type] [city or region] [quality context]
+
+RULES:
+• Include the specific business type (hotel, restaurant, dental clinic, gym…)
+• Include the city or region if known
+• End with a quality context: "professional photography", "editorial", "interior design", "bright natural light"
+• NEVER use pure-abstract queries like "bokeh texture close-up" or "gradient glow" for hero/about sections
+• The query must produce a REAL PHOTO of this type of business, not a stock texture
 
 EXAMPLES:
-• café / bakery hero       → "warm coffee steam bokeh morning light close-up"
-• dental hero              → "clean white minimal geometric abstract light professional"
-• gym / fitness hero       → "motion blur dynamic athletic dramatic light editorial"
-• restaurant hero          → "candlelight warm bokeh dining atmosphere evening abstract"
-• spa hero                 → "smooth stone water ripple natural light zen texture"
-• real estate / law hero   → "architectural window light geometric shadow glass modern"
-• saas / tech hero         → "abstract data visualization dark background gradient glow"
-• salon hero               → "mirror reflection bokeh champagne abstract editorial light"
+• Hotel (Tunis)           → "hotel resort Tunisia Mediterranean exterior architecture"
+• Dental clinic (Dubai)   → "dental clinic Dubai modern reception white professional"
+• Restaurant (Tunis)      → "restaurant Tunis Mediterranean dining room elegant"
+• Gym (Dubai Marina)      → "gym fitness Dubai Marina training equipment modern"
+• Salon (Paris)           → "hair salon Paris elegant interior modern professional"
+• SaaS / agency           → "modern office workspace team technology professional"
+• Real estate (London)    → "luxury property London interior architecture modern"
+
+gallery-grid / listings-grid: vary subject, angle, detail — each query must be distinct.
 
 ` : `PROCESS:
 1. Extract concrete visual details from owner's description: equipment, materials, ambience, unique features
-2. Build a 4–6 word query from specifics
+2. Build a 4–6 word query from specifics (business type + location + one detail)
 3. Self-test: "Could this belong to any business in this category?" → If yes, make it more specific.
 
 EXAMPLES:
-• Dental clinic (ceiling screens, digital scanners) → "bright minimal dental clinic digital technology white"
+• Dental clinic (ceiling screens, digital scanners) → "dental clinic Dubai digital technology modern white"
 • Gym (HIIT, warehouse, orange lights) → "hiit group fitness warehouse orange lighting dynamic"
-• Restaurant (open fire, exposed brick) → "intimate restaurant open fire grill exposed brick warm"
+• Restaurant (open fire, exposed brick) → "restaurant open fire grill exposed brick warm dining"
 `}
 gallery-grid / listings-grid imageQueries: all queries MUST be distinct — vary subject, angle, detail, moment.
 
@@ -743,7 +762,9 @@ ABSOLUTE RULES — NEVER VIOLATE
 4. NEVER invent team member names. Only include team-grid if the owner named real staff.
 5. NEVER paraphrase the owner's input as copy. Extract intent and write fresh brand copy.
 6. NEVER use generic section headings: "Our Services", "About Us", "Why Choose Us", "Contact Us", "Get in Touch".
-7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.`;
+7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.
+8. NEVER invent commercial promises: no "free trial", "money-back guarantee", "risk-free", "no commitment", "cancel anytime", "discount", "% off", "limited time offer", or delivery/shipping promises unless the owner explicitly stated them.
+9. Footer tagline MUST be specific to this business and its actual offerings. NEVER write generic phrases like "professional services in your city", "[category name] services", "serving [city]", or any placeholder. Write a real one-line brand summary.`;
 }
 
 // ── Classify message: revision command vs. conversational question ─────────────
@@ -813,7 +834,7 @@ REQUIRED FIELDS — collect in this exact order, one question per turn:
                  (b) the user's messages explicitly name a language (e.g. "in Arabic", "en français"), OR
                  (c) the user is writing in a non-English language (their message language IS the answer).
 
-2. BUSINESS NAME — "What's your [business type] called?"
+2. BUSINESS NAME — Ask naturally: "What's your business called?" — or if the specific type is clear from context, "What's your [confirmed type] called?" Never assume a type you haven't confirmed.
    Skip ONLY if: a specific business name (proper noun) is already stated in the conversation.
 
 3. WHAT THEY OFFER — their specific services, menu items, specialties, or products

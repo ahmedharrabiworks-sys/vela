@@ -844,7 +844,7 @@ export default function WebsitePage() {
       const res  = await fetch("/api/website/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html: currentHtml, websiteId: websiteIdRef.current }),
+        body: JSON.stringify({ websiteId: websiteIdRef.current }),
       });
       const data = await res.json() as { url?: string; slug?: string; error?: string };
       if (!res.ok || !data.url) {
