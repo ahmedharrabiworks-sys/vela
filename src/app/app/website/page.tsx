@@ -686,6 +686,7 @@ export default function WebsitePage() {
 
   // ── Project menu / inline rename ──────────────────────────────────────────────
   const [menuOpenId, setMenuOpenId]   = useState<string | null>(null);
+  const [menuPos, setMenuPos]         = useState<{ top: number; right: number } | null>(null);
   const [renamingId, setRenamingId]   = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -1037,7 +1038,7 @@ export default function WebsitePage() {
   // Close project ⋯ menu on outside click
   useEffect(() => {
     if (!menuOpenId) return;
-    const handler = () => setMenuOpenId(null);
+    const handler = () => { setMenuOpenId(null); setMenuPos(null); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpenId]);
@@ -1454,41 +1455,26 @@ export default function WebsitePage() {
                     </button>
                   )}
 
-                  {/* ⋯ menu trigger */}
+                  {/* ⋯ menu trigger — position is captured on click; dropdown renders fixed at page level */}
                   {!isRenaming && (
                     <button
                       onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpen ? null : p.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (menuOpen) {
+                          setMenuOpenId(null);
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                          setMenuOpenId(p.id);
+                        }
+                      }}
                       className="shrink-0 w-5 h-5 mr-1 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded hover:bg-[#E5E7EB] dark:hover:bg-[#2A2A32] transition-all text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white"
                     >
                       <svg width="10" height="3" viewBox="0 0 16 4" fill="currentColor">
                         <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="14" cy="2" r="1.5"/>
                       </svg>
                     </button>
-                  )}
-
-                  {/* ⋯ dropdown — Open / Rename / Delete */}
-                  {menuOpen && (
-                    <div
-                      onMouseDown={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-full mt-0.5 z-50 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-lg py-1 w-28"
-                    >
-                      <button
-                        onClick={() => { setMenuOpenId(null); handleSwitchProject(p); }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
-                        Open
-                      </button>
-                      <button
-                        onClick={() => handleStartRename(p)}
-                        className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
-                        Rename
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProject(p)}
-                        className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
-                        Delete
-                      </button>
-                    </div>
                   )}
                 </div>
               );
@@ -1536,7 +1522,17 @@ export default function WebsitePage() {
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest mb-2 px-1">Version History</p>
               {versions.slice().reverse().map((v, i) => (
-                <div key={v.id} className="flex items-start gap-3 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3">
+                <div
+                  key={v.id}
+                  onClick={i > 0 ? () => { handlePreviewVersion(v); setShowVersionsPanel(false); } : undefined}
+                  className={`flex items-start gap-3 bg-white dark:bg-[#1E1E24] border rounded-xl p-3 transition-colors ${
+                    i === 0
+                      ? "border-[#E5E7EB] dark:border-[#2A2A32]"
+                      : previewingVersion === v.id
+                        ? "border-[#FF6B35]/50 bg-[#FFF8F6] dark:bg-[#2A1A14] cursor-pointer"
+                        : "border-[#E5E7EB] dark:border-[#2A2A32] cursor-pointer hover:border-[#FF6B35]/30 hover:bg-[#FFF8F6] dark:hover:bg-[#2A1A14]"
+                  }`}
+                >
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
                     {v.type === "publish" ? (
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1554,22 +1550,13 @@ export default function WebsitePage() {
                   {i === 0 ? (
                     <span className="text-[10px] font-medium text-[#9CA3AF] shrink-0 mt-0.5">Current</span>
                   ) : (
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => { handlePreviewVersion(v); setShowVersionsPanel(false); }}
-                        disabled={previewingVersion === v.id}
-                        className="text-[10px] font-semibold text-[#6B7280] hover:text-[#111111] dark:hover:text-white disabled:opacity-40 transition-colors"
-                      >
-                        Preview
-                      </button>
-                      <button
-                        onClick={() => { handleRestoreVersion(v); setShowVersionsPanel(false); }}
-                        disabled={restoringVersion === v.id}
-                        className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40"
-                      >
-                        {restoringVersion === v.id ? "…" : "Restore"}
-                      </button>
-                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRestoreVersion(v); setShowVersionsPanel(false); }}
+                      disabled={restoringVersion === v.id}
+                      className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40 shrink-0 mt-0.5"
+                    >
+                      {restoringVersion === v.id ? "…" : "Restore"}
+                    </button>
                   )}
                 </div>
               ))}
@@ -1828,6 +1815,35 @@ export default function WebsitePage() {
           </div>
         </div>
       </div>
+
+      {/* ⋯ project context menu — fixed position so it escapes sidebar overflow:hidden clipping */}
+      {menuOpenId !== null && menuPos !== null && (() => {
+        const mp = projects.find((proj) => proj.id === menuOpenId);
+        if (!mp) return null;
+        return (
+          <div
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 200 }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-28"
+          >
+            <button
+              onClick={() => { setMenuOpenId(null); handleSwitchProject(mp); }}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+              Open
+            </button>
+            <button
+              onClick={() => handleStartRename(mp)}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+              Rename
+            </button>
+            <button
+              onClick={() => handleDeleteProject(mp)}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
+              Delete
+            </button>
+          </div>
+        );
+      })()}
 
       {/* New Website Confirmation Modal */}
       {showNewWebsiteModal && (
