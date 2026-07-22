@@ -966,18 +966,21 @@ export default function WebsitePage() {
     setContactInfo({ phone: "", email: "", address: "", hours: "" });
     setVersions([]); setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
     setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
+    const switchTarget = p.id;
     setWebsiteId(p.id); websiteIdRef.current = p.id;
     setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? ""); setSavedSlug(p.slug ?? "");
     setIsPublished(p.is_published);
     setPublishedUrl(p.is_published ? (p.published_url ?? (p.slug ? `/site/${p.slug}` : "")) : "");
     try {
       const res = await fetch(`/api/website/state?websiteId=${encodeURIComponent(p.id)}`);
+      if (websiteIdRef.current !== switchTarget) return;
       if (res.ok) {
         const data = await res.json() as {
           html?: string | null; versions?: VersionRecord[];
           name?: string | null; slug?: string | null;
           isPublished?: boolean; publishedUrl?: string | null;
         };
+        if (websiteIdRef.current !== switchTarget) return;
         if (data.html) {
           setHtml(data.html); htmlRef.current = data.html;
           setBuilt(true); setActiveTab("preview");
@@ -1323,9 +1326,9 @@ export default function WebsitePage() {
           <p className="text-xs text-[#6B7280] mt-0.5">{t("website.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {websiteCount > 0 && (
-            <span className="hidden md:block text-[10px] text-[#9CA3AF] font-medium">
-              {websiteCount}/{websiteLimit} site{websiteLimit !== 1 ? "s" : ""}
+          {projects.length > 0 && (
+            <span className="hidden md:block text-[13px] text-[#9CA3AF] font-medium">
+              {projects.length}/{websiteLimit} site{websiteLimit !== 1 ? "s" : ""}
             </span>
           )}
 

@@ -277,3 +277,114 @@ export function resolveTokens(preset: PresetName, accentOverride?: string): Desi
   }
   return tok;
 }
+
+// ── Section-composition design system (v2 generator) ─────────────────────────
+
+export type DesignMood =
+  | "editorial-luxury"
+  | "clinical-bright"
+  | "bold-energetic"
+  | "warm-minimal"
+  | "tech-sharp"
+  | "dark-premium";
+
+export interface DesignDNA {
+  mood:        DesignMood;
+  headingFont: string;
+  bodyFont:    string;
+  palette: {
+    bg:     string;
+    text:   string;
+    accent: string;
+    muted:  string;
+  };
+  isDark: boolean;
+}
+
+export const APPROVED_FONTS: Record<string, string> = {
+  "Playfair Display":   "family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400",
+  "Cormorant Garamond": "family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400",
+  "Fraunces":           "family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400",
+  "Archivo":            "family=Archivo:wght@400;600;700;800;900",
+  "Inter":              "family=Inter:wght@300;400;500;600;700;800",
+  "DM Sans":            "family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700",
+  "Space Grotesk":      "family=Space+Grotesk:wght@300;400;500;600;700",
+  "Plus Jakarta Sans":  "family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800",
+  "Libre Baskerville":  "family=Libre+Baskerville:ital,wght@0,400;0,700;1,400",
+};
+
+function buildFontImportUrl(heading: string, body: string, fallback: string): string {
+  const h = APPROVED_FONTS[heading];
+  const b = body !== heading ? APPROVED_FONTS[body] : undefined;
+  const parts = [h, b].filter(Boolean) as string[];
+  if (!parts.length) return fallback;
+  return `https://fonts.googleapis.com/css2?${parts.join("&")}&display=swap`;
+}
+
+const MOOD_BASE: Record<DesignMood, NewPresetName> = {
+  "editorial-luxury": "hotel",
+  "clinical-bright":  "medical",
+  "bold-energetic":   "fitness",
+  "warm-minimal":     "beauty",
+  "tech-sharp":       "fitness",
+  "dark-premium":     "hotel",
+};
+const MOOD_HEADING_WEIGHT: Record<DesignMood, number> = {
+  "editorial-luxury": 500, "clinical-bright": 700, "bold-energetic": 800,
+  "warm-minimal": 400,     "tech-sharp": 700,      "dark-premium": 400,
+};
+const MOOD_TRACKING: Record<DesignMood, string> = {
+  "editorial-luxury": "-0.02em",  "clinical-bright": "-0.025em", "bold-energetic": "-0.01em",
+  "warm-minimal":     "0em",      "tech-sharp": "-0.02em",       "dark-premium": "-0.03em",
+};
+const MOOD_TRANSFORM: Record<DesignMood, string> = {
+  "editorial-luxury": "none", "clinical-bright": "none", "bold-energetic": "uppercase",
+  "warm-minimal":     "none", "tech-sharp": "none",      "dark-premium": "none",
+};
+const MOOD_RADIUS: Record<DesignMood, [string, string]> = {
+  "editorial-luxury": ["0px", "2px"],  "clinical-bright": ["10px", "18px"],
+  "bold-energetic":   ["4px", "8px"],  "warm-minimal": ["0px", "0px"],
+  "tech-sharp":       ["6px", "12px"], "dark-premium": ["0px", "2px"],
+};
+const MOOD_SECTION_PAD: Record<DesignMood, string> = {
+  "editorial-luxury": "112px", "clinical-bright": "112px", "bold-energetic": "100px",
+  "warm-minimal":     "128px", "tech-sharp": "100px",      "dark-premium": "112px",
+};
+
+export function resolveDesignDNA(dna: DesignDNA): DesignTokens {
+  const baseName = MOOD_BASE[dna.mood] ?? "realestate";
+  const base = { ...BASE[baseName] };
+  const hexOk = (h: string | undefined): h is string =>
+    typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h);
+
+  const accent = hexOk(dna.palette?.accent) ? dna.palette.accent : base.accent;
+  const r = parseInt(accent.slice(1, 3), 16);
+  const g = parseInt(accent.slice(3, 5), 16);
+  const b = parseInt(accent.slice(5, 7), 16);
+  const accentLum = 0.299 * r + 0.587 * g + 0.114 * b;
+  const [radius, radiusLg] = MOOD_RADIUS[dna.mood] ?? ["4px", "8px"];
+  const hFont = dna.headingFont && APPROVED_FONTS[dna.headingFont] ? dna.headingFont : null;
+  const bFont = dna.bodyFont    && APPROVED_FONTS[dna.bodyFont]    ? dna.bodyFont    : null;
+
+  return {
+    ...base,
+    preset:           baseName,
+    dark:             dna.isDark ?? base.dark,
+    bg:               hexOk(dna.palette?.bg)    ? dna.palette.bg    : base.bg,
+    text:             hexOk(dna.palette?.text)  ? dna.palette.text  : base.text,
+    muted:            hexOk(dna.palette?.muted) ? dna.palette.muted : base.muted,
+    accent,
+    accentFg:         accentLum > 186 ? "#111111" : "#FFFFFF",
+    accentAlpha:      `rgba(${r},${g},${b},0.10)`,
+    fontHeading:      hFont ? `'${hFont}', ${base.fontHeading}` : base.fontHeading,
+    fontBody:         bFont ? `'${bFont}', ${base.fontBody}`    : base.fontBody,
+    fontImport:       buildFontImportUrl(dna.headingFont ?? "", dna.bodyFont ?? "", base.fontImport),
+    headingWeight:    MOOD_HEADING_WEIGHT[dna.mood] ?? base.headingWeight,
+    headingTracking:  MOOD_TRACKING[dna.mood]       ?? base.headingTracking,
+    headingTransform: MOOD_TRANSFORM[dna.mood]      ?? base.headingTransform,
+    radius,
+    radiusLg,
+    sectionPad:       MOOD_SECTION_PAD[dna.mood] ?? base.sectionPad,
+    heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+  };
+}

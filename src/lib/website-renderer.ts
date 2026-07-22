@@ -1,13 +1,27 @@
-import { resolveTokens, type DesignTokens, type PresetName } from "./website-design-system";
+import { resolveTokens, resolveDesignDNA, type DesignTokens, type PresetName, type DesignDNA } from "./website-design-system";
 import {
   renderNav, renderHero, renderAbout, renderServices,
   renderGallery, renderTestimonials, renderTeam, renderBooking,
   renderFaq, renderCtaBanner, renderFooter,
+  // v2 section library
+  renderHeroFullbleed, renderHeroSplitSection, renderHeroMinimal,
+  renderFeatureGrid, renderPricingTiers, renderServiceList,
+  renderGalleryGrid, renderListingsGrid, renderAboutStory,
+  renderTeamGrid, renderTestimonialsSection, renderStatsBand,
+  renderProcessSteps, renderFaqAccordion, renderCtaBand, renderContactBlock,
 } from "./website-sections";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface SectionSpec {
-  type: "hero" | "about" | "services" | "gallery" | "testimonials" | "team" | "booking" | "faq" | "cta_banner" | "footer";
+  type:
+    | "hero" | "about" | "services" | "gallery" | "testimonials" | "team"
+    | "booking" | "faq" | "cta_banner" | "footer"
+    // v2 section types
+    | "hero-fullbleed" | "hero-split" | "hero-minimal"
+    | "feature-grid" | "pricing-tiers" | "service-list"
+    | "gallery-grid" | "listings-grid" | "about-story"
+    | "team-grid" | "stats-band" | "process-steps"
+    | "faq-accordion" | "cta-band" | "contact-block";
   imageQuery?: string;
   imageQueries?: string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -15,9 +29,11 @@ export interface SectionSpec {
 }
 
 export interface WebsiteSpec {
-  stylePreset: PresetName;
+  stylePreset?: PresetName;
   accentColor?: string;
   businessName: string;
+  category?: string;
+  designDNA?: DesignDNA;
   sections: SectionSpec[];
 }
 
@@ -492,6 +508,156 @@ ${serviceCardOverrides}
 .ws-footer-link:hover{color:white;}
 .ws-footer-bottom{border-top:1px solid #1A2235;padding-top:24px;font-size:0.8rem;text-align:center;}
 
+/* ── Contact gap fix: booking/contact-block sits directly before footer ──── */
+#booking, #contact { padding-bottom: 0; }
+
+/* ── hero-minimal ────────────────────────────────────────────────────────── */
+.ws-hero--minimal{
+  min-height:88vh;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.ws-hero-glow-min{position:absolute;inset:0;pointer-events:none;}
+.ws-hero-content--min{
+  position:relative;z-index:1;text-align:center;
+  padding:0 48px;width:100%;max-width:800px;margin:0 auto;
+}
+
+/* ── feature-grid ────────────────────────────────────────────────────────── */
+.ws-feat-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:24px;margin-top:56px;
+}
+.ws-feat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:40px 36px;
+  transition:box-shadow .2s,border-color .2s;
+}
+.ws-feat-card:hover{border-color:var(--accent);box-shadow:0 8px 32px var(--accent-alpha);}
+.ws-feat-icon{
+  width:52px;height:52px;background:var(--accent-alpha);
+  border-radius:var(--radius-lg);display:flex;align-items:center;
+  justify-content:center;color:var(--accent);margin-bottom:20px;
+}
+.ws-feat-title{
+  font-family:var(--font-heading);font-size:1.15rem;font-weight:600;
+  color:var(--color-heading);margin-bottom:10px;line-height:1.3;
+}
+.ws-feat-desc{font-size:0.9rem;color:var(--color-muted);line-height:1.7;}
+
+/* ── pricing-tiers ───────────────────────────────────────────────────────── */
+.ws-price-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:24px;margin-top:24px;
+}
+.ws-price-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--radius-lg);padding:44px 40px;
+  position:relative;text-align:left;transition:border-color .2s,box-shadow .2s;
+}
+.ws-price-card:hover{box-shadow:0 8px 32px var(--accent-alpha);}
+.ws-price-card--hi{box-shadow:0 12px 48px var(--accent-alpha);}
+.ws-price-badge{
+  display:inline-block;padding:4px 12px;border-radius:100px;
+  font-size:0.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  margin-bottom:24px;
+}
+.ws-price-name{
+  font-size:0.8rem;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--color-muted);margin-bottom:16px;
+}
+.ws-price-amount{
+  font-family:var(--font-heading);font-size:2.8rem;font-weight:700;
+  color:var(--color-heading);line-height:1;margin-bottom:32px;
+}
+.ws-price-period{font-size:1rem;font-weight:400;color:var(--color-muted);}
+.ws-price-features{list-style:none;margin-bottom:36px;}
+.ws-price-feat{
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:0.9rem;color:var(--color-text);padding:8px 0;
+  border-bottom:1px solid var(--border);
+}
+.ws-price-feat span{color:var(--accent);flex-shrink:0;margin-top:2px;}
+
+/* ── service-list ────────────────────────────────────────────────────────── */
+.ws-svc-list{margin-top:48px;border-top:1px solid var(--border);}
+.ws-svc-item{
+  display:flex;justify-content:space-between;align-items:baseline;
+  gap:24px;padding:28px 0;border-bottom:1px solid var(--border);
+}
+.ws-svc-left{flex:1;min-width:0;}
+.ws-svc-title{
+  font-family:var(--font-heading);font-size:1.1rem;
+  font-weight:var(--heading-weight);color:var(--color-heading);
+  margin-bottom:4px;line-height:1.3;
+}
+.ws-svc-desc{font-size:0.875rem;color:var(--color-muted);line-height:1.6;}
+.ws-svc-price{
+  font-size:1rem;font-weight:700;color:var(--accent);
+  flex-shrink:0;white-space:nowrap;
+}
+
+/* ── listings-grid ───────────────────────────────────────────────────────── */
+.ws-listing-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:24px;margin-top:56px;
+}
+.ws-listing-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;
+  transition:transform .25s,box-shadow .25s;
+}
+.ws-listing-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.12);}
+.ws-listing-img{aspect-ratio:4/3;overflow:hidden;background:var(--hero-bg);}
+.ws-listing-body{padding:28px 24px;}
+.ws-listing-title{
+  font-family:var(--font-heading);font-size:1.15rem;font-weight:600;
+  color:var(--color-heading);margin-bottom:6px;line-height:1.3;
+}
+.ws-listing-sub{
+  font-size:0.78rem;font-weight:600;color:var(--accent);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;
+}
+.ws-listing-desc{font-size:0.875rem;color:var(--color-muted);line-height:1.65;margin-bottom:12px;}
+.ws-listing-price{
+  font-size:1.05rem;font-weight:700;color:var(--color-heading);
+}
+
+/* ── stats-band ──────────────────────────────────────────────────────────── */
+.ws-stats{padding:80px 0;}
+.ws-stats-inner{
+  display:flex;flex-wrap:wrap;gap:48px;
+  justify-content:space-around;align-items:center;
+}
+.ws-stat{text-align:center;}
+.ws-stat-value{
+  font-family:var(--font-heading);font-size:clamp(2.5rem,5vw,4rem);
+  font-weight:700;line-height:1;margin-bottom:8px;
+}
+.ws-stat-label{font-size:0.875rem;color:#9CA3AF;font-weight:500;letter-spacing:.06em;text-transform:uppercase;}
+
+/* ── process-steps ───────────────────────────────────────────────────────── */
+.ws-steps{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:0;margin-top:64px;
+}
+.ws-step{padding:0 32px 0 0;position:relative;}
+.ws-step-num{
+  width:48px;height:48px;border-radius:50%;
+  background:var(--accent);color:var(--accent-fg);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:1.1rem;margin-bottom:20px;
+}
+.ws-step-line{
+  position:absolute;top:24px;left:48px;right:0;height:1px;
+  background:var(--border);
+}
+.ws-step:last-child .ws-step-line{display:none;}
+.ws-step-title{
+  font-family:var(--font-heading);font-size:1.05rem;font-weight:600;
+  color:var(--color-heading);margin-bottom:8px;line-height:1.3;
+}
+.ws-step-desc{font-size:0.875rem;color:var(--color-muted);line-height:1.65;}
+
 /* ── Mobile 375px ────────────────────────────────────────────────────────── */
 @media(max-width:768px){
   .ws-nav-links{display:none;}
@@ -520,6 +686,18 @@ ${serviceCardOverrides}
   .ws-cta-banner{padding:80px 0;}
   .ws-service-card{padding:32px 28px;}
   .ws-hero-glow{width:320px;height:320px;}
+  .ws-hero--minimal{min-height:80vh;}
+  .ws-hero-content--min{padding:0 24px;}
+  .ws-feat-grid{grid-template-columns:1fr;}
+  .ws-price-grid{grid-template-columns:1fr;}
+  .ws-price-card{padding:36px 28px;}
+  .ws-svc-item{flex-direction:column;gap:8px;}
+  .ws-listing-grid{grid-template-columns:1fr;}
+  .ws-stats-inner{gap:32px;}
+  .ws-stat-value{font-size:clamp(2rem,8vw,3rem);}
+  .ws-steps{grid-template-columns:1fr;gap:32px;}
+  .ws-step{padding:0;}
+  .ws-step-line{display:none;}
 }
 @media(max-width:480px){
   .ws-hero-headline,.ws-hero-headline--el,.ws-hero-headline--ee,.ws-hero-headline--ss{font-size:clamp(1.75rem,7.5vw,2.25rem);}
@@ -623,15 +801,20 @@ html[dir="rtl"] .ws-service-card{text-align:right;}
 
 // ── Main renderer ─────────────────────────────────────────────────────────────
 export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: string, language?: string): string {
-  const t = resolveTokens(spec.stylePreset, spec.accentColor);
+  // Resolve design tokens: v2 designDNA takes priority over legacy stylePreset
+  const t: DesignTokens = spec.designDNA
+    ? resolveDesignDNA(spec.designDNA)
+    : resolveTokens((spec.stylePreset ?? "realestate") as PresetName, spec.accentColor);
+
   const name = spec.businessName || "My Business";
 
   const footerSection = spec.sections.find((s) => s.type === "footer");
   const footerContent = footerSection?.content ?? {};
 
-  const heroSection = spec.sections.find((s) => s.type === "hero");
-  const bookingSection = spec.sections.find((s) => s.type === "booking");
-  const navCta = (heroSection?.content?.ctaPrimary as string) ?? (bookingSection?.content?.ctaText as string) ?? "Book Now";
+  // Nav CTA: check both legacy and v2 hero/contact types
+  const heroSection    = spec.sections.find((s) => ["hero","hero-fullbleed","hero-split","hero-minimal"].includes(s.type));
+  const contactSection = spec.sections.find((s) => ["booking","contact-block"].includes(s.type));
+  const navCta = (heroSection?.content?.ctaPrimary as string) ?? (contactSection?.content?.ctaText as string) ?? "Book Now";
 
   const bodyParts: string[] = [];
   bodyParts.push(renderNav(name, navCta));
@@ -640,7 +823,14 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
     const s = spec.sections[i];
     const imgKey = String(i);
 
+    // Helper: collect multi-image array for gallery/listings sections
+    const multiImgs = (): (string | undefined)[] => {
+      const queries = s.imageQueries ?? (s.content?.imageQueries as string[] | undefined) ?? [];
+      return queries.map((_, j) => images[`${imgKey}_${j}`]);
+    };
+
     switch (s.type) {
+      // ── Legacy section types (v1 backward compat) ──────────────────────────
       case "hero":
         bodyParts.push(renderHero(t, s.content as Parameters<typeof renderHero>[1], images[imgKey]));
         break;
@@ -651,12 +841,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         bodyParts.push(renderServices(t, s.content as Parameters<typeof renderServices>[1]));
         break;
       case "gallery": {
-        const gImgs: (string | undefined)[] = [];
-        const queries = s.imageQueries ?? [];
-        for (let j = 0; j < queries.length; j++) {
-          gImgs.push(images[`${imgKey}_${j}`]);
-        }
-        bodyParts.push(renderGallery(t, s.content as Parameters<typeof renderGallery>[1], gImgs));
+        bodyParts.push(renderGallery(t, s.content as Parameters<typeof renderGallery>[1], multiImgs()));
         break;
       }
       case "testimonials":
@@ -675,6 +860,53 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         bodyParts.push(renderCtaBanner(t, s.content as Parameters<typeof renderCtaBanner>[1]));
         break;
       case "footer":
+        break;
+
+      // ── v2 section types ───────────────────────────────────────────────────
+      case "hero-fullbleed":
+        bodyParts.push(renderHeroFullbleed(t, s.content as Parameters<typeof renderHeroFullbleed>[1], images[imgKey]));
+        break;
+      case "hero-split":
+        bodyParts.push(renderHeroSplitSection(t, s.content as Parameters<typeof renderHeroSplitSection>[1], images[imgKey]));
+        break;
+      case "hero-minimal":
+        bodyParts.push(renderHeroMinimal(t, s.content as Parameters<typeof renderHeroMinimal>[1]));
+        break;
+      case "feature-grid":
+        bodyParts.push(renderFeatureGrid(t, s.content as Parameters<typeof renderFeatureGrid>[1]));
+        break;
+      case "pricing-tiers":
+        bodyParts.push(renderPricingTiers(t, s.content as Parameters<typeof renderPricingTiers>[1]));
+        break;
+      case "service-list":
+        bodyParts.push(renderServiceList(t, s.content as Parameters<typeof renderServiceList>[1]));
+        break;
+      case "gallery-grid":
+        bodyParts.push(renderGalleryGrid(t, s.content as Parameters<typeof renderGalleryGrid>[1], multiImgs()));
+        break;
+      case "listings-grid":
+        bodyParts.push(renderListingsGrid(t, s.content as Parameters<typeof renderListingsGrid>[1], multiImgs()));
+        break;
+      case "about-story":
+        bodyParts.push(renderAboutStory(t, s.content as Parameters<typeof renderAboutStory>[1], images[imgKey]));
+        break;
+      case "team-grid":
+        bodyParts.push(renderTeamGrid(t, s.content as Parameters<typeof renderTeamGrid>[1]));
+        break;
+      case "stats-band":
+        bodyParts.push(renderStatsBand(t, s.content as Parameters<typeof renderStatsBand>[1]));
+        break;
+      case "process-steps":
+        bodyParts.push(renderProcessSteps(t, s.content as Parameters<typeof renderProcessSteps>[1]));
+        break;
+      case "faq-accordion":
+        bodyParts.push(renderFaqAccordion(t, s.content as Parameters<typeof renderFaqAccordion>[1]));
+        break;
+      case "cta-band":
+        bodyParts.push(renderCtaBand(t, s.content as Parameters<typeof renderCtaBand>[1]));
+        break;
+      case "contact-block":
+        bodyParts.push(renderContactBlock(t, s.content as Parameters<typeof renderContactBlock>[1]));
         break;
       default:
         break;

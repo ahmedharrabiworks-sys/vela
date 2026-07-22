@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { renderWebsite, type WebsiteSpec, type ImageMap } from "@/lib/website-renderer";
-import type { PresetName } from "@/lib/website-design-system";
+import type { PresetName, DesignDNA } from "@/lib/website-design-system";
+import { APPROVED_FONTS } from "@/lib/website-design-system";
 
 export const dynamic = "force-dynamic";
 // 300s: two sequential GPT-4o calls + Unsplash fetches can exceed 60s on cold starts
@@ -132,14 +133,23 @@ async function fetchSpecImages(
   }
 
   if (heroOverride) {
-    const slotIdx = uploadSlot !== "hero"
-      ? spec.sections.findIndex((s) => s.type === uploadSlot)
+    const HERO_TYPES_V2  = ["hero", "hero-fullbleed", "hero-split", "hero-minimal"];
+    const ABOUT_TYPES_V2 = ["about", "about-story"];
+    const GALLERY_TYPES_V2 = ["gallery", "gallery-grid"];
+    // Map uploadSlot to one or more section types to search
+    const slotTypes: string[] =
+      uploadSlot === "about"   ? ABOUT_TYPES_V2  :
+      uploadSlot === "gallery" ? GALLERY_TYPES_V2 :
+      uploadSlot === "team"    ? ["team", "team-grid"] :
+      [];
+    const slotIdx = slotTypes.length > 0
+      ? spec.sections.findIndex((s) => slotTypes.includes(s.type))
       : -1;
     if (slotIdx >= 0) {
       map[String(slotIdx)] = heroOverride;
-      if (uploadSlot === "gallery") map[`${slotIdx}_0`] = heroOverride;
+      if (GALLERY_TYPES_V2.includes(spec.sections[slotIdx].type)) map[`${slotIdx}_0`] = heroOverride;
     } else {
-      const heroIdx = spec.sections.findIndex((s) => s.type === "hero");
+      const heroIdx = spec.sections.findIndex((s) => HERO_TYPES_V2.includes(s.type));
       if (heroIdx >= 0) map[String(heroIdx)] = heroOverride;
     }
   }
@@ -244,6 +254,13 @@ const PRESET_GALLERY_QUERIES: Record<string, string[]> = {
   ],
 };
 
+// ── Map v2 category → gallery query preset key ────────────────────────────────
+const CATEGORY_TO_PRESET: Record<string, string> = {
+  hotel: "hotel", clinic: "medical", gym: "fitness", salon: "beauty",
+  realestate: "realestate", restaurant: "restaurant", legal: "realestate",
+  saas: "fitness", agency: "fitness", ecommerce: "beauty", education: "fitness", other: "realestate",
+};
+
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
 function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, msgText: string, hasOwnerPhoto: boolean): void {
   // Extract 2-3 visual keywords from the owner's message for additional context
@@ -257,28 +274,40 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
 
   const base = (visualHints || industry || "professional").trim();
 
-  // Map legacy preset names to 6 new names for query lookup
+  // Resolve preset key: v2 uses category, v1 uses stylePreset
   const PRESET_ALIAS: Record<string, string> = {
     "editorial-luxury": "hotel", "minimal-warm": "beauty", "saas-sharp": "fitness",
     "estate-elegant": "realestate", "clinical-bright": "medical",
     "editorial": "hotel", "bold": "fitness", "clean": "realestate", "clinical": "medical",
   };
-  const rawPreset = String(spec.stylePreset ?? "");
-  const preset = (PRESET_ALIAS[rawPreset] ?? rawPreset) || "realestate";
+  const rawCategory = String((spec as { category?: string }).category ?? "");
+  const rawPreset   = String(spec.stylePreset ?? "");
+  const preset: string =
+    (rawCategory && CATEGORY_TO_PRESET[rawCategory])
+      ? CATEGORY_TO_PRESET[rawCategory]!
+      : (PRESET_ALIAS[rawPreset] ?? rawPreset) || "realestate";
+
+  // Hero types that need a single imageQuery
+  const HERO_TYPES = new Set(["hero", "hero-fullbleed", "hero-split"]);
+  // About types that need a single imageQuery
+  const ABOUT_TYPES = new Set(["about", "about-story"]);
+  // Multi-image types
+  const MULTI_GALLERY_TYPES = new Set(["gallery", "gallery-grid"]);
+  const MULTI_LISTING_TYPES = new Set(["listings-grid"]);
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
     const hasQ = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
 
     if (!hasQ) {
-      if (s.type === "hero") {
+      if (HERO_TYPES.has(s.type)) {
         if (hasOwnerPhoto) {
           (s as { imageQuery?: string }).imageQuery = `${base} bright interior ${city}`.replace(/\s+/g, " ").trim();
         } else {
           const heroSuffix = PRESET_HERO_SUFFIX[preset] ?? "atmospheric bokeh warm editorial light abstract";
           (s as { imageQuery?: string }).imageQuery = `${base} ${heroSuffix}`.replace(/\s+/g, " ").trim();
         }
-      } else if (s.type === "about") {
+      } else if (ABOUT_TYPES.has(s.type)) {
         const aboutSuffix = PRESET_ABOUT_SUFFIX[preset] ?? "lifestyle editorial warm light natural";
         (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
           ? `${base} professional team workspace modern`.replace(/\s+/g, " ").trim()
@@ -286,8 +315,8 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
       }
     }
 
-    // Gallery sections: ensure 6 imageQueries
-    if (s.type === "gallery") {
+    // Gallery grid sections: ensure 6 imageQueries
+    if (MULTI_GALLERY_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       if (!qs.length) {
         const fallbackGallery = hasOwnerPhoto
@@ -308,6 +337,20 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
               `${base} abstract mood atmosphere`,
             ]);
         (s as { imageQueries?: string[] }).imageQueries = fallbackGallery.map((q) => q.replace(/\s+/g, " ").trim());
+      }
+    }
+
+    // Listings grid: ensure imageQueries count matches items count (min 3)
+    if (MULTI_LISTING_TYPES.has(s.type)) {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
+      const targetCount = Math.max(items.length || 3, 3);
+      if (qs.length < targetCount) {
+        const listingSuffix = PRESET_HERO_SUFFIX[preset] ?? "editorial minimal clean light";
+        const filled = Array.from({ length: targetCount }, (_, j) =>
+          qs[j] ?? `${base} ${listingSuffix} item ${j + 1}`.replace(/\s+/g, " ").trim()
+        );
+        (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
   }
@@ -337,6 +380,37 @@ function extractSpec(html: string): WebsiteSpec | null {
   }
 }
 
+// ── Coerce and sanitize v2 designDNA from GPT response ───────────────────────
+const VALID_MOODS = new Set(["editorial-luxury","clinical-bright","bold-energetic","warm-minimal","tech-sharp","dark-premium"]);
+const MOOD_DEFAULT_DNA: Record<string, Partial<DesignDNA>> = {
+  "editorial-luxury": { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#FAF8F5", text: "#1A1A1A", accent: "#C4A882", muted: "#857D72" }, isDark: false },
+  "clinical-bright":  { headingFont: "Inter",            bodyFont: "Inter", palette: { bg: "#FFFFFF",  text: "#0A2540", accent: "#0284C7", muted: "#64748B" }, isDark: false },
+  "bold-energetic":   { headingFont: "Archivo",          bodyFont: "Inter", palette: { bg: "#0B0B0B",  text: "#FFFFFF", accent: "#E8390E", muted: "#6B7280" }, isDark: true  },
+  "warm-minimal":     { headingFont: "Cormorant Garamond", bodyFont: "DM Sans", palette: { bg: "#F7F5F0", text: "#3A3730", accent: "#8B6347", muted: "#6B705C" }, isDark: false },
+  "tech-sharp":       { headingFont: "Space Grotesk",    bodyFont: "Inter", palette: { bg: "#0A0A0F",  text: "#F1F5F9", accent: "#7C3AED", muted: "#6B7280" }, isDark: true  },
+  "dark-premium":     { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#080808",  text: "#F5F3EE", accent: "#B8860B", muted: "#857D72" }, isDark: true  },
+};
+function coerceDesignDNA(raw: unknown): DesignDNA {
+  const d = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const mood = (VALID_MOODS.has(String(d.mood)) ? String(d.mood) : "editorial-luxury") as DesignDNA["mood"];
+  const defaults = MOOD_DEFAULT_DNA[mood]!;
+  const hexOk = (h: unknown): h is string => typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h);
+  const rawPal = (typeof d.palette === "object" && d.palette !== null ? d.palette : {}) as Record<string, unknown>;
+  const defPal = defaults.palette!;
+  return {
+    mood,
+    headingFont: (typeof d.headingFont === "string" && APPROVED_FONTS[d.headingFont] ? d.headingFont : defaults.headingFont) ?? "Inter",
+    bodyFont:    (typeof d.bodyFont    === "string" && APPROVED_FONTS[d.bodyFont]    ? d.bodyFont    : defaults.bodyFont)    ?? "Inter",
+    palette: {
+      bg:     hexOk(rawPal.bg)     ? rawPal.bg     : defPal.bg,
+      text:   hexOk(rawPal.text)   ? rawPal.text   : defPal.text,
+      accent: hexOk(rawPal.accent) ? rawPal.accent : defPal.accent,
+      muted:  hexOk(rawPal.muted)  ? rawPal.muted  : defPal.muted,
+    },
+    isDark: typeof d.isDark === "boolean" ? d.isDark : (defaults.isDark ?? false),
+  };
+}
+
 // ── Coerce preset ─────────────────────────────────────────────────────────────
 const VALID_PRESETS: PresetName[] = [
   // Current 6-preset system
@@ -362,7 +436,7 @@ function coercePreset(v: unknown): PresetName {
   return "realestate";
 }
 
-// ── System prompt ─────────────────────────────────────────────────────────────
+// ── System prompt (v2: section-based composition with designDNA) ──────────────
 function buildSystem(contactBlock: string, language = "English", hasOwnerPhoto = true): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
@@ -387,85 +461,98 @@ TONE MODELS — study these:
 BEFORE (bad — paraphrasing owner input):
 Owner wrote: "every treatment room has a ceiling screen so patients can watch Netflix during procedures"
 BAD headline: "Watch Your Favorite Shows During Your Treatment"
-BAD subheadline: "Netflix entertainment during dental procedures for your comfort"
 REASON: this is a verbatim reword of the owner's sentence. It doesn't position the business — it transcribes it.
 
 AFTER (good — brand copywriting):
 GOOD headline: "Dentistry That Actually Doesn't Feel Like Dentistry"
 GOOD subheadline: "We've redesigned every detail of the patient experience, from same-day digital scans to ceiling screens in every chair."
-REASON: This speaks to the customer's emotion first (dread of dental visits), then anchors it in the specific details. Sounds like a real brand.
+REASON: Speaks to the customer's emotion first, then anchors in specific details.
 
-MORE BAD COPY PATTERNS — never write these:
-✗ "Quality service you can trust" — generic cliché, means nothing
+BAD COPY PATTERNS — never write these:
+✗ "Quality service you can trust" — generic cliché
 ✗ "We are committed to excellence" — corporate filler
-✗ "Your [service] journey starts here" — tired template phrase
 ✗ "Professional team with years of experience" — says nothing specific
 ✗ "We offer a wide range of services" — describes every business ever
 ✗ "Welcome to [business name]" as a headline — wasted opportunity
-✗ Directly restating what the owner typed, even in different words
+✗ Section headings like "Our Services", "About Us", "Why Choose Us", "Contact Us"
 
-GOOD COPY PATTERNS — do these:
+GOOD COPY PATTERNS:
 ✓ Lead with the customer's problem or desire, then your solution
 ✓ Use specific numbers, materials, techniques — real details make copy credible
 ✓ Active voice. Present tense. Short sentences for headlines.
-✓ Subheadlines that add information, not just repeat the headline louder
-✓ Section headlines that read like editorial titles, not navigation labels
+✓ Section headlines that read like editorial titles:
   BAD: "Our Services" / GOOD: "Precision, Start to Finish"
   BAD: "About Us" / GOOD: "Built Different From Day One"
-  BAD: "Gallery" / GOOD: "The Work Speaks"
 
 ═══════════════════════════════════════════════════════
-PART 2 — STYLE PRESET + ACCENT COLOR (BOTH required)
+PART 2 — JSON ROOT SHAPE
 ═══════════════════════════════════════════════════════
 
-JSON ROOT:
-{ "stylePreset": "hotel"|"medical"|"fitness"|"beauty"|"realestate"|"restaurant", "accentColor": "#HEXCODE", "businessName": string, "sections": SectionSpec[] }
+{
+  "businessName": string,
+  "category": "saas"|"hotel"|"clinic"|"gym"|"salon"|"realestate"|"restaurant"|"ecommerce"|"agency"|"education"|"legal"|"other",
+  "designDNA": {
+    "mood": "editorial-luxury"|"clinical-bright"|"bold-energetic"|"warm-minimal"|"tech-sharp"|"dark-premium",
+    "headingFont": string,
+    "bodyFont": string,
+    "palette": { "bg": "#RRGGBB", "text": "#RRGGBB", "accent": "#RRGGBB", "muted": "#RRGGBB" },
+    "isDark": boolean
+  },
+  "sections": SectionSpec[]
+}
 
-You MUST set both "stylePreset" AND "accentColor". Never omit either.
+═══════════════════════════════════════════════════════
+PART 3 — DESIGN MOODS (choose ONE for designDNA.mood)
+═══════════════════════════════════════════════════════
 
-SIX DESIGN PRESETS — each produces a structurally different site:
+"editorial-luxury" — Serif headings, off-white/warm body, gold/champagne accent, zero radius, generous whitespace. Cinematic, unhurried. USE FOR: boutique hotel, luxury salon, fine dining, jewellery, fashion boutique, real estate, interior design, legal firm.
+  Palette guide: bg #FAF8F5 · text #1A1A1A · muted #857D72 · isDark: false
 
-• "hotel"
-  LOOK: Warm off-white body (#FAF8F5), Playfair Display + Inter, full-bleed dark-overlay hero with centered text, champagne-gold accent (#C9A961), zero chrome. Body sections always light. Modelled on Edition Hotels and high-end boutique hotel brands.
-  USE FOR: Boutique hotels, luxury salons, interior design studios, fine dining, jewellery, high-end photography, luxury fashion boutiques, abaya & modest fashion, clothing boutiques.
+"clinical-bright" — All-sans heavy headings, pure white, clinical blue accent, rounded corners (10px+), icon circles. Trust-first, airy. USE FOR: dental clinic, medical practice, physio, dermatology, health centre, vet.
+  Palette guide: bg #FFFFFF · text #0A2540 · muted #64748B · isDark: false
 
-• "medical"
-  LOOK: Pure white bg (#FFFFFF), all-Inter (weight 700 headings), split-right hero with photo panel, bright blue accent (#2563EB), rounded cards (10px), icon circles on service cards. ALWAYS bright — never dark. Modelled on Forward and modern dental brands.
-  USE FOR: Dental clinics, medical practices, dermatology, physiotherapy, cosmetic clinics, opticians, veterinary clinics, health & wellness centres.
+"bold-energetic" — Heavy compressed headings (uppercase), near-black bg, vivid/acid accent, dark throughout. High energy. USE FOR: gym, CrossFit, martial arts, sports brand, nightlife, automotive, streetwear.
+  Palette guide: bg #0B0B0B · text #FFFFFF · muted #6B7280 · isDark: true
 
-• "fitness"
-  LOOK: Near-black bg (#0B0B0B), Archivo condensed 800w uppercase headings + Inter body, full-bleed gradient-bottom hero, acid-yellow accent (#E8FF3A), dark throughout. Modelled on Equinox.
-  USE FOR: Gyms, CrossFit boxes, martial arts studios, fitness studios, sports brands, athletic wear, automotive, nightlife.
+"warm-minimal" — Light-weight serif or optical-variable heading, warm off-white, muted earth accent, extreme whitespace, no radius. Tactile, quiet luxury. USE FOR: spa, yoga studio, organic café, bakery, florist, holistic wellness, artisan food, hair salon (soft/organic).
+  Palette guide: bg #F7F5F0 · text #3A3730 · muted #6B705C · isDark: false
 
-• "beauty"
-  LOOK: Warm off-white bg (#F7F5F0), Cormorant Garamond 400w + Inter, split-right hero (no overlay), muted olive accent (#6B705C), extreme whitespace (128px section padding), zero radius. Modelled on Aesop.
-  USE FOR: Spas, yoga studios, organic cafés, bakeries, florists, holistic wellness, artisan food & drink, hair salons (soft/organic), home décor.
+"tech-sharp" — Geometric sans heading (600-700w), very dark or pure black bg, bold violet/indigo accent, subtle glows, tight spacing. Precise, forward-looking. USE FOR: SaaS, tech startup, digital agency, co-working, ed-tech, modern ecommerce.
+  Palette guide: bg #0A0A0F · text #F1F5F9 · muted #6B7280 · isDark: true
 
-• "realestate"
-  LOOK: Warm near-white bg (#FAFAF8), Playfair Display 600w + Inter, full-bleed landscape hero with centered text overlay, warm gold accent (#B8945F). Modelled on Serhant.
-  USE FOR: Real estate agencies, law firms, financial advisors, architects, wealth management, corporate consulting, property developers.
+"dark-premium" — Delicate serif headings (400w), ultra-dark near-black, warm gold accent, maximum negative space. Cinematic, nighttime luxury. USE FOR: premium hotel, fine dining (evening), high fashion, exclusive membership.
+  Palette guide: bg #080808 · text #F5F3EE · muted #857D72 · isDark: true
 
-• "restaurant"
-  LOOK: Warm cream bg (#F5F1EA), Playfair Display 400w + Inter, full-bleed hero with dark overlay, terracotta accent (#A65D45), restrained editorial type. Modelled on Noma.
-  USE FOR: Restaurants, cafés, bistros, catering, food brands, casual dining, wine bars.
+═══════════════════════════════════════════════════════
+PART 4 — FONTS (ONLY these names are valid)
+═══════════════════════════════════════════════════════
 
-CATEGORY → PRESET MAPPING (pick from candidates; style words from the owner break ties):
-  Boutique hotel, luxury salon, interior design, fine dining, jewellery → "hotel"
-  Abaya store, fashion boutique, modest fashion, clothing e-commerce → "hotel"
-  Dental, medical, physio, dermatology, cosmetic clinic, vet, optician → "medical"
-  Gym, CrossFit, martial arts, sports brand, fitness studio → "fitness"
-  Tech startup, SaaS, digital agency, co-working → "fitness"
-  Spa, yoga, organic café, bakery, holistic wellness, florist → "beauty"
-  Hair salon / barbershop (soft/organic angle) → "beauty"
-  Real estate agency, law firm, financial advisor, architect, consultant → "realestate"
-  Restaurant, café, bistro, catering, wine bar → "restaurant"
-  Hair salon / barbershop (premium/luxury angle) → "hotel"
+headingFont and bodyFont MUST be one of:
+  "Playfair Display"    ← hotel, realestate, dark-premium, editorial-luxury
+  "Cormorant Garamond"  ← spa, fine dining, warm-minimal (refined)
+  "Fraunces"            ← organic, artisan, warm-minimal (optical variation)
+  "Libre Baskerville"   ← legal, consulting, classic
+  "Archivo"             ← gym, sports, bold-energetic
+  "Inter"               ← clinic, saas, all-purpose sans
+  "DM Sans"             ← café, wellness, ecommerce (warm sans)
+  "Space Grotesk"       ← tech, agency, co-working
+  "Plus Jakarta Sans"   ← saas, digital, modern ecommerce
 
-ACCENT COLOR — pick from this curated palette ONLY. Never invent a hex code outside this table.
-Two different businesses must not get the same accent unless it genuinely matches both.
-Match on industry specifics (e.g. a rustic restaurant ≠ same accent as a modern one):
+PAIRING GUIDE:
+  editorial-luxury → heading: "Playfair Display", body: "Inter"
+  clinical-bright  → heading: "Inter", body: "Inter"
+  bold-energetic   → heading: "Archivo", body: "Inter"
+  warm-minimal     → heading: "Cormorant Garamond" or "Fraunces", body: "DM Sans"
+  tech-sharp       → heading: "Plus Jakarta Sans" or "Space Grotesk", body: "Inter"
+  dark-premium     → heading: "Playfair Display", body: "Inter"
 
-EARTHY / WARM (spas, bakeries, warm restaurants, interior design, organic cafés, florists):
+═══════════════════════════════════════════════════════
+PART 5 — PALETTE RULES
+═══════════════════════════════════════════════════════
+
+accent MUST be from this list ONLY. Never invent a hex code outside this table.
+
+EARTHY / WARM (spas, bakeries, warm restaurants, organic cafés, florists):
   #8B6347 terracotta  |  #A0522D sienna  |  #C4793D amber clay  |  #9C6E3F antique gold
 
 LUXURY (high-end hotels, fine dining, premium fashion, wealth management, jewellery):
@@ -474,172 +561,164 @@ LUXURY (high-end hotels, fine dining, premium fashion, wealth management, jewell
 VIVID / BOLD (gyms, martial arts, sports, automotive, nightlife, street food):
   #E8390E fire red  |  #C41E3A crimson  |  #FF4F1F coral  |  #D4380D burnt orange
 
-SAAS / TECH / FITNESS (tech startups, SaaS, digital agencies, modern gyms, co-working):
+SAAS / TECH (tech startups, SaaS, digital agencies, modern gyms, co-working):
   #7C3AED violet  |  #9333EA purple  |  #6366F1 indigo  |  #4F46E5 deep indigo
 
-PROFESSIONAL / COOL (real estate, law, finance, consulting, architecture):
+PROFESSIONAL (real estate, law, finance, consulting, architecture):
   #8D6E3F aged gold  |  #1A56DB cobalt  |  #1E3A8A deep navy  |  #2563EB primary blue
 
-CLINICAL / HEALTH (dental, medical, dermatology, physiotherapy, health clinics):
+CLINICAL (dental, medical, dermatology, physiotherapy, health):
   #0070C9 sky blue  |  #0EA5E9 bright azure  |  #0891B2 teal blue  |  #0284C7 ocean
 
-WELLNESS / NATURE (yoga studios, holistic health, organic cafés, wellness retreats):
+WELLNESS / NATURE (yoga, holistic health, organic cafés, wellness retreats):
   #16A34A sage  |  #059669 emerald  |  #0D9488 teal  |  #15803D forest
 
-If the owner mentions a brand color (e.g. "our logo is green"), pick the closest hex from this table.
-Do NOT use any hex code not in this list.
+If the owner mentions a brand color (e.g. "our logo is green"), pick the closest hex from the table above.
 
 ═══════════════════════════════════════════════════════
-PART 3 — SECTION STRUCTURE
+PART 6 — SECTION TYPES + FREE COMPOSITION
 ═══════════════════════════════════════════════════════
 
-REQUIRED: hero (first) + booking (contact form — always include) + footer (last)
-RECOMMENDED: services, about
-OPTIONAL: gallery (visual businesses), team (if staff relevant), faq (medical/legal/service), cta_banner (before footer)
-NEVER: testimonials
+You choose sections freely to fit the business. MANDATORY: one hero type (first) + contact-block (last before footer) + footer.
 
-The booking section is MANDATORY on every site — it is the contact and enquiry form.
-Every visitor needs a way to reach the business. Include it even if no contact info was provided.
+HERO TYPES (pick one — first section always):
+  "hero-fullbleed" — cinematic full-bleed image, centered/overlay text. USE: hotel, restaurant, salon, realestate, gym
+  "hero-split"     — text left, photo right. USE: clinic, legal, education, consulting (trust-first)
+  "hero-minimal"   — no image, radial glow on dark bg. USE: saas, tech, agency, ecommerce
 
-SectionSpec structure:
+OTHER AVAILABLE TYPES:
+  "feature-grid"   — 3–6 icon+title+description cards (no numbering). USE: saas features, clinic services, agency capabilities
+  "pricing-tiers"  — 2–4 pricing cards with feature lists, one highlighted. USE: saas, gym membership, education plans
+  "service-list"   — editorial horizontal lines, name left + price right. USE: salon menu, restaurant menu, clinic treatments, legal services
+  "gallery-grid"   — 3-col photo grid. USE: hotel, restaurant, salon, bakery, portfolio. Requires imageQueries (6 strings).
+  "listings-grid"  — image cards for items with title/price. USE: hotel rooms, restaurant dishes, real estate listings. Requires imageQueries (3–6 strings).
+  "about-story"    — text + optional image: eyebrow, headline, body paragraph, 2–4 bullets. USE: any business with a meaningful founding story.
+  "team-grid"      — member cards with initials avatar, name, role, bio. USE: clinic, law firm, agency.
+  "stats-band"     — dark band with large numbers. ONLY include if owner provided REAL statistics. NEVER invent numbers.
+  "process-steps"  — horizontal 3–5 numbered steps. USE: agency workflow, legal process, medical journey, real estate buying steps.
+  "faq-accordion"  — expandable Q&A. USE: clinic, legal, saas (5–8 Qs). Omit for gyms, restaurants, hotels.
+  "cta-band"       — dark call-to-action band with button. USE: saas, gym, agency. Place before contact-block if included.
+  "contact-block"  — contact form + optional contact details. ALWAYS the last section before footer. MANDATORY.
+
+COMPOSITION GUIDE PER CATEGORY (adapt freely — these are patterns, not rules):
+  saas:       hero-minimal → feature-grid → pricing-tiers → faq-accordion → cta-band → contact-block
+  hotel:      hero-fullbleed → about-story → gallery-grid → contact-block
+  clinic:     hero-split → service-list → team-grid → faq-accordion → contact-block
+  gym:        hero-fullbleed → feature-grid → service-list → cta-band → contact-block
+  salon:      hero-fullbleed → service-list → gallery-grid → contact-block
+  restaurant: hero-fullbleed → about-story → listings-grid → gallery-grid → contact-block
+  realestate: hero-fullbleed → listings-grid → about-story → process-steps → contact-block
+  ecommerce:  hero-minimal → feature-grid → gallery-grid → cta-band → contact-block
+  agency:     hero-minimal → feature-grid → about-story → process-steps → contact-block
+  education:  hero-split → feature-grid → service-list → faq-accordion → contact-block
+  legal:      hero-split → service-list → about-story → team-grid → contact-block
+  other:      hero-fullbleed → feature-grid → about-story → contact-block
+
+SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT nested inside it):
 { "type": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
 
-CRITICAL — imageQuery / imageQueries MUST be siblings of "content", NOT nested inside it:
-✓ CORRECT:   { "type": "hero", "imageQuery": "...", "content": { "headline": "..." } }
-✗ INCORRECT: { "type": "hero", "content": { "imageQuery": "...", "headline": "..." } }
-
 ═══════════════════════════════════════════════════════
-PART 4 — IMAGE QUERY RULES
+PART 7 — IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-ImageQuery is an Unsplash search string.
+imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
 
-${!hasOwnerPhoto ? `⚠ NO OWNER PHOTOS UPLOADED — MANDATORY RULE FOR ALL IMAGE QUERIES:
-The owner has NOT provided any business photos. Generated sites MUST NOT use photos that could be mistaken for THIS specific business — no fake "this is our café" storefront shots, no identifiable waiting rooms, no team-at-our-location photos.
+${!hasOwnerPhoto ? `⚠ NO OWNER PHOTOS UPLOADED — USE ATMOSPHERIC QUERIES ONLY:
+No photos of specific business interiors, storefronts, team at location, or identifiable spaces.
 
-FORBIDDEN (looks like a photo of their actual business):
-✗ "[business type] interior with tables/chairs/equipment"
-✗ "café interior" / "dental clinic room" / "gym workout floor" / "restaurant dining room"
-✗ "[business type] staff smiling" / "[business type] professional team at location"
-✗ Any specific storefront, reception, entrance, or branded environment
+REQUIRED — atmospheric, editorial, or abstract:
+✓ hero: texture, ambient light, material close-up, abstract mood
+✓ about-story: lifestyle editorial, conceptual
+✓ gallery-grid / listings-grid: product detail, texture, close-ups
 
-REQUIRED — atmospheric, editorial, or abstract (reads as intentional design imagery):
-✓ hero: texture, ambient light, material close-up, abstract mood — the emotional world of this industry
-✓ about: lifestyle editorial, conceptual — NOT "our team at our location"
-✓ gallery: product/detail close-ups, textures, abstract compositions
-
-ATMOSPHERIC QUERY EXAMPLES — use this pattern:
-• café / bakery hero      → "warm coffee steam bokeh morning light close-up"
-• dental hero             → "clean white minimal geometric abstract light"
-• gym / fitness hero      → "motion blur dynamic light dramatic fitness abstract"
-• restaurant hero         → "candlelight warm bokeh dining atmosphere evening abstract"
-• hair salon / luxury     → "mirror reflection bokeh champagne abstract light"
-• spa / wellness hero     → "smooth stone water ripple natural light zen texture"
-• real estate / law       → "architectural window light geometric shadow abstract"
-• bakery gallery          → "croissant flaky layers close-up editorial light"
-• fashion / boutique hero → "women fashion editorial studio minimal elegant"
-• abaya / modest fashion  → "silk fabric drape luxury editorial fashion minimal"
-• clothing e-commerce     → "fashion clothing editorial flat lay product photography"
-
-SELF-TEST: Ask "Could this photo appear in a design mood-board for ANY business in this category?"
-If yes → SAFE to use. If it would look like a photo of a SPECIFIC establishment → FORBIDDEN.
+EXAMPLES:
+• café / bakery hero       → "warm coffee steam bokeh morning light close-up"
+• dental hero              → "clean white minimal geometric abstract light professional"
+• gym / fitness hero       → "motion blur dynamic athletic dramatic light editorial"
+• restaurant hero          → "candlelight warm bokeh dining atmosphere evening abstract"
+• spa hero                 → "smooth stone water ripple natural light zen texture"
+• real estate / law hero   → "architectural window light geometric shadow glass modern"
+• saas / tech hero         → "abstract data visualization dark background gradient glow"
+• salon hero               → "mirror reflection bokeh champagne abstract editorial light"
 
 ` : `PROCESS:
-1. Extract concrete visual details from the owner's description: specific equipment, materials, ambience, unique features, activity type
-2. Build a 4–6 word query from those specifics
-3. Ask: "Could this photo belong to any business in this category?" If yes, make it more specific.
+1. Extract concrete visual details from owner's description: equipment, materials, ambience, unique features
+2. Build a 4–6 word query from specifics
+3. Self-test: "Could this belong to any business in this category?" → If yes, make it more specific.
 
-DENTAL CLINIC EXAMPLES:
-Owner mentioned: digital scanners, ceiling screens, minimal white interiors
-→ hero imageQuery: "bright minimal dental clinic digital technology white interior"  (NOT: "dentist office")
-→ about imageQuery: "modern dental examination room ceiling screen patient comfort"  (NOT: "dental team smiling")
-
-GYM EXAMPLES:
-Owner mentioned: HIIT classes, warehouse space, orange lighting
-→ hero imageQuery: "hiit group fitness class warehouse orange lighting dynamic"  (NOT: "gym interior")
-→ about imageQuery: "group training class energetic coach industrial gym high intensity"  (NOT: "personal trainer")
-
-RESTAURANT EXAMPLES:
-Owner mentioned: open fire grill, exposed brick, intimate 40-seat dining
-→ hero imageQuery: "intimate restaurant open fire grill exposed brick warm candlelight"  (NOT: "restaurant interior")
-→ about imageQuery: "chef cooking open fire wood grill restaurant kitchen"  (NOT: "restaurant chef")
-
-Rule: if the query could apply to any business in the same category, it is not specific enough. Rewrite it.
+EXAMPLES:
+• Dental clinic (ceiling screens, digital scanners) → "bright minimal dental clinic digital technology white"
+• Gym (HIIT, warehouse, orange lights) → "hiit group fitness warehouse orange lighting dynamic"
+• Restaurant (open fire, exposed brick) → "intimate restaurant open fire grill exposed brick warm"
 `}
-GALLERY: All 6 imageQueries MUST be distinct — vary subject, angle, detail level, and moment. Never repeat the same scene or composition.
+gallery-grid / listings-grid imageQueries: all queries MUST be distinct — vary subject, angle, detail, moment.
 
-QUALITY: append one of these to every imageQuery to sharpen Unsplash results:
-  hero/about  → "bright natural light" or "professional photography" or "modern interior"
-  gallery     → "editorial" or "close-up detail" or "product shot clean background"
-  team/about  → "professional headshot studio light" or "team natural light workspace"
+QUALITY SUFFIX: append one of these to every imageQuery:
+  hero/about-story → "bright natural light" or "professional photography" or "editorial minimal"
+  gallery/listings → "editorial" or "close-up detail" or "product shot clean background"
 
 ═══════════════════════════════════════════════════════
-PART 5 — SECTION CONTENT SCHEMAS
+PART 8 — CONTENT SCHEMAS PER SECTION TYPE
 ═══════════════════════════════════════════════════════
 
-hero — imageQuery REQUIRED:
-{
-  "eyebrow": string (3–5 words, e.g. "Dubai Marina · Est. 2019"),
-  "headline": string (5–8 words, punchy, brand voice — NOT "Welcome to [name]"),
-  "subheadline": string (1–2 sentences, specific, human — NOT a category description),
-  "ctaPrimary": string (e.g. "Book a Consultation"),
-  "ctaSecondary": string (e.g. "See Our Work")
-}
+hero-fullbleed / hero-split / hero-minimal — imageQuery REQUIRED (except hero-minimal):
+{ "eyebrow": "3–5 words · city or tagline", "headline": "5–8 words punchy brand voice", "subheadline": "1–2 sentences specific and human", "ctaPrimary": "action label", "ctaSecondary"?: "secondary label" }
 
-about — imageQuery REQUIRED:
-{
-  "eyebrow": string,
-  "headline": string (editorial title, NOT "About Us"),
-  "body": string (2 sentences, brand voice, specific details from owner's description),
-  "bullets": [{ "title": string, "text": string }] × 3–4 (concrete differentiators, not generic claims),
-  "ctaText": string
-}
+feature-grid — no imageQuery:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "icon": string, "title": string, "description": string }] × 3–6 }
+icon values: check | star | shield | briefcase | heart | leaf | clock | plus | home | dumbbell | scissors | chef | tooth
 
-services — no imageQuery:
-{
-  "eyebrow": string,
-  "headline": string (editorial — NOT "Our Services"),
-  "subheadline": string,
-  "items": [{ "icon": string, "title": string, "description": string, "price"?: string }] × 3–6
-}
-icon values: tooth | dumbbell | scissors | leaf | heart | star | briefcase | home | chef | shield | clock | plus
+pricing-tiers — no imageQuery:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "tiers": [{ "name": string, "price": string, "period": "month"|"year"|"session"|"visit", "features": string[] × 4–6, "ctaText": string, "highlighted": boolean }] × 2–4 }
+Only ONE tier should have "highlighted": true.
 
-gallery — imageQueries REQUIRED (6 strings, at section level):
-{
-  "eyebrow": string,
-  "headline": string
-}
-imageQueries: 6 distinct Unsplash queries, each specific to a visual aspect of this business
+service-list — no imageQuery:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "title": string, "description"?: string, "price"?: string }] × 4–10 }
+Omit price if the owner hasn't provided pricing.
 
-team — no imageQuery:
+gallery-grid — imageQueries REQUIRED (6 strings at section level):
+{ "eyebrow"?: string, "headline": string }
+
+listings-grid — imageQueries REQUIRED (3–6 strings at section level):
+{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "subtitle"?: string, "description"?: string, "price"?: string }] × same count as imageQueries }
+Omit price if not provided by owner.
+
+about-story — imageQuery REQUIRED:
+{ "eyebrow"?: string, "headline": string (editorial title), "body": string (2 sentences, brand voice, specific), "bullets"?: [{ "title": string, "text": string }] × 2–4, "ctaText"?: string }
+
+team-grid — no imageQuery:
+{ "eyebrow"?: string, "headline": string, "members": [{ "name": string, "role": string, "bio"?: string }] × 3–4 }
+Only include real team members mentioned by the owner. Never invent names.
+
+stats-band — no imageQuery:
+{ "items": [{ "value": string, "label": string }] × 3–5 }
+ONLY include if owner has provided REAL statistics. Never invent numbers.
+
+process-steps — no imageQuery:
+{ "eyebrow"?: string, "headline": string, "steps": [{ "title": string, "description": string }] × 3–5 }
+
+faq-accordion — no imageQuery:
+{ "eyebrow"?: string, "headline": string, "items": [{ "q": string, "a": string }] × 5–8 }
+
+cta-band — no imageQuery:
+{ "headline": string (punchy 6–10 words), "sub"?: string, "ctaText": string }
+
+contact-block — no imageQuery:
 {
-  "eyebrow": string,
+  "eyebrow"?: string,
   "headline": string,
-  "members": [{ "name": string, "role": string, "bio": string }] × 3–4
-}
-
-booking — no imageQuery:
-{
-  "eyebrow": string,
-  "headline": string,
-  "subheadline": string,
-  "phone": string (ONLY from REAL CONTACT INFO — else omit),
-  "email": string (ONLY from REAL CONTACT INFO — else omit),
-  "address": string (ONLY from REAL CONTACT INFO — else omit),
-  "hours": string (ONLY from REAL CONTACT INFO — else omit),
+  "subheadline"?: string,
+  "phone": string (ONLY from REAL CONTACT INFO — else omit entirely),
+  "email": string (ONLY from REAL CONTACT INFO — else omit entirely),
+  "address": string (ONLY from REAL CONTACT INFO — else omit entirely),
+  "hours": string (ONLY from REAL CONTACT INFO — else omit entirely),
   "ctaText": string,
-  "services": string[] × 3–6
+  "services"?: string[] × 3–6
 }
-
-faq — no imageQuery:
-{ "eyebrow": string, "headline": string, "items": [{ "q": string, "a": string }] × 5–6 }
-
-cta_banner — no imageQuery:
-{ "headline": string (punchy, 6–10 words), "sub": string, "ctaText": string }
 
 footer — no imageQuery:
 {
-  "tagline": string (one line brand summary),
+  "tagline": string (one-line brand summary),
   "links": string[] × 4–5,
   "phone": string (ONLY from REAL CONTACT INFO — else omit),
   "email": string (ONLY from REAL CONTACT INFO — else omit),
@@ -649,65 +728,22 @@ footer — no imageQuery:
 
 ${contactBlock
   ? `═══════════════════════════════════════════════════════
-REAL CONTACT INFO — copy these values EXACTLY into booking + footer:
+REAL CONTACT INFO — copy these values EXACTLY into contact-block + footer:
 ${contactBlock}
 ═══════════════════════════════════════════════════════`
-  : `CONTACT INFO: None provided. DO NOT include phone, email, or address anywhere in the spec.`
+  : `CONTACT INFO: None provided. DO NOT include phone, email, address, or hours anywhere in the spec.`
 }
 
 ═══════════════════════════════════════════════════════
 ABSOLUTE RULES — NEVER VIOLATE
 ═══════════════════════════════════════════════════════
-1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
-   Use only values in "REAL CONTACT INFO". If absent, omit the field entirely.
-   Never write "555-0100", "info@business.com", "123 Main St", or any placeholder.
-2. NEVER include a testimonials section. No invented names, reviews, or star ratings.
-3. NEVER paraphrase the owner's input as copy. Extract intent and write fresh brand copy.
-4. NEVER use generic headlines: "Our Services", "About Us", "Why Choose Us", "Contact Us".
-5. imageQuery MUST be a sibling of content{}, never nested inside it.
-
-═══════════════════════════════════════════════════════
-PART 6 — REQUIRED SECTION ORDER PER PRESET
-═══════════════════════════════════════════════════════
-
-The section sequence is part of the design. Follow the required order for the chosen preset.
-Deviate ONLY if the business genuinely has no content for an optional section — mark it omitted, don't pad with invented content.
-
-"hotel" (boutique hotels, luxury salons, fine dining, jewellery, fashion boutiques, interior design):
-  REQUIRED:    hero → gallery → services → about → booking → footer
-  REASONING:   Aesthetics sell first. Show the work before explaining it. Story comes after.
-  OPTIONAL:    team (after about — stylist/chef intros), cta_banner (before booking only)
-  NEVER:       faq, cta_banner at the top
-
-"medical" (dental, medical, dermatology, physio, opticians, vet clinics, health centres):
-  REQUIRED:    hero → services → faq → team → booking → footer
-  REASONING:   Patients need to know what's offered and have questions answered before they trust a practice.
-  OPTIONAL:    about (after services), gallery (after team — before/after photos)
-  NEVER:       cta_banner, gallery before trust sections
-
-"fitness" (gyms, CrossFit, fitness studios, tech startups, SaaS, sports brands, co-working):
-  REQUIRED:    hero → services → cta_banner → about → booking → footer
-  REASONING:   Hook with the hero, show features, create urgency, give brief context, then convert.
-  OPTIONAL:    team (after about), gallery (after team — action/lifestyle photos)
-  NEVER:       faq (kills momentum for energy brands)
-
-"beauty" (spas, yoga studios, organic cafés, bakeries, florists, holistic wellness, artisan food):
-  REQUIRED:    hero → services → about → gallery → booking → footer
-  REASONING:   Gentle entry, calm rhythm. Products/offerings land first, then brand story, then visuals, then CTA.
-  OPTIONAL:    team (after gallery), cta_banner (before booking only)
-  NEVER:       faq, cta_banner at the top
-
-"realestate" (real estate agencies, law firms, financial advisors, architects, consultants):
-  REQUIRED:    hero → services → about → faq → booking → footer
-  REASONING:   Credibility-first. Lead with the offer, build context, answer objections, then convert.
-  OPTIONAL:    team (after about), cta_banner (before booking only), gallery (real estate/architecture only)
-  NEVER:       gallery for non-visual businesses (law, finance, etc.)
-
-"restaurant" (restaurants, cafés, bistros, catering, wine bars):
-  REQUIRED:    hero → gallery → services → about → booking → footer
-  REASONING:   Food is visual — show the atmosphere and dishes first, then the menu, then the story.
-  OPTIONAL:    team (after about — chef intro), cta_banner (before booking only)
-  NEVER:       faq`;
+1. NEVER invent phone numbers, email addresses, physical addresses, or hours. Use only "REAL CONTACT INFO". Never write "555-0100", "info@business.com", "123 Main St", or any placeholder.
+2. NEVER include testimonials or star ratings. If you must mention social proof, do so abstractly in copy — never fabricate quotes or names.
+3. NEVER include stats-band with invented numbers. Real statistics only, or omit the section entirely.
+4. NEVER invent team member names. Only include team-grid if the owner named real staff.
+5. NEVER paraphrase the owner's input as copy. Extract intent and write fresh brand copy.
+6. NEVER use generic section headings: "Our Services", "About Us", "Why Choose Us", "Contact Us", "Get in Touch".
+7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.`;
 }
 
 // ── Classify message: revision command vs. conversational question ─────────────
@@ -1078,8 +1114,12 @@ export async function POST(req: NextRequest) {
           max_tokens: 4096,
           temperature: 0.5,
         });
-        const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
-        spec = { stylePreset: coercePreset(parsed.stylePreset), accentColor: parsed.accentColor, businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [] };
+        const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
+        spec = {
+          ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA) } : {}),
+          ...(parsed.category  ? { category:  parsed.category  } : {}),
+          stylePreset: coercePreset(parsed.stylePreset), accentColor: parsed.accentColor, businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [],
+        };
       } else {
         const langLine = effectiveLanguage && effectiveLanguage.toLowerCase() !== "english"
           ? `LANGUAGE: ALL copy must be written in ${effectiveLanguage}. Translate every text field.\n\n`
@@ -1092,8 +1132,15 @@ export async function POST(req: NextRequest) {
           max_tokens: 4096,
           temperature: 0.3,
         });
-        const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
-        spec = { ...existing, ...parsed, stylePreset: coercePreset(parsed.stylePreset ?? existing.stylePreset), sections: parsed.sections ?? existing.sections };
+        const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
+        const incomingDNA = parsed.designDNA ? coerceDesignDNA(parsed.designDNA) : undefined;
+        spec = {
+          ...existing, ...parsed,
+          ...(incomingDNA ? { designDNA: incomingDNA } : existing.designDNA ? { designDNA: existing.designDNA } : {}),
+          ...(parsed.category ?? (existing as { category?: string }).category ? { category: parsed.category ?? (existing as { category?: string }).category } : {}),
+          stylePreset: coercePreset(parsed.stylePreset ?? existing.stylePreset),
+          sections: parsed.sections ?? existing.sections,
+        };
       }
     } else {
       // ── Initial build: ask ONE question OR generate with full context ──────
@@ -1156,8 +1203,10 @@ export async function POST(req: NextRequest) {
         max_tokens: 4096,
         temperature: 0.5,
       });
-      const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec>;
+      const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
       spec = {
+        ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA) } : {}),
+        ...(parsed.category  ? { category:  parsed.category  } : {}),
         stylePreset: coercePreset(parsed.stylePreset),
         accentColor: parsed.accentColor,
         businessName: parsed.businessName ?? businessName,
@@ -1165,7 +1214,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Strip any testimonials that slipped through
+    // Strip any testimonials or stats-band with fabricated data that slipped through
     spec.sections = spec.sections.filter((s) => s.type !== "testimonials");
 
     // Post-process: remove placeholder contact data GPT may have invented,
@@ -1176,8 +1225,9 @@ export async function POST(req: NextRequest) {
       if (realPhone || realEmail) {
         // Matches common AI-invented placeholder patterns
         const PLACEHOLDER = /(\+1\s?555|\b555[- ]?\d{4}\b|000[- ]?0000|example\.com|yourname@|info@business|contact@business|name@business)/i;
+        const CONTACT_SECTIONS = new Set(["booking", "contact-block", "footer"]);
         for (const s of spec.sections) {
-          if (s.type === "booking" || s.type === "footer") {
+          if (CONTACT_SECTIONS.has(s.type)) {
             if (s.content.phone && PLACEHOLDER.test(String(s.content.phone))) delete s.content.phone;
             if (s.content.email && PLACEHOLDER.test(String(s.content.email))) delete s.content.email;
             if (realPhone && !s.content.phone) s.content.phone = realPhone;
@@ -1187,10 +1237,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Guarantee hero and footer
-    if (!spec.sections.some((s) => s.type === "hero")) {
+    const HERO_TYPES_ALL = ["hero", "hero-fullbleed", "hero-split", "hero-minimal"];
+    const CONTACT_TYPES_ALL = ["booking", "contact-block"];
+
+    // Guarantee hero — covers both v1 and v2 hero types
+    if (!spec.sections.some((s) => HERO_TYPES_ALL.includes(s.type))) {
       spec.sections.unshift({
-        type: "hero",
+        type: "hero-fullbleed",
         imageQuery: heroUpload
           ? `${industry} professional interior ${city}`.trim()
           : `${industry} atmospheric light texture abstract`.trim(),
@@ -1212,8 +1265,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Guarantee booking section exists — every site must have a contact/enquiry form
-    if (!spec.sections.some((s) => s.type === "booking")) {
+    // Guarantee contact section exists — covers both v1 "booking" and v2 "contact-block"
+    if (!spec.sections.some((s) => CONTACT_TYPES_ALL.includes(s.type))) {
       // Insert before footer
       const footerIdx = spec.sections.findIndex((s) => s.type === "footer");
       const insertAt = footerIdx >= 0 ? footerIdx : spec.sections.length;
@@ -1222,10 +1275,10 @@ export async function POST(req: NextRequest) {
       const effAddress2 = contactInfo?.address;
       const effHours2   = contactInfo?.hours;
       spec.sections.splice(insertAt, 0, {
-        type: "booking",
+        type: "contact-block",
         content: {
           eyebrow: "Get In Touch",
-          headline: "Start Your Project",
+          headline: "Start Your Journey",
           subheadline: "Tell us about your vision and we'll be in touch within 24 hours.",
           ctaText: "Send Enquiry",
           services: [],

@@ -472,3 +472,253 @@ export function renderFooter(
   </div>
 </footer>`;
 }
+
+// ── V2 section library (16 composable sections) ───────────────────────────────
+
+type HeroContent = { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string };
+
+// 1. hero-fullbleed — centered text over full-bleed image
+export function renderHeroFullbleed(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  return renderHeroBleedCenter(t, c, imageUrl);
+}
+
+// 2. hero-split — text left, image right
+export function renderHeroSplitSection(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  return renderHeroSplit(t, c, imageUrl);
+}
+
+// 3. hero-minimal — no image; gradient radial glow; good for SaaS / tech / agency
+export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
+  return `<section class="ws-hero ws-hero--minimal" id="hero" style="background:${t.heroBg};">
+  <div class="ws-hero-glow-min" style="background:radial-gradient(ellipse 80% 60% at 50% 50%,${t.accentAlpha.replace("0.10","0.28")} 0%,transparent 70%);"></div>
+  <div class="ws-hero-content ws-hero-content--min">
+    ${c.eyebrow ? `<p class="ws-hero-chip">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-headline ws-hero-headline--min" style="font-family:var(--font-heading);font-size:${t.heroHeadlineSize};font-weight:${t.headingWeight};line-height:1.08;letter-spacing:${t.headingTracking};text-transform:${t.headingTransform};color:${t.heading};margin-bottom:22px;max-width:52ch;">${esc(c.headline || "Welcome")}</h1>
+    ${c.subheadline ? `<p style="font-size:1.1rem;line-height:1.75;color:${t.muted};max-width:48ch;margin-bottom:48px;">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-hero-ctas" style="justify-content:center;">
+      ${c.ctaPrimary   ? `<a href="#contact" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>
+  </div>
+</section>`;
+}
+
+// 4. feature-grid — clean cards, icon + title + description, no numbering
+export function renderFeatureGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string }[] }
+): string {
+  const items = (c.items ?? []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="features">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-feat-grid">
+      ${items.map((item) => `
+      <div class="ws-feat-card">
+        ${item.icon ? `<div class="ws-feat-icon">${icon(item.icon, 22)}</div>` : ""}
+        <h3 class="ws-feat-title">${esc(item.title || "")}</h3>
+        <p class="ws-feat-desc">${esc(item.description || "")}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 5. pricing-tiers — pricing cards, highlighted tier
+export function renderPricingTiers(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: { name?: string; price?: string; period?: string; features?: string[]; ctaText?: string; highlighted?: boolean }[] }
+): string {
+  const tiers = (c.tiers ?? []).slice(0, 4);
+  if (!tiers.length) return "";
+  return `<section class="ws-section" id="pricing">
+  <div class="ws-container" style="text-align:center;">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading" style="margin:0 auto 56px;">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-price-grid">
+      ${tiers.map((tier) => {
+        const hi = !!tier.highlighted;
+        const features = (tier.features ?? []).slice(0, 8);
+        return `
+      <div class="ws-price-card${hi ? " ws-price-card--hi" : ""}" style="${hi ? `border-color:${t.accent};background:${t.accentAlpha};` : ""}">
+        ${hi ? `<p class="ws-price-badge" style="background:${t.accent};color:${t.accentFg};">Most Popular</p>` : ""}
+        <p class="ws-price-name">${esc(tier.name || "")}</p>
+        <p class="ws-price-amount">${esc(tier.price || "")}<span class="ws-price-period">${esc(tier.period ? `/${tier.period}` : "")}</span></p>
+        <ul class="ws-price-features">
+          ${features.map((f) => `<li class="ws-price-feat"><span>${icon("check", 13)}</span>${esc(f)}</li>`).join("")}
+        </ul>
+        <a href="#contact" class="ws-btn ${hi ? "ws-btn-accent" : "ws-btn-outline"}" style="width:100%;justify-content:center;">${esc(tier.ctaText || "Get Started")}</a>
+      </div>`;
+      }).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 6. service-list — editorial horizontal list, name left / price right
+export function renderServiceList(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { title?: string; description?: string; price?: string }[] }
+): string {
+  const items = (c.items ?? []).slice(0, 12);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="services">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-svc-list">
+      ${items.map((item) => `
+      <div class="ws-svc-item">
+        <div class="ws-svc-left">
+          <p class="ws-svc-title">${esc(item.title || "")}</p>
+          ${item.description ? `<p class="ws-svc-desc">${esc(item.description)}</p>` : ""}
+        </div>
+        ${item.price ? `<p class="ws-svc-price">${esc(item.price)}</p>` : ""}
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 7. gallery-grid — photo grid (delegates to renderGallery)
+export function renderGalleryGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string },
+  images: (string | undefined)[]
+): string {
+  return renderGallery(t, c, images);
+}
+
+// 8. listings-grid — cards with image, title, subtitle, price (rooms/menu/properties)
+export function renderListingsGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: { title?: string; subtitle?: string; description?: string; price?: string }[] },
+  images: (string | undefined)[]
+): string {
+  const items = (c.items ?? []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="listings">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-listing-grid">
+      ${items.map((item, i) => `
+      <div class="ws-listing-card">
+        <div class="ws-listing-img">
+          ${photo(images[i], item.title || `Item ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;")}
+        </div>
+        <div class="ws-listing-body">
+          <h3 class="ws-listing-title">${esc(item.title || "")}</h3>
+          ${item.subtitle    ? `<p class="ws-listing-sub">${esc(item.subtitle)}</p>` : ""}
+          ${item.description ? `<p class="ws-listing-desc">${esc(item.description)}</p>` : ""}
+          ${item.price       ? `<p class="ws-listing-price">${esc(item.price)}</p>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 9. about-story — text + optional image (delegates to renderAbout)
+export function renderAboutStory(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; body?: string; bullets?: { title: string; text: string }[]; ctaText?: string },
+  imageUrl?: string
+): string {
+  return renderAbout(t, c, imageUrl);
+}
+
+// 10. team-grid — team members (delegates to renderTeam)
+export function renderTeamGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; members?: { name?: string; role?: string; bio?: string }[] }
+): string {
+  return renderTeam(t, c);
+}
+
+// 11. testimonials (new type alias for v2 — identical to renderTestimonials, real data only)
+export function renderTestimonialsSection(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: { quote?: string; name?: string; role?: string }[] }
+): string {
+  return renderTestimonials(t, c);
+}
+
+// 12. stats-band — dark band with large numbers (only render if items provided)
+export function renderStatsBand(
+  t: DesignTokens,
+  c: { items?: { value?: string; label?: string }[] }
+): string {
+  const items = (c.items ?? []).filter((i) => i.value && i.label).slice(0, 5);
+  if (!items.length) return "";
+  return `<section class="ws-stats" style="background:${t.heroBg};">
+  <div class="ws-container">
+    <div class="ws-stats-inner">
+      ${items.map((item) => `
+      <div class="ws-stat">
+        <p class="ws-stat-value" style="color:${t.accent};">${esc(item.value)}</p>
+        <p class="ws-stat-label">${esc(item.label)}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 13. process-steps — horizontal numbered steps
+export function renderProcessSteps(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; steps?: { title?: string; description?: string }[] }
+): string {
+  const steps = (c.steps ?? []).slice(0, 5);
+  if (!steps.length) return "";
+  return `<section class="ws-section ws-section-alt" id="process">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-steps">
+      ${steps.map((step, i) => `
+      <div class="ws-step">
+        <div class="ws-step-num">${i + 1}</div>
+        <div class="ws-step-line"></div>
+        <h3 class="ws-step-title">${esc(step.title || "")}</h3>
+        <p class="ws-step-desc">${esc(step.description || "")}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 14. faq-accordion (delegates to renderFaq)
+export function renderFaqAccordion(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: { q?: string; a?: string }[] }
+): string {
+  return renderFaq(t, c);
+}
+
+// 15. cta-band (delegates to renderCtaBanner)
+export function renderCtaBand(
+  t: DesignTokens,
+  c: { headline?: string; sub?: string; ctaText?: string }
+): string {
+  return renderCtaBanner(t, c);
+}
+
+// 16. contact-block — contact form, no bottom padding (sits directly before footer)
+export function renderContactBlock(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; phone?: string; email?: string; address?: string; hours?: string; ctaText?: string; services?: string[] }
+): string {
+  const html = renderBooking(t, c);
+  // Replace id="booking" with id="contact" so contact-block has its own anchor,
+  // and remove the section's bottom padding since footer follows immediately.
+  return html.replace(`id="booking"`, `id="contact"`).replace(
+    `class="ws-section" id="contact"`,
+    `class="ws-section ws-section--contact" id="contact"`
+  );
+}
