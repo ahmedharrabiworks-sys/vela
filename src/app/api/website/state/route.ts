@@ -66,7 +66,12 @@ export async function GET(_req: NextRequest) {
     .maybeSingle();
 
   const tc = config as Record<string, unknown> | null;
-  const html    = (site?.draft_html as string | null) || (tc?.website_html as string | null) || null;
+  // When fetching a specific site by ID (project switch), never fall back to the global
+  // tenant_config.website_html — that field belongs to whatever site was last generated
+  // and would show another site's HTML in the preview.
+  const html = requestedWebsiteId
+    ? (site?.draft_html as string | null) ?? null
+    : (site?.draft_html as string | null) || (tc?.website_html as string | null) || null;
   const slug    = (site?.slug as string | null) ?? null;
   const name    = (site?.name as string | null) ?? null;
 

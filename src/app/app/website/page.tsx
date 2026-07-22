@@ -1044,13 +1044,7 @@ export default function WebsitePage() {
     };
   }, []);
 
-  // Close project ⋯ menu on outside click
-  useEffect(() => {
-    if (!menuOpenId) return;
-    const handler = () => { setMenuOpenId(null); setMenuPos(null); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpenId]);
+  // ⋯ menu is closed via a transparent overlay rendered below the dropdown (see JSX).
 
   // ── Project rename / delete ───────────────────────────────────────────────────
   const handleStartRename = useCallback((p: WebsiteProject) => {
@@ -1467,11 +1461,10 @@ export default function WebsitePage() {
                   {/* ⋯ menu trigger — position is captured on click; dropdown renders fixed at page level */}
                   {!isRenaming && (
                     <button
-                      onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (menuOpen) {
-                          setMenuOpenId(null);
+                        if (menuOpenId === p.id) {
+                          setMenuOpenId(null); setMenuPos(null);
                         } else {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
@@ -1511,8 +1504,8 @@ export default function WebsitePage() {
           style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
         >
 
-          {/* Versions toggle — only shown when the site is built and has version history */}
-          {built && versions.length > 0 && (
+          {/* Versions toggle — shown whenever a site is built */}
+          {built && (
             <div className="flex items-center justify-end px-4 pt-2.5 pb-0 shrink-0">
               <button
                 onClick={() => setShowVersionsPanel((v) => !v)}
@@ -1521,7 +1514,7 @@ export default function WebsitePage() {
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
-                {showVersionsPanel ? "← Chat" : `Versions (${versions.length})`}
+                {showVersionsPanel ? "← Chat" : versions.length > 0 ? `Versions (${versions.length})` : "History"}
               </button>
             </div>
           )}
@@ -1530,46 +1523,54 @@ export default function WebsitePage() {
             /* ── Versions panel ──────────────────────────────────────────── */
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest mb-2 px-1">Version History</p>
-              {versions.slice().reverse().map((v, i) => (
-                <div
-                  key={v.id}
-                  onClick={i > 0 ? () => { handlePreviewVersion(v); setShowVersionsPanel(false); } : undefined}
-                  className={`flex items-start gap-3 bg-white dark:bg-[#1E1E24] border rounded-xl p-3 transition-colors ${
-                    i === 0
-                      ? "border-[#E5E7EB] dark:border-[#2A2A32]"
-                      : previewingVersion === v.id
-                        ? "border-[#FF6B35]/50 bg-[#FFF8F6] dark:bg-[#2A1A14] cursor-pointer"
-                        : "border-[#E5E7EB] dark:border-[#2A2A32] cursor-pointer hover:border-[#FF6B35]/30 hover:bg-[#FFF8F6] dark:hover:bg-[#2A1A14]"
-                  }`}
-                >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
-                    {v.type === "publish" ? (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              {versions.length === 0 ? (
+                <p className="text-[11px] text-[#9CA3AF] text-center py-8">No versions yet.</p>
+              ) : (
+                versions.slice().reverse().map((v, i) => (
+                  <div
+                    key={v.id}
+                    onClick={() => { handlePreviewVersion(v); setShowVersionsPanel(false); }}
+                    className={`flex items-start gap-3 bg-white dark:bg-[#1E1E24] border rounded-xl p-3 transition-colors cursor-pointer ${
+                      previewingVersion === v.id
+                        ? "border-[#FF6B35]/50 bg-[#FFF8F6] dark:bg-[#2A1A14]"
+                        : "border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#FF6B35]/30 hover:bg-[#FFF8F6] dark:hover:bg-[#2A1A14]"
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
+                      {v.type === "publish" ? (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      ) : (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3 9 21 9"/></svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">
+                        {i === 0 ? "Current draft" : (v.type === "publish" ? `Published — ${timeAgo(v.created_at)}` : v.label)}
+                      </p>
+                      {v.type !== "publish" && (
+                        <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
+                      )}
+                    </div>
+                    {i === 0 ? (
+                      <span className="text-[10px] font-medium text-[#9CA3AF] shrink-0 mt-0.5">Current</span>
                     ) : (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3 9 21 9"/></svg>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm("Restore this version? Your current draft will be replaced.")) {
+                            handleRestoreVersion(v);
+                            setShowVersionsPanel(false);
+                          }
+                        }}
+                        disabled={restoringVersion === v.id}
+                        className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40 shrink-0 mt-0.5"
+                      >
+                        {restoringVersion === v.id ? "…" : "Restore"}
+                      </button>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">
-                      {v.type === "publish" ? `Published — ${timeAgo(v.created_at)}` : v.label}
-                    </p>
-                    {v.type !== "publish" && (
-                      <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
-                    )}
-                  </div>
-                  {i === 0 ? (
-                    <span className="text-[10px] font-medium text-[#9CA3AF] shrink-0 mt-0.5">Current</span>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleRestoreVersion(v); setShowVersionsPanel(false); }}
-                      disabled={restoringVersion === v.id}
-                      className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40 shrink-0 mt-0.5"
-                    >
-                      {restoringVersion === v.id ? "…" : "Restore"}
-                    </button>
-                  )}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           ) : (
             /* ── Chat messages ───────────────────────────────────────────── */
@@ -1826,28 +1827,37 @@ export default function WebsitePage() {
         </div>
       </div>
 
-      {/* ⋯ project context menu — fixed position so it escapes sidebar overflow:hidden clipping */}
+      {/* Transparent backdrop — clicking outside the dropdown closes it.
+          Rendered BELOW the dropdown (z-199) so dropdown buttons receive clicks first. */}
+      {menuOpenId !== null && (
+        <div
+          className="fixed inset-0"
+          style={{ zIndex: 199 }}
+          onClick={() => { setMenuOpenId(null); setMenuPos(null); }}
+        />
+      )}
+
+      {/* ⋯ project context menu — fixed position above backdrop so it escapes sidebar overflow:hidden */}
       {menuOpenId !== null && menuPos !== null && (() => {
         const mp = projects.find((proj) => proj.id === menuOpenId);
         if (!mp) return null;
         return (
           <div
             style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 200 }}
-            onMouseDown={(e) => e.stopPropagation()}
             className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-28"
           >
             <button
-              onClick={() => { setMenuOpenId(null); handleSwitchProject(mp); }}
+              onClick={() => { setMenuOpenId(null); setMenuPos(null); handleSwitchProject(mp); }}
               className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
               Open
             </button>
             <button
-              onClick={() => handleStartRename(mp)}
+              onClick={() => { setMenuPos(null); handleStartRename(mp); }}
               className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
               Rename
             </button>
             <button
-              onClick={() => handleDeleteProject(mp)}
+              onClick={() => { setMenuPos(null); handleDeleteProject(mp); }}
               className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
               Delete
             </button>
