@@ -18,6 +18,16 @@ type VersionRecord = {
 
 type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean; published_url?: string | null; updated_at?: string | null };
 
+type AnalyticsData = {
+  totalVisits:    number;
+  uniqueVisitors: number;
+  last7Days:      number;
+  last30Days:     number;
+  dailyVisits:    { date: string; count: number }[];
+  topReferrers:   { referrer: string; count: number }[];
+  deviceSplit:    { desktop: number; mobile: number; tablet: number };
+};
+
 // Chat messages include both AI/user text, inline version cards, and session separators
 type Msg = {
   role:        "ai" | "user" | "version";
@@ -692,6 +702,9 @@ export default function WebsitePage() {
 
   // ── Versions panel (inside chat) + Delete confirm modal ───────────────────────
   const [showVersionsPanel, setShowVersionsPanel] = useState(false);
+  const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(false);
+  const [analyticsData, setAnalyticsData]           = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading]     = useState(false);
   const [deleteTarget, setDeleteTarget]           = useState<WebsiteProject | null>(null);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
@@ -717,6 +730,18 @@ export default function WebsitePage() {
         })));
       }
     } catch { /* non-critical */ }
+  }, []);
+
+  const loadAnalytics = useCallback(async () => {
+    const wId = websiteIdRef.current;
+    if (!wId) return;
+    setAnalyticsLoading(true);
+    setAnalyticsData(null);
+    try {
+      const res = await fetch(`/api/website/analytics?websiteId=${encodeURIComponent(wId)}`);
+      if (res.ok) setAnalyticsData(await res.json() as AnalyticsData);
+    } catch { /* non-critical */ }
+    finally { setAnalyticsLoading(false); }
   }, []);
 
   // ── Mount: load persisted state ──────────────────────────────────────────────
@@ -921,6 +946,8 @@ export default function WebsitePage() {
     setShowNewWebsiteModal(false);
 
     setShowVersionsPanel(false);
+    setShowAnalyticsPanel(false);
+    setAnalyticsData(null);
 
     // Ensure the active project is in the sidebar before clearing websiteId
     if (websiteId) {
@@ -960,6 +987,8 @@ export default function WebsitePage() {
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
     if (p.id === websiteIdRef.current) return;
     setShowVersionsPanel(false);
+    setShowAnalyticsPanel(false);
+    setAnalyticsData(null);
     setBuilding(false); setBuilt(false); setDraftDiffers(false);
     setHtml(""); htmlRef.current = ""; setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
@@ -1087,7 +1116,7 @@ export default function WebsitePage() {
       setHtml(""); htmlRef.current = "";
       setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
       setWebsiteId(null); websiteIdRef.current = null;
-      setVersions([]); setSiteName(""); setSiteSlug(""); setShowVersionsPanel(false);
+      setVersions([]); setSiteName(""); setSiteSlug(""); setShowVersionsPanel(false); setShowAnalyticsPanel(false); setAnalyticsData(null);
       setIsPublished(false); setPublishedUrl("");
       setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
       setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
@@ -1507,22 +1536,139 @@ export default function WebsitePage() {
           style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
         >
 
-          {/* Versions toggle — shown whenever a site is built */}
+          {/* Panel tab toggles — Chat / Versions / Analytics */}
           {built && (
-            <div className="flex items-center justify-end px-4 pt-2.5 pb-0 shrink-0">
-              <button
-                onClick={() => setShowVersionsPanel((v) => !v)}
-                className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                {showVersionsPanel ? "← Chat" : versions.length > 0 ? `Versions (${versions.length})` : "History"}
-              </button>
+            <div className="flex items-center justify-between px-4 pt-2.5 pb-0 shrink-0">
+              {(showVersionsPanel || showAnalyticsPanel) ? (
+                <button
+                  onClick={() => { setShowVersionsPanel(false); setShowAnalyticsPanel(false); }}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+                >
+                  ← Chat
+                </button>
+              ) : <div />}
+              {!showVersionsPanel && !showAnalyticsPanel && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setShowVersionsPanel(true); setShowAnalyticsPanel(false); }}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    {versions.length > 0 ? `Versions (${versions.length})` : "History"}
+                  </button>
+                  {isPublished && websiteId && (
+                    <button
+                      onClick={() => { setShowAnalyticsPanel(true); setShowVersionsPanel(false); loadAnalytics(); }}
+                      className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M18 20V10M12 20V4M6 20v-6"/>
+                      </svg>
+                      Analytics
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {showVersionsPanel ? (
+          {showAnalyticsPanel ? (
+            /* ── Analytics panel ─────────────────────────────────────────── */
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Analytics</p>
+                <button onClick={loadAnalytics} disabled={analyticsLoading}
+                  className="text-[10px] text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] disabled:opacity-40 transition-colors">
+                  {analyticsLoading ? "…" : "↻ Refresh"}
+                </button>
+              </div>
+              {!isPublished ? (
+                <p className="text-[11px] text-[#9CA3AF] text-center py-8">Publish your site to start collecting analytics.</p>
+              ) : analyticsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-5 h-5 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                </div>
+              ) : !analyticsData ? (
+                <p className="text-[11px] text-[#9CA3AF] text-center py-8">Could not load analytics.</p>
+              ) : analyticsData.totalVisits === 0 ? (
+                <div className="text-center py-8 space-y-2">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                  <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
+                  <p className="text-[11px] text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Stat cards — 2×2 grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { label: "Total visits",    value: analyticsData.totalVisits    },
+                      { label: "Unique visitors", value: analyticsData.uniqueVisitors },
+                      { label: "Last 7 days",     value: analyticsData.last7Days      },
+                      { label: "Last 30 days",    value: analyticsData.last30Days     },
+                    ] as { label: string; value: number }[]).map(({ label, value }) => (
+                      <div key={label} className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3">
+                        <p className="text-lg font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
+                        <p className="text-[9px] text-[#9CA3AF] mt-0.5 leading-tight">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Daily bar chart — 30 days */}
+                  <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3">
+                    <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">Daily visits — last 30 days</p>
+                    {(() => {
+                      const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
+                      return (
+                        <div className="flex items-end gap-px h-14">
+                          {analyticsData.dailyVisits.map((d, i) => (
+                            <div key={i} title={`${d.date}: ${d.count}`}
+                              className="flex-1 rounded-t-sm"
+                              style={{
+                                height:     d.count > 0 ? `${Math.max((d.count / maxVal) * 100, 4)}%` : "2px",
+                                background: d.count > 0 ? "var(--vp-color)" : "#E5E7EB",
+                                opacity:    d.count > 0 ? 1 : 0.3,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
+                    <div className="flex justify-between mt-1.5">
+                      <span className="text-[8px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
+                      <span className="text-[8px] text-[#9CA3AF]">Today</span>
+                    </div>
+                  </div>
+                  {/* Top referrers */}
+                  {analyticsData.topReferrers.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Top sources</p>
+                      {analyticsData.topReferrers.map(({ referrer, count }) => (
+                        <div key={referrer} className="flex items-center gap-2">
+                          <span className="flex-1 text-[10px] text-[#374151] dark:text-[#E5E7EB] truncate min-w-0">{referrer}</span>
+                          <span className="text-[10px] font-semibold text-[#6B7280] shrink-0 tabular-nums">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Device split */}
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Devices</p>
+                    {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
+                      <div key={dev} className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#374151] dark:text-[#E5E7EB] w-11 shrink-0 capitalize">{dev}</span>
+                        <div className="flex-1 h-1.5 bg-[#E5E7EB] dark:bg-[#2A2A32] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${analyticsData.deviceSplit[dev]}%`, background: "var(--vp-color)" }} />
+                        </div>
+                        <span className="text-[10px] font-semibold text-[#6B7280] w-7 text-right shrink-0 tabular-nums">{analyticsData.deviceSplit[dev]}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : showVersionsPanel ? (
             /* ── Versions panel ──────────────────────────────────────────── */
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest mb-2 px-1">Version History</p>
