@@ -28,6 +28,8 @@ type AnalyticsData = {
   deviceSplit:    { desktop: number; mobile: number; tablet: number };
 };
 
+type DevicePreset = "desktop" | "laptop" | "tablet" | "phone";
+
 // Chat messages include both AI/user text, inline version cards, and session separators
 type Msg = {
   role:        "ai" | "user" | "version";
@@ -618,7 +620,8 @@ export default function WebsitePage() {
   });
   const [input, setInput]             = useState("");
   const [html, setHtml]               = useState("");
-  const [device, setDevice]           = useState<"desktop" | "mobile">("desktop");
+  const [device, setDevice]           = useState<DevicePreset>("desktop");
+  const [rotated, setRotated]         = useState(false);
   const [viewMode, setViewMode]       = useState<"preview" | "code">("preview");
   const [building, setBuilding]       = useState(false);
   const [built, setBuilt]             = useState(false);
@@ -743,6 +746,20 @@ export default function WebsitePage() {
     } catch { /* non-critical */ }
     finally { setAnalyticsLoading(false); }
   }, []);
+
+  const handleOpenInNewTab = useCallback(() => {
+    const content = previewVersionHtml ?? htmlRef.current;
+    if (!content) return;
+    if (publishedUrl) {
+      window.open(`${window.location.origin}${publishedUrl}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Draft: open via blob URL so the page renders with correct HTML
+    const blob = new Blob([content], { type: "text/html" });
+    const url  = URL.createObjectURL(blob);
+    const tab  = window.open(url, "_blank", "noopener,noreferrer");
+    if (tab) setTimeout(() => URL.revokeObjectURL(url), 15_000);
+  }, [previewVersionHtml, publishedUrl]);
 
   // ── Mount: load persisted state ──────────────────────────────────────────────
   useEffect(() => {
@@ -948,6 +965,7 @@ export default function WebsitePage() {
     setShowVersionsPanel(false);
     setShowAnalyticsPanel(false);
     setAnalyticsData(null);
+    setRotated(false);
 
     // Ensure the active project is in the sidebar before clearing websiteId
     if (websiteId) {
@@ -989,6 +1007,7 @@ export default function WebsitePage() {
     setShowVersionsPanel(false);
     setShowAnalyticsPanel(false);
     setAnalyticsData(null);
+    setRotated(false);
     setBuilding(false); setBuilt(false); setDraftDiffers(false);
     setHtml(""); htmlRef.current = ""; setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
@@ -1314,6 +1333,17 @@ export default function WebsitePage() {
   // ── Derived values ────────────────────────────────────────────────────────────
   const origin      = typeof window !== "undefined" ? window.location.origin : "";
   const previewHtml = previewVersionHtml ?? html;
+
+  // Device preview — real pixel dimensions, no transform scaling
+  const _baseW        = device === "tablet" ? 834 : 390;
+  const _baseH        = device === "tablet" ? 1194 : 844;
+  const iframeW       = (device === "tablet" || device === "phone") ? (rotated ? _baseH : _baseW) : (device === "laptop" ? 1280 : 0);
+  const iframeH       = (device === "tablet" || device === "phone") ? (rotated ? _baseW : _baseH) : 0;
+  const hasDeviceFrame = device === "tablet" || device === "phone";
+  const deviceLabel   = device === "laptop" ? "1280px"
+    : device === "tablet" ? (rotated ? "1194 × 834" : "834 × 1194")
+    : device === "phone"  ? (rotated ? "844 × 390"  : "390 × 844")
+    : "";
 
   // Publish button label
   const publishLabel = publishing
@@ -1867,7 +1897,7 @@ export default function WebsitePage() {
         </div>
 
         {/* RIGHT: Preview / Code */}
-        <div className={`${activeTab === "chat" ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden min-h-0 min-w-[400px]`}>
+        <div className={`${activeTab === "chat" ? "hidden" : "flex"} md:flex flex-1 flex-col overflow-hidden min-h-0 md:min-w-[400px]`}>
           {/* Top bar */}
           <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -1895,13 +1925,38 @@ export default function WebsitePage() {
                   ))}
                 </div>
                 {viewMode === "preview" && (
-                  <div className="flex items-center gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
-                    {(["desktop", "mobile"] as const).map((d) => (
-                      <button key={d} onClick={() => setDevice(d)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold capitalize transition-all ${device === d ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
-                        {d}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 4-device selector */}
+                    <div className="flex items-center gap-0.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
+                      {(["desktop", "laptop", "tablet", "phone"] as DevicePreset[]).map((d) => (
+                        <button key={d} onClick={() => { setDevice(d); setRotated(false); }}
+                          title={d.charAt(0).toUpperCase() + d.slice(1)}
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${device === d ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
+                          {d === "desktop" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>}
+                          {d === "laptop"  && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M1 21h22"/></svg>}
+                          {d === "tablet"  && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>}
+                          {d === "phone"   && <svg width="11" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Active width label */}
+                    {deviceLabel && (
+                      <span className="text-[9px] font-mono text-[#9CA3AF] tabular-nums select-none hidden sm:block">
+                        {deviceLabel}
+                      </span>
+                    )}
+                    {/* Rotate — tablet and phone only */}
+                    {(device === "tablet" || device === "phone") && (
+                      <button onClick={() => setRotated((r) => !r)} title="Rotate"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
                       </button>
-                    ))}
+                    )}
+                    {/* Open in new tab */}
+                    <button onClick={handleOpenInNewTab} title="Open in new tab"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1959,15 +2014,43 @@ export default function WebsitePage() {
                 </pre>
               </div>
 
-            ) : (
-              /* Preview iframe */
-              <div className={`flex-1 min-h-0 flex overflow-hidden ${device === "mobile" ? "bg-[#F9FAFB] justify-center items-start" : ""}`}>
+            ) : device === "desktop" ? (
+              /* Desktop — full pane width */
+              <div className="flex-1 min-h-0 flex overflow-hidden">
                 <iframe
                   key={previewHtml}
                   srcDoc={previewHtml}
                   title="Website preview"
-                  className={`bg-white ${device === "mobile" ? "max-w-[375px] w-full m-3 rounded-xl border border-[#E5E7EB]" : "w-full h-full"}`}
-                  style={device === "mobile" ? { height: "calc(100% - 24px)" } : { height: "100%" }}
+                  className="bg-white w-full h-full"
+                  sandbox="allow-scripts allow-same-origin allow-popups"
+                />
+              </div>
+            ) : hasDeviceFrame ? (
+              /* Tablet / Phone — fixed size, device frame, centered on neutral bg */
+              <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-6">
+                <div
+                  className="shrink-0 rounded-[28px] border-[3px] border-[#C7C7CC] dark:border-[#3A3A42] overflow-hidden shadow-xl"
+                  style={{ width: iframeW, height: iframeH }}
+                >
+                  <iframe
+                    key={`${previewHtml.length}-${iframeW}-${iframeH}`}
+                    srcDoc={previewHtml}
+                    title="Website preview"
+                    style={{ width: iframeW, height: iframeH, display: "block" }}
+                    className="bg-white"
+                    sandbox="allow-scripts allow-same-origin allow-popups"
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Laptop — 1280px wide, scrollable horizontally, no frame */
+              <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-4">
+                <iframe
+                  key={`${previewHtml.length}-${iframeW}`}
+                  srcDoc={previewHtml}
+                  title="Website preview"
+                  style={{ width: iframeW, minHeight: "100%", height: "100%", display: "block" }}
+                  className="bg-white shrink-0"
                   sandbox="allow-scripts allow-same-origin allow-popups"
                 />
               </div>
