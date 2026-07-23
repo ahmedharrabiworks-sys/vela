@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createSupabaseRouteHandlerClient, createSupabaseAdmin } from "@/lib/supabase-server";
+import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +21,17 @@ export async function POST(req: NextRequest) {
     websiteId?: string;
   };
 
-  // Use route-handler client so refreshed tokens are written back to browser
-  const supabase = createSupabaseRouteHandlerClient();
+  const supabase = createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (!user) {
     const cookieNames = cookies().getAll().map(c => c.name)
       .filter(n => n.startsWith("sb-") || n.includes("supabase"));
-    console.error("[website/publish] auth failed — error:", authError?.message ?? "none",
-      "| auth cookies:", cookieNames.length > 0 ? cookieNames.join(", ") : "NONE FOUND");
+    console.error(
+      "[website/publish] auth failed",
+      "| error:", authError?.message ?? "none",
+      "| code:", authError?.code ?? "none",
+      "| auth cookies:", cookieNames.length > 0 ? cookieNames.join(", ") : "NONE FOUND",
+    );
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

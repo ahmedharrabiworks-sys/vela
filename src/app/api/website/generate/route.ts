@@ -269,19 +269,24 @@ const CATEGORY_TO_PRESET: Record<string, string> = {
   saas: "fitness", agency: "fitness", ecommerce: "beauty", education: "fitness", other: "realestate",
 };
 
+// ── Human-readable business label per category (used in image queries) ───────
+const CATEGORY_TO_LABEL: Record<string, string> = {
+  hotel:      "hotel resort",
+  clinic:     "medical clinic",
+  gym:        "gym fitness center",
+  salon:      "hair salon spa",
+  realestate: "real estate property",
+  restaurant: "restaurant dining",
+  saas:       "modern office tech",
+  agency:     "creative agency studio",
+  ecommerce:  "retail boutique",
+  education:  "school campus education",
+  legal:      "law firm office",
+  other:      "professional business",
+};
+
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
-function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, msgText: string, hasOwnerPhoto: boolean): void {
-  // Extract 2-3 visual keywords from the owner's message for additional context
-  const visualHints = msgText
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 4 && !["build", "create", "make", "website", "clinic", "please", "would", "should", "their", "with"].includes(w))
-    .slice(0, 2)
-    .join(" ");
-
-  const base = (visualHints || industry || "professional").trim();
-
+function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, fullText: string, hasOwnerPhoto: boolean): void {
   // Resolve preset key: v2 uses category, v1 uses stylePreset
   const PRESET_ALIAS: Record<string, string> = {
     "editorial-luxury": "hotel", "minimal-warm": "beauty", "saas-sharp": "fitness",
@@ -295,6 +300,34 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
       ? CATEGORY_TO_PRESET[rawCategory]!
       : (PRESET_ALIAS[rawPreset] ?? rawPreset) || "realestate";
 
+  // Use the category label as the business type anchor for queries.
+  // Falls back to industry (tenant profile field) then to a generic label.
+  const businessType = (rawCategory && CATEGORY_TO_LABEL[rawCategory]) || industry || "professional business";
+
+  // Extract city from spec content when tenant profile city is empty.
+  // Priority: (1) tenant profile, (2) spec hero eyebrow, (3) contact/footer address, (4) fullText regex.
+  let effectiveCity = city;
+  if (!effectiveCity) {
+    for (const s of spec.sections) {
+      const eyebrow = s.content?.eyebrow;
+      if (typeof eyebrow === "string") {
+        // e.g. "Tunis, Tunisia" or "Dubai Marina · Gym" — take the first comma/dot separated location word
+        const locMatch = eyebrow.match(/·\s*([A-Za-z][a-zA-Z\s]{2,24})|,\s*([A-Za-z][a-zA-Z\s]{2,24})/);
+        if (locMatch) { effectiveCity = (locMatch[1] ?? locMatch[2] ?? "").trim(); break; }
+      }
+      const addr = s.content?.address ?? s.content?.phone;
+      if (typeof addr === "string" && addr.includes(",")) {
+        const parts = addr.split(",").map((p: string) => p.trim()).filter(Boolean);
+        if (parts.length >= 2) { effectiveCity = parts[parts.length - 1]; break; }
+      }
+    }
+  }
+  if (!effectiveCity && fullText) {
+    // Extract explicit city mentions from the conversation text
+    const cityMatch = fullText.match(/\b(?:in|at|located in|based in|from)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
+    if (cityMatch) effectiveCity = cityMatch[1];
+  }
+
   // Hero types that need a single imageQuery
   const HERO_TYPES = new Set(["hero", "hero-fullbleed", "hero-split"]);
   // About types that need a single imageQuery
@@ -306,15 +339,14 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
 
-    // Hero: ALWAYS override with server-built query (industry + city + category context)
-    // GPT queries for heroes are often too abstract — the server has better business data
+    // Hero: ALWAYS override with server-built query using the spec's actual category
     if (HERO_TYPES.has(s.type)) {
       const heroSuffix = PRESET_HERO_SUFFIX[preset] ?? "professional photography editorial";
-      const locationCtx = city ? ` ${city}` : "";
+      const locationCtx = effectiveCity ? ` ${effectiveCity}` : "";
       if (hasOwnerPhoto) {
-        (s as { imageQuery?: string }).imageQuery = `${industry || base}${locationCtx} bright professional photography`.replace(/\s+/g, " ").trim();
+        (s as { imageQuery?: string }).imageQuery = `${businessType}${locationCtx} bright professional photography`.replace(/\s+/g, " ").trim();
       } else {
-        (s as { imageQuery?: string }).imageQuery = `${industry || base}${locationCtx} ${heroSuffix}`.replace(/\s+/g, " ").trim();
+        (s as { imageQuery?: string }).imageQuery = `${businessType}${locationCtx} ${heroSuffix}`.replace(/\s+/g, " ").trim();
       }
     }
 
@@ -322,11 +354,11 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
 
     if (!hasQ) {
       if (ABOUT_TYPES.has(s.type)) {
-        const locationCtx = city ? ` ${city}` : "";
+        const locationCtx = effectiveCity ? ` ${effectiveCity}` : "";
         const aboutSuffix = PRESET_ABOUT_SUFFIX[preset] ?? "professional team editorial warm light";
         (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
-          ? `${industry || base}${locationCtx} professional team workspace`.replace(/\s+/g, " ").trim()
-          : `${industry || base}${locationCtx} ${aboutSuffix}`.replace(/\s+/g, " ").trim();
+          ? `${businessType}${locationCtx} professional team workspace`.replace(/\s+/g, " ").trim()
+          : `${businessType}${locationCtx} ${aboutSuffix}`.replace(/\s+/g, " ").trim();
       }
     }
 
@@ -336,20 +368,20 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
       if (!qs.length) {
         const fallbackGallery = hasOwnerPhoto
           ? [
-              `${base} interior design`,
-              `${base} team professional`,
-              `${base} detail close up`,
-              `${base} modern equipment`,
-              `${base} client experience`,
-              `${base} results before after`,
+              `${businessType} interior design`,
+              `${businessType} team professional`,
+              `${businessType} detail close up`,
+              `${businessType} modern equipment`,
+              `${businessType} client experience`,
+              `${businessType} atmosphere ambiance`,
             ]
           : (PRESET_GALLERY_QUERIES[preset] ?? [
-              `${base} close-up texture detail editorial`,
-              `${base} product detail minimal clean`,
-              `${base} material texture abstract light`,
-              `${base} bokeh warm light lifestyle`,
-              `${base} flat lay arrangement elegant`,
-              `${base} abstract mood atmosphere`,
+              `${businessType} close-up texture detail editorial`,
+              `${businessType} product detail minimal clean`,
+              `${businessType} interior warm light`,
+              `${businessType} lifestyle editorial`,
+              `${businessType} flat lay elegant`,
+              `${businessType} abstract mood atmosphere`,
             ]);
         (s as { imageQueries?: string[] }).imageQueries = fallbackGallery.map((q) => q.replace(/\s+/g, " ").trim());
       }
@@ -363,7 +395,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, m
       if (qs.length < targetCount) {
         const listingSuffix = PRESET_HERO_SUFFIX[preset] ?? "editorial minimal clean light";
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? `${base} ${listingSuffix} item ${j + 1}`.replace(/\s+/g, " ").trim()
+          qs[j] ?? `${businessType} ${listingSuffix} item ${j + 1}`.replace(/\s+/g, " ").trim()
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
@@ -817,6 +849,7 @@ function buildReviseSystem(hasOwnerPhoto: boolean): string {
   return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
+CONTENT RULES: Never invent commercial terms the owner did not state — no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided.
 IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.${noPhotoNote}`;
 }
 
@@ -834,7 +867,7 @@ REQUIRED FIELDS — collect in this exact order, one question per turn:
                  (b) the user's messages explicitly name a language (e.g. "in Arabic", "en français"), OR
                  (c) the user is writing in a non-English language (their message language IS the answer).
 
-2. BUSINESS NAME — Ask naturally: "What's your business called?" — or if the specific type is clear from context, "What's your [confirmed type] called?" Never assume a type you haven't confirmed.
+2. BUSINESS NAME — Ask always: "What's your business called?" Never insert a business type into this question.
    Skip ONLY if: a specific business name (proper noun) is already stated in the conversation.
 
 3. WHAT THEY OFFER — their specific services, menu items, specialties, or products
@@ -1108,6 +1141,7 @@ export async function POST(req: NextRequest) {
     let spec: WebsiteSpec;
     let effectiveLanguage = language;
     let extractedContact: { phone?: string; email?: string } = {};
+    let fullContextText = msgText; // overwritten with accumulated history in initial-generate path
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -1197,6 +1231,7 @@ export async function POST(req: NextRequest) {
 
       // ── Ready to generate — concatenate ALL user answers from every turn ───
       const fullDescription = buildAccumulatedDescription(priorChat, msgText);
+      fullContextText = fullDescription; // use for image query city extraction
 
       // If the user stated language verbally (e.g. replied "Arabic" to the intake
       // question) instead of clicking the UI chip, detect it from the conversation.
@@ -1263,22 +1298,31 @@ export async function POST(req: NextRequest) {
 
     // Guarantee hero — covers both v1 and v2 hero types
     if (!spec.sections.some((s) => HERO_TYPES_ALL.includes(s.type))) {
+      // Omit subheadline when we have no real data — never render placeholder text
+      const heroSub = (industry && city) ? `${industry} in ${city}.` : (industry || null);
       spec.sections.unshift({
         type: "hero-fullbleed",
         imageQuery: heroUpload
-          ? `${industry} professional interior ${city}`.trim()
-          : `${industry} atmospheric light texture abstract`.trim(),
-        content: { headline: businessName, subheadline: `${industry || "Professional services"} in ${city || "your city"}.`, ctaPrimary: "Book Now", ctaSecondary: "Learn More" },
+          ? [industry, "professional interior", city].filter(Boolean).join(" ")
+          : [industry || spec.businessName, "atmospheric editorial"].filter(Boolean).join(" "),
+        content: {
+          headline:    spec.businessName || businessName,
+          ...(heroSub ? { subheadline: heroSub } : {}),
+          ctaPrimary:  "Book Now",
+          ctaSecondary: "Learn More",
+        },
       });
     }
     if (!spec.sections.some((s) => s.type === "footer")) {
       const effPhone   = extractedContact.phone   || contactInfo?.phone;
       const effEmail   = extractedContact.email   || contactInfo?.email;
       const effAddress = contactInfo?.address;
+      // Build a specific tagline from real data only — never use placeholder phrases
+      const taglineParts = [spec.businessName || businessName, industry].filter(Boolean);
       spec.sections.push({
         type: "footer",
         content: {
-          tagline: `${businessName} — ${industry || "professional services"} in ${city || "your city"}.`,
+          tagline: taglineParts.join(" — "),
           ...(effPhone   ? { phone:   effPhone }   : {}),
           ...(effEmail   ? { email:   effEmail }   : {}),
           ...(effAddress ? { address: effAddress } : {}),
@@ -1311,8 +1355,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Server-side fallback: inject imageQuery for any visual section GPT missed
-    ensureImageQueries(spec, industry, city, msgText, !!heroUpload);
+    // Server-side fallback: inject imageQuery for any visual section GPT missed.
+    // Pass fullContextText (all conversation turns for initial generate) so city
+    // and business-type hints are available even when tenant profile fields are empty.
+    ensureImageQueries(spec, industry, city, fullContextText, !!heroUpload);
 
     let uploadSlot: "hero" | "about" | "team" | "gallery" = "hero";
     if (heroUpload && validImages[0]) {

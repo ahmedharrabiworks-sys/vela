@@ -29,9 +29,9 @@ function icon(name: string, size = 20): string {
 }
 
 function photo(src: string | undefined, alt: string, cls: string, style = ""): string {
-  if (src) return `<img src="${esc(src)}" alt="${esc(alt)}" class="${cls}" style="${style}" loading="lazy">`;
-  // Muted gradient fallback — never a solid dark color that reads as a broken element
-  return `<div class="${cls}" style="background:linear-gradient(135deg,var(--surface),var(--bg-alt));${style}" aria-label="${esc(alt)}"></div>`;
+  if (src) return `<img src="${esc(src)}" alt="${esc(alt)}" class="${cls}" style="${style}" loading="lazy" onerror="this.style.display='none';this.parentElement&&(this.parentElement.style.background='linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--surface) 100%)')">`;
+  // Palette-derived gradient — uses the accent hue so it reads as intentional on any theme
+  return `<div class="${cls}" style="background:linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--bg-alt) 100%);${style}" aria-label="${esc(alt)}"></div>`;
 }
 
 function esc(s: unknown): string {
@@ -246,8 +246,8 @@ export function renderGallery(
     ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
     <div class="ws-gallery-grid" style="margin-top:48px;grid-template-columns:repeat(${cols},1fr);">
       ${items.map((src, i) => `
-      <div class="ws-gallery-item">
-        <img src="${esc(src)}" alt="${esc(c.headline ? `${c.headline} ${i + 1}` : `Gallery ${i + 1}`)}" class="ws-gallery-img" loading="lazy" style="width:100%;height:100%;">
+      <div class="ws-gallery-item" style="background:linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--bg-alt) 100%);">
+        <img src="${esc(src)}" alt="${esc(c.headline ? `${c.headline} ${i + 1}` : `Gallery ${i + 1}`)}" class="ws-gallery-img" loading="lazy" style="width:100%;height:100%;" onerror="this.style.display='none'">
       </div>`).join("")}
     </div>
   </div>
