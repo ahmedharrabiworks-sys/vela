@@ -23,11 +23,11 @@ export async function GET(_req: NextRequest) {
   const requestedWebsiteId = new URL(_req.url).searchParams.get("websiteId");
 
   // Fetch the target website (specific or most-recently-updated)
-  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_at: string | null } | null = null;
+  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_at: string | null; domain: string | null; domain_status: string | null } | null = null;
   if (requestedWebsiteId) {
     const { data } = await admin
       .from("websites")
-      .select("id, name, slug, is_published, draft_html, published_at")
+      .select("id, name, slug, is_published, draft_html, published_at, domain, domain_status")
       .eq("tenant_id", tenant.id)
       .eq("id", requestedWebsiteId)
       .maybeSingle();
@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest) {
   } else {
     const { data } = await admin
       .from("websites")
-      .select("id, name, slug, is_published, draft_html, published_at")
+      .select("id, name, slug, is_published, draft_html, published_at, domain, domain_status")
       .eq("tenant_id", tenant.id)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -58,10 +58,10 @@ export async function GET(_req: NextRequest) {
     updated_at: s.updated_at,
   }));
 
-  // Fetch tenant_config for chat, intake, domain
+  // Fetch tenant_config for chat, intake
   const { data: config } = await admin
     .from("tenant_config")
-    .select("website_html, website_chat, website_intake, website_versions, website_custom_domain, website_domain_status, website_domain_records, website_visit_count")
+    .select("website_html, website_chat, website_intake, website_versions, website_visit_count")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
@@ -113,9 +113,8 @@ export async function GET(_req: NextRequest) {
     chat:          tc?.website_chat ?? null,
     intake:        tc?.website_intake ?? null,
     versions,
-    customDomain:  tc?.website_custom_domain ?? null,
-    domainStatus:  tc?.website_domain_status ?? null,
-    domainRecords: tc?.website_domain_records ?? null,
+    customDomain:  site?.domain ?? null,
+    domainStatus:  site?.domain_status ?? null,
     visitCount:    (tc?.website_visit_count as number | null) ?? 0,
     plan:          (tenant?.plan as string | null) ?? "starter",
   });

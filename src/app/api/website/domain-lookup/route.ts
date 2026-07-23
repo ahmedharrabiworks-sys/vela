@@ -7,8 +7,9 @@ export const dynamic = "force-dynamic";
 type AdminClient = any;
 
 // GET /api/website/domain-lookup?hostname=www.example.com
-// Returns { slug } for a verified custom domain so middleware can rewrite /site/[slug].
-// Called by middleware — no auth required (read-only, public slug is non-sensitive).
+// Returns { slug } for a custom domain so middleware can rewrite to /site/[slug].
+// Called by middleware — no auth required (read-only, slug is non-sensitive).
+// Looks up websites.domain directly (source of truth for custom domains).
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const hostname = searchParams.get("hostname")?.toLowerCase().trim();
@@ -19,30 +20,18 @@ export async function GET(req: NextRequest) {
 
   const admin = createSupabaseAdmin() as AdminClient;
 
-  // Find tenant whose verified custom domain matches
-  const { data: config } = await admin
-    .from("tenant_config")
-    .select("tenant_id")
-    .eq("website_custom_domain", hostname)
-    .eq("website_domain_status", "verified")
-    .maybeSingle();
-
-  if (!config?.tenant_id) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
-  }
-
-  // Get the most-recently-published website for this tenant
+  // Find a published site whose custom domain matches the request hostname.
+  // No domain_status filter: if DNS physically routes here, serve the site.
   const { data: site } = await admin
     .from("websites")
     .select("slug, id")
-    .eq("tenant_id", config.tenant_id)
+    .eq("domain", hostname)
     .eq("is_published", true)
-    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!site) {
-    return NextResponse.json({ error: "no published site" }, { status: 404 });
+    return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
   const slug = (site as { slug: string | null; id: string }).slug || site.id;

@@ -187,7 +187,6 @@ function PublishPanel({
   slugError, setSlugError, settingsError, setSettingsError,
   savingSettings, setSavingSettings, websiteId,
   customDomain, setCustomDomain, domainStatus, setDomainStatus,
-  domainCname, setDomainCname,
   domainInput, setDomainInput, domainError, setDomainError,
   connectingDomain, setConnectingDomain, checkingDomain, setCheckingDomain,
   removingDomain, setRemovingDomain,
@@ -202,8 +201,7 @@ function PublishPanel({
   savingSettings: boolean; setSavingSettings: (v: boolean) => void;
   websiteId: string | null;
   customDomain: string | null; setCustomDomain: (v: string | null) => void;
-  domainStatus: "pending" | "verified" | null; setDomainStatus: (v: "pending" | "verified" | null) => void;
-  domainCname: string; setDomainCname: (v: string) => void;
+  domainStatus: "pending" | "verified" | "failed" | null; setDomainStatus: (v: "pending" | "verified" | "failed" | null) => void;
   domainInput: string; setDomainInput: (v: string) => void;
   domainError: string; setDomainError: (v: string) => void;
   connectingDomain: boolean; setConnectingDomain: (v: boolean) => void;
@@ -300,45 +298,51 @@ function PublishPanel({
   };
 
   const handleConnectDomain = async () => {
+    if (!websiteId) return;
     setDomainError(""); setConnectingDomain(true);
     try {
       const res  = await fetch("/api/website/domain", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: domainInput.trim() }),
+        body: JSON.stringify({ domain: domainInput.trim(), websiteId }),
       });
-      const data = await res.json() as { error?: string; domain?: string; status?: "pending" | "verified"; cname?: string };
+      const data = await res.json() as { error?: string; domain?: string; status?: "pending" | "verified" | "failed" };
       if (!res.ok) {
-        setDomainError(data.error ?? "Failed to connect domain.");
+        setDomainError(data.error ?? "Failed to save domain.");
       } else {
         setCustomDomain(data.domain ?? domainInput.trim());
         setDomainStatus("pending");
-        if (data.cname) setDomainCname(data.cname);
       }
     } catch { setDomainError("Connection error — please try again."); }
     finally { setConnectingDomain(false); }
   };
 
   const handleCheckDomain = async () => {
+    if (!websiteId) return;
     setDomainError(""); setCheckingDomain(true);
     try {
-      const res  = await fetch("/api/website/domain");
-      const data = await res.json() as { error?: string; status?: "pending" | "verified" | null; cname?: string };
+      const res  = await fetch(`/api/website/domain?websiteId=${encodeURIComponent(websiteId)}`);
+      const data = await res.json() as { error?: string; status?: "pending" | "verified" | "failed" | null; message?: string };
       if (!res.ok) {
         setDomainError(data.error ?? "Could not check status.");
       } else {
-        if (data.status) setDomainStatus(data.status);
-        if (data.cname) setDomainCname(data.cname);
+        if (data.status) setDomainStatus(data.status as "pending" | "verified" | "failed");
+        setDomainError(data.message ?? "");
       }
     } catch { setDomainError("Connection error — please try again."); }
     finally { setCheckingDomain(false); }
   };
 
   const handleRemoveDomain = async () => {
-    if (!confirm(`Remove ${customDomain ?? "this domain"}?`)) return;
+    if (!customDomain || !websiteId) return;
+    if (!confirm(`Remove ${customDomain}?`)) return;
     setRemovingDomain(true);
     try {
-      const res = await fetch("/api/website/domain", { method: "DELETE" });
-      if (res.ok) { setCustomDomain(null); setDomainStatus(null); setDomainCname(""); setDomainInput(""); }
+      const res = await fetch("/api/website/domain", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId }),
+      });
+      if (res.ok) { setCustomDomain(null); setDomainStatus(null); setDomainInput(""); setDomainError(""); }
     } catch { /* ignore */ }
     finally { setRemovingDomain(false); }
   };
@@ -362,27 +366,58 @@ function PublishPanel({
       {showDomain && (
         customDomain ? (
           <div className="space-y-3">
+            {/* Status row */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${domainStatus === "verified" ? "bg-green-400" : "bg-yellow-400"}`} />
-              <span className="text-xs font-semibold text-[#111111] dark:text-white">{customDomain}</span>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${domainStatus === "verified" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
-                {domainStatus === "verified" ? "Connected" : "Pending"}
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                domainStatus === "verified" ? "bg-green-400" :
+                domainStatus === "failed"   ? "bg-red-400"   : "bg-yellow-400"}`} />
+              <span className="text-xs font-semibold text-[#111111] dark:text-white truncate max-w-[140px]">{customDomain}</span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                domainStatus === "verified" ? "bg-green-50 text-green-700" :
+                domainStatus === "failed"   ? "bg-red-50 text-red-700"     : "bg-yellow-50 text-yellow-700"}`}>
+                {domainStatus === "verified" ? "Connected" :
+                 domainStatus === "failed"   ? "Failed — records not found yet" : "Pending — add DNS records"}
               </span>
             </div>
+
+            {/* DNS setup instructions — shown until verified */}
             {domainStatus !== "verified" && (
-              <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] px-3 py-2.5 space-y-1.5">
-                <p className="text-[11px] text-[#374151] dark:text-[#9CA3AF]">Point your domain&apos;s CNAME record to:</p>
+              <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] p-3 space-y-2.5">
+                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                  Go to your domain registrar (GoDaddy, Namecheap, etc.), find DNS settings, and add these two records:
+                </p>
+                {/* A record */}
                 <div className="flex items-center gap-2">
-                  <code className="text-[11px] font-mono text-[#374151] dark:text-[#E5E7EB] flex-1 min-w-0 truncate">{domainCname || "cname.vercel-dns.com"}</code>
-                  <button onClick={() => handleCopyRecord(domainCname || "cname.vercel-dns.com")}
+                  <span className="text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0 w-11">A</span>
+                  <span className="text-[10px] text-[#9CA3AF] shrink-0 w-7">@</span>
+                  <code className="text-[11px] font-mono text-[#374151] dark:text-[#E5E7EB] flex-1 min-w-0 truncate">76.76.21.21</code>
+                  <button onClick={() => handleCopyRecord("76.76.21.21")}
                     className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
-                    {copiedRecord === (domainCname || "cname.vercel-dns.com") ? "Copied" : "Copy"}
+                    {copiedRecord === "76.76.21.21" ? "Copied" : "Copy"}
                   </button>
                 </div>
+                {/* CNAME record */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0 w-11">CNAME</span>
+                  <span className="text-[10px] text-[#9CA3AF] shrink-0 w-7">www</span>
+                  <code className="text-[11px] font-mono text-[#374151] dark:text-[#E5E7EB] flex-1 min-w-0 truncate">cname.vercel-dns.com</code>
+                  <button onClick={() => handleCopyRecord("cname.vercel-dns.com")}
+                    className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
+                    {copiedRecord === "cname.vercel-dns.com" ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-[#9CA3AF]">DNS changes can take up to 48 hours to propagate.</p>
               </div>
             )}
-            {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
-            <div className="flex items-center gap-2">
+
+            {/* Informational / error message from last check */}
+            {domainError && (
+              <p className={`text-[11px] leading-relaxed ${domainStatus === "failed" ? "text-red-500" : "text-[#9CA3AF]"}`}>
+                {domainError}
+              </p>
+            )}
+
+            <div className="flex items-center gap-2 flex-wrap">
               {domainStatus !== "verified" && (
                 <button onClick={handleCheckDomain} disabled={checkingDomain}
                   className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-40 transition-colors">
@@ -390,8 +425,8 @@ function PublishPanel({
                 </button>
               )}
               <button onClick={handleRemoveDomain} disabled={removingDomain}
-                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors">
-                {removingDomain ? "Removing…" : "Remove"}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40 transition-colors">
+                {removingDomain ? "Removing…" : "Remove domain"}
               </button>
             </div>
           </div>
@@ -399,14 +434,14 @@ function PublishPanel({
           <div className="space-y-2">
             <div className="flex items-stretch gap-2">
               <input value={domainInput} onChange={(e) => { setDomainInput(e.target.value); setDomainError(""); }}
-                placeholder="www.yourbusiness.com"
+                placeholder="mysalon.com or www.mysalon.com"
                 className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
                 onKeyDown={(e) => { if (e.key === "Enter") handleConnectDomain(); }}
               />
               <button onClick={handleConnectDomain} disabled={connectingDomain || !domainInput.trim()}
                 className="text-[11px] font-semibold px-3 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-40 transition-opacity whitespace-nowrap"
                 style={{ background: "var(--vp-color)" }}>
-                {connectingDomain ? "Connecting…" : "Connect"}
+                {connectingDomain ? "Saving…" : "Save"}
               </button>
             </div>
             {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
@@ -743,8 +778,7 @@ export default function WebsitePage() {
   // ── Domain state ─────────────────────────────────────────────────────────────
   const [domainInput, setDomainInput]       = useState("");
   const [customDomain, setCustomDomain]     = useState<string | null>(null);
-  const [domainStatus, setDomainStatus]     = useState<"pending" | "verified" | null>(null);
-  const [domainCname, setDomainCname]       = useState("");
+  const [domainStatus, setDomainStatus]     = useState<"pending" | "verified" | "failed" | null>(null);
   const [connectingDomain, setConnectingDomain] = useState(false);
   const [checkingDomain, setCheckingDomain]     = useState(false);
   const [removingDomain, setRemovingDomain]     = useState(false);
@@ -867,7 +901,7 @@ export default function WebsitePage() {
           intake?:       ContactInfo | null;
           versions?:     VersionRecord[];
           customDomain?: string | null;
-          domainStatus?: "pending" | "verified" | null;
+          domainStatus?: "pending" | "verified" | "failed" | null;
           visitCount?:   number;
           plan?:         string;
         };
@@ -907,8 +941,7 @@ export default function WebsitePage() {
         if (Array.isArray(data.versions)) setVersions(data.versions as VersionRecord[]);
         if (Array.isArray(data.projects)) setProjects(data.projects as WebsiteProject[]);
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
-        // Never restore "verified" on page load — user must click "Check Status" to confirm live DNS
-        if (data.domainStatus) setDomainStatus(data.domainStatus === "verified" ? "pending" : data.domainStatus);
+        if (data.domainStatus) setDomainStatus(data.domainStatus as "pending" | "verified" | "failed");
 
       } catch { /* ignore — show empty state */ }
       setLoading(false);
@@ -1661,7 +1694,6 @@ export default function WebsitePage() {
                   websiteId={websiteId}
                   customDomain={customDomain} setCustomDomain={setCustomDomain}
                   domainStatus={domainStatus} setDomainStatus={setDomainStatus}
-                  domainCname={domainCname} setDomainCname={setDomainCname}
                   domainInput={domainInput} setDomainInput={setDomainInput}
                   domainError={domainError} setDomainError={setDomainError}
                   connectingDomain={connectingDomain} setConnectingDomain={setConnectingDomain}

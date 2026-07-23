@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// ── Rate limiting (in-memory, per tenant, resets on cold start) ───────────────
+// ── Rate limiting (in-memory, per tenant) ─────────────────────────────────────
 const RATE_MAP = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT  = 10;
-const RATE_WINDOW = 10 * 60 * 1000; // 10 minutes
+const RATE_WINDOW = 10 * 60 * 1000;
 
 function checkRateLimit(tenantId: string): boolean {
   const now = Date.now();
@@ -23,7 +23,7 @@ function checkRateLimit(tenantId: string): boolean {
   return true;
 }
 
-// ── Strict domain validation ──────────────────────────────────────────────────
+// ── Strict domain validation ───────────────────────────────────────────────────
 const LABEL_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 
 function isValidDomain(input: string): boolean {
@@ -35,7 +35,7 @@ function isValidDomain(input: string): boolean {
   return parts.every((p) => LABEL_RE.test(p));
 }
 
-// ── Auth + tenant helper ──────────────────────────────────────────────────────
+// ── Auth + tenant helper ───────────────────────────────────────────────────────
 async function getAuthedTenant(req: NextRequest): Promise<{ tenant: { id: string } | null; error?: NextResponse }> {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,123 +48,186 @@ async function getAuthedTenant(req: NextRequest): Promise<{ tenant: { id: string
   return { tenant };
 }
 
-// CNAME target customers must point their domain to
-const CNAME_TARGET = process.env.VERCEL_PROJECT_URL ?? "cname.vercel-dns.com";
-
-// ── POST /api/website/domain ──────────────────────────────────────────────────
-// Saves domain to DB and returns CNAME instruction (no Vercel API call)
+// ── POST /api/website/domain ───────────────────────────────────────────────────
+// Body: { domain, websiteId }
+// Saves domain to websites.domain with domain_status = 'pending'.
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({})) as { domain?: string };
+  const body = await req.json().catch(() => ({})) as { domain?: string; websiteId?: string };
   const rawDomain = (body.domain ?? "")
     .trim()
     .toLowerCase()
     .replace(/^https?:\/\//, "")
     .replace(/\/$/, "");
+  const websiteId = body.websiteId;
 
   if (!isValidDomain(rawDomain)) {
     return NextResponse.json(
-      { error: "Please enter a valid domain name (e.g. www.yourbusiness.com)." },
+      { error: "Please enter a valid domain name (e.g. mysalon.com or www.mysalon.com)." },
       { status: 400 },
     );
   }
+  if (!websiteId) {
+    return NextResponse.json({ error: "websiteId required" }, { status: 400 });
+  }
 
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
-
   if (!checkRateLimit(tenant.id)) {
     return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
   }
 
   const admin = createSupabaseAdmin() as AdminClient;
-  await admin.from("tenant_config").upsert({
-    tenant_id:              tenant.id,
-    website_custom_domain:  rawDomain,
-    website_domain_status:  "pending",
-    website_domain_records: null,
-  }, { onConflict: "tenant_id" });
 
-  return NextResponse.json({ domain: rawDomain, status: "pending", cname: CNAME_TARGET });
+  // Ownership check
+  const { data: site } = await admin
+    .from("websites").select("id").eq("id", websiteId).eq("tenant_id", tenant.id).maybeSingle();
+  if (!site) return NextResponse.json({ error: "Website not found." }, { status: 404 });
+
+  // Conflict check: another site (different websiteId) already has this domain
+  const { data: conflict } = await admin
+    .from("websites").select("id").eq("domain", rawDomain).neq("id", websiteId).maybeSingle();
+  if (conflict) {
+    return NextResponse.json(
+      { error: "This domain is already connected to another site." },
+      { status: 409 },
+    );
+  }
+
+  await admin
+    .from("websites")
+    .update({ domain: rawDomain, domain_status: "pending", updated_at: new Date().toISOString() })
+    .eq("id", websiteId)
+    .eq("tenant_id", tenant.id);
+
+  return NextResponse.json({ domain: rawDomain, status: "pending" });
 }
 
-// ── GET /api/website/domain ───────────────────────────────────────────────────
-// Checks DNS via Google's public DNS API and updates status in DB
+// ── GET /api/website/domain?websiteId=xxx ──────────────────────────────────────
+// Verifies DNS (CNAME or A record) and then probes that the domain routes to this
+// server. Sets domain_status to "verified" only when BOTH checks pass.
+// Sets "failed" if DNS is absent; "pending" if DNS ok but server probe failed.
 export async function GET(req: NextRequest) {
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
-
   if (!checkRateLimit(tenant.id)) {
     return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
   }
 
   const admin = createSupabaseAdmin() as AdminClient;
-  const { data: config } = await admin
-    .from("tenant_config")
-    .select("website_custom_domain, website_domain_status")
-    .eq("tenant_id", tenant.id)
-    .maybeSingle();
+  const websiteId = new URL(req.url).searchParams.get("websiteId");
 
-  const tc = config as Record<string, unknown> | null;
-  const domain = tc?.website_custom_domain as string | undefined;
-  if (!domain) return NextResponse.json({ status: null, domain: null, cname: CNAME_TARGET });
+  // Load the site (tenant-scoped)
+  const q = admin
+    .from("websites")
+    .select("id, domain, domain_status")
+    .eq("tenant_id", tenant.id);
+  const { data: site } = websiteId
+    ? await q.eq("id", websiteId).maybeSingle()
+    : await q.order("updated_at", { ascending: false }).limit(1).maybeSingle();
 
-  // DNS verification — CNAME check first (subdomains), then A record (apex)
-  let verified = false;
+  const domain = (site as { domain?: string | null } | null)?.domain;
+  if (!domain) return NextResponse.json({ status: null, domain: null });
+
+  // ── Step 1: DNS check ────────────────────────────────────────────────────────
+  let dnsOk = false;
   try {
+    // CNAME check (www subdomains)
     const cnameRes = await fetch(
       `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=CNAME`,
       { headers: { Accept: "application/json" } },
     );
     if (cnameRes.ok) {
-      const cnameData = await cnameRes.json() as { Answer?: { data?: string }[] };
-      verified = (cnameData.Answer ?? []).some(
-        (a) => typeof a.data === "string" && a.data.includes("vercel"),
-      );
+      const d = await cnameRes.json() as { Answer?: { data?: string }[] };
+      if ((d.Answer ?? []).some((a) => typeof a.data === "string" && a.data.includes("vercel"))) {
+        dnsOk = true;
+      }
     }
 
-    if (!verified) {
+    // A record check (apex domains — 76.76.21.21 is Vercel's anycast IP)
+    if (!dnsOk) {
       const aRes = await fetch(
         `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`,
         { headers: { Accept: "application/json" } },
       );
       if (aRes.ok) {
-        const aData = await aRes.json() as { Answer?: { data?: string }[] };
-        // 76.76.21.21 is Vercel's Anycast IP for apex domains
-        verified = (aData.Answer ?? []).some((a) => a.data === "76.76.21.21");
+        const d = await aRes.json() as { Answer?: { data?: string }[] };
+        if ((d.Answer ?? []).some((a) => a.data === "76.76.21.21")) {
+          dnsOk = true;
+        }
       }
     }
-  } catch {
-    // Network error — return current DB status unchanged
+  } catch { /* DNS network error — dnsOk stays false */ }
+
+  // ── Step 2: server probe (only if DNS resolves to Vercel) ────────────────────
+  let probeOk = false;
+  if (dnsOk) {
+    try {
+      const probeRes = await fetch(`https://${domain}/api/website/domain-probe`, {
+        signal: AbortSignal.timeout(5000),
+        headers: { "User-Agent": "Vela-DomainCheck/1.0" },
+      });
+      if (probeRes.ok) {
+        const probeData = await probeRes.json() as { vela?: boolean };
+        probeOk = probeData?.vela === true;
+      }
+    } catch { probeOk = false; }
   }
 
-  const status = verified ? "verified" : "pending";
+  // ── Determine status ─────────────────────────────────────────────────────────
+  // "verified" only when BOTH DNS and the server probe pass.
+  // "pending"  when DNS is set but the server probe failed (propagating or domain
+  //            not yet added to the Vercel project in the dashboard).
+  // "failed"   when DNS records are absent.
+  let status: "verified" | "pending" | "failed";
+  let message: string | undefined;
 
-  if (verified && tc?.website_domain_status !== "verified") {
-    await admin.from("tenant_config").upsert({
-      tenant_id:             tenant.id,
-      website_domain_status: "verified",
-    }, { onConflict: "tenant_id" });
+  if (dnsOk && probeOk) {
+    status = "verified";
+  } else if (dnsOk) {
+    status = "pending";
+    message =
+      "DNS records found. If you just updated DNS, allow up to 48 hours. " +
+      "If propagation is complete, make sure this domain is added to your Vercel project in the dashboard.";
+  } else {
+    status = "failed";
+    message = "DNS records not found. Check your registrar settings and allow up to 48 hours for changes to propagate.";
   }
 
-  return NextResponse.json({ domain, status, cname: CNAME_TARGET });
+  // Persist only if status changed (avoid spurious writes)
+  const currentStatus = (site as { domain_status?: string | null } | null)?.domain_status;
+  if (status !== currentStatus) {
+    await admin
+      .from("websites")
+      .update({ domain_status: status, updated_at: new Date().toISOString() })
+      .eq("id", (site as { id: string }).id)
+      .eq("tenant_id", tenant.id);
+  }
+
+  return NextResponse.json({ domain, status, ...(message ? { message } : {}) });
 }
 
-// ── DELETE /api/website/domain ────────────────────────────────────────────────
-// Clears domain from DB (no Vercel API call)
+// ── DELETE /api/website/domain ─────────────────────────────────────────────────
+// Body: { websiteId }
+// Clears domain and domain_status from the website row.
 export async function DELETE(req: NextRequest) {
+  const body = await req.json().catch(() => ({})) as { websiteId?: string };
+  const websiteId = body.websiteId;
+
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
-
   if (!checkRateLimit(tenant.id)) {
     return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
   }
 
+  if (!websiteId) return NextResponse.json({ error: "websiteId required" }, { status: 400 });
+
   const admin = createSupabaseAdmin() as AdminClient;
-  await admin.from("tenant_config").upsert({
-    tenant_id:              tenant.id,
-    website_custom_domain:  null,
-    website_domain_status:  null,
-    website_domain_records: null,
-  }, { onConflict: "tenant_id" });
+
+  await admin
+    .from("websites")
+    .update({ domain: null, domain_status: null, updated_at: new Date().toISOString() })
+    .eq("id", websiteId)
+    .eq("tenant_id", tenant.id);
 
   return NextResponse.json({ ok: true });
 }
