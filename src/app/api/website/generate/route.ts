@@ -20,13 +20,15 @@ interface UnsplashResult {
   height: number;
   description: string | null;
   alt_description: string | null;
-  urls: { regular?: string };
+  urls: { regular?: string; raw?: string };
 }
 
+const HERO_SECTION_TYPES = new Set(["hero", "hero-fullbleed", "hero-split", "hero-minimal"]);
+
 // ── Unsplash: single query with quality filtering and dedup ───────────────────
-// Fetches 20 results, keeps only landscape images ≥1600px wide,
-// then picks randomly from the top-3 that haven't been used yet.
-async function tryUnsplash(query: string, usedUrls: Set<string>): Promise<string | null> {
+// minWidth: 1920 for heroes, 1200 for other sections.
+// Uses raw URL with quality params for higher fidelity output.
+async function tryUnsplash(query: string, usedUrls: Set<string>, minWidth = 1200): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) return null;
   try {
@@ -37,8 +39,8 @@ async function tryUnsplash(query: string, usedUrls: Set<string>): Promise<string
     const results = data.results ?? [];
     if (!results.length) return null;
 
-    // Quality filter: landscape ≥1600px wide
-    const qualifying = results.filter((r) => r.width >= 1600 && r.width >= r.height);
+    // Quality filter: landscape ≥minWidth
+    const qualifying = results.filter((r) => r.width >= minWidth && r.width >= r.height);
     const pool = qualifying.length ? qualifying : results;
 
     // Prefer results that have a description — no-description results are usually
@@ -46,13 +48,16 @@ async function tryUnsplash(query: string, usedUrls: Set<string>): Promise<string
     const described = pool.filter((r) => r.description || r.alt_description);
     const finalPool = described.length >= 3 ? described : pool;
 
-    // Walk top-6 (not just top-3) to find an unused, described result
+    const qParam = minWidth >= 1920 ? "w=1920&q=85&fm=jpg&fit=crop" : "w=1200&q=80&fm=jpg&fit=crop";
+    const toUrl = (r: UnsplashResult) => r.urls.raw ? `${r.urls.raw}&${qParam}` : (r.urls.regular ?? null);
+
+    // Walk top-6 to find an unused result
     const top6 = finalPool.slice(0, 6);
-    const available = top6.filter((r) => r.urls.regular && !usedUrls.has(r.urls.regular));
+    const available = top6.filter((r) => { const u = toUrl(r); return u && !usedUrls.has(u); });
     const candidates = available.length ? available : top6;
     const pick = candidates[Math.floor(Math.random() * candidates.length)];
 
-    const photoUrl = pick?.urls?.regular ?? null;
+    const photoUrl = pick ? toUrl(pick) : null;
     if (photoUrl) usedUrls.add(photoUrl);
     return photoUrl;
   } catch {
@@ -61,20 +66,20 @@ async function tryUnsplash(query: string, usedUrls: Set<string>): Promise<string
 }
 
 // ── Unsplash: try primary → simplified → single-word fallback ────────────────
-async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>): Promise<string | null> {
+async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>, minWidth = 1200): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) {
     console.warn("[website] UNSPLASH_ACCESS_KEY not set — skipping image fetch");
     return null;
   }
 
-  const result1 = await tryUnsplash(query, usedUrls);
+  const result1 = await tryUnsplash(query, usedUrls, minWidth);
   if (result1) return result1;
 
   const words = query.trim().split(/\s+/);
   if (words.length > 3) {
     const simplified = words.slice(0, 3).join(" ");
-    const result2 = await tryUnsplash(simplified, usedUrls);
+    const result2 = await tryUnsplash(simplified, usedUrls, minWidth);
     if (result2) {
       console.warn(`[website] primary "${query}" failed — used simplified "${simplified}"`);
       return result2;
@@ -83,7 +88,7 @@ async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>): Promise
 
   const lastWord = words[words.length - 1] ?? words[0];
   if (lastWord && lastWord !== words[0]) {
-    const result3 = await tryUnsplash(lastWord, usedUrls);
+    const result3 = await tryUnsplash(lastWord, usedUrls, minWidth);
     if (result3) {
       console.warn(`[website] simplified failed — used single-word "${lastWord}"`);
       return result3;
@@ -111,31 +116,35 @@ function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, 
 
 // ── Fetch all images for a spec ───────────────────────────────────────────────
 // Runs sequentially (not parallel) so the shared usedUrls set prevents
-// duplicate images appearing on the same page.
+// duplicate images appearing on the same page or across sites (FIX 3).
+// usedUrls is seeded from tenant_config.website_used_images before this call,
+// and the caller persists it back after (cross-site dedup).
 async function fetchSpecImages(
   spec: WebsiteSpec,
   heroOverride?: string,
   uploadSlot: "hero" | "about" | "team" | "gallery" = "hero",
+  usedUrls: Set<string> = new Set<string>(),
 ): Promise<ImageMap> {
-  type Task = { key: string; query: string };
+  type Task = { key: string; query: string; minWidth: number };
   const tasks: Task[] = [];
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
+    const isHero = HERO_SECTION_TYPES.has(s.type);
+    const minWidth = isHero ? 1920 : 1200;
     const q = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
-    if (q) tasks.push({ key: String(i), query: q });
+    if (q) tasks.push({ key: String(i), query: q, minWidth });
 
     const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
-    qs.forEach((query, j) => tasks.push({ key: `${i}_${j}`, query }));
+    qs.forEach((query, j) => tasks.push({ key: `${i}_${j}`, query, minWidth: 1200 }));
   }
 
   console.log(`[website] fetching ${tasks.length} images:`, tasks.map((t) => `${t.key}="${t.query}"`).join(", "));
 
   // Sequential to enforce the no-duplicate rule via shared usedUrls set
-  const usedUrls = new Set<string>();
   const map: ImageMap = {};
-  for (const { key, query } of tasks) {
-    const url = await fetchUnsplashPhoto(query, usedUrls);
+  for (const { key, query, minWidth } of tasks) {
+    const url = await fetchUnsplashPhoto(query, usedUrls, minWidth);
     if (url) map[key] = url;
   }
 
@@ -1364,7 +1373,21 @@ export async function POST(req: NextRequest) {
     if (heroUpload && validImages[0]) {
       uploadSlot = await classifyUploadedImage(openai, validImages[0].data, validImages[0].mimeType);
     }
-    const imageMap = await fetchSpecImages(spec, heroUpload, uploadSlot);
+
+    // FIX 3: seed usedUrls from tenant_config.website_used_images for cross-site dedup
+    const usedUrls = new Set<string>();
+    if (tenant?.id) {
+      const { data: tcDedup } = await admin
+        .from("tenant_config")
+        .select("website_used_images")
+        .eq("tenant_id", tenant.id)
+        .maybeSingle();
+      const existing = Array.isArray((tcDedup as Record<string, unknown> | null)?.website_used_images)
+        ? ((tcDedup as Record<string, unknown>).website_used_images as string[])
+        : [];
+      existing.forEach((u) => usedUrls.add(u));
+    }
+    const imageMap = await fetchSpecImages(spec, heroUpload, uploadSlot, usedUrls);
 
     // ── Resolve / create the websites record ─────────────────────────────────
     let websiteId: string | null = null;
@@ -1462,9 +1485,10 @@ export async function POST(req: NextRequest) {
 
       // Single upsert: html + slug + chat + intake (versions only on initial generate)
       const tcUpsert: Record<string, unknown> = {
-        tenant_id:    tenant.id,
-        website_html: html,
-        website_slug: siteSlug || null,
+        tenant_id:           tenant.id,
+        website_html:        html,
+        website_slug:        siteSlug || null,
+        website_used_images: Array.from(usedUrls).slice(-200),
       };
       if (Array.isArray(body.chat))  tcUpsert.website_chat   = body.chat;
       // Always persist the effective language + any phone/email extracted from conversation

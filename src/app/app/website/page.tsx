@@ -44,7 +44,7 @@ function mk(el,si,f,ii,sk){
     if(v!==orig){orig=v;pe(si,f,ii!==null?ii:undefined,sk!==null?sk:undefined,v);}
   });
 }
-var HERO=[{sel:'[class*="ws-hero-headline"]',field:'headline'},{sel:'[class*="ws-hero-sub"]',field:'subheadline'},{sel:'.ws-btn-accent',field:'ctaPrimary'}];
+var HERO=[{sel:'[class*="ws-hero-headline"]',field:'headline'},{sel:'[class*="ws-hero-sub"]',field:'subheadline'},{sel:'.ws-btn-accent',field:'ctaPrimary'},{sel:'.ws-btn-ghost',field:'ctaSecondary'},{sel:'.ws-btn-outline',field:'ctaSecondary'}];
 var D={};
 D['hero']=D['hero-fullbleed']=D['hero-split']=D['hero-minimal']=HERO;
 D['about']=D['about-story']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'p[style*="color:var(--color-muted)"]',field:'body'},{items:'.ws-bullet',arrayField:'bullets',fields:[{sel:'.ws-bullet-title',field:'title'},{sel:'.ws-bullet-text',field:'text'}]}];
@@ -52,15 +52,15 @@ D['services']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:
 D['feature-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-feat-card',arrayField:'items',fields:[{sel:'.ws-feat-title',field:'title'},{sel:'.ws-feat-desc',field:'description'}]}];
 D['testimonials']=D['testimonials-section']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-test-card',arrayField:'items',fields:[{sel:'.ws-test-quote',field:'quote'},{sel:'.ws-test-name',field:'name'},{sel:'.ws-test-role',field:'role'}]}];
 D['team']=D['team-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-team-card',arrayField:'members',fields:[{sel:'.ws-team-name',field:'name'},{sel:'.ws-team-role',field:'role'},{sel:'.ws-team-bio',field:'bio'}]}];
-D['pricing-tiers']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-price-card',arrayField:'tiers',fields:[{sel:'.ws-price-name',field:'name'}]}];
+D['pricing-tiers']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-price-card',arrayField:'tiers',fields:[{sel:'.ws-price-name',field:'name'},{sel:'.ws-btn',field:'ctaText'}]}];
 D['service-list']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-svc-item',arrayField:'items',fields:[{sel:'.ws-svc-title',field:'title'},{sel:'.ws-svc-desc',field:'description'},{sel:'.ws-svc-price',field:'price'}]}];
 D['listings-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-listing-card',arrayField:'items',fields:[{sel:'.ws-listing-title',field:'title'},{sel:'.ws-listing-sub',field:'subtitle'},{sel:'.ws-listing-desc',field:'description'},{sel:'.ws-listing-price',field:'price'}]}];
 D['stats-band']=[{items:'.ws-stat',arrayField:'items',fields:[{sel:'.ws-stat-value',field:'value'},{sel:'.ws-stat-label',field:'label'}]}];
 D['process-steps']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-step',arrayField:'steps',fields:[{sel:'.ws-step-title',field:'title'},{sel:'.ws-step-desc',field:'description'}]}];
 D['faq']=D['faq-accordion']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-faq-item',arrayField:'items',fields:[{sel:'.ws-faq-q span:first-child',field:'q'},{sel:'.ws-faq-a',field:'a'}]}];
-D['cta_banner']=D['cta-band']=[{sel:'.ws-cta-headline',field:'headline'},{sel:'.ws-cta-sub',field:'sub'}];
-D['booking']=D['contact-block']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'}];
-D['footer']=[{sel:'.ws-footer-tag',field:'tagline'}];
+D['cta_banner']=D['cta-band']=[{sel:'.ws-cta-headline',field:'headline'},{sel:'.ws-cta-sub',field:'sub'},{sel:'.ws-btn-white',field:'ctaText'}];
+D['booking']=D['contact-block']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'button[type="submit"]',field:'ctaText'},{sel:'.ws-contact-value[data-field="phone"]',field:'phone'},{sel:'.ws-contact-value[data-field="email"]',field:'email'},{sel:'.ws-contact-value[data-field="address"]',field:'address'},{sel:'.ws-contact-value[data-field="hours"]',field:'hours'}];
+D['footer']=[{sel:'.ws-footer-tag',field:'tagline'},{sel:'.ws-footer-bottom',field:'copyright'}];
 D['gallery']=D['gallery-grid']=[];
 function proc(el,si,sec){
   var defs=D[sec.type];if(!defs)return;
@@ -80,6 +80,19 @@ document.querySelectorAll('[data-vs]').forEach(function(el){
   }
   var si=parseInt(vs,10);
   if(!isNaN(si)&&si<spec.sections.length)proc(el,si,spec.sections[si]);
+});
+var imgSty=document.createElement('style');
+imgSty.textContent='[data-vs] img{cursor:pointer;transition:filter .15s;}[data-vs] img:hover{filter:brightness(.78) saturate(.9);}';
+document.head.appendChild(imgSty);
+document.querySelectorAll('[data-vs] img').forEach(function(img){
+  img.addEventListener('click',function(e){
+    e.stopPropagation();e.preventDefault();
+    var sec=img.closest('[data-vs]');if(!sec)return;
+    var vs=sec.getAttribute('data-vs');
+    var allImgs=Array.prototype.slice.call(sec.querySelectorAll('img'));
+    var imgIdx=allImgs.indexOf(img);
+    parent.postMessage({type:'vela-img-click',vs:vs,imgIdx:imgIdx,src:img.src},'*');
+  });
 });
 })();`;
 
@@ -832,6 +845,11 @@ export default function WebsitePage() {
   const [analyticsData, setAnalyticsData]           = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading]     = useState(false);
   const [deleteTarget, setDeleteTarget]           = useState<WebsiteProject | null>(null);
+  const [restoreConfirmTarget, setRestoreConfirmTarget] = useState<VersionRecord | null>(null);
+  const [imgEditTarget, setImgEditTarget]         = useState<{ vs: string; imgIdx: number; src: string; websiteId: string } | null>(null);
+  const [imgSearchQuery, setImgSearchQuery]       = useState("");
+  const [imgSearching, setImgSearching]           = useState(false);
+  const [showColorPanel, setShowColorPanel]       = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const bottomRef    = useRef<HTMLDivElement>(null);
@@ -1131,7 +1149,7 @@ export default function WebsitePage() {
 
   // ── Switch to an existing project ────────────────────────────────────────────
   const handleSwitchProject = useCallback(async (p: WebsiteProject) => {
-    if (p.id === websiteIdRef.current) return;
+    if (p.id === websiteIdRef.current && built) return;
     setShowVersionsPanel(false);
     setShowAnalyticsPanel(false);
     setAnalyticsData(null);
@@ -1532,10 +1550,52 @@ export default function WebsitePage() {
     void handleSaveEdit(prevSpec);
   }, [undoStack, handleSaveEdit]);
 
+  // ── Inline edit: replace image ────────────────────────────────────────────────
+  const handleImageReplace = useCallback(async (
+    wsId: string, vs: string, imgIdx: number,
+    action: { query?: string; imageData?: string; remove?: boolean }
+  ) => {
+    setImgSearching(true);
+    try {
+      const res = await fetch("/api/website/image-replace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: wsId, vs, imgIdx, ...action }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { html?: string };
+      if (data.html) { setHtml(data.html); htmlRef.current = data.html; }
+    } finally {
+      setImgSearching(false);
+      setImgEditTarget(null);
+      setImgSearchQuery("");
+    }
+  }, []);
+
+  // ── Inline edit: change palette colour ───────────────────────────────────────
+  const handlePaletteChange = useCallback((key: string, value: string) => {
+    const cur = editSpecRef.current;
+    if (!cur) return;
+    const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+    if (next.designDNA?.palette) (next.designDNA.palette as Record<string, string>)[key] = value;
+    editSpecRef.current = next;
+    setEditSpec(next);
+    if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 600);
+  }, [handleSaveEdit]);
+
   // ── Inline edit: postMessage listener (iframe → parent) ──────────────────────
   useEffect(() => {
     if (!editMode) return;
     function handleMessage(e: MessageEvent) {
+      if ((e.data as Record<string, unknown>)?.type === "vela-img-click") {
+        const { vs, imgIdx, src } = e.data as { vs: string; imgIdx: number; src: string };
+        if (websiteIdRef.current) {
+          setImgSearchQuery("");
+          setImgEditTarget({ vs, imgIdx, src, websiteId: websiteIdRef.current });
+        }
+        return;
+      }
       if ((e.data as Record<string, unknown>)?.type !== "vela-edit") return;
       if (building) return;
       const { sectionIndex, field, itemIndex, subField, value } = e.data as {
@@ -1849,7 +1909,7 @@ export default function WebsitePage() {
                   </button>
                   {isPublished && websiteId && (
                     <button
-                      onClick={() => { setShowAnalyticsPanel(true); setShowVersionsPanel(false); loadAnalytics(); }}
+                      onClick={() => { setShowAnalyticsPanel(true); setShowVersionsPanel(false); setActiveTab("preview"); loadAnalytics(); }}
                       className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1863,101 +1923,7 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {showAnalyticsPanel ? (
-            /* ── Analytics panel ─────────────────────────────────────────── */
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Analytics</p>
-                <button onClick={loadAnalytics} disabled={analyticsLoading}
-                  className="text-[10px] text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] disabled:opacity-40 transition-colors">
-                  {analyticsLoading ? "…" : "↻ Refresh"}
-                </button>
-              </div>
-              {!isPublished ? (
-                <p className="text-[11px] text-[#9CA3AF] text-center py-8">Publish your site to start collecting analytics.</p>
-              ) : analyticsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="w-5 h-5 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                </div>
-              ) : !analyticsData ? (
-                <p className="text-[11px] text-[#9CA3AF] text-center py-8">Could not load analytics.</p>
-              ) : analyticsData.totalVisits === 0 ? (
-                <div className="text-center py-8 space-y-2">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                  <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
-                  <p className="text-[11px] text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Stat cards — 2×2 grid */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {([
-                      { label: "Total visits",    value: analyticsData.totalVisits    },
-                      { label: "Unique visitors", value: analyticsData.uniqueVisitors },
-                      { label: "Last 7 days",     value: analyticsData.last7Days      },
-                      { label: "Last 30 days",    value: analyticsData.last30Days     },
-                    ] as { label: string; value: number }[]).map(({ label, value }) => (
-                      <div key={label} className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3">
-                        <p className="text-lg font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
-                        <p className="text-[9px] text-[#9CA3AF] mt-0.5 leading-tight">{label}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Daily bar chart — 30 days */}
-                  <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3">
-                    <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">Daily visits — last 30 days</p>
-                    {(() => {
-                      const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
-                      return (
-                        <div className="flex items-end gap-px h-14">
-                          {analyticsData.dailyVisits.map((d, i) => (
-                            <div key={i} title={`${d.date}: ${d.count}`}
-                              className="flex-1 rounded-t-sm"
-                              style={{
-                                height:     d.count > 0 ? `${Math.max((d.count / maxVal) * 100, 4)}%` : "2px",
-                                background: d.count > 0 ? "var(--vp-color)" : "#E5E7EB",
-                                opacity:    d.count > 0 ? 1 : 0.3,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      );
-                    })()}
-                    <div className="flex justify-between mt-1.5">
-                      <span className="text-[8px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
-                      <span className="text-[8px] text-[#9CA3AF]">Today</span>
-                    </div>
-                  </div>
-                  {/* Top referrers */}
-                  {analyticsData.topReferrers.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Top sources</p>
-                      {analyticsData.topReferrers.map(({ referrer, count }) => (
-                        <div key={referrer} className="flex items-center gap-2">
-                          <span className="flex-1 text-[10px] text-[#374151] dark:text-[#E5E7EB] truncate min-w-0">{referrer}</span>
-                          <span className="text-[10px] font-semibold text-[#6B7280] shrink-0 tabular-nums">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Device split */}
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Devices</p>
-                    {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
-                      <div key={dev} className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#374151] dark:text-[#E5E7EB] w-11 shrink-0 capitalize">{dev}</span>
-                        <div className="flex-1 h-1.5 bg-[#E5E7EB] dark:bg-[#2A2A32] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all"
-                            style={{ width: `${analyticsData.deviceSplit[dev]}%`, background: "var(--vp-color)" }} />
-                        </div>
-                        <span className="text-[10px] font-semibold text-[#6B7280] w-7 text-right shrink-0 tabular-nums">{analyticsData.deviceSplit[dev]}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          ) : showVersionsPanel ? (
+          {showVersionsPanel ? (
             /* ── Versions panel ──────────────────────────────────────────── */
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <p className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest mb-2 px-1">Version History</p>
@@ -1995,10 +1961,7 @@ export default function WebsitePage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm("Restore this version? Your current draft will be replaced.")) {
-                            handleRestoreVersion(v);
-                            setShowVersionsPanel(false);
-                          }
+                          setRestoreConfirmTarget(v);
                         }}
                         disabled={restoringVersion === v.id}
                         className="text-[10px] font-semibold text-[#FF6B35] hover:opacity-80 disabled:opacity-40 shrink-0 mt-0.5"
@@ -2205,6 +2168,26 @@ export default function WebsitePage() {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 7v6h6"/><path d="M3 13C5.5 9 9.5 6 14 6a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-6.5-2.7"/></svg>
                           </button>
                         )}
+                        {editMode && editSpec?.designDNA?.palette && (
+                          <div className="relative">
+                            <button onClick={() => setShowColorPanel((p) => !p)} title="Edit colours"
+                              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${showColorPanel ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
+                              Colors
+                            </button>
+                            {showColorPanel && (
+                              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl shadow-lg p-3 space-y-2 z-50 min-w-[148px]">
+                                {(["accent","bg","text","muted"] as const).filter((k) => (editSpec.designDNA!.palette as Record<string,string>)[k]).map((k) => (
+                                  <div key={k} className="flex items-center gap-2">
+                                    <input type="color" value={(editSpec.designDNA!.palette as Record<string,string>)[k]}
+                                      onChange={(e) => handlePaletteChange(k, e.target.value)}
+                                      className="w-7 h-7 rounded cursor-pointer border-0 p-0.5 bg-transparent" />
+                                    <span className="text-[10px] text-[#6B7280] capitalize">{k}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {editSaving && (
                           <span className="text-[9px] text-[#9CA3AF] tabular-nums hidden sm:block">Saving…</span>
                         )}
@@ -2298,6 +2281,106 @@ export default function WebsitePage() {
                 </pre>
               </div>
 
+            ) : showAnalyticsPanel ? (
+              /* ── Analytics — full-width in preview pane ──────────────────── */
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-bold text-[#111111] dark:text-white">Analytics</h2>
+                    <p className="text-xs text-[#9CA3AF] mt-0.5">{siteName || "Your site"}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={loadAnalytics} disabled={analyticsLoading}
+                      className="text-[11px] text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] disabled:opacity-40 transition-colors">
+                      {analyticsLoading ? "…" : "↻ Refresh"}
+                    </button>
+                    <button onClick={() => setShowAnalyticsPanel(false)}
+                      className="text-[11px] text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors">
+                      ✕ Close
+                    </button>
+                  </div>
+                </div>
+                {!isPublished ? (
+                  <div className="text-center py-16 space-y-3">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Publish your site to start collecting analytics</p>
+                  </div>
+                ) : analyticsLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-8 h-8 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                  </div>
+                ) : !analyticsData ? (
+                  <p className="text-sm text-[#9CA3AF] text-center py-16">Could not load analytics.</p>
+                ) : analyticsData.totalVisits === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
+                    <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-4 gap-3">
+                      {([
+                        { label: "Total visits",    value: analyticsData.totalVisits    },
+                        { label: "Unique visitors", value: analyticsData.uniqueVisitors },
+                        { label: "Last 7 days",     value: analyticsData.last7Days      },
+                        { label: "Last 30 days",    value: analyticsData.last30Days     },
+                      ] as { label: string; value: number }[]).map(({ label, value }) => (
+                        <div key={label} className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                          <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
+                          <p className="text-xs text-[#9CA3AF] mt-1">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                      <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Daily visits — last 30 days</p>
+                      {(() => {
+                        const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
+                        return (
+                          <div className="flex items-end gap-px h-20">
+                            {analyticsData.dailyVisits.map((d, i) => (
+                              <div key={i} title={`${d.date}: ${d.count}`}
+                                className="flex-1 rounded-t-sm"
+                                style={{ height: d.count > 0 ? `${Math.max((d.count / maxVal) * 100, 4)}%` : "2px", background: d.count > 0 ? "var(--vp-color)" : "#E5E7EB", opacity: d.count > 0 ? 1 : 0.3 }}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      <div className="flex justify-between mt-2">
+                        <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
+                        <span className="text-[10px] text-[#9CA3AF]">Today</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {analyticsData.topReferrers.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">Top sources</p>
+                          {analyticsData.topReferrers.map(({ referrer, count }) => (
+                            <div key={referrer} className="flex items-center gap-2">
+                              <span className="flex-1 text-xs text-[#374151] dark:text-[#E5E7EB] truncate min-w-0">{referrer}</span>
+                              <span className="text-xs font-semibold text-[#6B7280] shrink-0 tabular-nums">{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">Devices</p>
+                        {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
+                          <div key={dev} className="flex items-center gap-2">
+                            <span className="text-xs text-[#374151] dark:text-[#E5E7EB] w-14 shrink-0 capitalize">{dev}</span>
+                            <div className="flex-1 h-1.5 bg-[#E5E7EB] dark:bg-[#2A2A32] rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${analyticsData.deviceSplit[dev]}%`, background: "var(--vp-color)" }} />
+                            </div>
+                            <span className="text-xs font-semibold text-[#6B7280] w-8 text-right shrink-0 tabular-nums">{analyticsData.deviceSplit[dev]}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
             ) : device === "desktop" ? (
               /* Desktop — full pane width */
               <div className="flex-1 min-h-0 flex overflow-hidden">
@@ -2306,7 +2389,7 @@ export default function WebsitePage() {
                   srcDoc={iframeSrc}
                   title="Website preview"
                   className="bg-white w-full h-full"
-                  sandbox="allow-scripts allow-same-origin allow-popups"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"
                 />
               </div>
             ) : hasDeviceFrame ? (
@@ -2322,7 +2405,7 @@ export default function WebsitePage() {
                     title="Website preview"
                     style={{ width: iframeW, height: iframeH, display: "block" }}
                     className="bg-white"
-                    sandbox="allow-scripts allow-same-origin allow-popups"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"
                   />
                 </div>
               </div>
@@ -2335,7 +2418,7 @@ export default function WebsitePage() {
                   title="Website preview"
                   style={{ width: iframeW, minHeight: "100%", height: "100%", display: "block" }}
                   className="bg-white shrink-0"
-                  sandbox="allow-scripts allow-same-origin allow-popups"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"
                 />
               </div>
             )}
@@ -2428,6 +2511,99 @@ export default function WebsitePage() {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Version Confirmation Modal */}
+      {restoreConfirmTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">Restore this version?</h2>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+              &ldquo;{restoreConfirmTarget.label}&rdquo; will replace your current draft. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setRestoreConfirmTarget(null)}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleRestoreVersion(restoreConfirmTarget);
+                  setShowVersionsPanel(false);
+                  setRestoreConfirmTarget(null);
+                }}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+                style={{ background: "var(--vp-color)" }}>
+                Restore
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Edit Modal */}
+      {imgEditTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); }}>
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">Replace image</h2>
+            {imgEditTarget.src && (
+              <img src={imgEditTarget.src} alt="" className="w-full h-32 object-cover rounded-lg" />
+            )}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Search Unsplash</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={imgSearchQuery}
+                  onChange={(e) => setImgSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && imgSearchQuery.trim()) void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { query: imgSearchQuery.trim() }); }}
+                  placeholder="e.g. coffee shop interior"
+                  className="flex-1 text-sm border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-2 bg-white dark:bg-[#111111] text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/40"
+                />
+                <button
+                  onClick={() => { if (imgSearchQuery.trim()) void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { query: imgSearchQuery.trim() }); }}
+                  disabled={imgSearching || !imgSearchQuery.trim()}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
+                  style={{ background: "var(--vp-color)" }}>
+                  {imgSearching ? "…" : "Search"}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="flex-1 cursor-pointer">
+                <span className="block w-full text-center text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                  Upload photo
+                </span>
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === "string") {
+                        void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { imageData: reader.result });
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+              <button
+                onClick={() => void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { remove: true })}
+                disabled={imgSearching}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-40">
+                Remove
+              </button>
+            </div>
+            <button onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); }}
+              className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+              Cancel
+            </button>
           </div>
         </div>
       )}

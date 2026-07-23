@@ -319,28 +319,31 @@ export function renderBooking(
 ): string {
   const services = (c.services ?? []).slice(0, 8);
   const contactItems = [
-    c.phone   && { icon: "phone", label: "Phone",   value: c.phone,   href: `tel:${c.phone.replace(/\s/g, "")}` },
-    c.email   && { icon: "mail",  label: "Email",   value: c.email,   href: `mailto:${c.email}` },
-    c.address && { icon: "map",   label: "Address", value: c.address, href: undefined },
-    c.hours   && { icon: "time",  label: "Hours",   value: c.hours,   href: undefined },
-  ].filter(Boolean) as { icon: string; label: string; value: string; href?: string }[];
+    c.phone   && { icon: "phone", label: "Phone",   value: c.phone,   href: `tel:${c.phone.replace(/\s/g, "")}`,  field: "phone" },
+    c.email   && { icon: "mail",  label: "Email",   value: c.email,   href: `mailto:${c.email}`,                  field: "email" },
+    c.address && { icon: "map",   label: "Address", value: c.address, href: undefined,                            field: "address" },
+    c.hours   && { icon: "time",  label: "Hours",   value: c.hours,   href: undefined,                            field: "hours" },
+  ].filter(Boolean) as { icon: string; label: string; value: string; href?: string; field: string }[];
 
   const hasContact = contactItems.length > 0;
   return `<section class="ws-section" id="booking">
   <div class="ws-container">
-    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${!hasContact ? `${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
-    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}` : ""}
     <div class="ws-booking-inner"${!hasContact ? ' style="grid-template-columns:1fr;max-width:640px;"' : ""}>
       ${hasContact ? `<div>
+        ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+        ${c.headline    ? `<h2 class="ws-heading" style="margin-bottom:16px;">${esc(c.headline)}</h2>` : ""}
+        ${c.subheadline ? `<p style="color:var(--color-muted);line-height:1.7;margin-bottom:32px;">${esc(c.subheadline)}</p>` : ""}
         ${contactItems.map((ci) => `
         <div class="ws-contact-item">
           <div class="ws-contact-icon">${icon(ci.icon, 20)}</div>
           <div>
             <p class="ws-contact-label">${esc(ci.label)}</p>
             ${ci.href
-              ? `<a href="${esc(ci.href)}" class="ws-contact-value" style="text-decoration:underline;text-underline-offset:3px;">${esc(ci.value)}</a>`
-              : `<p class="ws-contact-value">${esc(ci.value)}</p>`}
+              ? `<a href="${esc(ci.href)}" class="ws-contact-value" data-field="${esc(ci.field)}" style="text-decoration:underline;text-underline-offset:3px;">${esc(ci.value)}</a>`
+              : `<p class="ws-contact-value" data-field="${esc(ci.field)}">${esc(ci.value)}</p>`}
           </div>
         </div>`).join("")}
       </div>` : ""}
@@ -349,21 +352,21 @@ export function renderBooking(
           <div class="ws-form-row">
             <div class="ws-form-group">
               <label class="ws-form-label">First Name</label>
-              <input class="ws-form-input" type="text" name="firstName" placeholder="Jane" required>
+              <input class="ws-form-input" type="text" name="firstName" placeholder="First name" required>
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Last Name</label>
-              <input class="ws-form-input" type="text" name="lastName" placeholder="Smith" required>
+              <input class="ws-form-input" type="text" name="lastName" placeholder="Last name" required>
             </div>
           </div>
           <div class="ws-form-row">
             <div class="ws-form-group">
               <label class="ws-form-label">Phone</label>
-              <input class="ws-form-input" type="tel" name="phone" placeholder="+1 555 000 0000" required>
+              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number" required>
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Email</label>
-              <input class="ws-form-input" type="email" name="email" placeholder="jane@example.com">
+              <input class="ws-form-input" type="email" name="email" placeholder="Email address">
             </div>
           </div>
           ${services.length ? `
@@ -376,7 +379,7 @@ export function renderBooking(
           </div>` : ""}
           <div class="ws-form-group">
             <label class="ws-form-label">Preferred Date &amp; Time</label>
-            <input class="ws-form-input" type="text" name="datetime" placeholder="e.g. Mon 3 July, 10am">
+            <input class="ws-form-input" type="text" name="datetime" placeholder="Preferred date and time">
           </div>
           <div class="ws-form-group">
             <label class="ws-form-label">Message</label>
@@ -500,7 +503,7 @@ export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
     <h1 class="ws-hero-headline ws-hero-headline--min" style="font-family:var(--font-heading);font-size:${t.heroHeadlineSize};font-weight:${t.headingWeight};line-height:1.08;letter-spacing:${t.headingTracking};text-transform:${t.headingTransform};color:${t.heading};margin-bottom:22px;max-width:52ch;">${esc(c.headline || "Welcome")}</h1>
     ${c.subheadline ? `<p style="font-size:1.1rem;line-height:1.75;color:${t.muted};max-width:48ch;margin-bottom:48px;">${esc(c.subheadline)}</p>` : ""}
     <div class="ws-hero-ctas" style="justify-content:center;">
-      ${c.ctaPrimary   ? `<a href="#contact" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
       ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
     </div>
   </div>
@@ -514,7 +517,7 @@ export function renderFeatureGrid(
 ): string {
   const items = (c.items ?? []).slice(0, 6);
   if (!items.length) return "";
-  return `<section class="ws-section ws-section-alt" id="features">
+  return `<section class="ws-section ws-section-alt" id="services">
   <div class="ws-container">
     ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
@@ -555,7 +558,7 @@ export function renderPricingTiers(
         <ul class="ws-price-features">
           ${features.map((f) => `<li class="ws-price-feat"><span>${icon("check", 13)}</span>${esc(f)}</li>`).join("")}
         </ul>
-        <a href="#contact" class="ws-btn ${hi ? "ws-btn-accent" : "ws-btn-outline"}" style="width:100%;justify-content:center;">${esc(tier.ctaText || "Get Started")}</a>
+        <a href="#booking" class="ws-btn ${hi ? "ws-btn-accent" : "ws-btn-outline"}" style="width:100%;justify-content:center;">${esc(tier.ctaText || "Get Started")}</a>
       </div>`;
       }).join("")}
     </div>
@@ -721,8 +724,8 @@ export function renderContactBlock(
   const html = renderBooking(t, c);
   // Replace id="booking" with id="contact" so contact-block has its own anchor,
   // and remove the section's bottom padding since footer follows immediately.
-  return html.replace(`id="booking"`, `id="contact"`).replace(
-    `class="ws-section" id="contact"`,
-    `class="ws-section ws-section--contact" id="contact"`
+  return html.replace(
+    `class="ws-section" id="booking"`,
+    `class="ws-section ws-section--contact" id="booking"`
   );
 }

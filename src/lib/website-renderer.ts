@@ -509,7 +509,7 @@ ${serviceCardOverrides}
 .ws-footer-bottom{border-top:1px solid #1A2235;padding-top:24px;font-size:0.8rem;text-align:center;}
 
 /* ── Contact gap fix: booking/contact-block sits directly before footer ──── */
-#booking, #contact { padding-bottom: 0; }
+#booking { padding-bottom: 0; }
 
 /* ── hero-minimal ────────────────────────────────────────────────────────── */
 .ws-hero--minimal{
