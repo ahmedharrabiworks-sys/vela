@@ -799,6 +799,13 @@ html[dir="rtl"] .ws-service-card{text-align:right;}
 `.trim();
 }
 
+// ── Section index annotation ──────────────────────────────────────────────────
+// Adds data-vs="{i}" to the outermost <section|footer> tag of each rendered section.
+// The inline-edit script uses this to map DOM elements back to spec.sections[i].
+function addDataVs(html: string, i: number | string): string {
+  return html.replace(/^(<(?:section|footer)\b)/, `$1 data-vs="${i}"`);
+}
+
 // ── Main renderer ─────────────────────────────────────────────────────────────
 export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: string, language?: string): string {
   // Resolve design tokens: v2 designDNA takes priority over legacy stylePreset
@@ -832,88 +839,97 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
     switch (s.type) {
       // ── Legacy section types (v1 backward compat) ──────────────────────────
       case "hero":
-        bodyParts.push(renderHero(t, s.content as Parameters<typeof renderHero>[1], images[imgKey]));
+        bodyParts.push(addDataVs(renderHero(t, s.content as Parameters<typeof renderHero>[1], images[imgKey]), i));
         break;
       case "about":
-        bodyParts.push(renderAbout(t, s.content as Parameters<typeof renderAbout>[1], images[imgKey]));
+        bodyParts.push(addDataVs(renderAbout(t, s.content as Parameters<typeof renderAbout>[1], images[imgKey]), i));
         break;
       case "services":
-        bodyParts.push(renderServices(t, s.content as Parameters<typeof renderServices>[1]));
+        bodyParts.push(addDataVs(renderServices(t, s.content as Parameters<typeof renderServices>[1]), i));
         break;
       case "gallery": {
-        bodyParts.push(renderGallery(t, s.content as Parameters<typeof renderGallery>[1], multiImgs()));
+        const g = renderGallery(t, s.content as Parameters<typeof renderGallery>[1], multiImgs());
+        if (g) bodyParts.push(addDataVs(g, i));
         break;
       }
       case "testimonials":
-        bodyParts.push(renderTestimonials(t, s.content as Parameters<typeof renderTestimonials>[1]));
+        bodyParts.push(addDataVs(renderTestimonials(t, s.content as Parameters<typeof renderTestimonials>[1]), i));
         break;
       case "team":
-        bodyParts.push(renderTeam(t, s.content as Parameters<typeof renderTeam>[1]));
+        bodyParts.push(addDataVs(renderTeam(t, s.content as Parameters<typeof renderTeam>[1]), i));
         break;
       case "booking":
-        bodyParts.push(renderBooking(t, s.content as Parameters<typeof renderBooking>[1]));
+        bodyParts.push(addDataVs(renderBooking(t, s.content as Parameters<typeof renderBooking>[1]), i));
         break;
       case "faq":
-        bodyParts.push(renderFaq(t, s.content as Parameters<typeof renderFaq>[1]));
+        bodyParts.push(addDataVs(renderFaq(t, s.content as Parameters<typeof renderFaq>[1]), i));
         break;
       case "cta_banner":
-        bodyParts.push(renderCtaBanner(t, s.content as Parameters<typeof renderCtaBanner>[1]));
+        bodyParts.push(addDataVs(renderCtaBanner(t, s.content as Parameters<typeof renderCtaBanner>[1]), i));
         break;
       case "footer":
         break;
 
       // ── v2 section types ───────────────────────────────────────────────────
       case "hero-fullbleed":
-        bodyParts.push(renderHeroFullbleed(t, s.content as Parameters<typeof renderHeroFullbleed>[1], images[imgKey]));
+        bodyParts.push(addDataVs(renderHeroFullbleed(t, s.content as Parameters<typeof renderHeroFullbleed>[1], images[imgKey]), i));
         break;
       case "hero-split":
-        bodyParts.push(renderHeroSplitSection(t, s.content as Parameters<typeof renderHeroSplitSection>[1], images[imgKey]));
+        bodyParts.push(addDataVs(renderHeroSplitSection(t, s.content as Parameters<typeof renderHeroSplitSection>[1], images[imgKey]), i));
         break;
       case "hero-minimal":
-        bodyParts.push(renderHeroMinimal(t, s.content as Parameters<typeof renderHeroMinimal>[1]));
+        bodyParts.push(addDataVs(renderHeroMinimal(t, s.content as Parameters<typeof renderHeroMinimal>[1]), i));
         break;
       case "feature-grid":
-        bodyParts.push(renderFeatureGrid(t, s.content as Parameters<typeof renderFeatureGrid>[1]));
+        bodyParts.push(addDataVs(renderFeatureGrid(t, s.content as Parameters<typeof renderFeatureGrid>[1]), i));
         break;
       case "pricing-tiers":
-        bodyParts.push(renderPricingTiers(t, s.content as Parameters<typeof renderPricingTiers>[1]));
+        bodyParts.push(addDataVs(renderPricingTiers(t, s.content as Parameters<typeof renderPricingTiers>[1]), i));
         break;
       case "service-list":
-        bodyParts.push(renderServiceList(t, s.content as Parameters<typeof renderServiceList>[1]));
+        bodyParts.push(addDataVs(renderServiceList(t, s.content as Parameters<typeof renderServiceList>[1]), i));
         break;
-      case "gallery-grid":
-        bodyParts.push(renderGalleryGrid(t, s.content as Parameters<typeof renderGalleryGrid>[1], multiImgs()));
+      case "gallery-grid": {
+        const gg = renderGalleryGrid(t, s.content as Parameters<typeof renderGalleryGrid>[1], multiImgs());
+        if (gg) bodyParts.push(addDataVs(gg, i));
         break;
-      case "listings-grid":
-        bodyParts.push(renderListingsGrid(t, s.content as Parameters<typeof renderListingsGrid>[1], multiImgs()));
+      }
+      case "listings-grid": {
+        const lg = renderListingsGrid(t, s.content as Parameters<typeof renderListingsGrid>[1], multiImgs());
+        if (lg) bodyParts.push(addDataVs(lg, i));
         break;
+      }
       case "about-story":
-        bodyParts.push(renderAboutStory(t, s.content as Parameters<typeof renderAboutStory>[1], images[imgKey]));
+        bodyParts.push(addDataVs(renderAboutStory(t, s.content as Parameters<typeof renderAboutStory>[1], images[imgKey]), i));
         break;
       case "team-grid":
-        bodyParts.push(renderTeamGrid(t, s.content as Parameters<typeof renderTeamGrid>[1]));
+        bodyParts.push(addDataVs(renderTeamGrid(t, s.content as Parameters<typeof renderTeamGrid>[1]), i));
         break;
-      case "stats-band":
-        bodyParts.push(renderStatsBand(t, s.content as Parameters<typeof renderStatsBand>[1]));
+      case "stats-band": {
+        const sb = renderStatsBand(t, s.content as Parameters<typeof renderStatsBand>[1]);
+        if (sb) bodyParts.push(addDataVs(sb, i));
         break;
-      case "process-steps":
-        bodyParts.push(renderProcessSteps(t, s.content as Parameters<typeof renderProcessSteps>[1]));
+      }
+      case "process-steps": {
+        const ps = renderProcessSteps(t, s.content as Parameters<typeof renderProcessSteps>[1]);
+        if (ps) bodyParts.push(addDataVs(ps, i));
         break;
+      }
       case "faq-accordion":
-        bodyParts.push(renderFaqAccordion(t, s.content as Parameters<typeof renderFaqAccordion>[1]));
+        bodyParts.push(addDataVs(renderFaqAccordion(t, s.content as Parameters<typeof renderFaqAccordion>[1]), i));
         break;
       case "cta-band":
-        bodyParts.push(renderCtaBand(t, s.content as Parameters<typeof renderCtaBand>[1]));
+        bodyParts.push(addDataVs(renderCtaBand(t, s.content as Parameters<typeof renderCtaBand>[1]), i));
         break;
       case "contact-block":
-        bodyParts.push(renderContactBlock(t, s.content as Parameters<typeof renderContactBlock>[1]));
+        bodyParts.push(addDataVs(renderContactBlock(t, s.content as Parameters<typeof renderContactBlock>[1]), i));
         break;
       default:
         break;
     }
   }
 
-  bodyParts.push(renderFooter(name, footerContent as Parameters<typeof renderFooter>[1]));
+  bodyParts.push(addDataVs(renderFooter(name, footerContent as Parameters<typeof renderFooter>[1]), "footer"));
 
   const css = buildCss(t);
   const rtlExtra = buildRtlExtra(language);

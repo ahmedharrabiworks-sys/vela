@@ -1,7 +1,87 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
+import type { WebsiteSpec } from "@/lib/website-renderer";
+
+// ── Spec helpers (for inline edit mode) ──────────────────────────────────────
+function extractSpec(html: string): WebsiteSpec | null {
+  const m = html.match(/<!-- WEBSITE_SPEC: ([\s\S]+?) -->/);
+  if (!m) return null;
+  try { return JSON.parse(m[1]) as WebsiteSpec; } catch { return null; }
+}
+
+// Self-contained edit script injected into the preview iframe when Edit mode is ON.
+// Reads window.VS_SPEC, annotates editable text elements with data-ve attributes,
+// and postMessages { type:"vela-edit", sectionIndex, field, itemIndex?, subField?, value }
+// to the parent on blur.
+const EDIT_SCRIPT = String.raw`(function(){
+'use strict';
+var spec=window.VS_SPEC;
+if(!spec||!Array.isArray(spec.sections))return;
+var sty=document.createElement('style');
+sty.textContent='[data-ve]{cursor:text;transition:outline .1s;}[data-ve]:hover{outline:2px dashed rgba(255,107,53,.75);outline-offset:2px;border-radius:2px;}[data-ve][contenteditable="true"]{outline:2px solid #FF6B35!important;outline-offset:2px;background:rgba(255,107,53,.04);border-radius:2px;min-width:4px;}';
+document.head.appendChild(sty);
+function pe(si,f,ii,sk,v){parent.postMessage({type:'vela-edit',sectionIndex:si,field:f,itemIndex:ii,subField:sk,value:v},'*');}
+function mk(el,si,f,ii,sk){
+  if(el.hasAttribute('data-ve'))return;
+  el.setAttribute('data-ve','1');
+  var orig=el.textContent||'';
+  el.addEventListener('click',function(e){
+    e.stopPropagation();e.preventDefault();
+    if(el.contentEditable==='true')return;
+    el.contentEditable='true';el.focus();
+    try{var r=document.createRange();r.selectNodeContents(el);r.collapse(false);var s=getSelection();if(s){s.removeAllRanges();s.addRange(r);}}catch(x){}
+  });
+  el.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();el.blur();}
+    if(e.key==='Escape'){el.textContent=orig;el.contentEditable='false';}
+  });
+  el.addEventListener('blur',function(){
+    if(el.contentEditable!=='true')return;
+    el.contentEditable='false';
+    var v=el.textContent||'';
+    if(v!==orig){orig=v;pe(si,f,ii!==null?ii:undefined,sk!==null?sk:undefined,v);}
+  });
+}
+var HERO=[{sel:'[class*="ws-hero-headline"]',field:'headline'},{sel:'[class*="ws-hero-sub"]',field:'subheadline'},{sel:'.ws-btn-accent',field:'ctaPrimary'}];
+var D={};
+D['hero']=D['hero-fullbleed']=D['hero-split']=D['hero-minimal']=HERO;
+D['about']=D['about-story']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'p[style*="color:var(--color-muted)"]',field:'body'},{items:'.ws-bullet',arrayField:'bullets',fields:[{sel:'.ws-bullet-title',field:'title'},{sel:'.ws-bullet-text',field:'text'}]}];
+D['services']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-service-card',arrayField:'items',fields:[{sel:'.ws-service-title',field:'title'},{sel:'.ws-service-desc',field:'description'},{sel:'.ws-service-price',field:'price'}]}];
+D['feature-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-feat-card',arrayField:'items',fields:[{sel:'.ws-feat-title',field:'title'},{sel:'.ws-feat-desc',field:'description'}]}];
+D['testimonials']=D['testimonials-section']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-test-card',arrayField:'items',fields:[{sel:'.ws-test-quote',field:'quote'},{sel:'.ws-test-name',field:'name'},{sel:'.ws-test-role',field:'role'}]}];
+D['team']=D['team-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-team-card',arrayField:'members',fields:[{sel:'.ws-team-name',field:'name'},{sel:'.ws-team-role',field:'role'},{sel:'.ws-team-bio',field:'bio'}]}];
+D['pricing-tiers']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-price-card',arrayField:'tiers',fields:[{sel:'.ws-price-name',field:'name'}]}];
+D['service-list']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-svc-item',arrayField:'items',fields:[{sel:'.ws-svc-title',field:'title'},{sel:'.ws-svc-desc',field:'description'},{sel:'.ws-svc-price',field:'price'}]}];
+D['listings-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-listing-card',arrayField:'items',fields:[{sel:'.ws-listing-title',field:'title'},{sel:'.ws-listing-sub',field:'subtitle'},{sel:'.ws-listing-desc',field:'description'},{sel:'.ws-listing-price',field:'price'}]}];
+D['stats-band']=[{items:'.ws-stat',arrayField:'items',fields:[{sel:'.ws-stat-value',field:'value'},{sel:'.ws-stat-label',field:'label'}]}];
+D['process-steps']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-step',arrayField:'steps',fields:[{sel:'.ws-step-title',field:'title'},{sel:'.ws-step-desc',field:'description'}]}];
+D['faq']=D['faq-accordion']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-faq-item',arrayField:'items',fields:[{sel:'.ws-faq-q span:first-child',field:'q'},{sel:'.ws-faq-a',field:'a'}]}];
+D['cta_banner']=D['cta-band']=[{sel:'.ws-cta-headline',field:'headline'},{sel:'.ws-cta-sub',field:'sub'}];
+D['booking']=D['contact-block']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'}];
+D['footer']=[{sel:'.ws-footer-tag',field:'tagline'}];
+D['gallery']=D['gallery-grid']=[];
+function proc(el,si,sec){
+  var defs=D[sec.type];if(!defs)return;
+  defs.forEach(function(def){
+    if(def.items){
+      el.querySelectorAll(def.items).forEach(function(item,j){
+        def.fields.forEach(function(fd){var t=item.querySelector(fd.sel);if(t)mk(t,si,def.arrayField,j,fd.field);});
+      });
+    }else{var t=el.querySelector(def.sel);if(t)mk(t,si,def.field,null,null);}
+  });
+}
+document.querySelectorAll('[data-vs]').forEach(function(el){
+  var vs=el.getAttribute('data-vs');
+  if(vs==='footer'){
+    var fi=spec.sections.findIndex(function(s){return s.type==='footer';});
+    if(fi>=0)proc(el,fi,spec.sections[fi]);return;
+  }
+  var si=parseInt(vs,10);
+  if(!isNaN(si)&&si<spec.sections.length)proc(el,si,spec.sections[si]);
+});
+})();`;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AttachedImage = { preview: string; base64: string; mimeType: string };
@@ -670,6 +750,15 @@ export default function WebsitePage() {
   const [removingDomain, setRemovingDomain]     = useState(false);
   const [domainError, setDomainError]           = useState("");
 
+  // ── Inline edit mode ─────────────────────────────────────────────────────────
+  const [editMode, setEditMode]           = useState(false);
+  const [editSpec, setEditSpec]           = useState<WebsiteSpec | null>(null);
+  const [undoStack, setUndoStack]         = useState<WebsiteSpec[]>([]);
+  const [editSaving, setEditSaving]       = useState(false);
+  const editSpecRef                        = useRef<WebsiteSpec | null>(null);
+  const editSaveTimerRef                   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const siteLanguageRef                    = useRef(siteLanguage);
+
   // ── New Website modal ─────────────────────────────────────────────────────────
   const [showNewWebsiteModal, setShowNewWebsiteModal] = useState(false);
 
@@ -828,6 +917,9 @@ export default function WebsitePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Keep siteLanguageRef in sync ─────────────────────────────────────────────
+  useEffect(() => { siteLanguageRef.current = siteLanguage; }, [siteLanguage]);
+
   // ── Auto-scroll chat ─────────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -966,6 +1058,9 @@ export default function WebsitePage() {
     setShowAnalyticsPanel(false);
     setAnalyticsData(null);
     setRotated(false);
+    setEditMode(false); setEditSpec(null); setUndoStack([]);
+    editSpecRef.current = null;
+    if (editSaveTimerRef.current) { clearTimeout(editSaveTimerRef.current); editSaveTimerRef.current = null; }
 
     // Ensure the active project is in the sidebar before clearing websiteId
     if (websiteId) {
@@ -1008,6 +1103,9 @@ export default function WebsitePage() {
     setShowAnalyticsPanel(false);
     setAnalyticsData(null);
     setRotated(false);
+    setEditMode(false); setEditSpec(null); setUndoStack([]);
+    editSpecRef.current = null;
+    if (editSaveTimerRef.current) { clearTimeout(editSaveTimerRef.current); editSaveTimerRef.current = null; }
     setBuilding(false); setBuilt(false); setDraftDiffers(false);
     setHtml(""); htmlRef.current = ""; setPreviewVersionHtml(null);
     setInput(""); setAttachedImages([]);
@@ -1138,6 +1236,9 @@ export default function WebsitePage() {
       setVersions([]); setSiteName(""); setSiteSlug(""); setShowVersionsPanel(false); setShowAnalyticsPanel(false); setAnalyticsData(null);
       setIsPublished(false); setPublishedUrl("");
       setActiveTab("chat"); setViewMode("preview"); setShowPublishPanel(false);
+      setEditMode(false); setEditSpec(null); setUndoStack([]);
+      editSpecRef.current = null;
+      if (editSaveTimerRef.current) { clearTimeout(editSaveTimerRef.current); editSaveTimerRef.current = null; }
       setMsgs([INITIAL_MSG(btype, siteLanguage || undefined)]);
     }
     try {
@@ -1181,6 +1282,11 @@ export default function WebsitePage() {
     const text = input.trim();
     if ((!text && attachedImages.length === 0) || building) return;
     setInput("");
+    // Exit edit mode before generation (edit mode is blocked during builds)
+    if (editMode) {
+      if (editSaveTimerRef.current) { clearTimeout(editSaveTimerRef.current); editSaveTimerRef.current = null; }
+      editSpecRef.current = null; setEditSpec(null); setUndoStack([]); setEditMode(false);
+    }
 
     const capturedImages = [...attachedImages];
     setAttachedImages([]);
@@ -1326,6 +1432,107 @@ export default function WebsitePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, attachedImages, building, built, html, msgs, contactInfo, persistChat]);
 
+  // ── Inline edit: save edited spec to server ───────────────────────────────────
+  const handleSaveEdit = useCallback(async (spec: WebsiteSpec) => {
+    const wId = websiteIdRef.current;
+    if (!wId) return;
+    setEditSaving(true);
+    try {
+      const res  = await fetch("/api/website/save-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: wId, spec, language: siteLanguageRef.current || "English" }),
+      });
+      const data = await res.json() as { html?: string; error?: string };
+      if (data.html) {
+        setHtml(data.html);
+        htmlRef.current = data.html;
+        setDraftDiffers(true);
+        const freshSpec = extractSpec(data.html);
+        if (freshSpec) { editSpecRef.current = freshSpec; setEditSpec(freshSpec); }
+        const editVer: VersionRecord = {
+          id: crypto.randomUUID(), label: "Manual edit",
+          created_at: new Date().toISOString(), type: "generate", html: data.html,
+        };
+        setVersions((prev) => [...prev.slice(-19), editVer]);
+      }
+    } catch { /* non-critical */ }
+    finally { setEditSaving(false); }
+  // reads refs only — no state deps needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Inline edit: toggle edit mode ────────────────────────────────────────────
+  const handleToggleEditMode = useCallback(() => {
+    if (building || !built) return;
+    if (editMode) {
+      // Exiting: flush any pending debounced save immediately
+      if (editSaveTimerRef.current) {
+        clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = null;
+        if (editSpecRef.current) void handleSaveEdit(editSpecRef.current);
+      }
+      editSpecRef.current = null;
+      setEditSpec(null);
+      setUndoStack([]);
+      setEditMode(false);
+    } else {
+      // Entering: parse spec from current preview HTML
+      const pHtml = previewVersionHtml ?? htmlRef.current;
+      const spec = extractSpec(pHtml);
+      if (!spec) return;
+      editSpecRef.current = spec;
+      setEditSpec(spec);
+      setUndoStack([]);
+      setEditMode(true);
+    }
+  }, [editMode, building, built, previewVersionHtml, handleSaveEdit]);
+
+  // ── Inline edit: undo ────────────────────────────────────────────────────────
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const prevSpec = undoStack[undoStack.length - 1];
+    setUndoStack((prev) => prev.slice(0, -1));
+    editSpecRef.current = prevSpec;
+    setEditSpec(prevSpec);
+    if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    void handleSaveEdit(prevSpec);
+  }, [undoStack, handleSaveEdit]);
+
+  // ── Inline edit: postMessage listener (iframe → parent) ──────────────────────
+  useEffect(() => {
+    if (!editMode) return;
+    function handleMessage(e: MessageEvent) {
+      if ((e.data as Record<string, unknown>)?.type !== "vela-edit") return;
+      if (building) return;
+      const { sectionIndex, field, itemIndex, subField, value } = e.data as {
+        sectionIndex: number; field: string;
+        itemIndex?: number; subField?: string; value: string;
+      };
+      const cur = editSpecRef.current;
+      if (!cur) return;
+      // Push snapshot to undo stack
+      setUndoStack((prev) => [...prev.slice(-19), JSON.parse(JSON.stringify(cur)) as WebsiteSpec]);
+      // Deep-clone and apply edit
+      const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+      const sec = next.sections[sectionIndex];
+      if (!sec) return;
+      if (itemIndex !== undefined && subField !== undefined) {
+        const arr = sec.content[field] as Record<string, unknown>[] | undefined;
+        if (arr && arr[itemIndex]) arr[itemIndex][subField] = value;
+      } else {
+        sec.content[field] = value;
+      }
+      editSpecRef.current = next;
+      setEditSpec(next);
+      // Debounce save: 1s after last field edit
+      if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+      editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 1000);
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [editMode, building, handleSaveEdit]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
@@ -1333,6 +1540,26 @@ export default function WebsitePage() {
   // ── Derived values ────────────────────────────────────────────────────────────
   const origin      = typeof window !== "undefined" ? window.location.origin : "";
   const previewHtml = previewVersionHtml ?? html;
+
+  // When edit mode is ON, inject window.VS_SPEC + the edit script before </body>.
+  // Depends on previewHtml (reloads iframe after server save) but intentionally
+  // reads editSpecRef.current (not editSpec state) so that mid-edit field changes
+  // do NOT trigger an iframe reload — only the server-returned HTML does.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const editSrcDoc = useMemo(() => {
+    if (!editMode || !previewHtml) return previewHtml;
+    const spec = editSpecRef.current;
+    if (!spec) return previewHtml;
+    const specJson = JSON.stringify(spec)
+      .replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
+    const inject = `<script>window.VS_EDIT_MODE=true;window.VS_SPEC=${specJson};${EDIT_SCRIPT}<\/script>`;
+    return previewHtml.includes("</body>")
+      ? previewHtml.replace("</body>", inject + "</body>")
+      : previewHtml + inject;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, previewHtml]); // editSpec intentionally excluded — uses ref
+
+  const iframeSrc = editMode ? (editSrcDoc ?? previewHtml) : previewHtml;
 
   // Device preview — real pixel dimensions, no transform scaling
   const _baseW        = device === "tablet" ? 834 : 390;
@@ -1926,6 +2153,31 @@ export default function WebsitePage() {
                 </div>
                 {viewMode === "preview" && (
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Edit mode toggle — hidden when previewing a version or during generation */}
+                    {!previewVersionHtml && (
+                      <>
+                        <button
+                          onClick={handleToggleEditMode}
+                          disabled={building || !built}
+                          title={editMode ? "Exit edit mode" : "Click any text on the preview to edit it"}
+                          className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-40 ${
+                            editMode
+                              ? "bg-[#FF6B35] text-white"
+                              : "bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white"
+                          }`}>
+                          {editMode ? "Done" : "Edit"}
+                        </button>
+                        {editMode && undoStack.length > 0 && (
+                          <button onClick={handleUndo} title="Undo last edit"
+                            className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 7v6h6"/><path d="M3 13C5.5 9 9.5 6 14 6a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-6.5-2.7"/></svg>
+                          </button>
+                        )}
+                        {editSaving && (
+                          <span className="text-[9px] text-[#9CA3AF] tabular-nums hidden sm:block">Saving…</span>
+                        )}
+                      </>
+                    )}
                     {/* 4-device selector */}
                     <div className="flex items-center gap-0.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
                       {(["desktop", "laptop", "tablet", "phone"] as DevicePreset[]).map((d) => (
@@ -2019,7 +2271,7 @@ export default function WebsitePage() {
               <div className="flex-1 min-h-0 flex overflow-hidden">
                 <iframe
                   key={previewHtml}
-                  srcDoc={previewHtml}
+                  srcDoc={iframeSrc}
                   title="Website preview"
                   className="bg-white w-full h-full"
                   sandbox="allow-scripts allow-same-origin allow-popups"
@@ -2034,7 +2286,7 @@ export default function WebsitePage() {
                 >
                   <iframe
                     key={`${previewHtml.length}-${iframeW}-${iframeH}`}
-                    srcDoc={previewHtml}
+                    srcDoc={iframeSrc}
                     title="Website preview"
                     style={{ width: iframeW, height: iframeH, display: "block" }}
                     className="bg-white"
@@ -2047,7 +2299,7 @@ export default function WebsitePage() {
               <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-4">
                 <iframe
                   key={`${previewHtml.length}-${iframeW}`}
-                  srcDoc={previewHtml}
+                  srcDoc={iframeSrc}
                   title="Website preview"
                   style={{ width: iframeW, minHeight: "100%", height: "100%", display: "block" }}
                   className="bg-white shrink-0"
