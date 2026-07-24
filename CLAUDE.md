@@ -148,7 +148,7 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 ## 7. ROADMAP (CURRENT ORDER)
 
 ### Website Builder — Design Engine Rebuild (active — see §12 for detailed phase status)
-Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — NEXT. Phase 2d (content components) — not started. Phase 2e (nav/footer) — not started. Phase 3 (design system formalization) — not started. Phase 4 (image engine rebuild) — not started, well-diagnosed (queries need category+section+subject, not location-based). Phase 5 (rich editor improvements, constrained first) — not started.
+Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — DONE. Phase 2d (content components) — NEXT. Phase 2e (nav/footer) — not started. Phase 3 (design system formalization) — not started. Phase 4 (image engine rebuild) — not started, well-diagnosed (queries need category+section+subject, not location-based). Phase 5 (rich editor improvements, constrained first) — not started.
 
 ### Phase A — Fix what's broken (before non-Website-Builder new features)
 1. Clean up Vercel domains (Oussama, browser)
@@ -244,7 +244,8 @@ Moving from fixed templates toward a **component pool selected via a Design Inte
 - **Phase 2b — Trust + Conversion Component Pool (DONE, commits `222d95e`, `c894c7e`):**
   9 components: `comparison-table`, `agent-card`, `press-quote-band`, `trainer-showcase`, `trust-badges-band` (trust pool); `multi-step-form`, `appointment-form`, `valuation-form`, `membership-form` (conversion pool). Same pool + server-enforcement pattern as heroes. Absolute rule: never fabricate trust signals — a component is omitted entirely if real supporting data isn't present (no fallback needed here, unlike heroes which must always render something). Verified end-to-end with a real dental clinic test site through the actual OpenAI + Unsplash pipeline: `trust-badges-band` rendered 5 real numeric stats (18+ years, 12,000+ patients, 480+ reviews, board certification, award), `appointment-form` rendered the real 7-service list, contact info matched exactly — zero fabrication confirmed.
 
-- **Phase 2c — Category-specific showcase components — NEXT.** Property listings grid, treatment gallery, portfolio grid, membership plans display.
+- **Phase 2c — Category-specific showcase components (DONE, commit `c7fa099`):**
+  4 showcase components in a data-gated pool: `property-listings-grid` (real_estate — requires bedroom count + price/area signals), `treatment-gallery` (dental — no extract gate; post-GPT `verifyShowcaseComponents()` guards services array), `portfolio-grid` (interior_design — requires ≥2 completion verbs in description), `membership-plans-display` (gym — requires tier names + inclusion keywords). Showcase injected before trust/conversion so final order is showcase → trust → conversion → contact-block. Verified end-to-end via 8 real GPT+Unsplash tests (4 categories × with/without data): extract gates fired correctly on 7/8 cases; dental "sparse" case correctly reached `verifyShowcaseComponents()` and was suppressed there (services:[] from GPT). Zero fabrication across all 8 outputs.
 
 - **Phase 2d — Content components — not started.** Gallery variants, testimonials, FAQ variants.
 
