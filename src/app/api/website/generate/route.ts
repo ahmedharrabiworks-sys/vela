@@ -441,12 +441,53 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
+
+    // Phase 2c: property-listings-grid — 1 imageQuery per listing
+    if (s.type === "property-listings-grid") {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      const listings = Array.isArray(s.content?.listings) ? (s.content.listings as unknown[]) : [];
+      const targetCount = Math.max(listings.length || 3, 3);
+      if (qs.length < targetCount) {
+        const locCtx = effectiveCity ? ` ${effectiveCity}` : "";
+        const filled = Array.from({ length: targetCount }, (_, j) =>
+          qs[j] ?? `luxury real estate property${locCtx} editorial interior ${j + 1}`.replace(/\s+/g, " ").trim()
+        );
+        (s as { imageQueries?: string[] }).imageQueries = filled;
+      }
+    }
+
+    // Phase 2c: treatment-gallery — 1 imageQuery per service (if images desired)
+    if (s.type === "treatment-gallery") {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      const services = Array.isArray(s.content?.services) ? (s.content.services as unknown[]) : [];
+      if (!qs.length && services.length > 0) {
+        const filled = services.map((_: unknown, j: number) =>
+          `dental clinic treatment procedure professional clean ${j + 1}`.trim()
+        );
+        (s as { imageQueries?: string[] }).imageQueries = filled;
+      }
+    }
+
+    // Phase 2c: portfolio-grid — 1 imageQuery per project
+    if (s.type === "portfolio-grid") {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      const projects = Array.isArray(s.content?.projects) ? (s.content.projects as unknown[]) : [];
+      const targetCount = Math.max(projects.length || 2, 2);
+      if (qs.length < targetCount) {
+        const locCtx = effectiveCity ? ` ${effectiveCity}` : "";
+        const filled = Array.from({ length: targetCount }, (_, j) =>
+          qs[j] ?? `interior design${locCtx} luxury residential editorial ${j + 1}`.replace(/\s+/g, " ").trim()
+        );
+        (s as { imageQueries?: string[] }).imageQueries = filled;
+      }
+    }
   }
 
   // FIX 4: Ensure site has at least 4 images. If not, inject a gallery-grid before contact.
   const IMAGE_SECTION_TYPES = new Set([
     "hero", "hero-fullbleed", "hero-split", "about", "about-story",
     "gallery", "gallery-grid", "listings-grid", "product-grid", "feature-showcase",
+    "property-listings-grid", "treatment-gallery", "portfolio-grid",
   ]);
   let imageSlots = 0;
   for (const s of spec.sections) {
@@ -457,6 +498,15 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     }
     if (MULTI_PRODUCT_TYPES.has(s.type) || MULTI_SHOWCASE_TYPES.has(s.type)) {
       imageSlots += Math.max((Array.isArray(s.content?.items) ? s.content.items.length : 0) || 3, 3);
+    }
+    if (s.type === "property-listings-grid") {
+      imageSlots += Math.max((Array.isArray(s.content?.listings) ? s.content.listings.length : 0) || 3, 3);
+    }
+    if (s.type === "portfolio-grid") {
+      imageSlots += Math.max((Array.isArray(s.content?.projects) ? s.content.projects.length : 0) || 2, 2);
+    }
+    if (s.type === "treatment-gallery") {
+      imageSlots += (Array.isArray(s.content?.services) ? s.content.services.length : 0);
     }
   }
   if (imageSlots < 4) {
@@ -992,6 +1042,128 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
   Never invent prices. If no real prices exist, output tiers: [] — the section will be suppressed.`,
 };
 
+// ── Phase 2c: Showcase component pool ────────────────────────────────────────
+// One showcase type per category — only fires when real data is available
+const SHOWCASE_POOL: Record<string, string> = {
+  real_estate:     "property-listings-grid",
+  dental:          "treatment-gallery",
+  gym:             "membership-plans-display",
+  interior_design: "portfolio-grid",
+};
+
+type ShowcaseAvailableData = {
+  hasRealListings:     boolean; // real_estate: actual property specs (beds + price/area)
+  hasMultipleProjects: boolean; // interior_design: 2+ distinct named/described projects
+  hasTierDetails:      boolean; // gym: tier inclusions (classes, guest passes, perks) beyond just price
+};
+
+function extractShowcaseAvailableData(description: string): ShowcaseAvailableData {
+  return {
+    hasRealListings:
+      /\b(\d+[-\s]?(bed(?:room)?s?|BR|studio))\b/i.test(description) &&
+      (/\b(AED|USD|\$|£|€|asking|priced|from|starts?\s+at)\s*[\d,]+/i.test(description) ||
+       /\b(\d+[,\s]?\d+\s*(?:sqft|sq\.?\s*ft|m²|sqm|square\s+(?:feet|meters)))\b/i.test(description)),
+
+    hasMultipleProjects:
+      (description.match(
+        /\b(complet(?:ed?|ing)|finish(?:ed)?|design(?:ed)?|transform(?:ed)?|renovate[d]?|built|deliver(?:ed)?)\b/gi
+      ) ?? []).length >= 2 ||
+      /\bportfolio\b.*\b(project|design|work|space|room)\b/i.test(description),
+
+    hasTierDetails:
+      /\b(basic|starter|standard|essential|core|pro(?:fessional)?|premium|elite|vip|gold|platinum|diamond|silver|bronze)\b/i.test(description) &&
+      /\b(includ(?:es?|ing)|comes?\s+with|access\s+to|unlimited|class(?:es)?|session(?:s)?|guest\s+pass|locker|personal\s+trainer|nutrition|towel|parking|spa|sauna|pool|steam|massage|smoothie|app)\b/i.test(description),
+  };
+}
+
+function selectShowcaseComponent(
+  strategy: DesignStrategy | null,
+  available: ShowcaseAvailableData,
+): string | null {
+  if (!strategy?.category) return null;
+  const showcaseType = SHOWCASE_POOL[strategy.category];
+  if (!showcaseType) return null;
+
+  // Strict data gates — no data, no showcase
+  if (showcaseType === "property-listings-grid" && !available.hasRealListings)       return null;
+  if (showcaseType === "portfolio-grid"          && !available.hasMultipleProjects)   return null;
+  if (showcaseType === "membership-plans-display" && !available.hasTierDetails)       return null;
+  // treatment-gallery: no extract-level gate — dental always has treatments;
+  // verifyShowcaseComponents() enforces the post-GPT check on services array
+
+  return showcaseType;
+}
+
+// Post-GPT safety net: remove showcase sections where GPT did not populate required data
+function verifyShowcaseComponents(spec: WebsiteSpec): void {
+  spec.sections = spec.sections.filter((s) => {
+    const c = s.content as Record<string, unknown>;
+    if (s.type === "property-listings-grid") {
+      const ok = Array.isArray(c.listings) && (c.listings as unknown[]).length >= 1;
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing property-listings-grid — no listings");
+      return ok;
+    }
+    if (s.type === "treatment-gallery") {
+      const ok = Array.isArray(c.services) && (c.services as unknown[]).length >= 1;
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing treatment-gallery — no services");
+      return ok;
+    }
+    if (s.type === "portfolio-grid") {
+      const ok = Array.isArray(c.projects) && (c.projects as unknown[]).length >= 2;
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing portfolio-grid — fewer than 2 projects");
+      return ok;
+    }
+    if (s.type === "membership-plans-display") {
+      const tiers = c.tiers as unknown[];
+      const ok = Array.isArray(tiers) && tiers.some((t: unknown) => {
+        const tier = t as Record<string, unknown>;
+        return Array.isArray(tier.features) && (tier.features as unknown[]).length >= 1;
+      });
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing membership-plans-display — no tier feature details");
+      return ok;
+    }
+    return true;
+  });
+}
+
+// ── Showcase component schema instructions (Phase 2c) ─────────────────────────
+const SHOWCASE_COMPONENT_SCHEMAS: Record<string, string> = {
+  "property-listings-grid":
+    `"property-listings-grid" section content: { "eyebrow"?, "headline",
+  "listings": [{ "title": string, "location"?: string, "bedrooms"?: string, "bathrooms"?: string, "area"?: string, "price"?: string, "badge"?: string }] }
+  RULES: ONLY include real properties described by the owner. Max 6 listings.
+  title: the property's name or identifier (e.g. "Marina View Penthouse", "3BR Villa Palm Jumeirah").
+  bedrooms/bathrooms/area: only from real stated specs. price: ONLY if owner stated a real asking price.
+  badge: optional label ("New Listing", "Featured") — only if meaningful and real. Never invent specs or prices.
+  imageQueries REQUIRED at section level (1 per listing, matching listings count, e.g. ["luxury villa Dubai editorial", ...]).`,
+
+  "treatment-gallery":
+    `"treatment-gallery" section content: { "eyebrow"?, "headline"?, "subheadline"?,
+  "services": [{ "title": string, "description"?: string, "duration"?: string, "price"?: string }] }
+  RULES: Use real treatment/procedure names. Max 8. Description in patient-friendly language from real details.
+  duration and price: ONLY from real stated data — never invent.
+  imageQueries at section level are optional (1 per service for photo cards).`,
+
+  "portfolio-grid":
+    `"portfolio-grid" section content: { "eyebrow"?, "headline",
+  "projects": [{ "title": string, "category"?: string, "description"?: string, "location"?: string, "year"?: string }] }
+  RULES: ONLY include real projects the owner named or described. MINIMUM 2 required; if fewer than 2 are real, output projects: [].
+  title: the project name (e.g. "Palm Heights Penthouse", "The Grove Restaurant").
+  category: project type (e.g. "Residential", "Commercial", "Hospitality") — derived from context.
+  description: 1 sentence about the design approach from real stated details — never fabricate.
+  location, year: only if stated.
+  imageQueries REQUIRED at section level (1 per project, matching projects count).`,
+
+  "membership-plans-display":
+    `"membership-plans-display" section content: { "eyebrow"?, "headline", "subheadline"?,
+  "tiers": [{ "name": string, "price": string, "period"?: string, "features": string[] × 4–8, "highlighted"?: boolean, "badge"?: string }] }
+  RULES: Each tier MUST have a "features" array listing specific inclusions. This is what differentiates this from the pricing strip.
+  features: list what is INCLUDED (e.g. "Unlimited group classes", "2 guest passes/month", "Locker access", "Personal trainer session (1/month)").
+  ONLY include real stated inclusions — never invent features. price: ONLY from real stated data.
+  highlighted: true for exactly ONE tier (the featured plan). badge: label for highlighted tier (default "Most Popular").
+  If no real feature inclusions are stated, output features: [] for each tier — section will be suppressed server-side.`,
+};
+
 // ── Template: system prompt for the fill (step-2) call ────────────────────────
 function buildFillSystem(
   template: SiteTemplate,
@@ -1001,6 +1173,7 @@ function buildFillSystem(
   strategy?: DesignStrategy | null,
   heroVariant?: string | null,
   trustComponents?: string[] | null,
+  showcaseComponents?: string[] | null,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
@@ -1246,6 +1419,11 @@ PART 10 — TRUST + CONVERSION SECTION SCHEMAS
 ═══════════════════════════════════════════════════════
 The following trust/conversion sections have been added to the template. Write their content using EXACTLY these schemas. These sections appear in the sections array at the positions you see in the template. FABRICATION RULE: these sections exist specifically to build trust — a fabricated trust signal is worse than a missing one. If you cannot populate required fields from real stated data, output empty arrays or omit optional fields.
 ${trustComponents.map((type) => TRUST_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
+` : ""}${showcaseComponents && showcaseComponents.length > 0 ? `═══════════════════════════════════════════════════════
+PART 11 — SHOWCASE SECTION SCHEMA
+═══════════════════════════════════════════════════════
+The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data — fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays — the section will be suppressed server-side.
+${showcaseComponents.map((type) => SHOWCASE_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
 ABSOLUTE RULES — NEVER VIOLATE
 ═══════════════════════════════════════════════════════
@@ -2093,6 +2271,11 @@ export async function POST(req: NextRequest) {
       const selectedTrustComponents: string[] = [selectedTrustType, selectedConversionType].filter(Boolean) as string[];
       console.log(`[website/generate] trustPool: trust=${selectedTrustType ?? "none"} conversion=${selectedConversionType ?? "none"}`);
 
+      // Showcase pool selection (Phase 2c)
+      const showcaseData = extractShowcaseAvailableData(fullDescription);
+      const selectedShowcase = selectShowcaseComponent(designStrategy, showcaseData);
+      console.log(`[website/generate] showcasePool: showcase=${selectedShowcase ?? "none"}`);
+
       const baseTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
       // Patch the hero variant in the template so enforceTemplate locks it in
       let selectedTemplate: SiteTemplate = selectedHeroVariant
@@ -2103,6 +2286,22 @@ export async function POST(req: NextRequest) {
             ),
           }
         : baseTemplate;
+
+      // Inject showcase section before the contact-block (Phase 2c)
+      // Showcase goes first so the order becomes: showcase → trust → conversion → contact
+      if (selectedShowcase) {
+        const contactIdx = selectedTemplate.sections.findIndex((s) => s.type === "contact-block");
+        const insertAt = contactIdx >= 0 ? contactIdx : selectedTemplate.sections.length;
+        const showcaseSection: TemplateSection = {
+          type: selectedShowcase,
+          variant: "",
+          imageSlots: selectedShowcase === "membership-plans-display" ? 0 : 4,
+          required: false,
+        };
+        const patchedSections = [...selectedTemplate.sections];
+        patchedSections.splice(insertAt, 0, showcaseSection);
+        selectedTemplate = { ...selectedTemplate, sections: patchedSections };
+      }
 
       // Inject trust + conversion sections before the contact-block (Phase 2b)
       if (selectedTrustComponents.length > 0) {
@@ -2126,7 +2325,7 @@ export async function POST(req: NextRequest) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null, selectedShowcase ? [selectedShowcase] : null) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -2148,6 +2347,8 @@ export async function POST(req: NextRequest) {
       if (designStrategy) verifyHeroVariant(spec, designStrategy);
       // Phase 2b: remove trust/conversion sections where GPT failed to populate required data
       verifyTrustComponents(spec);
+      // Phase 2c: remove showcase sections where GPT failed to populate required data
+      verifyShowcaseComponents(spec);
       console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || "–"}`).join(", ")}]`);
     }
 

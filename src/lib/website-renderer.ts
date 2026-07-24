@@ -15,6 +15,9 @@ import {
   renderComparisonTable, renderAgentCard, renderPressQuoteBand,
   renderTrainerShowcase, renderTrustBadgesBand, renderMultiStepForm,
   renderAppointmentForm, renderValuationForm, renderMembershipForm,
+  // Phase 2c showcase pool
+  renderPropertyListingsGrid, renderTreatmentGallery,
+  renderPortfolioGrid, renderMembershipPlansDisplay,
 } from "./website-sections";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,6 +37,8 @@ export interface SectionSpec {
     | "comparison-table" | "agent-card" | "press-quote-band"
     | "trainer-showcase" | "trust-badges-band" | "multi-step-form"
     | "appointment-form" | "valuation-form" | "membership-form"
+    | "property-listings-grid" | "treatment-gallery"
+    | "portfolio-grid" | "membership-plans-display"
     | string; // allow forward-compat
   variant?: string;
   imageQuery?: string;
@@ -1201,6 +1206,92 @@ ${serviceCardOverrides}
   .ws-tbadge{min-width:100px;padding:18px 12px;}
   .ws-mem-tier{flex:1 1 120px;padding:16px 10px;}
 }
+
+/* ── Phase 2c: property-listings-grid ─────────────────────────────────── */
+.ws-prop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:48px;}
+.ws-prop-card{background:var(--surface);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;}
+.ws-prop-img{position:relative;aspect-ratio:16/10;overflow:hidden;}
+.ws-prop-badge{position:absolute;top:12px;left:12px;background:var(--accent);color:var(--accent-fg,#fff);font-size:0.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:4px;z-index:1;}
+.ws-prop-info{padding:20px;display:flex;flex-direction:column;flex:1;}
+.ws-prop-location{font-size:0.78rem;color:var(--color-muted);margin-bottom:6px;}
+.ws-prop-title{font-family:var(--font-heading);font-size:1.05rem;font-weight:700;color:var(--color-heading);margin-bottom:12px;line-height:1.25;}
+.ws-prop-title--sm{font-size:0.9rem;}
+.ws-prop-specs{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.ws-prop-spec{font-size:0.8rem;color:var(--color-muted);background:var(--bg);padding:3px 10px;border-radius:20px;}
+.ws-prop-spec--light{color:rgba(255,255,255,.8);background:rgba(255,255,255,.15);}
+.ws-prop-specs--light{margin-bottom:8px;}
+.ws-prop-price{font-family:var(--font-heading);font-size:1.1rem;font-weight:700;color:var(--accent);margin-top:auto;}
+.ws-prop-price--light{color:#fff;font-size:1.2rem;}
+/* featured-plus-grid variant */
+.ws-prop-featured-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:48px;align-items:start;}
+.ws-prop-featured-card{position:relative;border-radius:var(--radius-lg);overflow:hidden;min-height:500px;}
+.ws-prop-featured-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:32px;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,transparent 55%);}
+.ws-prop-featured-title{font-family:var(--font-heading);font-size:1.5rem;font-weight:700;color:#fff;line-height:1.2;margin-bottom:4px;}
+.ws-prop-featured-loc{font-size:0.82rem;color:rgba(255,255,255,.75);margin-bottom:10px;}
+.ws-prop-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.ws-prop-img--mini{aspect-ratio:4/3;}
+.ws-prop-card--mini .ws-prop-title{font-size:0.9rem;margin-bottom:8px;}
+.ws-prop-card--mini .ws-prop-info{padding:14px;}
+
+/* ── Phase 2c: treatment-gallery ─────────────────────────────────────── */
+.ws-treat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:24px;margin-top:48px;}
+.ws-treat-card{background:var(--surface);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;}
+.ws-treat-img{aspect-ratio:4/3;overflow:hidden;}
+.ws-treat-icon-header{padding:28px 20px;display:flex;align-items:center;justify-content:center;color:var(--accent);}
+.ws-treat-body{padding:20px;flex:1;display:flex;flex-direction:column;}
+.ws-treat-title{font-family:var(--font-heading);font-size:1rem;font-weight:700;color:var(--color-heading);margin-bottom:8px;}
+.ws-treat-desc{font-size:0.88rem;color:var(--color-muted);line-height:1.65;flex:1;margin-bottom:16px;}
+.ws-treat-foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--bg);padding-top:14px;margin-top:auto;}
+.ws-treat-duration{font-size:0.78rem;color:var(--color-muted);display:flex;align-items:center;gap:5px;}
+.ws-treat-price{font-family:var(--font-heading);font-size:1rem;font-weight:700;color:var(--accent);}
+
+/* ── Phase 2c: portfolio-grid ─────────────────────────────────────────── */
+.ws-port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px;}
+.ws-port-masonry{columns:3;column-gap:24px;margin-top:48px;}
+.ws-port-masonry .ws-port-card{break-inside:avoid;margin-bottom:24px;}
+.ws-port-card{display:flex;flex-direction:column;gap:12px;}
+.ws-port-img-wrap{position:relative;aspect-ratio:4/3;border-radius:var(--radius-lg);overflow:hidden;}
+.ws-port-masonry .ws-port-card:nth-child(3n+2) .ws-port-img-wrap{aspect-ratio:3/4;}
+.ws-port-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;background:linear-gradient(to top,rgba(0,0,0,.72) 0%,transparent 55%);opacity:0;transition:opacity .3s;}
+.ws-port-img-wrap:hover .ws-port-overlay{opacity:1;}
+.ws-port-meta{font-size:0.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:4px;}
+.ws-port-title{font-family:var(--font-heading);font-size:1rem;font-weight:700;color:#fff;line-height:1.2;}
+.ws-port-info{font-size:0.75rem;color:rgba(255,255,255,.65);margin-top:3px;}
+.ws-port-desc{font-size:0.85rem;color:var(--color-muted);line-height:1.6;}
+
+/* ── Phase 2c: membership-plans-display ───────────────────────────────── */
+.ws-mpdisplay-grid{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:48px;}
+.ws-mpdisplay-card{flex:1 1 220px;max-width:300px;background:var(--surface);border-radius:16px;padding:32px 24px;border:2px solid transparent;display:flex;flex-direction:column;text-align:left;}
+.ws-mpdisplay-card--hi{background:var(--accent-alpha,rgba(0,0,0,.04));}
+.ws-mpdisplay-badge{font-size:0.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:5px 14px;border-radius:20px;display:inline-block;margin-bottom:16px;align-self:flex-start;}
+.ws-mpdisplay-name{font-size:0.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted);margin-bottom:10px;}
+.ws-mpdisplay-price-wrap{display:flex;align-items:baseline;gap:4px;margin-bottom:20px;}
+.ws-mpdisplay-price{font-family:var(--font-heading);font-size:2.4rem;font-weight:700;line-height:1;}
+.ws-mpdisplay-period{font-size:0.85rem;color:var(--color-muted);}
+.ws-mpdisplay-divider{border:none;border-top:1px solid var(--bg);margin:0 0 20px;}
+.ws-mpdisplay-feats{list-style:none;display:flex;flex-direction:column;gap:10px;flex:1;margin-bottom:24px;}
+.ws-mpdisplay-feat{font-size:0.88rem;color:var(--color-text);display:flex;align-items:flex-start;gap:8px;line-height:1.4;text-align:left;}
+.ws-mpdisplay-feat svg{flex-shrink:0;margin-top:2px;color:var(--accent);}
+
+/* ── Phase 2c mobile responsive ──────────────────────────────────────── */
+@media(max-width:768px){
+  .ws-prop-grid{grid-template-columns:1fr 1fr;}
+  .ws-prop-featured-grid{grid-template-columns:1fr;}
+  .ws-prop-featured-card{min-height:320px;}
+  .ws-prop-mini-grid{grid-template-columns:1fr 1fr;}
+  .ws-port-grid{grid-template-columns:1fr 1fr;}
+  .ws-port-masonry{columns:2;}
+  .ws-port-overlay{opacity:1;}
+  .ws-mpdisplay-card{flex:1 1 200px;}
+}
+@media(max-width:480px){
+  .ws-prop-grid{grid-template-columns:1fr;}
+  .ws-prop-mini-grid{grid-template-columns:1fr;}
+  .ws-treat-grid{grid-template-columns:1fr;}
+  .ws-port-grid{grid-template-columns:1fr;}
+  .ws-port-masonry{columns:1;}
+  .ws-mpdisplay-card{flex:1 1 100%;max-width:100%;}
+}
 `.trim();
 }
 
@@ -1414,6 +1505,11 @@ const SECTION_NAV: Record<string, { label: string; href: string }> = {
   "appointment-form":  { label: "Book",        href: "#appointment" },
   "valuation-form":    { label: "Valuation",   href: "#valuation"   },
   "membership-form":   { label: "Join",        href: "#join"        },
+  // Phase 2c showcase pool
+  "property-listings-grid":  { label: "Listings",   href: "#listings-showcase" },
+  "treatment-gallery":        { label: "Treatments", href: "#treatments"        },
+  "portfolio-grid":           { label: "Portfolio",  href: "#portfolio"         },
+  "membership-plans-display": { label: "Plans",      href: "#plans"             },
 };
 
 function buildNavLinks(spec: WebsiteSpec): Array<{ label: string; href: string }> {
@@ -1634,6 +1730,28 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
       case "membership-form": {
         const mf = renderMembershipForm(t, c);
         if (mf) bodyParts.push(addDataVs(mf, i));
+        break;
+      }
+
+      // ── Phase 2c — showcase pool ───────────────────────────────────────
+      case "property-listings-grid": {
+        const plg = renderPropertyListingsGrid(t, c, multiImgs(), v);
+        if (plg) bodyParts.push(addDataVs(plg, i));
+        break;
+      }
+      case "treatment-gallery": {
+        const tg = renderTreatmentGallery(t, c, multiImgs());
+        if (tg) bodyParts.push(addDataVs(tg, i));
+        break;
+      }
+      case "portfolio-grid": {
+        const portg = renderPortfolioGrid(t, c, multiImgs(), v);
+        if (portg) bodyParts.push(addDataVs(portg, i));
+        break;
+      }
+      case "membership-plans-display": {
+        const mpd = renderMembershipPlansDisplay(t, c);
+        if (mpd) bodyParts.push(addDataVs(mpd, i));
         break;
       }
 

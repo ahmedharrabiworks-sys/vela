@@ -1914,6 +1914,263 @@ export function renderValuationForm(
 </section>`;
 }
 
+// ── Phase 2c — Category-Specific Showcase Pool ───────────────────────────────
+
+// SC-1: property-listings-grid — real estate cards with specs (grid-3col and featured-plus-grid)
+type PropertyListing = { title?: string; location?: string; bedrooms?: string; bathrooms?: string; area?: string; price?: string; badge?: string };
+
+function renderPropGrid3Col(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string },
+  listings: PropertyListing[],
+  images: (string | undefined)[]
+): string {
+  return `<section class="ws-section ws-section-alt" id="listings-showcase">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-prop-grid">
+      ${listings.map((l, i) => `
+      <div class="ws-prop-card">
+        <div class="ws-prop-img">
+          ${photo(images[i], l.title || `Property ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+          ${l.badge ? `<span class="ws-prop-badge">${esc(l.badge)}</span>` : ""}
+        </div>
+        <div class="ws-prop-info">
+          ${l.location ? `<p class="ws-prop-location">${esc(l.location)}</p>` : ""}
+          <h3 class="ws-prop-title">${esc(l.title || "")}</h3>
+          ${(l.bedrooms || l.bathrooms || l.area) ? `
+          <div class="ws-prop-specs">
+            ${l.bedrooms  ? `<span class="ws-prop-spec">${esc(l.bedrooms)} bed</span>` : ""}
+            ${l.bathrooms ? `<span class="ws-prop-spec">${esc(l.bathrooms)} bath</span>` : ""}
+            ${l.area      ? `<span class="ws-prop-spec">${esc(l.area)}</span>` : ""}
+          </div>` : ""}
+          ${l.price ? `<p class="ws-prop-price">${esc(l.price)}</p>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+function renderPropFeaturedPlusGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string },
+  listings: PropertyListing[],
+  images: (string | undefined)[]
+): string {
+  const featured = listings[0]!;
+  const rest = listings.slice(1, 5);
+  return `<section class="ws-section ws-section-alt" id="listings-showcase">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-prop-featured-grid">
+      <div class="ws-prop-featured-card">
+        ${photo(images[0], featured.title || "Featured Property", "ws-gallery-img", "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;")}
+        <div class="ws-prop-featured-overlay">
+          ${featured.badge ? `<span class="ws-prop-badge">${esc(featured.badge)}</span>` : ""}
+          <h3 class="ws-prop-featured-title">${esc(featured.title || "")}</h3>
+          ${featured.location ? `<p class="ws-prop-featured-loc">${esc(featured.location)}</p>` : ""}
+          ${(featured.bedrooms || featured.bathrooms || featured.area) ? `
+          <div class="ws-prop-specs ws-prop-specs--light">
+            ${featured.bedrooms  ? `<span class="ws-prop-spec ws-prop-spec--light">${esc(featured.bedrooms)} bed</span>` : ""}
+            ${featured.bathrooms ? `<span class="ws-prop-spec ws-prop-spec--light">${esc(featured.bathrooms)} bath</span>` : ""}
+            ${featured.area      ? `<span class="ws-prop-spec ws-prop-spec--light">${esc(featured.area)}</span>` : ""}
+          </div>` : ""}
+          ${featured.price ? `<p class="ws-prop-price ws-prop-price--light">${esc(featured.price)}</p>` : ""}
+        </div>
+      </div>
+      <div class="ws-prop-mini-grid">
+        ${rest.map((l, i) => `
+        <div class="ws-prop-card ws-prop-card--mini">
+          <div class="ws-prop-img ws-prop-img--mini">
+            ${photo(images[i + 1], l.title || `Property ${i + 2}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+            ${l.badge ? `<span class="ws-prop-badge">${esc(l.badge)}</span>` : ""}
+          </div>
+          <div class="ws-prop-info">
+            ${l.location ? `<p class="ws-prop-location">${esc(l.location)}</p>` : ""}
+            <h3 class="ws-prop-title ws-prop-title--sm">${esc(l.title || "")}</h3>
+            ${(l.bedrooms || l.bathrooms) ? `
+            <div class="ws-prop-specs">
+              ${l.bedrooms  ? `<span class="ws-prop-spec">${esc(l.bedrooms)} bed</span>` : ""}
+              ${l.bathrooms ? `<span class="ws-prop-spec">${esc(l.bathrooms)} bath</span>` : ""}
+            </div>` : ""}
+            ${l.price ? `<p class="ws-prop-price">${esc(l.price)}</p>` : ""}
+          </div>
+        </div>`).join("")}
+      </div>
+    </div>
+  </div>
+</section>`;
+}
+
+export function renderPropertyListingsGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; listings?: PropertyListing[]; variant?: string },
+  images: (string | undefined)[] = [],
+  variant?: string
+): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  const listings = (c.listings ?? []).filter((l) => l.title).slice(0, 6);
+  if (!listings.length) return "";
+  if (v === "featured-plus-grid" && listings.length >= 2) return renderPropFeaturedPlusGrid(t, c, listings, images);
+  return renderPropGrid3Col(t, c, listings, images);
+}
+
+// SC-2: treatment-gallery — dental treatment cards (with or without images)
+type TreatmentItem = { title?: string; description?: string; duration?: string; price?: string };
+
+export function renderTreatmentGallery(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; services?: TreatmentItem[]; variant?: string },
+  images: (string | undefined)[] = []
+): string {
+  const services = (c.services ?? []).filter((s) => s.title).slice(0, 8);
+  if (!services.length) return "";
+  const hasImages = images.some(Boolean);
+  return `<section class="ws-section ws-section-alt" id="treatments">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-treat-grid">
+      ${services.map((s, i) => `
+      <div class="ws-treat-card">
+        ${hasImages && images[i] ? `
+        <div class="ws-treat-img">
+          ${photo(images[i], s.title || `Treatment ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+        </div>` : `
+        <div class="ws-treat-icon-header" style="background:${t.accentAlpha};">
+          ${icon("tooth", 28)}
+        </div>`}
+        <div class="ws-treat-body">
+          <h3 class="ws-treat-title">${esc(s.title || "")}</h3>
+          ${s.description ? `<p class="ws-treat-desc">${esc(s.description)}</p>` : ""}
+          ${(s.duration || s.price) ? `
+          <div class="ws-treat-foot">
+            ${s.duration ? `<span class="ws-treat-duration">${icon("clock", 13)} ${esc(s.duration)}</span>` : ""}
+            ${s.price    ? `<span class="ws-treat-price">${esc(s.price)}</span>` : ""}
+          </div>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// SC-3: portfolio-grid — interior design projects (equal-grid and masonry)
+type PortfolioProject = { title?: string; category?: string; description?: string; location?: string; year?: string };
+
+function renderPortfolioEqualGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string },
+  projects: PortfolioProject[],
+  images: (string | undefined)[]
+): string {
+  return `<section class="ws-section" id="portfolio">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-port-grid">
+      ${projects.map((p, i) => `
+      <div class="ws-port-card">
+        <div class="ws-port-img-wrap">
+          ${photo(images[i], p.title || `Project ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+          <div class="ws-port-overlay">
+            ${p.category ? `<p class="ws-port-meta">${esc(p.category)}</p>` : ""}
+            <h3 class="ws-port-title">${esc(p.title || "")}</h3>
+            ${(p.location || p.year) ? `<p class="ws-port-info">${[p.location, p.year].filter(Boolean).map(esc).join(" · ")}</p>` : ""}
+          </div>
+        </div>
+        ${p.description ? `<p class="ws-port-desc">${esc(p.description)}</p>` : ""}
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+function renderPortfolioMasonry(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string },
+  projects: PortfolioProject[],
+  images: (string | undefined)[]
+): string {
+  return `<section class="ws-section" id="portfolio">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-port-masonry">
+      ${projects.map((p, i) => `
+      <div class="ws-port-card">
+        <div class="ws-port-img-wrap">
+          ${photo(images[i], p.title || `Project ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+          <div class="ws-port-overlay">
+            ${p.category ? `<p class="ws-port-meta">${esc(p.category)}</p>` : ""}
+            <h3 class="ws-port-title">${esc(p.title || "")}</h3>
+            ${(p.location || p.year) ? `<p class="ws-port-info">${[p.location, p.year].filter(Boolean).map(esc).join(" · ")}</p>` : ""}
+          </div>
+        </div>
+        ${p.description ? `<p class="ws-port-desc">${esc(p.description)}</p>` : ""}
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+export function renderPortfolioGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; projects?: PortfolioProject[]; variant?: string },
+  images: (string | undefined)[] = [],
+  variant?: string
+): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  const projects = (c.projects ?? []).filter((p) => p.title).slice(0, 6);
+  if (projects.length < 2) return "";
+  if (v === "masonry") return renderPortfolioMasonry(t, c, projects, images);
+  return renderPortfolioEqualGrid(t, c, projects, images);
+}
+
+// SC-4: membership-plans-display — full-featured tier comparison (gym, NOT just price strip)
+type MembershipDisplayTier = { name?: string; price?: string; period?: string; features?: string[]; highlighted?: boolean; badge?: string };
+
+export function renderMembershipPlansDisplay(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: MembershipDisplayTier[] }
+): string {
+  const tiers = (c.tiers ?? [])
+    .filter((tier) => tier.name && Array.isArray(tier.features) && (tier.features as string[]).length > 0)
+    .slice(0, 4);
+  if (!tiers.length) return "";
+  return `<section class="ws-section ws-section-alt" id="plans">
+  <div class="ws-container" style="text-align:center;">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading" style="margin:0 auto 48px;">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-mpdisplay-grid">
+      ${tiers.map((tier) => {
+        const hi = !!tier.highlighted;
+        const features = (tier.features ?? []).slice(0, 8);
+        return `
+      <div class="ws-mpdisplay-card${hi ? " ws-mpdisplay-card--hi" : ""}" style="${hi ? `border-color:${t.accent};` : ""}">
+        ${hi ? `<p class="ws-mpdisplay-badge" style="background:${t.accent};color:${t.accentFg};">${esc(tier.badge || "Most Popular")}</p>` : ""}
+        <p class="ws-mpdisplay-name">${esc(tier.name || "")}</p>
+        <div class="ws-mpdisplay-price-wrap">
+          <p class="ws-mpdisplay-price" style="color:${t.accent};">${esc(tier.price || "")}</p>
+          ${tier.period ? `<p class="ws-mpdisplay-period">/${esc(tier.period)}</p>` : ""}
+        </div>
+        <hr class="ws-mpdisplay-divider">
+        <ul class="ws-mpdisplay-feats">
+          ${features.map((f) => `<li class="ws-mpdisplay-feat">${icon("check", 14)} ${esc(f)}</li>`).join("")}
+        </ul>
+        <a href="#booking" class="ws-btn ${hi ? "ws-btn-accent" : "ws-btn-outline"}" style="width:100%;justify-content:center;margin-top:auto;">Join Now</a>
+      </div>`;
+      }).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
 // TC-9: membership-signup-block — tier selector + signup fields (only real pricing tiers)
 export function renderMembershipForm(
   _t: DesignTokens,

@@ -214,4 +214,9 @@ export const OPTIONAL_SKIP_RULES: Record<string, (content: Record<string, unknow
   "trust-badges-band": (c) => !Array.isArray(c.badges)   || (c.badges   as unknown[]).length < 1,
   "appointment-form":  (c) => !Array.isArray(c.services) || (c.services as unknown[]).length < 1,
   "membership-form":   (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
+  // Phase 2c — showcase pool
+  "property-listings-grid":   (c) => !Array.isArray(c.listings) || (c.listings as unknown[]).length < 1,
+  "treatment-gallery":         (c) => !Array.isArray(c.services) || (c.services as unknown[]).length < 1,
+  "portfolio-grid":            (c) => !Array.isArray(c.projects) || (c.projects as unknown[]).length < 2,
+  "membership-plans-display":  (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
 };
