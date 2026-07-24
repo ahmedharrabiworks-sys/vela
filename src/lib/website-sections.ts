@@ -45,7 +45,7 @@ function esc(s: unknown): string {
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
-export function renderNav(
+function renderNavStandard(
   businessName: string,
   ctaText: string,
   navLinks?: Array<{ label: string; href: string }>
@@ -64,6 +64,47 @@ export function renderNav(
     <a href="#booking" class="ws-btn ws-btn-accent" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
   </div>
 </nav>`;
+}
+
+function renderNavTransparent(
+  businessName: string,
+  ctaText: string,
+  navLinks?: Array<{ label: string; href: string }>
+): string {
+  const links = navLinks ?? [
+    { label: "Services", href: "#services" },
+    { label: "About",    href: "#about"    },
+    { label: "Contact",  href: "#booking"  },
+  ];
+  return `<nav class="ws-nav ws-nav--transparent">
+  <div class="ws-nav-inner">
+    <a href="#" class="ws-nav-logo">${esc(businessName)}</a>
+    <div class="ws-nav-links">
+      ${links.map((l) => `<a href="${esc(l.href)}" class="ws-nav-link">${esc(l.label)}</a>`).join("")}
+    </div>
+    <a href="#booking" class="ws-btn ws-btn-accent" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
+  </div>
+</nav>`;
+}
+
+function renderNavMinimal(businessName: string, ctaText: string): string {
+  return `<nav class="ws-nav ws-nav--minimal">
+  <div class="ws-nav-inner">
+    <a href="#" class="ws-nav-logo">${esc(businessName)}</a>
+    <a href="#booking" class="ws-btn ws-btn-accent" style="padding:12px 28px;font-size:0.875rem;">${esc(ctaText || "Get Started")}</a>
+  </div>
+</nav>`;
+}
+
+export function renderNav(
+  businessName: string,
+  ctaText: string,
+  navLinks?: Array<{ label: string; href: string }>,
+  variant?: string
+): string {
+  if (variant === "transparent") return renderNavTransparent(businessName, ctaText, navLinks);
+  if (variant === "minimal") return renderNavMinimal(businessName, ctaText);
+  return renderNavStandard(businessName, ctaText, navLinks);
 }
 
 // ── Hero — legacy layout variants (v1 backward compat) ────────────────────────
@@ -519,10 +560,9 @@ function linkHref(text: string): string {
   return "#booking";
 }
 
-export function renderFooter(
-  businessName: string,
-  c: { tagline?: string; links?: string[]; phone?: string; email?: string; address?: string; copyright?: string }
-): string {
+type FooterContent = { tagline?: string; links?: string[]; phone?: string; email?: string; address?: string; copyright?: string };
+
+function renderFooterStandard(businessName: string, c: FooterContent): string {
   const links = (c.links ?? ["Services", "About", "FAQ", "Contact"]).slice(0, 6);
   const year = new Date().getFullYear();
   return `<footer class="ws-footer" id="footer">
@@ -548,6 +588,62 @@ export function renderFooter(
     </div>
   </div>
 </footer>`;
+}
+
+function renderFooterEditorial(businessName: string, c: FooterContent): string {
+  const links = (c.links ?? ["Services", "About", "FAQ", "Contact"]).slice(0, 5);
+  const year = new Date().getFullYear();
+  return `<footer class="ws-footer ws-footer--editorial" id="footer">
+  <div class="ws-container">
+    <div class="ws-footer-ed-inner">
+      <div class="ws-footer-ed-brand">
+        <p class="ws-footer-ed-name">${esc(businessName)}</p>
+        ${c.tagline ? `<p class="ws-footer-ed-tag">${esc(c.tagline)}</p>` : ""}
+      </div>
+      <div class="ws-footer-ed-right">
+        <div>
+          <p class="ws-footer-heading">Navigation</p>
+          ${links.map((l) => `<a href="${linkHref(l)}" class="ws-footer-link">${esc(l)}</a>`).join("")}
+        </div>
+        <div>
+          <p class="ws-footer-heading">Contact</p>
+          ${c.phone   ? `<a href="tel:${esc(c.phone.replace(/\s/g, ""))}" class="ws-footer-link">${esc(c.phone)}</a>` : ""}
+          ${c.email   ? `<a href="mailto:${esc(c.email)}" class="ws-footer-link">${esc(c.email)}</a>` : ""}
+          ${c.address ? `<p class="ws-footer-link">${esc(c.address)}</p>` : ""}
+        </div>
+      </div>
+    </div>
+    <div class="ws-footer-bottom">
+      ${c.copyright ? esc(c.copyright) : `&copy; ${year} ${esc(businessName)}.`}
+    </div>
+  </div>
+</footer>`;
+}
+
+function renderFooterCompact(businessName: string, c: FooterContent): string {
+  const links = (c.links ?? ["Features", "Pricing", "FAQ", "Contact"]).slice(0, 5);
+  const year = new Date().getFullYear();
+  return `<footer class="ws-footer ws-footer--compact" id="footer">
+  <div class="ws-container">
+    <div class="ws-footer-compact-inner">
+      <p class="ws-footer-logo">${esc(businessName)}</p>
+      <div class="ws-footer-compact-links">
+        ${links.map((l) => `<a href="${linkHref(l)}" class="ws-footer-link ws-footer-link--inline">${esc(l)}</a>`).join("")}
+      </div>
+      <p class="ws-footer-compact-copy">${c.copyright ? esc(c.copyright) : `&copy; ${year} ${esc(businessName)}`}</p>
+    </div>
+  </div>
+</footer>`;
+}
+
+export function renderFooter(
+  businessName: string,
+  c: FooterContent,
+  variant?: string
+): string {
+  if (variant === "editorial") return renderFooterEditorial(businessName, c);
+  if (variant === "compact")   return renderFooterCompact(businessName, c);
+  return renderFooterStandard(businessName, c);
 }
 
 // ── V2 section library ────────────────────────────────────────────────────────

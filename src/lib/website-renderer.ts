@@ -59,6 +59,9 @@ export interface WebsiteSpec {
   designDNA?: DesignDNA;
   sections: SectionSpec[];
   _textStyles?: Record<string, Record<string, string>>;
+  // Phase 2e — nav/footer variant pool
+  navVariant?: string;
+  footerVariant?: string;
 }
 
 export type ImageMap = Record<string, string>;
@@ -275,6 +278,7 @@ button,input,select,textarea{font-family:inherit;}
   --radius:${t.radius};
   --radius-lg:${t.radiusLg};
   --section-pad:${t.sectionPad};
+  --footer-bg:${isDark ? t.bg : '#0D1526'};
 }
 
 /* ── Typography ──────────────────────────────────────────────────────────── */
@@ -522,14 +526,35 @@ ${serviceCardOverrides}
 .ws-cta-sub{font-size:1.05rem;color:rgba(255,255,255,.65);margin-bottom:44px;max-width:480px;margin-left:auto;margin-right:auto;}
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
-.ws-footer{background:#080E1A;color:#6B7280;padding:72px 0 32px;}
+.ws-footer{background:var(--footer-bg,#0D1526);color:rgba(255,255,255,.45);padding:72px 0 32px;}
 .ws-footer-inner{display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px;margin-bottom:48px;}
 .ws-footer-logo{font-family:var(--font-heading);font-size:1.15rem;font-weight:700;color:white;margin-bottom:12px;}
 .ws-footer-tag{font-size:0.9rem;line-height:1.65;max-width:300px;}
 .ws-footer-heading{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:white;margin-bottom:20px;}
-.ws-footer-link{display:block;font-size:0.875rem;color:#6B7280;margin-bottom:12px;transition:color .2s;}
+.ws-footer-link{display:block;font-size:0.875rem;color:rgba(255,255,255,.45);margin-bottom:12px;transition:color .2s;}
 .ws-footer-link:hover{color:white;}
-.ws-footer-bottom{border-top:1px solid #1A2235;padding-top:24px;font-size:0.8rem;text-align:center;}
+.ws-footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:24px;font-size:0.8rem;text-align:center;}
+
+/* ── Nav variants (Phase 2e) ─────────────────────────────────────────────── */
+.ws-nav--transparent{background:transparent;border-bottom-color:transparent;transition:background .35s,border-color .35s;}
+.ws-nav--transparent .ws-nav-logo,.ws-nav--transparent .ws-nav-link{color:rgba(255,255,255,.9);transition:color .35s;}
+.ws-nav--transparent .ws-btn-accent{background:rgba(255,255,255,.15);color:white;border-color:rgba(255,255,255,.4);backdrop-filter:blur(4px);}
+.ws-nav--transparent.ws-nav--scrolled{background:var(--bg);border-bottom-color:var(--border);}
+.ws-nav--transparent.ws-nav--scrolled .ws-nav-logo{color:var(--color-heading);}
+.ws-nav--transparent.ws-nav--scrolled .ws-nav-link{color:var(--color-muted);}
+.ws-nav--transparent.ws-nav--scrolled .ws-btn-accent{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);}
+
+/* ── Footer variants (Phase 2e) ──────────────────────────────────────────── */
+.ws-footer-ed-inner{display:flex;gap:80px;align-items:flex-start;margin-bottom:64px;}
+.ws-footer-ed-brand{flex:1;min-width:0;}
+.ws-footer-ed-name{font-family:var(--font-heading);font-size:clamp(1.75rem,3.5vw,3rem);font-weight:var(--heading-weight);letter-spacing:var(--heading-tracking);text-transform:var(--heading-transform);color:white;line-height:1.05;margin-bottom:20px;}
+.ws-footer-ed-tag{font-size:0.95rem;line-height:1.75;color:rgba(255,255,255,.4);max-width:380px;}
+.ws-footer-ed-right{display:grid;grid-template-columns:1fr 1fr;gap:48px;min-width:360px;}
+.ws-footer--compact{padding:40px 0;}
+.ws-footer-compact-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+.ws-footer-compact-links{display:flex;gap:28px;}
+.ws-footer-link--inline{display:inline;margin-bottom:0;}
+.ws-footer-compact-copy{font-size:0.8rem;white-space:nowrap;}
 
 /* ── Contact gap fix: booking/contact-block sits directly before footer ──── */
 #booking { padding-bottom: 0; }
@@ -761,6 +786,10 @@ ${serviceCardOverrides}
   .ws-booking-inner{grid-template-columns:1fr;gap:48px;}
   .ws-form-row{grid-template-columns:1fr;}
   .ws-footer-inner{grid-template-columns:1fr;gap:36px;}
+  .ws-footer-ed-inner{flex-direction:column;gap:40px;}
+  .ws-footer-ed-right{grid-template-columns:1fr;gap:32px;min-width:0;}
+  .ws-footer-compact-inner{flex-direction:column;align-items:flex-start;gap:20px;}
+  .ws-footer-compact-links{flex-wrap:wrap;gap:16px;}
   .ws-cta-banner{padding:80px 0;}
   .ws-service-card{padding:32px 28px;}
   .ws-hero-glow{width:320px;height:320px;}
@@ -1462,6 +1491,15 @@ function wsMfTier(el){
   var r=el.querySelector('input[type="radio"]');
   if(r)r.checked=true;
 }
+
+/* Phase 2e — transparent nav scroll handler */
+(function(){
+  var nav=document.querySelector('.ws-nav--transparent');
+  if(!nav)return;
+  function wsNavScroll(){nav.classList.toggle('ws-nav--scrolled',window.scrollY>60);}
+  wsNavScroll();
+  window.addEventListener('scroll',wsNavScroll,{passive:true});
+})();
 `.trim();
 
 // ── Language / RTL helpers ────────────────────────────────────────────────────
@@ -1569,7 +1607,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
   const navLinks = buildNavLinks(spec);
 
   const bodyParts: string[] = [];
-  bodyParts.push(renderNav(name, navCta, navLinks));
+  bodyParts.push(renderNav(name, navCta, navLinks, spec.navVariant));
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
@@ -1795,7 +1833,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
     }
   }
 
-  bodyParts.push(addDataVs(renderFooter(name, footerContent as Parameters<typeof renderFooter>[1]), "footer"));
+  bodyParts.push(addDataVs(renderFooter(name, footerContent as Parameters<typeof renderFooter>[1], spec.footerVariant), "footer"));
 
   const css = buildCss(t);
   const rtlExtra = buildRtlExtra(language);

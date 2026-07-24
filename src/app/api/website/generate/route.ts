@@ -1205,6 +1205,31 @@ function selectFaqVariant(strategy: DesignStrategy | null): string {
   return "";
 }
 
+// Phase 2e — nav/footer variant pool
+
+function selectNavVariant(strategy: DesignStrategy | null): string {
+  if (!strategy) return "";
+  const { category, visual_mood: vm, brand_personality: bp } = strategy;
+  // Transparent: full-bleed-hero categories where nav sits on top of a hero image
+  if (["real_estate", "interior_design"].includes(category)) return "transparent";
+  if (category === "gym" && (bp === "bold" || bp === "energetic")) return "transparent";
+  if (/cinematic|editorial|luxury/i.test(vm)) return "transparent";
+  // Minimal: SaaS with clean/elegant brand (no clutter, single CTA focus)
+  if (category === "saas" && bp === "minimal_luxury") return "minimal";
+  return "";
+}
+
+function selectFooterVariant(strategy: DesignStrategy | null): string {
+  if (!strategy) return "";
+  const { category, brand_personality: bp } = strategy;
+  // Category takes priority over brand personality
+  if (["real_estate", "interior_design"].includes(category)) return "editorial";
+  if (category === "saas") return "compact";
+  // Brand personality fallback
+  if (bp === "minimal_luxury" || bp === "elegant") return "editorial";
+  return "";
+}
+
 const TESTIMONIAL_COMPONENT_SCHEMAS: Record<string, string> = {
   "testimonial-single-quote":
 `"testimonial-single-quote" section content: { "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }
@@ -2240,6 +2265,9 @@ export async function POST(req: NextRequest) {
     let extractedContact: { phone?: string; email?: string } = {};
     let fullContextText = msgText; // overwritten with accumulated history in initial-generate path
     let designStrategy: DesignStrategy | null = null;
+    // Phase 2e — nav/footer variants (default to standard; overridden in initial-generate path)
+    let selectedNavVariant = "";
+    let selectedFooterVariant = "";
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -2373,7 +2401,11 @@ export async function POST(req: NextRequest) {
       const selectedTestimonialType = selectTestimonialComponent(designStrategy, contentAvailableData);
       const selectedGalleryVariant = selectGalleryVariant(designStrategy);
       const selectedFaqVariant = selectFaqVariant(designStrategy);
+      // Phase 2e — nav/footer variant pool
+      selectedNavVariant = selectNavVariant(designStrategy);
+      selectedFooterVariant = selectFooterVariant(designStrategy);
       console.log(`[website/generate] contentPool: testimonial=${selectedTestimonialType ?? "none"} galleryVariant=${selectedGalleryVariant} faqVariant=${selectedFaqVariant || "default"}`);
+      console.log(`[website/generate] navFooterPool: nav=${selectedNavVariant || "standard"} footer=${selectedFooterVariant || "standard"}`);
 
       const baseTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
       // Patch the hero variant in the template so enforceTemplate locks it in
@@ -2673,6 +2705,10 @@ export async function POST(req: NextRequest) {
         if (!slugErr) siteSlug = freshSlug;
       }
     }
+
+    // Phase 2e — stamp nav/footer variant pool selections onto spec before render
+    spec.navVariant    = selectedNavVariant;
+    spec.footerVariant = selectedFooterVariant;
 
     // Render HTML with tenantId so the booking form knows where to POST
     const html = renderWebsite(spec, imageMap, tenant?.id as string | undefined, effectiveLanguage);
