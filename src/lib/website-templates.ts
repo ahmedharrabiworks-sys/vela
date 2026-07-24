@@ -200,10 +200,18 @@ export const GPT_CATEGORY_TO_TEMPLATE: Record<string, string> = {
 
 // Sections whose data must be checked before including (optional skip rules)
 export const OPTIONAL_SKIP_RULES: Record<string, (content: Record<string, unknown>) => boolean> = {
-  "team-grid":     (c) => !Array.isArray(c.members)  || (c.members  as unknown[]).length < 1,
-  "stats-band":    (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
-  "logo-strip":    (c) => !Array.isArray(c.names)    || (c.names    as unknown[]).length < 1,
-  "pricing-tiers": (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
-  "product-grid":  (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
-  "listings-grid": (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
+  "team-grid":        (c) => !Array.isArray(c.members)  || (c.members  as unknown[]).length < 1,
+  "stats-band":       (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
+  "logo-strip":       (c) => !Array.isArray(c.names)    || (c.names    as unknown[]).length < 1,
+  "pricing-tiers":    (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
+  "product-grid":     (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
+  "listings-grid":    (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
+  // Phase 2b — trust & conversion pool sections
+  "comparison-table":  (c) => !Array.isArray(c.rows)     || (c.rows     as unknown[]).length < 1,
+  "agent-card":        (c) => !c.name                    || String(c.name).trim() === "",
+  "press-quote-band":  (c) => !c.quote                   || String(c.quote).trim() === "",
+  "trainer-showcase":  (c) => !Array.isArray(c.trainers) || (c.trainers as unknown[]).length < 1,
+  "trust-badges-band": (c) => !Array.isArray(c.badges)   || (c.badges   as unknown[]).length < 1,
+  "appointment-form":  (c) => !Array.isArray(c.services) || (c.services as unknown[]).length < 1,
+  "membership-form":   (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
 };

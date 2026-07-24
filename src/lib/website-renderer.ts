@@ -11,6 +11,10 @@ import {
   renderProcessSteps, renderFaqAccordion, renderCtaBand, renderContactBlock,
   // new section types
   renderLogoStrip, renderProductGrid, renderFeatureShowcase, renderIntegrationGrid,
+  // Phase 2b trust & conversion pool
+  renderComparisonTable, renderAgentCard, renderPressQuoteBand,
+  renderTrainerShowcase, renderTrustBadgesBand, renderMultiStepForm,
+  renderAppointmentForm, renderValuationForm, renderMembershipForm,
 } from "./website-sections";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,6 +30,10 @@ export interface SectionSpec {
     | "faq-accordion" | "cta-band" | "contact-block"
     // new section types
     | "logo-strip" | "product-grid" | "feature-showcase" | "integration-grid"
+    // Phase 2b trust & conversion pool
+    | "comparison-table" | "agent-card" | "press-quote-band"
+    | "trainer-showcase" | "trust-badges-band" | "multi-step-form"
+    | "appointment-form" | "valuation-form" | "membership-form"
     | string; // allow forward-compat
   variant?: string;
   imageQuery?: string;
@@ -1064,6 +1072,90 @@ ${serviceCardOverrides}
 .ws-hero-lux-cta{border-color:rgba(255,255,255,.6);color:#fff;font-size:0.875rem;letter-spacing:.08em;}
 .ws-hero-lux-cta:hover{background:rgba(255,255,255,.15);border-color:#fff;}
 
+/* ── Phase 2b: comparison-table ─────────────────────────────────────────── */
+.ws-cmp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.ws-cmp-table{width:100%;border-collapse:collapse;min-width:520px;}
+.ws-cmp-th{padding:12px 20px;font-size:0.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:2px solid var(--surface);}
+.ws-cmp-th-us{color:var(--accent);text-align:center;}
+.ws-cmp-th-them{color:var(--color-muted);text-align:center;}
+.ws-cmp-row{border-bottom:1px solid var(--surface);}
+.ws-cmp-row:last-child{border-bottom:none;}
+.ws-cmp-feat{padding:16px 20px;font-size:0.9rem;color:var(--color-text);}
+.ws-cmp-us{padding:16px 20px;text-align:center;font-size:0.9rem;font-weight:600;color:var(--accent);}
+.ws-cmp-them{padding:16px 20px;text-align:center;font-size:0.9rem;color:var(--color-muted);}
+
+/* ── Phase 2b: agent-card ────────────────────────────────────────────────── */
+.ws-agent-card{display:grid;grid-template-columns:280px 1fr;gap:48px;align-items:start;max-width:860px;margin:0 auto;}
+.ws-agent-photo{width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--surface);}
+.ws-agent-name{font-family:var(--font-heading);font-size:clamp(1.6rem,3vw,2.4rem);font-weight:var(--heading-weight);color:var(--color-heading);margin-bottom:8px;}
+.ws-agent-title{font-size:0.9rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
+.ws-agent-bio{font-size:0.98rem;color:var(--color-text);line-height:1.75;margin-bottom:28px;}
+.ws-agent-contacts{display:flex;flex-direction:column;gap:12px;}
+.ws-agent-contact{display:flex;align-items:center;gap:10px;font-size:0.95rem;color:var(--color-text);text-decoration:none;transition:color .2s;}
+.ws-agent-contact:hover{color:var(--accent);}
+.ws-agent-contact svg{color:var(--accent);flex-shrink:0;}
+
+/* ── Phase 2b: press-quote-band ─────────────────────────────────────────── */
+.ws-pqb{padding:80px 24px;}
+.ws-pqb-inner{max-width:760px;margin:0 auto;text-align:center;}
+.ws-pqb-mark{font-family:var(--font-heading);font-size:8rem;line-height:.6;color:var(--accent);opacity:.4;margin-bottom:16px;user-select:none;}
+.ws-pqb-quote{font-family:var(--font-heading);font-size:clamp(1.3rem,2.5vw,2rem);font-weight:400;font-style:italic;color:#fff;line-height:1.5;margin-bottom:32px;}
+.ws-pqb-foot{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;}
+.ws-pqb-source{font-size:0.9rem;font-weight:600;color:rgba(255,255,255,.85);}
+.ws-pqb-pub{font-size:0.85rem;color:rgba(255,255,255,.5);font-style:italic;}
+
+/* ── Phase 2b: trainer-showcase ─────────────────────────────────────────── */
+.ws-trainer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:32px;margin-top:48px;}
+.ws-trainer-card{text-align:center;padding:32px 24px;background:var(--bg-alt);border-radius:12px;}
+.ws-trainer-avatar{width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--font-heading);font-size:1.4rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.ws-trainer-name{font-size:1rem;font-weight:700;color:var(--color-heading);margin-bottom:6px;}
+.ws-trainer-spec{font-size:0.82rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;}
+.ws-trainer-bio{font-size:0.88rem;color:var(--color-muted);line-height:1.65;}
+
+/* ── Phase 2b: trust-badges-band ────────────────────────────────────────── */
+.ws-tbadges{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;margin-top:40px;}
+.ws-tbadge{min-width:140px;padding:28px 20px;background:var(--surface);border-radius:10px;text-align:center;}
+.ws-tbadge-val{font-family:var(--font-heading);font-size:1.8rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
+.ws-tbadge-lbl{font-size:0.82rem;color:var(--color-muted);font-weight:500;}
+
+/* ── Phase 2b: shared form block ─────────────────────────────────────────── */
+.ws-fb{background:var(--bg-alt);border-radius:16px;padding:40px;max-width:600px;margin:0 auto;position:relative;}
+.ws-form-group{display:flex;flex-direction:column;gap:8px;}
+.ws-form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.ws-form-label{font-size:0.82rem;font-weight:600;color:var(--color-muted);letter-spacing:.04em;}
+.ws-form-input{padding:12px 16px;border:1.5px solid var(--surface);border-radius:8px;background:var(--bg);color:var(--color-text);font-size:0.95rem;font-family:var(--font-body);transition:border-color .2s;width:100%;box-sizing:border-box;}
+.ws-form-input:focus{outline:none;border-color:var(--accent);}
+.ws-fb-err{font-size:0.85rem;color:#e05;background:rgba(220,0,80,.07);padding:10px 14px;border-radius:6px;}
+.ws-fb-ok{text-align:center;padding:48px 24px;}
+.ws-fb-ok-icon{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.ws-fb-ok-title{font-family:var(--font-heading);font-size:1.4rem;font-weight:700;color:var(--color-heading);margin-bottom:10px;}
+.ws-fb-ok-text{font-size:0.95rem;color:var(--color-muted);}
+
+/* ── Phase 2b: multi-step-form ───────────────────────────────────────────── */
+.ws-msf-wrap{max-width:560px;}
+.ws-msf-progress{display:flex;align-items:center;gap:0;margin-bottom:32px;}
+.ws-msf-step{display:flex;align-items:center;gap:10px;font-size:0.82rem;font-weight:600;color:var(--color-muted);}
+.ws-msf-step--on{color:var(--accent);}
+.ws-msf-step--on .ws-msf-dot{background:var(--accent);color:#fff;border-color:var(--accent);}
+.ws-msf-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;background:var(--bg-alt);color:var(--color-muted);flex-shrink:0;}
+.ws-msf-bar{flex:1;height:2px;background:var(--surface);margin:0 8px;}
+.ws-msf-page{display:flex;}
+
+/* ── Phase 2b: appointment-form ─────────────────────────────────────────── */
+.ws-appt-wrap{max-width:640px;margin:0 auto;}
+
+/* ── Phase 2b: valuation-form ───────────────────────────────────────────── */
+.ws-val-wrap{max-width:640px;margin:0 auto;}
+
+/* ── Phase 2b: membership-form ──────────────────────────────────────────── */
+.ws-mem-tiers{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:32px 0;}
+.ws-mem-tier{flex:1 1 160px;max-width:200px;padding:24px 20px;border:2px solid var(--surface);border-radius:12px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;}
+.ws-mem-tier--on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.ws-mem-tier-name{font-size:0.85rem;font-weight:700;color:var(--color-heading);margin-bottom:8px;}
+.ws-mem-tier-price{font-family:var(--font-heading);font-size:1.4rem;font-weight:700;color:var(--accent);}
+.ws-mem-tier-period{font-size:0.75rem;color:var(--color-muted);font-family:var(--font-body);}
+.ws-mem-form-wrap{max-width:520px;margin:0 auto;}
+
 /* ── Mobile responsive: new variants ─────────────────────────────────────── */
 @media(max-width:768px){
   .ws-hero-editorial-inner{grid-template-columns:1fr;gap:40px;}
@@ -1088,11 +1180,26 @@ ${serviceCardOverrides}
   .ws-booking-inner{grid-template-columns:1fr;gap:48px;}
   .ws-contact-inline-row{flex-direction:column;align-items:flex-start;}
   .ws-product-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));}
+  /* Phase 2b mobile */
+  .ws-agent-card{grid-template-columns:1fr;gap:32px;}
+  .ws-agent-photo{aspect-ratio:1/1;max-width:280px;}
+  .ws-form-row{grid-template-columns:1fr;}
+  .ws-mem-tiers{gap:12px;}
+  .ws-mem-tier{flex:1 1 140px;}
+  .ws-fb{padding:28px 20px;}
 }
 @media(max-width:480px){
   .ws-feat-bento{grid-template-columns:1fr;}
   .ws-feat-bento-hero{grid-column:span 1;grid-row:span 1;}
   .ws-gallery-masonry{columns:1;}
+  /* Phase 2b 375px */
+  .ws-msf-step span{display:none;}
+  .ws-msf-progress{gap:4px;}
+  .ws-cmp-table{min-width:360px;}
+  .ws-trainer-grid{grid-template-columns:1fr 1fr;}
+  .ws-tbadges{gap:12px;}
+  .ws-tbadge{min-width:100px;padding:18px 12px;}
+  .ws-mem-tier{flex:1 1 120px;padding:16px 10px;}
 }
 `.trim();
 }
@@ -1166,6 +1273,84 @@ function wsSubmitForm(e){
     });
   return false;
 }
+
+/* Phase 2b — generic form block submit (uses .ws-form-block traversal, no hardcoded IDs) */
+function wsFormBlock(e){
+  e.preventDefault();
+  var form=e.target;
+  var wrap=form.closest('.ws-fb');
+  var errEl=wrap?wrap.querySelector('.ws-fb-err'):null;
+  var ok=wrap?wrap.querySelector('.ws-fb-ok'):null;
+  var btn=form.querySelector('button[type="submit"]');
+  var url=typeof window.__WS_SUBMIT_URL__==='string'?window.__WS_SUBMIT_URL__:'';
+  var data={};
+  var els=form.querySelectorAll('input[name],select[name],textarea[name]');
+  for(var i=0;i<els.length;i++){data[els[i].name]=els[i].value;}
+  if(!url){
+    if(form)form.style.display='none';
+    if(ok)ok.style.display='block';
+    return false;
+  }
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  if(errEl)errEl.style.display='none';
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,body:j};});})
+    .then(function(res){
+      if(!res.ok){
+        if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
+        if(errEl){errEl.textContent=res.body.error||'Something went wrong.';errEl.style.display='block';}
+      }else{
+        if(form)form.style.display='none';
+        if(ok)ok.style.display='block';
+      }
+    })
+    .catch(function(){
+      if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
+      if(errEl){errEl.textContent='Connection error — please try again.';errEl.style.display='block';}
+    });
+  return false;
+}
+
+/* Phase 2b — multi-step form navigation */
+function wsMsfNext(){
+  var p0=document.getElementById('msf-page-0');
+  var p1=document.getElementById('msf-page-1');
+  var d0=document.getElementById('msf-dot-0');
+  var d1=document.getElementById('msf-dot-1');
+  if(!p0||!p1)return;
+  if(!p0.closest('form').reportValidity())return;
+  p0.style.display='none';
+  p1.style.display='flex';
+  if(d0)d0.classList.remove('ws-msf-step--on');
+  if(d1)d1.classList.add('ws-msf-step--on');
+}
+function wsMsfBack(){
+  var p0=document.getElementById('msf-page-0');
+  var p1=document.getElementById('msf-page-1');
+  var d0=document.getElementById('msf-dot-0');
+  var d1=document.getElementById('msf-dot-1');
+  if(!p0||!p1)return;
+  p1.style.display='none';
+  p0.style.display='flex';
+  if(d1)d1.classList.remove('ws-msf-step--on');
+  if(d0)d0.classList.add('ws-msf-step--on');
+}
+
+/* Phase 2b — membership tier radio toggle */
+function wsMfTier(el){
+  var group=el.closest('.ws-mem-tiers');
+  if(!group)return;
+  group.querySelectorAll('.ws-mem-tier').forEach(function(t){
+    t.classList.remove('ws-mem-tier--on');
+    t.setAttribute('aria-checked','false');
+    var radio=t.querySelector('input[type="radio"]');
+    if(radio)radio.checked=false;
+  });
+  el.classList.add('ws-mem-tier--on');
+  el.setAttribute('aria-checked','true');
+  var r=el.querySelector('input[type="radio"]');
+  if(r)r.checked=true;
+}
 `.trim();
 
 // ── Language / RTL helpers ────────────────────────────────────────────────────
@@ -1219,6 +1404,16 @@ const SECTION_NAV: Record<string, { label: string; href: string }> = {
   "faq":             { label: "FAQ",       href: "#faq"           },
   "product-grid":    { label: "Products",  href: "#products"      },
   "feature-showcase":{ label: "Features",  href: "#features"      },
+  // Phase 2b trust & conversion pool
+  "comparison-table":  { label: "Why Us",      href: "#comparison"  },
+  "agent-card":        { label: "Your Agent",  href: "#agent"       },
+  "trainer-showcase":  { label: "Trainers",    href: "#trainers"    },
+  "press-quote-band":  { label: "Press",       href: "#press"       },
+  "trust-badges-band": { label: "Trust",       href: "#trust"       },
+  "multi-step-form":   { label: "Inquire",     href: "#inquiry"     },
+  "appointment-form":  { label: "Book",        href: "#appointment" },
+  "valuation-form":    { label: "Valuation",   href: "#valuation"   },
+  "membership-form":   { label: "Join",        href: "#join"        },
 };
 
 function buildNavLinks(spec: WebsiteSpec): Array<{ label: string; href: string }> {
@@ -1394,6 +1589,54 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         if (ig) bodyParts.push(addDataVs(ig, i));
         break;
       }
+
+      // ── Phase 2b — trust & conversion pool ────────────────────────────────
+      case "comparison-table": {
+        const ct = renderComparisonTable(t, c);
+        if (ct) bodyParts.push(addDataVs(ct, i));
+        break;
+      }
+      case "agent-card": {
+        const ac = renderAgentCard(t, c, images[imgKey]);
+        if (ac) bodyParts.push(addDataVs(ac, i));
+        break;
+      }
+      case "press-quote-band": {
+        const pq = renderPressQuoteBand(t, c);
+        if (pq) bodyParts.push(addDataVs(pq, i));
+        break;
+      }
+      case "trainer-showcase": {
+        const ts = renderTrainerShowcase(t, c);
+        if (ts) bodyParts.push(addDataVs(ts, i));
+        break;
+      }
+      case "trust-badges-band": {
+        const tb = renderTrustBadgesBand(t, c);
+        if (tb) bodyParts.push(addDataVs(tb, i));
+        break;
+      }
+      case "multi-step-form": {
+        const msf = renderMultiStepForm(t, c);
+        if (msf) bodyParts.push(addDataVs(msf, i));
+        break;
+      }
+      case "appointment-form": {
+        const af = renderAppointmentForm(t, c);
+        if (af) bodyParts.push(addDataVs(af, i));
+        break;
+      }
+      case "valuation-form": {
+        const vf = renderValuationForm(t, c);
+        if (vf) bodyParts.push(addDataVs(vf, i));
+        break;
+      }
+      case "membership-form": {
+        const mf = renderMembershipForm(t, c);
+        if (mf) bodyParts.push(addDataVs(mf, i));
+        break;
+      }
+
       default:
         break;
     }

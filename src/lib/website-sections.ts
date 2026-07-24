@@ -1585,3 +1585,378 @@ export function renderIntegrationGrid(
   </div>
 </section>`;
 }
+
+// ── Phase 2b — Trust & Conversion Pool ───────────────────────────────────────
+
+// TC-1: comparison-table — "us vs traditional" feature table
+// Only renders rows where both feature + ours are present. Never invents competitor data.
+export function renderComparisonTable(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; rows?: { feature?: string; ours?: string; theirs?: string }[] }
+): string {
+  const rows = (c.rows ?? []).filter((r) => r.feature && r.ours).slice(0, 8);
+  if (!rows.length) return "";
+  return `<section class="ws-section ws-section-alt" id="comparison">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-cmp-wrap">
+      <table class="ws-cmp-table">
+        <thead>
+          <tr>
+            <th class="ws-cmp-th ws-cmp-th-feat"></th>
+            <th class="ws-cmp-th ws-cmp-th-us">Us</th>
+            <th class="ws-cmp-th ws-cmp-th-them">Traditional</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r) => `
+          <tr class="ws-cmp-row">
+            <td class="ws-cmp-feat">${esc(r.feature ?? "")}</td>
+            <td class="ws-cmp-us">${esc(r.ours ?? "")}</td>
+            <td class="ws-cmp-them">${r.theirs ? esc(r.theirs) : "—"}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-2: agent-card — real estate agent photo + bio + contact (only real provided data)
+export function renderAgentCard(
+  _t: DesignTokens,
+  c: { name?: string; title?: string; phone?: string; email?: string; bio?: string },
+  imageUrl?: string
+): string {
+  if (!c.name) return "";
+  return `<section class="ws-section" id="agent">
+  <div class="ws-container">
+    <div class="ws-agent-card">
+      <div class="ws-agent-photo">
+        ${imageUrl
+          ? `<img src="${esc(imageUrl)}" alt="${esc(c.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" onerror="this.style.display='none'">`
+          : `<div style="width:100%;height:100%;background:linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--bg-alt) 100%);display:block;" aria-label="${esc(c.name)}"></div>`}
+      </div>
+      <div class="ws-agent-info">
+        <h2 class="ws-agent-name">${esc(c.name)}</h2>
+        ${c.title ? `<p class="ws-agent-title">${esc(c.title)}</p>` : ""}
+        ${c.bio   ? `<p class="ws-agent-bio">${esc(c.bio)}</p>` : ""}
+        <div class="ws-agent-contacts">
+          ${c.phone ? `<a href="tel:${esc(c.phone.replace(/\s/g,""))}" class="ws-agent-contact">${icon("phone",16)} ${esc(c.phone)}</a>` : ""}
+          ${c.email ? `<a href="mailto:${esc(c.email)}" class="ws-agent-contact">${icon("mail",16)} ${esc(c.email)}</a>` : ""}
+        </div>
+        <a href="#booking" class="ws-btn ws-btn-accent" style="margin-top:24px;display:inline-flex;">Get in Touch</a>
+      </div>
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-3: press-quote-band — pull-quote on dark band; only renders if real quote provided
+export function renderPressQuoteBand(
+  t: DesignTokens,
+  c: { quote?: string; source?: string; publication?: string }
+): string {
+  if (!c.quote) return "";
+  return `<section class="ws-pqb" id="press" style="background:${t.heroBg};">
+  <div class="ws-container">
+    <div class="ws-pqb-inner">
+      <p class="ws-pqb-mark" aria-hidden="true">"</p>
+      <blockquote class="ws-pqb-quote">${esc(c.quote)}</blockquote>
+      ${(c.source || c.publication) ? `<footer class="ws-pqb-foot">
+        ${c.source      ? `<span class="ws-pqb-source">${esc(c.source)}</span>` : ""}
+        ${c.publication ? `<span class="ws-pqb-pub">${esc(c.publication)}</span>` : ""}
+      </footer>` : ""}
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-4: trainer-showcase — gym staff grid (initials avatars, no images)
+export function renderTrainerShowcase(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; trainers?: { name?: string; specialty?: string; bio?: string }[] }
+): string {
+  const trainers = (c.trainers ?? []).filter((tr) => tr.name).slice(0, 6);
+  if (!trainers.length) return "";
+  return `<section class="ws-section ws-section-alt" id="trainers">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-trainer-grid">
+      ${trainers.map((tr) => {
+        const initials = (tr.name ?? "?").split(" ").map((w: string) => w[0] ?? "").join("").slice(0, 2).toUpperCase();
+        return `
+      <div class="ws-trainer-card">
+        <div class="ws-trainer-avatar">${esc(initials)}</div>
+        <p class="ws-trainer-name">${esc(tr.name ?? "")}</p>
+        ${tr.specialty ? `<p class="ws-trainer-spec">${esc(tr.specialty)}</p>` : ""}
+        ${tr.bio ? `<p class="ws-trainer-bio">${esc(tr.bio)}</p>` : ""}
+      </div>`;
+      }).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-5: trust-badges-band — standalone badge strip (reuses hasTrustBadges gate)
+export function renderTrustBadgesBand(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; badges?: { value?: string; label?: string }[] }
+): string {
+  const badges = (c.badges ?? []).filter((b) => b.value && b.label).slice(0, 5);
+  if (!badges.length) return "";
+  return `<section class="ws-section" id="trust">
+  <div class="ws-container" style="text-align:center;">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-tbadges">
+      ${badges.map((b) => `
+      <div class="ws-tbadge">
+        <p class="ws-tbadge-val">${esc(b.value ?? "")}</p>
+        <p class="ws-tbadge-lbl">${esc(b.label ?? "")}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// Shared success + error blocks used by TC-6 through TC-9
+function formBlockOk(title: string, text: string): string {
+  return `<div class="ws-fb-ok" style="display:none;">
+    <div class="ws-fb-ok-icon">${icon("check", 28)}</div>
+    <h3 class="ws-fb-ok-title">${esc(title)}</h3>
+    <p class="ws-fb-ok-text">${esc(text)}</p>
+  </div>`;
+}
+
+// TC-6: multi-step-inquiry-form — 2-step form with progress indicator
+export function renderMultiStepForm(
+  _t: DesignTokens,
+  c: { headline?: string; step1Headline?: string; step2Headline?: string; services?: string[]; submitLabel?: string }
+): string {
+  const services = (c.services ?? []).slice(0, 12);
+  const submit = c.submitLabel || "Submit Request";
+  return `<section class="ws-section" id="inquiry">
+  <div class="ws-container">
+    ${c.headline ? `<h2 class="ws-heading" style="text-align:center;">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-fb ws-msf-wrap">
+      <div class="ws-msf-progress" aria-label="Form progress">
+        <div class="ws-msf-step ws-msf-step--on" id="msf-dot-0">
+          <div class="ws-msf-dot" aria-hidden="true">1</div>
+          <span>${esc(c.step1Headline || "Your Details")}</span>
+        </div>
+        <div class="ws-msf-bar"></div>
+        <div class="ws-msf-step" id="msf-dot-1">
+          <div class="ws-msf-dot" aria-hidden="true">2</div>
+          <span>${esc(c.step2Headline || "Your Request")}</span>
+        </div>
+      </div>
+      <form id="msf-form" onsubmit="return wsFormBlock(event)">
+        <div id="msf-page-0" class="ws-msf-page" style="display:flex;flex-direction:column;gap:16px;">
+          <div class="ws-form-group">
+            <label class="ws-form-label">Full Name</label>
+            <input class="ws-form-input" type="text" name="firstName" placeholder="Your name" required>
+          </div>
+          <div class="ws-form-row">
+            <div class="ws-form-group">
+              <label class="ws-form-label">Email</label>
+              <input class="ws-form-input" type="email" name="email" placeholder="Email address" required>
+            </div>
+            <div class="ws-form-group">
+              <label class="ws-form-label">Phone</label>
+              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number">
+            </div>
+          </div>
+          <button type="button" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;margin-top:4px;" onclick="wsMsfNext()">Continue →</button>
+        </div>
+        <div id="msf-page-1" class="ws-msf-page" style="display:none;flex-direction:column;gap:16px;">
+          ${services.length ? `
+          <div class="ws-form-group">
+            <label class="ws-form-label">What are you interested in?</label>
+            <select class="ws-form-input" name="service">
+              <option value="">Select…</option>
+              ${services.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
+            </select>
+          </div>` : ""}
+          <div class="ws-form-group">
+            <label class="ws-form-label">Tell us more</label>
+            <textarea class="ws-form-input" name="message" rows="4" placeholder="Any details that help us prepare…"></textarea>
+          </div>
+          <div class="ws-fb-err" style="display:none;"></div>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="ws-btn ws-btn-outline" style="flex:1;justify-content:center;" onclick="wsMsfBack()">← Back</button>
+            <button type="submit" class="ws-btn ws-btn-accent" style="flex:2;justify-content:center;" data-label="${esc(submit)}">${esc(submit)}</button>
+          </div>
+        </div>
+      </form>
+      ${formBlockOk("Request Received", "We'll be in touch shortly.")}
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-7: appointment-booking-block — service + date + contact; requires real service list
+export function renderAppointmentForm(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; services?: string[]; submitLabel?: string }
+): string {
+  const services = (c.services ?? []).filter(Boolean).slice(0, 12);
+  if (!services.length) return "";
+  const submit = c.submitLabel || "Book Appointment";
+  return `<section class="ws-section ws-section-alt" id="appointment">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow" style="text-align:center;">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading" style="text-align:center;">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-appt-wrap">
+      <div class="ws-fb">
+        <form onsubmit="return wsFormBlock(event)" style="display:flex;flex-direction:column;gap:16px;">
+          <div class="ws-form-row">
+            <div class="ws-form-group">
+              <label class="ws-form-label">Full Name</label>
+              <input class="ws-form-input" type="text" name="firstName" placeholder="Your name" required>
+            </div>
+            <div class="ws-form-group">
+              <label class="ws-form-label">Phone</label>
+              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number" required>
+            </div>
+          </div>
+          <div class="ws-form-row">
+            <div class="ws-form-group">
+              <label class="ws-form-label">Email</label>
+              <input class="ws-form-input" type="email" name="email" placeholder="Email address">
+            </div>
+            <div class="ws-form-group">
+              <label class="ws-form-label">Preferred Date</label>
+              <input class="ws-form-input" type="date" name="preferredDate">
+            </div>
+          </div>
+          <div class="ws-form-group">
+            <label class="ws-form-label">Service</label>
+            <select class="ws-form-input" name="service" required>
+              <option value="">Select a service…</option>
+              ${services.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="ws-form-group">
+            <label class="ws-form-label">Additional Notes</label>
+            <textarea class="ws-form-input" name="message" rows="3" placeholder="Any specific requests?"></textarea>
+          </div>
+          <div class="ws-fb-err" style="display:none;"></div>
+          <button type="submit" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;" data-label="${esc(submit)}">${esc(submit)}</button>
+        </form>
+        ${formBlockOk("Appointment Requested", "We'll confirm your time shortly.")}
+      </div>
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-8: valuation-request-form — real estate property details + contact form
+export function renderValuationForm(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; submitLabel?: string }
+): string {
+  const submit = c.submitLabel || "Request Valuation";
+  return `<section class="ws-section" id="valuation">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow" style="text-align:center;">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading" style="text-align:center;">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading" style="text-align:center;margin:0 auto 48px;">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-val-wrap">
+      <div class="ws-fb">
+        <form onsubmit="return wsFormBlock(event)" style="display:flex;flex-direction:column;gap:16px;">
+          <div class="ws-form-group">
+            <label class="ws-form-label">Property Address</label>
+            <input class="ws-form-input" type="text" name="address" placeholder="Street address, city" required>
+          </div>
+          <div class="ws-form-row">
+            <div class="ws-form-group">
+              <label class="ws-form-label">Property Type</label>
+              <select class="ws-form-input" name="propertyType">
+                <option value="">Select…</option>
+                <option>Apartment</option><option>Villa</option><option>House</option>
+                <option>Townhouse</option><option>Penthouse</option><option>Commercial</option>
+              </select>
+            </div>
+            <div class="ws-form-group">
+              <label class="ws-form-label">Bedrooms</label>
+              <select class="ws-form-input" name="bedrooms">
+                <option value="">Select…</option>
+                <option>Studio</option><option>1</option><option>2</option>
+                <option>3</option><option>4</option><option>5+</option>
+              </select>
+            </div>
+          </div>
+          <div class="ws-form-row">
+            <div class="ws-form-group">
+              <label class="ws-form-label">Your Name</label>
+              <input class="ws-form-input" type="text" name="firstName" placeholder="Full name" required>
+            </div>
+            <div class="ws-form-group">
+              <label class="ws-form-label">Phone</label>
+              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number" required>
+            </div>
+          </div>
+          <div class="ws-form-group">
+            <label class="ws-form-label">Email</label>
+            <input class="ws-form-input" type="email" name="email" placeholder="Email address">
+          </div>
+          <div class="ws-fb-err" style="display:none;"></div>
+          <button type="submit" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;" data-label="${esc(submit)}">${esc(submit)}</button>
+        </form>
+        ${formBlockOk("Request Received", "We'll prepare your valuation and be in touch shortly.")}
+      </div>
+    </div>
+  </div>
+</section>`;
+}
+
+// TC-9: membership-signup-block — tier selector + signup fields (only real pricing tiers)
+export function renderMembershipForm(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; tiers?: { name?: string; price?: string; period?: string }[]; submitLabel?: string }
+): string {
+  const tiers = (c.tiers ?? []).filter((t) => t.name && t.price).slice(0, 4);
+  if (!tiers.length) return "";
+  const submit = c.submitLabel || "Join Now";
+  return `<section class="ws-section ws-section-alt" id="join">
+  <div class="ws-container" style="text-align:center;">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-mem-tiers" role="radiogroup" aria-label="Membership tiers">
+      ${tiers.map((tier, i) => `
+      <div class="ws-mem-tier${i === 0 ? " ws-mem-tier--on" : ""}" onclick="wsMfTier(this)" role="radio" aria-checked="${i === 0 ? "true" : "false"}" tabindex="0">
+        <input type="radio" name="membershipTier" value="${esc(tier.name ?? "")}" ${i === 0 ? "checked" : ""} style="position:absolute;opacity:0;pointer-events:none;">
+        <p class="ws-mem-tier-name">${esc(tier.name ?? "")}</p>
+        <p class="ws-mem-tier-price">${esc(tier.price ?? "")}${tier.period ? `<span class="ws-mem-tier-period">/${esc(tier.period)}</span>` : ""}</p>
+      </div>`).join("")}
+    </div>
+    <div class="ws-mem-form-wrap">
+      <div class="ws-fb">
+        <form onsubmit="return wsFormBlock(event)" style="display:flex;flex-direction:column;gap:16px;">
+          <div class="ws-form-row">
+            <div class="ws-form-group">
+              <label class="ws-form-label">Full Name</label>
+              <input class="ws-form-input" type="text" name="firstName" placeholder="Your name" required>
+            </div>
+            <div class="ws-form-group">
+              <label class="ws-form-label">Email</label>
+              <input class="ws-form-input" type="email" name="email" placeholder="Email address" required>
+            </div>
+          </div>
+          <div class="ws-form-group">
+            <label class="ws-form-label">Phone</label>
+            <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number">
+          </div>
+          <div class="ws-fb-err" style="display:none;"></div>
+          <button type="submit" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;" data-label="${esc(submit)}">${esc(submit)}</button>
+        </form>
+        ${formBlockOk("You're In!", "Welcome to the community. We'll send your membership details shortly.")}
+      </div>
+    </div>
+  </div>
+</section>`;
+}

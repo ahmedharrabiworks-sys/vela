@@ -6,7 +6,7 @@ import type { PresetName, DesignDNA } from "@/lib/website-design-system";
 import { APPROVED_FONTS } from "@/lib/website-design-system";
 import {
   TEMPLATE_BY_CATEGORY, TEMPLATE_BY_ID, GPT_CATEGORY_TO_TEMPLATE, OPTIONAL_SKIP_RULES,
-  type SiteTemplate,
+  type SiteTemplate, type TemplateSection,
 } from "@/lib/website-templates";
 
 export const dynamic = "force-dynamic";
@@ -800,6 +800,118 @@ function enforceTemplate(spec: WebsiteSpec, template: SiteTemplate): void {
   spec.sections = result;
 }
 
+// ── Phase 2b: Trust + Conversion component pool ───────────────────────────────
+// Maps design_strategy.category → eligible trust section type(s) then conversion type(s).
+// Trust types come first (index 0-4), conversion types after (index 5-8).
+const TRUST_CONV_POOL: Record<string, { trust: string[]; conversion: string[] }> = {
+  real_estate: {
+    trust:      ["agent-card", "comparison-table", "press-quote-band", "trust-badges-band"],
+    conversion: ["valuation-form", "multi-step-form"],
+  },
+  dental: {
+    trust:      ["trust-badges-band", "comparison-table", "press-quote-band"],
+    conversion: ["appointment-form", "multi-step-form"],
+  },
+  gym: {
+    trust:      ["trainer-showcase", "trust-badges-band", "press-quote-band"],
+    conversion: ["membership-form", "multi-step-form"],
+  },
+  interior_design: {
+    trust:      ["press-quote-band", "comparison-table", "trust-badges-band"],
+    conversion: ["multi-step-form", "appointment-form"],
+  },
+};
+
+type TrustConvAvailableData = HeroAvailableData & {
+  hasAgentContact: boolean; // real estate agent name + at least one contact detail
+  hasPressQuote:   boolean; // an actual press mention or quote in description
+  hasTrainerData:  boolean; // gym staff/trainer names listed
+  hasServiceList:  boolean; // at least 1 service name explicitly listed
+};
+
+function extractTrustConvAvailableData(description: string): TrustConvAvailableData {
+  const hero = extractHeroAvailableData(description);
+  return {
+    ...hero,
+    hasAgentContact: /\b(agent|broker|realtor)\b.*\b(call|phone|email|contact|whatsapp|\+\d|@)/i.test(description),
+    hasPressQuote:   /\b(featured in|as seen in|press|award|quoted|magazine|newspaper|article|review by)\b/i.test(description),
+    hasTrainerData:  /\b(trainer|coach|instructor|staff)\b.*\b(name|certified|specialist|years|level|expert)\b/i.test(description) ||
+                     /\b(meet our|our team of)\b.*\b(trainer|coach|instructor)\b/i.test(description),
+    hasServiceList:  /\b(services?|offer|specializ|treatment|program|class|package)\b/i.test(description) &&
+                     /\b(include|offer|provide|list)\b/i.test(description),
+  };
+}
+
+function selectTrustComponents(
+  strategy: DesignStrategy | null,
+  data: TrustConvAvailableData,
+): { trustType: string | null; conversionType: string | null } {
+  if (!strategy) return { trustType: null, conversionType: null };
+  const pool = TRUST_CONV_POOL[strategy.category];
+  if (!pool) return { trustType: null, conversionType: null };
+
+  // Data-availability gates — a component is only eligible if its required data is present
+  const trustGated = new Set<string>();
+  if (!data.hasAgentContact)            trustGated.add("agent-card");
+  if (!data.hasPressQuote)              trustGated.add("press-quote-band");
+  if (!data.hasTrainerData)             trustGated.add("trainer-showcase");
+  if (!data.hasTrustBadges)            trustGated.add("trust-badges-band");
+  // comparison-table: always potentially eligible (GPT can use stated differentiators)
+
+  const convGated = new Set<string>();
+  if (!data.hasServiceList)             convGated.add("appointment-form");
+  if (!data.hasPricingData)            convGated.add("membership-form");
+  // multi-step-form and valuation-form are always eligible
+
+  const eligibleTrust = pool.trust.filter((t) => !trustGated.has(t));
+  const eligibleConv  = pool.conversion.filter((c) => !convGated.has(c));
+
+  // Score trust components
+  const trustScore = (t: string): number => {
+    let s = 0;
+    const { brand_personality: bp, conversion_goal: cg } = strategy;
+    if (t === "agent-card"       && data.hasAgentContact)                      s += 3;
+    if (t === "trainer-showcase" && data.hasTrainerData)                       s += 3;
+    if (t === "press-quote-band" && data.hasPressQuote)                        s += 3;
+    if (t === "trust-badges-band" && data.hasTrustBadges)                      s += 2;
+    if (t === "comparison-table" && cg === "generate_leads")                   s += 1;
+    if (t === "comparison-table" && bp === "trustworthy")                      s += 1;
+    return s;
+  };
+
+  // Score conversion components
+  const convScore = (c: string): number => {
+    let s = 0;
+    const { conversion_goal: cg } = strategy;
+    if (c === "valuation-form"   && cg === "request_valuation")                s += 3;
+    if (c === "membership-form"  && cg === "sell_membership")                  s += 3;
+    if (c === "appointment-form" && cg === "book_appointment")                 s += 3;
+    if (c === "multi-step-form"  && cg === "generate_leads")                   s += 2;
+    return s;
+  };
+
+  const rankedTrust = [...eligibleTrust].sort((a, b) => trustScore(b) - trustScore(a));
+  const rankedConv  = [...eligibleConv].sort((a, b) => convScore(b) - convScore(a));
+
+  return {
+    trustType:      rankedTrust[0] ?? null,
+    conversionType: rankedConv[0] ?? null,
+  };
+}
+
+// Post-GPT safety net: remove trust/conversion sections where GPT did not fill required data
+function verifyTrustComponents(spec: WebsiteSpec): void {
+  spec.sections = spec.sections.filter((s) => {
+    const rule = OPTIONAL_SKIP_RULES[s.type];
+    if (!rule) return true; // no skip rule → keep
+    const skip = rule(s.content as Record<string, unknown>);
+    if (skip) {
+      console.warn(`[website/generate] verifyTrustComponents: removing ${s.type} — required data missing`);
+    }
+    return !skip;
+  });
+}
+
 // ── Hero variant extended-schema instructions ─────────────────────────────────
 const HERO_VARIANT_SCHEMAS: Record<string, string> = {
   "re-split":
@@ -822,6 +934,62 @@ const HERO_VARIANT_SCHEMAS: Record<string, string> = {
 imageQueries REQUIRED at section level (3 strings for the image grid).`,
 };
 
+// ── Trust + conversion component schema instructions (Phase 2b) ──────────────
+const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
+  "comparison-table":
+    `"comparison-table" section content: { "eyebrow"?, "headline", "subheadline"?,
+  "rows": [{ "feature": string, "ours": string, "theirs"?: string }] }
+  RULES: Only include rows where you can state what "ours" genuinely offers from the description.
+  "theirs" is optional — only populate if the description explicitly contrasts with a competitor.
+  Max 6 rows. Never invent competitor data.`,
+
+  "agent-card":
+    `"agent-card" section content: { "name": string, "title"?: string, "phone"?: string, "email"?: string, "bio"?: string }
+  RULES: Use only real agent name, phone, email, and title stated in the description.
+  Bio must be 1–2 sentences drawn from real stated details — never invented.
+  Omit any contact field not explicitly provided.`,
+
+  "press-quote-band":
+    `"press-quote-band" section content: { "quote": string, "source"?: string, "publication"?: string }
+  RULES: The quote must be a real stated quote or paraphrase of a real press mention from the description.
+  NEVER invent a quote or fabricate a publication name.`,
+
+  "trainer-showcase":
+    `"trainer-showcase" section content: { "eyebrow"?, "headline"?,
+  "trainers": [{ "name": string, "specialty"?: string, "bio"?: string }] }
+  RULES: Only include trainers whose names were actually stated in the description. Max 6.
+  specialty and bio must come from real stated information — never invent them.`,
+
+  "trust-badges-band":
+    `"trust-badges-band" section content: { "eyebrow"?, "headline"?,
+  "badges": [{ "value": string, "label": string }] }
+  RULES: Only use real statistics, years, certifications, or counts stated in the description.
+  Never invent numbers. Each badge must be independently verifiable from the input. Max 5.`,
+
+  "multi-step-form":
+    `"multi-step-form" section content: { "headline"?, "step1Headline"?, "step2Headline"?,
+  "services"?: string[], "submitLabel"?: string }
+  RULES: services array is optional — only include service names actually listed in the description. Max 12.
+  step1Headline defaults to "Your Details", step2Headline defaults to "Your Request".`,
+
+  "appointment-form":
+    `"appointment-form" section content: { "eyebrow"?, "headline"?,
+  "services": string[], "submitLabel"?: string }
+  RULES: services array is REQUIRED. Only list services explicitly named in the description. Max 12.
+  If no services are named, output services: [] — the section will be suppressed server-side.`,
+
+  "valuation-form":
+    `"valuation-form" section content: { "eyebrow"?, "headline"?, "subheadline"?, "submitLabel"?: string }
+  RULES: All fields are standard form labels — write compelling copy for eyebrow/headline/subheadline only.
+  Do not invent property data or agent details in this section.`,
+
+  "membership-form":
+    `"membership-form" section content: { "eyebrow"?, "headline"?,
+  "tiers": [{ "name": string, "price": string, "period"?: string }], "submitLabel"?: string }
+  RULES: tiers is REQUIRED. Only include membership tiers with REAL prices stated in the description.
+  Never invent prices. If no real prices exist, output tiers: [] — the section will be suppressed.`,
+};
+
 // ── Template: system prompt for the fill (step-2) call ────────────────────────
 function buildFillSystem(
   template: SiteTemplate,
@@ -830,6 +998,7 @@ function buildFillSystem(
   hasOwnerPhoto = true,
   strategy?: DesignStrategy | null,
   heroVariant?: string | null,
+  trustComponents?: string[] | null,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
@@ -1070,6 +1239,11 @@ PART 9 — HERO VARIANT SCHEMA OVERRIDE
 The hero section uses variant "${heroVariant}". Write its content using this exact schema:
 ${HERO_VARIANT_SCHEMAS[heroVariant]}
 For all other sections use schemas from PART 8.
+` : ""}${trustComponents && trustComponents.length > 0 ? `═══════════════════════════════════════════════════════
+PART 10 — TRUST + CONVERSION SECTION SCHEMAS
+═══════════════════════════════════════════════════════
+The following trust/conversion sections have been added to the template. Write their content using EXACTLY these schemas. These sections appear in the sections array at the positions you see in the template. FABRICATION RULE: these sections exist specifically to build trust — a fabricated trust signal is worse than a missing one. If you cannot populate required fields from real stated data, output empty arrays or omit optional fields.
+${trustComponents.map((type) => TRUST_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
 ABSOLUTE RULES — NEVER VIOLATE
 ═══════════════════════════════════════════════════════
@@ -1910,9 +2084,16 @@ export async function POST(req: NextRequest) {
       const heroAvailableData = extractHeroAvailableData(fullDescription);
       const selectedHeroVariant = selectHeroVariant(designStrategy, heroAvailableData);
 
+      // Trust + conversion pool selection (Phase 2b)
+      const trustConvData = extractTrustConvAvailableData(fullDescription);
+      const { trustType: selectedTrustType, conversionType: selectedConversionType } =
+        selectTrustComponents(designStrategy, trustConvData);
+      const selectedTrustComponents: string[] = [selectedTrustType, selectedConversionType].filter(Boolean) as string[];
+      console.log(`[website/generate] trustPool: trust=${selectedTrustType ?? "none"} conversion=${selectedConversionType ?? "none"}`);
+
       const baseTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
       // Patch the hero variant in the template so enforceTemplate locks it in
-      const selectedTemplate: SiteTemplate = selectedHeroVariant
+      let selectedTemplate: SiteTemplate = selectedHeroVariant
         ? {
             ...baseTemplate,
             sections: baseTemplate.sections.map((s) =>
@@ -1920,6 +2101,22 @@ export async function POST(req: NextRequest) {
             ),
           }
         : baseTemplate;
+
+      // Inject trust + conversion sections before the contact-block (Phase 2b)
+      if (selectedTrustComponents.length > 0) {
+        const contactIdx = selectedTemplate.sections.findIndex((s) => s.type === "contact-block");
+        const insertAt = contactIdx >= 0 ? contactIdx : selectedTemplate.sections.length;
+        const tcSections: TemplateSection[] = selectedTrustComponents.map((type) => ({
+          type,
+          variant: "",
+          imageSlots: type === "agent-card" ? 1 : 0,
+          required: false,
+        }));
+        const patchedSections = [...selectedTemplate.sections];
+        patchedSections.splice(insertAt, 0, ...tcSections);
+        selectedTemplate = { ...selectedTemplate, sections: patchedSections };
+      }
+
       console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} heroVariant=${selectedHeroVariant ?? "template-default"} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || "–"}${s.required ? "" : "?"}`).join(", ")}]`);
 
       // Step 2: fill content within fixed template structure
@@ -1927,7 +2124,7 @@ export async function POST(req: NextRequest) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -1947,6 +2144,8 @@ export async function POST(req: NextRequest) {
       enforceTemplate(spec, selectedTemplate);
       // Post-GPT data-availability check: fall back if required content missing
       if (designStrategy) verifyHeroVariant(spec, designStrategy);
+      // Phase 2b: remove trust/conversion sections where GPT failed to populate required data
+      verifyTrustComponents(spec);
       console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || "–"}`).join(", ")}]`);
     }
 
