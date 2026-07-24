@@ -586,6 +586,7 @@ async function classifyWithDesignStrategy(
 {
   "template_category": one of: medical | hospitality | retail | saas | professional,
   "category": one of: real_estate | dental | gym | interior_design | restaurant | hotel | spa | legal | saas | ecommerce | other,
+    CATEGORY RULE — use "ecommerce" ONLY when the business primarily sells physical products online with a cart/checkout flow (e.g. an online clothing store, a dropshipping site). Any business that serves customers in person or provides a service — including bakeries, cafés, salons, florists, studios, clinics not in the named list — must be "other".
   "subcategory": "specific niche e.g. 'luxury residential sales', 'orthodontics', 'boutique strength studio', 'residential interior design'",
   "positioning": one of: premium | mid_market | affordable,
   "brand_personality": one of: elegant | bold | energetic | trustworthy | playful | minimal_luxury,
