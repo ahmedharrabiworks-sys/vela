@@ -19,31 +19,144 @@ const EDIT_SCRIPT = String.raw`(function(){
 'use strict';
 var spec=window.VS_SPEC;
 if(!spec||!Array.isArray(spec.sections))return;
+/* ── Edit-mode styles ──────────────────────────────────────────────────── */
 var sty=document.createElement('style');
-sty.textContent='[data-ve]{cursor:text;transition:outline .1s;}[data-ve]:hover{outline:2px dashed rgba(255,107,53,.75);outline-offset:2px;border-radius:2px;}[data-ve][contenteditable="true"]{outline:2px solid #FF6B35!important;outline-offset:2px;background:rgba(255,107,53,.04);border-radius:2px;min-width:4px;}';
+sty.textContent=[
+  '[data-ve]{cursor:pointer;transition:outline .12s;}',
+  '[data-ve]:hover{outline:2px dashed rgba(255,107,53,.65);outline-offset:2px;border-radius:2px;}',
+  '[data-ve][data-ve-active]{outline:2px solid #FF6B35!important;outline-offset:2px;border-radius:2px;}',
+  '#ve-panel{position:fixed;z-index:99999;background:#fff;border:1px solid #E5E7EB;border-radius:12px;',
+    'box-shadow:0 8px 40px rgba(0,0,0,.18);padding:12px 14px;display:flex;flex-direction:column;',
+    'gap:9px;width:258px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;}',
+  '#ve-panel[hidden]{display:none!important;}',
+  '.vep-row{display:flex;align-items:center;gap:5px;}',
+  '.vep-grp{display:flex;flex-direction:column;gap:4px;}',
+  '.vep-lbl{font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;}',
+  '.vep-btn{flex:1;padding:4px 6px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;',
+    'cursor:pointer;font-size:12px;font-weight:500;text-align:center;transition:all .1s;color:#374151;}',
+  '.vep-btn.on,.vep-btn:hover{background:#FF6B35;color:#fff;border-color:#FF6B35;}',
+  '.vep-ta{width:100%;border:1px solid #E5E7EB;border-radius:7px;padding:7px 9px;',
+    'font-size:13px;resize:vertical;min-height:54px;font-family:inherit;line-height:1.45;box-sizing:border-box;}',
+  '.vep-ta:focus{outline:2px solid #FF6B35;outline-offset:-1px;border-color:transparent;}',
+  '.vep-divider{height:1px;background:#F3F4F6;margin:1px 0;}',
+  '[data-vs]{position:relative;}',
+  '.vs-rbar{position:absolute;top:10px;right:10px;z-index:9990;display:flex;gap:4px;',
+    'opacity:0;transition:opacity .15s;pointer-events:none;}',
+  '[data-vs]:hover>.vs-rbar{opacity:1;pointer-events:auto;}',
+  '.vs-rbtn{background:rgba(17,17,17,.72);backdrop-filter:blur(4px);color:#fff;border:none;',
+    'border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:16px;display:flex;',
+    'align-items:center;justify-content:center;transition:background .12s;line-height:1;}',
+  '.vs-rbtn:hover{background:#FF6B35;}',
+].join('');
 document.head.appendChild(sty);
-function pe(si,f,ii,sk,v){parent.postMessage({type:'vela-edit',sectionIndex:si,field:f,itemIndex:ii,subField:sk,value:v},'*');}
+/* ── Build floating panel DOM ──────────────────────────────────────────── */
+var panel=document.createElement('div');
+panel.id='ve-panel';
+panel.setAttribute('hidden','');
+document.body.appendChild(panel);
+var _ta=document.createElement('textarea');
+_ta.className='vep-ta';
+_ta.placeholder='Edit text…';
+panel.appendChild(_ta);
+var _div1=document.createElement('div');_div1.className='vep-divider';panel.appendChild(_div1);
+function mkGrp(label,items){
+  var g=document.createElement('div');g.className='vep-grp';
+  var l=document.createElement('div');l.className='vep-lbl';l.textContent=label;g.appendChild(l);
+  var r=document.createElement('div');r.className='vep-row';
+  var btns=items.map(function(it){
+    var b=document.createElement('button');b.className='vep-btn';b.textContent=it.lbl;b.dataset.val=it.val;
+    r.appendChild(b);return b;
+  });
+  g.appendChild(r);return{g:g,btns:btns};
+}
+var szGrp=mkGrp('Size',[{lbl:'S',val:'small'},{lbl:'M',val:'default'},{lbl:'L',val:'large'}]);
+panel.appendChild(szGrp.g);
+var wtGrp=mkGrp('Weight',[{lbl:'Normal',val:'normal'},{lbl:'Bold',val:'bold'}]);
+panel.appendChild(wtGrp.g);
+var alGrp=mkGrp('Align',[{lbl:'←',val:'left'},{lbl:'↔',val:'center'},{lbl:'→',val:'right'}]);
+panel.appendChild(alGrp.g);
+var _div2=document.createElement('div');_div2.className='vep-divider';panel.appendChild(_div2);
+var clrGrp=document.createElement('div');clrGrp.className='vep-grp';
+var clrLbl=document.createElement('div');clrLbl.className='vep-lbl';clrLbl.textContent='Color';
+clrGrp.appendChild(clrLbl);
+var clrRow=document.createElement('div');clrRow.className='vep-row';
+var clrInp=document.createElement('input');
+clrInp.type='color';
+clrInp.style.cssText='width:34px;height:28px;border:1px solid #E5E7EB;border-radius:6px;padding:2px 3px;cursor:pointer;flex-shrink:0;';
+var clrReset=document.createElement('button');
+clrReset.className='vep-btn';clrReset.textContent='Reset';clrReset.style.flex='1';
+clrRow.appendChild(clrInp);clrRow.appendChild(clrReset);
+clrGrp.appendChild(clrRow);panel.appendChild(clrGrp);
+/* ── State ─────────────────────────────────────────────────────────────── */
+var curEl=null,curSi=null,curF=null,curIi=null,curSk=null;
+var FS={small:'0.85em','default':'',large:'1.3em'};
+var FW={normal:'','bold':'bold'};
+var TA={left:'left',center:'center',right:'right'};
+function pe(si,f,ii,sk,v){parent.postMessage({type:'vela-edit',sectionIndex:si,field:f,itemIndex:ii!=null?ii:undefined,subField:sk!=null?sk:undefined,value:v},'*');}
+function ps(key,st){parent.postMessage({type:'vela-style',key:key,style:st},'*');}
+function sKey(si,f,ii,sk){return si+'_'+(f||'')+'_'+(ii!=null?ii:'')+'_'+(sk!=null?sk:'');}
+function hexOf(el){var c=getComputedStyle(el).color,m=c.match(/\d+/g);if(!m)return'#000000';return'#'+[m[0],m[1],m[2]].map(function(n){return(+n).toString(16).padStart(2,'0')}).join('');}
+function setActive(btns,val){btns.forEach(function(b){b.classList.toggle('on',b.dataset.val===val);});}
+function applyS(el,props){
+  if('fontSize'in props)el.style.fontSize=props.fontSize;
+  if('fontWeight'in props)el.style.fontWeight=props.fontWeight;
+  if('textAlign'in props)el.style.textAlign=props.textAlign;
+  if('color'in props)el.style.color=props.color;
+}
+function pos(){
+  if(!curEl||panel.hasAttribute('hidden'))return;
+  var r=curEl.getBoundingClientRect(),pw=panel.offsetWidth||260,ph=panel.offsetHeight||300;
+  var t=r.bottom+6,l=r.left;
+  if(t+ph>window.innerHeight-8)t=r.top-ph-6;
+  if(t<6)t=6;
+  if(l+pw>window.innerWidth-8)l=window.innerWidth-pw-8;
+  if(l<6)l=6;
+  panel.style.top=t+'px';panel.style.left=l+'px';
+}
+function show(el,si,f,ii,sk){
+  if(curEl)curEl.removeAttribute('data-ve-active');
+  curEl=el;curSi=si;curF=f;curIi=ii;curSk=sk;
+  el.setAttribute('data-ve-active','1');
+  _ta.value=el.textContent||'';
+  var cs=getComputedStyle(el);
+  var fw=cs.fontWeight,fwVal=(parseInt(fw,10)>=600||fw==='bold')?'bold':'normal';
+  var fsVal=el.style.fontSize?(el.style.fontSize.indexOf('0.85')>=0?'small':(el.style.fontSize.indexOf('1.3')>=0?'large':'default')):'default';
+  setActive(szGrp.btns,fsVal);
+  setActive(wtGrp.btns,fwVal);
+  setActive(alGrp.btns,cs.textAlign||'left');
+  clrInp.value=hexOf(el);
+  panel.removeAttribute('hidden');
+  pos();
+}
+function hide(){
+  if(curEl)curEl.removeAttribute('data-ve-active');
+  curEl=null;panel.setAttribute('hidden','');
+}
+_ta.addEventListener('input',function(){if(curEl)curEl.textContent=_ta.value;});
+_ta.addEventListener('blur',function(){if(!curEl)return;pe(curSi,curF,curIi,curSk,_ta.value);});
+function wireBtns(btns,propFn){
+  btns.forEach(function(b){b.addEventListener('click',function(){
+    if(!curEl)return;
+    var p=propFn(b.dataset.val);setActive(btns,b.dataset.val);applyS(curEl,p);
+    ps(sKey(curSi,curF,curIi,curSk),p);pos();
+  });});
+}
+wireBtns(szGrp.btns,function(v){return{fontSize:FS[v]||''};});
+wireBtns(wtGrp.btns,function(v){return{fontWeight:FW[v]||''};});
+wireBtns(alGrp.btns,function(v){return{textAlign:TA[v]||''};});
+clrInp.addEventListener('input',function(){if(!curEl)return;applyS(curEl,{color:clrInp.value});ps(sKey(curSi,curF,curIi,curSk),{color:clrInp.value});});
+clrReset.addEventListener('click',function(){if(!curEl)return;applyS(curEl,{color:''});ps(sKey(curSi,curF,curIi,curSk),{color:''});});
+document.addEventListener('click',function(e){if(!panel.hasAttribute('hidden')&&!panel.contains(e.target)&&e.target!==curEl)hide();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')hide();});
+/* ── mk: attach editable marker ────────────────────────────────────────── */
 function mk(el,si,f,ii,sk){
   if(el.hasAttribute('data-ve'))return;
   el.setAttribute('data-ve','1');
-  var orig=el.textContent||'';
-  el.addEventListener('click',function(e){
-    e.stopPropagation();e.preventDefault();
-    if(el.contentEditable==='true')return;
-    el.contentEditable='true';el.focus();
-    try{var r=document.createRange();r.selectNodeContents(el);r.collapse(false);var s=getSelection();if(s){s.removeAllRanges();s.addRange(r);}}catch(x){}
-  });
-  el.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();el.blur();}
-    if(e.key==='Escape'){el.textContent=orig;el.contentEditable='false';}
-  });
-  el.addEventListener('blur',function(){
-    if(el.contentEditable!=='true')return;
-    el.contentEditable='false';
-    var v=el.textContent||'';
-    if(v!==orig){orig=v;pe(si,f,ii!==null?ii:undefined,sk!==null?sk:undefined,v);}
-  });
+  el.setAttribute('data-ve-si',String(si));
+  el.setAttribute('data-ve-f',f||'');
+  el.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();show(el,si,f,ii,sk);});
 }
+/* ── Field definitions ─────────────────────────────────────────────────── */
 var HERO=[{sel:'[class*="ws-hero-headline"]',field:'headline'},{sel:'[class*="ws-hero-sub"]',field:'subheadline'},{sel:'.ws-btn-accent',field:'ctaPrimary'},{sel:'.ws-btn-ghost',field:'ctaSecondary'},{sel:'.ws-btn-outline',field:'ctaSecondary'}];
 var D={};
 D['hero']=D['hero-fullbleed']=D['hero-split']=D['hero-minimal']=HERO;
@@ -61,7 +174,10 @@ D['faq']=D['faq-accordion']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyeb
 D['cta_banner']=D['cta-band']=[{sel:'.ws-cta-headline',field:'headline'},{sel:'.ws-cta-sub',field:'sub'},{sel:'.ws-btn-white',field:'ctaText'}];
 D['booking']=D['contact-block']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'button[type="submit"]',field:'ctaText'},{sel:'.ws-contact-value[data-field="phone"]',field:'phone'},{sel:'.ws-contact-value[data-field="email"]',field:'email'},{sel:'.ws-contact-value[data-field="address"]',field:'address'},{sel:'.ws-contact-value[data-field="hours"]',field:'hours'}];
 D['footer']=[{sel:'.ws-footer-tag',field:'tagline'},{sel:'.ws-footer-bottom',field:'copyright'}];
-D['gallery']=D['gallery-grid']=[];
+D['gallery']=D['gallery-grid']=D['logo-strip']=D['product-grid']=[];
+D['feature-showcase']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-showcase-item',arrayField:'items',fields:[{sel:'.ws-showcase-title',field:'title'},{sel:'.ws-showcase-desc',field:'description'}]}];
+D['integration-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-intg-tile',arrayField:'integrations',fields:[{sel:'.ws-intg-name',field:'name'}]}];
+/* ── Process sections ──────────────────────────────────────────────────── */
 function proc(el,si,sec){
   var defs=D[sec.type];if(!defs)return;
   defs.forEach(function(def){
@@ -74,13 +190,20 @@ function proc(el,si,sec){
 }
 document.querySelectorAll('[data-vs]').forEach(function(el){
   var vs=el.getAttribute('data-vs');
-  if(vs==='footer'){
-    var fi=spec.sections.findIndex(function(s){return s.type==='footer';});
-    if(fi>=0)proc(el,fi,spec.sections[fi]);return;
-  }
+  if(vs==='footer'){var fi=spec.sections.findIndex(function(s){return s.type==='footer';});if(fi>=0)proc(el,fi,spec.sections[fi]);return;}
   var si=parseInt(vs,10);
   if(!isNaN(si)&&si<spec.sections.length)proc(el,si,spec.sections[si]);
 });
+/* ── Re-apply persisted text styles ────────────────────────────────────── */
+var ts=spec._textStyles;
+if(ts&&typeof ts==='object'){
+  Object.keys(ts).forEach(function(key){
+    var parts=key.split('_'),si=parseInt(parts[0],10),f=parts[1],st=ts[key];
+    var sec=document.querySelector('[data-vs="'+si+'"]');if(!sec)return;
+    sec.querySelectorAll('[data-ve-si="'+si+'"][data-ve-f="'+f+'"]').forEach(function(el){applyS(el,st);});
+  });
+}
+/* ── Image click handler ───────────────────────────────────────────────── */
 var imgSty=document.createElement('style');
 imgSty.textContent='[data-vs] img{cursor:pointer;transition:filter .15s;}[data-vs] img:hover{filter:brightness(.78) saturate(.9);}';
 document.head.appendChild(imgSty);
@@ -93,6 +216,27 @@ document.querySelectorAll('[data-vs] img').forEach(function(img){
     var imgIdx=allImgs.indexOf(img);
     parent.postMessage({type:'vela-img-click',vs:vs,imgIdx:imgIdx,src:img.src},'*');
   });
+});
+/* ── Section reorder handles ────────────────────────────────────────────── */
+var total=spec.sections.length;
+document.querySelectorAll('[data-vs]').forEach(function(el){
+  var vs=el.getAttribute('data-vs'),si=parseInt(vs,10);if(isNaN(si))return;
+  var isFooter=si>=total-1&&spec.sections[si]&&spec.sections[si].type==='footer';
+  if(isFooter)return;
+  var bar=document.createElement('div');bar.className='vs-rbar';
+  if(si>0){
+    var up=document.createElement('button');up.className='vs-rbtn';up.title='Move up';up.innerHTML='&#8679;';
+    up.addEventListener('click',function(e){e.stopPropagation();parent.postMessage({type:'vela-reorder',from:si,to:si-1},'*');});
+    bar.appendChild(up);
+  }
+  var nextSec=spec.sections[si+1];
+  var nextIsFooter=nextSec&&nextSec.type==='footer';
+  if(si<total-1&&!nextIsFooter){
+    var dn=document.createElement('button');dn.className='vs-rbtn';dn.title='Move down';dn.innerHTML='&#8681;';
+    dn.addEventListener('click',function(e){e.stopPropagation();parent.postMessage({type:'vela-reorder',from:si,to:si+1},'*');});
+    bar.appendChild(dn);
+  }
+  if(bar.children.length)el.appendChild(bar);
 });
 })();`;
 
@@ -1596,7 +1740,45 @@ export default function WebsitePage() {
         }
         return;
       }
-      if ((e.data as Record<string, unknown>)?.type !== "vela-edit") return;
+      const msgType = (e.data as Record<string, unknown>)?.type as string | undefined;
+
+      if (msgType === "vela-style") {
+        const { key, style } = e.data as { key: string; style: Record<string, string> };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const ts = (next._textStyles ?? {}) as Record<string, Record<string, string>>;
+        if (Object.values(style).some(Boolean)) {
+          ts[key] = { ...(ts[key] ?? {}), ...style };
+        } else {
+          const merged = { ...(ts[key] ?? {}), ...style };
+          const remaining = Object.fromEntries(Object.entries(merged).filter(([, v]) => v));
+          if (Object.keys(remaining).length === 0) delete ts[key];
+          else ts[key] = remaining;
+        }
+        (next as Record<string, unknown>)._textStyles = ts;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        return;
+      }
+
+      if (msgType === "vela-reorder") {
+        const { from, to } = e.data as { from: number; to: number };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const secs = next.sections;
+        if (from < 0 || to < 0 || from >= secs.length || to >= secs.length) return;
+        const tmp = secs[from]; secs[from] = secs[to]; secs[to] = tmp;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        void handleSaveEdit(next);
+        return;
+      }
+
+      if (msgType !== "vela-edit") return;
       if (building) return;
       const { sectionIndex, field, itemIndex, subField, value } = e.data as {
         sectionIndex: number; field: string;
@@ -2301,19 +2483,19 @@ export default function WebsitePage() {
                   </div>
                 </div>
                 {!isPublished ? (
-                  <div className="text-center py-16 space-y-3">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                  <div className="text-center py-8 space-y-2">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
                     <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Publish your site to start collecting analytics</p>
                   </div>
                 ) : analyticsLoading ? (
-                  <div className="flex items-center justify-center py-20">
+                  <div className="flex items-center justify-center py-12">
                     <div className="w-8 h-8 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
                   </div>
                 ) : !analyticsData ? (
-                  <p className="text-sm text-[#9CA3AF] text-center py-16">Could not load analytics.</p>
+                  <p className="text-sm text-[#9CA3AF] text-center py-8">Could not load analytics.</p>
                 ) : analyticsData.totalVisits === 0 ? (
-                  <div className="text-center py-16 space-y-3">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                  <div className="text-center py-8 space-y-2">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
                     <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
                     <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
                   </div>
@@ -2521,7 +2703,7 @@ export default function WebsitePage() {
           <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-base font-bold text-[#111111] dark:text-white">Restore this version?</h2>
             <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
-              &ldquo;{restoreConfirmTarget.label}&rdquo; will replace your current draft. This cannot be undone.
+              Restore this version? Your current draft will be replaced by the version from {new Date(restoreConfirmTarget.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} on {new Date(restoreConfirmTarget.created_at).toLocaleDateString()}. You can restore a newer version afterwards.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button

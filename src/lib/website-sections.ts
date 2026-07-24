@@ -19,6 +19,9 @@ const ICONS: Record<string, string> = {
   mail:      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
   map:       `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
   time:      `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  cart:      `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+  zap:       `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  puzzle:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
 };
 
 function icon(name: string, size = 20): string {
@@ -30,7 +33,6 @@ function icon(name: string, size = 20): string {
 
 function photo(src: string | undefined, alt: string, cls: string, style = ""): string {
   if (src) return `<img src="${esc(src)}" alt="${esc(alt)}" class="${cls}" style="${style}" loading="lazy" onerror="this.style.display='none';this.parentElement&&(this.parentElement.style.background='linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--surface) 100%)')">`;
-  // Palette-derived gradient — uses the accent hue so it reads as intentional on any theme
   return `<div class="${cls}" style="background:linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--bg-alt) 100%);${style}" aria-label="${esc(alt)}"></div>`;
 }
 
@@ -43,23 +45,29 @@ function esc(s: unknown): string {
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
-export function renderNav(businessName: string, ctaText: string): string {
+export function renderNav(
+  businessName: string,
+  ctaText: string,
+  navLinks?: Array<{ label: string; href: string }>
+): string {
+  const links = navLinks ?? [
+    { label: "Services", href: "#services" },
+    { label: "About",    href: "#about"    },
+    { label: "Contact",  href: "#booking"  },
+  ];
   return `<nav class="ws-nav">
   <div class="ws-nav-inner">
     <a href="#" class="ws-nav-logo">${esc(businessName)}</a>
     <div class="ws-nav-links">
-      <a href="#services" class="ws-nav-link">Services</a>
-      <a href="#about" class="ws-nav-link">About</a>
-      <a href="#booking" class="ws-nav-link">Contact</a>
+      ${links.map((l) => `<a href="${esc(l.href)}" class="ws-nav-link">${esc(l.label)}</a>`).join("")}
     </div>
     <a href="#booking" class="ws-btn ws-btn-accent" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
   </div>
 </nav>`;
 }
 
-// ── Hero — 4 layout variants based on t.heroLayout ────────────────────────────
+// ── Hero — legacy layout variants (v1 backward compat) ────────────────────────
 
-// 1. full-bleed-bottom: oversized type at bottom-left (editorial-luxury)
 function renderHeroBleedBottom(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
@@ -82,7 +90,6 @@ function renderHeroBleedBottom(
 </section>`;
 }
 
-// 2. full-bleed-center: centered text overlay (estate-elegant)
 function renderHeroBleedCenter(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
@@ -105,13 +112,11 @@ function renderHeroBleedCenter(
 </section>`;
 }
 
-// 3. centered-glow: dark bg, centered headline, violet/accent radial glow (saas-sharp)
 function renderHeroCenteredGlow(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
   imageUrl?: string
 ): string {
-  // Use photo as subtle background if provided, otherwise pure dark bg
   const imgHtml = imageUrl
     ? `<img src="${esc(imageUrl)}" alt="" class="ws-hero-img" fetchpriority="high" style="opacity:0.18;">`
     : "";
@@ -130,7 +135,6 @@ function renderHeroCenteredGlow(
 </section>`;
 }
 
-// 4. split-right: text left, photo right — no overlay (beauty, medical)
 function renderHeroSplit(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
@@ -155,15 +159,67 @@ function renderHeroSplit(
 </section>`;
 }
 
+// editorial-offset: oversized headline top-left, floating image bottom-right
+function renderHeroEditorialOffset(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
+  imageUrl?: string
+): string {
+  return `<section class="ws-hero ws-hero--editorial" id="hero" style="background:${t.heroBg};">
+  <div class="ws-container" style="position:relative;z-index:1;padding-top:clamp(80px,14vw,160px);padding-bottom:clamp(80px,14vw,160px);">
+    <div class="ws-hero-editorial-inner">
+      <div class="ws-hero-editorial-text">
+        ${c.eyebrow ? `<p class="ws-hero-eyebrow" style="color:${t.accent};margin-bottom:24px;">${esc(c.eyebrow)}</p>` : ""}
+        <h1 class="ws-hero-headline ws-hero-headline--editorial" style="color:${t.heading};">${esc(c.headline || "Welcome")}</h1>
+        <div class="ws-hero-editorial-foot">
+          ${c.subheadline ? `<p class="ws-hero-sub" style="color:${t.muted};max-width:38ch;margin-bottom:40px;">${esc(c.subheadline)}</p>` : ""}
+          <div class="ws-hero-ctas">
+            ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+            ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+          </div>
+        </div>
+      </div>
+      <div class="ws-hero-editorial-img">
+        ${photo(imageUrl, c.headline || "Hero", "ws-hero-editorial-photo")}
+      </div>
+    </div>
+  </div>
+</section>`;
+}
+
+// split-right: image left, text right (mirror of split-left)
+function renderHeroSplitRight(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
+  imageUrl?: string
+): string {
+  return `<section class="ws-hero ws-hero--split ws-hero--split-right" id="hero">
+  <div class="ws-hero-split-media">
+    ${imageUrl
+      ? `<img src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" fetchpriority="high" style="width:100%;height:100%;object-fit:cover;display:block;">`
+      : `<div style="width:100%;height:100%;background:linear-gradient(135deg,${t.accent},${t.heroBg});"></div>`}
+  </div>
+  <div class="ws-hero-split-text">
+    ${c.eyebrow ? `<p class="ws-hero-eyebrow" style="color:var(--accent);">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-headline ws-hero-headline--split">${esc(c.headline || "Welcome")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-sub ws-hero-sub--split">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-hero-ctas">
+      ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-outline">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>
+  </div>
+</section>`;
+}
+
 export function renderHero(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
   imageUrl?: string
 ): string {
-  if (t.heroLayout === "split-right")    return renderHeroSplit(t, c, imageUrl);
-  if (t.heroLayout === "centered-glow")  return renderHeroCenteredGlow(t, c, imageUrl);
+  if (t.heroLayout === "split-right")       return renderHeroSplit(t, c, imageUrl);
+  if (t.heroLayout === "centered-glow")     return renderHeroCenteredGlow(t, c, imageUrl);
   if (t.heroLayout === "full-bleed-center") return renderHeroBleedCenter(t, c, imageUrl);
-  return renderHeroBleedBottom(t, c, imageUrl); // "full-bleed-bottom" (editorial-luxury)
+  return renderHeroBleedBottom(t, c, imageUrl);
 }
 
 // ── About ─────────────────────────────────────────────────────────────────────
@@ -203,8 +259,6 @@ export function renderServices(
 ): string {
   const items = (c.items ?? []).slice(0, 6);
   const p = t.preset;
-
-  // medical: icon circles + rounded cards; fitness: gradient-border dark cards
   const renderCard = (item: typeof items[0], i: number): string => {
     const showIcon = (p === "medical") && item.icon;
     const isSaas   = p === "fitness";
@@ -216,7 +270,6 @@ export function renderServices(
         ${item.price ? `<span class="ws-service-price">${esc(item.price)}</span>` : ""}
       </div>`;
   };
-
   return `<section class="ws-section ws-section-alt" id="services">
   <div class="ws-container">
     ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
@@ -235,10 +288,8 @@ export function renderGallery(
   c: { eyebrow?: string; headline?: string },
   images: (string | undefined)[]
 ): string {
-  // Only render slots that have actual image URLs — never blank/fallback slots
   const items = (images.filter(Boolean) as string[]).slice(0, 6);
   if (!items.length) return "";
-  // Adjust column count to match available images (avoid orphaned grid cells)
   const cols = items.length >= 4 ? 3 : items.length >= 2 ? 2 : 1;
   return `<section class="ws-section" id="gallery">
   <div class="ws-container">
@@ -312,87 +363,104 @@ export function renderTeam(
 </section>`;
 }
 
-// ── Booking ───────────────────────────────────────────────────────────────────
-export function renderBooking(
-  _t: DesignTokens,
-  c: { eyebrow?: string; headline?: string; subheadline?: string; phone?: string; email?: string; address?: string; hours?: string; ctaText?: string; services?: string[] }
-): string {
-  const services = (c.services ?? []).slice(0, 8);
-  const contactItems = [
+// ── Contact form helper ───────────────────────────────────────────────────────
+function contactForm(ctaText: string, services: string[]): string {
+  return `<form id="booking-form" class="ws-booking-form" onsubmit="return wsSubmitForm(event)">
+    <div class="ws-form-group">
+      <label class="ws-form-label">Full Name</label>
+      <input class="ws-form-input" type="text" name="firstName" placeholder="Your name" required>
+    </div>
+    <div class="ws-form-group">
+      <label class="ws-form-label">Email</label>
+      <input class="ws-form-input" type="email" name="email" placeholder="Email address" required>
+    </div>
+    <div class="ws-form-group">
+      <label class="ws-form-label">Phone</label>
+      <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number">
+    </div>
+    ${services.length ? `
+    <div class="ws-form-group">
+      <label class="ws-form-label">Service</label>
+      <select class="ws-form-input" name="service">
+        <option value="">Select a service…</option>
+        ${services.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
+      </select>
+    </div>` : ""}
+    <div class="ws-form-group">
+      <label class="ws-form-label">Message</label>
+      <textarea class="ws-form-input" name="message" rows="4" placeholder="How can we help?"></textarea>
+    </div>
+    <div id="booking-error" style="display:none;color:#DC2626;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#FEF2F2;border-radius:8px;"></div>
+    <button type="submit" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;" data-label="${esc(ctaText || "Send Message")}">${esc(ctaText || "Send Message")}</button>
+  </form>
+  <div id="booking-success" class="ws-form-success">
+    <div class="ws-form-success-icon">${icon("check", 28)}</div>
+    <h3 class="ws-form-success-title">Message Sent!</h3>
+    <p class="ws-form-success-text">We'll get back to you as soon as possible.</p>
+  </div>`;
+}
+
+function contactItems(c: { phone?: string; email?: string; address?: string; hours?: string }): Array<{ icon: string; label: string; value: string; href?: string; field: string }> {
+  return [
     c.phone   && { icon: "phone", label: "Phone",   value: c.phone,   href: `tel:${c.phone.replace(/\s/g, "")}`,  field: "phone" },
     c.email   && { icon: "mail",  label: "Email",   value: c.email,   href: `mailto:${c.email}`,                  field: "email" },
     c.address && { icon: "map",   label: "Address", value: c.address, href: undefined,                            field: "address" },
     c.hours   && { icon: "time",  label: "Hours",   value: c.hours,   href: undefined,                            field: "hours" },
-  ].filter(Boolean) as { icon: string; label: string; value: string; href?: string; field: string }[];
+  ].filter(Boolean) as Array<{ icon: string; label: string; value: string; href?: string; field: string }>;
+}
 
-  const hasContact = contactItems.length > 0;
+function renderContactRow(ci: { icon: string; label: string; value: string; href?: string; field: string }): string {
+  return `<div class="ws-contact-item">
+    <div class="ws-contact-icon">${icon(ci.icon, 20)}</div>
+    <div>
+      <p class="ws-contact-label">${esc(ci.label)}</p>
+      ${ci.href
+        ? `<a href="${esc(ci.href)}" class="ws-contact-value" data-field="${esc(ci.field)}" style="text-decoration:underline;text-underline-offset:3px;">${esc(ci.value)}</a>`
+        : `<p class="ws-contact-value" data-field="${esc(ci.field)}">${esc(ci.value)}</p>`}
+    </div>
+  </div>`;
+}
+
+// ── Booking (legacy v1) ───────────────────────────────────────────────────────
+export function renderBooking(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; phone?: string; email?: string; address?: string; hours?: string; ctaText?: string; services?: string[]; variant?: string }
+): string {
+  const services = (c.services ?? []).slice(0, 8);
+  const items    = contactItems(c);
+  const hasContact = items.length > 0;
+
+  // With no contact data or centered-form variant → centered layout
+  if (!hasContact || c.variant === "centered-form") {
+    return `<section class="ws-section" id="booking">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow" style="text-align:center;">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading" style="text-align:center;">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading" style="text-align:center;">${esc(c.subheadline)}</p>` : ""}
+    ${hasContact ? `<div class="ws-contact-inline-row">
+      ${items.map(renderContactRow).join("")}
+    </div>` : ""}
+    <div style="max-width:640px;margin:0 auto;">
+      ${contactForm(c.ctaText ?? "", services)}
+    </div>
+  </div>
+</section>`;
+  }
+
+  // split-form (default when has contact) — left: heading + details, right: form
   return `<section class="ws-section" id="booking">
   <div class="ws-container">
-    ${!hasContact ? `${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
-    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
-    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}` : ""}
-    <div class="ws-booking-inner"${!hasContact ? ' style="grid-template-columns:1fr;max-width:640px;"' : ""}>
-      ${hasContact ? `<div>
+    <div class="ws-booking-inner">
+      <div class="ws-booking-left">
         ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
         ${c.headline    ? `<h2 class="ws-heading" style="margin-bottom:16px;">${esc(c.headline)}</h2>` : ""}
         ${c.subheadline ? `<p style="color:var(--color-muted);line-height:1.7;margin-bottom:32px;">${esc(c.subheadline)}</p>` : ""}
-        ${contactItems.map((ci) => `
-        <div class="ws-contact-item">
-          <div class="ws-contact-icon">${icon(ci.icon, 20)}</div>
-          <div>
-            <p class="ws-contact-label">${esc(ci.label)}</p>
-            ${ci.href
-              ? `<a href="${esc(ci.href)}" class="ws-contact-value" data-field="${esc(ci.field)}" style="text-decoration:underline;text-underline-offset:3px;">${esc(ci.value)}</a>`
-              : `<p class="ws-contact-value" data-field="${esc(ci.field)}">${esc(ci.value)}</p>`}
-          </div>
-        </div>`).join("")}
-      </div>` : ""}
-      <div>
-        <form id="booking-form" class="ws-booking-form" onsubmit="return wsSubmitForm(event)">
-          <div class="ws-form-row">
-            <div class="ws-form-group">
-              <label class="ws-form-label">First Name</label>
-              <input class="ws-form-input" type="text" name="firstName" placeholder="First name" required>
-            </div>
-            <div class="ws-form-group">
-              <label class="ws-form-label">Last Name</label>
-              <input class="ws-form-input" type="text" name="lastName" placeholder="Last name" required>
-            </div>
-          </div>
-          <div class="ws-form-row">
-            <div class="ws-form-group">
-              <label class="ws-form-label">Phone</label>
-              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number" required>
-            </div>
-            <div class="ws-form-group">
-              <label class="ws-form-label">Email</label>
-              <input class="ws-form-input" type="email" name="email" placeholder="Email address">
-            </div>
-          </div>
-          ${services.length ? `
-          <div class="ws-form-group">
-            <label class="ws-form-label">Service</label>
-            <select class="ws-form-input" name="service">
-              <option value="">Select a service…</option>
-              ${services.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
-            </select>
-          </div>` : ""}
-          <div class="ws-form-group">
-            <label class="ws-form-label">Preferred Date &amp; Time</label>
-            <input class="ws-form-input" type="text" name="datetime" placeholder="Preferred date and time">
-          </div>
-          <div class="ws-form-group">
-            <label class="ws-form-label">Message</label>
-            <textarea class="ws-form-input" name="message" rows="3" placeholder="Any questions or notes…"></textarea>
-          </div>
-          <div id="booking-error" style="display:none;color:#DC2626;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#FEF2F2;border-radius:8px;"></div>
-          <button type="submit" class="ws-btn ws-btn-primary" style="width:100%;justify-content:center;" data-label="${esc(c.ctaText || "Request Appointment")}">${esc(c.ctaText || "Request Appointment")}</button>
-        </form>
-        <div id="booking-success" class="ws-form-success">
-          <div class="ws-form-success-icon">${icon("check", 28)}</div>
-          <h3 class="ws-form-success-title">Request Sent!</h3>
-          <p class="ws-form-success-text">We'll be in touch shortly to confirm your appointment.</p>
+        <div class="ws-contact-details">
+          ${items.map(renderContactRow).join("")}
         </div>
+      </div>
+      <div class="ws-booking-right">
+        ${contactForm(c.ctaText ?? "", services)}
       </div>
     </div>
   </div>
@@ -440,12 +508,14 @@ export function renderCtaBanner(
 // ── Footer ────────────────────────────────────────────────────────────────────
 function linkHref(text: string): string {
   const t = text.toLowerCase().replace(/[^a-z]/g, "");
-  if (["services", "service", "treatments", "treatment", "offers"].includes(t)) return "#services";
+  if (["services", "service", "treatments", "treatment", "offers", "features", "feature"].includes(t)) return "#services";
   if (["about", "story", "ourstory", "whoweare", "us"].includes(t)) return "#about";
   if (["faq", "faqs", "questions"].includes(t)) return "#faq";
   if (["contact", "contactus", "booking", "book", "appointment", "consultation", "enquiry"].includes(t)) return "#booking";
   if (["gallery", "work", "portfolio", "ourwork"].includes(t)) return "#gallery";
   if (["team", "staff", "ourteam"].includes(t)) return "#team";
+  if (["pricing", "plans", "packages"].includes(t)) return "#pricing";
+  if (["products", "shop", "store"].includes(t)) return "#products";
   return "#booking";
 }
 
@@ -480,11 +550,11 @@ export function renderFooter(
 </footer>`;
 }
 
-// ── V2 section library (16 composable sections) ───────────────────────────────
+// ── V2 section library ────────────────────────────────────────────────────────
 
 type HeroContent = { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string };
 
-// 1. hero-fullbleed — centered text over full-bleed image
+// 1. hero-fullbleed — centered text over full-bleed image (centered-overlay)
 export function renderHeroFullbleed(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   return renderHeroBleedCenter(t, c, imageUrl);
 }
@@ -494,7 +564,7 @@ export function renderHeroSplitSection(t: DesignTokens, c: HeroContent, imageUrl
   return renderHeroSplit(t, c, imageUrl);
 }
 
-// 3. hero-minimal — no image; gradient radial glow; good for SaaS / tech / agency
+// 3. hero-minimal — no image; gradient radial glow; SaaS / tech / agency
 export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
   return `<section class="ws-hero ws-hero--minimal" id="hero" style="background:${t.heroBg};">
   <div class="ws-hero-glow-min" style="background:radial-gradient(ellipse 80% 60% at 50% 50%,${t.accentAlpha.replace("0.10","0.28")} 0%,transparent 70%);"></div>
@@ -510,11 +580,105 @@ export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
 </section>`;
 }
 
-// 4. feature-grid — clean cards, icon + title + description, no numbering
-export function renderFeatureGrid(
+// Unified hero dispatcher for v2 variant field
+export function renderHeroVariant(t: DesignTokens, c: HeroContent, variant: string | undefined, imageUrl?: string): string {
+  switch (variant) {
+    case "split-left":        return renderHeroSplitSection(t, c, imageUrl);
+    case "split-right":       return renderHeroSplitRight(t, c, imageUrl);
+    case "editorial-offset":  return renderHeroEditorialOffset(t, c, imageUrl);
+    case "minimal-stacked":   return renderHeroMinimal(t, c);
+    default:                  return renderHeroFullbleed(t, c, imageUrl); // centered-overlay
+  }
+}
+
+// ── Feature-grid variants ─────────────────────────────────────────────────────
+
+function renderFeatureGridAlternating(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string }[] }
 ): string {
+  const items = (c.items ?? []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="services">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-feat-rows">
+      ${items.map((item, i) => `
+      <div class="ws-feat-row${i % 2 === 1 ? " ws-feat-row--rev" : ""}">
+        <div class="ws-feat-row-icon">
+          ${item.icon ? `<div class="ws-feat-icon" style="width:72px;height:72px;border-radius:50%;">${icon(item.icon, 32)}</div>` : `<div class="ws-feat-icon" style="width:72px;height:72px;border-radius:50%;"><span style="font-size:2rem;font-weight:800;color:var(--accent);">0${i + 1}</span></div>`}
+        </div>
+        <div class="ws-feat-row-body">
+          <h3 class="ws-feat-title" style="font-size:1.3rem;margin-bottom:12px;">${esc(item.title || "")}</h3>
+          <p class="ws-feat-desc" style="font-size:0.975rem;line-height:1.75;">${esc(item.description || "")}</p>
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+function renderFeatureGridNumbered(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string }[] }
+): string {
+  const items = (c.items ?? []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="services">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-feat-numbered">
+      ${items.map((item, i) => `
+      <div class="ws-feat-num-item">
+        <p class="ws-feat-num-label">0${i + 1}</p>
+        <div class="ws-feat-num-body">
+          <h3 class="ws-feat-title">${esc(item.title || "")}</h3>
+          <p class="ws-feat-desc">${esc(item.description || "")}</p>
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+function renderFeatureGridBento(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string }[] }
+): string {
+  const items = (c.items ?? []).slice(0, 5);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="services">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-feat-bento">
+      ${items.map((item, i) => `
+      <div class="ws-feat-bento-cell ws-feat-card${i === 0 ? " ws-feat-bento-hero" : ""}">
+        ${item.icon ? `<div class="ws-feat-icon">${icon(item.icon, i === 0 ? 32 : 22)}</div>` : ""}
+        <h3 class="ws-feat-title" style="${i === 0 ? "font-size:1.4rem;" : ""}">${esc(item.title || "")}</h3>
+        <p class="ws-feat-desc">${esc(item.description || "")}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 4. feature-grid — dispatch on variant
+export function renderFeatureGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string }[]; variant?: string },
+  variant?: string
+): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  if (v === "alternating-rows") return renderFeatureGridAlternating(t, c);
+  if (v === "numbered-list")    return renderFeatureGridNumbered(t, c);
+  if (v === "asymmetric-bento") return renderFeatureGridBento(t, c);
+  // three-cards (default)
   const items = (c.items ?? []).slice(0, 6);
   if (!items.length) return "";
   return `<section class="ws-section ws-section-alt" id="services">
@@ -534,11 +698,101 @@ export function renderFeatureGrid(
 </section>`;
 }
 
-// 5. pricing-tiers — pricing cards, highlighted tier
+// ── Pricing variants ──────────────────────────────────────────────────────────
+
+type TierItem = { name?: string; price?: string; period?: string; features?: string[]; ctaText?: string; highlighted?: boolean };
+
+function renderPricingComparisonTable(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: TierItem[] }
+): string {
+  const tiers = (c.tiers ?? []).slice(0, 4);
+  if (!tiers.length) return "";
+  const allFeatures = Array.from(new Set(tiers.flatMap((tier) => tier.features ?? []))).slice(0, 10);
+  return `<section class="ws-section" id="pricing">
+  <div class="ws-container" style="text-align:center;">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading" style="margin:0 auto 56px;">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-price-table-wrap">
+      <table class="ws-price-table">
+        <thead>
+          <tr>
+            <th class="ws-price-table-feature-col"></th>
+            ${tiers.map((tier) => `<th class="ws-price-table-th${tier.highlighted ? " ws-price-table-th--hi" : ""}" style="${tier.highlighted ? `background:${t.accent};color:${t.accentFg};` : ""}">
+              <p class="ws-price-name" style="${tier.highlighted ? "color:inherit;opacity:.8;" : ""}">${esc(tier.name || "")}</p>
+              <p class="ws-price-amount" style="font-size:2rem;margin-bottom:4px;${tier.highlighted ? "color:inherit;" : ""}">${esc(tier.price || "")}</p>
+              <a href="#booking" class="ws-btn ${tier.highlighted ? "ws-btn-white" : "ws-btn-outline"}" style="font-size:0.8rem;padding:8px 16px;">${esc(tier.ctaText || "Get Started")}</a>
+            </th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${allFeatures.map((feat) => `
+          <tr class="ws-price-table-row">
+            <td class="ws-price-table-feat">${esc(feat)}</td>
+            ${tiers.map((tier) => {
+              const has = (tier.features ?? []).includes(feat);
+              return `<td class="ws-price-table-cell${tier.highlighted ? " ws-price-table-cell--hi" : ""}">${has ? `<span style="color:${t.accent};">${icon("check", 16)}</span>` : `<span style="color:#D1D5DB;">—</span>`}</td>`;
+            }).join("")}
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>`;
+}
+
+function renderPricingSingleHighlight(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: TierItem[] }
+): string {
+  const tiers = (c.tiers ?? []).slice(0, 4);
+  if (!tiers.length) return "";
+  const featured = tiers.find((t) => t.highlighted) ?? tiers[0];
+  const rest = tiers.filter((t) => t !== featured).slice(0, 3);
+  return `<section class="ws-section" id="pricing">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow" style="text-align:center;">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading" style="text-align:center;">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading" style="text-align:center;margin:0 auto 56px;">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-price-single">
+      <div class="ws-price-card ws-price-card--hi" style="border-color:${t.accent};background:${t.accentAlpha};display:flex;flex-direction:column;justify-content:space-between;padding:56px 48px;">
+        <div>
+          <p class="ws-price-badge" style="background:${t.accent};color:${t.accentFg};">Best Value</p>
+          <p class="ws-price-name">${esc(featured?.name || "")}</p>
+          <p class="ws-price-amount" style="font-size:3.5rem;">${esc(featured?.price || "")}<span class="ws-price-period">${esc(featured?.period ? `/${featured.period}` : "")}</span></p>
+        </div>
+        <ul class="ws-price-features" style="margin:32px 0;">
+          ${(featured?.features ?? []).slice(0, 8).map((f) => `<li class="ws-price-feat"><span>${icon("check", 13)}</span>${esc(f)}</li>`).join("")}
+        </ul>
+        <a href="#booking" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;">${esc(featured?.ctaText || "Get Started")}</a>
+      </div>
+      ${rest.length ? `<div class="ws-price-secondary">
+        ${rest.map((tier) => `
+        <div class="ws-price-card" style="padding:32px 36px;">
+          <p class="ws-price-name">${esc(tier.name || "")}</p>
+          <p class="ws-price-amount" style="font-size:2rem;">${esc(tier.price || "")}<span class="ws-price-period">${esc(tier.period ? `/${tier.period}` : "")}</span></p>
+          <ul class="ws-price-features">
+            ${(tier.features ?? []).slice(0, 5).map((f) => `<li class="ws-price-feat"><span>${icon("check", 13)}</span>${esc(f)}</li>`).join("")}
+          </ul>
+          <a href="#booking" class="ws-btn ws-btn-outline" style="width:100%;justify-content:center;">${esc(tier.ctaText || "Get Started")}</a>
+        </div>`).join("")}
+      </div>` : ""}
+    </div>
+  </div>
+</section>`;
+}
+
+// 5. pricing-tiers — dispatch on variant
 export function renderPricingTiers(
   t: DesignTokens,
-  c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: { name?: string; price?: string; period?: string; features?: string[]; ctaText?: string; highlighted?: boolean }[] }
+  c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: TierItem[]; variant?: string },
+  variant?: string
 ): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  if (v === "comparison-table")  return renderPricingComparisonTable(t, c);
+  if (v === "single-highlight")  return renderPricingSingleHighlight(t, c);
+  // cards-row (default)
   const tiers = (c.tiers ?? []).slice(0, 4);
   if (!tiers.length) return "";
   return `<section class="ws-section" id="pricing">
@@ -566,11 +820,68 @@ export function renderPricingTiers(
 </section>`;
 }
 
-// 6. service-list — editorial horizontal list, name left / price right
-export function renderServiceList(
+// ── Service-list variants ─────────────────────────────────────────────────────
+
+type SvcItem = { title?: string; description?: string; price?: string };
+
+function renderServiceListTwoColumn(
   _t: DesignTokens,
-  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { title?: string; description?: string; price?: string }[] }
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: SvcItem[] }
 ): string {
+  const items = (c.items ?? []).slice(0, 12);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="services">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-svc-two-col">
+      ${items.map((item) => `
+      <div class="ws-svc-item">
+        <div class="ws-svc-left">
+          <p class="ws-svc-title">${esc(item.title || "")}</p>
+          ${item.description ? `<p class="ws-svc-desc">${esc(item.description)}</p>` : ""}
+        </div>
+        ${item.price ? `<p class="ws-svc-price">${esc(item.price)}</p>` : ""}
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+function renderServiceListBorderedCards(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: SvcItem[] }
+): string {
+  const items = (c.items ?? []).slice(0, 9);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="services">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-svc-cards">
+      ${items.map((item) => `
+      <div class="ws-svc-bcard">
+        <h3 class="ws-svc-title">${esc(item.title || "")}</h3>
+        ${item.description ? `<p class="ws-svc-desc" style="margin-top:8px;">${esc(item.description)}</p>` : ""}
+        ${item.price ? `<p class="ws-svc-price" style="margin-top:16px;">${esc(item.price)}</p>` : ""}
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 6. service-list — dispatch on variant
+export function renderServiceList(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: SvcItem[]; variant?: string },
+  variant?: string
+): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  if (v === "two-column")     return renderServiceListTwoColumn(t, c);
+  if (v === "bordered-cards") return renderServiceListBorderedCards(t, c);
+  // editorial-rows (default)
   const items = (c.items ?? []).slice(0, 12);
   if (!items.length) return "";
   return `<section class="ws-section ws-section-alt" id="services">
@@ -592,21 +903,136 @@ export function renderServiceList(
 </section>`;
 }
 
-// 7. gallery-grid — photo grid (delegates to renderGallery)
-export function renderGalleryGrid(
-  t: DesignTokens,
+// ── Gallery-grid variants ─────────────────────────────────────────────────────
+
+function renderGalleryMasonry(
+  _t: DesignTokens,
   c: { eyebrow?: string; headline?: string },
   images: (string | undefined)[]
 ): string {
-  return renderGallery(t, c, images);
+  const items = (images.filter(Boolean) as string[]).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="gallery">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-gallery-masonry" style="margin-top:48px;">
+      ${items.map((src, i) => `
+      <div class="ws-gallery-masonry-item">
+        <img src="${esc(src)}" alt="${esc(c.headline ? `${c.headline} ${i + 1}` : `Gallery ${i + 1}`)}" loading="lazy" style="width:100%;display:block;border-radius:var(--radius-lg);" onerror="this.style.display='none'">
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
 }
 
-// 8. listings-grid — cards with image, title, subtitle, price (rooms/menu/properties)
-export function renderListingsGrid(
+function renderGalleryFullBleedStrip(
   _t: DesignTokens,
-  c: { eyebrow?: string; headline?: string; items?: { title?: string; subtitle?: string; description?: string; price?: string }[] },
+  c: { eyebrow?: string; headline?: string },
   images: (string | undefined)[]
 ): string {
+  const items = (images.filter(Boolean) as string[]).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="gallery" style="padding-bottom:0;">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+  </div>
+  <div class="ws-gallery-strip" style="margin-top:48px;padding-bottom:var(--section-pad);">
+    ${items.map((src, i) => `
+    <div class="ws-gallery-strip-item">
+      <img src="${esc(src)}" alt="${esc(c.headline ? `${c.headline} ${i + 1}` : `Gallery ${i + 1}`)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
+    </div>`).join("")}
+  </div>
+</section>`;
+}
+
+// 7. gallery-grid — dispatch on variant
+export function renderGalleryGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; variant?: string },
+  images: (string | undefined)[],
+  variant?: string
+): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  if (v === "masonry")           return renderGalleryMasonry(t, c, images);
+  if (v === "full-bleed-strip")  return renderGalleryFullBleedStrip(t, c, images);
+  return renderGallery(t, c, images); // uniform (default)
+}
+
+// ── Listings-grid variants ─────────────────────────────────────────────────────
+
+type ListingItem = { title?: string; subtitle?: string; description?: string; price?: string };
+
+function renderListingsMasonry(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: ListingItem[] },
+  images: (string | undefined)[]
+): string {
+  const items = (c.items ?? []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="listings">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-listing-masonry" style="margin-top:56px;">
+      ${items.map((item, i) => `
+      <div class="ws-listing-card">
+        <div class="ws-listing-img" style="aspect-ratio:unset;min-height:${180 + (i % 3) * 60}px;">
+          ${photo(images[i], item.title || `Item ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;")}
+        </div>
+        <div class="ws-listing-body">
+          <h3 class="ws-listing-title">${esc(item.title || "")}</h3>
+          ${item.subtitle    ? `<p class="ws-listing-sub">${esc(item.subtitle)}</p>` : ""}
+          ${item.description ? `<p class="ws-listing-desc">${esc(item.description)}</p>` : ""}
+          ${item.price       ? `<p class="ws-listing-price">${esc(item.price)}</p>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+function renderListingsWideRows(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: ListingItem[] },
+  images: (string | undefined)[]
+): string {
+  const items = (c.items ?? []).slice(0, 6);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="listings">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-listing-wide" style="margin-top:56px;">
+      ${items.map((item, i) => `
+      <div class="ws-listing-wide-row${i % 2 === 1 ? " ws-listing-wide-row--rev" : ""}">
+        <div class="ws-listing-wide-img">
+          ${photo(images[i], item.title || `Item ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+        </div>
+        <div class="ws-listing-wide-body">
+          ${item.subtitle ? `<p class="ws-listing-sub">${esc(item.subtitle)}</p>` : ""}
+          <h3 class="ws-listing-title" style="font-size:1.5rem;">${esc(item.title || "")}</h3>
+          ${item.description ? `<p class="ws-listing-desc" style="margin-top:12px;font-size:0.95rem;line-height:1.75;">${esc(item.description)}</p>` : ""}
+          ${item.price ? `<p class="ws-listing-price" style="margin-top:20px;font-size:1.2rem;">${esc(item.price)}</p>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 8. listings-grid — dispatch on variant
+export function renderListingsGrid(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: ListingItem[]; variant?: string },
+  images: (string | undefined)[],
+  variant?: string
+): string {
+  const v = variant ?? (c as Record<string, unknown>).variant as string | undefined;
+  if (v === "masonry")    return renderListingsMasonry(t, c, images);
+  if (v === "wide-rows")  return renderListingsWideRows(t, c, images);
+  // uniform-grid (default)
   const items = (c.items ?? []).slice(0, 6);
   if (!items.length) return "";
   return `<section class="ws-section" id="listings">
@@ -631,7 +1057,7 @@ export function renderListingsGrid(
 </section>`;
 }
 
-// 9. about-story — text + optional image (delegates to renderAbout)
+// 9. about-story — text + optional image
 export function renderAboutStory(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; body?: string; bullets?: { title: string; text: string }[]; ctaText?: string },
@@ -640,7 +1066,7 @@ export function renderAboutStory(
   return renderAbout(t, c, imageUrl);
 }
 
-// 10. team-grid — team members (delegates to renderTeam)
+// 10. team-grid
 export function renderTeamGrid(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; members?: { name?: string; role?: string; bio?: string }[] }
@@ -648,7 +1074,7 @@ export function renderTeamGrid(
   return renderTeam(t, c);
 }
 
-// 11. testimonials (new type alias for v2 — identical to renderTestimonials, real data only)
+// 11. testimonials section
 export function renderTestimonialsSection(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; items?: { quote?: string; name?: string; role?: string }[] }
@@ -656,7 +1082,7 @@ export function renderTestimonialsSection(
   return renderTestimonials(t, c);
 }
 
-// 12. stats-band — dark band with large numbers (only render if items provided)
+// 12. stats-band — dark band with large numbers
 export function renderStatsBand(
   t: DesignTokens,
   c: { items?: { value?: string; label?: string }[] }
@@ -676,7 +1102,7 @@ export function renderStatsBand(
 </section>`;
 }
 
-// 13. process-steps — horizontal numbered steps
+// 13. process-steps
 export function renderProcessSteps(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; steps?: { title?: string; description?: string }[] }
@@ -700,7 +1126,7 @@ export function renderProcessSteps(
 </section>`;
 }
 
-// 14. faq-accordion (delegates to renderFaq)
+// 14. faq-accordion
 export function renderFaqAccordion(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; items?: { q?: string; a?: string }[] }
@@ -708,7 +1134,7 @@ export function renderFaqAccordion(
   return renderFaq(t, c);
 }
 
-// 15. cta-band (delegates to renderCtaBanner)
+// 15. cta-band
 export function renderCtaBand(
   t: DesignTokens,
   c: { headline?: string; sub?: string; ctaText?: string }
@@ -716,16 +1142,122 @@ export function renderCtaBand(
   return renderCtaBanner(t, c);
 }
 
-// 16. contact-block — contact form, no bottom padding (sits directly before footer)
+// 16. contact-block — contact form + optional contact details; variant dispatch
 export function renderContactBlock(
   t: DesignTokens,
-  c: { eyebrow?: string; headline?: string; subheadline?: string; phone?: string; email?: string; address?: string; hours?: string; ctaText?: string; services?: string[] }
+  c: { eyebrow?: string; headline?: string; subheadline?: string; phone?: string; email?: string; address?: string; hours?: string; ctaText?: string; services?: string[]; variant?: string },
+  variant?: string
 ): string {
-  const html = renderBooking(t, c);
-  // Replace id="booking" with id="contact" so contact-block has its own anchor,
-  // and remove the section's bottom padding since footer follows immediately.
+  const v = variant ?? c.variant;
+  const html = renderBooking(t, { ...c, variant: v });
   return html.replace(
     `class="ws-section" id="booking"`,
     `class="ws-section ws-section--contact" id="booking"`
   );
+}
+
+// ── NEW section types ─────────────────────────────────────────────────────────
+
+// 17. logo-strip — "trusted by" brands row (only if owner supplied names)
+export function renderLogoStrip(
+  _t: DesignTokens,
+  c: { headline?: string; names?: string[] }
+): string {
+  const names = (c.names ?? []).filter(Boolean).slice(0, 10);
+  if (!names.length) return "";
+  return `<section class="ws-logo-strip" id="logos">
+  <div class="ws-container">
+    ${c.headline ? `<p class="ws-logo-strip-label">${esc(c.headline)}</p>` : ""}
+    <div class="ws-logo-strip-inner">
+      ${names.map((n) => `<span class="ws-logo-name">${esc(n)}</span>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 18. product-grid — e-commerce product cards
+export function renderProductGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { title?: string; description?: string; price?: string; badge?: string }[] },
+  images: (string | undefined)[] = []
+): string {
+  const items = (c.items ?? []).slice(0, 8);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="products">
+  <div class="ws-container">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-product-grid">
+      ${items.map((item, i) => `
+      <div class="ws-product-card">
+        <div class="ws-product-img">
+          ${photo(images[i], item.title || `Product ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;")}
+          ${item.badge ? `<span class="ws-product-badge">${esc(item.badge)}</span>` : ""}
+        </div>
+        <div class="ws-product-body">
+          <h3 class="ws-product-name">${esc(item.title || "")}</h3>
+          ${item.description ? `<p class="ws-product-desc">${esc(item.description)}</p>` : ""}
+          <div class="ws-product-foot">
+            ${item.price ? `<p class="ws-product-price">${esc(item.price)}</p>` : ""}
+            <a href="#booking" class="ws-btn ws-btn-accent" style="font-size:0.8rem;padding:8px 18px;">Enquire</a>
+          </div>
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 19. feature-showcase — alternating big image + text rows
+export function renderFeatureShowcase(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: { title?: string; description?: string; cta?: string }[] },
+  images: (string | undefined)[] = []
+): string {
+  const items = (c.items ?? []).slice(0, 4);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="features">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-showcase" style="margin-top:72px;">
+      ${items.map((item, i) => `
+      <div class="ws-showcase-row${i % 2 === 1 ? " ws-showcase-row--rev" : ""}">
+        <div class="ws-showcase-img">
+          ${photo(images[i], item.title || `Feature ${i + 1}`, "ws-gallery-img", "width:100%;height:100%;object-fit:cover;border-radius:var(--radius-lg);")}
+        </div>
+        <div class="ws-showcase-body">
+          <p class="ws-showcase-num">0${i + 1}</p>
+          <h3 class="ws-showcase-title">${esc(item.title || "")}</h3>
+          ${item.description ? `<p class="ws-showcase-desc">${esc(item.description)}</p>` : ""}
+          ${item.cta ? `<a href="#booking" class="ws-btn ws-btn-outline" style="margin-top:24px;">${esc(item.cta)}</a>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+// 20. integration-grid — labelled icon tiles (SaaS)
+export function renderIntegrationGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { name?: string; icon?: string }[] }
+): string {
+  const items = (c.items ?? []).slice(0, 12);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="integrations">
+  <div class="ws-container" style="text-align:center;">
+    ${c.eyebrow     ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline    ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.subheadline ? `<p class="ws-subheading">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-integration-grid">
+      ${items.map((item) => `
+      <div class="ws-integration-tile">
+        ${item.icon ? `<div class="ws-feat-icon" style="margin:0 auto 12px;">${icon(item.icon, 24)}</div>` : ""}
+        <p class="ws-integration-name">${esc(item.name || "")}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
 }

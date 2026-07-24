@@ -4,11 +4,13 @@ import {
   renderGallery, renderTestimonials, renderTeam, renderBooking,
   renderFaq, renderCtaBanner, renderFooter,
   // v2 section library
-  renderHeroFullbleed, renderHeroSplitSection, renderHeroMinimal,
+  renderHeroFullbleed, renderHeroSplitSection, renderHeroMinimal, renderHeroVariant,
   renderFeatureGrid, renderPricingTiers, renderServiceList,
   renderGalleryGrid, renderListingsGrid, renderAboutStory,
   renderTeamGrid, renderTestimonialsSection, renderStatsBand,
   renderProcessSteps, renderFaqAccordion, renderCtaBand, renderContactBlock,
+  // new section types
+  renderLogoStrip, renderProductGrid, renderFeatureShowcase, renderIntegrationGrid,
 } from "./website-sections";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -21,7 +23,11 @@ export interface SectionSpec {
     | "feature-grid" | "pricing-tiers" | "service-list"
     | "gallery-grid" | "listings-grid" | "about-story"
     | "team-grid" | "stats-band" | "process-steps"
-    | "faq-accordion" | "cta-band" | "contact-block";
+    | "faq-accordion" | "cta-band" | "contact-block"
+    // new section types
+    | "logo-strip" | "product-grid" | "feature-showcase" | "integration-grid"
+    | string; // allow forward-compat
+  variant?: string;
   imageQuery?: string;
   imageQueries?: string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +41,7 @@ export interface WebsiteSpec {
   category?: string;
   designDNA?: DesignDNA;
   sections: SectionSpec[];
+  _textStyles?: Record<string, Record<string, string>>;
 }
 
 export type ImageMap = Record<string, string>;
@@ -438,7 +445,6 @@ ${serviceCardOverrides}
 .ws-team-bio{font-size:0.875rem;color:var(--color-muted);line-height:1.65;}
 
 /* ── Booking ─────────────────────────────────────────────────────────────── */
-.ws-booking-inner{display:grid;grid-template-columns:1fr 1.4fr;gap:72px;align-items:start;}
 .ws-booking-form{display:flex;flex-direction:column;gap:16px;}
 .ws-form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .ws-form-group{display:flex;flex-direction:column;gap:6px;}
@@ -510,6 +516,13 @@ ${serviceCardOverrides}
 
 /* ── Contact gap fix: booking/contact-block sits directly before footer ──── */
 #booking { padding-bottom: 0; }
+
+/* ── booking left/right columns ─────────────────────────────────────────── */
+.ws-booking-inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start;}
+.ws-booking-left{display:flex;flex-direction:column;}
+.ws-booking-right{display:flex;flex-direction:column;}
+.ws-contact-details{display:flex;flex-direction:column;gap:24px;margin-top:0;}
+.ws-contact-inline-row{display:flex;flex-wrap:wrap;gap:24px 48px;justify-content:center;margin-top:32px;margin-bottom:48px;}
 
 /* ── hero-minimal ────────────────────────────────────────────────────────── */
 .ws-hero--minimal{
@@ -705,6 +718,197 @@ ${serviceCardOverrides}
   .ws-gallery-grid{grid-template-columns:1fr;}
   .ws-team-grid{grid-template-columns:1fr;}
 }
+
+/* ── Hero: editorial-offset ──────────────────────────────────────────────── */
+.ws-hero--editorial{min-height:100vh;display:flex;align-items:center;}
+.ws-hero-editorial-inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;width:100%;}
+.ws-hero-editorial-text{display:flex;flex-direction:column;}
+.ws-hero-headline--editorial{
+  font-family:var(--font-heading);
+  font-size:clamp(3rem,6vw,6rem);
+  font-weight:var(--heading-weight);
+  letter-spacing:var(--heading-tracking);
+  text-transform:var(--heading-transform);
+  line-height:0.96;margin-bottom:40px;
+}
+.ws-hero-editorial-foot{margin-top:auto;}
+.ws-hero-editorial-img{position:relative;}
+.ws-hero-editorial-photo{
+  width:100%;aspect-ratio:4/5;object-fit:cover;
+  border-radius:var(--radius-lg);display:block;
+}
+
+/* ── Feature-grid: alternating-rows ─────────────────────────────────────── */
+.ws-feat-rows{display:flex;flex-direction:column;gap:72px;margin-top:72px;}
+.ws-feat-row{display:grid;grid-template-columns:auto 1fr;gap:48px;align-items:center;}
+.ws-feat-row--rev{grid-template-columns:1fr auto;direction:rtl;}
+.ws-feat-row--rev>*{direction:ltr;}
+
+/* ── Feature-grid: numbered-list ─────────────────────────────────────────── */
+.ws-feat-numbered{display:grid;grid-template-columns:1fr 1fr;gap:48px 64px;margin-top:64px;}
+.ws-feat-num-item{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;}
+.ws-feat-num-label{font-family:var(--font-heading);font-size:3.5rem;font-weight:800;line-height:1;color:var(--accent);opacity:.18;user-select:none;}
+.ws-feat-num-body{}
+
+/* ── Feature-grid: bento ─────────────────────────────────────────────────── */
+.ws-feat-bento{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:56px;}
+.ws-feat-bento-hero{grid-column:span 2;grid-row:span 2;}
+
+/* ── Service-list: two-column ────────────────────────────────────────────── */
+.ws-svc-two-col{display:grid;grid-template-columns:1fr 1fr;gap:0 64px;margin-top:48px;border-top:1px solid var(--border);}
+
+/* ── Service-list: bordered-cards ───────────────────────────────────────── */
+.ws-svc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px;margin-top:48px;}
+.ws-svc-bcard{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:36px 32px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.ws-svc-bcard:hover{border-color:var(--accent);box-shadow:0 8px 32px var(--accent-alpha);}
+
+/* ── Pricing: comparison-table ───────────────────────────────────────────── */
+.ws-price-table-wrap{overflow-x:auto;margin-top:40px;}
+.ws-price-table{width:100%;border-collapse:collapse;min-width:500px;}
+.ws-price-table-feature-col{width:35%;}
+.ws-price-table-th{
+  padding:32px 24px;text-align:center;
+  background:var(--surface);border:1px solid var(--border);
+  vertical-align:top;
+}
+.ws-price-table-th--hi{border-radius:12px 12px 0 0;}
+.ws-price-table-feat{
+  padding:14px 0;text-align:left;font-size:0.875rem;
+  color:var(--color-muted);border-bottom:1px solid var(--border);
+}
+.ws-price-table-row:last-child .ws-price-table-feat,.ws-price-table-row:last-child .ws-price-table-cell{border-bottom:none;}
+.ws-price-table-cell{
+  padding:14px 24px;text-align:center;
+  border-left:1px solid var(--border);border-bottom:1px solid var(--border);
+}
+.ws-price-table-cell--hi{background:var(--accent-alpha);}
+
+/* ── Pricing: single-highlight ───────────────────────────────────────────── */
+.ws-price-single{display:grid;grid-template-columns:2fr 3fr;gap:24px;margin-top:40px;}
+.ws-price-secondary{display:flex;flex-direction:column;gap:16px;}
+
+/* ── Gallery: masonry ────────────────────────────────────────────────────── */
+.ws-gallery-masonry{columns:3;column-gap:16px;}
+.ws-gallery-masonry-item{break-inside:avoid;margin-bottom:16px;overflow:hidden;border-radius:var(--radius-lg);}
+
+/* ── Gallery: full-bleed-strip ───────────────────────────────────────────── */
+.ws-gallery-strip{
+  display:flex;gap:16px;overflow-x:auto;
+  padding:0 max(16px,calc((100vw - 1200px)/2));
+  scrollbar-width:none;
+}
+.ws-gallery-strip::-webkit-scrollbar{display:none;}
+.ws-gallery-strip-item{
+  flex:0 0 clamp(240px,30vw,380px);
+  height:280px;border-radius:var(--radius-lg);overflow:hidden;
+  background:linear-gradient(135deg,var(--surface),var(--bg-alt));
+}
+
+/* ── Listings: masonry ───────────────────────────────────────────────────── */
+.ws-listing-masonry{columns:3;column-gap:24px;}
+.ws-listing-masonry .ws-listing-card{break-inside:avoid;margin-bottom:24px;display:inline-block;width:100%;}
+
+/* ── Listings: wide-rows ─────────────────────────────────────────────────── */
+.ws-listing-wide{display:flex;flex-direction:column;gap:32px;}
+.ws-listing-wide-row{
+  display:grid;grid-template-columns:1fr 1.5fr;
+  gap:48px;align-items:center;
+  border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;
+}
+.ws-listing-wide-row--rev{grid-template-columns:1.5fr 1fr;}
+.ws-listing-wide-row--rev .ws-listing-wide-img{order:2;}
+.ws-listing-wide-row--rev .ws-listing-wide-body{order:1;}
+.ws-listing-wide-img{height:300px;overflow:hidden;background:linear-gradient(135deg,var(--surface),var(--bg-alt));}
+.ws-listing-wide-body{padding:40px;}
+
+/* ── Logo strip ──────────────────────────────────────────────────────────── */
+.ws-logo-strip{padding:48px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.ws-logo-strip-label{text-align:center;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--color-muted);margin-bottom:28px;}
+.ws-logo-strip-inner{display:flex;flex-wrap:wrap;gap:20px 48px;align-items:center;justify-content:center;}
+.ws-logo-name{font-size:1rem;font-weight:700;color:var(--color-muted);letter-spacing:.02em;opacity:.55;transition:opacity .2s;}
+.ws-logo-name:hover{opacity:.9;}
+
+/* ── Product grid ────────────────────────────────────────────────────────── */
+.ws-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:24px;margin-top:48px;}
+.ws-product-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;
+  transition:transform .2s,box-shadow .2s;
+}
+.ws-product-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.12);}
+.ws-product-img{
+  aspect-ratio:1/1;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,var(--surface),var(--bg-alt));
+}
+.ws-product-badge{
+  position:absolute;top:12px;left:12px;
+  padding:3px 10px;border-radius:100px;
+  font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  background:var(--accent);color:var(--accent-fg);
+}
+.ws-product-body{padding:20px 20px 24px;}
+.ws-product-name{
+  font-family:var(--font-heading);font-size:1rem;font-weight:600;
+  color:var(--color-heading);margin-bottom:6px;line-height:1.3;
+}
+.ws-product-desc{font-size:0.825rem;color:var(--color-muted);line-height:1.6;margin-bottom:12px;}
+.ws-product-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+.ws-product-price{font-size:1.1rem;font-weight:700;color:var(--accent);}
+
+/* ── Feature showcase ────────────────────────────────────────────────────── */
+.ws-showcase{display:flex;flex-direction:column;gap:72px;}
+.ws-showcase-row{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;}
+.ws-showcase-row--rev{direction:rtl;}
+.ws-showcase-row--rev>*{direction:ltr;}
+.ws-showcase-img{aspect-ratio:16/10;overflow:hidden;border-radius:var(--radius-lg);background:linear-gradient(135deg,var(--surface),var(--bg-alt));}
+.ws-showcase-num{font-family:var(--font-heading);font-size:3.5rem;font-weight:800;color:var(--accent);opacity:.2;line-height:1;margin-bottom:16px;}
+.ws-showcase-title{font-family:var(--font-heading);font-size:1.75rem;font-weight:var(--heading-weight);color:var(--color-heading);margin-bottom:16px;line-height:1.2;}
+.ws-showcase-desc{font-size:1rem;color:var(--color-muted);line-height:1.75;}
+
+/* ── Integration grid ────────────────────────────────────────────────────── */
+.ws-integration-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:16px;margin-top:48px;}
+.ws-integration-tile{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:24px 16px;
+  text-align:center;transition:border-color .2s,box-shadow .2s;
+}
+.ws-integration-tile:hover{border-color:var(--accent);box-shadow:0 4px 16px var(--accent-alpha);}
+.ws-integration-name{font-size:0.8rem;font-weight:600;color:var(--color-muted);}
+
+/* ── Mobile responsive: new variants ─────────────────────────────────────── */
+@media(max-width:768px){
+  .ws-hero-editorial-inner{grid-template-columns:1fr;gap:40px;}
+  .ws-hero-editorial-img{display:none;}
+  .ws-hero--split.ws-hero--split-right{flex-direction:column;}
+  .ws-feat-rows{gap:48px;}
+  .ws-feat-row,.ws-feat-row--rev{grid-template-columns:1fr;direction:ltr;}
+  .ws-feat-numbered{grid-template-columns:1fr;}
+  .ws-feat-bento{grid-template-columns:1fr 1fr;}
+  .ws-feat-bento-hero{grid-column:span 2;}
+  .ws-svc-two-col{grid-template-columns:1fr;}
+  .ws-svc-cards{grid-template-columns:1fr;}
+  .ws-price-single{grid-template-columns:1fr;}
+  .ws-gallery-masonry{columns:2;}
+  .ws-listing-masonry{columns:1;}
+  .ws-listing-wide-row,.ws-listing-wide-row--rev{grid-template-columns:1fr;}
+  .ws-listing-wide-row--rev .ws-listing-wide-img,.ws-listing-wide-row--rev .ws-listing-wide-body{order:unset;}
+  .ws-listing-wide-img{height:200px;}
+  .ws-listing-wide-body{padding:24px;}
+  .ws-showcase-row,.ws-showcase-row--rev{grid-template-columns:1fr;direction:ltr;gap:32px;}
+  .ws-integration-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));}
+  .ws-booking-inner{grid-template-columns:1fr;gap:48px;}
+  .ws-contact-inline-row{flex-direction:column;align-items:flex-start;}
+  .ws-product-grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr));}
+}
+@media(max-width:480px){
+  .ws-feat-bento{grid-template-columns:1fr;}
+  .ws-feat-bento-hero{grid-column:span 1;grid-row:span 1;}
+  .ws-gallery-masonry{columns:1;}
+}
 `.trim();
 }
 
@@ -803,7 +1007,40 @@ html[dir="rtl"] .ws-service-card{text-align:right;}
 // Adds data-vs="{i}" to the outermost <section|footer> tag of each rendered section.
 // The inline-edit script uses this to map DOM elements back to spec.sections[i].
 function addDataVs(html: string, i: number | string): string {
-  return html.replace(/^(<(?:section|footer)\b)/, `$1 data-vs="${i}"`);
+  return html.replace(/^(<(?:section|footer|nav)\b)/, `$1 data-vs="${i}"`);
+}
+
+// ── Dynamic nav links based on sections that exist ───────────────────────────
+const SECTION_NAV: Record<string, { label: string; href: string }> = {
+  "feature-grid":    { label: "Features",  href: "#services"      },
+  "service-list":    { label: "Services",  href: "#services"      },
+  "services":        { label: "Services",  href: "#services"      },
+  "about-story":     { label: "About",     href: "#about"         },
+  "about":           { label: "About",     href: "#about"         },
+  "pricing-tiers":   { label: "Pricing",   href: "#pricing"       },
+  "gallery-grid":    { label: "Gallery",   href: "#gallery"       },
+  "gallery":         { label: "Gallery",   href: "#gallery"       },
+  "listings-grid":   { label: "Listings",  href: "#listings"      },
+  "team-grid":       { label: "Team",      href: "#team"          },
+  "team":            { label: "Team",      href: "#team"          },
+  "faq-accordion":   { label: "FAQ",       href: "#faq"           },
+  "faq":             { label: "FAQ",       href: "#faq"           },
+  "product-grid":    { label: "Products",  href: "#products"      },
+  "feature-showcase":{ label: "Features",  href: "#features"      },
+};
+
+function buildNavLinks(spec: WebsiteSpec): Array<{ label: string; href: string }> {
+  const seen = new Set<string>();
+  const links: Array<{ label: string; href: string }> = [];
+  for (const s of spec.sections) {
+    const entry = SECTION_NAV[s.type];
+    if (entry && !seen.has(entry.href)) {
+      seen.add(entry.href);
+      links.push(entry);
+    }
+  }
+  links.push({ label: "Contact", href: "#booking" });
+  return links;
 }
 
 // ── Main renderer ─────────────────────────────────────────────────────────────
@@ -823,8 +1060,10 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
   const contactSection = spec.sections.find((s) => ["booking","contact-block"].includes(s.type));
   const navCta = (heroSection?.content?.ctaPrimary as string) ?? (contactSection?.content?.ctaText as string) ?? "Book Now";
 
+  const navLinks = buildNavLinks(spec);
+
   const bodyParts: string[] = [];
-  bodyParts.push(renderNav(name, navCta));
+  bodyParts.push(renderNav(name, navCta, navLinks));
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
@@ -836,94 +1075,133 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
       return queries.map((_, j) => images[`${imgKey}_${j}`]);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = s.content as Record<string, any>;
+    const v = s.variant;
+
     switch (s.type) {
       // ── Legacy section types (v1 backward compat) ──────────────────────────
       case "hero":
-        bodyParts.push(addDataVs(renderHero(t, s.content as Parameters<typeof renderHero>[1], images[imgKey]), i));
+        // v2 variant-based dispatch when variant field is present
+        if (v) {
+          bodyParts.push(addDataVs(renderHeroVariant(t, c, v, images[imgKey]), i));
+        } else {
+          bodyParts.push(addDataVs(renderHero(t, c, images[imgKey]), i));
+        }
         break;
       case "about":
-        bodyParts.push(addDataVs(renderAbout(t, s.content as Parameters<typeof renderAbout>[1], images[imgKey]), i));
+        bodyParts.push(addDataVs(renderAbout(t, c, images[imgKey]), i));
         break;
       case "services":
-        bodyParts.push(addDataVs(renderServices(t, s.content as Parameters<typeof renderServices>[1]), i));
+        bodyParts.push(addDataVs(renderServices(t, c), i));
         break;
       case "gallery": {
-        const g = renderGallery(t, s.content as Parameters<typeof renderGallery>[1], multiImgs());
+        const g = renderGallery(t, c, multiImgs());
         if (g) bodyParts.push(addDataVs(g, i));
         break;
       }
       case "testimonials":
-        bodyParts.push(addDataVs(renderTestimonials(t, s.content as Parameters<typeof renderTestimonials>[1]), i));
+        bodyParts.push(addDataVs(renderTestimonials(t, c), i));
         break;
       case "team":
-        bodyParts.push(addDataVs(renderTeam(t, s.content as Parameters<typeof renderTeam>[1]), i));
+        bodyParts.push(addDataVs(renderTeam(t, c), i));
         break;
       case "booking":
-        bodyParts.push(addDataVs(renderBooking(t, s.content as Parameters<typeof renderBooking>[1]), i));
+        bodyParts.push(addDataVs(renderBooking(t, { ...c, variant: v }), i));
         break;
       case "faq":
-        bodyParts.push(addDataVs(renderFaq(t, s.content as Parameters<typeof renderFaq>[1]), i));
+        bodyParts.push(addDataVs(renderFaq(t, c), i));
         break;
       case "cta_banner":
-        bodyParts.push(addDataVs(renderCtaBanner(t, s.content as Parameters<typeof renderCtaBanner>[1]), i));
+        bodyParts.push(addDataVs(renderCtaBanner(t, c), i));
         break;
       case "footer":
         break;
 
       // ── v2 section types ───────────────────────────────────────────────────
       case "hero-fullbleed":
-        bodyParts.push(addDataVs(renderHeroFullbleed(t, s.content as Parameters<typeof renderHeroFullbleed>[1], images[imgKey]), i));
+        bodyParts.push(addDataVs(renderHeroFullbleed(t, c, images[imgKey]), i));
         break;
       case "hero-split":
-        bodyParts.push(addDataVs(renderHeroSplitSection(t, s.content as Parameters<typeof renderHeroSplitSection>[1], images[imgKey]), i));
+        bodyParts.push(addDataVs(renderHeroSplitSection(t, c, images[imgKey]), i));
         break;
       case "hero-minimal":
-        bodyParts.push(addDataVs(renderHeroMinimal(t, s.content as Parameters<typeof renderHeroMinimal>[1]), i));
+        bodyParts.push(addDataVs(renderHeroMinimal(t, c), i));
         break;
-      case "feature-grid":
-        bodyParts.push(addDataVs(renderFeatureGrid(t, s.content as Parameters<typeof renderFeatureGrid>[1]), i));
+      case "feature-grid": {
+        const fg = renderFeatureGrid(t, c, v);
+        if (fg) bodyParts.push(addDataVs(fg, i));
         break;
-      case "pricing-tiers":
-        bodyParts.push(addDataVs(renderPricingTiers(t, s.content as Parameters<typeof renderPricingTiers>[1]), i));
+      }
+      case "pricing-tiers": {
+        const pt = renderPricingTiers(t, c, v);
+        if (pt) bodyParts.push(addDataVs(pt, i));
         break;
-      case "service-list":
-        bodyParts.push(addDataVs(renderServiceList(t, s.content as Parameters<typeof renderServiceList>[1]), i));
+      }
+      case "service-list": {
+        const sl = renderServiceList(t, c, v);
+        if (sl) bodyParts.push(addDataVs(sl, i));
         break;
+      }
       case "gallery-grid": {
-        const gg = renderGalleryGrid(t, s.content as Parameters<typeof renderGalleryGrid>[1], multiImgs());
+        const gg = renderGalleryGrid(t, c, multiImgs(), v);
         if (gg) bodyParts.push(addDataVs(gg, i));
         break;
       }
       case "listings-grid": {
-        const lg = renderListingsGrid(t, s.content as Parameters<typeof renderListingsGrid>[1], multiImgs());
+        const lg = renderListingsGrid(t, c, multiImgs(), v);
         if (lg) bodyParts.push(addDataVs(lg, i));
         break;
       }
       case "about-story":
-        bodyParts.push(addDataVs(renderAboutStory(t, s.content as Parameters<typeof renderAboutStory>[1], images[imgKey]), i));
+        bodyParts.push(addDataVs(renderAboutStory(t, c, images[imgKey]), i));
         break;
       case "team-grid":
-        bodyParts.push(addDataVs(renderTeamGrid(t, s.content as Parameters<typeof renderTeamGrid>[1]), i));
+        bodyParts.push(addDataVs(renderTeamGrid(t, c), i));
         break;
       case "stats-band": {
-        const sb = renderStatsBand(t, s.content as Parameters<typeof renderStatsBand>[1]);
+        const sb = renderStatsBand(t, c);
         if (sb) bodyParts.push(addDataVs(sb, i));
         break;
       }
       case "process-steps": {
-        const ps = renderProcessSteps(t, s.content as Parameters<typeof renderProcessSteps>[1]);
+        const ps = renderProcessSteps(t, c);
         if (ps) bodyParts.push(addDataVs(ps, i));
         break;
       }
       case "faq-accordion":
-        bodyParts.push(addDataVs(renderFaqAccordion(t, s.content as Parameters<typeof renderFaqAccordion>[1]), i));
+        bodyParts.push(addDataVs(renderFaqAccordion(t, c), i));
         break;
       case "cta-band":
-        bodyParts.push(addDataVs(renderCtaBand(t, s.content as Parameters<typeof renderCtaBand>[1]), i));
+        bodyParts.push(addDataVs(renderCtaBand(t, c), i));
         break;
-      case "contact-block":
-        bodyParts.push(addDataVs(renderContactBlock(t, s.content as Parameters<typeof renderContactBlock>[1]), i));
+      case "contact-block": {
+        const cb = renderContactBlock(t, c, v);
+        bodyParts.push(addDataVs(cb, i));
         break;
+      }
+
+      // ── New section types ──────────────────────────────────────────────────
+      case "logo-strip": {
+        const ls = renderLogoStrip(t, c);
+        if (ls) bodyParts.push(addDataVs(ls, i));
+        break;
+      }
+      case "product-grid": {
+        const pg = renderProductGrid(t, c, multiImgs());
+        if (pg) bodyParts.push(addDataVs(pg, i));
+        break;
+      }
+      case "feature-showcase": {
+        const fs = renderFeatureShowcase(t, c, multiImgs());
+        if (fs) bodyParts.push(addDataVs(fs, i));
+        break;
+      }
+      case "integration-grid": {
+        const ig = renderIntegrationGrid(t, c);
+        if (ig) bodyParts.push(addDataVs(ig, i));
+        break;
+      }
       default:
         break;
     }

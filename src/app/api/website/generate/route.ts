@@ -344,6 +344,8 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
   // Multi-image types
   const MULTI_GALLERY_TYPES = new Set(["gallery", "gallery-grid"]);
   const MULTI_LISTING_TYPES = new Set(["listings-grid"]);
+  const MULTI_PRODUCT_TYPES = new Set(["product-grid"]);
+  const MULTI_SHOWCASE_TYPES = new Set(["feature-showcase"]);
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
@@ -408,6 +410,71 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
+    }
+
+    // Product grid: ensure imageQueries
+    if (MULTI_PRODUCT_TYPES.has(s.type)) {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
+      const targetCount = Math.max(items.length || 4, 4);
+      if (qs.length < targetCount) {
+        const filled = Array.from({ length: targetCount }, (_, j) =>
+          qs[j] ?? `${businessType} product editorial clean background item ${j + 1}`.replace(/\s+/g, " ").trim()
+        );
+        (s as { imageQueries?: string[] }).imageQueries = filled;
+      }
+    }
+
+    // Feature showcase: ensure imageQueries
+    if (MULTI_SHOWCASE_TYPES.has(s.type)) {
+      const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+      const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
+      const targetCount = Math.max(items.length || 3, 3);
+      if (qs.length < targetCount) {
+        const filled = Array.from({ length: targetCount }, (_, j) =>
+          qs[j] ?? `${businessType} feature detail professional editorial ${j + 1}`.replace(/\s+/g, " ").trim()
+        );
+        (s as { imageQueries?: string[] }).imageQueries = filled;
+      }
+    }
+  }
+
+  // FIX 4: Ensure site has at least 4 images. If not, inject a gallery-grid before contact.
+  const IMAGE_SECTION_TYPES = new Set([
+    "hero", "hero-fullbleed", "hero-split", "about", "about-story",
+    "gallery", "gallery-grid", "listings-grid", "product-grid", "feature-showcase",
+  ]);
+  let imageSlots = 0;
+  for (const s of spec.sections) {
+    if (["hero", "hero-fullbleed", "hero-split", "about", "about-story"].includes(s.type)) imageSlots++;
+    if (MULTI_GALLERY_TYPES.has(s.type)) imageSlots += 6;
+    if (MULTI_LISTING_TYPES.has(s.type)) {
+      imageSlots += Math.max((Array.isArray(s.content?.items) ? s.content.items.length : 0) || 3, 3);
+    }
+    if (MULTI_PRODUCT_TYPES.has(s.type) || MULTI_SHOWCASE_TYPES.has(s.type)) {
+      imageSlots += Math.max((Array.isArray(s.content?.items) ? s.content.items.length : 0) || 3, 3);
+    }
+  }
+  if (imageSlots < 4) {
+    const contactIdx = spec.sections.findIndex((s) => s.type === "contact-block" || s.type === "booking");
+    const ctaIdx = spec.sections.findIndex((s) => s.type === "cta-band" || s.type === "cta_banner");
+    const insertIdx = contactIdx >= 0 ? contactIdx : (ctaIdx >= 0 ? ctaIdx : spec.sections.length);
+    // Avoid adding gallery if already exists
+    const hasGallery = spec.sections.some((s) => IMAGE_SECTION_TYPES.has(s.type) && (s.type === "gallery" || s.type === "gallery-grid"));
+    if (!hasGallery) {
+      const galleryQueries = PRESET_GALLERY_QUERIES[preset] ?? [
+        `${businessType} interior detail editorial`,
+        `${businessType} atmosphere warm light`,
+        `${businessType} team professional`,
+        `${businessType} work detail close up`,
+        `${businessType} product quality`,
+        `${businessType} lifestyle editorial`,
+      ];
+      spec.sections.splice(insertIdx, 0, {
+        type: "gallery-grid",
+        imageQueries: galleryQueries.map((q) => q.replace(/\s+/g, " ").trim()),
+        content: { eyebrow: "Gallery", headline: `${businessType} in Focus` },
+      } as { type: string; imageQueries: string[]; content: Record<string, unknown> });
     }
   }
 }
@@ -632,46 +699,96 @@ WELLNESS / NATURE (yoga, holistic health, organic cafés, wellness retreats):
 If the owner mentions a brand color (e.g. "our logo is green"), pick the closest hex from the table above.
 
 ═══════════════════════════════════════════════════════
-PART 6 — SECTION TYPES + FREE COMPOSITION
+PART 6 — LAYOUT VARIANTS (REQUIRED — always specify a variant)
 ═══════════════════════════════════════════════════════
 
-You choose sections freely to fit the business. MANDATORY: one hero type (first) + contact-block (last before footer) + footer.
+Every section has a "variant" field. You MUST set it. Two sites in the same category MUST NOT use the same variant set. Pick variants that suit the business's personality.
 
-HERO TYPES (pick one — first section always):
-  "hero-fullbleed" — cinematic full-bleed image, centered/overlay text. USE: hotel, restaurant, salon, realestate, gym
-  "hero-split"     — text left, photo right. USE: clinic, legal, education, consulting (trust-first)
-  "hero-minimal"   — no image, radial glow on dark bg. USE: saas, tech, agency, ecommerce
+hero variants (type = "hero"):
+  "centered-overlay"  — full-bleed image bg, centered overlay text (cinematic; hotel, restaurant, salon, gym)
+  "split-left"        — text left, real photo right, light/dark bg (trust-building; clinic, legal, education)
+  "split-right"       — photo left, text right, mirrored (editorial; realestate, agency, boutique)
+  "editorial-offset"  — oversized headline top-left, image bottom-right, asymmetric whitespace (luxury, fashion, design)
+  "minimal-stacked"   — no image, gradient glow, dark bg (saas, tech, agency — USE "hero-minimal" type for this)
+
+feature-grid variants:
+  "three-cards"       — default icon grid (saas features, clinic services)
+  "alternating-rows"  — each feature is a full-width row, alternating sides (agency, consultancy)
+  "numbered-list"     — vertical numbered big figures (law, finance, process-driven)
+  "asymmetric-bento"  — first card large, rest smaller (modern saas, agency)
+
+service-list variants:
+  "editorial-rows"    — horizontal lines, name left / price right (salon, restaurant, spa)
+  "two-column"        — two-column grid of list items (clinic treatments, legal services)
+  "bordered-cards"    — card grid with hover border (gym classes, education courses)
+
+listings-grid variants:
+  "uniform-grid"      — equal-size cards grid (hotel rooms, menu items)
+  "masonry"           — varying heights, editorial feel (portfolio, boutique hotel)
+  "wide-rows"         — full-width alternating image+text rows (luxury real estate, flagship products)
+
+pricing-tiers variants:
+  "cards-row"         — horizontal cards, one highlighted (saas, gym)
+  "comparison-table"  — feature comparison table (saas, education plans)
+  "single-highlight"  — one large featured tier, smaller secondary options (premium services)
+
+contact-block variants:
+  "split-form"        — left col = heading + contact details, right col = form (default when contact info exists)
+  "centered-form"     — centered heading, horizontal contact details row, centered form (minimal info)
+
+gallery-grid variants:
+  "uniform"           — 3-col equal grid (hotel, restaurant, beauty)
+  "masonry"           — varying heights, editorial (portfolio, design studio, boutique)
+  "full-bleed-strip"  — horizontal scrollable strip (fashion, food, lifestyle)
+
+VARIANT DIVERSITY RULE: If generating multiple sites in the same category, vary the variants. Never use the same combination twice for the same category.
+
+═══════════════════════════════════════════════════════
+PART 7 — SECTION TYPES + FREE COMPOSITION
+═══════════════════════════════════════════════════════
+
+You choose sections freely to fit the business. MANDATORY: one hero (first) + contact-block (last before footer) + footer.
+
+HERO: Use type "hero" with a variant field (see Part 6). DO NOT use hero-fullbleed, hero-split, hero-minimal as types anymore — use type "hero" with the correct variant.
 
 OTHER AVAILABLE TYPES:
-  "feature-grid"   — 3–6 icon+title+description cards (no numbering). USE: saas features, clinic services, agency capabilities
-  "pricing-tiers"  — 2–4 pricing cards with feature lists, one highlighted. USE: saas, gym membership, education plans
-  "service-list"   — editorial horizontal lines, name left + price right. USE: salon menu, restaurant menu, clinic treatments, legal services
-  "gallery-grid"   — 3-col photo grid. USE: hotel, restaurant, salon, bakery, portfolio. Requires imageQueries (6 strings).
-  "listings-grid"  — image cards for items with title/price. USE: hotel rooms, restaurant dishes, real estate listings. Requires imageQueries (3–6 strings).
-  "about-story"    — text + optional image: eyebrow, headline, body paragraph, 2–4 bullets. USE: any business with a meaningful founding story.
-  "team-grid"      — member cards with initials avatar, name, role, bio. USE: clinic, law firm, agency.
-  "stats-band"     — dark band with large numbers. ONLY include if owner provided REAL statistics. NEVER invent numbers.
-  "process-steps"  — horizontal 3–5 numbered steps. USE: agency workflow, legal process, medical journey, real estate buying steps.
-  "faq-accordion"  — expandable Q&A. USE: clinic, legal, saas (5–8 Qs). Omit for gyms, restaurants, hotels.
-  "cta-band"       — dark call-to-action band with button. USE: saas, gym, agency. Place before contact-block if included.
-  "contact-block"  — contact form + optional contact details. ALWAYS the last section before footer. MANDATORY.
+  "feature-grid"      — icon+title+description cards. USE: saas features, clinic services, agency capabilities, gym benefits
+  "pricing-tiers"     — pricing cards, one highlighted. USE: saas, gym membership, education plans
+  "service-list"      — service rows with optional price. USE: salon menu, clinic treatments, legal services
+  "gallery-grid"      — photo grid. USE: hotel, restaurant, salon, bakery, portfolio. Requires imageQueries (6 strings).
+  "listings-grid"     — image cards with title/price. USE: hotel rooms, restaurant dishes, real estate. Requires imageQueries (3–6).
+  "about-story"       — text + image: founding story, specific and human. USE: any business with a real story.
+  "team-grid"         — team member cards. USE: clinic, law firm, agency. ONLY if owner named real staff.
+  "stats-band"        — large stat numbers. ONLY if owner provided REAL statistics. NEVER invent.
+  "process-steps"     — numbered steps. USE: agency workflow, legal, medical journey, buying process.
+  "faq-accordion"     — Q&A. USE: clinic, legal, saas. Omit for gyms, restaurants, hotels.
+  "cta-band"          — dark CTA band. USE: saas, gym, agency. Place before contact-block.
+  "contact-block"     — contact form + optional details. ALWAYS last section before footer. MANDATORY.
+  "logo-strip"        — "Trusted by" brand names row. ONLY if owner named real companies/clients.
+  "product-grid"      — product cards with image, name, price, enquire button. USE: ecommerce, boutique. Requires imageQueries (4–8).
+  "feature-showcase"  — alternating big image + text rows. USE: saas, agency, boutique. Requires imageQueries (3–4).
+  "integration-grid"  — integration/tool tiles. USE: saas only.
 
-COMPOSITION GUIDE PER CATEGORY (adapt freely — these are patterns, not rules):
-  saas:       hero-minimal → feature-grid → pricing-tiers → faq-accordion → cta-band → contact-block
-  hotel:      hero-fullbleed → about-story → gallery-grid → contact-block
-  clinic:     hero-split → service-list → team-grid → faq-accordion → contact-block
-  gym:        hero-fullbleed → feature-grid → service-list → cta-band → contact-block
-  salon:      hero-fullbleed → service-list → gallery-grid → contact-block
-  restaurant: hero-fullbleed → about-story → listings-grid → gallery-grid → contact-block
-  realestate: hero-fullbleed → listings-grid → about-story → process-steps → contact-block
-  ecommerce:  hero-minimal → feature-grid → gallery-grid → cta-band → contact-block
-  agency:     hero-minimal → feature-grid → about-story → process-steps → contact-block
-  education:  hero-split → feature-grid → service-list → faq-accordion → contact-block
-  legal:      hero-split → service-list → about-story → team-grid → contact-block
-  other:      hero-fullbleed → feature-grid → about-story → contact-block
+COMPOSITION BY CATEGORY (adapt freely — these are patterns, not rules):
+
+saas → hero (minimal-stacked or split-left) → logo-strip (if data) → feature-grid → feature-showcase → pricing-tiers → integration-grid (if relevant) → faq-accordion → cta-band → contact-block
+SAAS RULES: NEVER include booking form with date/time. NEVER include address. Contact-block must use centered-form variant.
+
+hotel → hero (centered-overlay or editorial-offset) → about-story → listings-grid → gallery-grid → contact-block
+clinic → hero (split-left or split-right) → feature-grid or service-list → team-grid → faq-accordion → contact-block
+gym → hero (centered-overlay or split-left) → feature-grid → service-list → stats-band (if data) → cta-band → contact-block
+salon → hero (centered-overlay or editorial-offset) → service-list → gallery-grid → contact-block
+restaurant → hero (centered-overlay) → about-story → listings-grid → gallery-grid → contact-block
+realestate → hero (split-right or editorial-offset) → listings-grid → about-story → process-steps → contact-block
+ecommerce → hero (split-left or centered-overlay) → product-grid → feature-grid → gallery-grid → cta-band → contact-block
+ECOMMERCE RULES: NEVER include address (unless physical store). Use product-grid as main section. Contact-block should be simple.
+agency → hero (minimal-stacked or editorial-offset) → feature-showcase → feature-grid → about-story → process-steps → contact-block
+education → hero (split-left) → feature-grid → service-list → faq-accordion → contact-block
+legal → hero (split-left or split-right) → service-list → about-story → team-grid → contact-block
+other → hero (centered-overlay) → feature-grid → about-story → contact-block
 
 SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT nested inside it):
-{ "type": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
+{ "type": string, "variant": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
 
 ═══════════════════════════════════════════════════════
 PART 7 — IMAGE QUERY RULES
