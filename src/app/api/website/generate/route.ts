@@ -4,6 +4,10 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { renderWebsite, type WebsiteSpec, type ImageMap } from "@/lib/website-renderer";
 import type { PresetName, DesignDNA } from "@/lib/website-design-system";
 import { APPROVED_FONTS } from "@/lib/website-design-system";
+import {
+  TEMPLATE_BY_CATEGORY, TEMPLATE_BY_ID, GPT_CATEGORY_TO_TEMPLATE, OPTIONAL_SKIP_RULES,
+  type SiteTemplate,
+} from "@/lib/website-templates";
 
 export const dynamic = "force-dynamic";
 // 300s: two sequential GPT-4o calls + Unsplash fetches can exceed 60s on cold starts
@@ -557,6 +561,334 @@ function coercePreset(v: unknown): PresetName {
   const s = String(v ?? "");
   if (VALID_PRESETS.includes(s as PresetName)) return (LEGACY_PRESET[s] ?? s) as PresetName;
   return "realestate";
+}
+
+// ── Template: step-1 classifier ───────────────────────────────────────────────
+async function classifyToTemplateCategory(openai: OpenAI, description: string): Promise<string> {
+  const system = `Classify the business description into exactly one of these categories:
+medical — dental clinic, doctor, physiotherapy, dermatology, health centre, optician, pharmacy, any medical or health practice
+hospitality — hotel, hostel, guesthouse, restaurant, café, bar, fine dining, fast food, catering, any food/beverage or lodging business
+retail — e-commerce, online shop, handmade goods, clothing boutique, cosmetics, accessories, physical retail store, any product-selling business
+saas — software product, SaaS, digital platform, mobile app, tech startup, digital agency, marketing agency, web design studio, no physical location
+professional — law firm, real estate agent, accountant, consultant, architect, interior designer, personal trainer, gym, yoga studio, spa, any professional-service business
+
+Reply with ONLY the category name, nothing else.`;
+  try {
+    const res = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, { role: "user", content: description.slice(0, 600) }],
+      max_tokens: 10,
+      temperature: 0,
+    });
+    const cat = (res.choices[0]?.message?.content ?? "").trim().toLowerCase();
+    const valid = ["medical", "hospitality", "retail", "saas", "professional"];
+    return valid.includes(cat) ? cat : "professional";
+  } catch {
+    return "professional";
+  }
+}
+
+// ── Template: deterministic template selection (alternates per site count) ────
+function selectTemplate(category: string, siteCount: number): SiteTemplate {
+  const options = TEMPLATE_BY_CATEGORY[category] ?? TEMPLATE_BY_CATEGORY["professional"]!;
+  const idx = siteCount % options.length;
+  return options[idx] ?? options[0]!;
+}
+
+// ── Template: server-side enforcement after GPT fill ──────────────────────────
+function enforceTemplate(spec: WebsiteSpec, template: SiteTemplate): void {
+  // Index GPT-returned sections by type (first-come-first-served per type)
+  const byType = new Map<string, Array<WebsiteSpec["sections"][0]>>();
+  for (const s of spec.sections) {
+    if (!byType.has(s.type)) byType.set(s.type, []);
+    byType.get(s.type)!.push(s);
+  }
+
+  const result: WebsiteSpec["sections"] = [];
+
+  for (const ts of template.sections) {
+    const pool = byType.get(ts.type) ?? [];
+    const match = pool.shift();
+
+    if (!match) {
+      if (ts.required) {
+        // Required section GPT omitted — add empty stub so renderer still fires
+        result.push({ type: ts.type, ...(ts.variant ? { variant: ts.variant } : {}), content: {} } as WebsiteSpec["sections"][0]);
+      }
+      continue;
+    }
+
+    // Optional section: skip if no meaningful data
+    if (!ts.required) {
+      const skipRule = OPTIONAL_SKIP_RULES[ts.type];
+      if (skipRule && skipRule(match.content as Record<string, unknown>)) continue;
+    }
+
+    // Apply template variant (always overwrite so GPT can't drift it)
+    const enforced = { ...match } as WebsiteSpec["sections"][0] & { variant?: string };
+    if (ts.variant) enforced.variant = ts.variant;
+    else delete enforced.variant;
+    result.push(enforced);
+  }
+
+  // Minimal safe fallback: if fewer than 2 non-footer content sections after enforcement
+  const contentSections = result.filter((s) => s.type !== "footer" && s.type !== "contact-block");
+  if (contentSections.length < 2) {
+    const heroSpec = spec.sections.find((s) => ["hero", "hero-fullbleed", "hero-split", "hero-minimal"].includes(s.type));
+    const contactSpec = spec.sections.find((s) => ["contact-block", "booking"].includes(s.type));
+    const aboutSpec = spec.sections.find((s) => ["about", "about-story"].includes(s.type));
+    result.splice(0, result.length,
+      heroSpec    ?? { type: "hero", variant: "split-left", content: {} } as WebsiteSpec["sections"][0],
+      aboutSpec   ?? { type: "about-story", content: {} } as WebsiteSpec["sections"][0],
+      contactSpec ?? { type: "contact-block", variant: "split-form", content: {} } as WebsiteSpec["sections"][0],
+    );
+  }
+
+  // Preserve footer at the end
+  const footer = spec.sections.find((s) => s.type === "footer");
+  if (footer && !result.find((s) => s.type === "footer")) result.push(footer);
+
+  spec.sections = result;
+}
+
+// ── Template: system prompt for the fill (step-2) call ────────────────────────
+function buildFillSystem(
+  template: SiteTemplate,
+  contactBlock: string,
+  language = "English",
+  hasOwnerPhoto = true,
+): string {
+  const langLine = language && language.toLowerCase() !== "english"
+    ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
+    : "";
+
+  const templateLines = template.sections.map((ts, i) => {
+    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
+    const variant = ts.variant ? `, variant: "${ts.variant}"` : "";
+    return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
+  }).join("\n");
+
+  return `${langLine}You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business and produce a complete website JSON spec with ALL section content.
+
+STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
+
+═══════════════════════════════════════════════════════
+PART 1 — COPYWRITING STANDARDS (read before writing a single word)
+═══════════════════════════════════════════════════════
+
+The owner's description is RAW MATERIAL. It is NEVER source text to rephrase. Extract intent and write FRESH brand copy.
+
+BAD COPY PATTERNS — never write:
+✗ "Quality service you can trust"  ✗ "We are committed to excellence"
+✗ "Professional team with years of experience"  ✗ "Welcome to [business name]"
+✗ Section headings: "Our Services" / "About Us" / "Why Choose Us" / "Contact Us"
+
+GOOD COPY PATTERNS:
+✓ Lead with the customer's problem or desire  ✓ Use specific numbers, materials, real details
+✓ Active voice. Present tense. Short sentences for headlines.
+✓ Section headlines that read like editorial titles — "Precision, Start to Finish" not "Our Services"
+
+═══════════════════════════════════════════════════════
+PART 2 — JSON ROOT SHAPE
+═══════════════════════════════════════════════════════
+
+{
+  "businessName": string,
+  "category": "saas"|"hotel"|"clinic"|"gym"|"salon"|"realestate"|"restaurant"|"ecommerce"|"agency"|"education"|"legal"|"other",
+  "designDNA": {
+    "mood": "editorial-luxury"|"clinical-bright"|"bold-energetic"|"warm-minimal"|"tech-sharp"|"dark-premium",
+    "headingFont": string,
+    "bodyFont": string,
+    "palette": { "bg": "#RRGGBB", "text": "#RRGGBB", "accent": "#RRGGBB", "muted": "#RRGGBB" },
+    "isDark": boolean
+  },
+  "sections": SectionSpec[]
+}
+
+═══════════════════════════════════════════════════════
+PART 3 — DESIGN MOODS (choose ONE for designDNA.mood)
+═══════════════════════════════════════════════════════
+
+"editorial-luxury" — Serif headings, off-white body, gold/champagne accent, cinematic. USE: boutique hotel, luxury salon, fine dining, real estate.
+  Palette: bg #FAF8F5 · text #1A1A1A · muted #857D72 · isDark: false
+
+"clinical-bright" — All-sans heavy headings, pure white, clinical blue accent, trust-first. USE: dental clinic, medical practice, physio.
+  Palette: bg #FFFFFF · text #0A2540 · muted #64748B · isDark: false
+
+"bold-energetic" — Heavy compressed headings (uppercase), near-black bg, vivid accent. USE: gym, sports brand, nightlife, automotive.
+  Palette: bg #0B0B0B · text #FFFFFF · muted #6B7280 · isDark: true
+
+"warm-minimal" — Light-weight serif heading, warm off-white, muted earth accent, extreme whitespace. USE: spa, yoga, organic café, salon.
+  Palette: bg #F7F5F0 · text #3A3730 · muted #6B705C · isDark: false
+
+"tech-sharp" — Geometric sans heading (600-700w), very dark bg, bold violet/indigo accent. USE: SaaS, tech startup, digital agency.
+  Palette: bg #0A0A0F · text #F1F5F9 · muted #6B7280 · isDark: true
+
+"dark-premium" — Delicate serif headings (400w), ultra-dark near-black, warm gold accent. USE: premium hotel, high fashion, exclusive membership.
+  Palette: bg #080808 · text #F5F3EE · muted #857D72 · isDark: true
+
+═══════════════════════════════════════════════════════
+PART 4 — FONTS (ONLY these names are valid)
+═══════════════════════════════════════════════════════
+
+headingFont and bodyFont MUST be one of:
+  "Playfair Display" · "Cormorant Garamond" · "Fraunces" · "Libre Baskerville"
+  "Archivo" · "Inter" · "DM Sans" · "Space Grotesk" · "Plus Jakarta Sans"
+
+PAIRING GUIDE:
+  editorial-luxury → heading: "Playfair Display", body: "Inter"
+  clinical-bright  → heading: "Inter", body: "Inter"
+  bold-energetic   → heading: "Archivo", body: "Inter"
+  warm-minimal     → heading: "Cormorant Garamond" or "Fraunces", body: "DM Sans"
+  tech-sharp       → heading: "Plus Jakarta Sans" or "Space Grotesk", body: "Inter"
+  dark-premium     → heading: "Playfair Display", body: "Inter"
+
+═══════════════════════════════════════════════════════
+PART 5 — PALETTE RULES
+═══════════════════════════════════════════════════════
+
+accent MUST be from this approved list ONLY. Never invent a hex code outside this table.
+
+EARTHY / WARM:  #8B6347 · #A0522D · #C4793D · #9C6E3F
+LUXURY:         #C4A882 · #B8860B · #8D7047 · #7C5C3D
+VIVID / BOLD:   #E8390E · #C41E3A · #FF4F1F · #D4380D
+SAAS / TECH:    #7C3AED · #9333EA · #6366F1 · #4F46E5
+PROFESSIONAL:   #8D6E3F · #1A56DB · #1E3A8A · #2563EB
+CLINICAL:       #0070C9 · #0EA5E9 · #0891B2 · #0284C7
+WELLNESS:       #16A34A · #059669 · #0D9488 · #15803D
+
+═══════════════════════════════════════════════════════
+PART 6 — FIXED SECTION STRUCTURE (YOU MUST FOLLOW THIS EXACTLY)
+═══════════════════════════════════════════════════════
+
+The section list, order, and variants below are FIXED. Your ONLY job is to write content for each section.
+
+‼ DO NOT add sections not listed below.
+‼ DO NOT remove REQUIRED sections.
+‼ DO NOT change the order.
+‼ DO NOT change the variant values — they are already set.
+
+SECTIONS (in this exact order):
+${templateLines}
+  (last) type: "footer" (REQUIRED)
+
+OPTIONAL SECTIONS — include ONLY if the owner provided real data:
+  team-grid    → only if owner named real staff members
+  stats-band   → only if owner stated real statistics (numbers)
+  logo-strip   → only if owner named real companies or clients
+  listings-grid → only if owner described real rooms, dishes, properties, or products
+  product-grid → only if owner described real products with names
+  pricing-tiers → only if owner provided real prices or tier names
+  gallery-grid → always include; stock imagery will be supplied automatically
+
+SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT nested inside it):
+{ "type": string, "variant": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
+
+═══════════════════════════════════════════════════════
+PART 7 — IMAGE QUERY RULES
+═══════════════════════════════════════════════════════
+
+imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
+imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3–6), product-grid (4–8), feature-showcase (3–4).
+
+${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES:
+imageQuery = [business type] [city or region] [quality context]
+• Include the specific business type, city/region if known, and a quality suffix
+• NEVER use abstract-texture queries for hero/about sections
+• EXAMPLES:
+  Hotel (Tunis) → "hotel resort Tunisia Mediterranean exterior architecture"
+  Dental clinic (Dubai) → "dental clinic Dubai modern reception white professional"
+  Gym → "gym fitness training equipment modern interior editorial"
+  SaaS / agency → "modern office workspace team technology professional"
+gallery/listings/products: vary subject, angle, detail — each query must be distinct.
+` : `BUILD FROM OWNER'S SPECIFICS:
+Extract visual details from description. Build 4–6 word queries using business type + location + one specific detail.`}
+QUALITY SUFFIX: hero/about-story → "bright natural light" or "editorial minimal". gallery/listings → "editorial" or "close-up detail".
+
+═══════════════════════════════════════════════════════
+PART 8 — CONTENT SCHEMAS PER SECTION TYPE
+═══════════════════════════════════════════════════════
+
+hero — imageQuery REQUIRED (unless variant is "minimal-stacked"):
+{ "eyebrow": "3–5 words", "headline": "5–8 words punchy", "subheadline": "1–2 sentences", "ctaPrimary": "action label", "ctaSecondary"?: string }
+
+feature-grid:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "icon": string, "title": string, "description": string }] × 3–6 }
+icon values: check | star | shield | briefcase | heart | leaf | clock | plus | home | dumbbell | scissors | chef | tooth
+
+pricing-tiers:
+{ "eyebrow"?: string, "headline": string, "tiers": [{ "name": string, "price": string, "period": string, "features": string[] × 4–6, "ctaText": string, "highlighted": boolean }] × 2–4 }
+Only ONE tier should have "highlighted": true.
+
+service-list:
+{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description"?: string, "price"?: string }] × 4–10 }
+
+gallery-grid — imageQueries REQUIRED (6 strings at section level):
+{ "eyebrow"?: string, "headline": string }
+
+listings-grid — imageQueries REQUIRED (3–6 strings at section level):
+{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "subtitle"?: string, "description"?: string, "price"?: string }] }
+
+about-story — imageQuery REQUIRED:
+{ "eyebrow"?: string, "headline": string, "body": string, "bullets"?: [{ "title": string, "text": string }] × 2–4, "ctaText"?: string }
+
+team-grid:
+{ "eyebrow"?: string, "headline": string, "members": [{ "name": string, "role": string, "bio"?: string }] }
+Only real staff the owner named.
+
+stats-band:
+{ "items": [{ "value": string, "label": string }] × 3–5 }
+ONLY real statistics. Never invent numbers.
+
+process-steps:
+{ "eyebrow"?: string, "headline": string, "steps": [{ "title": string, "description": string }] × 3–5 }
+
+faq-accordion:
+{ "eyebrow"?: string, "headline": string, "items": [{ "q": string, "a": string }] × 5–8 }
+
+cta-band:
+{ "headline": string, "sub"?: string, "ctaText": string }
+
+contact-block:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string,
+  "phone": string (ONLY from real contact info — else omit),
+  "email": string (ONLY from real contact info — else omit),
+  "address": string (ONLY from real contact info — else omit),
+  "hours": string (ONLY from real contact info — else omit),
+  "ctaText": string, "services"?: string[] × 3–6 }
+
+logo-strip:
+{ "headline"?: string, "names": string[] }
+
+product-grid — imageQueries REQUIRED (4–8 strings at section level):
+{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description"?: string, "price"?: string, "badge"?: string }] }
+
+feature-showcase — imageQueries REQUIRED (3–4 strings at section level):
+{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description": string, "cta"?: string }] }
+
+footer:
+{ "tagline": string, "links": string[] × 4–5,
+  "phone"?: string, "email"?: string, "address"?: string, "copyright": string }
+
+${contactBlock
+  ? `═══════════════════════════════════════════════════════
+REAL CONTACT INFO — copy these values EXACTLY into contact-block + footer:
+${contactBlock}
+═══════════════════════════════════════════════════════`
+  : `CONTACT INFO: None provided. DO NOT include phone, email, address, or hours anywhere in the spec.`}
+
+═══════════════════════════════════════════════════════
+ABSOLUTE RULES — NEVER VIOLATE
+═══════════════════════════════════════════════════════
+1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
+2. NEVER include testimonials or star ratings.
+3. NEVER include stats-band with invented numbers.
+4. NEVER invent team member names.
+5. NEVER paraphrase the owner's input as copy — extract intent and write fresh.
+6. NEVER use generic headings: "Our Services", "About Us", "Why Choose Us", "Contact Us".
+7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.
+8. NEVER invent commercial promises unless the owner explicitly stated them.
+9. Footer tagline MUST be specific to this business — never a placeholder phrase.`;
 }
 
 // ── System prompt (v2: section-based composition with designDNA) ──────────────
@@ -1371,14 +1703,21 @@ export async function POST(req: NextRequest) {
       // Parse into structured fields so we can save them to website_intake and return to client
       if (chatContactBlock) extractedContact = parseContactBlock(chatContactBlock);
 
-      // Don't inject tenant-profile fields — the accumulated description already contains
-      // everything the user told us. Injecting a stale account businessName/industry would
-      // override what the user is actually building right now.
+      // Step 1: classify business → deterministic template selection
+      const templateCategory = await classifyToTemplateCategory(openai, fullDescription);
+      const { count: _siteCount } = await admin
+        .from("websites")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant?.id ?? "");
+      const selectedTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
+      console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || "–"}${s.required ? "" : "?"}`).join(", ")}]`);
+
+      // Step 2: fill content within fixed template structure
       const userContent = buildUserContent("", "", "", fullDescription, effectiveLanguage);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildSystem(effectiveContactBlock, effectiveLanguage, !!heroUpload) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -1388,12 +1727,15 @@ export async function POST(req: NextRequest) {
       const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
       spec = {
         ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA) } : {}),
-        ...(parsed.category  ? { category:  parsed.category  } : {}),
+        category: templateCategory,
         stylePreset: coercePreset(parsed.stylePreset),
         accentColor: parsed.accentColor,
         businessName: parsed.businessName ?? businessName,
         sections: parsed.sections ?? [],
       };
+      // Server-side enforcement: re-sort to template order, overwrite variants, skip optional sections
+      enforceTemplate(spec, selectedTemplate);
+      console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || "–"}`).join(", ")}]`);
     }
 
     // Strip any testimonials or stats-band with fabricated data that slipped through
