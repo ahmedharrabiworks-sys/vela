@@ -1582,7 +1582,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const c = s.content as Record<string, any>;
+    const c = (s.content ?? {}) as Record<string, any>;
     const v = s.variant;
 
     switch (s.type) {

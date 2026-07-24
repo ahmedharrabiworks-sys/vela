@@ -1193,7 +1193,7 @@ function selectTestimonialComponent(
   if (!data.hasRealTestimonialQuote) return null;
   if (!strategy) return "testimonial-single-quote";
   const { brand_personality: bp, positioning } = strategy;
-  if (bp === "minimal_luxury" || bp === "elegant" || positioning === "premium") return "testimonial-single-quote";
+  if (bp === "minimal_luxury" || bp === "elegant") return "testimonial-single-quote";
   return "testimonial-grid";
 }
 

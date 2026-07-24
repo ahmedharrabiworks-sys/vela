@@ -39,10 +39,10 @@ const TEST_CASES: Array<{
   {
     id: "test-a-real-quote",
     label: "Test A — Real quoted testimonial → selected & sourceEvidence verified",
-    expectedTestimonialType: "testimonial-single-quote",
+    expectedTestimonialType: "testimonial-grid",
     expectedGalleryVariant: "full-bleed-strip",
     expectedFaqVariant: "default",
-    expectedReason: "Premium-positioned energetic gym → testimonial-single-quote (premium wins) + full-bleed-strip gallery (energetic bp)",
+    expectedReason: "energetic bp → testimonial-grid (premium no longer forces single-quote) + full-bleed-strip gallery (energetic bp)",
     description: `
 FitCore Gym — Dubai Marina | Elite Fitness Club
 
@@ -165,10 +165,10 @@ Office hours: Sunday–Thursday 9am–6pm.
   {
     id: "test-e-bold-gallery",
     label: "Test E — Bold/energetic brand → full-bleed-strip gallery at 375px",
-    expectedTestimonialType: "testimonial-single-quote",
+    expectedTestimonialType: "testimonial-grid",
     expectedGalleryVariant: "full-bleed-strip",
     expectedFaqVariant: "default",
-    expectedReason: "bold + dark mood → full-bleed-strip gallery. Premium-positioned fight club → testimonial-single-quote (premium wins). category=other, bp=bold → default FAQ",
+    expectedReason: "bold bp → testimonial-grid (premium no longer forces single-quote) + full-bleed-strip gallery (dark/intense mood). category=other, bp=bold → default FAQ",
     description: `
 APEX Fight Club — Manchester | Boxing & Combat Sports
 
@@ -217,7 +217,7 @@ function selectTestimonialComponent(strategy: DesignStrategy | null, data: Conte
   if (!data.hasRealTestimonialQuote) return null;
   if (!strategy) return "testimonial-single-quote";
   const { brand_personality: bp, positioning } = strategy;
-  if (bp === "minimal_luxury" || bp === "elegant" || positioning === "premium") return "testimonial-single-quote";
+  if (bp === "minimal_luxury" || bp === "elegant") return "testimonial-single-quote";
   return "testimonial-grid";
 }
 
@@ -278,7 +278,7 @@ function enforceTemplate(spec: WebsiteSpec, template: SiteTemplate): void {
       const skipRule = OPTIONAL_SKIP_RULES[ts.type];
       if (skipRule && skipRule(match.content as Record<string, unknown>)) continue;
     }
-    const enforced = { ...match } as WebsiteSpec["sections"][0] & { variant?: string };
+    const enforced = { ...match, content: match.content ?? {} } as WebsiteSpec["sections"][0] & { variant?: string };
     if (ts.variant) enforced.variant = ts.variant;
     else delete enforced.variant;
     result.push(enforced);
