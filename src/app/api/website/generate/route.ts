@@ -563,28 +563,77 @@ function coercePreset(v: unknown): PresetName {
   return "realestate";
 }
 
-// ── Template: step-1 classifier ───────────────────────────────────────────────
-async function classifyToTemplateCategory(openai: OpenAI, description: string): Promise<string> {
-  const system = `Classify the business description into exactly one of these categories:
-medical — dental clinic, doctor, physiotherapy, dermatology, health centre, optician, pharmacy, any medical or health practice
-hospitality — hotel, hostel, guesthouse, restaurant, café, bar, fine dining, fast food, catering, any food/beverage or lodging business
-retail — e-commerce, online shop, handmade goods, clothing boutique, cosmetics, accessories, physical retail store, any product-selling business
-saas — software product, SaaS, digital platform, mobile app, tech startup, digital agency, marketing agency, web design studio, no physical location
-professional — law firm, real estate agent, accountant, consultant, architect, interior designer, personal trainer, gym, yoga studio, spa, any professional-service business
+// ── Design Intelligence types ─────────────────────────────────────────────────
+type DesignStrategy = {
+  category:          string;
+  subcategory:       string;
+  positioning:       "premium" | "mid_market" | "affordable";
+  brand_personality: "elegant" | "bold" | "energetic" | "trustworthy" | "playful" | "minimal_luxury";
+  conversion_goal:   "book_appointment" | "generate_leads" | "showcase_portfolio" | "sell_membership" | "request_valuation";
+  visual_mood:       string;
+  target_audience:   string;
+};
 
-Reply with ONLY the category name, nothing else.`;
+// ── Template: step-1 classifier + design intelligence (single gpt-4o-mini call) ─
+async function classifyWithDesignStrategy(
+  openai: OpenAI,
+  description: string,
+): Promise<{ templateCategory: string; strategy: DesignStrategy }> {
+  const VALID_TEMPLATE_CATS = ["medical", "hospitality", "retail", "saas", "professional"] as const;
+
+  const system = `You are a business analyst and brand strategist. Analyze the business description and return a JSON object with EXACTLY these fields:
+
+{
+  "template_category": one of: medical | hospitality | retail | saas | professional,
+  "category": one of: real_estate | dental | gym | interior_design | restaurant | hotel | spa | legal | saas | ecommerce | other,
+  "subcategory": "specific niche e.g. 'luxury residential sales', 'orthodontics', 'boutique strength studio', 'residential interior design'",
+  "positioning": one of: premium | mid_market | affordable,
+  "brand_personality": one of: elegant | bold | energetic | trustworthy | playful | minimal_luxury,
+  "conversion_goal": one of: book_appointment | generate_leads | showcase_portfolio | sell_membership | request_valuation,
+  "visual_mood": "2–4 words e.g. 'warm editorial calm', 'dark industrial intensity', 'bright clinical trust'",
+  "target_audience": "1 short sentence describing who this business's site must convince"
+}
+
+template_category mapping:
+  medical — dental, doctor, physio, dermatology, health, pharmacy, optician
+  hospitality — hotel, restaurant, café, bar, catering, lodging, fine dining
+  retail — e-commerce, shop, boutique, cosmetics, accessories, product-selling
+  saas — software, SaaS, digital platform, app, tech startup, digital agency
+  professional — law, real estate, accountant, consultant, architect, interior design, gym, yoga, spa, trainer
+
+Derive EVERY field from the actual description. Never invent facts. Output ONLY valid JSON, no markdown.`;
+
+  const fallbackStrategy: DesignStrategy = {
+    category: "other", subcategory: "", positioning: "mid_market",
+    brand_personality: "trustworthy", conversion_goal: "generate_leads",
+    visual_mood: "clean professional trust", target_audience: "Potential customers looking for this service.",
+  };
+
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "system", content: system }, { role: "user", content: description.slice(0, 600) }],
-      max_tokens: 10,
+      messages: [{ role: "system", content: system }, { role: "user", content: description.slice(0, 800) }],
+      response_format: { type: "json_object" },
+      max_tokens: 300,
       temperature: 0,
     });
-    const cat = (res.choices[0]?.message?.content ?? "").trim().toLowerCase();
-    const valid = ["medical", "hospitality", "retail", "saas", "professional"];
-    return valid.includes(cat) ? cat : "professional";
+    const raw = JSON.parse(res.choices[0]?.message?.content ?? "{}") as Record<string, unknown>;
+    const tc = String(raw.template_category ?? "").toLowerCase();
+    const strategy: DesignStrategy = {
+      category:          String(raw.category          ?? "other"),
+      subcategory:       String(raw.subcategory        ?? ""),
+      positioning:       (["premium","mid_market","affordable"].includes(String(raw.positioning))                                                     ? raw.positioning          : "mid_market")       as DesignStrategy["positioning"],
+      brand_personality: (["elegant","bold","energetic","trustworthy","playful","minimal_luxury"].includes(String(raw.brand_personality))             ? raw.brand_personality    : "trustworthy")      as DesignStrategy["brand_personality"],
+      conversion_goal:   (["book_appointment","generate_leads","showcase_portfolio","sell_membership","request_valuation"].includes(String(raw.conversion_goal)) ? raw.conversion_goal : "generate_leads") as DesignStrategy["conversion_goal"],
+      visual_mood:       String(raw.visual_mood        ?? "clean professional trust"),
+      target_audience:   String(raw.target_audience    ?? "Potential customers looking for this service."),
+    };
+    return {
+      templateCategory: VALID_TEMPLATE_CATS.includes(tc as typeof VALID_TEMPLATE_CATS[number]) ? tc : "professional",
+      strategy,
+    };
   } catch {
-    return "professional";
+    return { templateCategory: "professional", strategy: fallbackStrategy };
   }
 }
 
@@ -657,10 +706,25 @@ function buildFillSystem(
   contactBlock: string,
   language = "English",
   hasOwnerPhoto = true,
+  strategy?: DesignStrategy | null,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
     : "";
+
+  const strategyBlock = strategy ? `═══════════════════════════════════════════════════════
+PART 0 — BUSINESS INTELLIGENCE (grounding context — do NOT echo this in JSON output)
+═══════════════════════════════════════════════════════
+Subcategory:       ${strategy.subcategory}
+Positioning:       ${strategy.positioning.replace(/_/g, " ")}
+Brand personality: ${strategy.brand_personality.replace(/_/g, " ")}
+Conversion goal:   ${strategy.conversion_goal.replace(/_/g, " ")}
+Visual mood:       ${strategy.visual_mood}
+Target audience:   ${strategy.target_audience}
+
+Use these insights to calibrate copy tone, CTA wording, and section emphasis. They are context only — never include this block or its field names in your JSON output.
+
+` : "";
 
   const templateLines = template.sections.map((ts, i) => {
     const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
@@ -668,7 +732,7 @@ function buildFillSystem(
     return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
   }).join("\n");
 
-  return `${langLine}You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business and produce a complete website JSON spec with ALL section content.
+  return `${strategyBlock}${langLine}You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business and produce a complete website JSON spec with ALL section content.
 
 STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
@@ -1600,6 +1664,7 @@ export async function POST(req: NextRequest) {
     let effectiveLanguage = language;
     let extractedContact: { phone?: string; email?: string } = {};
     let fullContextText = msgText; // overwritten with accumulated history in initial-generate path
+    let designStrategy: DesignStrategy | null = null;
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -1703,8 +1768,10 @@ export async function POST(req: NextRequest) {
       // Parse into structured fields so we can save them to website_intake and return to client
       if (chatContactBlock) extractedContact = parseContactBlock(chatContactBlock);
 
-      // Step 1: classify business → deterministic template selection
-      const templateCategory = await classifyToTemplateCategory(openai, fullDescription);
+      // Step 1: classify business → design intelligence + deterministic template selection
+      const { templateCategory, strategy: _strategy } = await classifyWithDesignStrategy(openai, fullDescription);
+      designStrategy = _strategy;
+      console.log(`[website/generate] design_strategy=${JSON.stringify(designStrategy)}`);
       const { count: _siteCount } = await admin
         .from("websites")
         .select("id", { count: "exact", head: true })
@@ -1717,7 +1784,7 @@ export async function POST(req: NextRequest) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -1938,6 +2005,7 @@ export async function POST(req: NextRequest) {
           draft_html: html,
           draft_spec: spec as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
+          ...(designStrategy ? { design_strategy: designStrategy as unknown as Record<string, unknown> } : {}),
         })
         .eq("id", websiteId);
       if (draftErr) console.error("[website/generate] draft save error:", draftErr.message);
