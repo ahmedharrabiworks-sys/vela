@@ -605,38 +605,36 @@ function selectHeroVariant(strategy: DesignStrategy, data: HeroAvailableData): s
   if (!data.hasTrustBadges)   gated.add("trust-focused");
   if (!data.hasPricingData)   gated.add("membership-focused");
   if (!data.hasPortfolioImgs) gated.add("portfolio-first");
-  // "property-first" needs property object data from GPT output — gate loosely
-  // (keep it in if user mentioned specific properties)
-  if (!/property|listing|villa|apartment|bedroom|price/i.test("")) gated.add("placeholder-keep");
 
   const eligible = pool.filter((v) => !gated.has(v));
   if (!eligible.length) return pool[0] ?? null; // should never happen
 
-  // Preference weighting by brand_personality + conversion_goal
+  // Preference weighting by brand_personality + conversion_goal + positioning
   const { brand_personality: bp, conversion_goal: cg, positioning } = strategy;
 
   const score = (v: string): number => {
     let s = 0;
     // Real estate
-    if (v === "full-image"     && (bp === "elegant" || bp === "minimal_luxury"))      s += 2;
-    if (v === "editorial"      && (bp === "elegant" || bp === "minimal_luxury"))      s += 2;
-    if (v === "editorial"      && positioning === "premium")                           s += 1;
-    if (v === "re-split"       && cg === "generate_leads")                            s += 2;
-    if (v === "search-first"   && cg === "generate_leads")                            s += 2;
-    if (v === "property-first" && cg === "request_valuation")                         s += 2;
+    if (v === "full-image"     && (bp === "elegant" || bp === "minimal_luxury"))        s += 2;
+    if (v === "editorial"      && (bp === "elegant" || bp === "minimal_luxury"))        s += 2;
+    if (v === "editorial"      && positioning === "premium")                             s += 1;
+    if (v === "re-split"       && cg === "generate_leads")                              s += 2;
+    if (v === "search-first"   && cg === "generate_leads")                              s += 2;
+    if (v === "property-first" && cg === "request_valuation")                           s += 2;
     // Dental
-    if (v === "trust-focused"  && bp === "trustworthy")                               s += 2;
-    if (v === "booking-focused" && cg === "book_appointment")                         s += 2;
-    if (v === "clinical-premium" && positioning === "premium")                        s += 2;
+    if (v === "trust-focused"    && bp === "trustworthy")                               s += 2;
+    if (v === "booking-focused"  && cg === "book_appointment")                          s += 2;
+    if (v === "clinical-premium" && positioning === "premium")                          s += 2;
     // Gym
-    if (v === "cinematic-dark"   && (bp === "bold" || bp === "energetic"))            s += 2;
-    if (v === "energy-driven"    && bp === "energetic")                               s += 1;
-    if (v === "membership-focused" && cg === "sell_membership" && data.hasPricingData) s += 3;
-    // Interior
-    if (v === "luxury-showcase"  && positioning === "premium")                        s += 2;
-    if (v === "portfolio-first"  && cg === "showcase_portfolio" && data.hasPortfolioImgs) s += 3;
-    if (v === "editorial"        && (bp === "minimal_luxury" || bp === "elegant"))    s += 1;
+    if (v === "cinematic-dark"     && (bp === "bold" || bp === "energetic"))            s += 2;
+    if (v === "energy-driven"      && bp === "energetic")                               s += 1;
+    if (v === "membership-focused" && cg === "sell_membership" && data.hasPricingData)  s += 3;
+    // Interior design — portfolio-first gets +4 when data confirmed, beating editorial's max of 3
+    if (v === "luxury-showcase"  && positioning === "premium")                          s += 2;
+    if (v === "portfolio-first"  && cg === "showcase_portfolio" && data.hasPortfolioImgs) s += 4;
+    if (v === "portfolio-first"  && data.hasPortfolioImgs && cg !== "showcase_portfolio") s += 2;
     return s;
+    // NOTE: no duplicate editorial rule here — editorial scores come only from the RE block above
   };
 
   const ranked = [...eligible].sort((a, b) => score(b) - score(a));
