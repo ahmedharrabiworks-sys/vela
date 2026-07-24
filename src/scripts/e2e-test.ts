@@ -7,6 +7,38 @@
  *  or: npx tsx --env-file .env.local src/scripts/e2e-test.ts
  */
 
+/**
+ * KNOWN GAP — Route parity drift risk
+ *
+ * This script reimplements the generation pipeline (classify, buildFillSystem,
+ * selectHeroVariant, selectTrustComponents, enforceTemplate, etc.) rather than
+ * calling the real /api/website/generate route directly, because the route
+ * requires an authenticated session that wasn't available to this test runner.
+ *
+ * This means future changes to the production route's logic could silently drift
+ * from this test's copy without being caught — e.g. a new scoring rule added to
+ * selectHeroVariant in route.ts would not be reflected here unless manually kept
+ * in sync.
+ *
+ * TODO: once an automated-test auth strategy exists (e.g. a test service account,
+ * a bypass token for CI, or a session-mocking approach), migrate this script to
+ * call the real endpoint instead of duplicating its logic.
+ */
+
+/**
+ * KNOWN GAP — Mobile screenshot coverage
+ *
+ * This test verified desktop rendering + trust/conversion data integrity through
+ * the real OpenAI/Unsplash pipeline, but did NOT capture a real 375px mobile
+ * screenshot of an end-to-end generated site.
+ *
+ * TODO: a future validation pass should generate one complete website through the
+ * real pipeline and capture both a desktop screenshot and a 375px mobile
+ * screenshot, specifically checking responsive behavior of showcase-type sections
+ * (galleries, grids, listings) and image loading — not just the form/hero sections
+ * already covered in Phase 2a/2b.
+ */
+
 import OpenAI from "openai";
 import * as fs from "fs";
 import * as path from "path";
