@@ -18,6 +18,8 @@ import {
   // Phase 2c showcase pool
   renderPropertyListingsGrid, renderTreatmentGallery,
   renderPortfolioGrid, renderMembershipPlansDisplay,
+  // Phase 2d content pool
+  renderTestimonialSingleQuote, renderTestimonialGrid,
 } from "./website-sections";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -39,6 +41,8 @@ export interface SectionSpec {
     | "appointment-form" | "valuation-form" | "membership-form"
     | "property-listings-grid" | "treatment-gallery"
     | "portfolio-grid" | "membership-plans-display"
+    // Phase 2d content pool
+    | "testimonial-single-quote" | "testimonial-grid"
     | string; // allow forward-compat
   variant?: string;
   imageQuery?: string;
@@ -1292,6 +1296,22 @@ ${serviceCardOverrides}
   .ws-port-masonry{columns:1;}
   .ws-mpdisplay-card{flex:1 1 100%;max-width:100%;}
 }
+
+/* ── Phase 2d — content pool ──────────────────────────────────────────── */
+.ws-tsq{max-width:760px;margin:0 auto;text-align:center;}
+.ws-tsq-mark{font-family:var(--font-heading);font-size:6rem;line-height:.6;color:var(--accent);opacity:.3;margin-bottom:24px;user-select:none;}
+.ws-tsq-quote{font-family:var(--font-heading);font-size:clamp(1.25rem,2.5vw,2rem);font-weight:400;font-style:italic;color:var(--color-heading);line-height:1.5;margin-bottom:32px;}
+.ws-tsq-name{font-size:0.9rem;font-weight:700;color:var(--color-heading);margin-bottom:4px;}
+.ws-tsq-role{font-size:0.82rem;color:var(--color-muted);}
+.ws-tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px;margin-top:48px;}
+.ws-tgrid-card{background:var(--surface);border-radius:var(--radius-lg);padding:32px 28px;border-left:3px solid var(--accent);}
+.ws-tgrid-quote{font-size:1rem;color:var(--color-text);line-height:1.75;font-style:italic;margin-bottom:20px;}
+.ws-tgrid-name{font-size:0.9rem;font-weight:700;color:var(--color-heading);margin-bottom:4px;}
+.ws-tgrid-role{font-size:0.8rem;color:var(--color-muted);}
+.ws-faq-two-col{display:grid;grid-template-columns:1fr 1fr;gap:0 48px;margin-top:48px;}
+.ws-faq-two-col .ws-faq-item{border-top:1px solid var(--border);}
+@media(max-width:768px){.ws-faq-two-col{grid-template-columns:1fr;}}
+@media(max-width:480px){.ws-tgrid{grid-template-columns:1fr;}.ws-tsq-quote{font-size:clamp(1.1rem,5vw,1.5rem);}}
 `.trim();
 }
 
@@ -1510,6 +1530,9 @@ const SECTION_NAV: Record<string, { label: string; href: string }> = {
   "treatment-gallery":        { label: "Treatments", href: "#treatments"        },
   "portfolio-grid":           { label: "Portfolio",  href: "#portfolio"         },
   "membership-plans-display": { label: "Plans",      href: "#plans"             },
+  // Phase 2d content pool
+  "testimonial-single-quote": { label: "Reviews",    href: "#testimonial"       },
+  "testimonial-grid":         { label: "Reviews",    href: "#testimonials"      },
 };
 
 function buildNavLinks(spec: WebsiteSpec): Array<{ label: string; href: string }> {
@@ -1653,7 +1676,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         break;
       }
       case "faq-accordion":
-        bodyParts.push(addDataVs(renderFaqAccordion(t, c), i));
+        bodyParts.push(addDataVs(renderFaqAccordion(t, c, v), i));
         break;
       case "cta-band":
         bodyParts.push(addDataVs(renderCtaBand(t, c), i));
@@ -1752,6 +1775,18 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
       case "membership-plans-display": {
         const mpd = renderMembershipPlansDisplay(t, c);
         if (mpd) bodyParts.push(addDataVs(mpd, i));
+        break;
+      }
+
+      // ── Phase 2d — content pool ────────────────────────────────────────
+      case "testimonial-single-quote": {
+        const tsq = renderTestimonialSingleQuote(t, c);
+        if (tsq) bodyParts.push(addDataVs(tsq, i));
+        break;
+      }
+      case "testimonial-grid": {
+        const tgrd = renderTestimonialGrid(t, c);
+        if (tgrd) bodyParts.push(addDataVs(tgrd, i));
         break;
       }
 

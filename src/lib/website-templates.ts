@@ -219,4 +219,7 @@ export const OPTIONAL_SKIP_RULES: Record<string, (content: Record<string, unknow
   "treatment-gallery":         (c) => !Array.isArray(c.services) || (c.services as unknown[]).length < 1,
   "portfolio-grid":            (c) => !Array.isArray(c.projects) || (c.projects as unknown[]).length < 2,
   "membership-plans-display":  (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
+  // Phase 2d — content pool
+  "testimonial-single-quote":  (c) => !c.quote                   || String(c.quote).trim() === "",
+  "testimonial-grid":          (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
 };

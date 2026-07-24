@@ -1164,6 +1164,92 @@ const SHOWCASE_COMPONENT_SCHEMAS: Record<string, string> = {
   If no real feature inclusions are stated, output features: [] for each tier — section will be suppressed server-side.`,
 };
 
+// ── Phase 2d — Content component pool ─────────────────────────────────────────
+
+type ContentAvailableData = {
+  hasRealTestimonialQuote: boolean;
+};
+
+function extractContentAvailableData(description: string): ContentAvailableData {
+  // Double-quoted text with 20+ chars — indicates a real customer quote in the description
+  return {
+    hasRealTestimonialQuote: /”[^”]{20,}”/.test(description),
+  };
+}
+
+function selectGalleryVariant(strategy: DesignStrategy | null): string {
+  if (!strategy) return "uniform";
+  const { brand_personality: bp, visual_mood: vm } = strategy;
+  const mood = vm.toLowerCase();
+  if (bp === "minimal_luxury" || bp === "elegant" || /editorial|luxury|warm|soft|calm/i.test(mood)) return "masonry";
+  if (bp === "bold" || bp === "energetic" || /dynamic|energy|dark|cinematic|intense|bold/i.test(mood)) return "full-bleed-strip";
+  return "uniform";
+}
+
+function selectTestimonialComponent(
+  strategy: DesignStrategy | null,
+  data: ContentAvailableData,
+): string | null {
+  if (!data.hasRealTestimonialQuote) return null;
+  if (!strategy) return "testimonial-single-quote";
+  const { brand_personality: bp, positioning } = strategy;
+  if (bp === "minimal_luxury" || bp === "elegant" || positioning === "premium") return "testimonial-single-quote";
+  return "testimonial-grid";
+}
+
+function selectFaqVariant(strategy: DesignStrategy | null): string {
+  if (!strategy) return "";
+  const { category, brand_personality: bp } = strategy;
+  if (["real_estate", "saas", "legal"].includes(category)) return "two-column";
+  if (bp === "minimal_luxury" || bp === "elegant") return "two-column";
+  return "";
+}
+
+const TESTIMONIAL_COMPONENT_SCHEMAS: Record<string, string> = {
+  "testimonial-single-quote":
+`"testimonial-single-quote" section content: { "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }
+FABRICATION RULE — ABSOLUTE: This is the single highest-risk component in this build. A fabricated customer quote attributes words to a real person who never said them.
+"quote": the EXACT verbatim text of the quote from the owner's description — never paraphrase or improve it.
+"sourceEvidence": a 10–40 character substring copied verbatim from the description that proves the quote is real. Server-side: if sourceEvidence is not found in the description, this entire section is removed.
+"name": customer name ONLY if explicitly stated alongside the quote. Omit if no name.
+"role": descriptor ONLY if stated (e.g. "Verified patient", "Google Review"). Omit if not stated.
+If you cannot find a real quoted customer statement: output quote: "" — section will be suppressed server-side.`,
+
+  "testimonial-grid":
+`"testimonial-grid" section content: { "eyebrow"?: string, "headline"?: string, "items": [{ "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }] }
+FABRICATION RULE — ABSOLUTE: Every item in items[] must correspond to a real quoted statement in the owner's description. Same rules as testimonial-single-quote apply to each item.
+Each item: "quote" = exact verbatim text. "sourceEvidence" = 10–40 char verbatim substring from description.
+"name"/"role": only if explicitly stated. Never invent reviewer names.
+If fewer than 2 real quotes exist: output items: [] — section will be suppressed server-side. Max 3 items.`,
+};
+
+function verifyContentComponents(spec: WebsiteSpec, description: string): void {
+  const descLower = description.toLowerCase();
+  spec.sections = spec.sections.filter((s) => {
+    if (s.type === "testimonial-single-quote") {
+      const c = s.content as { quote?: string; sourceEvidence?: string };
+      const evidence = String(c.sourceEvidence ?? "").trim();
+      const valid = !!c.quote && String(c.quote).trim() !== "" && evidence.length >= 8 && descLower.includes(evidence.toLowerCase());
+      if (!valid) console.warn(`[website/generate] verifyContentComponents: removing testimonial-single-quote — quote empty or sourceEvidence "${evidence}" not found`);
+      return valid;
+    }
+    if (s.type === "testimonial-grid") {
+      const c = s.content as { items?: { quote?: string; sourceEvidence?: string }[] };
+      const items = (c.items ?? []).filter((item) => {
+        const evidence = String(item.sourceEvidence ?? "").trim();
+        return !!item.quote && String(item.quote).trim() !== "" && evidence.length >= 8 && descLower.includes(evidence.toLowerCase());
+      });
+      if (items.length === 0) {
+        console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid — no verified items`);
+        return false;
+      }
+      c.items = items;
+      return true;
+    }
+    return true;
+  });
+}
+
 // ── Template: system prompt for the fill (step-2) call ────────────────────────
 function buildFillSystem(
   template: SiteTemplate,
@@ -1174,6 +1260,7 @@ function buildFillSystem(
   heroVariant?: string | null,
   trustComponents?: string[] | null,
   showcaseComponents?: string[] | null,
+  contentComponents?: string[] | null,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
@@ -1424,11 +1511,16 @@ PART 11 — SHOWCASE SECTION SCHEMA
 ═══════════════════════════════════════════════════════
 The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data — fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays — the section will be suppressed server-side.
 ${showcaseComponents.map((type) => SHOWCASE_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
+` : ""}${contentComponents && contentComponents.length > 0 ? `═══════════════════════════════════════════════════════
+PART 12 — TESTIMONIAL SECTION SCHEMA (HIGHEST FABRICATION RISK)
+═══════════════════════════════════════════════════════
+This section was server-selected because real quoted customer speech was detected in the description. Fill it ONLY with verbatim real quotes. Never improve, paraphrase, or invent any part of a quote.
+${contentComponents.map((type) => TESTIMONIAL_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
 ABSOLUTE RULES — NEVER VIOLATE
 ═══════════════════════════════════════════════════════
 1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
-2. NEVER include testimonials or star ratings.
+2. NEVER freely add testimonials, reviews, or star ratings — they are server-controlled. When a testimonial section appears in the template (Part 12), fill it only following Part 12 rules.
 3. NEVER include stats-band with invented numbers.
 4. NEVER invent team member names.
 5. NEVER paraphrase the owner's input as copy — extract intent and write fresh.
@@ -2276,6 +2368,13 @@ export async function POST(req: NextRequest) {
       const selectedShowcase = selectShowcaseComponent(designStrategy, showcaseData);
       console.log(`[website/generate] showcasePool: showcase=${selectedShowcase ?? "none"}`);
 
+      // Content component pool selection (Phase 2d)
+      const contentAvailableData = extractContentAvailableData(fullDescription);
+      const selectedTestimonialType = selectTestimonialComponent(designStrategy, contentAvailableData);
+      const selectedGalleryVariant = selectGalleryVariant(designStrategy);
+      const selectedFaqVariant = selectFaqVariant(designStrategy);
+      console.log(`[website/generate] contentPool: testimonial=${selectedTestimonialType ?? "none"} galleryVariant=${selectedGalleryVariant} faqVariant=${selectedFaqVariant || "default"}`);
+
       const baseTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
       // Patch the hero variant in the template so enforceTemplate locks it in
       let selectedTemplate: SiteTemplate = selectedHeroVariant
@@ -2287,8 +2386,26 @@ export async function POST(req: NextRequest) {
           }
         : baseTemplate;
 
+      // Phase 2d: patch gallery-grid variant based on design strategy
+      selectedTemplate = {
+        ...selectedTemplate,
+        sections: selectedTemplate.sections.map((s) =>
+          s.type === "gallery-grid" ? { ...s, variant: selectedGalleryVariant } : s
+        ),
+      };
+
+      // Phase 2d: patch faq-accordion variant when two-column is selected
+      if (selectedFaqVariant) {
+        selectedTemplate = {
+          ...selectedTemplate,
+          sections: selectedTemplate.sections.map((s) =>
+            s.type === "faq-accordion" ? { ...s, variant: selectedFaqVariant } : s
+          ),
+        };
+      }
+
       // Inject showcase section before the contact-block (Phase 2c)
-      // Showcase goes first so the order becomes: showcase → trust → conversion → contact
+      // Showcase goes first so the order becomes: showcase → trust → conversion → testimonial → contact
       if (selectedShowcase) {
         const contactIdx = selectedTemplate.sections.findIndex((s) => s.type === "contact-block");
         const insertAt = contactIdx >= 0 ? contactIdx : selectedTemplate.sections.length;
@@ -2318,6 +2435,21 @@ export async function POST(req: NextRequest) {
         selectedTemplate = { ...selectedTemplate, sections: patchedSections };
       }
 
+      // Phase 2d: inject testimonial section before contact-block (after trust/conversion)
+      if (selectedTestimonialType) {
+        const contactIdx = selectedTemplate.sections.findIndex((s) => s.type === "contact-block");
+        const insertAt = contactIdx >= 0 ? contactIdx : selectedTemplate.sections.length;
+        const testimonialSection: TemplateSection = {
+          type: selectedTestimonialType,
+          variant: "",
+          imageSlots: 0,
+          required: false,
+        };
+        const patchedSections = [...selectedTemplate.sections];
+        patchedSections.splice(insertAt, 0, testimonialSection);
+        selectedTemplate = { ...selectedTemplate, sections: patchedSections };
+      }
+
       console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} heroVariant=${selectedHeroVariant ?? "template-default"} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || "–"}${s.required ? "" : "?"}`).join(", ")}]`);
 
       // Step 2: fill content within fixed template structure
@@ -2325,7 +2457,7 @@ export async function POST(req: NextRequest) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null, selectedShowcase ? [selectedShowcase] : null) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null, selectedShowcase ? [selectedShowcase] : null, selectedTestimonialType ? [selectedTestimonialType] : null) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -2349,6 +2481,8 @@ export async function POST(req: NextRequest) {
       verifyTrustComponents(spec);
       // Phase 2c: remove showcase sections where GPT failed to populate required data
       verifyShowcaseComponents(spec);
+      // Phase 2d: remove testimonial sections where sourceEvidence doesn't match description
+      verifyContentComponents(spec, fullDescription);
       console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || "–"}`).join(", ")}]`);
     }
 

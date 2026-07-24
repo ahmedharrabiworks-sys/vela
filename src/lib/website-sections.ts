@@ -1450,12 +1450,87 @@ export function renderProcessSteps(
 </section>`;
 }
 
-// 14. faq-accordion
-export function renderFaqAccordion(
-  t: DesignTokens,
+// 14. faq-accordion — dispatch on variant
+function renderFaqTwoColumn(
+  _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; items?: { q?: string; a?: string }[] }
 ): string {
+  const items = (c.items ?? []).filter((item) => item.q).slice(0, 10);
+  if (!items.length) return "";
+  return `<section class="ws-section" id="faq">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-faq-two-col">
+      ${items.map((item, i) => `
+      <div class="ws-faq-item" id="faq-wrap-${i}">
+        <div class="ws-faq-q" role="button" tabindex="0" onclick="wsFaqToggle(${i})" aria-expanded="false" aria-controls="faq-ans-${i}">
+          ${esc(item.q ?? "")}
+          <span class="ws-faq-icon" aria-hidden="true"></span>
+        </div>
+        <div class="ws-faq-a" id="faq-ans-${i}">${esc(item.a ?? "")}</div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
+}
+
+export function renderFaqAccordion(
+  t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: { q?: string; a?: string }[] },
+  variant?: string
+): string {
+  if (variant === "two-column") return renderFaqTwoColumn(t, c);
   return renderFaq(t, c);
+}
+
+// ── Phase 2d — Content Component Pool ─────────────────────────────────────────
+
+// CD-1: testimonial-single-quote — centered large quote for one real customer statement
+export function renderTestimonialSingleQuote(
+  _t: DesignTokens,
+  c: { quote?: string; name?: string; role?: string; sourceEvidence?: string }
+): string {
+  if (!c.quote) return "";
+  return `<section class="ws-section" id="testimonial">
+  <div class="ws-container">
+    <div class="ws-tsq">
+      <p class="ws-tsq-mark" aria-hidden="true">“</p>
+      <blockquote class="ws-tsq-quote">${esc(c.quote)}</blockquote>
+      <footer class="ws-tsq-foot">
+        ${c.name ? `<p class="ws-tsq-name">${esc(c.name)}</p>` : ""}
+        ${c.role ? `<p class="ws-tsq-role">${esc(c.role)}</p>` : ""}
+      </footer>
+    </div>
+  </div>
+</section>`;
+}
+
+// CD-2: testimonial-grid — 2–3 side-by-side customer quote cards
+type TestimonialItem = { quote?: string; name?: string; role?: string; sourceEvidence?: string };
+
+export function renderTestimonialGrid(
+  _t: DesignTokens,
+  c: { eyebrow?: string; headline?: string; items?: TestimonialItem[] }
+): string {
+  const items = (c.items ?? []).filter((item) => item.quote).slice(0, 3);
+  if (!items.length) return "";
+  return `<section class="ws-section ws-section-alt" id="testimonials">
+  <div class="ws-container">
+    ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    <div class="ws-tgrid">
+      ${items.map((item) => `
+      <div class="ws-tgrid-card">
+        <p class="ws-tgrid-quote">${esc(item.quote ?? "")}</p>
+        <div class="ws-tgrid-foot">
+          ${item.name ? `<p class="ws-tgrid-name">${esc(item.name)}</p>` : ""}
+          ${item.role ? `<p class="ws-tgrid-role">${esc(item.role)}</p>` : ""}
+        </div>
+      </div>`).join("")}
+    </div>
+  </div>
+</section>`;
 }
 
 // 15. cta-band
