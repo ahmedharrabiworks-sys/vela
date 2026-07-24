@@ -264,3 +264,9 @@ Moving from fixed templates toward a **component pool selected via a Design Inte
 
 **TEST-02 — No 375px mobile screenshot from a real end-to-end generated site.**
 Phase 2b validation confirmed desktop rendering + trust/conversion data integrity through the real pipeline, but did not capture a real mobile screenshot of a fully generated site. TODO: a future validation pass should generate one complete website through the real pipeline and capture both desktop + 375px mobile screenshots, specifically checking responsive behavior of showcase-type sections (galleries, grids, listings) and image loading — not just the form/hero sections already covered in Phase 2a/2b.
+
+**TEST-03 — Showcase grid mobile layout verified via CSS analysis, not rendered screenshot.**
+Phase 2c's 375px/768px verification for property-listings-grid and portfolio-grid was done by reading the actual generated CSS breakpoints and container widths from real HTML output and calculating expected behavior — not by rendering the page in a browser and observing it directly. Math checked out (1-col at 375px via the 480px rule, 2-col at 768px, no overflow), but this is inferred, not visually confirmed. TODO: a future pass should actually render one of the saved `src/scripts/e2e-phase2c-*.html` files at both widths and screenshot the result.
+
+**KNOWN-GAP — property-listings-grid featured variant never dispatches.**
+`renderPropertyListingsGrid` supports a `featured-plus-grid` layout (one large feature card + smaller grid) but the showcase injection pipeline in `route.ts` always passes `variant: ""`, so every real_estate site gets the plain 3-col grid regardless of listing count. The CSS for the featured variant ships unused. TODO: wire variant selection into the showcase injection logic (similar to how hero variants are chosen) so listing count/positioning can pick between the two layouts.
