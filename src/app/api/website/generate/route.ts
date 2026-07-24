@@ -574,6 +574,107 @@ type DesignStrategy = {
   target_audience:   string;
 };
 
+// ── Hero pool — per category, ordered preferred → fallback ───────────────────
+const HERO_POOL: Record<string, string[]> = {
+  real_estate:     ["full-image", "re-split", "search-first", "editorial", "property-first"],
+  dental:          ["trust-focused", "booking-focused", "clinical-premium"],
+  gym:             ["cinematic-dark", "membership-focused", "energy-driven"],
+  interior_design: ["luxury-showcase", "portfolio-first", "editorial"],
+};
+
+type HeroAvailableData = {
+  hasPricingData:   boolean; // description mentions real prices / tiers
+  hasPortfolioImgs: boolean; // ≥2 project portfolio images expected
+  hasTrustBadges:   boolean; // real stats the badges variant can use
+};
+
+function extractHeroAvailableData(description: string): HeroAvailableData {
+  return {
+    hasPricingData:   /\$\d|\d+[,.]?\d*\s*(per|\/mo|\/month|\/year|membership|fee|aed|eur|gbp|usd)/i.test(description),
+    hasPortfolioImgs: /portfolio|project photo|gallery|before.after|completed project|our work|case stud/i.test(description.toLowerCase()),
+    hasTrustBadges:   /\d+\s*(year|patient|client|case|review|award)/i.test(description),
+  };
+}
+
+function selectHeroVariant(strategy: DesignStrategy, data: HeroAvailableData): string | null {
+  const pool = HERO_POOL[strategy.category];
+  if (!pool) return null; // category not in pool → keep template's hero variant
+
+  // Data-availability gates
+  const gated = new Set<string>();
+  if (!data.hasTrustBadges)   gated.add("trust-focused");
+  if (!data.hasPricingData)   gated.add("membership-focused");
+  if (!data.hasPortfolioImgs) gated.add("portfolio-first");
+  // "property-first" needs property object data from GPT output — gate loosely
+  // (keep it in if user mentioned specific properties)
+  if (!/property|listing|villa|apartment|bedroom|price/i.test("")) gated.add("placeholder-keep");
+
+  const eligible = pool.filter((v) => !gated.has(v));
+  if (!eligible.length) return pool[0] ?? null; // should never happen
+
+  // Preference weighting by brand_personality + conversion_goal
+  const { brand_personality: bp, conversion_goal: cg, positioning } = strategy;
+
+  const score = (v: string): number => {
+    let s = 0;
+    // Real estate
+    if (v === "full-image"     && (bp === "elegant" || bp === "minimal_luxury"))      s += 2;
+    if (v === "editorial"      && (bp === "elegant" || bp === "minimal_luxury"))      s += 2;
+    if (v === "editorial"      && positioning === "premium")                           s += 1;
+    if (v === "re-split"       && cg === "generate_leads")                            s += 2;
+    if (v === "search-first"   && cg === "generate_leads")                            s += 2;
+    if (v === "property-first" && cg === "request_valuation")                         s += 2;
+    // Dental
+    if (v === "trust-focused"  && bp === "trustworthy")                               s += 2;
+    if (v === "booking-focused" && cg === "book_appointment")                         s += 2;
+    if (v === "clinical-premium" && positioning === "premium")                        s += 2;
+    // Gym
+    if (v === "cinematic-dark"   && (bp === "bold" || bp === "energetic"))            s += 2;
+    if (v === "energy-driven"    && bp === "energetic")                               s += 1;
+    if (v === "membership-focused" && cg === "sell_membership" && data.hasPricingData) s += 3;
+    // Interior
+    if (v === "luxury-showcase"  && positioning === "premium")                        s += 2;
+    if (v === "portfolio-first"  && cg === "showcase_portfolio" && data.hasPortfolioImgs) s += 3;
+    if (v === "editorial"        && (bp === "minimal_luxury" || bp === "elegant"))    s += 1;
+    return s;
+  };
+
+  const ranked = [...eligible].sort((a, b) => score(b) - score(a));
+  // Among tied top candidates, pick randomly to add variety across generations
+  const topScore = score(ranked[0]!);
+  const tied = ranked.filter((v) => score(v) === topScore);
+  return tied[Math.floor(Math.random() * tied.length)] ?? ranked[0]!;
+}
+
+// Post-GPT safety check: if the enforced hero variant requires data that GPT
+// did not produce, fall back to the category's safest default.
+function verifyHeroVariant(spec: WebsiteSpec, strategy: DesignStrategy): void {
+  const heroSection = spec.sections.find((s) => s.type === "hero");
+  if (!heroSection) return;
+  const v = (heroSection as { variant?: string }).variant;
+  if (!v) return;
+
+  if (v === "membership-focused") {
+    const pricingSection = spec.sections.find((s) => s.type === "pricing-tiers");
+    const hasTiers = Array.isArray(pricingSection?.content?.tiers) && (pricingSection.content.tiers as unknown[]).length > 0;
+    if (!hasTiers && !Array.isArray(heroSection.content?.tiers)) {
+      (heroSection as { variant?: string }).variant = strategy.category === "gym" ? "cinematic-dark" : "editorial";
+    }
+  }
+  if (v === "portfolio-first") {
+    const queries = (heroSection as { imageQueries?: string[] }).imageQueries ?? [];
+    if (queries.length < 2) {
+      (heroSection as { variant?: string }).variant = strategy.category === "interior_design" ? "luxury-showcase" : "editorial";
+    }
+  }
+  if (v === "trust-focused") {
+    const badges = heroSection.content?.badges;
+    if (!Array.isArray(badges) || (badges as unknown[]).length === 0) {
+      (heroSection as { variant?: string }).variant = "clinical-premium";
+    }
+  }
+}
+
 // ── Template: step-1 classifier + design intelligence (single gpt-4o-mini call) ─
 async function classifyWithDesignStrategy(
   openai: OpenAI,
@@ -701,6 +802,28 @@ function enforceTemplate(spec: WebsiteSpec, template: SiteTemplate): void {
   spec.sections = result;
 }
 
+// ── Hero variant extended-schema instructions ─────────────────────────────────
+const HERO_VARIANT_SCHEMAS: Record<string, string> = {
+  "re-split":
+    `hero content for "re-split": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
+  "stats"?: [{ "value": string, "label": string }] — ONLY real statistics the owner stated; max 3 items; omit if none }`,
+  "trust-focused":
+    `hero content for "trust-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
+  "badges"?: [{ "value": "15+", "label": "Years Experience" }] — ONLY real stats (years, patients, awards); max 4; omit if no real data }`,
+  "booking-focused":
+    `hero content for "booking-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary",
+  "services"?: string[] — service names for the dropdown; omit or leave [] if not specified }`,
+  "membership-focused":
+    `hero content for "membership-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
+  "tiers"?: [{ "name": string, "price": string, "period"?: string }] — ONLY real pricing the owner stated; max 3; omit if no real prices }`,
+  "property-first":
+    `hero content for "property-first": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
+  "property"?: { "title"?: string, "price"?: string, "beds"?: string, "baths"?: string, "sqft"?: string } — ONLY real listing data; omit fields not stated }`,
+  "portfolio-first":
+    `hero content for "portfolio-first": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"? }
+imageQueries REQUIRED at section level (3 strings for the image grid).`,
+};
+
 // ── Template: system prompt for the fill (step-2) call ────────────────────────
 function buildFillSystem(
   template: SiteTemplate,
@@ -708,6 +831,7 @@ function buildFillSystem(
   language = "English",
   hasOwnerPhoto = true,
   strategy?: DesignStrategy | null,
+  heroVariant?: string | null,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
@@ -942,7 +1066,13 @@ ${contactBlock}
 ═══════════════════════════════════════════════════════`
   : `CONTACT INFO: None provided. DO NOT include phone, email, address, or hours anywhere in the spec.`}
 
+${heroVariant && HERO_VARIANT_SCHEMAS[heroVariant] ? `═══════════════════════════════════════════════════════
+PART 9 — HERO VARIANT SCHEMA OVERRIDE
 ═══════════════════════════════════════════════════════
+The hero section uses variant "${heroVariant}". Write its content using this exact schema:
+${HERO_VARIANT_SCHEMAS[heroVariant]}
+For all other sections use schemas from PART 8.
+` : ""}═══════════════════════════════════════════════════════
 ABSOLUTE RULES — NEVER VIOLATE
 ═══════════════════════════════════════════════════════
 1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
@@ -1777,15 +1907,29 @@ export async function POST(req: NextRequest) {
         .from("websites")
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenant?.id ?? "");
-      const selectedTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
-      console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || "–"}${s.required ? "" : "?"}`).join(", ")}]`);
+
+      // Hero pool selection — pick the best variant for this business before GPT runs
+      const heroAvailableData = extractHeroAvailableData(fullDescription);
+      const selectedHeroVariant = selectHeroVariant(designStrategy, heroAvailableData);
+
+      const baseTemplate = selectTemplate(templateCategory, _siteCount ?? 0);
+      // Patch the hero variant in the template so enforceTemplate locks it in
+      const selectedTemplate: SiteTemplate = selectedHeroVariant
+        ? {
+            ...baseTemplate,
+            sections: baseTemplate.sections.map((s) =>
+              s.type === "hero" ? { ...s, variant: selectedHeroVariant } : s
+            ),
+          }
+        : baseTemplate;
+      console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} heroVariant=${selectedHeroVariant ?? "template-default"} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || "–"}${s.required ? "" : "?"}`).join(", ")}]`);
 
       // Step 2: fill content within fixed template structure
       const userContent = buildUserContent("", "", "", fullDescription, effectiveLanguage);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -1803,6 +1947,8 @@ export async function POST(req: NextRequest) {
       };
       // Server-side enforcement: re-sort to template order, overwrite variants, skip optional sections
       enforceTemplate(spec, selectedTemplate);
+      // Post-GPT data-availability check: fall back if required content missing
+      if (designStrategy) verifyHeroVariant(spec, designStrategy);
       console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || "–"}`).join(", ")}]`);
     }
 

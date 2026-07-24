@@ -552,7 +552,19 @@ export function renderFooter(
 
 // ── V2 section library ────────────────────────────────────────────────────────
 
-type HeroContent = { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string };
+type HeroContent = {
+  eyebrow?: string;
+  headline?: string;
+  subheadline?: string;
+  ctaPrimary?: string;
+  ctaSecondary?: string;
+  // v3 pool variants — extended fields (all optional; renderers check presence before use)
+  stats?:    { value: string; label: string }[];
+  badges?:   { value: string; label: string }[];
+  tiers?:    { name: string; price: string; period?: string }[];
+  property?: { title?: string; price?: string; beds?: string; baths?: string; sqft?: string };
+  services?: string[];
+};
 
 // 1. hero-fullbleed — centered text over full-bleed image (centered-overlay)
 export function renderHeroFullbleed(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
@@ -581,14 +593,326 @@ export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
 }
 
 // Unified hero dispatcher for v2 variant field
-export function renderHeroVariant(t: DesignTokens, c: HeroContent, variant: string | undefined, imageUrl?: string): string {
+export function renderHeroVariant(
+  t: DesignTokens,
+  c: HeroContent,
+  variant: string | undefined,
+  imageUrl?: string,
+  multiImageUrls?: (string | undefined)[],
+): string {
   switch (variant) {
+    // ── existing v2 variants ─────────────────────────────────────────────────
     case "split-left":        return renderHeroSplitSection(t, c, imageUrl);
     case "split-right":       return renderHeroSplitRight(t, c, imageUrl);
     case "editorial-offset":  return renderHeroEditorialOffset(t, c, imageUrl);
     case "minimal-stacked":   return renderHeroMinimal(t, c);
+    // ── v3 pool variants ─────────────────────────────────────────────────────
+    case "full-image":        return renderHeroFullImage(t, c, imageUrl);
+    case "re-split":          return renderHeroReSplit(t, c, imageUrl);
+    case "search-first":      return renderHeroSearchFirst(t, c, imageUrl);
+    case "editorial":         return renderHeroEditorialOffset(t, c, imageUrl); // shared RE-4 / ID-12
+    case "property-first":    return renderHeroPropertyFirst(t, c, imageUrl);
+    case "trust-focused":     return renderHeroTrustFocused(t, c, imageUrl);
+    case "booking-focused":   return renderHeroBookingFocused(t, c, imageUrl);
+    case "clinical-premium":  return renderHeroClinicalPremium(t, c, imageUrl);
+    case "cinematic-dark":    return renderHeroCinematicDark(t, c, imageUrl);
+    case "membership-focused": return renderHeroMembershipFocused(t, c, imageUrl);
+    case "energy-driven":     return renderHeroEnergyDriven(t, c, imageUrl);
+    case "portfolio-first":   return renderHeroPortfolioFirst(t, c, multiImageUrls);
+    case "luxury-showcase":   return renderHeroLuxuryShowcase(t, c, imageUrl);
     default:                  return renderHeroFullbleed(t, c, imageUrl); // centered-overlay
   }
+}
+
+// ── Hero v3 pool render functions ─────────────────────────────────────────────
+
+// RE-1: full-image — dramatic full-bleed, bottom-anchored text, single CTA
+function renderHeroFullImage(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const bg = imageUrl
+    ? `<img src="${esc(imageUrl)}" class="ws-hero-fi-bg-img" alt="${esc(c.headline || "Hero")}" loading="eager" onerror="this.style.display='none'">`
+    : `<div class="ws-hero-fi-bg-img" style="background:${t.heroBg};"></div>`;
+  return `<section class="ws-hero--fi" id="hero">
+  ${bg}
+  <div class="ws-hero-fi-overlay"></div>
+  <div class="ws-hero-fi-inner">
+    ${c.eyebrow     ? `<p class="ws-hero-fi-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-fi-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-fi-sub">${esc(c.subheadline)}</p>` : ""}
+    ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+  </div>
+</section>`;
+}
+
+// RE-2: re-split — 50/50 grid, optional stats row beneath CTAs
+function renderHeroReSplit(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const stats = Array.isArray(c.stats) ? (c.stats as { value: string; label: string }[]).slice(0, 3) : [];
+  const statsHtml = stats.length ? `
+    <div class="ws-hero-res-stats">
+      ${stats.map((s) => `<div class="ws-hero-res-stat">
+        <p class="ws-hero-res-stat-val">${esc(s.value)}</p>
+        <p class="ws-hero-res-stat-lbl">${esc(s.label)}</p>
+      </div>`).join("")}
+    </div>` : "";
+  return `<section class="ws-hero--res" id="hero" style="background:${t.bg};">
+  <div class="ws-hero-res-text">
+    ${c.eyebrow     ? `<p class="ws-hero-res-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-res-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-res-sub">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-hero-ctas">
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>
+    ${statsHtml}
+  </div>
+  <div class="ws-hero-res-img">
+    ${photo(imageUrl, c.headline || "Hero", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+  </div>
+</section>`;
+}
+
+// RE-3: search-first — full-bleed + property-type pills + search bar
+function renderHeroSearchFirst(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const bg = imageUrl
+    ? `<img src="${esc(imageUrl)}" class="ws-hero-sf-bg" alt="${esc(c.headline || "Properties")}" loading="eager" onerror="this.style.display='none'">`
+    : `<div class="ws-hero-sf-bg" style="background:${t.heroBg};"></div>`;
+  return `<section class="ws-hero--sf" id="hero">
+  ${bg}
+  <div class="ws-hero-sf-overlay"></div>
+  <div class="ws-hero-sf-inner">
+    ${c.eyebrow     ? `<p class="ws-hero-sf-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-sf-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-sf-sub">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-hero-sf-bar">
+      <input class="ws-hero-sf-input" type="text" placeholder="City, neighbourhood, or address…" aria-label="Search location">
+      <div class="ws-hero-sf-pills">
+        <button class="ws-hero-sf-pill ws-hero-sf-pill--on" onclick="wsHeroSFPill(this)" type="button">All</button>
+        <button class="ws-hero-sf-pill" onclick="wsHeroSFPill(this)" type="button">Apartment</button>
+        <button class="ws-hero-sf-pill" onclick="wsHeroSFPill(this)" type="button">Villa</button>
+        <button class="ws-hero-sf-pill" onclick="wsHeroSFPill(this)" type="button">Commercial</button>
+      </div>
+      <a href="#listings" class="ws-btn ws-btn-accent ws-hero-sf-go">Search</a>
+    </div>
+  </div>
+</section>`;
+}
+
+// RE-5: property-first — minimal header text, dominant featured listing card
+function renderHeroPropertyFirst(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const prop = c.property as { title?: string; price?: string; beds?: string; baths?: string; sqft?: string } | undefined;
+  const hasSpec = prop && (prop.beds || prop.baths || prop.sqft);
+  const specParts: string[] = [];
+  if (prop?.beds)  specParts.push(`${esc(prop.beds)} Beds`);
+  if (prop?.baths) specParts.push(`${esc(prop.baths)} Baths`);
+  if (prop?.sqft)  specParts.push(`${esc(prop.sqft)} sqft`);
+  const cardHtml = `<div class="ws-hero-pf-card">
+    <div class="ws-hero-pf-card-img">
+      ${photo(imageUrl, prop?.title || "Featured Property", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+      ${prop?.price ? `<div class="ws-hero-pf-price-tag">${esc(prop.price)}</div>` : ""}
+    </div>
+    ${(prop?.title || hasSpec) ? `<div class="ws-hero-pf-card-body">
+      ${prop?.title ? `<p class="ws-hero-pf-card-title">${esc(prop.title)}</p>` : ""}
+      ${hasSpec ? `<div class="ws-hero-pf-specs">${specParts.join("<span class=\"ws-hero-pf-dot\"> · </span>")}</div>` : ""}
+    </div>` : ""}
+  </div>`;
+  return `<section class="ws-hero--pf" id="hero" style="background:${t.bg};">
+  <div class="ws-container ws-hero-pf-inner">
+    <div class="ws-hero-pf-meta">
+      ${c.eyebrow     ? `<p class="ws-hero-pf-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+      <h1 class="ws-hero-pf-h">${esc(c.headline || "")}</h1>
+      ${c.subheadline ? `<p class="ws-hero-pf-sub">${esc(c.subheadline)}</p>` : ""}
+      <div class="ws-hero-ctas">
+        ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+        ${c.ctaSecondary ? `<a href="#listings" class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+      </div>
+    </div>
+    ${cardHtml}
+  </div>
+</section>`;
+}
+
+// Dental-6: trust-focused — photo + headline + optional trust-badge row + CTA
+function renderHeroTrustFocused(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const badges = Array.isArray(c.badges) ? (c.badges as { value: string; label: string }[]).slice(0, 4) : [];
+  const badgesHtml = badges.length ? `
+    <div class="ws-hero-tf-badges">
+      ${badges.map((b) => `<div class="ws-hero-tf-badge">
+        <p class="ws-hero-tf-badge-val">${esc(b.value)}</p>
+        <p class="ws-hero-tf-badge-lbl">${esc(b.label)}</p>
+      </div>`).join("")}
+    </div>` : "";
+  return `<section class="ws-hero--tf" id="hero" style="background:${t.bg};">
+  <div class="ws-hero-tf-img">
+    ${photo(imageUrl, c.headline || "Dental practice", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+  </div>
+  <div class="ws-hero-tf-content">
+    ${c.eyebrow     ? `<p class="ws-hero-tf-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-tf-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-tf-sub">${esc(c.subheadline)}</p>` : ""}
+    ${badgesHtml}
+    <div class="ws-hero-ctas" style="margin-top:${badges.length ? "32px" : "32px"};">
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>
+  </div>
+</section>`;
+}
+
+// Dental-7: booking-focused — photo panel + mini form that scrolls to main booking
+function renderHeroBookingFocused(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const services = Array.isArray(c.services) ? (c.services as string[]).slice(0, 8) : [];
+  return `<section class="ws-hero--bof" id="hero" style="background:${t.bg};">
+  <div class="ws-hero-bof-img">
+    ${photo(imageUrl, c.headline || "Dental practice", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+  </div>
+  <div class="ws-hero-bof-content">
+    ${c.eyebrow     ? `<p class="ws-hero-bof-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-bof-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-bof-sub">${esc(c.subheadline)}</p>` : ""}
+    <form class="ws-hero-bof-form" onsubmit="event.preventDefault();var b=document.getElementById('booking');if(b)b.scrollIntoView({behavior:'smooth'});">
+      <input name="name" class="ws-hero-bof-inp" type="text" placeholder="Your name" autocomplete="name">
+      <input name="phone" class="ws-hero-bof-inp" type="tel" placeholder="Phone number" autocomplete="tel">
+      ${services.length ? `<select name="service" class="ws-hero-bof-inp">
+        <option value="">Select a service…</option>
+        ${services.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
+      </select>` : ""}
+      <button type="submit" class="ws-btn ws-btn-accent" style="width:100%;">${esc(c.ctaPrimary || "Book Appointment")}</button>
+    </form>
+  </div>
+</section>`;
+}
+
+// Dental-8: clinical-premium — bright, framed photo, editorial header, clean layout
+function renderHeroClinicalPremium(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  return `<section class="ws-hero--cprem" id="hero" style="background:${t.bg};">
+  <div class="ws-container ws-hero-cprem-inner">
+    <div class="ws-hero-cprem-text">
+      ${c.eyebrow     ? `<p class="ws-hero-cprem-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+      <h1 class="ws-hero-cprem-h">${esc(c.headline || "")}</h1>
+      ${c.subheadline ? `<p class="ws-hero-cprem-sub">${esc(c.subheadline)}</p>` : ""}
+      <div class="ws-hero-ctas">
+        ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+        ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+      </div>
+    </div>
+    <div class="ws-hero-cprem-photo">
+      ${photo(imageUrl, c.headline || "Clinic", "ws-hero-cprem-img", "")}
+    </div>
+  </div>
+</section>`;
+}
+
+// Gym-9: cinematic-dark — full-bleed moody photo, massive all-caps headline
+function renderHeroCinematicDark(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const bg = imageUrl
+    ? `<img src="${esc(imageUrl)}" class="ws-hero-cind-bg" alt="${esc(c.headline || "Gym")}" loading="eager" onerror="this.style.display='none'">`
+    : `<div class="ws-hero-cind-bg" style="background:${t.heroBg};"></div>`;
+  return `<section class="ws-hero--cind" id="hero">
+  ${bg}
+  <div class="ws-hero-cind-overlay"></div>
+  <div class="ws-hero-cind-inner">
+    ${c.eyebrow     ? `<p class="ws-hero-cind-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-cind-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-cind-sub">${esc(c.subheadline)}</p>` : ""}
+    ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-accent ws-hero-cind-cta">${esc(c.ctaPrimary)}</a>` : ""}
+  </div>
+</section>`;
+}
+
+// Gym-10: membership-focused — dark bg, tier preview strip (only with real pricing data)
+function renderHeroMembershipFocused(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const tiers = Array.isArray(c.tiers) ? (c.tiers as { name: string; price: string; period?: string }[]).slice(0, 3) : [];
+  const imgBg = imageUrl ? `<img src="${esc(imageUrl)}" class="ws-hero-mf-bg-img" alt="" loading="eager" onerror="this.style.display='none'">` : "";
+  const tiersHtml = tiers.length ? `
+    <div class="ws-hero-mf-tiers">
+      ${tiers.map((tier) => `<a href="#pricing" class="ws-hero-mf-tier">
+        <p class="ws-hero-mf-tier-name">${esc(tier.name)}</p>
+        <p class="ws-hero-mf-tier-price">${esc(tier.price)}${tier.period ? `<span class="ws-hero-mf-tier-period">/${esc(tier.period)}</span>` : ""}</p>
+      </a>`).join("")}
+    </div>` : "";
+  return `<section class="ws-hero--mf" id="hero" style="background:${t.heroBg};">
+  ${imgBg}
+  <div class="ws-hero-mf-glow" style="background:radial-gradient(ellipse 70% 50% at 50% 50%,${t.accentAlpha.replace("0.10", "0.25")} 0%,transparent 70%);"></div>
+  <div class="ws-hero-mf-inner">
+    ${c.eyebrow     ? `<p class="ws-hero-chip">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-mf-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-mf-sub">${esc(c.subheadline)}</p>` : ""}
+    ${tiersHtml}
+    <div class="ws-hero-ctas" style="justify-content:center;">
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>
+  </div>
+</section>`;
+}
+
+// Gym-11: energy-driven — bold text left, angled-clip image right, dark bg
+function renderHeroEnergyDriven(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  return `<section class="ws-hero--ed" id="hero" style="background:${t.heroBg};">
+  <div class="ws-hero-ed-text">
+    ${c.eyebrow     ? `<p class="ws-hero-ed-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-ed-h">${esc(c.headline || "")}</h1>
+    ${c.subheadline ? `<p class="ws-hero-ed-sub">${esc(c.subheadline)}</p>` : ""}
+    <div class="ws-hero-ctas">
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>
+  </div>
+  <div class="ws-hero-ed-media">
+    ${photo(imageUrl, c.headline || "Training", "ws-hero-ed-img", "")}
+  </div>
+</section>`;
+}
+
+// ID-13: portfolio-first — 3-image asymmetric grid dominates, text secondary below
+function renderHeroPortfolioFirst(t: DesignTokens, c: HeroContent, multiImageUrls?: (string | undefined)[]): string {
+  const imgs = multiImageUrls ?? [];
+  const img0 = imgs[0];
+  const img1 = imgs[1] ?? img0;
+  const img2 = imgs[2];
+  return `<section class="ws-hero--port" id="hero" style="background:${t.bg};">
+  <div class="ws-container ws-hero-port-inner">
+    <div class="ws-hero-port-grid">
+      <div class="ws-hero-port-main">
+        ${photo(img0, c.headline || "Portfolio", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+      </div>
+      <div class="ws-hero-port-stack">
+        <div class="ws-hero-port-stack-item">
+          ${photo(img1, c.headline ? `${c.headline} 2` : "Portfolio 2", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+        </div>
+        ${img2 ? `<div class="ws-hero-port-stack-item">
+          ${photo(img2, c.headline ? `${c.headline} 3` : "Portfolio 3", "", "width:100%;height:100%;object-fit:cover;display:block;")}
+        </div>` : ""}
+      </div>
+    </div>
+    <div class="ws-hero-port-meta">
+      ${c.eyebrow     ? `<p class="ws-hero-port-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+      <h1 class="ws-hero-port-h">${esc(c.headline || "")}</h1>
+      ${c.subheadline ? `<p class="ws-hero-port-sub">${esc(c.subheadline)}</p>` : ""}
+      <div class="ws-hero-ctas">
+        ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+        ${c.ctaSecondary ? `<a href="#listings" class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+      </div>
+    </div>
+  </div>
+</section>`;
+}
+
+// ID-14: luxury-showcase — full-bleed, minimal serif wordmark headline, centered, extreme whitespace
+function renderHeroLuxuryShowcase(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
+  const bg = imageUrl
+    ? `<img src="${esc(imageUrl)}" class="ws-hero-lux-bg" alt="${esc(c.headline || "Interior Design")}" loading="eager" onerror="this.style.display='none'">`
+    : `<div class="ws-hero-lux-bg" style="background:${t.heroBg};"></div>`;
+  return `<section class="ws-hero--lux" id="hero">
+  ${bg}
+  <div class="ws-hero-lux-overlay"></div>
+  <div class="ws-hero-lux-inner">
+    ${c.eyebrow     ? `<p class="ws-hero-lux-eyebrow">${esc(c.eyebrow)}</p>` : ""}
+    <h1 class="ws-hero-lux-h">${esc(c.headline || "")}</h1>
+    <div class="ws-hero-lux-rule"></div>
+    ${c.subheadline ? `<p class="ws-hero-lux-sub">${esc(c.subheadline)}</p>` : ""}
+    ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-ghost ws-hero-lux-cta">${esc(c.ctaPrimary)}</a>` : ""}
+  </div>
+</section>`;
 }
 
 // ── Feature-grid variants ─────────────────────────────────────────────────────
