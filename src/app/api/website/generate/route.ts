@@ -964,6 +964,8 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
     `"trust-badges-band" section content: { "eyebrow"?, "headline"?,
   "badges": [{ "value": string, "label": string }] }
   RULES: Only use real statistics, years, certifications, or counts stated in the description.
+  Prefer numeric values when available — e.g. "18+" / "Years in Practice", "12,000+" / "Patients Treated", "480+" / "Google Reviews".
+  Use certification/award names only when no numeric alternative exists — e.g. "Board-Certified" / "UAE Dental Association".
   Never invent numbers. Each badge must be independently verifiable from the input. Max 5.`,
 
   "multi-step-form":
