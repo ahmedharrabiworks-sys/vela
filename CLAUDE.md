@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 28, 2026 (Phase 3 complete)*
+*Last updated: July 28, 2026 (Phase 4 complete)*
 
 ---
 
@@ -15,6 +15,7 @@
 - **When something is broken and the cause is unknown, get diagnostic evidence FIRST** (Vercel logs, console errors) before writing a fix prompt. Guessing wastes Claude Code credits.
 - **Verify claimed fixes.** Claude Code has repeatedly reported "fixed" when the bug persisted. Always get production evidence before chaining the next prompt.
 - **ONE SINGLE-FOCUS FIX PER PROMPT** — unless Oussama explicitly asks for everything in one big prompt (he does this near Claude usage limits). Default to single-focus.
+- **Phases execute one at a time, per explicit prompt.** Do not self-continue into the next phase after completing one — stop, report, wait for a new explicit prompt to start the next phase.
 
 ---
 
@@ -262,7 +263,17 @@ Moving from fixed templates toward a **component pool selected via a Design Inte
   **Full audit findings** (all documented, none surprising): `#F59E0B` stars amber, `#1A1A1A` search-bar input, `#fff`/rgba-white on dark overlays (hero, footer, CTA, press-quote-band, featured overlays, transparent nav), `#e05`/`#DC2626` error states — all intentional, cannot be tokenized. `body{font-size:16px}` is the architectural root baseline. No rogue `box-shadow` values outside intentional use.
   **Verification**: `e2e-test-phase3.ts` — 71/71 checks (token defs, spacing wires, type wires, color/radius fixes, intentional exceptions, Phase 2e hamburger regression, multi-preset rendering, **enforcement: hot pink → rejected, approved accent → passed, lowercase normalized, all 28 approved accents pass**). Phase 2e real-pipeline regression: 3/3 tests, 44/44 checks.
 
-- **Phase 4 — Image engine rebuild — not started, well-diagnosed.** Current queries lean on location/generic terms instead of category+section-purpose+subject (e.g. a Tunisia-based real estate site pulled Tunisian street-scene photos instead of villa/property photos). Fix direction: query construction driven by category + section slot + specific subject matter, using category-specific reference photos as the target aesthetic.
+- **Phase 4 — Image engine rebuild (DONE):** Root cause was city/businessType concatenation in `ensureImageQueries` and `[business type] [city or region]` formula in both Part 7 GPT instruction blocks — causing Unsplash to return location street-scene photos instead of business-subject photos. Fixed across all 14 query construction sites:
+  - `PRESET_HERO_SUFFIX` / `PRESET_ABOUT_SUFFIX` → replaced with `HERO_PHOTO_QUERY` / `ABOUT_PHOTO_QUERY` (15-key dicts, subject-first full queries, no city prefix, cover all v2 category keys)
+  - Hero + about-story construction: now uses dict directly (`HERO_PHOTO_QUERY[rawCategory] ?? HERO_PHOTO_QUERY[preset]`), zero `locationCtx`/`businessType` in the string
+  - Gallery fallback: removed 12 `${businessType}` prefix strings → uses `PRESET_GALLERY_QUERIES[preset]`
+  - Listings-grid / product-grid / feature-showcase fallbacks: removed `${businessType}` prefix + numbered suffix → use `PRESET_GALLERY_QUERIES[preset]` pool cycling
+  - property-listings-grid: removed `locCtx` (city) → uses `PROPERTY_LISTING_QUERIES` (6 varied property subjects)
+  - portfolio-grid: removed `locCtx` (city) → uses `PORTFOLIO_GRID_QUERIES` (6 varied interior design subjects)
+  - treatment-gallery: removed numbered suffix → uses `TREATMENT_QUERIES` (6 varied dental subjects)
+  - Auto-injected gallery: removed `${businessType}` prefix strings, headline changed from `${businessType} in Focus` → `"Our Gallery"`
+  - Part 7 v1 + v2: formula changed from `[business type] [city or region]` to `[VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]`; all city-name examples (Tunisia, Dubai, Paris, London) removed; ABSOLUTE RULE against city/country/region names added with per-category subject examples
+  **Verification**: `e2e-test-phase4.ts` — 38/38 checks. All 30 query dict values confirmed city-free. Phase 2c showcase arrays (PROPERTY_LISTING_QUERIES, PORTFOLIO_GRID_QUERIES, TREATMENT_QUERIES) all city-free with correct subject terms. Part 7 city-formula gone, VISUAL SUBJECT formula present in both buildFillSystem variants.
 
 - **Phase 5 — Rich editor improvements — not started.** Decision made: constrained rich editor first (spacing/padding/borders/shadows/reorder-within-section, extending the existing floating text panel), NOT a Figma/Webflow-style freeform canvas. True freeform drag-and-drop is a explicitly deferred future initiative post-launch, not part of this rebuild.
 

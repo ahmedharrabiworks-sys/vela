@@ -205,24 +205,43 @@ async function classifyUploadedImage(
   return "hero";
 }
 
-// ── Per-category image query suffixes ─────────────────────────────────────────
-// Subject-specific terms appended to industry+city for hero/about sections.
-// These produce real, on-topic Unsplash photos rather than abstract textures.
-const PRESET_HERO_SUFFIX: Record<string, string> = {
-  hotel:      "luxury hotel exterior resort pool architecture",
-  medical:    "modern clinic reception bright white professional",
-  fitness:    "gym fitness training equipment dynamic interior",
-  beauty:     "salon spa beauty interior elegant modern",
-  realestate: "luxury property interior architecture modern",
-  restaurant: "restaurant dining room elegant food atmosphere",
+// ── Per-category image query tables (Phase 4: subject-first, zero city/location) ─
+// Values are FULL Unsplash queries — no businessType prefix, no city concatenation.
+const HERO_PHOTO_QUERY: Record<string, string> = {
+  // legacy preset keys (resolved via CATEGORY_TO_PRESET)
+  hotel:      "luxury hotel exterior pool architecture golden hour editorial",
+  medical:    "modern medical clinic reception bright white clean minimal",
+  fitness:    "premium gym training floor equipment dramatic cinematic lighting",
+  beauty:     "luxury salon spa interior warm natural light elegant minimal",
+  realestate: "luxury villa exterior architecture daylight clean modern editorial",
+  restaurant: "elegant restaurant dining room warm candlelight ambiance editorial",
+  // v2 category keys (more specific than mapped preset — checked first)
+  clinic:     "modern dental clinic treatment room bright clean white minimal",
+  gym:        "premium training facility open floor cinematic dramatic lighting",
+  salon:      "high-end hair salon interior warm light elegant minimal",
+  legal:      "law firm office dark wood bookshelf professional editorial",
+  saas:       "modern tech office open workspace bright airy minimal architecture",
+  agency:     "creative studio workspace industrial bright open modern editorial",
+  ecommerce:  "boutique retail interior clean minimal light product display",
+  education:  "modern classroom bright open learning space natural light",
+  other:      "professional business interior clean bright modern minimal",
 };
-const PRESET_ABOUT_SUFFIX: Record<string, string> = {
-  hotel:      "hotel lobby interior warm light elegant",
-  medical:    "doctor consultation professional clinic bright",
-  fitness:    "trainer coach athlete workout natural light",
-  beauty:     "salon stylist consultation elegant interior",
-  realestate: "agent professional modern office bright",
-  restaurant: "chef kitchen cooking fire grill editorial",
+const ABOUT_PHOTO_QUERY: Record<string, string> = {
+  hotel:      "hotel lobby warm light elegant interior editorial",
+  medical:    "doctor patient consultation natural light professional warm",
+  fitness:    "personal trainer coach athlete workout natural light editorial",
+  beauty:     "salon stylist consultation warm light elegant interior",
+  realestate: "real estate agent modern office interior bright professional",
+  restaurant: "chef kitchen open fire cooking editorial warm dramatic",
+  clinic:     "dentist consultation patient chair bright clean minimal",
+  gym:        "personal trainer workout client energy natural light",
+  salon:      "hair stylist client consultation warm light interior",
+  legal:      "lawyer client meeting boardroom professional dark elegant",
+  saas:       "team collaboration open office workspace bright modern",
+  agency:     "creative team working studio natural light editorial",
+  ecommerce:  "product styling detail natural light editorial minimal",
+  education:  "teacher student interaction bright classroom warm light",
+  other:      "professional team workspace bright modern editorial",
 };
 const PRESET_GALLERY_QUERIES: Record<string, string[]> = {
   hotel: [
@@ -274,6 +293,32 @@ const PRESET_GALLERY_QUERIES: Record<string, string[]> = {
     "dessert pastry detail close-up editorial light",
   ],
 };
+
+// ── Phase 2c showcase fallback queries (no city, subject-first) ───────────────
+const PROPERTY_LISTING_QUERIES = [
+  "luxury villa exterior pool architecture daylight editorial",
+  "apartment living room natural light minimal interior architectural",
+  "kitchen marble countertop clean modern minimal architectural",
+  "bedroom natural light linen soft minimal editorial",
+  "bathroom spa stone tile architectural minimal editorial",
+  "garden terrace outdoor daylight architectural minimal",
+];
+const PORTFOLIO_GRID_QUERIES = [
+  "luxury interior design living room editorial minimal natural light",
+  "interior design bedroom soft warm light minimal elegant",
+  "kitchen interior design marble countertop clean editorial",
+  "bathroom interior spa stone tile architectural light",
+  "dining room interior design editorial warm elegant light",
+  "home office interior design minimal bright modern",
+];
+const TREATMENT_QUERIES = [
+  "dental teeth whitening treatment close-up clinical bright",
+  "dental implant procedure professional clean minimal",
+  "orthodontic braces close-up clinical editorial bright",
+  "dental hygiene cleaning procedure bright white minimal",
+  "cosmetic dental veneer consultation professional clean",
+  "dental technology equipment modern clean minimal editorial",
+];
 
 // ── Map v2 category → gallery query preset key ────────────────────────────────
 const CATEGORY_TO_PRESET: Record<string, string> = {
@@ -354,50 +399,35 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
 
-    // Hero: ALWAYS override with server-built query using the spec's actual category
+    // Hero: ALWAYS override — subject-first query, zero city/businessType prefix
     if (HERO_TYPES.has(s.type)) {
-      const heroSuffix = PRESET_HERO_SUFFIX[preset] ?? "professional photography editorial";
-      const locationCtx = effectiveCity ? ` ${effectiveCity}` : "";
-      if (hasOwnerPhoto) {
-        (s as { imageQuery?: string }).imageQuery = `${businessType}${locationCtx} bright professional photography`.replace(/\s+/g, " ").trim();
-      } else {
-        (s as { imageQuery?: string }).imageQuery = `${businessType}${locationCtx} ${heroSuffix}`.replace(/\s+/g, " ").trim();
-      }
+      const heroPhotoQuery = HERO_PHOTO_QUERY[rawCategory] ?? HERO_PHOTO_QUERY[preset] ?? "professional business interior clean bright modern minimal";
+      (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
+        ? heroPhotoQuery.replace(/\beditorial\b/gi, "").replace(/\s+/g, " ").trim() + " portrait natural light"
+        : heroPhotoQuery;
     }
 
     const hasQ = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
 
     if (!hasQ) {
       if (ABOUT_TYPES.has(s.type)) {
-        const locationCtx = effectiveCity ? ` ${effectiveCity}` : "";
-        const aboutSuffix = PRESET_ABOUT_SUFFIX[preset] ?? "professional team editorial warm light";
-        (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
-          ? `${businessType}${locationCtx} professional team workspace`.replace(/\s+/g, " ").trim()
-          : `${businessType}${locationCtx} ${aboutSuffix}`.replace(/\s+/g, " ").trim();
+        const aboutPhotoQuery = ABOUT_PHOTO_QUERY[rawCategory] ?? ABOUT_PHOTO_QUERY[preset] ?? "professional team workspace bright modern editorial";
+        (s as { imageQuery?: string }).imageQuery = aboutPhotoQuery;
       }
     }
 
-    // Gallery grid sections: ensure 6 imageQueries
+    // Gallery grid sections: ensure 6 imageQueries — subject-first, no businessType prefix
     if (MULTI_GALLERY_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       if (!qs.length) {
-        const fallbackGallery = hasOwnerPhoto
-          ? [
-              `${businessType} interior design`,
-              `${businessType} team professional`,
-              `${businessType} detail close up`,
-              `${businessType} modern equipment`,
-              `${businessType} client experience`,
-              `${businessType} atmosphere ambiance`,
-            ]
-          : (PRESET_GALLERY_QUERIES[preset] ?? [
-              `${businessType} close-up texture detail editorial`,
-              `${businessType} product detail minimal clean`,
-              `${businessType} interior warm light`,
-              `${businessType} lifestyle editorial`,
-              `${businessType} flat lay elegant`,
-              `${businessType} abstract mood atmosphere`,
-            ]);
+        const fallbackGallery = PRESET_GALLERY_QUERIES[preset] ?? [
+          "professional service interior clean bright editorial",
+          "business workspace detail minimal editorial",
+          "team professional consultation warm light",
+          "service equipment detail close-up editorial",
+          "client experience interior warm light",
+          "atmosphere ambiance interior editorial minimal",
+        ];
         (s as { imageQueries?: string[] }).imageQueries = fallbackGallery.map((q) => q.replace(/\s+/g, " ").trim());
       }
     }
@@ -408,9 +438,13 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
       const targetCount = Math.max(items.length || 3, 3);
       if (qs.length < targetCount) {
-        const listingSuffix = PRESET_HERO_SUFFIX[preset] ?? "editorial minimal clean light";
+        const listingPool = PRESET_GALLERY_QUERIES[preset] ?? [
+          "professional service detail close-up editorial",
+          "service interior clean bright minimal editorial",
+          "detail texture close-up natural light editorial",
+        ];
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? `${businessType} ${listingSuffix} item ${j + 1}`.replace(/\s+/g, " ").trim()
+          qs[j] ?? (listingPool[j % listingPool.length] ?? "professional service detail editorial")
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
@@ -422,8 +456,14 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
       const targetCount = Math.max(items.length || 4, 4);
       if (qs.length < targetCount) {
+        const productPool = PRESET_GALLERY_QUERIES[preset] ?? [
+          "product detail minimal clean white background editorial",
+          "product close-up texture natural light editorial",
+          "product flat lay clean minimal aesthetic",
+          "product lifestyle detail warm editorial",
+        ];
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? `${businessType} product editorial clean background item ${j + 1}`.replace(/\s+/g, " ").trim()
+          qs[j] ?? (productPool[j % productPool.length] ?? "product detail minimal clean editorial")
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
@@ -435,48 +475,51 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
       const targetCount = Math.max(items.length || 3, 3);
       if (qs.length < targetCount) {
+        const showcasePool = PRESET_GALLERY_QUERIES[preset] ?? [
+          "professional service feature detail editorial",
+          "service interior clean bright minimal",
+          "service detail close-up natural light minimal",
+        ];
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? `${businessType} feature detail professional editorial ${j + 1}`.replace(/\s+/g, " ").trim()
+          qs[j] ?? (showcasePool[j % showcasePool.length] ?? "professional service feature detail editorial")
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
 
-    // Phase 2c: property-listings-grid — 1 imageQuery per listing
+    // Phase 2c: property-listings-grid — 1 imageQuery per listing (no city)
     if (s.type === "property-listings-grid") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const listings = Array.isArray(s.content?.listings) ? (s.content.listings as unknown[]) : [];
       const targetCount = Math.max(listings.length || 3, 3);
       if (qs.length < targetCount) {
-        const locCtx = effectiveCity ? ` ${effectiveCity}` : "";
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? `luxury real estate property${locCtx} editorial interior ${j + 1}`.replace(/\s+/g, " ").trim()
+          qs[j] ?? (PROPERTY_LISTING_QUERIES[j % PROPERTY_LISTING_QUERIES.length] ?? "luxury property interior architectural editorial")
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
 
-    // Phase 2c: treatment-gallery — 1 imageQuery per service (if images desired)
+    // Phase 2c: treatment-gallery — 1 imageQuery per service (no index numbers)
     if (s.type === "treatment-gallery") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const services = Array.isArray(s.content?.services) ? (s.content.services as unknown[]) : [];
       if (!qs.length && services.length > 0) {
         const filled = services.map((_: unknown, j: number) =>
-          `dental clinic treatment procedure professional clean ${j + 1}`.trim()
+          TREATMENT_QUERIES[j % TREATMENT_QUERIES.length] ?? "dental clinic treatment professional clean minimal"
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
 
-    // Phase 2c: portfolio-grid — 1 imageQuery per project
+    // Phase 2c: portfolio-grid — 1 imageQuery per project (no city)
     if (s.type === "portfolio-grid") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const projects = Array.isArray(s.content?.projects) ? (s.content.projects as unknown[]) : [];
       const targetCount = Math.max(projects.length || 2, 2);
       if (qs.length < targetCount) {
-        const locCtx = effectiveCity ? ` ${effectiveCity}` : "";
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? `interior design${locCtx} luxury residential editorial ${j + 1}`.replace(/\s+/g, " ").trim()
+          qs[j] ?? (PORTFOLIO_GRID_QUERIES[j % PORTFOLIO_GRID_QUERIES.length] ?? "luxury interior design editorial minimal natural light")
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
@@ -517,17 +560,17 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     const hasGallery = spec.sections.some((s) => IMAGE_SECTION_TYPES.has(s.type) && (s.type === "gallery" || s.type === "gallery-grid"));
     if (!hasGallery) {
       const galleryQueries = PRESET_GALLERY_QUERIES[preset] ?? [
-        `${businessType} interior detail editorial`,
-        `${businessType} atmosphere warm light`,
-        `${businessType} team professional`,
-        `${businessType} work detail close up`,
-        `${businessType} product quality`,
-        `${businessType} lifestyle editorial`,
+        "professional service interior clean bright editorial",
+        "business workspace atmosphere warm light editorial",
+        "team professional consultation editorial warm",
+        "service work detail close-up minimal editorial",
+        "client experience interior natural light",
+        "atmosphere ambiance interior editorial minimal",
       ];
       spec.sections.splice(insertIdx, 0, {
         type: "gallery-grid",
         imageQueries: galleryQueries.map((q) => q.replace(/\s+/g, " ").trim()),
-        content: { eyebrow: "Gallery", headline: `${businessType} in Focus` },
+        content: { eyebrow: "Gallery", headline: "Our Gallery" },
       } as { type: string; imageQueries: string[]; content: Record<string, unknown> });
     }
   }
@@ -1449,18 +1492,31 @@ PART 7 — IMAGE QUERY RULES
 imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
 imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3–6), product-grid (4–8), feature-showcase (3–4).
 
-${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES:
-imageQuery = [business type] [city or region] [quality context]
-• Include the specific business type, city/region if known, and a quality suffix
-• NEVER use abstract-texture queries for hero/about sections
-• EXAMPLES:
-  Hotel (Tunis) → "hotel resort Tunisia Mediterranean exterior architecture"
-  Dental clinic (Dubai) → "dental clinic Dubai modern reception white professional"
-  Gym → "gym fitness training equipment modern interior editorial"
-  SaaS / agency → "modern office workspace team technology professional"
+${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, not where the business is:
+imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
+NEVER include city names, country names, or region names in any image query.
+
+VISUAL SUBJECT = the specific physical thing in the photo:
+• dental/clinic → "dental treatment room" / "clinic reception bright" / "orthodontic equipment"
+• gym → "weight training floor equipment" / "group fitness studio" / "functional training area"
+• real estate → "luxury villa exterior pool" / "apartment living room natural light" / "kitchen marble"
+• restaurant → "dining room table setting" / "chef kitchen cooking" / "food plating close-up"
+• salon/beauty → "salon styling station" / "spa treatment room minimal" / "manicure station warm"
+• hotel → "hotel lobby warm interior" / "suite editorial light" / "pool terrace daylight"
+• legal → "law firm boardroom dark wood" / "attorney office bookshelf professional"
+• saas/agency → "modern office open workspace bright" / "team collaboration studio natural light"
+
+EXAMPLES (no city or country):
+  Dental hero    → "dental treatment room bright white clean minimal professional photography"
+  Gym hero       → "premium gym training floor equipment cinematic dramatic lighting editorial"
+  Real estate hero → "luxury villa exterior pool architecture daylight editorial"
+  Restaurant about → "chef open kitchen fire cooking editorial warm dramatic"
+  Gallery item (dental) → "teeth whitening treatment close-up clinical bright editorial"
+  Property listing → "apartment living room natural light minimal architectural"
 gallery/listings/products: vary subject, angle, detail — each query must be distinct.
 ` : `BUILD FROM OWNER'S SPECIFICS:
-Extract visual details from description. Build 4–6 word queries using business type + location + one specific detail.`}
+Extract visual details from description. Build 4–6 word queries: specific subject + detail + quality.
+NEVER include city/country/region names.`}
 QUALITY SUFFIX: hero/about-story → "bright natural light" or "editorial minimal". gallery/listings → "editorial" or "close-up detail".
 
 ═══════════════════════════════════════════════════════
@@ -1807,35 +1863,47 @@ PART 7 — IMAGE QUERY RULES
 
 imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
 
-${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — do NOT use abstract textures or gradients:
+${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, NOT where the business is located:
 
-imageQuery = [business type] [city or region] [quality context]
+imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 
-RULES:
-• Include the specific business type (hotel, restaurant, dental clinic, gym…)
-• Include the city or region if known
-• End with a quality context: "professional photography", "editorial", "interior design", "bright natural light"
-• NEVER use pure-abstract queries like "bokeh texture close-up" or "gradient glow" for hero/about sections
-• The query must produce a REAL PHOTO of this type of business, not a stock texture
+ABSOLUTE RULE: NEVER include city names, country names, or region names in any image query.
+The query describes what appears in the photo, not where the business operates.
 
-EXAMPLES:
-• Hotel (Tunis)           → "hotel resort Tunisia Mediterranean exterior architecture"
-• Dental clinic (Dubai)   → "dental clinic Dubai modern reception white professional"
-• Restaurant (Tunis)      → "restaurant Tunis Mediterranean dining room elegant"
-• Gym (Dubai Marina)      → "gym fitness Dubai Marina training equipment modern"
-• Salon (Paris)           → "hair salon Paris elegant interior modern professional"
-• SaaS / agency           → "modern office workspace team technology professional"
-• Real estate (London)    → "luxury property London interior architecture modern"
+VISUAL SUBJECT = the specific physical thing the photo shows:
+• dental/clinic → "dental treatment room" / "modern clinic reception area" / "orthodontic equipment clean"
+• gym → "weight training floor equipment" / "group fitness class studio" / "functional training area"
+• real estate → "luxury villa exterior pool" / "apartment living room natural light" / "kitchen marble countertop"
+• restaurant → "elegant dining room table setting" / "open kitchen chef cooking" / "dessert plating close-up"
+• salon/beauty → "salon styling station interior" / "spa treatment room minimal" / "manicure station warm light"
+• hotel → "luxury hotel lobby interior warm" / "hotel suite editorial light" / "pool terrace daylight minimal"
+• legal → "law firm boardroom dark wood bookshelf" / "attorney office professional editorial"
+• saas/agency → "modern office open workspace bright airy" / "team collaboration studio natural light"
+
+AESTHETIC/MOOD (match to the site mood):
+  editorial-luxury / warm-minimal → "warm editorial" / "natural light" / "minimal clean"
+  bold-energetic / dark-premium → "dramatic lighting" / "cinematic dark" / "high contrast"
+  clinical-bright → "bright white" / "clean minimal" / "professional"
+
+EXAMPLES (zero city/country in any query):
+• Dental hero      → "dental treatment room bright white clean minimal professional photography"
+• Real estate hero  → "luxury villa exterior pool architecture daylight editorial"
+• Gym hero          → "premium gym training floor equipment cinematic dramatic lighting editorial"
+• Restaurant about  → "chef open kitchen fire cooking editorial warm dramatic"
+• Real estate about → "real estate agent modern office interior bright professional"
+• Dental gallery item → "teeth whitening treatment close-up clinical bright editorial"
+• Property listing  → "contemporary apartment living room natural light minimal architectural"
+• Gym listing       → "gym equipment dumbbell rack weight training detail editorial"
 
 gallery-grid / listings-grid: vary subject, angle, detail — each query must be distinct.
 
 ` : `PROCESS:
 1. Extract concrete visual details from owner's description: equipment, materials, ambience, unique features
-2. Build a 4–6 word query from specifics (business type + location + one detail)
-3. Self-test: "Could this belong to any business in this category?" → If yes, make it more specific.
+2. Build a 4–6 word query: specific subject + aesthetic detail + quality — NEVER city/country/region.
+3. Self-test: "Could this query pull a street scene or location photo?" → If yes, make it more subject-specific.
 
 EXAMPLES:
-• Dental clinic (ceiling screens, digital scanners) → "dental clinic Dubai digital technology modern white"
+• Dental clinic (ceiling screens, digital scanners) → "dental clinic digital technology equipment modern white"
 • Gym (HIIT, warehouse, orange lights) → "hiit group fitness warehouse orange lighting dynamic"
 • Restaurant (open fire, exposed brick) → "restaurant open fire grill exposed brick warm dining"
 `}
