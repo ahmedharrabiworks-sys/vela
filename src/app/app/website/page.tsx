@@ -27,7 +27,7 @@ sty.textContent=[
   '[data-ve][data-ve-active]{outline:2px solid #FF6B35!important;outline-offset:2px;border-radius:2px;}',
   '#ve-panel{position:fixed;z-index:99999;background:#fff;border:1px solid #E5E7EB;border-radius:12px;',
     'box-shadow:0 8px 40px rgba(0,0,0,.18);padding:12px 14px;display:flex;flex-direction:column;',
-    'gap:9px;width:258px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;}',
+    'gap:9px;width:258px;max-height:80vh;overflow-y:auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;}',
   '#ve-panel[hidden]{display:none!important;}',
   '.vep-row{display:flex;align-items:center;gap:5px;}',
   '.vep-grp{display:flex;flex-direction:column;gap:4px;}',
@@ -95,15 +95,46 @@ var topGrp=mkGrp('↑ Top',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v
 panel.appendChild(topGrp.g);
 var botGrp=mkGrp('↓ Bot',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
 panel.appendChild(botGrp.g);
+/* ── Section border group ──────────────────────────────────────────────── */
+var _div4=document.createElement('div');_div4.className='vep-divider';panel.appendChild(_div4);
+var SHADOW_VALS=['','0 1px 3px rgba(0,0,0,.08)','0 4px 16px rgba(0,0,0,.12)','0 8px 32px rgba(0,0,0,.20)'];
+var bdrWGrp=mkGrp('Border',[{lbl:'—',val:''},{lbl:'1px',val:'1px'},{lbl:'2px',val:'2px'}]);
+panel.appendChild(bdrWGrp.g);
+var bdrClrGrp=document.createElement('div');bdrClrGrp.className='vep-grp';
+var bdrClrLbl=document.createElement('div');bdrClrLbl.className='vep-lbl';bdrClrLbl.textContent='Border color';bdrClrGrp.appendChild(bdrClrLbl);
+var bdrClrRow=document.createElement('div');bdrClrRow.className='vep-row';
+var bdrClrInp=document.createElement('input');bdrClrInp.type='color';
+bdrClrInp.style.cssText='width:34px;height:28px;border:1px solid #E5E7EB;border-radius:6px;padding:2px 3px;cursor:pointer;flex-shrink:0;';
+bdrClrInp.value='#374151';
+var bdrReset=document.createElement('button');bdrReset.className='vep-btn';bdrReset.textContent='Reset';bdrReset.style.flex='1';
+bdrClrRow.appendChild(bdrClrInp);bdrClrRow.appendChild(bdrReset);
+bdrClrGrp.appendChild(bdrClrRow);panel.appendChild(bdrClrGrp);
+/* ── Section shadow group ──────────────────────────────────────────────── */
+var shdGrp=mkGrp('Shadow',[{lbl:'—',val:SHADOW_VALS[0]},{lbl:'Low',val:SHADOW_VALS[1]},{lbl:'Med',val:SHADOW_VALS[2]},{lbl:'High',val:SHADOW_VALS[3]}]);
+panel.appendChild(shdGrp.g);
+/* ── Per-element spacing ────────────────────────────────────────────────── */
+var _div_elsp=document.createElement('div');_div_elsp.className='vep-divider';panel.appendChild(_div_elsp);
+var elTopGrp=mkGrp('El ↑',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
+panel.appendChild(elTopGrp.g);
+var elBotGrp=mkGrp('El ↓',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
+panel.appendChild(elBotGrp.g);
+var elSpEls=[_div_elsp,elTopGrp.g,elBotGrp.g];
+elSpEls.forEach(function(el2){el2.style.display='none';});
 /* ── State ─────────────────────────────────────────────────────────────── */
 var curEl=null,curSi=null,curF=null,curIi=null,curSk=null;
-var curTop='',curBot='';
+var curTop='',curBot='',curBorderW='',curBorderC='#374151',curShadow='',curElTop='',curElBot='';
 var FS={small:'0.85em','default':'',large:'1.3em'};
 var FW={normal:'','bold':'bold'};
 var TA={left:'left',center:'center',right:'right'};
 function pe(si,f,ii,sk,v){parent.postMessage({type:'vela-edit',sectionIndex:si,field:f,itemIndex:ii!=null?ii:undefined,subField:sk!=null?sk:undefined,value:v},'*');}
 function ps(key,st){parent.postMessage({type:'vela-style',key:key,style:st},'*');}
 function psp(si,top,bot){parent.postMessage({type:'vela-spacing',sectionIndex:si,paddingTop:top,paddingBottom:bot},'*');}
+function pbdr(si,border){parent.postMessage({type:'vela-border',sectionIndex:si,border:border},'*');}
+function pshd(si,boxShadow){parent.postMessage({type:'vela-shadow',sectionIndex:si,boxShadow:boxShadow},'*');}
+function pels(si,etype,top,bot){parent.postMessage({type:'vela-el-spacing',sectionIndex:si,elementType:etype,marginTop:top,marginBottom:bot},'*');}
+function isHeading(f){return f==='headline'||f==='subheadline'||f==='eyebrow';}
+function isCta(f){return f==='ctaPrimary'||f==='ctaSecondary'||f==='ctaText';}
+function elTypeOf(f){return isHeading(f)?'heading':isCta(f)?'cta':'';}
 function sKey(si,f,ii,sk){return si+'_'+(f||'')+'_'+(ii!=null?ii:'')+'_'+(sk!=null?sk:'');}
 function hexOf(el){var c=getComputedStyle(el).color,m=c.match(/\d+/g);if(!m)return'#000000';return'#'+[m[0],m[1],m[2]].map(function(n){return(+n).toString(16).padStart(2,'0')}).join('');}
 function setActive(btns,val){btns.forEach(function(b){b.classList.toggle('on',b.dataset.val===val);});}
@@ -140,6 +171,24 @@ function show(el,si,f,ii,sk){
   curBot=secEl?(secEl.style.paddingBottom||''):'';
   setActive(topGrp.btns,curTop);
   setActive(botGrp.btns,curBot);
+  var borderEntry=(spec._sectionBorders||{})[String(si)];
+  var storedBorder=borderEntry?(borderEntry.border||''):'';
+  var bdrMatch=storedBorder.match(/^(\S+)\s+solid\s+(.+)$/);
+  curBorderW=bdrMatch?bdrMatch[1]:'';
+  curBorderC=bdrMatch?bdrMatch[2]:'#374151';
+  setActive(bdrWGrp.btns,curBorderW);
+  bdrClrInp.value=curBorderC||'#374151';
+  var shadowEntry=(spec._sectionShadows||{})[String(si)];
+  curShadow=shadowEntry?(shadowEntry.boxShadow||''):'';
+  setActive(shdGrp.btns,curShadow);
+  var eltype=elTypeOf(f);
+  var elKey=String(si)+'_'+eltype;
+  var elSt=(spec._sectionSpacing||{})[elKey]||{};
+  curElTop=elSt.marginTop||'';
+  curElBot=elSt.marginBottom||'';
+  setActive(elTopGrp.btns,curElTop);
+  setActive(elBotGrp.btns,curElBot);
+  elSpEls.forEach(function(el2){el2.style.display=eltype?'':'none';});
   panel.removeAttribute('hidden');
   pos();
 }
@@ -174,6 +223,52 @@ botGrp.btns.forEach(function(b){b.addEventListener('click',function(){
   var sec=document.querySelector('[data-vs="'+curSi+'"]');
   if(sec)sec.style.paddingBottom=v;
   curBot=v;setActive(botGrp.btns,v);psp(curSi,curTop,curBot);pos();
+});});
+bdrWGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(curSi===null)return;
+  var w=b.dataset.val||'';
+  var border=w?w+' solid '+curBorderC:'';
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.border=border;
+  curBorderW=w;setActive(bdrWGrp.btns,w);pbdr(curSi,border);pos();
+});});
+bdrClrInp.addEventListener('input',function(){
+  if(curSi===null||!curBorderW)return;
+  curBorderC=bdrClrInp.value;
+  var border=curBorderW+' solid '+curBorderC;
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.border=border;
+  pbdr(curSi,border);
+});
+bdrReset.addEventListener('click',function(){
+  if(curSi===null)return;
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.border='';
+  curBorderW='';curBorderC='#374151';setActive(bdrWGrp.btns,'');bdrClrInp.value='#374151';
+  pbdr(curSi,'');pos();
+});
+shdGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(curSi===null)return;
+  var v=b.dataset.val||'';
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.boxShadow=v;
+  curShadow=v;setActive(shdGrp.btns,v);pshd(curSi,v);pos();
+});});
+elTopGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(!curEl||curSi===null)return;
+  var v=b.dataset.val||'';
+  curEl.style.marginTop=v;
+  curElTop=v;setActive(elTopGrp.btns,v);
+  var etype=elTypeOf(curF);if(!etype)return;
+  pels(curSi,etype,curElTop,curElBot);pos();
+});});
+elBotGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(!curEl||curSi===null)return;
+  var v=b.dataset.val||'';
+  curEl.style.marginBottom=v;
+  curElBot=v;setActive(elBotGrp.btns,v);
+  var etype=elTypeOf(curF);if(!etype)return;
+  pels(curSi,etype,curElTop,curElBot);pos();
 });});
 document.addEventListener('click',function(e){if(!panel.hasAttribute('hidden')&&!panel.contains(e.target)&&e.target!==curEl)hide();});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')hide();});
@@ -232,14 +327,43 @@ if(ts&&typeof ts==='object'){
     sec.querySelectorAll('[data-ve-si="'+si+'"][data-ve-f="'+f+'"]').forEach(function(el){applyS(el,st);});
   });
 }
-/* ── Re-apply persisted section spacing ─────────────────────────────────── */
+/* ── Re-apply persisted section spacing + element spacing ──────────────── */
 var ss=spec._sectionSpacing;
 if(ss&&typeof ss==='object'){
   Object.keys(ss).forEach(function(key){
     var st=ss[key];
+    if(key.indexOf('_')===-1){
+      var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
+      if(st.paddingTop!==undefined)sec.style.paddingTop=st.paddingTop;
+      if(st.paddingBottom!==undefined)sec.style.paddingBottom=st.paddingBottom;
+    }else{
+      var kp=key.split('_');var sec2=document.querySelector('[data-vs="'+kp[0]+'"]');if(!sec2)return;
+      var elsel=kp[1]==='heading'?'[data-ve-f="headline"],[data-ve-f="subheadline"],[data-ve-f="eyebrow"]':
+               kp[1]==='cta'?'[data-ve-f="ctaPrimary"],[data-ve-f="ctaSecondary"],[data-ve-f="ctaText"]':'';
+      if(!elsel)return;
+      sec2.querySelectorAll(elsel).forEach(function(eli){
+        if(st.marginTop!==undefined)eli.style.marginTop=st.marginTop;
+        if(st.marginBottom!==undefined)eli.style.marginBottom=st.marginBottom;
+      });
+    }
+  });
+}
+/* ── Re-apply persisted section borders ────────────────────────────────── */
+var sb=spec._sectionBorders;
+if(sb&&typeof sb==='object'){
+  Object.keys(sb).forEach(function(key){
+    var st=sb[key];
     var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
-    if(st.paddingTop!==undefined)sec.style.paddingTop=st.paddingTop;
-    if(st.paddingBottom!==undefined)sec.style.paddingBottom=st.paddingBottom;
+    if(st.border!==undefined)sec.style.border=st.border;
+  });
+}
+/* ── Re-apply persisted section shadows ────────────────────────────────── */
+var sshad=spec._sectionShadows;
+if(sshad&&typeof sshad==='object'){
+  Object.keys(sshad).forEach(function(key){
+    var st=sshad[key];
+    var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
+    if(st.boxShadow!==undefined)sec.style.boxShadow=st.boxShadow;
   });
 }
 /* ── Image click handler ───────────────────────────────────────────────── */
@@ -1816,6 +1940,54 @@ export default function WebsitePage() {
           ssp[spKey] = { paddingTop: paddingTop || undefined, paddingBottom: paddingBottom || undefined };
         }
         (next as Record<string, unknown>)._sectionSpacing = ssp;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        return;
+      }
+
+      if (msgType === "vela-border") {
+        const { sectionIndex, border } = e.data as { sectionIndex: number; border: string };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const sbdr = ((next as Record<string, unknown>)._sectionBorders ?? {}) as Record<string, { border?: string }>;
+        const bKey = String(sectionIndex);
+        if (!border) { delete sbdr[bKey]; } else { sbdr[bKey] = { border }; }
+        (next as Record<string, unknown>)._sectionBorders = sbdr;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        return;
+      }
+
+      if (msgType === "vela-shadow") {
+        const { sectionIndex, boxShadow } = e.data as { sectionIndex: number; boxShadow: string };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const sshd = ((next as Record<string, unknown>)._sectionShadows ?? {}) as Record<string, { boxShadow?: string }>;
+        const shKey = String(sectionIndex);
+        if (!boxShadow) { delete sshd[shKey]; } else { sshd[shKey] = { boxShadow }; }
+        (next as Record<string, unknown>)._sectionShadows = sshd;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        return;
+      }
+
+      if (msgType === "vela-el-spacing") {
+        const { sectionIndex, elementType, marginTop, marginBottom } = e.data as { sectionIndex: number; elementType: string; marginTop: string; marginBottom: string };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const selsp = ((next as Record<string, unknown>)._sectionSpacing ?? {}) as Record<string, { paddingTop?: string; paddingBottom?: string; marginTop?: string; marginBottom?: string }>;
+        const elKey = `${sectionIndex}_${elementType}`;
+        if (!marginTop && !marginBottom) { delete selsp[elKey]; } else { selsp[elKey] = { marginTop: marginTop || undefined, marginBottom: marginBottom || undefined }; }
+        (next as Record<string, unknown>)._sectionSpacing = selsp;
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
