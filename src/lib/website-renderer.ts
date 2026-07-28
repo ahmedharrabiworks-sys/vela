@@ -279,16 +279,30 @@ button,input,select,textarea{font-family:inherit;}
   --radius-lg:${t.radiusLg};
   --section-pad:${t.sectionPad};
   --footer-bg:${isDark ? t.bg : '#0D1526'};
+  --fs-display:clamp(3rem,10vw,8rem);
+  --fs-hero-xl:clamp(2.5rem,5vw,4rem);
+  --fs-h2:clamp(1.75rem,3vw,2.5rem);
+  --fs-h3:clamp(1.15rem,2vw,1.5rem);
+  --fs-body:1rem;
+  --fs-small:0.875rem;
+  --fs-eyebrow:0.75rem;
+  --sp-xs:8px;
+  --sp-sm:16px;
+  --sp-md:24px;
+  --sp-lg:32px;
+  --sp-xl:48px;
+  --sp-2xl:64px;
+  --sp-3xl:96px;
 }
 
 /* ── Typography ──────────────────────────────────────────────────────────── */
 .ws-eyebrow{
-  font-size:0.75rem;font-weight:600;letter-spacing:0.12em;
+  font-size:var(--fs-eyebrow);font-weight:600;letter-spacing:0.12em;
   text-transform:uppercase;color:var(--accent);margin-bottom:14px;
 }
 .ws-heading{
   font-family:var(--font-heading);
-  font-size:clamp(1.75rem,3vw,2.5rem);
+  font-size:var(--fs-h2);
   font-weight:var(--heading-weight);
   line-height:1.14;
   letter-spacing:var(--heading-tracking);
@@ -720,7 +734,7 @@ ${serviceCardOverrides}
   font-family:var(--font-heading);font-size:clamp(2.5rem,5vw,4rem);
   font-weight:700;line-height:1;margin-bottom:8px;
 }
-.ws-stat-label{font-size:0.875rem;color:#9CA3AF;font-weight:500;letter-spacing:.06em;text-transform:uppercase;}
+.ws-stat-label{font-size:var(--fs-small);color:var(--color-muted);font-weight:500;letter-spacing:.06em;text-transform:uppercase;}
 
 /* ── process-steps ───────────────────────────────────────────────────────── */
 .ws-steps{
@@ -935,7 +949,7 @@ ${serviceCardOverrides}
   background:var(--surface);border:1px solid var(--border);
   vertical-align:top;
 }
-.ws-price-table-th--hi{border-radius:12px 12px 0 0;}
+.ws-price-table-th--hi{border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
 .ws-price-table-feat{
   padding:14px 0;text-align:left;font-size:0.875rem;
   color:var(--color-muted);border-bottom:1px solid var(--border);
@@ -1190,7 +1204,7 @@ ${serviceCardOverrides}
 
 /* ── Phase 2b: agent-card ────────────────────────────────────────────────── */
 .ws-agent-card{display:grid;grid-template-columns:280px 1fr;gap:48px;align-items:start;max-width:860px;margin:0 auto;}
-.ws-agent-photo{width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--surface);}
+.ws-agent-photo{width:100%;aspect-ratio:3/4;border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);}
 .ws-agent-name{font-family:var(--font-heading);font-size:clamp(1.6rem,3vw,2.4rem);font-weight:var(--heading-weight);color:var(--color-heading);margin-bottom:8px;}
 .ws-agent-title{font-size:0.9rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
 .ws-agent-bio{font-size:0.98rem;color:var(--color-text);line-height:1.75;margin-bottom:28px;}
@@ -1210,28 +1224,28 @@ ${serviceCardOverrides}
 
 /* ── Phase 2b: trainer-showcase ─────────────────────────────────────────── */
 .ws-trainer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:32px;margin-top:48px;}
-.ws-trainer-card{text-align:center;padding:32px 24px;background:var(--bg-alt);border-radius:12px;}
-.ws-trainer-avatar{width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--font-heading);font-size:1.4rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.ws-trainer-card{text-align:center;padding:32px 24px;background:var(--bg-alt);border-radius:var(--radius-lg);}
+.ws-trainer-avatar{width:72px;height:72px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-family:var(--font-heading);font-size:1.4rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
 .ws-trainer-name{font-size:1rem;font-weight:700;color:var(--color-heading);margin-bottom:6px;}
 .ws-trainer-spec{font-size:0.82rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;}
 .ws-trainer-bio{font-size:0.88rem;color:var(--color-muted);line-height:1.65;}
 
 /* ── Phase 2b: trust-badges-band ────────────────────────────────────────── */
 .ws-tbadges{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;margin-top:40px;}
-.ws-tbadge{min-width:140px;padding:28px 20px;background:var(--surface);border-radius:10px;text-align:center;}
+.ws-tbadge{min-width:140px;padding:28px 20px;background:var(--surface);border-radius:var(--radius);text-align:center;}
 .ws-tbadge-val{font-family:var(--font-heading);font-size:1.8rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
 .ws-tbadge-lbl{font-size:0.82rem;color:var(--color-muted);font-weight:500;}
 
 /* ── Phase 2b: shared form block ─────────────────────────────────────────── */
-.ws-fb{background:var(--bg-alt);border-radius:16px;padding:40px;max-width:600px;margin:0 auto;position:relative;}
+.ws-fb{background:var(--bg-alt);border-radius:var(--radius-lg);padding:40px;max-width:600px;margin:0 auto;position:relative;}
 .ws-form-group{display:flex;flex-direction:column;gap:8px;}
 .ws-form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .ws-form-label{font-size:0.82rem;font-weight:600;color:var(--color-muted);letter-spacing:.04em;}
-.ws-form-input{padding:12px 16px;border:1.5px solid var(--surface);border-radius:8px;background:var(--bg);color:var(--color-text);font-size:0.95rem;font-family:var(--font-body);transition:border-color .2s;width:100%;box-sizing:border-box;}
+.ws-form-input{padding:12px 16px;border:1.5px solid var(--surface);border-radius:var(--radius);background:var(--bg);color:var(--color-text);font-size:0.95rem;font-family:var(--font-body);transition:border-color .2s;width:100%;box-sizing:border-box;}
 .ws-form-input:focus{outline:none;border-color:var(--accent);}
 .ws-fb-err{font-size:0.85rem;color:#e05;background:rgba(220,0,80,.07);padding:10px 14px;border-radius:6px;}
 .ws-fb-ok{text-align:center;padding:48px 24px;}
-.ws-fb-ok-icon{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.ws-fb-ok-icon{width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
 .ws-fb-ok-title{font-family:var(--font-heading);font-size:1.4rem;font-weight:700;color:var(--color-heading);margin-bottom:10px;}
 .ws-fb-ok-text{font-size:0.95rem;color:var(--color-muted);}
 
@@ -1240,7 +1254,7 @@ ${serviceCardOverrides}
 .ws-msf-progress{display:flex;align-items:center;gap:0;margin-bottom:32px;}
 .ws-msf-step{display:flex;align-items:center;gap:10px;font-size:0.82rem;font-weight:600;color:var(--color-muted);}
 .ws-msf-step--on{color:var(--accent);}
-.ws-msf-step--on .ws-msf-dot{background:var(--accent);color:#fff;border-color:var(--accent);}
+.ws-msf-step--on .ws-msf-dot{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);}
 .ws-msf-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;background:var(--bg-alt);color:var(--color-muted);flex-shrink:0;}
 .ws-msf-bar{flex:1;height:2px;background:var(--surface);margin:0 8px;}
 .ws-msf-page{display:flex;}
@@ -1253,7 +1267,7 @@ ${serviceCardOverrides}
 
 /* ── Phase 2b: membership-form ──────────────────────────────────────────── */
 .ws-mem-tiers{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin:32px 0;}
-.ws-mem-tier{flex:1 1 160px;max-width:200px;padding:24px 20px;border:2px solid var(--surface);border-radius:12px;cursor:pointer;transition:border-color .2s,background .2s;text-align:center;}
+.ws-mem-tier{flex:1 1 160px;max-width:200px;padding:24px 20px;border:2px solid var(--surface);border-radius:var(--radius-lg);cursor:pointer;transition:border-color .2s,background .2s;text-align:center;}
 .ws-mem-tier--on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
 .ws-mem-tier-name{font-size:0.85rem;font-weight:700;color:var(--color-heading);margin-bottom:8px;}
 .ws-mem-tier-price{font-family:var(--font-heading);font-size:1.4rem;font-weight:700;color:var(--accent);}
@@ -1360,7 +1374,7 @@ ${serviceCardOverrides}
 
 /* ── Phase 2c: membership-plans-display ───────────────────────────────── */
 .ws-mpdisplay-grid{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-top:48px;}
-.ws-mpdisplay-card{flex:1 1 220px;max-width:300px;background:var(--surface);border-radius:16px;padding:32px 24px;border:2px solid transparent;display:flex;flex-direction:column;text-align:left;}
+.ws-mpdisplay-card{flex:1 1 220px;max-width:300px;background:var(--surface);border-radius:var(--radius-lg);padding:32px 24px;border:2px solid transparent;display:flex;flex-direction:column;text-align:left;}
 .ws-mpdisplay-card--hi{background:var(--accent-alpha,rgba(0,0,0,.04));}
 .ws-mpdisplay-badge{font-size:0.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:5px 14px;border-radius:20px;display:inline-block;margin-bottom:16px;align-self:flex-start;}
 .ws-mpdisplay-name{font-size:0.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted);margin-bottom:10px;}
