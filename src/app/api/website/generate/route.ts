@@ -567,6 +567,17 @@ const MOOD_DEFAULT_DNA: Record<string, Partial<DesignDNA>> = {
   "tech-sharp":       { headingFont: "Space Grotesk",    bodyFont: "Inter", palette: { bg: "#0A0A0F",  text: "#F1F5F9", accent: "#7C3AED", muted: "#6B7280" }, isDark: true  },
   "dark-premium":     { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#080808",  text: "#F5F3EE", accent: "#B8860B", muted: "#857D72" }, isDark: true  },
 };
+// Approved accent set — mirrors Part 5 of buildFillSystem. GPT must pick from this list;
+// any other hex (including user-requested "hot pink" etc.) falls back to the mood default.
+const APPROVED_ACCENTS = new Set([
+  "#8B6347","#A0522D","#C4793D","#9C6E3F",  // earthy/warm
+  "#C4A882","#B8860B","#8D7047","#7C5C3D",  // luxury
+  "#E8390E","#C41E3A","#FF4F1F","#D4380D",  // vivid/bold
+  "#7C3AED","#9333EA","#6366F1","#4F46E5",  // saas/tech
+  "#8D6E3F","#1A56DB","#1E3A8A","#2563EB",  // professional
+  "#0070C9","#0EA5E9","#0891B2","#0284C7",  // clinical
+  "#16A34A","#059669","#0D9488","#15803D",  // wellness
+]);
 function coerceDesignDNA(raw: unknown): DesignDNA {
   const d = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const mood = (VALID_MOODS.has(String(d.mood)) ? String(d.mood) : "editorial-luxury") as DesignDNA["mood"];
@@ -579,10 +590,14 @@ function coerceDesignDNA(raw: unknown): DesignDNA {
     headingFont: (typeof d.headingFont === "string" && APPROVED_FONTS[d.headingFont] ? d.headingFont : defaults.headingFont) ?? "Inter",
     bodyFont:    (typeof d.bodyFont    === "string" && APPROVED_FONTS[d.bodyFont]    ? d.bodyFont    : defaults.bodyFont)    ?? "Inter",
     palette: {
-      bg:     hexOk(rawPal.bg)     ? rawPal.bg     : defPal.bg,
-      text:   hexOk(rawPal.text)   ? rawPal.text   : defPal.text,
-      accent: hexOk(rawPal.accent) ? rawPal.accent : defPal.accent,
-      muted:  hexOk(rawPal.muted)  ? rawPal.muted  : defPal.muted,
+      bg:     defPal.bg,
+      text:   defPal.text,
+      muted:  defPal.muted,
+      accent: (() => {
+        if (!hexOk(rawPal.accent)) return defPal.accent;
+        const u = (rawPal.accent as string).toUpperCase();
+        return APPROVED_ACCENTS.has(u) ? u : defPal.accent;
+      })(),
     },
     isDark: typeof d.isDark === "boolean" ? d.isDark : (defaults.isDark ?? false),
   };

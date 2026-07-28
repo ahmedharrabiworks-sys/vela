@@ -276,6 +276,76 @@ check("beauty: var(--sp-md) used in grid containers", htmlBeauty.includes("var(-
 check("responsive CSS present (<768px rules)", htmlFit.includes("max-width:768px") || htmlFit.includes("max-width:480px"));
 check("fitness: grid collapses at 375px (1fr rule)", htmlFit.includes("grid-template-columns:1fr") || htmlFit.includes("column:1fr"));
 
+// ── Test I: Palette enforcement (coerceDesignDNA logic) ──────────────────────
+// Simulates the sanitizer directly — no OpenAI needed.
+
+console.log("\n══ I: Palette enforcement (coerceDesignDNA sanitizer) ══\n");
+
+const APPROVED_ACCENTS_TEST = new Set([
+  "#8B6347","#A0522D","#C4793D","#9C6E3F",
+  "#C4A882","#B8860B","#8D7047","#7C5C3D",
+  "#E8390E","#C41E3A","#FF4F1F","#D4380D",
+  "#7C3AED","#9333EA","#6366F1","#4F46E5",
+  "#8D6E3F","#1A56DB","#1E3A8A","#2563EB",
+  "#0070C9","#0EA5E9","#0891B2","#0284C7",
+  "#16A34A","#059669","#0D9488","#15803D",
+]);
+const MOOD_DEFAULTS_TEST: Record<string, { bg: string; text: string; accent: string; muted: string }> = {
+  "editorial-luxury": { bg: "#FAF8F5", text: "#1A1A1A", accent: "#C4A882", muted: "#857D72" },
+  "bold-energetic":   { bg: "#0B0B0B", text: "#FFFFFF", accent: "#E8390E", muted: "#6B7280" },
+  "clinical-bright":  { bg: "#FFFFFF",  text: "#0A2540", accent: "#0284C7", muted: "#64748B" },
+};
+function simulateCoerce(mood: string, rawPalette: Record<string, string>) {
+  const defPal = MOOD_DEFAULTS_TEST[mood] ?? MOOD_DEFAULTS_TEST["editorial-luxury"];
+  const hexOk = (h: unknown): h is string => typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h);
+  const rawAccent = rawPalette.accent;
+  const accent = (() => {
+    if (!hexOk(rawAccent)) return defPal.accent;
+    const u = rawAccent.toUpperCase();
+    return APPROVED_ACCENTS_TEST.has(u) ? u : defPal.accent;
+  })();
+  return { bg: defPal.bg, text: defPal.text, muted: defPal.muted, accent };
+}
+
+// Invented hex (hot pink) must be rejected
+const caseHotPink = simulateCoerce("bold-energetic", { bg: "#FF69B4", text: "#FF1493", accent: "#FF69B4", muted: "#FF82AB" });
+check("hot pink accent #FF69B4 rejected → falls back to mood default #E8390E",
+  caseHotPink.accent === "#E8390E");
+check("bg always uses mood default (not GPT's #FF69B4)",
+  caseHotPink.bg === "#0B0B0B");
+check("text always uses mood default (not GPT's #FF1493)",
+  caseHotPink.text === "#FFFFFF");
+check("muted always uses mood default (not GPT's #FF82AB)",
+  caseHotPink.muted === "#6B7280");
+
+// Approved accent must pass through
+const caseApproved = simulateCoerce("bold-energetic", { bg: "#0B0B0B", text: "#FFFFFF", accent: "#FF4F1F", muted: "#6B7280" });
+check("approved accent #FF4F1F accepted and returned uppercase",
+  caseApproved.accent === "#FF4F1F");
+
+// Lowercase approved accent is normalized to uppercase
+const caseLower = simulateCoerce("clinical-bright", { accent: "#0284c7" });
+check("lowercase approved accent #0284c7 normalized to #0284C7",
+  caseLower.accent === "#0284C7");
+
+// Non-hex value falls back to default
+const caseMalformed = simulateCoerce("editorial-luxury", { accent: "hotpink" });
+check("non-hex string 'hotpink' falls back to #C4A882",
+  caseMalformed.accent === "#C4A882");
+
+// Missing accent field falls back to default
+const caseMissing = simulateCoerce("editorial-luxury", {});
+check("missing accent field falls back to #C4A882",
+  caseMissing.accent === "#C4A882");
+
+// All 28 approved accents pass validation
+let allAccentsOk = true;
+for (const acc of APPROVED_ACCENTS_TEST) {
+  const result = simulateCoerce("bold-energetic", { accent: acc });
+  if (result.accent !== acc) { allAccentsOk = false; break; }
+}
+check("all 28 approved accents pass validation unchanged", allAccentsOk);
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 console.log(`\n══ Phase 3 Verification Summary ══`);
