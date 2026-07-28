@@ -20,13 +20,14 @@ export async function GET(req: NextRequest) {
 
   const admin = createSupabaseAdmin() as AdminClient;
 
-  // Find a published site whose custom domain matches the request hostname.
-  // No domain_status filter: if DNS physically routes here, serve the site.
+  // Find a published site whose custom domain matches and has been verified.
+  // domain_status must be 'verified' — pending/failed domains are not served.
   const { data: site } = await admin
     .from("websites")
     .select("slug, id")
     .eq("domain", hostname)
     .eq("is_published", true)
+    .eq("domain_status", "verified")
     .limit(1)
     .maybeSingle();
 

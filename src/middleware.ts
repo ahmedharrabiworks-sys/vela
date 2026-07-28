@@ -1,62 +1,88 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// In-memory cache for custom domain → slug lookups (per Edge instance, ~5 min TTL)
-const domainSlugCache = new Map<string, { slug: string | null; expiresAt: number }>();
+// Per-Edge-instance in-memory cache: hostname → slug, 5 min TTL.
+// Avoids a DB round-trip on every request for known custom domains.
+const slugCache = new Map<string, { slug: string | null; expiresAt: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export async function middleware(request: NextRequest) {
-  // ── Custom domain routing ──────────────────────────────────────────────────
-  // When a verified custom domain points to Vela's Vercel project, rewrite
-  // requests to /site/[slug] so the tenant's published site is served.
-  const hostname = (request.headers.get("host") ?? "").toLowerCase();
-  const appHost = (process.env.NEXT_PUBLIC_APP_URL ?? "https://tryvela.com")
+function getAppHost(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "https://tryvela.com")
     .replace(/^https?:\/\//, "")
     .split("/")[0]
     .toLowerCase();
+}
 
+// Direct Supabase PostgREST query — no Node.js client, fully Edge-compatible.
+// HARD RULE: NEVER call the Vercel Domains API from here.
+// Only resolves domains that are: is_published=true AND domain_status=verified.
+async function resolveCustomDomain(hostname: string): Promise<string | null> {
+  const sbUrl   = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const svcKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!sbUrl || !svcKey || !anonKey) return null;
+
+  try {
+    // domain_status must be 'verified' — pending/failed/null domains are NOT served.
+    const params =
+      `domain=eq.${encodeURIComponent(hostname)}` +
+      `&is_published=eq.true` +
+      `&domain_status=eq.verified` +
+      `&select=slug,id` +
+      `&limit=1`;
+    const res = await fetch(`${sbUrl}/rest/v1/websites?${params}`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${svcKey}`,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const rows = await res.json() as { slug: string | null; id: string }[];
+    if (!Array.isArray(rows) || !rows.length) return null;
+    // Fall back to id as the route param if slug is not set
+    return rows[0].slug ?? rows[0].id;
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const hostname = (request.headers.get("host") ?? "").toLowerCase();
+  const appHost  = getAppHost();
+
+  // Custom domain: any host that is NOT the main Vela app, NOT localhost, NOT a Vercel preview.
+  // vela-g8h4.vercel.app and all other *.vercel.app URLs are excluded by the .vercel.app check.
+  // tryvela.com (and any NEXT_PUBLIC_APP_URL value) is excluded by the appHost check.
   const isCustomDomain =
     hostname !== appHost &&
     !hostname.startsWith("localhost") &&
     !hostname.endsWith(".vercel.app");
 
   if (isCustomDomain) {
-    const cached = domainSlugCache.get(hostname);
+    const cached = slugCache.get(hostname);
     let slug: string | null = null;
 
     if (cached && cached.expiresAt > Date.now()) {
       slug = cached.slug;
     } else {
-      try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tryvela.com";
-        const res = await fetch(
-          `${appUrl}/api/website/domain-lookup?hostname=${encodeURIComponent(hostname)}`,
-        );
-        if (res.ok) {
-          const data = await res.json() as { slug?: string };
-          slug = data.slug ?? null;
-        } else {
-          slug = null;
-        }
-        domainSlugCache.set(hostname, { slug, expiresAt: Date.now() + 5 * 60 * 1000 });
-      } catch {
-        slug = null;
-      }
+      slug = await resolveCustomDomain(hostname);
+      slugCache.set(hostname, { slug, expiresAt: Date.now() + CACHE_TTL });
     }
 
     if (slug) {
+      // Verified custom domain → rewrite to the tenant's published site.
       const url = request.nextUrl.clone();
       url.pathname = `/site/${slug}`;
       return NextResponse.rewrite(url);
     }
 
-    // Unknown custom domain — serve a clean "site not found" page
-    return new NextResponse(
-      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Site not found</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,-apple-system,sans-serif;background:#f9fafb;color:#374151;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}.card{text-align:center;max-width:420px}.icon{width:56px;height:56px;background:#fff;border:1.5px solid #e5e7eb;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;box-shadow:0 2px 8px rgba(0,0,0,.06)}.icon svg{width:24px;height:24px;stroke:#9ca3af;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}h1{font-size:1.25rem;font-weight:700;color:#111827;margin-bottom:.5rem}p{font-size:.875rem;color:#6b7280;line-height:1.5}</style></head><body><div class="card"><div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div><h1>This site isn't set up yet.</h1><p>The domain isn't connected to any published site. If you own this domain, check your DNS settings.</p></div></body></html>`,
-      { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } },
-    );
+    // Domain not in DB, not verified, or site not published → fall through to normal routing.
+    // Do NOT return a 404 page here — let Next.js routing handle it.
+    return NextResponse.next({ request });
   }
 
-  // ── Auth middleware (primary domain only) ─────────────────────────────────
+  // ── Auth middleware (primary domain only) ─────────────────────────────────────
   const path = request.nextUrl.pathname;
   if (!path.startsWith("/app") && !path.startsWith("/auth/")) {
     return NextResponse.next({ request });
