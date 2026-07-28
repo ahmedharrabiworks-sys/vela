@@ -273,7 +273,10 @@ Moving from fixed templates toward a **component pool selected via a Design Inte
   - treatment-gallery: removed numbered suffix → uses `TREATMENT_QUERIES` (6 varied dental subjects)
   - Auto-injected gallery: removed `${businessType}` prefix strings, headline changed from `${businessType} in Focus` → `"Our Gallery"`
   - Part 7 v1 + v2: formula changed from `[business type] [city or region]` to `[VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]`; all city-name examples (Tunisia, Dubai, Paris, London) removed; ABSOLUTE RULE against city/country/region names added with per-category subject examples
-  **Verification**: `e2e-test-phase4.ts` — 38/38 checks. All 30 query dict values confirmed city-free. Phase 2c showcase arrays (PROPERTY_LISTING_QUERIES, PORTFOLIO_GRID_QUERIES, TREATMENT_QUERIES) all city-free with correct subject terms. Part 7 city-formula gone, VISUAL SUBJECT formula present in both buildFillSystem variants.
+  **Verification**: `e2e-test-phase4.ts` — 38/38 checks (static: dicts, Part 7 text, structural). `e2e-test-phase4-real.ts` — 8/8 checks (real gpt-4o pipeline, two city-named businesses). GPT-produced queries:
+    - Dental clinic in Casablanca → `"dental treatment room bright white clean minimal professional photography"` (no city ✅)
+    - Real estate in Marrakech → `"luxury villa exterior pool architecture daylight editorial minimal"` + `"real estate agent modern office interior bright professional photography"` (no city ✅)
+  **Real-pipeline compliance gap: CLOSED.** GPT precisely followed the new VISUAL SUBJECT formula and ABSOLUTE RULE against city names on the first real run with city-named businesses.
 
 - **Phase 5 — Rich editor improvements — not started.** Decision made: constrained rich editor first (spacing/padding/borders/shadows/reorder-within-section, extending the existing floating text panel), NOT a Figma/Webflow-style freeform canvas. True freeform drag-and-drop is a explicitly deferred future initiative post-launch, not part of this rebuild.
 
