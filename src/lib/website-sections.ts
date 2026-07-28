@@ -45,6 +45,12 @@ function esc(s: unknown): string {
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
+const NAV_BURGER = `<button class="ws-nav-burger" aria-label="Toggle navigation" aria-expanded="false" onclick="wsNavToggle(this)">
+    <span class="ws-nav-burger-line"></span>
+    <span class="ws-nav-burger-line"></span>
+    <span class="ws-nav-burger-line"></span>
+  </button>`;
+
 function renderNavStandard(
   businessName: string,
   ctaText: string,
@@ -61,7 +67,8 @@ function renderNavStandard(
     <div class="ws-nav-links">
       ${links.map((l) => `<a href="${esc(l.href)}" class="ws-nav-link">${esc(l.label)}</a>`).join("")}
     </div>
-    <a href="#booking" class="ws-btn ws-btn-accent" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
+    <a href="#booking" class="ws-btn ws-btn-accent ws-nav-cta" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
+    ${NAV_BURGER}
   </div>
 </nav>`;
 }
@@ -82,7 +89,8 @@ function renderNavTransparent(
     <div class="ws-nav-links">
       ${links.map((l) => `<a href="${esc(l.href)}" class="ws-nav-link">${esc(l.label)}</a>`).join("")}
     </div>
-    <a href="#booking" class="ws-btn ws-btn-accent" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
+    <a href="#booking" class="ws-btn ws-btn-accent ws-nav-cta" style="padding:10px 22px;font-size:0.82rem;">${esc(ctaText || "Book Now")}</a>
+    ${NAV_BURGER}
   </div>
 </nav>`;
 }

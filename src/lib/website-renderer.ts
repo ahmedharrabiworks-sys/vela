@@ -345,6 +345,38 @@ button,input,select,textarea{font-family:inherit;}
 .ws-nav-link:hover{color:var(--accent);}
 ${navDarkOverride}
 
+/* ── Nav burger button (hidden on desktop, shown on mobile) ──────────────── */
+.ws-nav-burger{
+  display:none;
+  flex-direction:column;
+  gap:5px;
+  cursor:pointer;
+  background:none;
+  border:none;
+  padding:8px;
+  min-width:44px;
+  min-height:44px;
+  align-items:center;
+  justify-content:center;
+  color:var(--color-heading);
+  border-radius:var(--radius);
+  flex-shrink:0;
+}
+.ws-nav-burger:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.ws-nav-burger-line{
+  display:block;width:22px;height:2px;
+  background:currentColor;
+  transition:transform .25s,opacity .25s;
+  border-radius:1px;
+}
+/* Transparent nav: burger inherits white color from parent rule */
+.ws-nav--transparent .ws-nav-burger{color:rgba(255,255,255,.9);}
+.ws-nav--transparent.ws-nav--scrolled .ws-nav-burger{color:var(--color-heading);}
+/* Burger → X when open */
+.ws-nav--open .ws-nav-burger-line:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.ws-nav--open .ws-nav-burger-line:nth-child(2){opacity:0;}
+.ws-nav--open .ws-nav-burger-line:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
 /* ── Hero base ───────────────────────────────────────────────────────────── */
 .ws-hero{
   position:relative;min-height:90vh;
@@ -715,7 +747,41 @@ ${serviceCardOverrides}
 
 /* ── Mobile 375px ────────────────────────────────────────────────────────── */
 @media(max-width:768px){
-  .ws-nav-links{display:none;}
+  /* Nav: show burger, hide desktop links and CTA; dropdown opens on toggle */
+  .ws-nav-burger{display:flex;}
+  .ws-nav-cta{display:none;}
+  .ws-nav-links{
+    display:none;
+    position:absolute;
+    top:100%;left:0;right:0;
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+    flex-direction:column;
+    padding:8px 16px 16px;
+    gap:0;
+    z-index:99;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+  }
+  .ws-nav--open .ws-nav-links{display:flex;}
+  .ws-nav-link{
+    padding:14px 0;
+    border-bottom:1px solid var(--border);
+    font-size:1rem;
+    color:var(--color-heading);
+  }
+  .ws-nav-link:last-child{border-bottom:none;}
+  /* Transparent nav dropdown: always solid dark background so white links are readable */
+  .ws-nav--transparent .ws-nav-links{
+    background:var(--footer-bg,#0D1526);
+    border-bottom-color:rgba(255,255,255,.08);
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  .ws-nav--transparent .ws-nav-links .ws-nav-link{
+    color:rgba(255,255,255,.85);
+    border-bottom-color:rgba(255,255,255,.08);
+  }
+  /* Minimal nav: no links to show, keep CTA visible */
+  .ws-nav--minimal .ws-nav-cta{display:inline-flex;}
   .ws-nav-inner{padding:0 16px;}
   .ws-hero{min-height:80vh;}
   .ws-hero-content,.ws-hero-content--el{padding:0 16px 64px;}
@@ -1361,6 +1427,23 @@ const PAGE_SCRIPT = `
     if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
   });
 })();
+
+/* Mobile hamburger toggle */
+function wsNavToggle(btn){
+  var nav=btn.closest('.ws-nav');
+  if(!nav)return;
+  var open=nav.classList.toggle('ws-nav--open');
+  btn.setAttribute('aria-expanded',open?'true':'false');
+  /* Close when a link is tapped */
+  if(open){
+    nav.querySelectorAll('.ws-nav-link').forEach(function(a){
+      a.addEventListener('click',function(){
+        nav.classList.remove('ws-nav--open');
+        btn.setAttribute('aria-expanded','false');
+      },{once:true});
+    });
+  }
+}
 
 function wsHeroSFPill(el){
   var pills=el.closest('.ws-hero-sf-pills');
