@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 type AdminClient = any;
 
 const SLUG_RE    = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;  // 3–50 chars
-const DOMAIN_RE  = /^([a-z0-9-]+\.)+[a-z]{2,}$/i;
 
 // ── GET /api/website/settings?websiteId=xxx ──────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -39,12 +38,16 @@ export async function GET(req: NextRequest) {
 }
 
 // ── PUT /api/website/settings ─────────────────────────────────────────────────
+// Handles: name, slug.
+// NEVER handles domain or domain_status — those go through /api/website/domain
+// (POST to save, GET to verify, DELETE to remove). Any code that writes
+// domain_status here would silently reset "verified" → "pending" on every save.
 export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     websiteId?: string;
     name?:      string;
     slug?:      string;
-    domain?:    string;
+    // domain is intentionally omitted — use /api/website/domain
   };
 
   const supabase = createSupabaseServerClient();
@@ -97,15 +100,10 @@ export async function PUT(req: NextRequest) {
     updates.slug = slug;
   }
 
-  // Custom domain (saved as-is; actual DNS wiring is a manual/future step)
-  if (typeof body.domain === "string") {
-    const domain = body.domain.trim().toLowerCase().replace(/^https?:\/\//, "");
-    if (domain && !DOMAIN_RE.test(domain)) {
-      return NextResponse.json({ error: "Please enter a valid domain (e.g. www.yourbusiness.com)." }, { status: 400 });
-    }
-    updates.domain        = domain || null;
-    updates.domain_status = domain ? "pending" : null;
-  }
+  // NOTE: domain / domain_status intentionally NOT handled here.
+  // Use POST /api/website/domain to save a domain (always writes 'pending'),
+  // GET  /api/website/domain to verify (only path that writes 'verified'),
+  // DELETE /api/website/domain to remove. Never write domain_status in this route.
 
   const { data: updated, error: updateErr } = await admin
     .from("websites")
