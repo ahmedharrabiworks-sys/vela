@@ -109,14 +109,23 @@ Do NOT include emojis unless they fit naturally.`;
 
     const result = completion.choices[0]?.message?.content ?? "";
 
-    // Save to history (best-effort)
-    await admin.from("marketing_generations").insert({
-      tenant_id: tenant.id,
-      type,
-      prompt: userPrompt,
-      result,
-      metadata: { tone, platform, duration, audience },
-    }).catch(() => null);
+    // Save to history — best-effort; DB failure must NOT prevent content reaching the user.
+    // IMPORTANT: Never chain .catch() directly on a Supabase query builder. Builders expose
+    // .then() but NOT .catch() as a standalone method — calling .catch() on an unresolved
+    // builder throws "builder.catch is not a function", which propagated here as an "OpenAI
+    // error" and caused 500s even when generation succeeded. Use try/catch + await instead.
+    try {
+      const { error: histErr } = await admin.from("marketing_generations").insert({
+        tenant_id: tenant.id,
+        type,
+        prompt: userPrompt,
+        result,
+        metadata: { tone, platform, duration, audience },
+      });
+      if (histErr) console.error("[marketing] history insert failed (non-fatal):", histErr.message);
+    } catch (histEx) {
+      console.error("[marketing] history save threw (non-fatal):", histEx instanceof Error ? histEx.message : histEx);
+    }
 
     return NextResponse.json({ result });
   } catch (err) {
