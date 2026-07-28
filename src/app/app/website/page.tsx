@@ -87,13 +87,23 @@ var clrReset=document.createElement('button');
 clrReset.className='vep-btn';clrReset.textContent='Reset';clrReset.style.flex='1';
 clrRow.appendChild(clrInp);clrRow.appendChild(clrReset);
 clrGrp.appendChild(clrRow);panel.appendChild(clrGrp);
+/* ── Section spacing group ──────────────────────────────────────────────── */
+var _div3=document.createElement('div');_div3.className='vep-divider';panel.appendChild(_div3);
+var SP_VALS=['','16px','32px','48px','64px'];
+var SP_LBLS=['—','S','M','L','XL'];
+var topGrp=mkGrp('↑ Top',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
+panel.appendChild(topGrp.g);
+var botGrp=mkGrp('↓ Bot',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
+panel.appendChild(botGrp.g);
 /* ── State ─────────────────────────────────────────────────────────────── */
 var curEl=null,curSi=null,curF=null,curIi=null,curSk=null;
+var curTop='',curBot='';
 var FS={small:'0.85em','default':'',large:'1.3em'};
 var FW={normal:'','bold':'bold'};
 var TA={left:'left',center:'center',right:'right'};
 function pe(si,f,ii,sk,v){parent.postMessage({type:'vela-edit',sectionIndex:si,field:f,itemIndex:ii!=null?ii:undefined,subField:sk!=null?sk:undefined,value:v},'*');}
 function ps(key,st){parent.postMessage({type:'vela-style',key:key,style:st},'*');}
+function psp(si,top,bot){parent.postMessage({type:'vela-spacing',sectionIndex:si,paddingTop:top,paddingBottom:bot},'*');}
 function sKey(si,f,ii,sk){return si+'_'+(f||'')+'_'+(ii!=null?ii:'')+'_'+(sk!=null?sk:'');}
 function hexOf(el){var c=getComputedStyle(el).color,m=c.match(/\d+/g);if(!m)return'#000000';return'#'+[m[0],m[1],m[2]].map(function(n){return(+n).toString(16).padStart(2,'0')}).join('');}
 function setActive(btns,val){btns.forEach(function(b){b.classList.toggle('on',b.dataset.val===val);});}
@@ -125,6 +135,11 @@ function show(el,si,f,ii,sk){
   setActive(wtGrp.btns,fwVal);
   setActive(alGrp.btns,cs.textAlign||'left');
   clrInp.value=hexOf(el);
+  var secEl=document.querySelector('[data-vs="'+si+'"]');
+  curTop=secEl?(secEl.style.paddingTop||''):'';
+  curBot=secEl?(secEl.style.paddingBottom||''):'';
+  setActive(topGrp.btns,curTop);
+  setActive(botGrp.btns,curBot);
   panel.removeAttribute('hidden');
   pos();
 }
@@ -146,6 +161,20 @@ wireBtns(wtGrp.btns,function(v){return{fontWeight:FW[v]||''};});
 wireBtns(alGrp.btns,function(v){return{textAlign:TA[v]||''};});
 clrInp.addEventListener('input',function(){if(!curEl)return;applyS(curEl,{color:clrInp.value});ps(sKey(curSi,curF,curIi,curSk),{color:clrInp.value});});
 clrReset.addEventListener('click',function(){if(!curEl)return;applyS(curEl,{color:''});ps(sKey(curSi,curF,curIi,curSk),{color:''});});
+topGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(curSi===null)return;
+  var v=b.dataset.val||'';
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.paddingTop=v;
+  curTop=v;setActive(topGrp.btns,v);psp(curSi,curTop,curBot);pos();
+});});
+botGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(curSi===null)return;
+  var v=b.dataset.val||'';
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.paddingBottom=v;
+  curBot=v;setActive(botGrp.btns,v);psp(curSi,curTop,curBot);pos();
+});});
 document.addEventListener('click',function(e){if(!panel.hasAttribute('hidden')&&!panel.contains(e.target)&&e.target!==curEl)hide();});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')hide();});
 /* ── mk: attach editable marker ────────────────────────────────────────── */
@@ -201,6 +230,16 @@ if(ts&&typeof ts==='object'){
     var parts=key.split('_'),si=parseInt(parts[0],10),f=parts[1],st=ts[key];
     var sec=document.querySelector('[data-vs="'+si+'"]');if(!sec)return;
     sec.querySelectorAll('[data-ve-si="'+si+'"][data-ve-f="'+f+'"]').forEach(function(el){applyS(el,st);});
+  });
+}
+/* ── Re-apply persisted section spacing ─────────────────────────────────── */
+var ss=spec._sectionSpacing;
+if(ss&&typeof ss==='object'){
+  Object.keys(ss).forEach(function(key){
+    var st=ss[key];
+    var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
+    if(st.paddingTop!==undefined)sec.style.paddingTop=st.paddingTop;
+    if(st.paddingBottom!==undefined)sec.style.paddingBottom=st.paddingBottom;
   });
 }
 /* ── Image click handler ───────────────────────────────────────────────── */
@@ -1757,6 +1796,26 @@ export default function WebsitePage() {
           else ts[key] = remaining;
         }
         (next as Record<string, unknown>)._textStyles = ts;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        return;
+      }
+
+      if (msgType === "vela-spacing") {
+        const { sectionIndex, paddingTop, paddingBottom } = e.data as { sectionIndex: number; paddingTop: string; paddingBottom: string };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const ssp = ((next as Record<string, unknown>)._sectionSpacing ?? {}) as Record<string, { paddingTop?: string; paddingBottom?: string }>;
+        const spKey = String(sectionIndex);
+        if (!paddingTop && !paddingBottom) {
+          delete ssp[spKey];
+        } else {
+          ssp[spKey] = { paddingTop: paddingTop || undefined, paddingBottom: paddingBottom || undefined };
+        }
+        (next as Record<string, unknown>)._sectionSpacing = ssp;
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);

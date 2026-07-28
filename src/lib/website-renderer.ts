@@ -59,6 +59,7 @@ export interface WebsiteSpec {
   designDNA?: DesignDNA;
   sections: SectionSpec[];
   _textStyles?: Record<string, Record<string, string>>;
+  _sectionSpacing?: Record<string, { paddingTop?: string; paddingBottom?: string }>;
   // Phase 2e — nav/footer variant pool
   navVariant?: string;
   footerVariant?: string;
