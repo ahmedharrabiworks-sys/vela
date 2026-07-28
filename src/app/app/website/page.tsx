@@ -543,6 +543,7 @@ function PublishPanel({
   const [showSettings, setShowSettings] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const isDirty = siteSlug !== savedSlug;
+  const [savedOk, setSavedOk] = useState(false);
 
   // Run real pre-publish checks when entering step 2
   useEffect(() => {
@@ -605,11 +606,12 @@ function PublishPanel({
         if (msg.toLowerCase().includes("slug")) setSlugError(msg);
         else setSettingsError(msg);
       } else {
-        if (data.slug) {
-          setSiteSlug(data.slug);
-          setSavedSlug(data.slug);
-          if (isPublished) setPublishedUrl(`/site/${data.slug}`);
-        }
+        const confirmedSlug = data.slug || siteSlug;
+        setSiteSlug(confirmedSlug);
+        setSavedSlug(confirmedSlug);
+        if (isPublished && confirmedSlug) setPublishedUrl(`/site/${confirmedSlug}`);
+        setSavedOk(true);
+        setTimeout(() => setSavedOk(false), 1500);
         succeeded = true;
       }
     } catch { setSettingsError("Connection error."); }
@@ -816,8 +818,12 @@ function PublishPanel({
       </div>
       {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
       <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
-        className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 ${isDirty ? "bg-[#FF6B35] text-white hover:opacity-90" : "border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24]"}`}>
-        {savingSettings ? "Saving…" : isDirty ? "Save" : "Saved"}
+        className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 ${
+          savedOk    ? "bg-green-500 text-white" :
+          isDirty    ? "bg-[#FF6B35] text-white hover:opacity-90" :
+                       "border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24]"
+        }`}>
+        {savingSettings ? "Saving…" : savedOk ? "✓ Saved" : isDirty ? "Save" : "Saved"}
       </button>
     </div>
   );
@@ -1064,6 +1070,19 @@ export default function WebsitePage() {
   const [activeTab, setActiveTab]     = useState<"chat" | "preview">("chat");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [contactInfo, setContactInfo]       = useState<ContactInfo>({ phone: "", email: "", address: "", hours: "" });
+
+  // Per-site contact info: spec embedded in draft_html is the authoritative source;
+  // contactInfo state (from tenant_config.website_intake) is a global fallback.
+  const specHasContactInfo = useMemo(() => {
+    if (html) {
+      const spec = extractSpec(html);
+      if (spec?.sections?.some(s => {
+        const c = s.content as Record<string, unknown> | null | undefined;
+        return !!(c?.phone || c?.email);
+      })) return true;
+    }
+    return !!(contactInfo.phone || contactInfo.email);
+  }, [html, contactInfo]);
 
   // ── Publish state ────────────────────────────────────────────────────────────
   const [publishedUrl, setPublishedUrl]     = useState("");
@@ -1483,6 +1502,7 @@ export default function WebsitePage() {
           html?: string | null; versions?: VersionRecord[];
           name?: string | null; slug?: string | null;
           isPublished?: boolean; publishedUrl?: string | null;
+          intake?: ContactInfo | null;
         };
         if (websiteIdRef.current !== switchTarget) return;
         if (data.html) {
@@ -1495,6 +1515,7 @@ export default function WebsitePage() {
         if (data.slug) { setSiteSlug(data.slug); setSavedSlug(data.slug); }
         if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
         if (data.publishedUrl != null) setPublishedUrl(data.publishedUrl);
+        if (data.intake) setContactInfo(data.intake);
       }
     } catch { /* ignore */ }
   }, [btype, siteLanguage]);
@@ -2174,7 +2195,7 @@ export default function WebsitePage() {
                   removingDomain={removingDomain} setRemovingDomain={setRemovingDomain}
                   draftDiffers={draftDiffers} publishing={publishing}
                   hasDraft={built && html.length > 50}
-                  hasContactInfo={!!(contactInfo.phone || contactInfo.email)}
+                  hasContactInfo={specHasContactInfo}
                   onPublish={handleDoPublish}
                   onClose={() => setShowPublishPanel(false)}
                   setPublishedUrl={setPublishedUrl}
