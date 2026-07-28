@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 28, 2026 (Phase 4 complete)*
+*Last updated: July 28, 2026 (Phase 5a complete)*
 
 ---
 
@@ -149,7 +149,7 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 ## 7. ROADMAP (CURRENT ORDER)
 
 ### Website Builder — Design Engine Rebuild (active — see §12 for detailed phase status)
-Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — DONE. Phase 2d (content components) — DONE. Phase 2e (nav/footer) — DONE. Phase 3 (design system formalization) — DONE. Phase 4 (image engine rebuild) — NEXT (not started, well-diagnosed — queries need category+section+subject, not location-based). Phase 5 (rich editor improvements, constrained first) — not started.
+Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — DONE. Phase 2d (content components) — DONE. Phase 2e (nav/footer) — DONE. Phase 3 (design system formalization) — DONE. Phase 4 (image engine rebuild) — DONE. Phase 5a (section spacing controls) — DONE. Phase 5b (further editor controls) — not started.
 
 ### Phase A — Fix what's broken (before non-Website-Builder new features)
 1. Clean up Vercel domains (Oussama, browser)
@@ -278,7 +278,9 @@ Moving from fixed templates toward a **component pool selected via a Design Inte
     - Real estate in Marrakech → `"luxury villa exterior pool architecture daylight editorial minimal"` + `"real estate agent modern office interior bright professional photography"` (no city ✅)
   **Real-pipeline compliance gap: CLOSED.** GPT precisely followed the new VISUAL SUBJECT formula and ABSOLUTE RULE against city names on the first real run with city-named businesses.
 
-- **Phase 5 — Rich editor improvements — not started.** Decision made: constrained rich editor first (spacing/padding/borders/shadows/reorder-within-section, extending the existing floating text panel), NOT a Figma/Webflow-style freeform canvas. True freeform drag-and-drop is a explicitly deferred future initiative post-launch, not part of this rebuild.
+- **Phase 5a — Section spacing controls (DONE, commit `25b959d`):** Added preset section padding top/bottom controls to the existing floating text-edit panel. 5 presets per axis: — (none) / S (16px) / M (32px) / L (48px) / XL (64px) — tied to Phase 3 `--sp-sm` / `--sp-lg` / `--sp-xl` / `--sp-2xl` tokens. Persists via `spec._sectionSpacing` (new `WebsiteSpec` field in `website-renderer.ts`), same 800ms debounced `handleSaveEdit` save as text styles. Re-applied on edit mode re-entry. Real-time preview: iframe spacing updates instantly on button click. `—` resets to CSS default (removes inline style). New postMessage type `vela-spacing` wired in parent `useEffect` handler. Build 100% clean. Deferred: borders, shadows, per-element spacing, drag/freeform (Phase 5b+).
+
+- **Phase 5b — Further editor controls — not started.** Candidates: border/shadow controls, per-element spacing, section reordering enhancements. NOT freeform drag-and-drop — that is explicitly deferred post-launch forever.
 
 ### Known Gaps / TODOs (tracked, not yet resolved)
 
