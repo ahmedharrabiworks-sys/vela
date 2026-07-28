@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 28, 2026 (Phase 5a complete)*
+*Last updated: July 28, 2026 (Phase 5b complete)*
 
 ---
 
@@ -149,7 +149,7 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 ## 7. ROADMAP (CURRENT ORDER)
 
 ### Website Builder — Design Engine Rebuild (active — see §12 for detailed phase status)
-Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — DONE. Phase 2d (content components) — DONE. Phase 2e (nav/footer) — DONE. Phase 3 (design system formalization) — DONE. Phase 4 (image engine rebuild) — DONE. Phase 5a (section spacing controls) — DONE. Phase 5b (further editor controls) — not started.
+Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — DONE. Phase 2d (content components) — DONE. Phase 2e (nav/footer) — DONE. Phase 3 (design system formalization) — DONE. Phase 4 (image engine rebuild) — DONE. Phase 5a (section spacing controls) — DONE. Phase 5b (border/shadow/per-element spacing controls) — DONE.
 
 ### Phase A — Fix what's broken (before non-Website-Builder new features)
 1. Clean up Vercel domains (Oussama, browser)
@@ -285,7 +285,20 @@ Moving from fixed templates toward a **component pool selected via a Design Inte
   - Check 2 (spec round-trip): `renderWebsite(spec, imageMap)` with `_sectionSpacing: {"0": {paddingTop:"48px", paddingBottom:"32px"}, "1": {paddingTop:"64px"}}` — `extractSpec` recovered exact values from HTML comment. Actual output: `{"0":{"paddingTop":"48px","paddingBottom":"32px"},"1":{"paddingTop":"64px"}}`. `_textStyles` preserved (no clobber). HTML saved to `test-output-phase5a/test-site-with-spacing.html`.
   - Check 3 (375px): Only `paddingTop`/`paddingBottom` applied (no `paddingLeft`/`paddingRight` — zero horizontal overflow risk). Panel clamped to `window.innerWidth-8`. No inline width overrides on `[data-vs]` sections. Max preset value 64px (no extreme values).
 
-- **Phase 5b — Further editor controls — not started.** Candidates: border/shadow controls, per-element spacing, section reordering enhancements. NOT freeform drag-and-drop — that is explicitly deferred post-launch forever.
+- **Phase 5b — Border, shadow, per-element spacing controls (DONE, commit `7fbe4e0`):**
+  Three additive fixes to the constrained rich editor, same architecture as 5a.
+  FIX 1 — Section border controls: Border width (—/1px/2px) × solid style × color picker (`bdrClrInp`). Stores as `_sectionBorders[si] = { border }` (computed CSS shorthand). Color is read from spec on panel open (not from `secEl.style.border`) to avoid browser normalization. Reset clears width + reverts color to `#374151`. New `vela-border` postMessage; parent handler writes to `_sectionBorders` with 800ms debounce.
+  FIX 2 — Section shadow controls: 4 presets (—/Low/Med/High) mapped to fixed `box-shadow` values (`SHADOW_VALS`). Stores as `_sectionShadows[si] = { boxShadow }`. Shadow values read from spec on panel open (not from element's computed style). New `vela-shadow` postMessage.
+  FIX 3 — Per-element spacing: El ↑ / El ↓ buttons (same SP_VALS as 5a) — appear only when a heading (headline/subheadline/eyebrow) or CTA (ctaPrimary/ctaSecondary/ctaText) element is selected. Stores in `_sectionSpacing` using `"si_type"` keys (e.g. `"0_heading"`, `"0_cta"`) to avoid collision with section-level keys (pure numeric `"0"`, `"1"`, etc.). New `vela-el-spacing` postMessage. Re-apply block detects element-level keys via `key.indexOf('_') !== -1`, then selects matching `[data-ve-f]` elements and applies marginTop/Bottom.
+  Panel CSS: `max-height:80vh;overflow-y:auto` added — panel now scrollable when viewport is short.
+  WebsiteSpec type updated: `_sectionSpacing` extended with `marginTop?/marginBottom?`, `_sectionBorders` and `_sectionShadows` added.
+  **Verification** (`e2e-test-phase5b.ts` — 68/68 checks):
+  - Check 1 (EDIT_SCRIPT DOM/state/functions): 33 checks — all DOM groups, state vars, helper functions, show() reads, button wiring, re-apply blocks confirmed present.
+  - Check 1b (parent handlers): 13 checks — vela-border, vela-shadow, vela-el-spacing handlers exist with correct field writes and 800ms debounce.
+  - Check 2 (round-trip): 12 checks via real `renderWebsite` — actual output: `_sectionBorders: {"0":{"border":"1px solid #374151"}}`, `_sectionShadows: {"1":{"boxShadow":"0 4px 16px rgba(0,0,0,.12)"}}`, `_sectionSpacing: {"0":{"paddingTop":"48px","paddingBottom":"32px"},"0_heading":{"marginTop":"16px","marginBottom":"8px"},"0_cta":{"marginTop":"24px"}}`. Phase 5a spacing regression confirmed.
+  - Check 3 (375px): 5 checks — border uses shorthand (no left/right independently), box-shadow x-offsets all 0 (no horizontal bleed), element spacing sets marginTop/Bottom only.
+  - Check 4 (5a regression): 5 checks — section spacing controls unchanged.
+  Next candidates (Phase 5c, if needed): section reordering enhancements. NOT freeform drag-and-drop — explicitly deferred post-launch forever.
 
 ### Known Gaps / TODOs (tracked, not yet resolved)
 
