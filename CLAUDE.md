@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 28, 2026 (Phase 5b + Phase A item 2 complete)*
+*Last updated: July 28, 2026 (Phase 5b + Phase A items 2–3 complete)*
 
 ---
 
@@ -154,7 +154,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 ### Phase A — Fix what's broken (before non-Website-Builder new features)
 1. ✅ Clean up Vercel domains (Oussama, browser) — done manually by Oussama
 2. ✅ Custom domain architecture rebuild (middleware-based routing) — DONE commit `e28b284`. `middleware.ts` now queries Supabase PostgREST directly (`domain_status=eq.verified + is_published=eq.true`), 5-min in-memory cache, fallback `NextResponse.next()`. No Vercel Domains API calls (hard rule enforced). 24/24 checks via `e2e-test-domain-routing.ts`. **Item 3 (Connected badge) intentionally NOT touched — still open.**
-3. Domain "Connected" badge — grep + kill every false-positive setter
+3. ✅ Domain "Connected" badge — false-positive trap removed, commit `c8286af`. **Root cause:** `PUT /api/website/settings` had dead code that set `domain_status = "pending"` whenever `domain` appeared in the body — silently wiping "verified" on any settings save that included the domain field. No current frontend code triggered it, but it was a live regression trap. **Fix:** removed domain block + `DOMAIN_RE` from `settings/route.ts` entirely; added guard comments + type-level omission; domain is exclusively managed by `/api/website/domain` (POST/GET/DELETE). **Regression prevention:** guard comment + type omission in `settings/route.ts` body type make it structurally impossible for a future caller to accidentally reset status via this route. 34/34 checks via `e2e-test-phase-a3-domain-badge.ts` (exhaustive 13-route write-site audit, settings route static checks, domain/route.ts GET as sole "verified" path, frontend badge read-side check, live Supabase round-trip).
 4. Publish panel: Save button, slug persistence, contact-info check reading real intake data
 5. Marketing tools: diagnose + fix "AI generation failed"
 6. Training question tone: max 10 words, no examples by default
