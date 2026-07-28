@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 28, 2026 (Phase 5b complete)*
+*Last updated: July 28, 2026 (Phase 5b + Phase A item 2 complete)*
 
 ---
 
@@ -152,8 +152,8 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b (Trust/Conversion pool) — DONE. Phase 2c (category showcase components) — DONE. Phase 2d (content components) — DONE. Phase 2e (nav/footer) — DONE. Phase 3 (design system formalization) — DONE. Phase 4 (image engine rebuild) — DONE. Phase 5a (section spacing controls) — DONE. Phase 5b (border/shadow/per-element spacing controls) — DONE.
 
 ### Phase A — Fix what's broken (before non-Website-Builder new features)
-1. Clean up Vercel domains (Oussama, browser)
-2. Custom domain architecture rebuild (middleware-based routing)
+1. ✅ Clean up Vercel domains (Oussama, browser) — done manually by Oussama
+2. ✅ Custom domain architecture rebuild (middleware-based routing) — DONE commit `e28b284`. `middleware.ts` now queries Supabase PostgREST directly (`domain_status=eq.verified + is_published=eq.true`), 5-min in-memory cache, fallback `NextResponse.next()`. No Vercel Domains API calls (hard rule enforced). 24/24 checks via `e2e-test-domain-routing.ts`. **Item 3 (Connected badge) intentionally NOT touched — still open.**
 3. Domain "Connected" badge — grep + kill every false-positive setter
 4. Publish panel: Save button, slug persistence, contact-info check reading real intake data
 5. Marketing tools: diagnose + fix "AI generation failed"
