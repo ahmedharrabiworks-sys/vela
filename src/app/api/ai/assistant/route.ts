@@ -98,6 +98,31 @@ export async function POST(req: NextRequest) {
   ].filter(Boolean).join("\n");
   const kbExtraText = kb.extra?.trim() ? `\n\nAdditional knowledge:\n${kb.extra}` : "";
 
+  // ── Interview mode context (built here where tenant + kb are already loaded) ─
+  const ivSvcQ = tenant.industry
+    ? `What services does your ${tenant.industry} offer, and at what price?`
+    : "What services do you offer, and at what price?";
+  const ivCtxLines = [
+    tenant.business_name ? `Business name: ${tenant.business_name}` : "",
+    tenant.industry      ? `Industry: ${tenant.industry}`            : "",
+    tenant.city          ? `City: ${tenant.city}`                    : "",
+  ].filter(Boolean);
+  const ivCtxSection = ivCtxLines.length > 0
+    ? `\n## BUSINESS CONTEXT (already known — use this)\n${ivCtxLines.join("\n")}\n`
+    : "";
+  const ivAlreadyEntries = [
+    (kb.services ?? []).length > 0
+      ? `- services & prices: "${(kb.services ?? []).slice(0, 3).map((s: KbService) => `${s.name}${s.price ? ` ${s.price}` : ""}`).join(", ")}"`
+      : "",
+    kb.business?.hours         ? `- working hours: "${kb.business.hours}"`               : "",
+    kb.business?.address       ? `- location: "${kb.business.address}"`                  : "",
+    kb.business?.bookingPolicy ? `- booking method: "${kb.business.bookingPolicy}"`      : "",
+    kb.extra?.trim() ? `- common questions: "${kb.extra.slice(0, 120).trim()}${kb.extra.length > 120 ? "…" : ""}"` : "",
+  ].filter(Boolean);
+  const ivExistingSection = ivAlreadyEntries.length > 0
+    ? `\n## ALREADY ON FILE — confirm these; do not ask from scratch\n${ivAlreadyEntries.join("\n")}\n\nFor each topic above: say "I have your [label] on file as '[value]' — still accurate?" Accept confirmation or update. Use the confirmed/updated value in the [save_kb:...] token. For topics NOT listed: ask the question as written.\n`
+    : "";
+
   const systemPrompt = `You are Vela — a smart, warm business partner built right into this dashboard. You talk like a trusted friend who happens to know everything about running a business with AI. Direct, real, no fluff. Use contractions naturally. Keep answers short — a sentence or two is almost always enough. Only go longer if someone asks for detail. Lists work when an answer is genuinely list-shaped; otherwise just talk.
 
 Today: ${today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
@@ -162,9 +187,11 @@ Reply in the same language the user writes in. If ambiguous, default to ${locale
 
 ## TRAINING INTERVIEW MODE
 You're running a quick 5-step interview to build this business's AI knowledge base. Ask one question at a time. Keep questions short — no more than 10 words. Don't include examples in the question itself. If an answer is vague, ask ONE brief follow-up with a short example, then move on.
-
+${ivCtxSection}${ivExistingSection}
 ## QUESTIONS (ask in this exact order)
-Step 1 — Services & prices: Ask: "What services do you offer, and at what price?"
+For any topic ALREADY ON FILE above: confirm its value instead of asking fresh.
+
+Step 1 — Services & prices: Ask: "${ivSvcQ}"
 
 Step 2 — Hours: Ask: "What days and hours are you open?"
 
@@ -189,10 +216,10 @@ Hours: convert to standard format. "mon to sat 9 to 5" → "Mon–Sat 9:00–17:
 Service names: capitalize. Prices: keep as stated.
 FAQs: write each as "Q: … A: …" in full sentences.
 
-After step 5: thank them briefly, show 2–3 bullets of what you collected (normalized), then emit this token on its own line:
+After all topics are collected or confirmed: thank them briefly, show 2–3 bullets of what you collected (normalized), then emit this token on its own line:
 [save_kb:{"services":[{"name":"","price":"","duration":"","description":""}],"faqs":[],"business":{"hours":"","address":"","bookingPolicy":"","tone":"professional"},"extra":""}]
 
-Token rules: services from step 1; business.hours = normalized string; business.address from step 3; business.bookingPolicy from step 4; tone = professional/friendly/luxury from their writing style; extra = Q&A pairs from step 5 as "Q: ...\nA: ..." joined by \n\n; faqs always []. Valid JSON only. Emit [save_kb:...] ONLY after all 5 steps.` : ""}`;
+Token rules: services from step 1; business.hours = normalized string; business.address from step 3; business.bookingPolicy from step 4; tone = professional/friendly/luxury from their writing style; extra = Q&A pairs from step 5 as "Q: ...\nA: ..." joined by \n\n; faqs always []. For confirmed topics (owner said yes / no changes), carry the stored value from ALREADY ON FILE into the token. Valid JSON only. Emit [save_kb:...] ONLY after all topics are done.` : ""}`;
 
 
   // Build the user content: text-only or multi-part (text + vision images)

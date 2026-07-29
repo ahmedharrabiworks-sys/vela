@@ -13,6 +13,7 @@ import {
   buildTrainingSystem,
   RECORD_ANSWER_TOOL,
   CALL_LIMITS,
+  type TrainingContext,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -128,11 +129,12 @@ export default function TrainingPage() {
   const [liveKb, setLiveKb]       = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
   const [callStart, setCallStart] = useState<number>(0);
-  const voiceIdRef       = useRef(DEFAULT_VOICE_ID);
-  const speedRef         = useRef(0.85);
-  const agentLanguageRef = useRef<string | undefined>(undefined);
-  const linesRef         = useRef<TLine[]>([]);
-  const toolKbRef        = useRef<Record<string, string>>({});
+  const voiceIdRef           = useRef(DEFAULT_VOICE_ID);
+  const speedRef             = useRef(0.85);
+  const agentLanguageRef     = useRef<string | undefined>(undefined);
+  const trainingContextRef   = useRef<TrainingContext>({});
+  const linesRef             = useRef<TLine[]>([]);
+  const toolKbRef            = useRef<Record<string, string>>({});
   const vapiRef      = useRef<VapiInstance>(null);
   const scaleRef     = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -153,12 +155,14 @@ export default function TrainingPage() {
     Promise.all([
       fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({})),
       fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({})),
-    ]).then(([d, a]: [{ voiceId?: string; speed?: number }, { preferredLanguage?: string }]) => {
+      fetch("/api/ai-agent/training-context").then(r => r.json()).catch(() => ({})),
+    ]).then(([d, a, tc]: [{ voiceId?: string; speed?: number }, { preferredLanguage?: string }, TrainingContext]) => {
       const lang = a.preferredLanguage ?? undefined;
       // Owner's explicit choice wins; smart Arabic default only when nothing is saved
       voiceIdRef.current = d.voiceId || getDefaultVoiceId(lang);
       if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
       agentLanguageRef.current = lang;
+      trainingContextRef.current = tc ?? {};
       setSettingsReady(true);
     }).catch(() => { setSettingsReady(true); });
   }, []);
@@ -282,7 +286,7 @@ export default function TrainingPage() {
         model: {
           provider: "openai",
           model: "gpt-4o",
-          messages: [{ role: "system", content: buildTrainingSystem(agentLanguageRef.current) }],
+          messages: [{ role: "system", content: buildTrainingSystem(agentLanguageRef.current, trainingContextRef.current) }],
           tools: [RECORD_ANSWER_TOOL],
         },
         voice: getVoiceConfig(voiceIdRef.current, speedRef.current),

@@ -210,8 +210,17 @@ ${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}## RULES
 - Never admit you are AI unless directly asked`;
 }
 
+// ── Training context (optional — makes questions smarter when available) ──────
+export interface TrainingContext {
+  businessName?: string;
+  industry?: string;
+  city?: string;
+  // topic key → human-readable summary of what's already on file
+  existingKb?: Partial<Record<"businessType" | "services" | "hours" | "location" | "booking" | "faqs" | "special", string>>;
+}
+
 // ── Training interview system prompt ──────────────────────────────────────────
-export function buildTrainingSystem(savedLanguage?: string): string {
+export function buildTrainingSystem(savedLanguage?: string, ctx?: TrainingContext): string {
   const langSetup =
     savedLanguage === "ar"
       ? `The owner's preferred language is Arabic (العربية). Open IMMEDIATELY in Arabic with question 1. Do NOT say "مرحبا" — use a varied, natural Arabic opener or go straight to your first question. Never open the same way twice.`
@@ -224,6 +233,39 @@ Arabic (العربية) is your HIGHEST priority: if you hear or read any Arabic
 IMPORTANT: If the transcription reads "Arabia" or "Arabia Arabia" — that is a speech-to-text artifact for the Arabic word "عربي" — treat it as Arabic and switch to Arabic immediately.
 Supported languages: Arabic (العربية), French (Français), German (Deutsch), Spanish (Español), English. Match the owner's language from their very first message.`;
 
+  // ── Context injection ──────────────────────────────────────────────────────
+  const hasCtxInfo = !!(ctx?.businessName || ctx?.industry || ctx?.city);
+  const contextSection = hasCtxInfo
+    ? [
+        "## BUSINESS CONTEXT (already known — use this)",
+        ctx?.businessName ? `Business name: ${ctx.businessName}` : "",
+        ctx?.industry     ? `Industry: ${ctx.industry}`           : "",
+        ctx?.city         ? `City: ${ctx.city}`                   : "",
+      ].filter(Boolean).join("\n")
+    : "";
+
+  const TOPIC_LABELS: Record<string, string> = {
+    businessType: "business type", services: "services & prices",
+    hours: "working hours",        location: "location",
+    booking: "booking method",     faqs: "common questions",
+    special: "unique selling point",
+  };
+  const knownEntries = Object.entries(ctx?.existingKb ?? {}).filter(([, v]) => v?.trim());
+  const existingSection = knownEntries.length > 0
+    ? [
+        "## ALREADY ON FILE — confirm these; do not ask them fresh",
+        ...knownEntries.map(([k, v]) => `- ${TOPIC_LABELS[k] ?? k}: "${v}"`),
+        "",
+        `For each topic above: say "I have your [label] on file as '[value]' — still accurate?" Then call recordBusinessAnswer with the confirmed or corrected value (apply NORMALIZATION as usual). If they confirm without changes, record the stored value as-is.`,
+        `For topics NOT listed here: ask the corresponding question from INTERVIEW QUESTIONS.`,
+      ].join("\n")
+    : "";
+
+  // Personalize services question when industry is known
+  const servicesQ = ctx?.industry
+    ? `What services does your ${ctx.industry} offer, and what do they cost?`
+    : "What services do you offer, and what do they cost?";
+
   return `You are Vela — interviewing a business owner to build their AI knowledge base so you can handle their customer calls. Keep it conversational and quick. One question at a time.
 
 ## LANGUAGE (STRICT — READ FIRST)
@@ -231,21 +273,21 @@ ${langSetup}
 Once the language is established: stay in it for the ENTIRE interview, no exceptions.
 IMPORTANT: Topic keys (businessType, services, hours, location, booking, faqs, special) are internal identifiers only — ask all questions and give all responses in the established language.
 CRITICAL: If the owner types an answer instead of speaking — respond in the SAME language. Arabic typed → Arabic response. French typed → French response. Never deviate.
-
+${contextSection ? "\n" + contextSection + "\n" : ""}${existingSection ? "\n" + existingSection + "\n" : ""}
 ## INTERVIEW QUESTIONS (ask in this exact order, one at a time)
-Keep each question short — no more than 10 words. Do not include examples in the question. If an answer is vague, ask ONE brief follow-up with a short example, then move on.
+Keep each question short — no more than 10 words. Do not include examples in the question. If an answer is vague, ask ONE brief follow-up with a short example, then move on.${knownEntries.length > 0 ? "\nFor any topic ALREADY ON FILE above: confirm its value instead of asking the question fresh." : ""}
 
 1. Business type — Ask: "What does your business do?"
 
-2. Services — Ask: "What services do you offer?"
+2. Services — Ask: "${servicesQ}"
 
-3. Prices — Ask: "What do your services cost?"
+3. Hours — Ask: "What days and hours are you open?"
 
-4. Hours — Ask: "What days and hours are you open?"
+4. Location — Ask: "Where are you located?"
 
-5. Location — Ask: "Where are you located?"
+5. Booking — Ask: "How do customers book with you?"
 
-6. Booking — Ask: "How do customers book with you?"
+6. FAQs — Ask: "What do customers ask you most often?"
 
 7. Unique selling point — Ask: "What makes your business stand out?"
 
@@ -278,7 +320,7 @@ FAQs: write each as a clean full-sentence Q&A.
 businessType, services, hours, location, booking, faqs, special
 
 ## CLOSING
-After all 7 topics are recorded: give a confident 2–3 sentence summary of the business using NORMALIZED data, then say you are ready to start handling their calls.`;
+After all 7 topics are recorded or confirmed: give a confident 2–3 sentence summary of the business using NORMALIZED data, then say you are ready to start handling their calls.`;
 }
 
 // ── Training function-call tool definition ────────────────────────────────────
