@@ -23,12 +23,21 @@ export async function POST(req: NextRequest) {
 
   if (!tenant) return NextResponse.json({ success: false, message: "Tenant not found" }, { status: 404 });
 
-  const updates =
-    channel === "instagram"
-      ? { instagram_connected: false, instagram_username: "", instagram_access_token: "", instagram_business_id: "" }
-      : { whatsapp_connected: false, whatsapp_phone: "" };
-
-  await admin.from("tenant_config").update(updates).eq("tenant_id", tenant.id);
+  if (channel === "instagram") {
+    await admin.from("tenant_config")
+      .update({ instagram_connected: false, instagram_username: "", instagram_access_token: "", instagram_business_id: "" })
+      .eq("tenant_id", tenant.id);
+  } else {
+    // Deactivate all active whatsapp_accounts rows for this tenant
+    await admin.from("whatsapp_accounts")
+      .update({ is_active: false })
+      .eq("tenant_id", tenant.id)
+      .eq("is_active", true);
+    // Clear tenant_config WhatsApp fields
+    await admin.from("tenant_config")
+      .update({ whatsapp_connected: false, whatsapp_phone: "", whatsapp_waba_id: null })
+      .eq("tenant_id", tenant.id);
+  }
 
   return NextResponse.json({ success: true });
 }

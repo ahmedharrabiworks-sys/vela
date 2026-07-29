@@ -1,17 +1,12 @@
-﻿"use client";
+"use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
 import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
-import { COUNTRIES, countryFlag, type Country } from "@/lib/countries";
-
-const GULF_ISO2 = ["AE", "SA", "QA", "KW", "BH", "OM"];
-const GULF_COUNTRIES = COUNTRIES.filter((c) => GULF_ISO2.includes(c.iso2));
-const OTHER_COUNTRIES = COUNTRIES.filter((c) => !GULF_ISO2.includes(c.iso2));
 
 /* ── Toast ── */
 function Toast({ msg, type = "success", onDone }: { msg: string; type?: "success" | "error" | "info"; onDone: () => void }) {
@@ -149,191 +144,109 @@ function InstagramModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ── WhatsApp country picker ── */
-function CountryPicker({ value, onChange }: { value: Country; onChange: (c: Country) => void }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(""); }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const filtered = useMemo(
-    () => COUNTRIES.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()) || c.dial.includes(query)),
-    [query]
-  );
-
-  return (
-    <div ref={ref} className="relative shrink-0">
-      <button type="button" onClick={() => { setOpen(!open); setQuery(""); }}
-        className="flex items-center gap-1.5 px-3 py-3 border border-[#E5E7EB] rounded-xl bg-white text-sm focus:outline-none focus:border-[#FF6B35]/50 whitespace-nowrap min-w-[90px]">
-        <span className="text-base leading-none">{countryFlag(value.iso2)}</span>
-        <span className="text-[#374151] text-xs font-mono">{value.dial}</span>
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`text-[#9CA3AF] transition-transform ${open ? "rotate-180" : ""}`}>
-          <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute z-50 top-[calc(100%+4px)] left-0 w-64 rounded-xl overflow-hidden border border-[#E5E7EB] shadow-xl bg-white">
-          <div className="p-2 border-b border-[#F3F4F6]">
-            <input autoFocus type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search country…"
-              className="w-full px-3 py-2 text-sm border border-[#E5E7EB] rounded-lg text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50" />
-          </div>
-          <div className="max-h-52 overflow-y-auto">
-            {query ? (
-              filtered.length === 0 ? (
-                <div className="px-4 py-4 text-sm text-[#9CA3AF] text-center">No results</div>
-              ) : (
-                filtered.map((c) => (
-                  <button key={c.iso2 + c.dial} type="button"
-                    onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
-                    <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
-                    <span className="flex-1 truncate">{c.name}</span>
-                    <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
-                  </button>
-                ))
-              )
-            ) : (
-              <>
-                <div className="px-4 pt-2.5 pb-1">
-                  <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Gulf Countries</span>
-                </div>
-                {GULF_COUNTRIES.map((c) => (
-                  <button key={c.iso2} type="button"
-                    onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
-                    <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
-                    <span className="flex-1 truncate">{c.name}</span>
-                    <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
-                  </button>
-                ))}
-                <div className="h-px bg-[#F3F4F6] mx-4 my-1.5" />
-                <div className="px-4 pb-1">
-                  <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">All Countries</span>
-                </div>
-                {OTHER_COUNTRIES.map((c) => (
-                  <button key={c.iso2} type="button"
-                    onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-[#FFF5F0] transition-colors ${value.iso2 === c.iso2 ? "text-[#FF6B35] font-semibold" : "text-[#374151]"}`}>
-                    <span className="text-base leading-none w-6 text-center">{countryFlag(c.iso2)}</span>
-                    <span className="flex-1 truncate">{c.name}</span>
-                    <span className="text-[#9CA3AF] text-xs font-mono">{c.dial}</span>
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+/* ── WhatsApp modal (Embedded Signup v4) ── */
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    FB: any;
+  }
 }
 
-/* ── WhatsApp modal ── */
-function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect: (phone: string, isPending?: boolean) => void }) {
-  const UAE = COUNTRIES.find((c) => c.iso2 === "AE")!;
-  const [step, setStep]               = useState<0 | 1 | 2>(0);
-  const [country, setCountry]         = useState<Country>(UAE);
-  const [number, setNumber]           = useState("");
-  const [code, setCode]               = useState(["", "", "", "", "", ""]);
-  const [sending, setSending]         = useState(false);
-  const [verifying, setVerifying]     = useState(false);
-  const [sendMsg, setSendMsg]         = useState<{ text: string; isError: boolean } | null>(null);
-  const [verifyError, setVerifyError] = useState("");
-  const [isPendingMode, setIsPendingMode] = useState(false);
-  const [phoneErr, setPhoneErr]       = useState("");
-  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect: (phone: string, displayName?: string) => void }) {
+  const [status, setStatus]             = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg]         = useState("");
+  const [connectedPhone, setConnectedPhone] = useState("");
+  const [connectedName, setConnectedName]   = useState("");
 
-  const localDigits = number.replace(/\s/g, "").length;
-
-  const fullPhone = `${country.dial}${number.replace(/\s/g, "")}`;
-  const fullCode = code.join("");
-
-  // Auto-detect country from browser locale
+  // Load Facebook JS SDK once (idempotent — guarded by element ID check)
   useEffect(() => {
-    try {
-      const lang = navigator.language; // e.g. "ar-AE"
-      const parts = lang.split("-");
-      if (parts.length >= 2) {
-        const iso2 = parts[parts.length - 1].toUpperCase();
-        const found = COUNTRIES.find((c) => c.iso2 === iso2);
-        if (found) setCountry(found);
+    if (document.getElementById("facebook-jssdk")) {
+      // SDK already present — init if FB object exists
+      if (window.FB) {
+        window.FB.init({
+          appId:   process.env.NEXT_PUBLIC_META_APP_ID ?? "",
+          version: "v22.0",
+          cookie:  true,
+          xfbml:   false,
+        });
       }
-    } catch { /* ignore */ }
+      return;
+    }
+    const script    = document.createElement("script");
+    script.id       = "facebook-jssdk";
+    script.src      = "https://connect.facebook.net/en_US/sdk.js";
+    script.async    = true;
+    script.onload   = () => {
+      window.FB?.init({
+        appId:   process.env.NEXT_PUBLIC_META_APP_ID ?? "",
+        version: "v22.0",
+        cookie:  true,
+        xfbml:   false,
+      });
+    };
+    document.body.appendChild(script);
   }, []);
 
-  const handleCodeChange = (i: number, val: string) => {
-    if (!/^\d*$/.test(val)) return;
-    const next = [...code];
-    next[i] = val.slice(-1);
-    setCode(next);
-    if (val && i < 5) inputs.current[i + 1]?.focus();
-  };
-
-  const handleCodeKeyDown = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !code[i] && i > 0) inputs.current[i - 1]?.focus();
-  };
-
-  const handleSendCode = async () => {
-    setPhoneErr("");
-    if (!number.trim()) { setPhoneErr("Please enter your phone number."); return; }
-    if (localDigits < 6) { setPhoneErr("Number too short — please include all digits."); return; }
-    if (localDigits > 15) { setPhoneErr("Number too long — please check the format."); return; }
-    setSending(true);
-    setSendMsg(null);
-    try {
-      const res = await fetch("/api/whatsapp/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone }),
-      });
-      const data = await res.json() as { success: boolean; notConfigured?: boolean; message?: string };
-      if (data.notConfigured) {
-        // Twilio not configured — show pending state, skip code entry
-        setIsPendingMode(true);
-        setStep(2);
-      } else if (!data.success) {
-        setSendMsg({ text: data.message ?? "Failed to send code", isError: true });
-        setSending(false);
-        return;
-      } else {
-        setSendMsg({ text: `Verification code sent to ${fullPhone}`, isError: false });
-        setStep(1);
-      }
-    } catch {
-      setSendMsg({ text: "Network error. Please try again.", isError: true });
+  const handleConnect = () => {
+    if (!window.FB) {
+      setErrorMsg("Facebook SDK not loaded yet — please wait a moment and try again.");
+      setStatus("error");
+      return;
     }
-    setSending(false);
-  };
+    setStatus("loading");
+    setErrorMsg("");
 
-  const handleVerify = async () => {
-    if (fullCode.length !== 6) return;
-    setVerifying(true);
-    setVerifyError("");
-    try {
-      const res = await fetch("/api/whatsapp/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone, code: fullCode }),
-      });
-      const data = await res.json() as { success: boolean; message?: string };
-      if (!data.success) {
-        setVerifyError(data.message ?? "Invalid code. Please try again.");
-        setVerifying(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    window.FB.login(async (response: any) => {
+      if (response.status !== "connected" || !response.authResponse?.code) {
+        // User cancelled or denied — quietly return to idle
+        setStatus("idle");
         return;
       }
-      setStep(2);
-    } catch {
-      setVerifyError("Network error. Please try again.");
-    }
-    setVerifying(false);
+
+      const code            = response.authResponse.code as string;
+      const waba_id         = response.authResponse.session_info?.waba_id as string | undefined;
+      const phone_number_id = response.authResponse.session_info?.phone_number_id as string | undefined;
+
+      if (!waba_id || !phone_number_id) {
+        setErrorMsg("Could not retrieve WhatsApp Business account info — please try again.");
+        setStatus("error");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/whatsapp/callback", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ code, waba_id, phone_number_id }),
+        });
+        const data = await res.json() as {
+          ok?: boolean;
+          phoneNumber?: string;
+          displayName?: string;
+          error?: string;
+        };
+
+        if (!res.ok || !data.ok) {
+          setErrorMsg(data.error ?? "Connection failed — please try again.");
+          setStatus("error");
+          return;
+        }
+
+        setConnectedPhone(data.phoneNumber ?? "");
+        setConnectedName(data.displayName ?? "");
+        setStatus("success");
+      } catch {
+        setErrorMsg("Network error — please check your connection and try again.");
+        setStatus("error");
+      }
+    },
+    {
+      config_id:                      process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID ?? "",
+      response_type:                  "code",
+      override_default_response_type: true,
+      extras:                         { sessionInfoVersion: 2 },
+    });
   };
 
   return (
@@ -342,7 +255,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="font-bold text-[#111111]">Connect WhatsApp Business</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">Step {step + 1} of 3</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">Connect via Meta Business</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6]">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -351,91 +264,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
           </button>
         </div>
 
-        <Steps total={3} current={step} />
-
-        {step === 0 && (
-          <>
-            <p className="text-sm font-semibold text-[#111111] mb-4">Enter your WhatsApp Business number</p>
-            <div className="mb-4">
-              <label className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Phone Number</label>
-              <div className="flex gap-2">
-                <CountryPicker value={country} onChange={setCountry} />
-                <input
-                  type="tel"
-                  value={number}
-                  onChange={(e) => setNumber(e.target.value.replace(/[^0-9\s]/g, ""))}
-                  placeholder="50 000 0000"
-                  autoFocus
-                  className="flex-1 px-4 py-3 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] focus:outline-none focus:border-[#FF6B35]/50"
-                />
-              </div>
-              <p className="text-[11px] text-[#9CA3AF] mt-1.5">Number: {fullPhone || "—"}</p>
-            {phoneErr && <p className="text-xs text-red-500 mt-1.5">{phoneErr}</p>}
-            </div>
-            {sendMsg && (
-              <p className={`text-xs mb-3 px-3 py-2 rounded-lg ${sendMsg.isError ? "bg-red-50 text-red-600" : "bg-[#F0FFF4] text-green-700"}`}>
-                {sendMsg.text}
-              </p>
-            )}
-            <div className="p-3.5 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] mb-5">
-              <p className="text-[11px] text-[#6B7280]">Make sure this number is active on WhatsApp Business before continuing.</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#9CA3AF]">Cancel</button>
-              <button
-                onClick={handleSendCode}
-                disabled={!number.trim() || sending}
-                className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
-                style={{ background: "#25D366" }}
-              >
-                {sending ? "Sending…" : "Send Verification Code"}
-              </button>
-            </div>
-          </>
-        )}
-
-        {step === 1 && (
-          <>
-            <p className="text-sm font-semibold text-[#111111] mb-1">Enter verification code</p>
-            {sendMsg && !sendMsg.isError && (
-              <p className="text-xs text-[#6B7280] mb-4">
-                {sendMsg.text}
-              </p>
-            )}
-            <p className="text-xs text-[#6B7280] mb-5">
-              Code sent to <span className="font-semibold text-[#111111]">{fullPhone}</span>
-            </p>
-            <div className="flex gap-2 justify-center mb-4">
-              {code.map((digit, i) => (
-                <input
-                  key={i}
-                  ref={(el) => { inputs.current[i] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleCodeChange(i, e.target.value)}
-                  onKeyDown={(e) => handleCodeKeyDown(i, e)}
-                  className="w-11 h-12 text-center text-lg font-bold border border-[#E5E7EB] rounded-xl text-[#111111] focus:outline-none focus:border-[#FF6B35]/60"
-                />
-              ))}
-            </div>
-            {verifyError && <p className="text-xs text-red-600 text-center mb-3">{verifyError}</p>}
-            <button onClick={() => { setStep(0); setCode(["","","","","",""]); setSendMsg(null); }} className="text-xs text-[#6B7280] hover:text-[#FF6B35] transition-colors block mb-5">
-              Wrong number? Change it
-            </button>
-            <button
-              onClick={handleVerify}
-              disabled={fullCode.length !== 6 || verifying}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
-              style={{ background: "#25D366" }}
-            >
-              {verifying ? "Verifying…" : "Verify Code"}
-            </button>
-          </>
-        )}
-
-        {step === 2 && !isPendingMode && (
+        {status === "success" ? (
           <div className="flex flex-col items-center text-center py-4">
             <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(37,211,102,0.1)", border: "2px solid rgba(37,211,102,0.25)" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -443,42 +272,78 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
               </svg>
             </div>
             <h4 className="font-bold text-[#111111] mb-1">WhatsApp Business Connected!</h4>
-            <p className="text-sm font-semibold text-[#374151] mb-1">{fullPhone}</p>
+            {connectedPhone && <p className="text-sm font-semibold text-[#374151] mb-1">{connectedPhone}</p>}
+            {connectedName  && <p className="text-xs text-[#6B7280] mb-1">{connectedName}</p>}
             <p className="text-xs text-[#9CA3AF] mb-6">Vela AI will now reply to your WhatsApp messages automatically.</p>
             <button
-              onClick={() => onConnect(fullPhone, false)}
+              onClick={() => onConnect(connectedPhone, connectedName)}
               className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90"
               style={{ background: "var(--vp-color)" }}
             >
               Done
             </button>
           </div>
-        )}
-
-        {step === 2 && isPendingMode && (
+        ) : status === "error" ? (
           <div className="flex flex-col items-center text-center py-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(245,158,11,0.1)", border: "2px solid rgba(245,158,11,0.25)" }}>
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(220,38,38,0.1)", border: "2px solid rgba(220,38,38,0.2)" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 9v4M12 17h.01" stroke="#D97706" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="#D97706" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M6 6l12 12M18 6L6 18" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <h4 className="font-bold text-[#111111] mb-1">Setup Saved — Preview Mode</h4>
-            <p className="text-sm font-semibold text-[#374151] mb-1">{fullPhone}</p>
-            <p className="text-xs text-[#6B7280] mb-5 leading-relaxed max-w-xs">
-              WhatsApp connection will activate when your account is approved. Your number has been saved and will go live automatically.
-            </p>
-            <div className="w-full p-3 rounded-xl bg-amber-50 border border-amber-200 mb-5">
-              <p className="text-xs text-amber-700 font-medium">Pending activation — not yet live</p>
-            </div>
+            <h4 className="font-bold text-[#111111] mb-2">Connection Failed</h4>
+            <p className="text-xs text-[#6B7280] mb-5 max-w-xs leading-relaxed">{errorMsg}</p>
             <button
-              onClick={() => onConnect(fullPhone, true)}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90"
-              style={{ background: "var(--vp-color)" }}
+              onClick={() => { setStatus("idle"); setErrorMsg(""); }}
+              className="w-full py-3 rounded-xl text-sm font-bold border border-[#E5E7EB] text-[#374151] hover:border-[#9CA3AF] mb-2"
             >
-              Got it
+              Try Again
             </button>
+            <button onClick={onClose} className="text-xs text-[#9CA3AF] hover:text-[#6B7280]">Dismiss</button>
           </div>
+        ) : (
+          <>
+            <div className="space-y-3 mb-5">
+              {[
+                { label: "Secure authorization",  desc: "Connect your WhatsApp Business account via Meta's secure OAuth flow" },
+                { label: "No manual setup",        desc: "Vela automatically subscribes to your account's messages" },
+                { label: "Instant activation",     desc: "Replies go live immediately after connecting" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-start gap-3 p-3.5 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA]">
+                  <div className="w-5 h-5 rounded-full bg-[#25D366]/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2 2 4-4" stroke="#25D366" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#111111]">{item.label}</p>
+                    <p className="text-[11px] text-[#6B7280] mt-0.5">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-[#9CA3AF] mb-5">You need a WhatsApp Business account with a verified phone number.</p>
+            <button
+              onClick={handleConnect}
+              disabled={status === "loading"}
+              className="w-full py-3 rounded-xl font-semibold text-white text-sm hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ background: "#25D366" }}
+            >
+              {status === "loading" ? (
+                <>
+                  <svg className="animate-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="5.5" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
+                    <path d="M7 1.5A5.5 5.5 0 0112.5 7" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  Connecting…
+                </>
+              ) : (
+                "Connect with Meta"
+              )}
+            </button>
+            <button onClick={onClose} className="w-full mt-2 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#9CA3AF]">
+              Cancel
+            </button>
+          </>
         )}
       </div>
     </Modal>
@@ -519,7 +384,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
 ══════════════════════════════════════ */
 type ChannelStatus = {
   instagram: { connected: boolean; username: string };
-  whatsapp:  { connected: boolean; phone: string; pending?: boolean };
+  whatsapp:  { connected: boolean; phone: string; displayName?: string };
 };
 
 function ChannelsPageContent() {
@@ -586,7 +451,6 @@ function ChannelsPageContent() {
     if (ig === "connected") {
       setChannels((prev) => ({ ...prev, instagram: { connected: true, username: username ?? "" } }));
       setToast({ msg: `Instagram connected${username ? ` as @${username}` : ""}`, type: "success" });
-      // Clear params from URL without navigation
       window.history.replaceState({}, "", "/app/channels");
     } else if (ig === "error") {
       const reason = searchParams.get("reason") ?? "unknown";
@@ -612,14 +476,11 @@ function ChannelsPageContent() {
     }
   };
 
-  const connectWhatsApp = (phone: string, isPending = false) => {
-    setChannels((prev) => ({ ...prev, whatsapp: { connected: !isPending, phone, pending: isPending } }));
+  const connectWhatsApp = (phone: string, displayName?: string) => {
+    setChannels((prev) => ({ ...prev, whatsapp: { connected: true, phone, displayName } }));
     setModal(null);
-    setToast({
-      msg: isPending ? "Setup saved — activation pending" : "WhatsApp Business connected",
-      type: isPending ? "info" : "success",
-    });
-    if (!isPending) track("channel_connected", { channel: "whatsapp" });
+    setToast({ msg: "WhatsApp Business connected", type: "success" });
+    track("channel_connected", { channel: "whatsapp" });
   };
 
   const disconnect = async (ch: "instagram" | "whatsapp") => {
@@ -674,7 +535,9 @@ function ChannelsPageContent() {
       key: "whatsapp" as const,
       name: t("channels.whatsapp.name"),
       desc: "Let Vela handle WhatsApp enquiries around the clock",
-      connectedDesc: channels.whatsapp.phone || "Connected",
+      connectedDesc: channels.whatsapp.displayName
+        ? `${channels.whatsapp.displayName}${channels.whatsapp.phone ? ` · ${channels.whatsapp.phone}` : ""}`
+        : channels.whatsapp.phone || "Connected",
       icon: (
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M10 2a8 8 0 0 1 6.928 12L18 18l-4.133-1.069A8 8 0 1 1 10 2z" stroke="#25D366" strokeWidth="1.6" strokeLinejoin="round"/>
@@ -722,8 +585,7 @@ function ChannelsPageContent() {
         {/* Social channels */}
         {CHANNELS.map((ch) => {
           const isConnected = ch.key === "instagram" ? channels.instagram.connected : channels.whatsapp.connected;
-          const isPending   = ch.key === "whatsapp" && channels.whatsapp.pending && !channels.whatsapp.connected;
-          const isLocked = isStarter && !isConnected && !isPending && connectedSocialCount >= config.channels;
+          const isLocked = isStarter && !isConnected && connectedSocialCount >= config.channels;
           const isDisc = disconnecting === ch.key;
 
           return (
@@ -756,11 +618,6 @@ function ChannelsPageContent() {
                             </svg>
                             Pro only
                           </span>
-                        ) : isPending ? (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                            Pending activation
-                          </span>
                         ) : (
                           <span className={`flex items-center gap-1 text-[10px] font-semibold ${isConnected ? "text-green-600" : "text-[#9CA3AF]"}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
@@ -781,10 +638,6 @@ function ChannelsPageContent() {
                     >
                       {isDisc ? "…" : t("common.disconnect")}
                     </button>
-                  ) : isPending ? (
-                    <span className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-amber-200 text-amber-600 bg-amber-50 shrink-0">
-                      Pending
-                    </span>
                   ) : (
                     <button
                       onClick={() => handleConnectClick(ch.key)}
