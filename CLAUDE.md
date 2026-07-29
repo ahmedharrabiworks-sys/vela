@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 29, 2026 (Phase A items 6–9 complete, E2E Playwright infra live)*
+*Last updated: July 29, 2026 (Phase B pricing done, security hardening done — commit afc881f)*
 
 ---
 
@@ -184,7 +184,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 21. WhatsApp via Meta Cloud API (NOT Twilio for messaging)
 22. Phone: Oussama connects Twilio, wire inbound → agent → call logs
 23. Resend account → real email verification + booking notification emails
-24. Security round: rate limiting on `/api/ai/reply`, webhook signatures, remove token fallbacks, fix + run `migration_v5.sql` RLS
+24. ✅ **PARTIAL — commit `afc881f`** — Security hardening: (a) `/api/ai/reply`: 30 req/min per-tenant in-memory rate limiter + 2000-char input cap, both checked before any OpenAI call. **Limitation: in-memory resets on Vercel cold starts/across serverless instances — durable store (Redis/Supabase counter) needed for airtight enforcement, deferred post-launch.** (b) `/api/whatsapp/webhook`: Twilio HMAC-SHA1 signature verification via native crypto (no twilio SDK dependency) — fail closed (500 if `TWILIO_AUTH_TOKEN` absent, 403 if sig invalid). (c) `/api/webhooks/instagram`: hardcoded `"vela_webhook_token"` fallback removed; `META_WEBHOOK_VERIFY_TOKEN` and `META_APP_SECRET` now required — fail closed (500 if absent). (d) `/api/ai-agent/call-webhook`: `VAPI_WEBHOOK_SECRET` now required — fail closed (401 if absent). (e) `supabase/migration_v8.sql` — owner-scoped RLS policies for `marketing_generations` and `webhook_logs` (replaces `USING(true)` from migration_v5). **⚠️ ACTION REQUIRED before activating any webhook integration:** add env vars to Vercel — `TWILIO_AUTH_TOKEN`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `VAPI_WEBHOOK_SECRET`. None currently set (all four integrations are pending setup — nothing currently broken). **⚠️ RUN IN SUPABASE SQL EDITOR:** `supabase/migration_v8.sql`. **Remaining in this item:** (1) durable rate-limit store for `/api/ai/reply`; (2) Twilio-for-Meta-WhatsApp-DMs `webhooks/whatsapp/route.ts` sig verification (logging-only route, lower priority); (3) `site_visits` RLS documentation; (4) custom plan CHECK constraint (tied to Stripe work).
 
 ### Phase E — Launch
 25. Custom domain (getvela.ai or similar)
@@ -206,7 +206,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 - `websites`: id, tenant_id, name, slug (unique), draft_html, draft_spec, published_html, published_spec, is_published, published_at, domain, domain_status, chat, intake, versions, **design_strategy (JSONB, added Phase 1 of Design Engine rebuild)**, created_at, updated_at — RLS owner-scoped
 - `website_versions`: id, website_id (FK cascade), label, html, spec, created_at — RLS owner-scoped
 - `leads`: id, tenant_id, name, email, phone, source, status, ip_hash, form_data, created_at
-- `marketing_generations` + `webhook_logs`: defined in migration_v5.sql but **NOT RUN** (RLS is wide-open `USING(true)` — must scope to owner before running)
+- `marketing_generations` + `webhook_logs`: created by migration_v5.sql (confirmed run in production). **⚠️ PENDING:** run `supabase/migration_v8.sql` in Supabase SQL Editor to replace the wide-open `USING(true)` RLS with owner-scoped policies (currently safe because all routes use admin client, but must run before any future anon-key path to these tables)
 
 ## 10. PROMPT TEMPLATE FOR CLAUDE CODE
 
