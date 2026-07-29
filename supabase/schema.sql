@@ -13,7 +13,7 @@ create table if not exists tenants (
   id          uuid primary key default uuid_generate_v4(),
   owner_id    uuid references auth.users(id) on delete cascade not null,
   business_name text not null,
-  plan        text not null default 'starter' check (plan in ('starter', 'pro', 'premium')),
+  plan        text not null default 'starter' check (plan in ('starter', 'pro', 'premium', 'custom')),
   stripe_customer_id text,
   created_at  timestamptz default now()
 );

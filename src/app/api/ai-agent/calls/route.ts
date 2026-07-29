@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     const status = error.code === "42P01" ? 422 : 500;
-    return NextResponse.json({ error: error.message }, { status });
+    console.error("[ai-agent/calls] insert error:", error.message);
+    return NextResponse.json({ error: "Failed to save call record" }, { status });
   }
 
   return NextResponse.json({ ok: true, id: (data as any)?.id });

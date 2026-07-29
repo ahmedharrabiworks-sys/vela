@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 
-const CORS = { "Access-Control-Allow-Origin": "*" };
-
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
-}
 
 // Twilio signature validation — implements the official algorithm documented at
 // https://www.twilio.com/docs/usage/webhooks/webhooks-security#validating-signatures-from-twilio

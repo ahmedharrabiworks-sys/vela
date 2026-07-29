@@ -326,7 +326,11 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setAuthError(error.message);
+      // Log real error server-side equivalent; don't surface Supabase messages like
+      // "User already registered" which would reveal whether an email exists (enumeration).
+      // Once Resend + email confirmation is wired, Supabase handles this safely itself.
+      console.warn("[signup] auth error:", error.message);
+      setAuthError("Could not create account — please check your details and try again.");
       setLoading(false);
       return;
     }

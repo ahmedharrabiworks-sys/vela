@@ -26,7 +26,11 @@ async function vapiRequest(path: string, method: string, body?: unknown) {
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error((data as any)?.message ?? `Vapi ${method} ${path} → ${res.status}`);
+  if (!res.ok) {
+    // Log full Vapi error detail server-side; never surface internal API paths/messages to client
+    const detail = (data as any)?.message ?? `Vapi ${method} ${path} → ${res.status}`;
+    throw new Error(detail);
+  }
   return data;
 }
 
@@ -71,7 +75,8 @@ export async function POST(req: NextRequest) {
   const { tenant } = result;
 
   if (!process.env.VAPI_API_KEY) {
-    return NextResponse.json({ error: "VAPI_API_KEY not configured on server" }, { status: 422 });
+    console.error("[ai-agent/phone] VAPI_API_KEY not configured");
+    return NextResponse.json({ error: "Phone service is not configured — contact support." }, { status: 422 });
   }
 
   const admin = createSupabaseAdmin() as any;
@@ -192,7 +197,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[ai-agent/phone] provision error:", err?.message ?? err);
     return NextResponse.json(
-      { error: err?.message ?? "Failed to provision phone number" },
+      { error: "Failed to provision phone number — please try again." },
       { status: 502 }
     );
   }
