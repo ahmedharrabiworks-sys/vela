@@ -432,59 +432,53 @@
       "plans": {
         "starter": {
           "name": "Starter",
-          "description": "Everything you need to get started with AI automation.",
+          "description": "Get your AI agent live on one channel and start handling leads automatically.",
           "cta": "Get Started",
           "features": [
-            "1 custom domain",
-            "AI on 1 channel only",
-            "Basic website template",
-            "50 bookings/month",
-            "Generic AI responses",
-            "Basic calendar",
-            "No follow-up automation",
-            "Basic CRM",
-            "No white label",
+            "150 voice minutes/month",
+            "500 text messages/month",
+            "1 channel (phone, Instagram, or WhatsApp)",
             "1 team member",
-            "No analytics",
-            "Email support only"
+            "View-only CRM",
+            "Basic analytics",
+            "Email support (48h)",
+            "AI Voice Phone Agent",
+            "Website builder",
+            "Follow-up automation"
           ]
         },
         "pro": {
           "name": "Pro",
-          "description": "The complete system for serious businesses ready to scale.",
+          "description": "The complete system — AI phone agent, all channels, website, and full CRM.",
           "cta": "Get Started",
           "features": [
-            "2 custom domains",
-            "All 3 channels (WhatsApp + Instagram + Website)",
-            "Beautiful custom website",
-            "Unlimited bookings",
-            "AI trained on YOUR business",
-            "Full calendar + auto reminders",
-            "Auto follow-up sequences",
-            "Full CRM pipeline view",
-            "White label included",
-            "15 team members",
-            "Full analytics dashboard",
-            "Live chat support 24/7"
+            "650 voice minutes/month",
+            "Unlimited text messages",
+            "All 3 channels (phone, Instagram, WhatsApp)",
+            "AI Voice Phone Agent",
+            "1 website + custom domain",
+            "3 team members",
+            "Full CRM + automation",
+            "Full funnel analytics",
+            "Priority support (24h)",
+            "Unlimited AI training edits"
           ]
         },
         "premium": {
           "name": "Premium",
-          "description": "For businesses that demand the absolute best, no compromises.",
+          "description": "For businesses that demand zero compromise — priority everything, 3 websites, unlimited team.",
           "cta": "Get Premium",
           "features": [
-            "3 custom domains",
-            "All 3 channels + priority responses",
-            "Full custom website + animations",
-            "Unlimited bookings",
-            "Advanced AI — learns over time",
-            "Full calendar + reminders + analytics",
-            "Advanced follow-up sequences",
-            "Full CRM + revenue reports",
-            "White label included",
+            "1,300 voice minutes/month",
+            "Unlimited text messages",
+            "All 3 channels + priority routing",
+            "AI Voice Phone Agent + priority retraining",
+            "3 websites + custom domains",
             "Unlimited team members",
-            "Advanced analytics + exports",
-            "Dedicated account manager"
+            "Full CRM + custom pipelines",
+            "Full analytics + exports",
+            "Dedicated call + chat support",
+            "Done-for-you onboarding"
           ]
         }
       }
@@ -494,12 +488,30 @@
       "headline1": "Got questions?",
       "headline2": "We've got answers.",
       "questions": [
-        { "q": "How quickly can I get started?", "a": "Most businesses are live within 7 days. After signing up, our onboarding team connects your channels, trains the AI on your services, and tests everything before you go live. You don't need to write a single line of code." },
-        { "q": "Does Vela really work on Instagram and WhatsApp?", "a": "Yes. Vela integrates directly with Instagram's Official API and WhatsApp Business API. Every DM, comment reply, and story response is handled by your AI assistant. WhatsApp is especially powerful for booking-heavy businesses like clinics and salons." },
-        { "q": "Can I customize what the AI says?", "a": "Absolutely. During setup, you provide your service list, pricing, FAQs, tone of voice, and booking rules. The AI is trained specifically on your business. You can also set escalation rules so the AI hands off to a human for complex cases." },
-        { "q": "What happens if a customer asks something the AI doesn't know?", "a": "The AI gracefully acknowledges it doesn't have that information and offers to connect the customer with a team member. You receive an instant notification so you can jump in. You can also expand the AI's knowledge base at any time from your settings." },
-        { "q": "Is my customer data safe?", "a": "All data is stored encrypted in Supabase with Row Level Security — meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. GDPR and data protection compliance is built in." },
-        { "q": "Can I cancel my subscription?", "a": "Yes, any time. No contracts, no cancellation fees. You can cancel directly from your billing settings. Your data is available for export for 30 days after cancellation." }
+        {
+          "q": "How quickly can I get started?",
+          "a": "Most businesses are live within 7 days. After signing up, our onboarding team connects your channels, trains the AI on your services, and tests everything before you go live. You don't need to write a single line of code."
+        },
+        {
+          "q": "Does Vela really work on Instagram and WhatsApp?",
+          "a": "Yes. Vela integrates directly with Instagram's Official API and WhatsApp Business API. Every DM, comment reply, and story response is handled by your AI assistant. WhatsApp is especially powerful for booking-heavy businesses like clinics and salons."
+        },
+        {
+          "q": "Can I customize what the AI says?",
+          "a": "Absolutely. During setup, you provide your service list, pricing, FAQs, tone of voice, and booking rules. The AI is trained specifically on your business. You can also set escalation rules so the AI hands off to a human for complex cases."
+        },
+        {
+          "q": "What happens if a customer asks something the AI doesn't know?",
+          "a": "The AI gracefully acknowledges it doesn't have that information and offers to connect the customer with a team member. You receive an instant notification so you can jump in. You can also expand the AI's knowledge base at any time from your settings."
+        },
+        {
+          "q": "Is my customer data safe?",
+          "a": "All data is stored encrypted in Supabase with Row Level Security — meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. GDPR and data protection compliance is built in."
+        },
+        {
+          "q": "Can I cancel my subscription?",
+          "a": "Yes, any time. No contracts, no cancellation fees. You can cancel directly from your billing settings. Your data is available for export for 30 days after cancellation."
+        }
       ]
     },
     "cta": {

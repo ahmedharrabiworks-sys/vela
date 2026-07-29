@@ -8,6 +8,7 @@ import {
   TEMPLATE_BY_CATEGORY, TEMPLATE_BY_ID, GPT_CATEGORY_TO_TEMPLATE, OPTIONAL_SKIP_RULES,
   type SiteTemplate, type TemplateSection,
 } from "@/lib/website-templates";
+import { PLAN_CONFIG } from "@/lib/plan-config";
 
 export const dynamic = "force-dynamic";
 // 300s: two sequential GPT-4o calls + Unsplash fetches can exceed 60s on cold starts
@@ -2251,8 +2252,9 @@ function extractContactFromText(text: string): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// ── Plan-level website limits (matches plans.ts PLAN_CONFIG) ─────────────────
-const PLAN_WEBSITE_LIMITS: Record<string, number> = { starter: 1, pro: 2, premium: 3 };
+// ── Plan-level website limits — reads from the single source of truth ────────
+// PLAN_CONFIG is imported from plan-config.ts; do NOT maintain a separate dict.
+const PLAN_WEBSITE_LIMITS = PLAN_CONFIG as Record<string, { websites: number }>;
 
 // ── Generate a URL-safe slug unique in the websites table ─────────────────────
 async function generateUniqueSlug(baseName: string, admin: AdminClient): Promise<string> {
@@ -2757,11 +2759,12 @@ export async function POST(req: NextRequest) {
         if (!websiteId) {
           // Creating a brand-new website — check plan limit
           const planId = (tenant?.plan as string | undefined) ?? "starter";
-          const limit  = PLAN_WEBSITE_LIMITS[planId] ?? 1;
+          const limit  = PLAN_WEBSITE_LIMITS[planId]?.websites ?? 0;
           if (sites.length >= limit) {
-            return NextResponse.json({
-              error: `Your ${planId} plan allows ${limit} website${limit === 1 ? "" : "s"}. Upgrade your plan or delete an existing site to create a new one.`,
-            }, { status: 403 });
+            const msg = limit === 0
+              ? `The Website Builder is not included in your ${planId} plan. Upgrade to Pro to create your first site.`
+              : `Your ${planId} plan allows ${limit} website${limit === 1 ? "" : "s"}. Upgrade your plan or delete an existing site to create a new one.`;
+            return NextResponse.json({ error: msg }, { status: 403 });
           }
           // Generate slug from business name
           const slug = await generateUniqueSlug(spec.businessName || businessName, admin);

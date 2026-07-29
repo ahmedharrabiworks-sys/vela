@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { getProfile, saveProfile } from "@/lib/business-profile";
 import { usePlan } from "@/lib/plans";
+import { PLAN_CONFIG } from "@/lib/plan-config";
 import { useI18n } from "@/lib/i18n";
 import { useColorTheme } from "@/lib/theme";
 import Link from "next/link";
@@ -542,7 +543,7 @@ export default function SettingsPage() {
                     <p className="text-xs text-[#6B7280] mt-0.5">{t("settings.billing.renews")}</p>
                   </div>
                   <span className="text-2xl font-extrabold text-[#FF6B35]">
-                    {getProfile()?.plan === "premium" ? "$299" : getProfile()?.plan === "pro" ? "$159" : "$79"}
+                    ${(PLAN_CONFIG as Record<string, { price: number }>)[getProfile()?.plan ?? "starter"]?.price ?? 95}
                     <span className="text-sm font-medium text-[#6B7280]">/mo</span>
                   </span>
                 </div>

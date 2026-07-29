@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
 
+const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
+
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const { t } = useI18n();
@@ -62,7 +64,7 @@ export default function Pricing() {
 
         {/* Cards */}
         <div className="grid md:grid-cols-3 gap-5 md:gap-6 items-stretch">
-          {PLANS.map((plan) => {
+          {TIER_PLANS.map((plan) => {
             const price = annual ? plan.annual : plan.monthly;
             const planKey = plan.name.toLowerCase();
             return (
@@ -142,6 +144,21 @@ export default function Pricing() {
               </div>
             );
           })}
+        </div>
+
+        {/* Custom tier */}
+        <div className="mt-6 rounded-2xl border border-[#E5E7EB] bg-white p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#9CA3AF] mb-1">Custom</p>
+            <p className="text-lg font-bold text-[#111111]">From $1,500/mo — built around your business</p>
+            <p className="text-sm text-[#6B7280] mt-1">Negotiated voice volume, unlimited websites, white-label, account manager, and SLA. For multi-location franchises and enterprise teams.</p>
+          </div>
+          <Link
+            href="mailto:hello@tryvela.com"
+            className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200 whitespace-nowrap"
+          >
+            Talk to us
+          </Link>
         </div>
 
         <p className="text-center text-sm text-[#6B7280] mt-8">

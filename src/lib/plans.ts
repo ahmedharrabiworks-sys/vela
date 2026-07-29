@@ -2,50 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { getSupabase } from "./supabase";
-
-export const PLAN_CONFIG = {
-  starter: {
-    price: 79,
-    channels: 1,
-    bookingsPerMonth: 50,
-    customDomains: 1,
-    websites: 1,
-    teamMembers: 1,
-    analytics: false,
-    followUps: false,
-    whiteLabel: false,
-    aiTraining: "generic" as const,
-    support: "email" as const,
-  },
-  pro: {
-    price: 159,
-    channels: 3,
-    bookingsPerMonth: Infinity,
-    customDomains: 2,
-    websites: 2,
-    teamMembers: 15,
-    analytics: true,
-    followUps: true,
-    whiteLabel: true,
-    aiTraining: "custom" as const,
-    support: "liveChat" as const,
-  },
-  premium: {
-    price: 299,
-    channels: 3,
-    bookingsPerMonth: Infinity,
-    customDomains: 3,
-    websites: 3,
-    teamMembers: Infinity,
-    analytics: true,
-    followUps: true,
-    whiteLabel: true,
-    aiTraining: "advanced" as const,
-    support: "dedicated" as const,
-  },
-} as const;
-
-export type PlanId = keyof typeof PLAN_CONFIG;
+export { PLAN_CONFIG } from "./plan-config";
+export type { PlanId } from "./plan-config";
+import { PLAN_CONFIG, type PlanId } from "./plan-config";
 
 function readPlanFromStorage(): PlanId {
   if (typeof window === "undefined") return "starter";
@@ -84,8 +43,8 @@ export function usePlan() {
   return {
     plan,
     config: PLAN_CONFIG[plan],
-    isPro: plan === "pro" || plan === "premium",
-    isPremium: plan === "premium",
+    isPro: plan === "pro" || plan === "premium" || plan === "custom",
+    isPremium: plan === "premium" || plan === "custom",
     isStarter: plan === "starter",
   };
 }

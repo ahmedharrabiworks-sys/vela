@@ -551,7 +551,7 @@ export default function SignupPage() {
             )}
 
             <div className="grid md:grid-cols-3 gap-5 mb-8 items-start">
-              {PLANS.map((p) => {
+              {PLANS.filter((p) => !p.isCustom).map((p) => {
                 const isSelected = plan === p.id;
                 const price = billing === "annual" ? p.annual : p.monthly;
                 return (
