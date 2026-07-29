@@ -161,8 +161,8 @@ test.describe("A9 — Website Builder sidebar sites list", () => {
     const menuTrigger = getMenuTrigger(targetRow);
     await menuTrigger.click();
 
-    // Click "Rename" in the dropdown
-    await page.getByRole("button", { name: "Rename" }).click();
+    // Click "Rename" in the dropdown — exact: true avoids matching a site named "Renamed-..."
+    await page.getByRole("button", { name: "Rename", exact: true }).click();
 
     // The inline rename input should appear
     const renameInput = getSidebar(page).locator("input").first();
@@ -213,8 +213,8 @@ test.describe("A9 — Website Builder sidebar sites list", () => {
     // Confirmation modal appears: "Start a new website?"
     await expect(page.getByText("Start a new website?")).toBeVisible({ timeout: 10_000 });
 
-    // Confirm
-    await page.getByRole("button", { name: "New Website" }).click();
+    // Confirm — .last() because sidebar + button also matches "New website"
+    await page.getByRole("button", { name: "New Website" }).last().click();
 
     // After confirming, the workspace is cleared (no preview, back to chat)
     // The sidebar should still show ALL previous sites
@@ -276,11 +276,11 @@ test.describe("A9 — Website Builder sidebar sites list", () => {
     const menuTrigger = getMenuTrigger(targetRow);
     await menuTrigger.click();
 
-    await page.getByRole("button", { name: "Delete" }).click();
+    await page.getByRole("button", { name: "Delete", exact: true }).first().click();
 
     // Delete confirmation modal: "Its published page will go offline. This cannot be undone."
     await expect(page.getByText("cannot be undone")).toBeVisible({ timeout: 10_000 });
-    await page.getByRole("button", { name: "Delete" }).last().click(); // last "Delete" = the confirm button
+    await page.getByRole("button", { name: "Delete", exact: true }).last().click(); // confirm button
 
     // Wait for the site to disappear from sidebar
     await expect(getSidebar(page).getByText(targetName)).toBeHidden({ timeout: 15_000 });

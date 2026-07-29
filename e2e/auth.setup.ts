@@ -17,6 +17,9 @@ import path from "path";
 const SESSION_FILE = path.join(__dirname, ".auth", "user.json");
 
 setup("authenticate", async ({ page }) => {
+  // Login + website builder navigation can take >90s on cold start — override the global cap
+  setup.setTimeout(180_000);
+
   const email    = process.env.TEST_ACCOUNT_EMAIL;
   const password = process.env.TEST_ACCOUNT_PASSWORD;
 
@@ -51,11 +54,33 @@ setup("authenticate", async ({ page }) => {
   // Submit
   await page.locator('button[type="submit"]').click();
 
-  // Wait for redirect to app dashboard (any /app/* route)
-  await page.waitForURL(/\/app\//, { timeout: 30_000 });
+  // Wait for redirect to app dashboard (any /app or /app/* route)
+  await page.waitForURL(/\/app/, { timeout: 30_000 });
 
-  // Confirm we're logged in — sidebar or dashboard content should be visible
-  await expect(page.locator("text=/Dashboard|Website|Conversations/")).toBeVisible({ timeout: 15_000 });
+  // Confirm we're logged in — sidebar nav item visible
+  await expect(page.locator("text=/Dashboard|Website|Conversations/").first()).toBeVisible({ timeout: 15_000 });
+
+  // Navigate to the website builder and activate a built site so that
+  // the mobile-a8 tests (which can't use the sidebar at 375px) start with
+  // a built site active — not the empty new-project left by account setup.
+  await page.goto("/app/website");
+  await page.waitForSelector('[class*="animate-pulse"]', { state: "detached", timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(1_500); // let the site list API settle
+
+  // Click the first site button that has a truncated name span (a real site row)
+  const firstSiteBtn = page
+    .locator("span").filter({ hasText: /^Sites$/ }).locator("../../..")
+    .locator("button").filter({ has: page.locator("span[class*='truncate']") })
+    .first();
+
+  if (await firstSiteBtn.isVisible()) {
+    await firstSiteBtn.click();
+    // Short wait for the site-switch API call to land server-side.
+    // We don't need the preview to finish rendering — just the active-site
+    // state to be recorded before we capture storageState.
+    await page.waitForTimeout(3_000);
+    console.log("✅ Built site activated in website builder");
+  }
 
   // Save session to disk for reuse by all test specs
   await page.context().storageState({ path: SESSION_FILE });

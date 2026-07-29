@@ -28,6 +28,12 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   projects: [
+    // ── 0. One-time account + site creation — run this ONCE to bootstrap test data ─
+    {
+      name: "create-account",
+      testMatch: /create-test-account\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 900 } },
+    },
     // ── 1. Auth setup — runs first, saves session to e2e/.auth/user.json ─────
     {
       name: "setup",
@@ -35,12 +41,15 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     // ── 2. Phase A8 — mobile collision at 375×667 ────────────────────────────
+    // Use Chromium (not WebKit/Safari) to avoid needing the WebKit browser install.
+    // Pixel 5 is a Chromium-based device; override viewport to iPhone SE dimensions.
     {
       name: "mobile-a8",
       dependencies: ["setup"],
       testMatch: /phase-a8-.*\.spec\.ts/,
       use: {
-        ...devices["iPhone SE"],
+        ...devices["Pixel 5"],
+        viewport: { width: 375, height: 667 },
         storageState: "e2e/.auth/user.json",
       },
     },
