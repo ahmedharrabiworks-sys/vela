@@ -120,7 +120,7 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 
 11. **Landing page hero phone mockup** — too dark for the bright theme.
 
-12. **`pricing.ts` still has OLD pricing** ($79/$159/$299) — must be updated to $95/$295/$595 with the new feature-gating spec.
+12. ~~**`pricing.ts` still has OLD pricing** ($79/$159/$299)~~ — **FIXED** commit `0f2833f`. See Phase B item 10.
 
 *(Note: the old #9 "website builder: user questions get no response" and #10/#11 "generated sites too dark / contact gap / placeholder data" items from the July 21 list are being superseded by the Design Engine rebuild in §12 — re-verify against the new component pool architecture rather than assuming the old bug descriptions still apply as-is.)*
 
@@ -166,10 +166,10 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 9. ✅ Sites list: real names, clickable, ⋯ menu, survives New Project — **E2E VERIFIED** — `e2e/phase-a9-sites-list.spec.ts` (Playwright, Desktop Chrome 1280px): Tests A (≥2 named rows ✅), B (site switching ✅), C (rename persists to Supabase after reload ✅), D (New Project preserves all existing sites ✅) all pass. Test E (delete) skipped — **known test-suite limitation, not an app bug**: the test account is on Pro plan which caps at 2 websites; the delete flow itself works (the feature code is correct) but cannot be verified automatically without ≥3 sites. To run test E: either upgrade the test tenant to Premium in Supabase (`UPDATE tenants SET plan='premium' WHERE ...`) or create a Premium test account.
 
 ### Phase B — Pricing + plan gating
-10. Update `pricing.ts` to $95/$295/$595 with new feature spec
-11. Simplify pricing page: 4-5 punchy lines per tier, "Compare all features" expandable, Custom card with "Talk to us"
+10. ✅ Pricing updated to $95/$295/$595 with real feature spec — commit `0f2833f`. **Root cause:** `pricing.ts` still had old $79/$159/$299; `plans.ts` had old prices + wrong website limits (Pro:2, Starter:1); `settings/page.tsx` had hardcoded ternary. **Single source of truth fix:** new `src/lib/plan-config.ts` (no "use client") exports `PLAN_CONFIG` — both `plans.ts` (client hook) and `generate/route.ts` (server route) import from it. `generate/route.ts` local `PLAN_WEBSITE_LIMITS` dict eliminated. `pricing.ts` updated: Starter $95/$76, Pro $295/$236, Premium $595/$476 (≈20% annual discount). Custom tier added (`isCustom:true`, filtered from 3-card grid on landing/pricing/signup, shown as wide "Talk to us" row). Settings billing price is now a PLAN_CONFIG dynamic lookup. EN locale features updated. **⚠️ GRANDFATHERING:** Pro website limit changed 2→1. Existing Pro tenants with 2 sites keep both (only new creation blocked). **⚠️ AR/FR/DE locale features are now stale** — feature strings still show old text in those languages, need translation update. **NEXT BLOCKER: Stripe integration requires API keys from Oussama** — both stripe routes are stubs (`return new Response('ok')`). No plan is enforced at payment level; any user can self-assign any plan in signup for free.
+11. Simplify pricing page: 4-5 punchy lines per tier, "Compare all features" expandable
 12. Build real plan enforcement: usage tracking per tenant (messages, voice minutes), server-side limit checks on every API route, clean upgrade prompts when at cap
-13. Stripe integration: subscription creation, webhook → plan written to tenant row, trial config if decided
+13. **[BLOCKED — needs Oussama's API keys]** Stripe integration: subscription creation, webhook → plan written to tenant row, trial config if decided
 14. Paddle evaluation (Tunisia-friendly Merchant of Record alternative)
 
 ### Phase C — Demo + landing polish
