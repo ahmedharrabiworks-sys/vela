@@ -9,7 +9,13 @@ export async function GET(req: NextRequest) {
   const token     = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN ?? "vela_webhook_token";
+  // Fail closed — hardcoded fallback removed; META_WEBHOOK_VERIFY_TOKEN must be set in env.
+  // Without it this endpoint cannot safely validate Meta's challenge request.
+  const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
+  if (!verifyToken) {
+    console.error("[webhook/instagram GET] META_WEBHOOK_VERIFY_TOKEN not configured");
+    return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
+  }
 
   if (mode === "subscribe" && token === verifyToken) {
     return new Response(challenge ?? "", { status: 200 });
@@ -21,15 +27,23 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.text();
 
-  // Verify HMAC-SHA256 signature
-  const signature = req.headers.get("x-hub-signature-256") ?? "";
-  const secret = process.env.META_APP_SECRET ?? "";
+  // Verify HMAC-SHA256 signature — fail closed.
+  // META_APP_SECRET must be set; without it we cannot verify the request origin
+  // and must not process events (a forged webhook could pollute tenant data).
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) {
+    console.error("[webhook/instagram POST] META_APP_SECRET not configured — rejecting request");
+    return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
+  }
 
-  if (secret && signature) {
-    const expected = "sha256=" + crypto.createHmac("sha256", secret).update(body).digest("hex");
-    if (signature !== expected) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-    }
+  const signature = req.headers.get("x-hub-signature-256") ?? "";
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 403 });
+  }
+
+  const expected = "sha256=" + crypto.createHmac("sha256", secret).update(body).digest("hex");
+  if (signature !== expected) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
 
   let payload: Record<string, unknown>;

@@ -12,6 +12,28 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+// ── Per-tenant in-memory rate limiter ──────────────────────────────────────
+// Keyed by tenantId (not IP) because the cost risk is per-tenant: a bot with any
+// valid tenantId can drain that tenant's AI budget. 30 req/min comfortably covers
+// normal heavy chat usage while capping attack cost to ~$0.12/min per tenant.
+// Limitation: resets on Vercel cold starts / across serverless instances — a durable
+// store (Redis or a Supabase counter) would be needed for airtight enforcement.
+const TENANT_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
+const TENANT_RATE_LIMIT = 30;
+const TENANT_WINDOW_MS  = 60_000;
+
+function isTenantRateLimited(tenantId: string): boolean {
+  const now   = Date.now();
+  const entry = TENANT_RATE_MAP.get(tenantId);
+  if (!entry || now - entry.windowStart >= TENANT_WINDOW_MS) {
+    TENANT_RATE_MAP.set(tenantId, { count: 1, windowStart: now });
+    return false;
+  }
+  if (entry.count >= TENANT_RATE_LIMIT) return true;
+  entry.count++;
+  return false;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const {
@@ -32,6 +54,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "tenantId and message are required" },
       { status: 400, headers: CORS }
+    );
+  }
+
+  // Input length cap — reject before any DB/AI work
+  if (message.length > 2000) {
+    return NextResponse.json(
+      { error: "Message too long (max 2000 characters)" },
+      { status: 400, headers: CORS }
+    );
+  }
+
+  // Per-tenant rate limit — checked before any OpenAI calls
+  if (isTenantRateLimited(tenantId)) {
+    return NextResponse.json(
+      { error: "Too many requests — please slow down" },
+      { status: 429, headers: CORS }
     );
   }
 

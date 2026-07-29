@@ -15,13 +15,17 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export async function POST(req: NextRequest) {
-  // Optional webhook secret check
+  // Fail closed — VAPI_WEBHOOK_SECRET must be set in production env.
+  // Without it we cannot verify the request is from Vapi; a forged end-of-call-report
+  // would insert fake rows into agent_calls and potentially appointments.
   const secret = process.env.VAPI_WEBHOOK_SECRET;
-  if (secret) {
-    const incoming = req.headers.get("x-vapi-secret");
-    if (incoming !== secret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    console.error("[call-webhook] VAPI_WEBHOOK_SECRET not configured — rejecting request");
+    return NextResponse.json({ error: "Service misconfigured" }, { status: 401 });
+  }
+  const incoming = req.headers.get("x-vapi-secret");
+  if (incoming !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: Record<string, any>;
