@@ -32,14 +32,21 @@ export async function POST(req: NextRequest) {
     if (cfg?.tenant_id) tenantId = cfg.tenant_id as string;
   }
 
-  // Log the incoming message
-  await admin.from("webhook_logs").insert({
-    tenant_id: tenantId,
-    channel: "whatsapp",
-    event_type: "incoming_message",
-    payload,
-    processed: false,
-  }).catch(() => null);
+  // Log the incoming message — best-effort; logging failure must never prevent the 200 ACK.
+  // Never chain .catch() directly on a Supabase builder (builders expose .then() but not
+  // .catch() — see webhooks/instagram and marketing route for the same fix rationale).
+  try {
+    const { error: logErr } = await admin.from("webhook_logs").insert({
+      tenant_id: tenantId,
+      channel: "whatsapp",
+      event_type: "incoming_message",
+      payload,
+      processed: false,
+    });
+    if (logErr) console.error("[webhook/whatsapp] log insert failed (non-fatal):", logErr.message);
+  } catch (logEx) {
+    console.error("[webhook/whatsapp] log save threw (non-fatal):", logEx instanceof Error ? logEx.message : logEx);
+  }
 
   return NextResponse.json({ ok: true });
 }

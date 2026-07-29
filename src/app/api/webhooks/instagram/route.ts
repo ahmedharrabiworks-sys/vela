@@ -59,14 +59,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Log all events for audit/debugging
-  await admin.from("webhook_logs").insert({
-    tenant_id: tenantId,
-    channel: "instagram",
-    event_type: (payload.object as string) || "unknown",
-    payload,
-    processed: false,
-  }).catch(() => null);
+  // Log all events — best-effort; logging failure must never prevent the 200 ACK.
+  // Never chain .catch() directly on a Supabase builder (builders expose .then() but not
+  // .catch() — same fix as webhooks/whatsapp and marketing route).
+  try {
+    const { error: logErr } = await admin.from("webhook_logs").insert({
+      tenant_id: tenantId,
+      channel: "instagram",
+      event_type: (payload.object as string) || "unknown",
+      payload,
+      processed: false,
+    });
+    if (logErr) console.error("[webhook/instagram] log insert failed (non-fatal):", logErr.message);
+  } catch (logEx) {
+    console.error("[webhook/instagram] log save threw (non-fatal):", logEx instanceof Error ? logEx.message : logEx);
+  }
 
   // Acknowledge immediately (Meta requires 200 within 20s)
   return NextResponse.json({ ok: true });
