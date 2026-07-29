@@ -576,7 +576,7 @@ export default function AITrainingPage() {
 
       {/* Auto-save toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#111111] text-white text-xs font-semibold rounded-full shadow-xl flex items-center gap-2 pointer-events-none">
+        <div className="fixed left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#111111] text-white text-xs font-semibold rounded-full shadow-xl flex items-center gap-2 pointer-events-none" style={{ bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M2 6l3 3 5-5" stroke="#4ADE80" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>

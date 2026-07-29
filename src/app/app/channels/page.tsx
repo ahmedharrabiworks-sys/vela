@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
 import { track } from "@/lib/track";
+import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
 import { COUNTRIES, countryFlag, type Country } from "@/lib/countries";
 
@@ -20,7 +21,7 @@ function Toast({ msg, type = "success", onDone }: { msg: string; type?: "success
   }, [onDone]);
   const iconColor = type === "error" ? "#DC2626" : type === "info" ? "#6B7280" : "#FF6B35";
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl max-w-sm text-center">
+    <div className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl max-w-sm text-center" style={{ bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         {type === "error"
           ? <path d="M2 2l10 10M12 2L2 12" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round"/>
@@ -571,6 +572,12 @@ function ChannelsPageContent() {
   }, []);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  // Signal VelaAssistant bubble to hide on mobile when a modal is open.
+  useEffect(() => {
+    setBottomSheetOpen(modal !== null);
+    return () => setBottomSheetOpen(false);
+  }, [modal]);
 
   // Handle OAuth callback params from URL
   useEffect(() => {

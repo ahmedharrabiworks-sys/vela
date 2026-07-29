@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getProfile } from "@/lib/business-profile";
 import { useI18n } from "@/lib/i18n";
+import { useBottomSheetOpen } from "@/lib/useBottomSheetState";
 
 type Message = {
   role: "user" | "assistant";
@@ -85,6 +86,7 @@ export function VelaAssistant() {
   const inputRef   = useRef<HTMLTextAreaElement>(null);
   const panelRef   = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isBottomSheetOpen = useBottomSheetOpen();
 
   const MAX_ATTACH   = 4;
   const MAX_IMG_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -253,11 +255,13 @@ export function VelaAssistant() {
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating button — hidden on mobile when a bottom sheet is open (avoids overlap) */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 left-6 sm:left-auto sm:right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "var(--vela-gradient)" }}
+        className={`fixed left-6 sm:left-auto sm:right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-[transform,opacity] duration-200${
+          isBottomSheetOpen && !open ? " opacity-0 pointer-events-none sm:opacity-100 sm:pointer-events-auto" : ""
+        }`}
+        style={{ background: "var(--vela-gradient)", bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}
         aria-label="Open Vela AI Assistant"
       >
         {!open && (

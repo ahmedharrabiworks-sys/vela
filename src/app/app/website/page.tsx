@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
+import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import type { WebsiteSpec } from "@/lib/website-renderer";
 
 // ── Spec helpers (for inline edit mode) ──────────────────────────────────────
@@ -1301,6 +1302,12 @@ export default function WebsitePage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs]);
+
+  // Signal VelaAssistant bubble to hide on mobile when publish panel is open.
+  useEffect(() => {
+    setBottomSheetOpen(showPublishPanel);
+    return () => setBottomSheetOpen(false);
+  }, [showPublishPanel]);
 
   // Auto-refresh visit count when publish panel opens.
   // Domain status is NOT auto-checked here — user must click "Check Status" explicitly

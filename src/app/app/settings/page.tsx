@@ -17,7 +17,7 @@ function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
     return () => clearTimeout(t);
   }, [onDone]);
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl">
+    <div className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl" style={{ bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <path d="M2 7l3 3 7-7" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>

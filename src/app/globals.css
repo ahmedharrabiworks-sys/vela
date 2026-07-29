@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Z-index scale (informal — add new layers here) ────────────────────────
+   10  .............. resize handles, local overlays
+   40  .............. mobile sidebar backdrop, publish panel backdrop
+   50  .............. sidebar, modals, panels, toasts, saving indicators
+   100 .............. website builder modals (rename/delete)
+   140 .............. VelaAssistant bubble
+   141 .............. VelaAssistant mobile backdrop
+   142 .............. VelaAssistant panel
+   199 .............. website context-menu backdrop
+   200 .............. command palette, page-level toasts, context menus
+   ──────────────────────────────────────────────────────────────────────── */
+
 /* ═══════════════════════════════════════════════════
    THEME CSS VARIABLES
    data-theme="classic" (default) | "ocean" | "sunset"
