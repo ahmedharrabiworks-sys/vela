@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 30, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**)*
+*Last updated: July 30, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**)*
 
 ---
 
@@ -147,6 +147,8 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 18. **Website Builder components/templates: NEVER fabricate trust signals** — no invented review counts, certifications, years in business, patient/client numbers, prices, or testimonial content. A component with no real supporting data is omitted, not filled with placeholders.
 19. **Website Builder architecture: bounded AI choice, not free-form.** GPT proposes selections (hero variant, trust/conversion components, etc.) from a defined pool; the server always validates eligibility and enforces the final composition. Never let GPT invent layout/structure outside the enforced pool — this was the root cause of the original broken/generic output before the template-assembly rebuild.
 20. **Build against placeholder credentials until final integration day.** Every feature depending on an external API (Meta/Instagram/WhatsApp, Stripe/Paddle, Resend, etc.) must be built and fully tested using empty/placeholder env vars and mocked API responses — never blocked waiting on a real account, verification, or key. Missing env var → honest "Not connected" UI state, never a fake "connected" one. Test logic against mocked responses shaped like the real API's documented responses. Report clearly which env vars are still placeholder-only after each build. Endgame: one final integration pass at the end — swap every placeholder for a real value, verify each connection live, one at a time.
+21. **Mission Control's access allowlist is hardcoded server-side, never database-driven.** If it lives in a database it can be modified via a SQL injection, a compromised admin route, or a supply-chain attack without touching deployed code. The allowlist must be a `const` in the source code — changing access requires a real code deployment. Re-checked on every request, not just at login. (See §13.)
+22. **Every AI-employee personality/mood/confidence trait must derive from a named real signal, or the trait doesn't exist yet for that employee (stays Level 0 / Observed).** No decorative personality scores, no synthetic mood indicators, no simulated confidence levels. Each displayed trait must map to a real queryable fact in the database. A trait with no real signal is omitted entirely — not zero-padded, not hidden, not estimated. (See §13.)
 
 ## 7. ROADMAP (CURRENT ORDER)
 
@@ -331,3 +333,189 @@ Phase 2c's 375px/768px verification for property-listings-grid and portfolio-gri
 
 **TEST-01 expanded — saas+minimal_luxury (nav-minimal) hard to trigger via real pipeline.**
 The test classifier in `e2e-test-phase2e-mobile.ts` is a simplified prompt that diverges from the production classifier in `route.ts`. Attempts to get `category=saas` for a SaaS business description failed (returned `other`), so the `nav-minimal` variant path was only verified via direct render (Test C in `e2e-test-phase2e-mobile.ts`), not through a real GPT classify→generate pipeline. To fully verify: would need to either (a) use a real authenticated session to call `/api/website/generate` with a SaaS business, or (b) confirm the production classifier returns `saas` for a known SaaS description by inspecting Vercel logs during a real generation.
+
+---
+
+## 13. MISSION CONTROL — LOCKED ARCHITECTURE (Owner Operating System)
+
+*Architecture decisions locked in design discussion. Implementation begins with Phase 1 schema additions. This section is a decision record — not a feature spec to be reinterpreted.*
+
+---
+
+### Core Philosophy
+
+Mission Control is an **operating system**, not a dashboard. The dashboard is one renderer of it. The distinction matters: an OS has persistent state, autonomous actors, authority boundaries, and a chain of escalation. A dashboard only reads and displays.
+
+**The hard real-signal rule** (also Hard Rule 22): every personality/mood/confidence trait attributed to an AI employee must derive from a named, queryable real signal in the database. If no real signal exists for a trait, the trait does not exist yet for that employee — it stays Level 0 / Observed. No synthetic indicators. No decorative numbers. No simulated activity.
+
+**UI claim discipline**: every number, status badge, trend line, or health score rendered in Mission Control must map to a real queryable fact. Fake zeros are not acceptable (a zero count is only shown when a real query returned zero rows). Decorative metrics that fill space are not acceptable. If the data doesn't exist yet, the section shows an honest empty/pending state.
+
+Built in three sequential phases, not one v1:
+- Phase 1 — Financial/Customer/Activity Data Layer (real data foundation, no AI employees yet)
+- Phase 2 — AI-Employee Layer (autonomous actors on top of the Phase 1 data layer)
+- Phase 3 — Security Agent (active adversarial probing, separate larger effort)
+
+---
+
+### Access Control *(built before any Phase 1 route ships)*
+
+Access control is a prerequisite — no Phase 1 route is exposed until this is in place.
+
+**Allowlist model** (also Hard Rule 21):
+- A `const ALLOWED_EMAILS: string[]` hardcoded in the server-side route file — never a database table, never a Supabase row, never an env var that can be changed without a deploy.
+- On every authenticated request to any `/mission-control/*` route: check `ALLOWED_EMAILS.includes(session.user.email)`. If not matched: call `supabase.auth.signOut()` immediately and return 401. No exceptions, no grace period.
+- Allowlist is re-checked on **every request**, not only at login. A session cookie that was valid at login does not persist access if the allowlist changes in a new deploy.
+
+**Isolation**:
+- Runs on an isolated subdomain (e.g. `ctrl.tryvela.com`) or a deeply nested path with its own middleware guard — never co-mingled with tenant-facing routes at the routing level.
+- Dedicated cookie key/prefix (e.g. `mc_session_`) so mission control session state is never shared with or overwriteable by the main app session.
+
+**TOTP**:
+- A genuine second factor — not a PIN, not a magic link, not a "remember this device" flow.
+- TOTP seed generated on first setup, stored encrypted, never exposed again.
+- Every login requires: email/password → 6-digit TOTP code → allowlist check. All three must pass.
+
+**Audit log** — append-only, no UPDATE or DELETE permitted:
+```sql
+CREATE TABLE mission_control_access_log (
+  id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email         TEXT NOT NULL,
+  action        TEXT NOT NULL,  -- 'login_attempt' | 'login_success' | 'login_failure' | 'request' | 'signout'
+  success       BOOLEAN NOT NULL,
+  ip_hash       TEXT,            -- SHA-256 of client IP — never raw IP stored
+  user_agent_hash TEXT,
+  path          TEXT,            -- route accessed
+  accessed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- No RLS policy that permits UPDATE or DELETE — append-only enforced at DB level
+-- No tenant_id column — this table is outside the tenant data model entirely
+```
+
+---
+
+### Phase 1 — Financial / Customer / Activity Data Layer
+
+Phase 1 is purely a **data layer** — no AI employees, no autonomous actions, no task chains. It establishes the honest signal foundation that Phase 2 employees will read from. Every section either queries real data or shows an honest empty state.
+
+**Labeling discipline (hard rules for Phase 1 UI):**
+- Revenue figures are always labeled **"Theoretical MRR"** — never "MRR" or "Revenue." Theoretical = plan price × active tenants, before any real payment integration. Once Stripe/Paddle is live, a separate "Actual MRR" figure appears alongside it; theoretical is never silently replaced.
+- Churn-risk segmentation uses **"At-Risk"** (behavioral proxy — e.g. no login in N days, KB never trained) and **"Churned"** (account explicitly cancelled or plan downgraded to none) as distinct labeled states. Never conflate behavioral proxies with confirmed churn.
+
+**Phase 1 data sections and their sources:**
+
+| Section | Signal source | Blocked until |
+|---|---|---|
+| **Tenant roster** | `tenants` table — name, plan, city, industry, created_at | Nothing — always queryable |
+| **Plan breakdown** | `tenants.plan` grouped count | Nothing |
+| **Theoretical MRR** | `PLAN_CONFIG[plan].price × count(tenants)` by plan tier, summed | Always shown as "Theoretical" until Stripe live |
+| **Voice-minute margin** | `agent_calls.duration_seconds` SUM → minutes; margin = (plan voice allowance − used minutes) × $0.12/min cost | Requires `agent_calls` composite index (see schema additions) |
+| **Billing section** | Actual revenue, payment failures, subscription events | **Blocked** — shows "Billing data unavailable until Stripe/Paddle is connected" — never fake zeros |
+| **Engagement signals** | `agent_calls` count + `messages` count + `knowledge_base_updated_at` per tenant | Requires `knowledge_base_updated_at` column (see schema additions) |
+| **Activity aggregation** | Total calls, messages, leads, appointments across all tenants by day/week | `agent_calls`, `messages`, `leads`, `appointments` tables — real counts only |
+| **Activity drill-down** | Per-tenant detail view — same tables, filtered by `tenant_id` | Same |
+| **At-risk proxy** | Tenants matching: no login in 14+ days OR KB never trained (`knowledge_base_updated_at IS NULL`) OR zero agent calls in 30 days — always labeled "At-Risk (behavioral)" | Requires `knowledge_base_updated_at` column |
+
+**Schema additions required for Phase 1** (run as `migration_v13.sql` before any Phase 1 route ships):
+```sql
+-- 1. Track when a tenant's KB was last trained (at-risk proxy signal)
+ALTER TABLE tenant_config
+  ADD COLUMN IF NOT EXISTS knowledge_base_updated_at TIMESTAMPTZ;
+
+-- 2. Composite index on agent_calls for efficient voice-minute aggregation
+CREATE INDEX IF NOT EXISTS idx_agent_calls_tenant_started
+  ON agent_calls (tenant_id, started_at DESC);
+
+NOTIFY pgrst, 'reload schema';
+```
+
+`knowledge_base_updated_at` is written by `save-call/route.ts` and `ai-training/route.ts` whenever a successful KB save occurs — both routes already have the admin client write path, so this is a one-line addition to each.
+
+---
+
+### Phase 2 — AI-Employee Layer
+
+Phase 2 builds on Phase 1's data foundation. Employees read from Phase 1 signals; they cannot hallucinate signals that don't exist. Implementation is a separate larger effort — this section records the locked architecture decisions.
+
+**v1 Employee roster (5 employees):**
+
+| Employee | Primary scope | Honest caveat |
+|---|---|---|
+| **Website** | Website Builder — generate, publish, monitor visits | Can generate and publish; cannot autonomously update a live published site without owner approval |
+| **Trainer** | AI knowledge base — detect staleness, suggest re-training | Can read KB and signal staleness; cannot trigger a training call autonomously; KB write requires owner confirmation |
+| **Phone Agent** | Voice calls — monitor call quality, flag anomalies | Signal quality depends entirely on `agent_calls` data being present; Level 0 until real call history exists |
+| **Analytics + Insights** | Cross-tenant and per-tenant signal aggregation, trend detection | Read-only signal extraction; no predictive or prescriptive capability in v1 |
+| **Conversations** | Inbox / channel health — unanswered threads, channel connectivity | Level 0 until conversations table has real data; cannot send messages autonomously in v1 |
+
+**Departments** (grouping for health rollup — explicit dormant-state honesty):
+A department is **Dormant** (not "healthy" or "failing") when its employees have no real signal data to act on. Dormant is an honest state, not a failure state. A new tenant with zero calls, zero KB, zero conversations has all departments dormant — this is shown as-is, not hidden.
+
+**Four-level autonomy ceiling** (stored on the employee record, upgradeable only via a code change, never via a dashboard toggle):
+- **Level 0 — Observed**: employee watches signals, generates no output visible to the system. Used during data-collection phase.
+- **Level 1 — Draft**: employee creates drafts (reports, suggestions, proposed actions) that the owner reads. No execution. Owner discards or acts manually.
+- **Level 2 — Propose**: employee surfaces proposed actions in an approval queue with a clear description + reversibility label. Owner approves/rejects. Employee executes after approval.
+- **Level 3 — Act**: employee executes autonomously within a named, bounded set of actions. Every action logged with full audit trail. Hard ceiling: the named action set is defined in code, not configurable at runtime.
+
+No employee in v1 ships above Level 2. Level 3 is the ceiling for any employee post-v1, requiring explicit unlock via code change + documented rationale.
+
+**Company Brain vs Shared Operational KB** — two genuinely distinct layers:
+
+*Company Brain* (long-term institutional memory):
+- **Write-only from employees** — employees write verified facts to it; they cannot read back and self-modify what other employees wrote.
+- **Four closed promotion triggers** for a fact to be written: (1) verified fact confirmed by a real signal, (2) named source (which employee, which signal, which table/row), (3) timestamp of observation, (4) employee confidence level (must be above a hard threshold — not configurable at runtime).
+- **Read-only by owner** — the owner reads it; employees cannot query it to inform their own decisions (prevents circular reinforcement loops).
+
+*Shared Operational KB* (short-term working memory):
+- **Employee read/write** — employees read from it to inform current task execution, write interim findings.
+- **Scoped by department** — an employee in the Conversations dept cannot write to the Website dept's KB scope.
+- **Confidence-stamped** — every entry carries a confidence level; low-confidence entries are visually differentiated; they decay (are marked stale) after a configurable TTL.
+
+**Task chain model** — hybrid auto-advance / approval-queue:
+- Steps within an employee's autonomy ceiling auto-advance without owner interruption.
+- Steps that exceed the employee's autonomy ceiling enter the approval queue automatically — the chain pauses, the owner is notified, and execution resumes only after explicit approval.
+- No task chain ever silently skips an approval gate. If the approval queue is unattended for 72 hours, the chain times out and the employee returns to its safe default action.
+
+**Direct escalation trigger** — two conditions must be simultaneously true (AND, not OR):
+1. **Active harm**: an ongoing action is producing confirmed negative effects (data loss, message sending error, customer-visible failure).
+2. **No safe containment**: the employee's named safe default action cannot stop or contain the harm.
+
+If only condition 1 is true but the safe default action can contain it: execute safe default, log, notify owner asynchronously.
+If only condition 2 is true (uncertain but not actively harmful): pause, log, enter approval queue.
+Both must be true simultaneously to trigger immediate owner interrupt.
+
+**Per-employee safe default action** — a named, documented, always-available fallback defined in code before any execution authority is granted:
+- Must be defined and reviewed before the employee is allowed any Level 2+ autonomy.
+- Must be reversible or at minimum idempotent.
+- Examples: Website employee's safe default = "pause any pending publish, preserve draft" · Phone employee's safe default = "stop accepting calls, log reason" · Trainer employee's safe default = "stop any pending KB write, preserve existing KB intact."
+
+**Two-level health rollup**:
+Employee health score → aggregated to Department health score → aggregated to Company health score. Each level has its own weighting logic. A department with one dormant employee and one healthy employee is not marked as sick — dormant employees do not drag down the aggregate; only employees with real signal data below threshold contribute negatively.
+
+---
+
+### Phase 3 — Security Agent Real Capability
+
+Phase 3 is a separate, larger effort. Not scoped for Phase 1 or Phase 2 timelines. Architecture decisions locked here as a record.
+
+The Security Agent is not a dashboard panel or a log viewer — it has **active adversarial probing** capability:
+- Runs on a defined schedule (not continuous) to avoid false-positive storm during normal operation.
+- Probes its own system: attempts known attack vectors against Vela's own endpoints (rate-limit bypass, IDOR variants, injection patterns) in a sandboxed staging context.
+- Does not probe production live traffic — production probing is a scheduled offline replay against a shadow copy.
+
+**Authority ceiling**: fail-closed / deny / pause / rollback only. The Security Agent can:
+- Block a request pattern it identifies as malicious (fail-closed).
+- Pause a subsystem (e.g. pause new webhook ingestion) while a potential attack is investigated.
+- Roll back a reversible operation (e.g. undo a KB write that triggered a pattern match).
+
+The Security Agent **cannot**:
+- Permanently delete data.
+- Revoke user accounts.
+- Change configuration.
+- Take any irreversible action.
+
+**Escalation threshold**: genuinely rare. The Security Agent should be able to contain and log the vast majority of incidents autonomously without owner interrupt. Direct escalation is reserved for: confirmed credential compromise (not suspected), confirmed data exfiltration in progress, or an attack pattern that exceeds the agent's containment authority ceiling.
+
+---
+
+### Parking Lot *(decisions not yet finalized — do not treat as final)*
+
+- **Custom-tier pricing moving to self-serve à-la-carte**: discussed but not settled. When pricing/billing is revisited, this possibility should be re-evaluated from scratch — do not assume it's the direction or implement it preemptively. The current locked pricing (§4) and `isCustom: true` flag in `pricing.ts` remain authoritative until explicitly changed.
