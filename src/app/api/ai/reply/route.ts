@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
   /* ── 4. Save customer message ── */
   await admin.from("messages").insert({
     conversation_id: convId,
+    tenant_id: tenantId,
     role: "user",
     content: message,
   });
@@ -322,6 +323,7 @@ Rules:
   /* ── 9. Save AI reply ── */
   await admin.from("messages").insert({
     conversation_id: convId,
+    tenant_id: tenantId,
     role: "assistant",
     content: aiReply,
   });
