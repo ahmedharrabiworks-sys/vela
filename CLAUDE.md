@@ -400,6 +400,7 @@ Phase 1 is purely a **data layer** — no AI employees, no autonomous actions, n
 **Labeling discipline (hard rules for Phase 1 UI):**
 - Revenue figures are always labeled **"Theoretical MRR"** — never "MRR" or "Revenue." Theoretical = plan price × active tenants, before any real payment integration. Once Stripe/Paddle is live, a separate "Actual MRR" figure appears alongside it; theoretical is never silently replaced.
 - Churn-risk segmentation uses **"At-Risk"** (behavioral proxy — e.g. no login in N days, KB never trained) and **"Churned"** (account explicitly cancelled or plan downgraded to none) as distinct labeled states. Never conflate behavioral proxies with confirmed churn.
+- **"Currently online" users** cannot be tracked with real-time presence in the current infrastructure. The honest proxy is **"active within the last N minutes"** (based on `last_sign_in_at` or a session-update timestamp) — always labeled as such, never displayed as literal real-time presence.
 
 **Phase 1 data sections and their sources:**
 
@@ -414,6 +415,8 @@ Phase 1 is purely a **data layer** — no AI employees, no autonomous actions, n
 | **Activity aggregation** | Total calls, messages, leads, appointments across all tenants by day/week | `agent_calls`, `messages`, `leads`, `appointments` tables — real counts only |
 | **Activity drill-down** | Per-tenant detail view — same tables, filtered by `tenant_id` | Same |
 | **At-risk proxy** | Tenants matching: no login in 14+ days OR KB never trained (`knowledge_base_updated_at IS NULL`) OR zero agent calls in 30 days — always labeled "At-Risk (behavioral)" | Requires `knowledge_base_updated_at` column |
+
+**Usage-analytics and pattern-detection**: When Phase 2 Analytics + Insights detects a behavioral pattern (e.g. usage spike, churn-risk signal, anomalous call volume), the resulting proposed action flows through the existing **Level-1/Level-2 approval mechanism** — it enters the approval queue as a Draft (Level 1) or Proposal (Level 2), never auto-executed. There is no separate approval path for analytics-derived actions; the same autonomy ceiling and task-chain model that governs all employees applies here.
 
 **Schema additions required for Phase 1** (run as `migration_v13.sql` before any Phase 1 route ships):
 ```sql
@@ -436,7 +439,7 @@ NOTIFY pgrst, 'reload schema';
 
 Phase 2 builds on Phase 1's data foundation. Employees read from Phase 1 signals; they cannot hallucinate signals that don't exist. Implementation is a separate larger effort — this section records the locked architecture decisions.
 
-**v1 Employee roster (5 employees):**
+**v1 Employee roster (7 employees):**
 
 | Employee | Primary scope | Honest caveat |
 |---|---|---|
@@ -445,6 +448,12 @@ Phase 2 builds on Phase 1's data foundation. Employees read from Phase 1 signals
 | **Phone Agent** | Voice calls — monitor call quality, flag anomalies | Signal quality depends entirely on `agent_calls` data being present; Level 0 until real call history exists |
 | **Analytics + Insights** | Cross-tenant and per-tenant signal aggregation, trend detection | Read-only signal extraction; no predictive or prescriptive capability in v1 |
 | **Conversations** | Inbox / channel health — unanswered threads, channel connectivity | Level 0 until conversations table has real data; cannot send messages autonomously in v1 |
+| **Support Agent** | Customer support ticket triage, response drafting | Requires new `support_tickets` table + inbound email infra — a separate larger effort; does not wrap an existing system |
+| **DevOps Agent** | Build health, runtime error monitoring, regression and correctness detection | Distinct from Security Agent (Security = adversarial probing; DevOps = availability/correctness) — also a separate larger effort; does not wrap an existing system |
+
+Of the 7 employees, **5 wrap existing Vela systems** (Website, Trainer, Phone Agent, Analytics + Insights, Conversations). **Support Agent and DevOps Agent are new-capability builds** — they require new infrastructure before any Phase 2 work can begin on them and are sized as their own larger efforts, not cheap additions to Phase 2.
+
+**Psychology and behavioral learning** are NOT a separate employee. The Shared Operational KB — scoped by department, confidence-stamped, TTL-decaying — handles this role by design. Personality signals, mood indicators, and behavioral patterns are traits that employees write to the Shared KB as confidence-stamped entries; they do not require a dedicated employee actor.
 
 **Departments** (grouping for health rollup — explicit dormant-state honesty):
 A department is **Dormant** (not "healthy" or "failing") when its employees have no real signal data to act on. Dormant is an honest state, not a failure state. A new tenant with zero calls, zero KB, zero conversations has all departments dormant — this is shown as-is, not hidden.
