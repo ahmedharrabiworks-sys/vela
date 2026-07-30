@@ -209,6 +209,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 - `leads`: id, tenant_id, name, email, phone, source, status, ip_hash, form_data, created_at
 - `marketing_generations` + `webhook_logs`: created by migration_v5.sql (confirmed run in production). **⚠️ PENDING:** run `supabase/migration_v8.sql` in Supabase SQL Editor to replace the wide-open `USING(true)` RLS with owner-scoped policies (currently safe because all routes use admin client, but must run before any future anon-key path to these tables)
 - `whatsapp_accounts`: id, tenant_id (FK→tenants CASCADE), waba_id, phone_number_id (UNIQUE), phone_number, display_name, access_token, token_acquired_at, is_active, created_at, updated_at — RLS owner-scoped. **⚠️ PENDING:** run `supabase/migration_v9.sql` in Supabase SQL Editor. Also adds `whatsapp_waba_id TEXT` to `tenant_config`.
+- `marketing_generations`: **⚠️ PENDING:** run `supabase/migration_v10.sql` in Supabase SQL Editor — fixes wide-open `USING(true)` RLS policies left by migration_v5.sql (migration_v8.sql errored on this table in production; webhook_logs was fixed but marketing_generations was not). Until migration_v10.sql is run, any authenticated user can read/write any tenant's generated marketing content.
 
 ## 10. PROMPT TEMPLATE FOR CLAUDE CODE
 
