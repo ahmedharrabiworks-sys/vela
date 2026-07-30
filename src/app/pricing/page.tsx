@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -7,10 +7,30 @@ import { PLANS } from "@/lib/pricing";
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 import { getSupabase } from "@/lib/supabase";
 
+const COL_HEADERS = ["Starter", "Pro", "Premium", "Custom"];
+const PRO_COL = 1;
+
+const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
+  { label: "Voice minutes",        values: ["150/mo",           "650/mo",               "1,300/mo",               "Negotiated"]           },
+  { label: "Text messages",        values: ["500/mo",           "Unlimited",            "Unlimited",              "Unlimited"]            },
+  { label: "Channels",             values: ["1",                "All 3",                "All 3 + priority",       "All + custom"]         },
+  { label: "AI Voice Phone Agent", values: [false,              true,                   true,                     true]                   },
+  { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited",              "Unlimited"]            },
+  { label: "Websites",             values: ["—",                "1 + custom domain",    "3 + custom domains",     "Unlimited"]            },
+  { label: "Multi-location",       values: ["—",                "2 locations",          "Unlimited",              "Unlimited"]            },
+  { label: "CRM",                  values: ["View-only",        "Full + automation",    "Full + custom pipelines","Full + white-label"]   },
+  { label: "Team members",         values: ["1",                "3",                    "Unlimited",              "Unlimited"]            },
+  { label: "AI training",          values: ["Single interview", "Unlimited edits",      "Priority retraining",    "Dedicated tuning"]     },
+  { label: "Analytics",            values: ["Basic",            "Full funnel",          "Full + exports",         "Full + white-label"]   },
+  { label: "Support",              values: ["Email 48h",        "Priority 24h",         "Dedicated call + chat",  "Account manager + SLA"]},
+  { label: "Onboarding",           values: ["Self-serve",       "Self-serve + checklist","Done-for-you",          "White-glove + training"]},
+];
+
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [joined, setJoined] = useState<string | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
     async function loadPlan() {
@@ -132,21 +152,14 @@ export default function PricingPage() {
                 </div>
 
                 <ul className="flex flex-col gap-3 flex-1 mb-8">
-                  {plan.features.map((feat) => (
-                    <li key={feat.text} className="flex items-start gap-3">
-                      {feat.included ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "var(--vp-10)"} />
-                          <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.05)"/>
-                          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#BBBBBB" strokeWidth="1.5" strokeLinecap="round"/>
-                        </svg>
-                      )}
-                      <span className={`text-sm ${feat.included ? (plan.popular ? "text-white/80" : "text-[#374151]") : "text-[#BBBBBB] line-through"}`}>
-                        {feat.text}
+                  {plan.highlightFeatures.map((feat) => (
+                    <li key={feat} className="flex items-start gap-3">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                        <circle cx="8" cy="8" r="7" fill={plan.popular ? "rgba(255,107,53,0.2)" : "var(--vp-10)"} />
+                        <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span className={`text-sm ${plan.popular ? "text-white/80" : "text-[#374151]"}`}>
+                        {feat}
                       </span>
                     </li>
                   ))}
@@ -191,6 +204,66 @@ export default function PricingPage() {
             Talk to us
           </a>
         </div>
+
+        {/* Compare all features toggle */}
+        <div className="mt-10 text-center">
+          <button
+            onClick={() => setShowComparison((v) => !v)}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#6B7280] hover:text-[#111111] transition-colors"
+          >
+            {showComparison ? "Hide comparison ↑" : "Compare all features ↓"}
+          </button>
+        </div>
+
+        {/* Comparison table — horizontally scrollable on mobile */}
+        {showComparison && (
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
+            <table className="w-full min-w-[580px] text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-[#E5E7EB]">
+                  <th className="text-left py-4 px-5 font-semibold text-[#9CA3AF] text-xs uppercase tracking-wider w-40"></th>
+                  {COL_HEADERS.map((h, i) => (
+                    <th key={h}
+                      className={`py-4 px-4 text-center font-bold text-xs uppercase tracking-wider ${
+                        i === PRO_COL
+                          ? "text-[#FF6B35] bg-[#FF6B35]/5"
+                          : "text-[#374151]"
+                      }`}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_ROWS.map((row, ri) => (
+                  <tr key={row.label}
+                    className={`border-b border-[#F3F4F6] last:border-0 ${ri % 2 === 1 ? "bg-[#FAFAFA]" : "bg-white"}`}>
+                    <td className="py-3.5 px-5 font-medium text-[#374151] whitespace-nowrap">{row.label}</td>
+                    {row.values.map((val, ci) => (
+                      <td key={ci}
+                        className={`py-3.5 px-4 text-center ${ci === PRO_COL ? "bg-[#FF6B35]/5" : ""}`}>
+                        {typeof val === "boolean" ? (
+                          val ? (
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mx-auto">
+                              <circle cx="9" cy="9" r="8" fill="rgba(255,107,53,0.12)"/>
+                              <path d="M5.5 9l2.5 2.5 4.5-5" stroke="#FF6B35" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          ) : (
+                            <span className="text-[#D1D5DB] font-medium">—</span>
+                          )
+                        ) : (
+                          <span className={`${ci === PRO_COL ? "font-semibold text-[#111111]" : "text-[#6B7280]"}`}>
+                            {val}
+                          </span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Footer note */}
         <p className="text-center text-sm text-[#9CA3AF] mt-10">
