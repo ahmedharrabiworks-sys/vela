@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 30, 2026 (Phase B pricing done, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks)*
+*Last updated: July 30, 2026 (Phase A fully closed — 9/9 items ✅; Phase B pricing done, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks)*
 
 ---
 
@@ -97,20 +97,21 @@ Base platform $150/mo, then: extra website $25/mo, extra 500 voice min $80/mo (o
 - **`websites` table**: created with proper schema, RLS, indexes. Per-site: chat, intake, versions, draft/published HTML, slug, domain fields, **and now `design_strategy` JSONB (added Phase 1 of Design Engine rebuild — see §12)**
 
 ### 🔴 BROKEN / NOT WORKING (carried forward from July 21, unless noted as fixed in §12)
+*(Phase A fully closed July 30, 2026 — items 1–7 struck below, items 8/10/12 previously struck, items 9/11 remain open as Phase C scope.)*
 
-1. **Custom domain architecture is FUNDAMENTALLY WRONG.** Current code adds customer domains as Vercel project aliases on the MAIN Vela app — so `ahmedharrabi.com` loads the Vela landing page instead of the customer's published site. Oussama must first clean up Vercel → Settings → Domains (remove all test domains except `vela-g8h4.vercel.app` and `tryvela.com`). Then the whole domain system must be rebuilt using **middleware-based routing** (hostname → lookup website by domain → rewrite to `/site/[slug]`), NOT the Vercel Domains API on the main project.
+1. ~~**Custom domain architecture is FUNDAMENTALLY WRONG.** Current code adds customer domains as Vercel project aliases on the MAIN Vela app — so `ahmedharrabi.com` loads the Vela landing page instead of the customer's published site. Oussama must first clean up Vercel → Settings → Domains (remove all test domains except `vela-g8h4.vercel.app` and `tryvela.com`). Then the whole domain system must be rebuilt using **middleware-based routing** (hostname → lookup website by domain → rewrite to `/site/[slug]`), NOT the Vercel Domains API on the main project.~~ **FIXED** — Phase A items 1+2, commit `e28b284`. See §7.
 
-2. **Domain "Connected" badge is STILL fake** — has been "fixed" 4+ times and keeps regressing. Every line that sets `domainStatus` to `verified`/`connected` must be found via grep and killed except the one inside the explicit Check Status handler that confirms Vercel `verified && !misconfigured`.
+2. ~~**Domain "Connected" badge is STILL fake** — has been "fixed" 4+ times and keeps regressing. Every line that sets `domainStatus` to `verified`/`connected` must be found via grep and killed except the one inside the explicit Check Status handler that confirms Vercel `verified && !misconfigured`.~~ **FIXED** — Phase A item 3, commit `c8286af`. See §7.
 
-3. **Publish panel Save button may not work** — slug input shows preview URL but clicking Save has no visible effect in some tests. Need to verify if the slug actually persists to the `websites` row.
+3. ~~**Publish panel Save button may not work** — slug input shows preview URL but clicking Save has no visible effect in some tests. Need to verify if the slug actually persists to the `websites` row.~~ **FIXED** — Phase A item 4, commit `cb26c70`. See §7.
 
-4. **Pre-publish check says "Contact info present — No phone or email"** even when user provided both during intake. The check reads from somewhere that doesn't have the intake data.
+4. ~~**Pre-publish check says "Contact info present — No phone or email"** even when user provided both during intake. The check reads from somewhere that doesn't have the intake data.~~ **FIXED** — Phase A item 4, commit `cb26c70`. See §7.
 
-5. **Marketing tools: "AI generation failed"** on all 3 (Social Media Posts, Video Script, Broadcast Message). Root cause unknown — likely the API route, missing KB data, or OpenAI issue. Need Vercel logs.
+5. ~~**Marketing tools: "AI generation failed"** on all 3 (Social Media Posts, Video Script, Broadcast Message). Root cause unknown — likely the API route, missing KB data, or OpenAI issue. Need Vercel logs.~~ **FIXED** — Phase A item 5, commits `b223054` + `0a108a5`. See §7.
 
-6. **Training questions still too long** — the tone-pass prompt was written but may not have landed. Questions should be max 10 words, no examples by default.
+6. ~~**Training questions still too long** — the tone-pass prompt was written but may not have landed. Questions should be max 10 words, no examples by default.~~ **FIXED** — Phase A item 6, confirmed in `vapi-agent-config.ts:278`. See §7.
 
-7. **Phone training: mute + end call buttons not visible** during active calls in Overview and Training.
+7. ~~**Phone training: mute + end call buttons not visible** during active calls in Overview and Training.~~ **FIXED** — Phase A item 7, commit `e3e6742`. See §7.
 
 8. ~~**AI assistant on mobile** — the floating widget covers action buttons on smaller screens.~~ **FIXED & E2E VERIFIED** — see Phase A item 8 in §7.
 
