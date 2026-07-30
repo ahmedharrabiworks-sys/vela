@@ -23,7 +23,7 @@ Return ONLY valid JSON in this exact shape — no markdown, no explanation:
 }
 
 Rules:
-- services: extract each service/product mentioned with its price. Leave price/duration empty if not mentioned.
+- services: extract each service/product mentioned with its price. If TOOL-CALL DATA above includes a services field, parse that into the array (it is cleaner than the transcript). Leave price/duration empty if not mentioned.
 - faqs: always return [] (FAQ extraction not needed from a call).
 - business.hours: working hours if mentioned, else "".
 - business.address: address or location if mentioned, else "".
@@ -33,8 +33,14 @@ Rules:
 - If information is not in the transcript, use empty strings. Never invent data.`;
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({})) as { transcript?: string };
+  const body = await req.json().catch(() => ({})) as {
+    transcript?: string;
+    toolCallKb?: Record<string, string>;
+  };
   const transcript = (body.transcript ?? "").slice(0, MAX_TRANSCRIPT_LEN).trim();
+  // Structured answers collected by the interview's recordBusinessAnswer tool calls.
+  // These are more reliable than re-extracting from raw speech-to-text.
+  const toolCallKb = body.toolCallKb ?? {};
 
   if (!transcript) {
     return NextResponse.json({ error: "No transcript provided" }, { status: 400 });
@@ -58,6 +64,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "AI not configured" }, { status: 500 });
   }
 
+  // Inject tool-call data as authoritative context so GPT parses services correctly.
+  // hours/location/booking are overridden post-extraction (below), but services
+  // require GPT to format raw text into the structured array.
+  const toolCallEntries = Object.entries(toolCallKb).filter(([, v]) => v?.trim());
+  const toolCallSection = toolCallEntries.length > 0
+    ? "INTERVIEW TOOL-CALL DATA (authoritative — prefer these over transcript for each field):\n" +
+      toolCallEntries.map(([k, v]) => `${k}: ${v}`).join("\n") + "\n\n"
+    : "";
+
   // Extract structured KB from transcript
   let newKb: Record<string, unknown> = {};
   try {
@@ -66,7 +81,7 @@ export async function POST(req: NextRequest) {
       model: "gpt-4o",
       messages: [
         { role: "system", content: EXTRACT_SYSTEM },
-        { role: "user",   content: `Transcript:\n${transcript}` },
+        { role: "user",   content: `${toolCallSection}Transcript:\n${transcript}` },
       ],
       max_tokens: 1500,
       temperature: 0.1,
@@ -77,6 +92,28 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[save-call] extraction error:", err);
     return NextResponse.json({ error: "Failed to extract knowledge" }, { status: 500 });
+  }
+
+  // Override structured fields with tool-call values — deterministic, not GPT-dependent.
+  // Speech-to-text is noisy; the tool-call data was already normalized by the interview.
+  type TypedKb = {
+    business?: { hours?: string; address?: string; bookingPolicy?: string; tone?: string };
+    extra?: string;
+  };
+  const typedKb = newKb as TypedKb;
+  if (!typedKb.business) typedKb.business = {};
+  if (toolCallKb.hours)    typedKb.business.hours         = toolCallKb.hours;
+  if (toolCallKb.location) typedKb.business.address       = toolCallKb.location;
+  if (toolCallKb.booking)  typedKb.business.bookingPolicy = toolCallKb.booking;
+
+  // businessType and special have no dedicated KB slot — store in extra with markers.
+  // training-context reads them back to populate skip/confirm on repeat interviews.
+  const extraParts: string[] = [];
+  if (toolCallKb.businessType?.trim()) extraParts.push(`Business type: ${toolCallKb.businessType.trim()}`);
+  if (toolCallKb.special?.trim())      extraParts.push(`Unique selling point: ${toolCallKb.special.trim()}`);
+  if (extraParts.length > 0) {
+    const currentExtra = (typedKb.extra ?? "").trim();
+    typedKb.extra = [...(currentExtra ? [currentExtra] : []), ...extraParts].join("\n\n");
   }
 
   // Load existing KB and merge

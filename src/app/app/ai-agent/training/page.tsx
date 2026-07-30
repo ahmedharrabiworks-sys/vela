@@ -204,7 +204,7 @@ export default function TrainingPage() {
         fetch("/api/ai-agent/save-call", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: transcriptText }),
+          body: JSON.stringify({ transcript: transcriptText, toolCallKb }),
         }),
       ]);
 

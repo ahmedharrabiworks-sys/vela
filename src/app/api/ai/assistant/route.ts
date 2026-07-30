@@ -110,14 +110,26 @@ export async function POST(req: NextRequest) {
   const ivCtxSection = ivCtxLines.length > 0
     ? `\n## BUSINESS CONTEXT (already known — use this)\n${ivCtxLines.join("\n")}\n`
     : "";
+  // Extract businessType and special stored in kb.extra by save-call with markers
+  const ivBtMatch = kb.extra?.match(/^Business type:\s*(.+)$/m);
+  const ivSpMatch = kb.extra?.match(/^Unique selling point:\s*(.+)$/m);
+  const ivFaqsText = kb.extra
+    ? kb.extra
+        .replace(/^Business type:.*$/m, "")
+        .replace(/^Unique selling point:.*$/m, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+    : "";
   const ivAlreadyEntries = [
+    ivBtMatch ? `- business type: "${ivBtMatch[1].trim().slice(0, 120)}"` : "",
     (kb.services ?? []).length > 0
       ? `- services & prices: "${(kb.services ?? []).slice(0, 3).map((s: KbService) => `${s.name}${s.price ? ` ${s.price}` : ""}`).join(", ")}"`
       : "",
     kb.business?.hours         ? `- working hours: "${kb.business.hours}"`               : "",
     kb.business?.address       ? `- location: "${kb.business.address}"`                  : "",
     kb.business?.bookingPolicy ? `- booking method: "${kb.business.bookingPolicy}"`      : "",
-    kb.extra?.trim() ? `- common questions: "${kb.extra.slice(0, 120).trim()}${kb.extra.length > 120 ? "…" : ""}"` : "",
+    ivFaqsText ? `- common questions: "${ivFaqsText.slice(0, 120)}${ivFaqsText.length > 120 ? "…" : ""}"` : "",
+    ivSpMatch ? `- unique selling point: "${ivSpMatch[1].trim().slice(0, 120)}"` : "",
   ].filter(Boolean);
   const ivExistingSection = ivAlreadyEntries.length > 0
     ? `\n## ALREADY ON FILE — confirm these; do not ask from scratch\n${ivAlreadyEntries.join("\n")}\n\nFor each topic above: say "I have your [label] on file as '[value]' — still accurate?" Accept confirmation or update. Use the confirmed/updated value in the [save_kb:...] token. For topics NOT listed: ask the question as written.\n`
@@ -165,10 +177,10 @@ The voice agent (AI Agent section) goes further — it answers real phone calls,
 - **Instagram**: Coming soon — connect via Meta OAuth once launched.
 
 ## Plans & pricing
-- **Starter — $79/mo** ($63/mo billed annually): 1 channel, 50 bookings/month, basic CRM, 1 team member, email support.
-- **Pro — $159/mo** ($127/mo annually): All 3 channels, unlimited bookings, AI trained on your business, full CRM, auto follow-up, white label, 15 team members, full analytics, 24/7 live chat. **Most popular.**
-- **Premium — $299/mo** ($239/mo annually): Everything in Pro + dedicated account manager, advanced learning AI, unlimited team members, priority support, advanced analytics.
-- Annual billing saves 20%. Cancel anytime.
+- **Starter — $95/mo** ($76/mo billed annually): 1 channel, 500 messages/month, 150 voice minutes, basic CRM, 1 team member, email support 48h.
+- **Pro — $295/mo** ($236/mo annually): All 3 channels, unlimited messages, 650 voice minutes, AI voice phone agent, full CRM + automation, up to 5 languages, 1 website, 3 team members, full analytics, priority 24h support. **Most popular.**
+- **Premium — $595/mo** ($476/mo annually): Everything in Pro + 1,300 voice minutes, unlimited languages, 3 websites, unlimited team members, done-for-you onboarding, dedicated support call + chat.
+- Annual billing saves ~20%. Cancel anytime.
 
 ## When you don't know something specific about this business
 If the owner asks something you'd need their specific business data for (e.g. "what's my best service?" or "how many customers do I have?") and you don't have it in the live data above — give a genuinely helpful general answer first, then mention that training the AI will let Vela answer that specifically. Keep it light: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
@@ -186,23 +198,27 @@ Reply in the same language the user writes in. If ambiguous, default to ${locale
 - Never say "I'm an AI" or "As an AI…" — just be helpful.${interviewMode ? `
 
 ## TRAINING INTERVIEW MODE
-You're running a quick 5-step interview to build this business's AI knowledge base. Ask one question at a time. Keep questions short — no more than 10 words. Don't include examples in the question itself. If an answer is vague, ask ONE brief follow-up with a short example, then move on.
+You're running a quick 7-step interview to build this business's AI knowledge base. Ask one question at a time. Keep questions short — no more than 10 words. Don't include examples in the question itself. If an answer is vague, ask ONE brief follow-up with a short example, then move on.
 ${ivCtxSection}${ivExistingSection}
 ## QUESTIONS (ask in this exact order)
 For any topic ALREADY ON FILE above: confirm its value instead of asking fresh.
 
-Step 1 — Services & prices: Ask: "${ivSvcQ}"
+Step 1 — Business type: Ask: "What does your business do?"
 
-Step 2 — Hours: Ask: "What days and hours are you open?"
+Step 2 — Services & prices: Ask: "${ivSvcQ}"
 
-Step 3 — Location: Ask: "Where are you based?"
+Step 3 — Hours: Ask: "What days and hours are you open?"
 
-Step 4 — Booking: Ask: "How do customers book with you?"
+Step 4 — Location: Ask: "Where are you based?"
 
-Step 5 — FAQs: Ask: "What do customers ask you most often?"
+Step 5 — Booking: Ask: "How do customers book with you?"
+
+Step 6 — FAQs: Ask: "What do customers ask you most often?"
+
+Step 7 — Unique selling point: Ask: "What makes your business stand out?"
 
 ## VALIDATION — apply before moving on or saving
-VALID (proceed): Step 1 names at least one service; Step 2 has any days or times; Step 3 has any location info; Step 4 has any booking method; Step 5 has at least one question mentioned.
+VALID (proceed): Step 1 any business description; Step 2 names at least one service; Step 3 has any days or times; Step 4 has any location info; Step 5 has any booking method; Step 6 has at least one question mentioned; Step 7 any differentiator.
 
 NON-ANSWERS — do NOT save; gently re-ask:
 Single words ("hi", "yes", "no", "ok"), vague non-info ("a lot", "everything", "I don't know").
@@ -219,7 +235,7 @@ FAQs: write each as "Q: … A: …" in full sentences.
 After all topics are collected or confirmed: thank them briefly, show 2–3 bullets of what you collected (normalized), then emit this token on its own line:
 [save_kb:{"services":[{"name":"","price":"","duration":"","description":""}],"faqs":[],"business":{"hours":"","address":"","bookingPolicy":"","tone":"professional"},"extra":""}]
 
-Token rules: services from step 1; business.hours = normalized string; business.address from step 3; business.bookingPolicy from step 4; tone = professional/friendly/luxury from their writing style; extra = Q&A pairs from step 5 as "Q: ...\nA: ..." joined by \n\n; faqs always []. For confirmed topics (owner said yes / no changes), carry the stored value from ALREADY ON FILE into the token. Valid JSON only. Emit [save_kb:...] ONLY after all topics are done.` : ""}`;
+Token rules: services from step 2; business.hours = normalized string from step 3; business.address from step 4; business.bookingPolicy from step 5; tone = professional/friendly/luxury from their writing style; extra = join non-empty sections with \n\n: "Business type: {step 1 answer}" then Q&A pairs from step 6 as "Q: ...\nA: ..." then "Unique selling point: {step 7 answer}" (omit any section where the answer was not collected); faqs always []. For confirmed topics (owner said yes / no changes), carry the stored value from ALREADY ON FILE into the token. Valid JSON only. Emit [save_kb:...] ONLY after all topics are done.` : ""}`;
 
 
   // Build the user content: text-only or multi-part (text + vision images)

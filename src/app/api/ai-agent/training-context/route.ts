@@ -52,7 +52,21 @@ export async function GET(req: NextRequest) {
   if (kb.business?.address)      existingKb.location = kb.business.address;
   if (kb.business?.bookingPolicy) existingKb.booking = kb.business.bookingPolicy;
   if (kb.extra?.trim()) {
-    existingKb.faqs = kb.extra.slice(0, 200).trim() + (kb.extra.length > 200 ? "…" : "");
+    // Extract businessType and special stored by save-call with their markers
+    const btMatch = kb.extra.match(/^Business type:\s*(.+)$/m);
+    const spMatch = kb.extra.match(/^Unique selling point:\s*(.+)$/m);
+    if (btMatch) existingKb.businessType = btMatch[1].trim().slice(0, 150);
+    if (spMatch) existingKb.special      = spMatch[1].trim().slice(0, 150);
+
+    // Strip markers to get clean FAQ/notes text for the faqs slot
+    const faqText = kb.extra
+      .replace(/^Business type:.*$/m, "")
+      .replace(/^Unique selling point:.*$/m, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (faqText) {
+      existingKb.faqs = faqText.slice(0, 200) + (faqText.length > 200 ? "…" : "");
+    }
   }
 
   const ctx: TrainingContext = {
