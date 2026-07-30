@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 30, 2026 (Phase A fully closed — 9/9 items ✅; Phase B pricing done, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks)*
+*Last updated: July 30, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks)*
 
 ---
 
@@ -169,7 +169,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 
 ### Phase B — Pricing + plan gating
 10. ✅ Pricing updated to $95/$295/$595 with real feature spec — commit `0f2833f`. **Root cause:** `pricing.ts` still had old $79/$159/$299; `plans.ts` had old prices + wrong website limits (Pro:2, Starter:1); `settings/page.tsx` had hardcoded ternary. **Single source of truth fix:** new `src/lib/plan-config.ts` (no "use client") exports `PLAN_CONFIG` — both `plans.ts` (client hook) and `generate/route.ts` (server route) import from it. `generate/route.ts` local `PLAN_WEBSITE_LIMITS` dict eliminated. `pricing.ts` updated: Starter $95/$76, Pro $295/$236, Premium $595/$476 (≈20% annual discount). Custom tier added (`isCustom:true`, filtered from 3-card grid on landing/pricing/signup, shown as wide "Talk to us" row). Settings billing price is now a PLAN_CONFIG dynamic lookup. EN locale features updated. **⚠️ GRANDFATHERING:** Pro website limit changed 2→1. Existing Pro tenants with 2 sites keep both (only new creation blocked). **⚠️ AR/FR/DE locale features are now stale** — feature strings still show old text in those languages, need translation update. **NEXT BLOCKER: Stripe integration requires API keys from Oussama** — both stripe routes are stubs (`return new Response('ok')`). No plan is enforced at payment level; any user can self-assign any plan in signup for free.
-11. Simplify pricing page: 4-5 punchy lines per tier, "Compare all features" expandable
+11. ✅ Pricing page simplified — commit `33e8bc3`. `highlightFeatures: string[]` added to `Plan` interface in `pricing.ts`; each tier has 4–5 punchy differentiators on the card (full `features[]` array preserved). `pricing/page.tsx`: cards now render only `highlightFeatures` (checkmark-only, no X). "Compare all features ↓" toggle (collapsed by default) expands a 13-row semantic `<table>` across all 4 tiers with Pro column highlighted in orange. Table wrapped in `overflow-x:auto` container with `min-w-[580px]` — scrollable on 375px mobile, zero page overflow.
 12. Build real plan enforcement: usage tracking per tenant (messages, voice minutes), server-side limit checks on every API route, clean upgrade prompts when at cap
 13. **[BLOCKED — needs Oussama's API keys]** Stripe integration: subscription creation, webhook → plan written to tenant row, trial config if decided
 14. Paddle evaluation (Tunisia-friendly Merchant of Record alternative)
