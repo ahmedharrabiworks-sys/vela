@@ -11,6 +11,67 @@ import Link from "next/link";
 
 type Section = "business" | "ai" | "notifications" | "billing" | "appearance";
 
+type UsageData = {
+  messages:     { used: number; limit: number | null };
+  voiceMinutes: { used: number; limit: number | null };
+  periodStart:  string;
+  periodEnd:    string;
+  plan:         string;
+};
+
+/* ── Modal shell (matches channels/page.tsx pattern) ── */
+function ModalShell({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl border border-[#E5E7EB] shadow-2xl max-h-[92vh] overflow-y-auto"
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ── Usage-cap upgrade modal ── */
+function UsageCapModal({ used, limit, onClose }: { used: number; limit: number; onClose: () => void }) {
+  return (
+    <ModalShell onClose={onClose}>
+      <div className="p-6 text-center">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{ background: "var(--vela-gradient-tint)" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+              stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold text-[#111111] mb-2">You&apos;ve reached your message limit</h3>
+        <p className="text-sm text-[#6B7280] mb-6">
+          You&apos;ve used {used.toLocaleString()} of {limit.toLocaleString()} messages this month.
+          Upgrade to Pro for unlimited messages and all 3 channels.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">
+            Dismiss
+          </button>
+          <Link
+            href="/pricing"
+            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90"
+            style={{ background: "var(--vela-gradient)" }}
+            onClick={onClose}
+          >
+            Upgrade to Pro →
+          </Link>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
 /* ── Toast ── */
 function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
   useEffect(() => {
@@ -99,6 +160,11 @@ export default function SettingsPage() {
 
   const [whiteLabelEnabled, setWhiteLabelEnabled] = useState(false);
 
+  /* Usage meters */
+  const [usage, setUsage]               = useState<UsageData | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [showCapModal, setShowCapModal] = useState(false);
+
   /* Per-section saving / saved */
   const [savingSection, setSavingSection] = useState<Section | null>(null);
   const [savedSection, setSavedSection]   = useState<Section | null>(null);
@@ -174,6 +240,25 @@ export default function SettingsPage() {
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch usage when billing tab opens (lazy — only runs once per mount)
+  useEffect(() => {
+    if (section !== "billing" || usage !== null || usageLoading) return;
+    setUsageLoading(true);
+    fetch("/api/stats/usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: UsageData | null) => {
+        if (!data) return;
+        setUsage(data);
+        // Auto-open upgrade modal if Starter tenant is at/over the message cap
+        if (data.messages.limit !== null && data.messages.used >= data.messages.limit) {
+          setShowCapModal(true);
+        }
+      })
+      .catch(() => null)
+      .finally(() => setUsageLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
 
   function markSaved(s: Section) {
     setSavingSection(null);
@@ -348,6 +433,13 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-20">
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {showCapModal && usage?.messages.limit !== null && (
+        <UsageCapModal
+          used={usage!.messages.used}
+          limit={usage!.messages.limit!}
+          onClose={() => setShowCapModal(false)}
+        />
+      )}
 
       <div>
         <h1 className="text-xl font-bold text-[#111111]">{t("settings.title")}</h1>
@@ -563,6 +655,131 @@ export default function SettingsPage() {
                     {t("settings.billing.manageBilling")}
                   </button>
                 </div>
+              </div>
+
+              {/* ── Usage meters ── */}
+              <div className="rounded-xl border border-[#E5E7EB] overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#F3F4F6] bg-[#F9FAFB]">
+                  <p className="text-xs font-semibold text-[#374151] uppercase tracking-wider">Usage this month</p>
+                  {usage && (
+                    <p className="text-xs text-[#9CA3AF]">
+                      Resets {new Date(usage.periodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                  )}
+                </div>
+
+                {usageLoading && (
+                  <div className="px-5 py-5 space-y-4 animate-pulse">
+                    {[1, 2].map((i) => (
+                      <div key={i}>
+                        <div className="h-3.5 bg-[#F3F4F6] rounded w-32 mb-2" />
+                        <div className="h-2 bg-[#F3F4F6] rounded-full w-full" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!usageLoading && usage && (() => {
+                  const msgPct  = usage.messages.limit     ? Math.min(100, Math.round(usage.messages.used     / usage.messages.limit     * 100)) : 0;
+                  const vmPct   = usage.voiceMinutes.limit  ? Math.min(100, Math.round(usage.voiceMinutes.used  / usage.voiceMinutes.limit  * 100)) : 0;
+                  const msgWarn = usage.messages.limit     !== null && usage.messages.used     >= usage.messages.limit     * 0.9;
+                  const vmWarn  = usage.voiceMinutes.limit !== null && usage.voiceMinutes.used >= usage.voiceMinutes.limit  * 0.9;
+                  const anyWarn = msgWarn || vmWarn;
+                  const atCap   = usage.messages.limit !== null && usage.messages.used >= usage.messages.limit;
+
+                  return (
+                    <div className="px-5 py-4 space-y-4">
+                      {/* 90%+ warning banner */}
+                      {anyWarn && !atCap && (
+                        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#FFF7ED] border border-[#FF6B35]/20">
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5">
+                            <path d="M7 1.5L1.5 11h11L7 1.5z" stroke="#FF6B35" strokeWidth="1.3" strokeLinejoin="round"/>
+                            <path d="M7 6v3M7 10.5v.5" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                          <p className="text-xs text-[#9A3412] leading-relaxed">
+                            {msgWarn
+                              ? `You've used ${usage.messages.used.toLocaleString()} of ${usage.messages.limit!.toLocaleString()} messages this month — `
+                              : `You've used ${usage.voiceMinutes.used} of ${usage.voiceMinutes.limit} voice minutes — `
+                            }
+                            <Link href="/pricing" className="font-semibold underline">upgrade to Pro</Link>
+                            {" "}for unlimited messages.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* At-cap banner */}
+                      {atCap && (
+                        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#FEF2F2] border border-red-200">
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5">
+                            <circle cx="7" cy="7" r="5.5" stroke="#DC2626" strokeWidth="1.3"/>
+                            <path d="M7 4.5v3M7 9.5v.5" stroke="#DC2626" strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                          <p className="text-xs text-[#991B1B] leading-relaxed">
+                            Message limit reached. New messages are blocked until you upgrade or the month resets.{" "}
+                            <button
+                              onClick={() => setShowCapModal(true)}
+                              className="font-semibold underline"
+                            >
+                              Upgrade to Pro
+                            </button>
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Messages meter */}
+                      <div>
+                        <div className="flex items-baseline justify-between mb-1.5">
+                          <span className="text-xs font-medium text-[#374151]">Messages</span>
+                          <span className="text-xs text-[#6B7280]">
+                            {usage.messages.limit === null
+                              ? <span className="text-[#22C55E] font-medium">Unlimited</span>
+                              : <>{usage.messages.used.toLocaleString()} <span className="text-[#9CA3AF]">/ {usage.messages.limit.toLocaleString()}</span></>
+                            }
+                          </span>
+                        </div>
+                        {usage.messages.limit !== null ? (
+                          <div className="h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${msgPct}%`,
+                                background: msgPct >= 100 ? "#DC2626" : msgPct >= 90 ? "#FF6B35" : "var(--vela-gradient)",
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-1.5 rounded-full bg-[#DCFCE7]" />
+                        )}
+                      </div>
+
+                      {/* Voice minutes meter */}
+                      <div>
+                        <div className="flex items-baseline justify-between mb-1.5">
+                          <span className="text-xs font-medium text-[#374151]">Voice minutes</span>
+                          <span className="text-xs text-[#6B7280]">
+                            {usage.voiceMinutes.limit === null
+                              ? <span className="text-[#22C55E] font-medium">Unlimited</span>
+                              : <>{usage.voiceMinutes.used} <span className="text-[#9CA3AF]">/ {usage.voiceMinutes.limit}</span></>
+                            }
+                          </span>
+                        </div>
+                        {usage.voiceMinutes.limit !== null ? (
+                          <div className="h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${vmPct}%`,
+                                background: vmPct >= 100 ? "#DC2626" : vmPct >= 90 ? "#FF6B35" : "var(--vela-gradient)",
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-1.5 rounded-full bg-[#DCFCE7]" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* White-label toggle */}
