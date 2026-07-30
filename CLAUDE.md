@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 30, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**)*
+*Last updated: July 31, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**, **Mission Control Phase 1 Step 1 done — code deployed dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT, migration_v13.sql ⚠️ PENDING Oussama's run**)*
 
 ---
 
@@ -198,6 +198,28 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 
 26. ✅ **AI Trainer 2.0 — commit `698e272`, 50/50 checks.** Closes all remaining gaps from the Phase A item 6 follow-up audit. Five fixes: **(1)** `save-call/route.ts` now accepts `toolCallKb` from the training page — injects into GPT prompt for services parsing; deterministically overrides `business.hours/address/bookingPolicy` post-extraction (no longer re-extracted from noisy speech-to-text); appends `businessType` + `special` to `kb.extra` with "Business type:" / "Unique selling point:" markers. **(2)** `training/page.tsx` now passes `toolCallKb` to `/api/ai-agent/save-call` — was previously only sent to the call log. **(3)** `training-context/route.ts` now regex-extracts businessType + special back out of `kb.extra` markers and populates `existingKb.businessType` / `existingKb.special` — skip/confirm logic now fires for all 7 topics on repeat interviews, not just 5. Markers are stripped before mapping to `existingKb.faqs` so FAQ display is clean. **(4)** `assistant/route.ts` chat interview expanded 5 → 7 steps: Step 1 "What does your business do?" + Step 7 "What makes you stand out?"; `[save_kb:...]` token now writes both with markers into `extra`; `ALREADY ON FILE` block shows businessType + special when present; `ivFaqsText` strips markers from extra before showing as "common questions"; pricing fixed $79/$159/$299 → $95/$295/$595 to match `pricing.ts`. **(5)** `ai-training/route.ts` merge strategy flipped existing-wins → new-wins (re-training now actually updates KB; extra appended not discarded). **No new SQL — no new columns.** **Future AI Trainer 3.0 ideas (tracked, not scheduled):** differential re-training (only surface empty/stale topics); individual service editing without full interview; parse `kb.faqs` as structured Q&A array from interview; KB staleness signal (>90 days nudge); multi-language KB.
 
+### Mission Control — Phase 1 (active)
+Step 1 ✅ — Schema instrumentation (code deployed, migration pending):
+- `supabase/migration_v13.sql` created. **⚠️ PENDING: Oussama must run in Supabase SQL Editor.** Adds `knowledge_base_updated_at TIMESTAMPTZ DEFAULT NULL` to `tenant_config` + composite index `idx_agent_calls_tenant_period ON agent_calls(tenant_id, created_at)`. Note: §13 originally said `started_at` — corrected to `created_at` (the actual column name in `agent_calls`).
+- `save-call/route.ts` + `ai-training/route.ts`: both KB write paths now set `knowledge_base_updated_at: new Date().toISOString()` in the same payload. Tone/language/website/channel settings writes confirmed NOT touched — 19/19 static checks (`e2e-test-mc-phase1-schema.mjs`).
+- **After Oussama runs migration_v13.sql**, confirm with these SQL queries in Supabase SQL Editor:
+  ```sql
+  -- Column check:
+  SELECT column_name, data_type FROM information_schema.columns
+  WHERE table_name = 'tenant_config' AND column_name = 'knowledge_base_updated_at';
+
+  -- Index check (should see idx_agent_calls_tenant_period):
+  SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'agent_calls' ORDER BY indexname;
+
+  -- EXPLAIN for Phase 1 aggregation (should use the composite index, not full scan):
+  EXPLAIN SELECT tenant_id, SUM(duration_seconds)
+  FROM agent_calls WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY tenant_id;
+  ```
+
+Step 2 (next) — Access control: hardcoded allowlist route, TOTP, audit log. This is a prerequisite before any MC data routes are exposed — see §13.
+
+Step 3 (after) — Phase 1 data routes: Theoretical MRR, tenant roster, voice-minute margin, at-risk proxy, engagement signals, activity aggregation.
+
 ### Phase E — Launch
 27. Custom domain (getvela.ai or similar)
 28. E-commerce website type (future — dropped from active Design Engine scope, see §12)
@@ -214,7 +236,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 ## 9. SUPABASE SCHEMA (KEY TABLES)
 
 - `tenants`: id, owner_id, name, industry, city, phone, website, plan, created_at
-- `tenant_config`: tenant_id, knowledge_base, website_html, website_slug, website_versions (legacy — per-site versions now on `websites` table), website_visit_count, website_custom_domain/status/records, assistant_settings, agent_settings, instagram_connected, instagram_username, instagram_access_token (Page Access Token — non-expiring), instagram_business_id, **`instagram_page_id TEXT` (added by migration_v12.sql ⚠️ PENDING run)**
+- `tenant_config`: tenant_id, knowledge_base, website_html, website_slug, website_versions (legacy — per-site versions now on `websites` table), website_visit_count, website_custom_domain/status/records, assistant_settings, agent_settings, instagram_connected, instagram_username, instagram_access_token (Page Access Token — non-expiring), instagram_business_id, **`instagram_page_id TEXT` (added by migration_v12.sql ⚠️ PENDING run)**, **`knowledge_base_updated_at TIMESTAMPTZ` (added by migration_v13.sql ⚠️ PENDING run)**
 - `websites`: id, tenant_id, name, slug (unique), draft_html, draft_spec, published_html, published_spec, is_published, published_at, domain, domain_status, chat, intake, versions, **design_strategy (JSONB, added Phase 1 of Design Engine rebuild)**, created_at, updated_at — RLS owner-scoped
 - `website_versions`: id, website_id (FK cascade), label, html, spec, created_at — RLS owner-scoped
 - `leads`: id, tenant_id, name, email, phone, source, status, ip_hash, form_data, created_at
@@ -424,9 +446,11 @@ Phase 1 is purely a **data layer** — no AI employees, no autonomous actions, n
 ALTER TABLE tenant_config
   ADD COLUMN IF NOT EXISTS knowledge_base_updated_at TIMESTAMPTZ;
 
--- 2. Composite index on agent_calls for efficient voice-minute aggregation
-CREATE INDEX IF NOT EXISTS idx_agent_calls_tenant_started
-  ON agent_calls (tenant_id, started_at DESC);
+-- 2. Composite index on agent_calls for efficient voice-minute aggregation.
+-- Column is `created_at` (NOT `started_at` — agent_calls has no started_at column;
+-- original §13 draft had an error; migration_v13.sql uses the correct column).
+CREATE INDEX IF NOT EXISTS idx_agent_calls_tenant_period
+  ON agent_calls (tenant_id, created_at);
 
 NOTIFY pgrst, 'reload schema';
 ```

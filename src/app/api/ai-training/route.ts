@@ -89,7 +89,11 @@ export async function POST(req: NextRequest) {
   const { error } = await admin
     .from("tenant_config")
     .upsert(
-      { tenant_id: tenant.id, knowledge_base: JSON.stringify(saveKb) },
+      {
+        tenant_id:                  tenant.id,
+        knowledge_base:             JSON.stringify(saveKb),
+        knowledge_base_updated_at:  new Date().toISOString(),
+      },
       { onConflict: "tenant_id" }
     );
 

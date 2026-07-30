@@ -142,7 +142,10 @@ export async function POST(req: NextRequest) {
 
   const { error: updateErr } = await admin
     .from("tenant_config")
-    .update({ knowledge_base: JSON.stringify(merged) })
+    .update({
+      knowledge_base:             JSON.stringify(merged),
+      knowledge_base_updated_at:  new Date().toISOString(),
+    })
     .eq("tenant_id", tenant.id);
 
   if (updateErr) {
