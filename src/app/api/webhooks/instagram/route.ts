@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
+import { sendInstagramMessage } from "@/lib/instagram-send";
 
 // GET: Meta webhook verification challenge
 export async function GET(req: NextRequest) {
@@ -56,20 +57,77 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  // Resolve tenant from Instagram Business Account ID
-  const entries = (payload.entry as { id?: string }[]) ?? [];
-  let tenantId: string | null = null;
+  // ── Resolve tenant + credentials from Instagram Business Account ID ───────────
+  // entry[].id is the Instagram Business Account ID (populated when the webhook
+  // was subscribed via the IG Business Account).
+  const entries = (payload.entry as { id?: string; messaging?: unknown[] }[]) ?? [];
+  let tenantId:    string | null = null;
+  let igPageId:    string | null = null;
+  let igPageToken: string | null = null;
 
   for (const entry of entries) {
     if (!entry.id) continue;
     const { data: cfg } = await admin
       .from("tenant_config")
-      .select("tenant_id")
+      .select("tenant_id, instagram_page_id, instagram_access_token")
       .eq("instagram_business_id", entry.id)
       .maybeSingle();
     if (cfg?.tenant_id) {
-      tenantId = cfg.tenant_id as string;
+      tenantId    = cfg.tenant_id            as string;
+      igPageId    = cfg.instagram_page_id    as string | null;
+      igPageToken = cfg.instagram_access_token as string | null;
       break;
+    }
+  }
+
+  // ── DM reply loop ─────────────────────────────────────────────────────────────
+  // Errors at each step are isolated — they must never prevent the 200 ACK to Meta.
+  if (tenantId) {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
+
+    for (const entry of entries) {
+      for (const msg of ((entry.messaging ?? []) as { sender?: { id?: string }; message?: { text?: string } }[])) {
+        const senderId = msg?.sender?.id;
+        const msgText  = msg?.message?.text ?? "";
+
+        if (!senderId || !msgText) continue;
+        if (msgText.length > 2000) continue; // input cap — Hard Rule 2
+
+        let aiReply = "";
+        try {
+          const aiRes  = await fetch(`${appUrl}/api/ai/reply`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tenantId,
+              message: msgText,
+              channel: "instagram",
+              customerName: senderId,
+            }),
+          });
+          const aiData = await aiRes.json() as { reply?: string };
+          aiReply = aiData.reply ?? "";
+        } catch (err) {
+          console.error("[webhook/instagram] AI reply error for tenant", tenantId, ":", err);
+          continue;
+        }
+
+        if (!aiReply) continue;
+
+        if (!igPageId || !igPageToken) {
+          // Page credentials missing — tenant connected before migration_v12 ran.
+          // They must reconnect Instagram to refresh stored credentials.
+          console.warn("[webhook/instagram] Missing page credentials for tenant", tenantId,
+            "— user must reconnect Instagram to get Page token");
+          continue;
+        }
+
+        try {
+          await sendInstagramMessage(igPageId, igPageToken, senderId, aiReply);
+        } catch (err) {
+          console.error("[webhook/instagram] Send reply error for tenant", tenantId, ":", err);
+        }
+      }
     }
   }
 
@@ -82,7 +140,7 @@ export async function POST(req: NextRequest) {
       channel: "instagram",
       event_type: (payload.object as string) || "unknown",
       payload,
-      processed: false,
+      processed: tenantId !== null,
     });
     if (logErr) console.error("[webhook/instagram] log insert failed (non-fatal):", logErr.message);
   } catch (logEx) {

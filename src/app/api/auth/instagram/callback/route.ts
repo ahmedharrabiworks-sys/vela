@@ -4,7 +4,12 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 /**
  * GET /api/auth/instagram/callback
  * Receives the OAuth code from Meta, exchanges it for a token,
- * fetches the Instagram Business account, and stores everything in Supabase.
+ * fetches the Facebook Pages + linked Instagram Business Account,
+ * and stores the Page Access Token (non-expiring) + Page ID in Supabase.
+ *
+ * Token strategy: we store page.access_token (Page Access Token from /me/accounts),
+ * NOT the short-lived user access token from the initial code exchange (60-min TTL).
+ * The Page Access Token doesn't expire as long as the user retains their page role.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -27,7 +32,7 @@ export async function GET(req: NextRequest) {
   try {
     const redirectUri = `${appUrl}/api/auth/instagram/callback`;
 
-    // 1. Exchange code for short-lived user access token
+    // 1. Exchange code for short-lived user access token (used only to call /me/accounts)
     const tokenParams = new URLSearchParams({
       client_id: appId,
       client_secret: appSecret,
@@ -36,7 +41,7 @@ export async function GET(req: NextRequest) {
     });
 
     const tokenRes = await fetch(
-      `https://graph.facebook.com/v19.0/oauth/access_token?${tokenParams.toString()}`
+      `https://graph.facebook.com/v22.0/oauth/access_token?${tokenParams.toString()}`
     );
     const tokenData = await tokenRes.json() as { access_token?: string; error?: { message: string } };
 
@@ -45,30 +50,38 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/app/channels?instagram=error&reason=token_exchange`);
     }
 
-    const accessToken = tokenData.access_token;
+    const shortLivedUserToken = tokenData.access_token;
 
-    // 2. Fetch Facebook Pages linked to this account
+    // 2. Fetch Facebook Pages linked to this account.
+    // Each page object includes page.access_token — this is the non-expiring Page Access Token
+    // we will store (not the short-lived user token from step 1).
     const pagesRes = await fetch(
-      `https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`
+      `https://graph.facebook.com/v22.0/me/accounts?access_token=${shortLivedUserToken}`
     );
     const pagesData = await pagesRes.json() as { data?: Array<{ id: string; access_token: string }> };
 
     let igUsername = "";
     let igBusinessId = "";
+    let igPageId = "";
+    let igPageToken = "";
 
-    // 3. For each Page, check for linked Instagram Business Account
+    // 3. For each Page, check for a linked Instagram Business Account
     for (const page of pagesData.data ?? []) {
       const igCheckRes = await fetch(
-        `https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token || accessToken}`
+        `https://graph.facebook.com/v22.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token || shortLivedUserToken}`
       );
       const igCheckData = await igCheckRes.json() as { instagram_business_account?: { id: string } };
 
       if (igCheckData.instagram_business_account?.id) {
         igBusinessId = igCheckData.instagram_business_account.id;
+        // Capture the Page ID and Page Access Token — these are what we store.
+        // page.access_token is the non-expiring Page token from /me/accounts.
+        igPageId    = page.id;
+        igPageToken = page.access_token || shortLivedUserToken;
 
         // 4. Get the Instagram username
         const userRes = await fetch(
-          `https://graph.facebook.com/v19.0/${igBusinessId}?fields=username,name&access_token=${accessToken}`
+          `https://graph.facebook.com/v22.0/${igBusinessId}?fields=username,name&access_token=${igPageToken}`
         );
         const userData = await userRes.json() as { username?: string };
         igUsername = userData.username || "";
@@ -97,14 +110,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/app/channels?instagram=error&reason=no_tenant`);
     }
 
-    // 7. Upsert channel connection info
+    // 7. Upsert channel connection info.
+    // instagram_access_token = Page Access Token (non-expiring), NOT the short-lived user token.
+    // instagram_page_id = Facebook Page ID (needed to POST /{PAGE_ID}/messages for DM replies).
     await admin.from("tenant_config").upsert(
       {
         tenant_id: tenant.id,
         instagram_connected: true,
         instagram_username: igUsername,
-        instagram_access_token: accessToken,
+        instagram_access_token: igPageToken,
         instagram_business_id: igBusinessId,
+        instagram_page_id: igPageId,
       },
       { onConflict: "tenant_id" }
     );
