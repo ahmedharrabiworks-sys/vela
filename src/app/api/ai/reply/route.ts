@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
+import { getUsageSummary } from "@/lib/usage";
+import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -96,7 +98,26 @@ export async function POST(req: NextRequest) {
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
-  /* ── 2. Get or create conversation + lead ── */
+  /* ── 2. Plan-level message cap (Starter only — Pro/Premium/Custom = Infinity) ── */
+  const planId = ((tenant.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
+  const msgLimit = PLAN_CONFIG[planId]?.textMessages ?? PLAN_CONFIG.starter.textMessages;
+
+  if (msgLimit !== Infinity) {
+    const usage = await getUsageSummary(admin, tenantId);
+    if (usage.messagesUsed >= msgLimit) {
+      return NextResponse.json(
+        {
+          error: "You've reached your plan's message limit for this month. Upgrade to Pro for unlimited messages.",
+          limitType: "messages",
+          used: usage.messagesUsed,
+          limit: msgLimit,
+        },
+        { status: 429, headers: CORS },
+      );
+    }
+  }
+
+  /* ── 3. Get or create conversation + lead ── */
   let convId = conversationId ?? null;
   let leadId: string | null = null;
 
@@ -137,7 +158,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  /* ── 3. Load last 10 messages for context ── */
+  /* ── 4. Load last 10 messages for context ── */
   const { data: history } = await admin
     .from("messages")
     .select("role, content")
@@ -145,7 +166,7 @@ export async function POST(req: NextRequest) {
     .order("created_at", { ascending: true })
     .limit(10);
 
-  /* ── 4. Save customer message ── */
+  /* ── 5. Save customer message ── */
   await admin.from("messages").insert({
     conversation_id: convId,
     tenant_id: tenantId,
@@ -153,7 +174,7 @@ export async function POST(req: NextRequest) {
     content: message,
   });
 
-  /* ── 5. Load already-booked slots for double-booking prevention ── */
+  /* ── 6. Load already-booked slots for double-booking prevention ── */
   const { data: bookedSlots } = await admin
     .from("appointments")
     .select("datetime, service_name")
@@ -163,7 +184,7 @@ export async function POST(req: NextRequest) {
     .order("datetime", { ascending: true })
     .limit(20);
 
-  /* ── 6. Build system prompt ── */
+  /* ── 7. Build system prompt ── */
   type ServiceRow   = { name: string; price?: string; description?: string };
   type FaqRow       = { question: string; answer: string };
   type KbService    = { name: string; price?: string; duration?: string; description?: string };
@@ -275,7 +296,7 @@ Rules:
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation`;
 
-  /* ── 7. Call OpenAI ── */
+  /* ── 8. Call OpenAI ── */
   const apiKey = process.env.OPENAI_API_KEY;
   let aiReply = "Thank you for your message! I'll get back to you shortly.";
   let needsHuman = false;
@@ -312,7 +333,7 @@ Rules:
     }
   }
 
-  /* ── 8. Extract customer info (name/phone) from message ── */
+  /* ── 9. Extract customer info (name/phone) from message ── */
   const phonePattern = /(\+?\d[\d\s\-]{7,14}\d)/g;
   const phoneMatches = message.match(phonePattern);
   if (phoneMatches && leadId) {
@@ -320,7 +341,7 @@ Rules:
     await admin.from("leads").update({ phone: detectedPhone }).eq("id", leadId).eq("phone", null);
   }
 
-  /* ── 9. Save AI reply ── */
+  /* ── 10. Save AI reply ── */
   await admin.from("messages").insert({
     conversation_id: convId,
     tenant_id: tenantId,
@@ -328,13 +349,13 @@ Rules:
     content: aiReply,
   });
 
-  /* ── 10. Update conversation ── */
+  /* ── 11. Update conversation ── */
   const convUpdate: Record<string, unknown> = { last_message_at: new Date().toISOString() };
   if (needsHuman) convUpdate.needs_human = true;
 
   await admin.from("conversations").update(convUpdate).eq("id", convId);
 
-  /* ── 11. Booking + human-handoff detection via structured extraction ── */
+  /* ── 12. Booking + human-handoff detection via structured extraction ── */
   let booked = false;
   let booking: { datetime: string | null; service: string | null } | null = null;
 
