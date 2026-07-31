@@ -1,65 +1,102 @@
 -- ============================================================
--- VELA — Migration v13b: agent_calls PostgREST fix + schema repair
+-- VELA — Migration v13b: agent_calls creation + schema repair
 -- Safe to run multiple times (all IF NOT EXISTS / idempotent guards)
 -- Run in Supabase SQL Editor: Dashboard → SQL Editor → New query
 -- ============================================================
 --
--- WHAT HAPPENED (diagnostic findings, July 31, 2026):
+-- DIAGNOSTIC CONTRADICTION (July 31, 2026):
 --
---   1. agent_calls EXISTS in Postgres but has NEVER been accessible
---      via the PostgREST/Supabase JS API layer.
---      Root cause: migration_v6.sql created the table but has NO
---      "NOTIFY pgrst, 'reload schema'" — PostgREST's schema cache
---      never registered it. Every api-layer query since the table
---      was created has returned PGRST205 ("Could not find the table
---      in the schema cache"). All routes catch or swallow this error
---      so it was invisible to users.
+--   An earlier REST-layer diagnostic script reported agent_calls as
+--   "EXISTS" (no PGRST205/42P01 on a HEAD/count query). This conflicted
+--   with the authoritative signal: Supabase SQL Editor threw a raw
+--   Postgres 42P01 "relation does not exist" when running a statement
+--   that references the table directly.
 --
---   2. migration_v13.sql was run but ROLLED BACK.
---      Supabase SQL Editor wraps each run in a transaction.
---      The CREATE INDEX failed with 42P01 (agent_calls missing from
---      Postgres at that moment — BEFORE Oussama ran v6 to fix it).
---      The rollback also undid the ALTER TABLE that added
---      knowledge_base_updated_at, so that column is still missing.
+--   Rather than spending more time resolving the false-positive in the
+--   REST check, this migration is written to be IDEMPOTENT AND
+--   SELF-HEALING: the leading CREATE TABLE IF NOT EXISTS is a no-op if
+--   the table already exists, and correctly creates it if it doesn't.
+--   The migration is correct and safe in either state.
 --
---   3. migration_v6.sql's ALTER TABLE (tenant_config) partially
---      missing: knowledge_base and agent_settings are present
---      (added by an earlier ad-hoc change), but vapi_phone_number_id,
---      vapi_phone_number, vapi_assistant_id, and assistant_settings
---      are absent. This migration_v13b adds them all safely.
+--   The HEAD/count check returning no error when the table doesn't
+--   exist is a known-unknown (possibly a PostgREST quirk with count-only
+--   queries that bypass schema cache validation). Not worth chasing
+--   further — the fix works regardless.
 --
--- REAL-WORLD IMPACT (what has silently not worked):
+-- WHAT THIS MIGRATION REPAIRS:
 --
---   • End-of-call records from the phone agent → silently discarded
---     (PGRST205 caught in call-webhook try/catch since table existed)
---   • AI Agent "Calls" page → always empty (error → graceful [])
+--   1. agent_calls table was never reliably in production.
+--      migration_v6.sql was supposed to create it, but either never ran
+--      or produced a state inconsistent with what the routes expect.
+--      This migration creates it correctly, idempotently.
+--
+--   2. migration_v6.sql has NO "NOTIFY pgrst, 'reload schema'" — so
+--      even if the table existed at the Postgres level, PostgREST's
+--      schema cache would never have registered it (PGRST205 on all
+--      API-layer queries). This migration notifies PostgREST twice
+--      (before and after DDL) to ensure the cache is current.
+--
+--   3. migration_v13.sql was run in Supabase SQL Editor and ROLLED BACK
+--      in full: the Editor wraps each run in a transaction, so when
+--      CREATE INDEX hit 42P01, the preceding ALTER TABLE that added
+--      knowledge_base_updated_at was also lost. Both are re-applied here.
+--
+--   4. migration_v6.sql's tenant_config ALTER TABLE additions are
+--      missing from production: vapi_phone_number_id, vapi_phone_number,
+--      vapi_assistant_id, and assistant_settings. Added here safely.
+--
+-- REAL-WORLD IMPACT (silently broken since phone agent launch):
+--
+--   • End-of-call records → silently discarded (PGRST205 caught in
+--     call-webhook try/catch; Vapi always got { ok: true })
+--   • AI Agent Calls page → always empty (error → graceful [])
 --   • AI Agent Overview call stats → always 0 calls, 0 minutes
 --   • Voice-minute usage display → always 0
---   • Phone routing by vapi_phone_number_id → broken (column missing)
+--   • Phone routing by vapi_phone_number_id → broken (col missing)
 --
 -- ============================================================
 
--- ── STEP 1: Notify PostgREST immediately ─────────────────────
--- This is the most critical fix. Without it, agent_calls remains
--- invisible to the API layer even after all SQL below succeeds.
+-- ── STEP 1: Create agent_calls if it doesn't exist ────────────
+-- This is the leading statement — idempotent and self-healing.
+-- Column list matches migration_v6.sql exactly (13 columns):
+--   id, tenant_id, call_type, ended_at, duration_seconds, language,
+--   caller_number, transcript, summary, outcome, appointment_booked,
+--   kb_extracted, created_at
+CREATE TABLE IF NOT EXISTS agent_calls (
+  id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id          UUID        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  call_type          TEXT        NOT NULL DEFAULT 'live' CHECK (call_type IN ('live', 'training')),
+  ended_at           TIMESTAMPTZ DEFAULT now(),
+  duration_seconds   INTEGER     DEFAULT NULL,
+  language           TEXT        DEFAULT 'en',
+  caller_number      TEXT        DEFAULT NULL,
+  transcript         JSONB       DEFAULT '[]'::jsonb,
+  summary            TEXT        DEFAULT NULL,
+  outcome            TEXT        DEFAULT 'completed',
+  appointment_booked JSONB       DEFAULT NULL,
+  kb_extracted       JSONB       DEFAULT NULL,
+  created_at         TIMESTAMPTZ DEFAULT now()
+);
+
+-- ── STEP 2: Notify PostgREST (early) ─────────────────────────
+-- Reload immediately so the table is visible to the API layer
+-- even before indexes and RLS are added below.
 NOTIFY pgrst, 'reload schema';
 
--- ── STEP 2: Restore migration_v6.sql tenant_config columns ───
--- knowledge_base + agent_settings already exist (pre-v6 ad-hoc adds).
--- These four are the ones that never made it into production.
+-- ── STEP 3: Restore migration_v6.sql tenant_config columns ───
+-- knowledge_base + agent_settings exist (pre-v6 ad-hoc adds — no-ops).
+-- These four were never applied to production.
 ALTER TABLE tenant_config
   ADD COLUMN IF NOT EXISTS assistant_settings   JSONB DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS vapi_assistant_id    TEXT  DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS vapi_phone_number    TEXT  DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS vapi_phone_number_id TEXT  DEFAULT NULL;
 
--- ── STEP 3: Restore migration_v6.sql agent_calls indexes ─────
--- Safe to re-run: IF NOT EXISTS guards.
+-- ── STEP 4: Restore migration_v6.sql agent_calls indexes ─────
 CREATE INDEX IF NOT EXISTS idx_agent_calls_tenant  ON agent_calls(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_agent_calls_created ON agent_calls(created_at DESC);
 
--- ── STEP 4: Restore migration_v6.sql agent_calls RLS ─────────
--- ENABLE ROW LEVEL SECURITY is idempotent.
+-- ── STEP 5: Restore migration_v6.sql agent_calls RLS ─────────
 ALTER TABLE agent_calls ENABLE ROW LEVEL SECURITY;
 
 DO $$
@@ -77,19 +114,15 @@ BEGIN
   END IF;
 END $$;
 
--- ── STEP 5: migration_v13.sql additions (rolled back) ────────
--- The original migration_v13.sql transaction rolled back due to the
--- 42P01 error on CREATE INDEX. These statements are the content of
--- that rolled-back migration. They are placed here after agent_calls
--- is confirmed to exist so the CREATE INDEX cannot fail.
-
+-- ── STEP 6: migration_v13.sql additions (rolled back) ────────
+-- The original migration_v13.sql transaction rolled back fully.
+-- agent_calls now exists (STEP 1), so the CREATE INDEX cannot fail.
 ALTER TABLE tenant_config
   ADD COLUMN IF NOT EXISTS knowledge_base_updated_at TIMESTAMPTZ DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_agent_calls_tenant_period
   ON agent_calls(tenant_id, created_at);
 
--- ── STEP 6: Final schema cache reload ────────────────────────
--- Reload again after all DDL is committed so PostgREST picks up
--- every change in one shot.
+-- ── STEP 7: Final schema cache reload ────────────────────────
+-- Reload after all DDL commits so PostgREST picks up every change.
 NOTIFY pgrst, 'reload schema';

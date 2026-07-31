@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 31, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**, **Mission Control Phase 1 Step 1 done — code deployed dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT, migration_v13.sql ⚠️ PENDING Oussama's run**)*
+*Last updated: July 31, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**, **Mission Control Phase 1 Step 1 code deployed dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT — migration_v13b.sql ⚠️ PENDING Oussama's run** — agent_calls was never in production; migration_v13.sql rolled back; idempotent repair migration written)*
 
 ---
 
@@ -199,22 +199,38 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 26. ✅ **AI Trainer 2.0 — commit `698e272`, 50/50 checks.** Closes all remaining gaps from the Phase A item 6 follow-up audit. Five fixes: **(1)** `save-call/route.ts` now accepts `toolCallKb` from the training page — injects into GPT prompt for services parsing; deterministically overrides `business.hours/address/bookingPolicy` post-extraction (no longer re-extracted from noisy speech-to-text); appends `businessType` + `special` to `kb.extra` with "Business type:" / "Unique selling point:" markers. **(2)** `training/page.tsx` now passes `toolCallKb` to `/api/ai-agent/save-call` — was previously only sent to the call log. **(3)** `training-context/route.ts` now regex-extracts businessType + special back out of `kb.extra` markers and populates `existingKb.businessType` / `existingKb.special` — skip/confirm logic now fires for all 7 topics on repeat interviews, not just 5. Markers are stripped before mapping to `existingKb.faqs` so FAQ display is clean. **(4)** `assistant/route.ts` chat interview expanded 5 → 7 steps: Step 1 "What does your business do?" + Step 7 "What makes you stand out?"; `[save_kb:...]` token now writes both with markers into `extra`; `ALREADY ON FILE` block shows businessType + special when present; `ivFaqsText` strips markers from extra before showing as "common questions"; pricing fixed $79/$159/$299 → $95/$295/$595 to match `pricing.ts`. **(5)** `ai-training/route.ts` merge strategy flipped existing-wins → new-wins (re-training now actually updates KB; extra appended not discarded). **No new SQL — no new columns.** **Future AI Trainer 3.0 ideas (tracked, not scheduled):** differential re-training (only surface empty/stale topics); individual service editing without full interview; parse `kb.faqs` as structured Q&A array from interview; KB staleness signal (>90 days nudge); multi-language KB.
 
 ### Mission Control — Phase 1 (active)
-Step 1 ✅ — Schema instrumentation (code deployed, migration pending):
-- `supabase/migration_v13.sql` created. **⚠️ PENDING: Oussama must run in Supabase SQL Editor.** Adds `knowledge_base_updated_at TIMESTAMPTZ DEFAULT NULL` to `tenant_config` + composite index `idx_agent_calls_tenant_period ON agent_calls(tenant_id, created_at)`. Note: §13 originally said `started_at` — corrected to `created_at` (the actual column name in `agent_calls`).
-- `save-call/route.ts` + `ai-training/route.ts`: both KB write paths now set `knowledge_base_updated_at: new Date().toISOString()` in the same payload. Tone/language/website/channel settings writes confirmed NOT touched — 19/19 static checks (`e2e-test-mc-phase1-schema.mjs`).
-- **After Oussama runs migration_v13.sql**, confirm with these SQL queries in Supabase SQL Editor:
-  ```sql
-  -- Column check:
-  SELECT column_name, data_type FROM information_schema.columns
-  WHERE table_name = 'tenant_config' AND column_name = 'knowledge_base_updated_at';
+Step 1 ✅ code / ⚠️ SQL pending — Schema instrumentation:
+- **Run `supabase/migration_v13b.sql` in Supabase SQL Editor** — this is the definitive migration. Do NOT run migration_v13.sql (rolled back in full, superseded). migration_v13b.sql is idempotent and self-healing.
+- `save-call/route.ts` + `ai-training/route.ts`: both KB write paths set `knowledge_base_updated_at` in the same payload — code deployed `dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT`.
 
-  -- Index check (should see idx_agent_calls_tenant_period):
-  SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'agent_calls' ORDER BY indexname;
+**What went wrong (migration forensics):**
+- `agent_calls` was never reliably in production. migration_v6.sql was supposed to create it but either never ran or left it without a PostgREST `NOTIFY` → every API-layer call returned PGRST205, silently caught. End-of-call records discarded, Calls page always empty, call stats always 0 since phone agent launch.
+- migration_v13.sql **fully rolled back**: Supabase SQL Editor wraps each run in a transaction; CREATE INDEX hit 42P01 (agent_calls absent in Postgres at that moment), rolled back the ALTER TABLE too. Neither change committed.
+- **Diagnostic contradiction (known-unknown, not worth chasing):** REST HEAD/count query returned no error on agent_calls (table "exists"), but SQL Editor threw 42P01 (table absent — authoritative). Likely a PostgREST quirk where count-only HEAD requests bypass schema-cache validation. migration_v13b.sql is correct regardless.
 
-  -- EXPLAIN for Phase 1 aggregation (should use the composite index, not full scan):
-  EXPLAIN SELECT tenant_id, SUM(duration_seconds)
-  FROM agent_calls WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY tenant_id;
-  ```
+**migration_v13b.sql covers (7 steps, all IF NOT EXISTS / idempotent):**
+1. `CREATE TABLE IF NOT EXISTS agent_calls (...)` — leads the migration; 13-col schema matching migration_v6.sql exactly; no-op if table already exists
+2. Early `NOTIFY pgrst, 'reload schema'` — makes table immediately visible to API layer
+3. Missing v6 tenant_config columns: `assistant_settings`, `vapi_assistant_id`, `vapi_phone_number`, `vapi_phone_number_id`
+4. agent_calls indexes from v6: `idx_agent_calls_tenant`, `idx_agent_calls_created`
+5. agent_calls RLS from v6: `ENABLE ROW LEVEL SECURITY` + `agent_calls_owner` policy (DO block guard)
+6. From rolled-back migration_v13: `knowledge_base_updated_at TIMESTAMPTZ` + `idx_agent_calls_tenant_period ON agent_calls(tenant_id, created_at)`
+7. Final `NOTIFY pgrst, 'reload schema'`
+
+**After running migration_v13b.sql**, verify in Supabase SQL Editor:
+```sql
+SELECT COUNT(*) FROM agent_calls; -- should return 0, not error
+
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'tenant_config' AND column_name = 'knowledge_base_updated_at';
+
+SELECT indexname FROM pg_indexes WHERE tablename = 'agent_calls' ORDER BY indexname;
+-- Expected: idx_agent_calls_created, idx_agent_calls_tenant, idx_agent_calls_tenant_period
+
+EXPLAIN SELECT tenant_id, SUM(duration_seconds)
+FROM agent_calls WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY tenant_id;
+-- Expected: Index Scan on idx_agent_calls_tenant_period, not Seq Scan
+```
 
 Step 2 (next) — Access control: hardcoded allowlist route, TOTP, audit log. This is a prerequisite before any MC data routes are exposed — see §13.
 
