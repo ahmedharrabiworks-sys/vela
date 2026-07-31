@@ -1,6 +1,6 @@
 # CLAUDE.md — VELA PROJECT MASTER CONTEXT
 *Upload to the Vela Claude Project files. Every new chat: read this first, then continue exactly where we left off.*
-*Last updated: July 31, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**, **Mission Control Phase 1 Step 1 code deployed dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT — migration_v13b.sql ⚠️ PENDING Oussama's run** — agent_calls was never in production; migration_v13.sql rolled back; idempotent repair migration written)*
+*Last updated: July 31, 2026 (Phase A fully closed — 9/9 items ✅; Phase B item 10 pricing done, item 11 pricing page done — 33e8bc3, security Round 1 done — afc881f, security Round 2 done — 04caa1a, WhatsApp Meta Cloud API — 8f81949, Hard Rule 20 added, WhatsApp mocked-response test suite — 50/50 checks, **CRITICAL BUG FIXED: website chat widget broken for all new visitors since migration_v2 never ran in production — confirmed fixed, 16/16 E2E checks**, **Instagram DM reply loop + Page token fix — 557a576, 45/45 mock checks**, **AI Trainer 2.0 gaps closed — 698e272, 50/50 checks**, **Mission Control locked architecture added — §13, Hard Rules 21–22**, **Mission Control Phase 1 Step 1 fully verified — migration_v13b.sql confirmed run, 17/17 E2E checks (DB insert + Calls page + context stats + voice-minute usage all working); `agent_calls` was never in production before this fix**)*
 
 ---
 
@@ -199,38 +199,15 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 26. ✅ **AI Trainer 2.0 — commit `698e272`, 50/50 checks.** Closes all remaining gaps from the Phase A item 6 follow-up audit. Five fixes: **(1)** `save-call/route.ts` now accepts `toolCallKb` from the training page — injects into GPT prompt for services parsing; deterministically overrides `business.hours/address/bookingPolicy` post-extraction (no longer re-extracted from noisy speech-to-text); appends `businessType` + `special` to `kb.extra` with "Business type:" / "Unique selling point:" markers. **(2)** `training/page.tsx` now passes `toolCallKb` to `/api/ai-agent/save-call` — was previously only sent to the call log. **(3)** `training-context/route.ts` now regex-extracts businessType + special back out of `kb.extra` markers and populates `existingKb.businessType` / `existingKb.special` — skip/confirm logic now fires for all 7 topics on repeat interviews, not just 5. Markers are stripped before mapping to `existingKb.faqs` so FAQ display is clean. **(4)** `assistant/route.ts` chat interview expanded 5 → 7 steps: Step 1 "What does your business do?" + Step 7 "What makes you stand out?"; `[save_kb:...]` token now writes both with markers into `extra`; `ALREADY ON FILE` block shows businessType + special when present; `ivFaqsText` strips markers from extra before showing as "common questions"; pricing fixed $79/$159/$299 → $95/$295/$595 to match `pricing.ts`. **(5)** `ai-training/route.ts` merge strategy flipped existing-wins → new-wins (re-training now actually updates KB; extra appended not discarded). **No new SQL — no new columns.** **Future AI Trainer 3.0 ideas (tracked, not scheduled):** differential re-training (only surface empty/stale topics); individual service editing without full interview; parse `kb.faqs` as structured Q&A array from interview; KB staleness signal (>90 days nudge); multi-language KB.
 
 ### Mission Control — Phase 1 (active)
-Step 1 ✅ code / ⚠️ SQL pending — Schema instrumentation:
-- **Run `supabase/migration_v13b.sql` in Supabase SQL Editor** — this is the definitive migration. Do NOT run migration_v13.sql (rolled back in full, superseded). migration_v13b.sql is idempotent and self-healing.
-- `save-call/route.ts` + `ai-training/route.ts`: both KB write paths set `knowledge_base_updated_at` in the same payload — code deployed `dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT`.
+Step 1 ✅ **FULLY VERIFIED end-to-end — July 31, 2026** — Schema instrumentation + agent_calls repair:
+- `migration_v13b.sql` run successfully. Diagnostic v2 (`diag-mc-phase1-tables-v2.mjs`): zero PGRST205/42P01, all 13 agent_calls columns ✓, `knowledge_base_updated_at` ✓, `vapi_phone_number_id` ✓.
+- E2E functional verification (`e2e-agent-calls-verify.mjs`, **17/17 checks**): row insert ✓, Calls page GET returns data ✓, AI Agent Overview context stats non-zero ✓, voice-minute usage (getUsageSummary) non-zero ✓.
+- `save-call/route.ts` + `ai-training/route.ts`: both KB write paths set `knowledge_base_updated_at` — deployed `dpl_9144QVsVSoMCP87N3w3k2rAK3ZTT`.
+- **Remaining limitation:** VAPI_WEBHOOK_SECRET is still a placeholder env var (not in Vercel — see §8 Pending). The call-webhook route's end-of-call insert path itself was verified via direct admin insert (same table write, same query layer). Full route-layer verification requires VAPI_WEBHOOK_SECRET to be added to Vercel and a real Vapi call to fire.
 
-**What went wrong (migration forensics):**
-- `agent_calls` was never reliably in production. migration_v6.sql was supposed to create it but either never ran or left it without a PostgREST `NOTIFY` → every API-layer call returned PGRST205, silently caught. End-of-call records discarded, Calls page always empty, call stats always 0 since phone agent launch.
-- migration_v13.sql **fully rolled back**: Supabase SQL Editor wraps each run in a transaction; CREATE INDEX hit 42P01 (agent_calls absent in Postgres at that moment), rolled back the ALTER TABLE too. Neither change committed.
-- **Diagnostic contradiction (known-unknown, not worth chasing):** REST HEAD/count query returned no error on agent_calls (table "exists"), but SQL Editor threw 42P01 (table absent — authoritative). Likely a PostgREST quirk where count-only HEAD requests bypass schema-cache validation. migration_v13b.sql is correct regardless.
-
-**migration_v13b.sql covers (7 steps, all IF NOT EXISTS / idempotent):**
-1. `CREATE TABLE IF NOT EXISTS agent_calls (...)` — leads the migration; 13-col schema matching migration_v6.sql exactly; no-op if table already exists
-2. Early `NOTIFY pgrst, 'reload schema'` — makes table immediately visible to API layer
-3. Missing v6 tenant_config columns: `assistant_settings`, `vapi_assistant_id`, `vapi_phone_number`, `vapi_phone_number_id`
-4. agent_calls indexes from v6: `idx_agent_calls_tenant`, `idx_agent_calls_created`
-5. agent_calls RLS from v6: `ENABLE ROW LEVEL SECURITY` + `agent_calls_owner` policy (DO block guard)
-6. From rolled-back migration_v13: `knowledge_base_updated_at TIMESTAMPTZ` + `idx_agent_calls_tenant_period ON agent_calls(tenant_id, created_at)`
-7. Final `NOTIFY pgrst, 'reload schema'`
-
-**After running migration_v13b.sql**, verify in Supabase SQL Editor:
-```sql
-SELECT COUNT(*) FROM agent_calls; -- should return 0, not error
-
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'tenant_config' AND column_name = 'knowledge_base_updated_at';
-
-SELECT indexname FROM pg_indexes WHERE tablename = 'agent_calls' ORDER BY indexname;
--- Expected: idx_agent_calls_created, idx_agent_calls_tenant, idx_agent_calls_tenant_period
-
-EXPLAIN SELECT tenant_id, SUM(duration_seconds)
-FROM agent_calls WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY tenant_id;
--- Expected: Index Scan on idx_agent_calls_tenant_period, not Seq Scan
-```
+**What was wrong (migration forensics, resolved):**
+- `agent_calls` was never reliably in production. migration_v6.sql ran without `NOTIFY pgrst, 'reload schema'` → PostgREST PGRST205 on all API calls, silently caught by try/catch. End-of-call records discarded, Calls page always empty, call stats always 0 since phone agent launch.
+- migration_v13.sql rolled back in full (SQL Editor transaction; CREATE INDEX hit 42P01 → ALTER TABLE also rolled back). migration_v13b.sql is the idempotent self-healing repair (7 IF NOT EXISTS steps; dual NOTIFY bookends). Now confirmed run and verified.
 
 Step 2 (next) — Access control: hardcoded allowlist route, TOTP, audit log. This is a prerequisite before any MC data routes are exposed — see §13.
 
@@ -251,8 +228,8 @@ Step 3 (after) — Phase 1 data routes: Theoretical MRR, tenant roster, voice-mi
 
 ## 9. SUPABASE SCHEMA (KEY TABLES)
 
-- `tenants`: id, owner_id, name, industry, city, phone, website, plan, created_at
-- `tenant_config`: tenant_id, knowledge_base, website_html, website_slug, website_versions (legacy — per-site versions now on `websites` table), website_visit_count, website_custom_domain/status/records, assistant_settings, agent_settings, instagram_connected, instagram_username, instagram_access_token (Page Access Token — non-expiring), instagram_business_id, **`instagram_page_id TEXT` (added by migration_v12.sql ⚠️ PENDING run)**, **`knowledge_base_updated_at TIMESTAMPTZ` (added by migration_v13.sql ⚠️ PENDING run)**
+- `tenants`: id, owner_id, **business_name** (not `name`), plan, stripe_customer_id, created_at; + industry/city/phone/website (added by migration_v2.sql)
+- `tenant_config`: tenant_id, knowledge_base, website_html, website_slug, website_versions (legacy — per-site versions now on `websites` table), website_visit_count, website_custom_domain/status/records, assistant_settings, agent_settings, instagram_connected, instagram_username, instagram_access_token (Page Access Token — non-expiring), instagram_business_id, **`instagram_page_id TEXT` (added by migration_v12.sql ⚠️ PENDING run)**, **`knowledge_base_updated_at TIMESTAMPTZ` (added by migration_v13b.sql ✅ confirmed run July 31, 2026)**
 - `websites`: id, tenant_id, name, slug (unique), draft_html, draft_spec, published_html, published_spec, is_published, published_at, domain, domain_status, chat, intake, versions, **design_strategy (JSONB, added Phase 1 of Design Engine rebuild)**, created_at, updated_at — RLS owner-scoped
 - `website_versions`: id, website_id (FK cascade), label, html, spec, created_at — RLS owner-scoped
 - `leads`: id, tenant_id, name, email, phone, source, status, ip_hash, form_data, created_at
