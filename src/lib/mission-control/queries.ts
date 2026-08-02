@@ -329,3 +329,229 @@ export async function getAtRiskTenants(admin: AdminClient) {
 
   return atRisk;
 }
+
+// ── 8. Employee roster (all employees + department + latest signals) ──────────
+
+export type EmployeeSignalMap = Record<
+  string,
+  { value: number | null; realDescription: string; computedAt: string }
+>;
+
+export interface EmployeeRow {
+  id: string;
+  name: string;
+  roleDescription: string;
+  domainDescription: string;
+  status: string;
+  safeDefaultAction: string | null;
+  createdAt: string;
+  department: { id: string; name: string; isStaffed: boolean } | null;
+  latestSignals: EmployeeSignalMap;
+}
+
+export async function getEmployeeRoster(admin: AdminClient): Promise<EmployeeRow[]> {
+  const [empRes, sigRes] = await Promise.all([
+    admin
+      .from("employees")
+      .select("id, name, role_description, domain_description, status, safe_default_action, created_at, department:departments(id, name, is_staffed)")
+      .order("created_at", { ascending: true }),
+    admin
+      .from("employee_signals")
+      .select("employee_id, signal_name, value, real_description, computed_at")
+      .order("computed_at", { ascending: false }),
+  ]);
+
+  if (empRes.error) throw new Error(`getEmployeeRoster: ${empRes.error.message}`);
+
+  // Group signals by employee, keep only the most recent value per signal_name
+  const signalsByEmployee = new Map<string, EmployeeSignalMap>();
+  for (const s of sigRes.data ?? []) {
+    if (!signalsByEmployee.has(s.employee_id)) signalsByEmployee.set(s.employee_id, {});
+    const map = signalsByEmployee.get(s.employee_id)!;
+    if (!map[s.signal_name]) {
+      // First occurrence = most recent (ordered DESC)
+      map[s.signal_name] = {
+        value: s.value,
+        realDescription: s.real_description,
+        computedAt: s.computed_at,
+      };
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (empRes.data ?? []).map((e: any) => ({
+    id: e.id,
+    name: e.name,
+    roleDescription: e.role_description,
+    domainDescription: e.domain_description,
+    status: e.status,
+    safeDefaultAction: e.safe_default_action ?? null,
+    createdAt: e.created_at,
+    department: e.department
+      ? { id: e.department.id, name: e.department.name, isStaffed: e.department.is_staffed }
+      : null,
+    latestSignals: signalsByEmployee.get(e.id) ?? {},
+  }));
+}
+
+// ── 9. Employee detail (single employee + full signal history + learning_log) ─
+
+export interface EmployeeSignalEntry {
+  signalName: string;
+  value: number | null;
+  realDescription: string;
+  computedAt: string;
+}
+
+export interface LearningLogEntry {
+  id: string;
+  taskRef: string | null;
+  outcome: "success" | "failure" | "neutral";
+  conclusion: string;
+  createdAt: string;
+}
+
+export interface EmployeeDetail {
+  employee: EmployeeRow;
+  signalHistory: EmployeeSignalEntry[];
+  learningLog: LearningLogEntry[];
+}
+
+export async function getEmployeeDetail(
+  admin: AdminClient,
+  employeeId: string,
+): Promise<EmployeeDetail | null> {
+  const [empRes, sigRes, logRes] = await Promise.all([
+    admin
+      .from("employees")
+      .select("id, name, role_description, domain_description, status, safe_default_action, created_at, department:departments(id, name, is_staffed)")
+      .eq("id", employeeId)
+      .single(),
+    admin
+      .from("employee_signals")
+      .select("signal_name, value, real_description, computed_at")
+      .eq("employee_id", employeeId)
+      .order("computed_at", { ascending: false })
+      .limit(50),
+    admin
+      .from("learning_log")
+      .select("id, task_ref, outcome, conclusion, created_at")
+      .eq("employee_id", employeeId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  if (empRes.error?.code === "PGRST116") return null;
+  if (empRes.error) throw new Error(`getEmployeeDetail: ${empRes.error.message}`);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const e: any = empRes.data;
+  const employee: EmployeeRow = {
+    id: e.id,
+    name: e.name,
+    roleDescription: e.role_description,
+    domainDescription: e.domain_description,
+    status: e.status,
+    safeDefaultAction: e.safe_default_action ?? null,
+    createdAt: e.created_at,
+    department: e.department
+      ? { id: e.department.id, name: e.department.name, isStaffed: e.department.is_staffed }
+      : null,
+    latestSignals: {},
+  };
+
+  return {
+    employee,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    signalHistory: (sigRes.data ?? []).map((s: any) => ({
+      signalName: s.signal_name,
+      value: s.value,
+      realDescription: s.real_description,
+      computedAt: s.computed_at,
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    learningLog: (logRes.data ?? []).map((l: any) => ({
+      id: l.id,
+      taskRef: l.task_ref ?? null,
+      outcome: l.outcome,
+      conclusion: l.conclusion,
+      createdAt: l.created_at,
+    })),
+  };
+}
+
+// ── 10. Compute + write Website Agent signals ─────────────────────────────────
+// Source of truth: websites table (all tenants, all time).
+// Writes one new row per signal name into employee_signals.
+// Hard Rule 22: every trait maps to a named, queryable real signal.
+
+export interface WebsiteAgentSignalResult {
+  employeeId: string;
+  signalsWritten: number;
+  signals: Array<{ signalName: string; value: number; realDescription: string }>;
+}
+
+export async function computeWebsiteAgentSignals(
+  admin: AdminClient,
+  employeeId: string,
+): Promise<WebsiteAgentSignalResult> {
+  const { data: rows, error } = await admin
+    .from("websites")
+    .select("id, draft_html, is_published");
+
+  if (error) throw new Error(`computeWebsiteAgentSignals/query: ${error.message}`);
+
+  const totalSites: number = (rows ?? []).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sitesWithDraft: number = (rows ?? []).filter((r: any) => r.draft_html != null).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const publishedSites: number = (rows ?? []).filter((r: any) => r.is_published === true).length;
+  const generationSuccessRate = totalSites > 0
+    ? parseFloat(((sitesWithDraft / totalSites) * 100).toFixed(1))
+    : 0;
+  const publishRate = totalSites > 0
+    ? parseFloat(((publishedSites / totalSites) * 100).toFixed(1))
+    : 0;
+
+  const signals = [
+    {
+      signalName: "total_sites",
+      value: totalSites,
+      realDescription: "Total websites rows across all tenants (websites table, all time)",
+    },
+    {
+      signalName: "sites_with_draft",
+      value: sitesWithDraft,
+      realDescription: "Websites where draft_html IS NOT NULL — proxy for at least one successful generation",
+    },
+    {
+      signalName: "published_sites",
+      value: publishedSites,
+      realDescription: "Websites where is_published = true — owner explicitly published",
+    },
+    {
+      signalName: "generation_success_rate",
+      value: generationSuccessRate,
+      realDescription: "sites_with_draft / total_sites × 100 — all-time generation success rate (%)",
+    },
+    {
+      signalName: "publish_rate",
+      value: publishRate,
+      realDescription: "published_sites / total_sites × 100 — share of created sites that were published (%)",
+    },
+  ];
+
+  const now = new Date().toISOString();
+  const insertRows = signals.map((s) => ({
+    employee_id: employeeId,
+    signal_name: s.signalName,
+    real_description: s.realDescription,
+    value: s.value,
+    computed_at: now,
+  }));
+
+  const { error: insertError } = await admin.from("employee_signals").insert(insertRows);
+  if (insertError) throw new Error(`computeWebsiteAgentSignals/insert: ${insertError.message}`);
+
+  return { employeeId, signalsWritten: signals.length, signals };
+}
