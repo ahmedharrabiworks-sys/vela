@@ -14,6 +14,7 @@ import {
   getTenantActivity,
 } from "@/lib/mission-control/queries";
 import { analyzeEmployee } from "@/lib/mission-control/analysis";
+import { runSecurityAudit } from "@/lib/mission-control/security-checks";
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
@@ -144,6 +145,24 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "run_security_audit",
+      description:
+        "Runs an on-demand security audit via the Security Agent employee. Checks: RLS policies (tenant data tables), webhook secret coverage, client-side env var exposure, and schema vs known migrations. Report-only — no changes made. Returns findings grouped by category with severity (critical/warning/info) and evidence. Use get_employee_roster to find the Security Agent employee ID first.",
+      parameters: {
+        type: "object",
+        properties: {
+          employee_id: {
+            type: "string",
+            description: "UUID of the Security Agent employee (from get_employee_roster — use the one named 'Security Agent')",
+          },
+        },
+        required: ["employee_id"],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -167,6 +186,7 @@ Your available data sources (via tools):
 - At-risk tenants (behavioral proxies only — NOT churn)
 - AI employee roster with real signal values
 - Per-tenant engagement detail and recent activity
+- Security audit via Security Agent employee (RLS policies, webhook secrets, env var exposure, schema drift)
 
 Metrics that do NOT exist in any tool — never answer these by substitution:
 - Churn rate or cancellation rate (requires Stripe — not connected)
@@ -204,6 +224,8 @@ async function executeTool(
       return getTenantActivity(admin, args.tenant_id as string);
     case "analyze_employee":
       return analyzeEmployee(admin, args.employee_id as string);
+    case "run_security_audit":
+      return runSecurityAudit(admin, args.employee_id as string);
     default:
       return { error: `Unknown tool: ${name}` };
   }

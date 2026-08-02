@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { getEmployeeDetail, type EmployeeDetail } from "@/lib/mission-control/queries";
 import { AnalyzePanel } from "./AnalyzePanel";
+import { SecurityAuditPanel } from "./SecurityAuditPanel";
 
 const T = {
   bg: "#0a0a0a", bg2: "#111111", bg3: "#1a1a1a",
@@ -241,8 +242,12 @@ export default async function EmployeeDetailPage({
         )}
       </div>
 
-      {/* Analysis panel — on-demand, client-interactive */}
-      <AnalyzePanel employeeId={params.id} />
+      {/* Security Agent gets its own audit panel; all others get the analysis panel */}
+      {emp.name === "Security Agent" ? (
+        <SecurityAuditPanel employeeId={params.id} />
+      ) : (
+        <AnalyzePanel employeeId={params.id} />
+      )}
 
       <p style={{ fontSize: 12, color: T.dim, marginTop: 24 }}>
         Hard Rule 22: every signal must map to a named, queryable real signal in the database.
