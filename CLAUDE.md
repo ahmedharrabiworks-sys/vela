@@ -209,9 +209,15 @@ Step 1 ✅ **FULLY VERIFIED end-to-end — July 31, 2026** — Schema instrument
 - `agent_calls` was never reliably in production. migration_v6.sql ran without `NOTIFY pgrst, 'reload schema'` → PostgREST PGRST205 on all API calls, silently caught by try/catch. End-of-call records discarded, Calls page always empty, call stats always 0 since phone agent launch.
 - migration_v13.sql rolled back in full (SQL Editor transaction; CREATE INDEX hit 42P01 → ALTER TABLE also rolled back). migration_v13b.sql is the idempotent self-healing repair (7 IF NOT EXISTS steps; dual NOTIFY bookends). Now confirmed run and verified.
 
-Step 2 (next) — Access control: hardcoded allowlist route, TOTP, audit log. This is a prerequisite before any MC data routes are exposed — see §13.
+Step 2 ✅ **Access control — deployed `dpl_8GbDAb4BTHvEinqSS11FYEfd8qbQ`:**
+- `src/lib/mission-control-auth.ts` — `OWNER_EMAILS` hardcoded const (Hard Rule 21), `isOwnerEmail()`, `MC_TOTP_SECRET` placeholder, HMAC-signed cookie helpers (`buildMcSessionCookie`, `verifyMcSessionCookie`, `buildPendingCookie`, `verifyPendingCookie`), `logMcAttempt()` (direct Supabase REST — Edge-compatible).
+- `supabase/migration_v14.sql` — `mission_control_access_log` table (append-only, no UPDATE/DELETE RLS, outside tenant data model). **⚠️ RUN IN SUPABASE SQL EDITOR.**
+- Route group `src/app/mission-control/`: login page (Google OAuth button) → `/auth/callback` (allowlist check → pending cookie → TOTP page) → `/totp/verify` (RFC 6238 TOTP via Node.js built-in crypto, no external library) → `mc_session_verified` cookie (HMAC-signed, `path=/mission-control`, `sameSite=strict`, 8h TTL). Isolated from main app session (`sb-xxx-auth-token`).
+- Middleware extended: `/mission-control/*` guard re-checks `isOwnerEmail` + HMAC-verifies cookie on **every request** (Hard Rule 21). Public paths exempt: `/mission-control/login`, `/mission-control/auth/*`, `/mission-control/totp/*`.
+- **Live verified (4/4):** `/mission-control` no-session → 307 login ✓; `/mission-control/login` → 200 ✓; `/mission-control/totp` no-pending-cookie → 307 login?error=session_expired ✓; `/app` unaffected → 307 auth/login ✓.
+- **⚠️ Before going live:** (1) Replace `OWNER_EMAILS` placeholders with real emails in `mission-control-auth.ts` and deploy. (2) Generate real TOTP secret (`node -e "require('crypto').randomBytes(20).toString('base32')"` or use an authenticator app's QR setup flow) and replace `MC_TOTP_SECRET`. (3) Configure Google OAuth provider in Supabase dashboard (Authentication → Providers → Google). (4) Run `migration_v14.sql`.
 
-Step 3 (after) — Phase 1 data routes: Theoretical MRR, tenant roster, voice-minute margin, at-risk proxy, engagement signals, activity aggregation.
+Step 3 (next) — Phase 1 data routes: Theoretical MRR, tenant roster, voice-minute margin, at-risk proxy, engagement signals, activity aggregation.
 
 ### Phase E — Launch
 27. Custom domain (getvela.ai or similar)

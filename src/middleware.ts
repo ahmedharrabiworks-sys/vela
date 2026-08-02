@@ -1,5 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  MC_SESSION_COOKIE,
+  isOwnerEmail,
+  verifyMcSessionCookie,
+  logMcAttempt,
+} from "./lib/mission-control-auth";
 
 // Per-Edge-instance in-memory cache: hostname → slug, 5 min TTL.
 // Avoids a DB round-trip on every request for known custom domains.
@@ -82,8 +88,42 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // ── Auth middleware (primary domain only) ─────────────────────────────────────
+  // ── Mission Control guard ──────────────────────────────────────────────────────
+  // Re-checked on every request, not only at login (Hard Rule 21).
   const path = request.nextUrl.pathname;
+
+  if (path.startsWith("/mission-control")) {
+    // These paths are part of the unauthenticated login/TOTP flow
+    const isMcPublic =
+      path === "/mission-control/login" ||
+      path.startsWith("/mission-control/auth/") ||
+      path.startsWith("/mission-control/totp");
+
+    if (isMcPublic) return NextResponse.next({ request });
+
+    const sessionValue = request.cookies.get(MC_SESSION_COOKIE)?.value ?? "";
+    const email = sessionValue ? await verifyMcSessionCookie(sessionValue) : null;
+
+    if (!email || !isOwnerEmail(email)) {
+      await logMcAttempt({
+        email:     email ?? "unknown",
+        outcome:   "denied_no_session",
+        ip:        request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+        route:     path,
+      });
+      const denied = NextResponse.redirect(
+        new URL("/mission-control/login", request.url),
+      );
+      // Clear a stale/forged session cookie if present
+      if (sessionValue) denied.cookies.set(MC_SESSION_COOKIE, "", { maxAge: 0, path: "/mission-control" });
+      return denied;
+    }
+
+    return NextResponse.next({ request });
+  }
+
+  // ── Auth middleware (primary domain only) ─────────────────────────────────────
   if (!path.startsWith("/app") && !path.startsWith("/auth/")) {
     return NextResponse.next({ request });
   }
