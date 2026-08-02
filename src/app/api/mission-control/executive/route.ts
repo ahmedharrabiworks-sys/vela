@@ -13,6 +13,7 @@ import {
   getTenantEngagement,
   getTenantActivity,
 } from "@/lib/mission-control/queries";
+import { analyzeEmployee } from "@/lib/mission-control/analysis";
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
@@ -125,6 +126,24 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "analyze_employee",
+      description:
+        "Runs on-demand signal-history analysis for a specific AI employee. Reads the employee's real signal timeline, finds evidence-backed insights and recommendations, and writes results to the database. Returns empty arrays if fewer than 2 compute runs exist (honest: not enough history). Use get_employee_roster first to find the employee ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          employee_id: {
+            type: "string",
+            description: "UUID of the employee (from get_employee_roster)",
+          },
+        },
+        required: ["employee_id"],
+      },
+    },
+  },
 ];
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -183,6 +202,8 @@ async function executeTool(
       return getTenantEngagement(admin, args.tenant_id as string);
     case "get_tenant_activity":
       return getTenantActivity(admin, args.tenant_id as string);
+    case "analyze_employee":
+      return analyzeEmployee(admin, args.employee_id as string);
     default:
       return { error: `Unknown tool: ${name}` };
   }
