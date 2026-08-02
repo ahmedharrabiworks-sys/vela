@@ -556,7 +556,98 @@ export async function computeWebsiteAgentSignals(
   return { employeeId, signalsWritten: signals.length, signals };
 }
 
-// ── 11. Compute + write Trainer Agent signals ─────────────────────────────────
+// ── 11. Compute + write Phone Agent signals ───────────────────────────────────
+// Source of truth: agent_calls table — confirmed live with real data in Phase 1
+// (migration_v13b, e2e-agent-calls-verify.mjs 17/17, commit 0ad59bc).
+// Signal window: 90-day recent window + all-time totals.
+// Caveat: Twilio inbound not yet connected (VAPI_WEBHOOK_SECRET placeholder) —
+// call volume is low/near-zero in production until final integration day.
+// Hard Rule 22: every trait maps to a named, queryable real signal.
+
+export interface PhoneAgentSignalResult {
+  employeeId: string;
+  signalsWritten: number;
+  signals: Array<{ signalName: string; value: number; realDescription: string }>;
+}
+
+const CALL_WINDOW_DAYS = 90;
+
+export async function computePhoneAgentSignals(
+  admin: AdminClient,
+  employeeId: string,
+): Promise<PhoneAgentSignalResult> {
+  const windowStart = new Date(Date.now() - CALL_WINDOW_DAYS * 86_400_000).toISOString();
+
+  const [allCallsRes, windowCallsRes] = await Promise.all([
+    admin.from("agent_calls").select("tenant_id, duration_seconds"),
+    admin.from("agent_calls").select("tenant_id, duration_seconds").gte("created_at", windowStart),
+  ]);
+
+  if (allCallsRes.error) throw new Error(`computePhoneAgentSignals/all: ${allCallsRes.error.message}`);
+  if (windowCallsRes.error) throw new Error(`computePhoneAgentSignals/window: ${windowCallsRes.error.message}`);
+
+  const allCalls: Array<{ tenant_id: string; duration_seconds: number | null }> = allCallsRes.data ?? [];
+  const windowCalls: Array<{ tenant_id: string; duration_seconds: number | null }> = windowCallsRes.data ?? [];
+
+  const totalCalls = allCalls.length;
+  const calls90d = windowCalls.length;
+  const tenantsWithCalls = new Set(allCalls.map((c) => c.tenant_id)).size;
+
+  const callsWithDuration = allCalls.filter((c) => c.duration_seconds != null);
+  const avgDurationSecs = callsWithDuration.length > 0
+    ? parseFloat((
+        callsWithDuration.reduce((sum, c) => sum + (c.duration_seconds ?? 0), 0) / callsWithDuration.length
+      ).toFixed(1))
+    : 0;
+
+  const totalVoiceMinutes = parseFloat((
+    allCalls.reduce((sum, c) => sum + (c.duration_seconds ?? 0), 0) / 60
+  ).toFixed(1));
+
+  const signals = [
+    {
+      signalName: "total_calls",
+      value: totalCalls,
+      realDescription: "Total agent_calls rows all time — all inbound/outbound voice calls recorded",
+    },
+    {
+      signalName: "calls_90d",
+      value: calls90d,
+      realDescription: `agent_calls rows in the last ${CALL_WINDOW_DAYS} days — recent call volume`,
+    },
+    {
+      signalName: "tenants_with_calls",
+      value: tenantsWithCalls,
+      realDescription: "Distinct tenant_id values in agent_calls — tenants that have made at least one call",
+    },
+    {
+      signalName: "avg_duration_secs",
+      value: avgDurationSecs,
+      realDescription: "Average duration_seconds across all calls with non-null duration — call length proxy",
+    },
+    {
+      signalName: "total_voice_minutes",
+      value: totalVoiceMinutes,
+      realDescription: "Sum of duration_seconds / 60 across all agent_calls — total voice minutes consumed all time",
+    },
+  ];
+
+  const now_iso = new Date().toISOString();
+  const insertRows = signals.map((s) => ({
+    employee_id: employeeId,
+    signal_name: s.signalName,
+    real_description: s.realDescription,
+    value: s.value,
+    computed_at: now_iso,
+  }));
+
+  const { error: insertError } = await admin.from("employee_signals").insert(insertRows);
+  if (insertError) throw new Error(`computePhoneAgentSignals/insert: ${insertError.message}`);
+
+  return { employeeId, signalsWritten: signals.length, signals };
+}
+
+// ── 13. Compute + write Trainer Agent signals ─────────────────────────────────
 // Source of truth: tenants table (count) + tenant_config.knowledge_base_updated_at
 // (written by save-call/route.ts and ai-training/route.ts on every KB save —
 // added in migration_v13b, confirmed live July 31, 2026).
