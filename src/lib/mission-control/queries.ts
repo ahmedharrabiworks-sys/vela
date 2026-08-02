@@ -555,3 +555,99 @@ export async function computeWebsiteAgentSignals(
 
   return { employeeId, signalsWritten: signals.length, signals };
 }
+
+// ── 11. Compute + write Trainer Agent signals ─────────────────────────────────
+// Source of truth: tenants table (count) + tenant_config.knowledge_base_updated_at
+// (written by save-call/route.ts and ai-training/route.ts on every KB save —
+// added in migration_v13b, confirmed live July 31, 2026).
+// Hard Rule 22: every trait maps to a named, queryable real signal.
+
+export interface TrainerAgentSignalResult {
+  employeeId: string;
+  signalsWritten: number;
+  signals: Array<{ signalName: string; value: number; realDescription: string }>;
+}
+
+const KB_STALE_DAYS = 90;
+
+export async function computeTrainerAgentSignals(
+  admin: AdminClient,
+  employeeId: string,
+): Promise<TrainerAgentSignalResult> {
+  const [tenantsRes, configsRes] = await Promise.all([
+    admin.from("tenants").select("id", { count: "exact", head: true }),
+    admin.from("tenant_config").select("tenant_id, knowledge_base_updated_at"),
+  ]);
+
+  if (tenantsRes.error) throw new Error(`computeTrainerAgentSignals/tenants: ${tenantsRes.error.message}`);
+  if (configsRes.error) throw new Error(`computeTrainerAgentSignals/configs: ${configsRes.error.message}`);
+
+  const totalTenants = tenantsRes.count ?? 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const configs: Array<{ knowledge_base_updated_at: string | null }> = configsRes.data ?? [];
+
+  const now = Date.now();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const trainedConfigs = configs.filter((c: any) => c.knowledge_base_updated_at != null);
+  const tenantsWithKb = trainedConfigs.length;
+
+  const kbTrainedRate = totalTenants > 0
+    ? parseFloat(((tenantsWithKb / totalTenants) * 100).toFixed(1))
+    : 0;
+
+  const avgKbAgeDays = tenantsWithKb > 0
+    ? parseFloat((
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        trainedConfigs.reduce((sum: number, c: any) =>
+          sum + Math.floor((now - new Date(c.knowledge_base_updated_at).getTime()) / 86_400_000), 0
+        ) / tenantsWithKb
+      ).toFixed(1))
+    : 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const kbStaleCount = trainedConfigs.filter((c: any) =>
+    Math.floor((now - new Date(c.knowledge_base_updated_at).getTime()) / 86_400_000) > KB_STALE_DAYS
+  ).length;
+
+  const signals = [
+    {
+      signalName: "total_tenants",
+      value: totalTenants,
+      realDescription: "Total tenant rows (tenants table, all time)",
+    },
+    {
+      signalName: "tenants_with_kb",
+      value: tenantsWithKb,
+      realDescription: "Tenants where knowledge_base_updated_at IS NOT NULL — at least one AI training session completed",
+    },
+    {
+      signalName: "kb_trained_rate",
+      value: kbTrainedRate,
+      realDescription: "tenants_with_kb / total_tenants × 100 — share of tenants that have completed at least one AI training session (%)",
+    },
+    {
+      signalName: "avg_kb_age_days",
+      value: avgKbAgeDays,
+      realDescription: "Average days since knowledge_base_updated_at across trained tenants — KB freshness proxy",
+    },
+    {
+      signalName: "kb_stale_count",
+      value: kbStaleCount,
+      realDescription: `Trained tenants where knowledge_base_updated_at is older than ${KB_STALE_DAYS} days — staleness proxy`,
+    },
+  ];
+
+  const now_iso = new Date().toISOString();
+  const insertRows = signals.map((s) => ({
+    employee_id: employeeId,
+    signal_name: s.signalName,
+    real_description: s.realDescription,
+    value: s.value,
+    computed_at: now_iso,
+  }));
+
+  const { error: insertError } = await admin.from("employee_signals").insert(insertRows);
+  if (insertError) throw new Error(`computeTrainerAgentSignals/insert: ${insertError.message}`);
+
+  return { employeeId, signalsWritten: signals.length, signals };
+}
