@@ -742,3 +742,69 @@ export async function computeTrainerAgentSignals(
 
   return { employeeId, signalsWritten: signals.length, signals };
 }
+
+// ── 14. Compute + write Analytics/Insights Agent signals ─────────────────────
+// Source of truth: getPlatformActivitySummary() — reuses the same four COUNT
+// queries already verified in Phase 1 (conversations, leads, appointments,
+// agent_calls, all scoped to the current UTC month).
+// Level 0 capability only: real-data reporting. Correlation-detection and
+// Company-Brain-writing are future tiers — not built, not described here.
+// Hard Rule 22: every trait maps to a named, queryable real signal.
+
+export interface AnalyticsAgentSignalResult {
+  employeeId: string;
+  signalsWritten: number;
+  signals: Array<{ signalName: string; value: number; realDescription: string }>;
+}
+
+export async function computeAnalyticsAgentSignals(
+  admin: AdminClient,
+  employeeId: string,
+): Promise<AnalyticsAgentSignalResult> {
+  const activity = await getPlatformActivitySummary(admin);
+
+  const totalEvents =
+    activity.conversations + activity.leads + activity.appointments + activity.calls;
+
+  const signals = [
+    {
+      signalName: "conversations_this_month",
+      value: activity.conversations,
+      realDescription: `conversations table COUNT WHERE created_at >= ${activity.periodStart} — inbound messages this month`,
+    },
+    {
+      signalName: "leads_this_month",
+      value: activity.leads,
+      realDescription: `leads table COUNT WHERE created_at >= ${activity.periodStart} — new leads captured this month`,
+    },
+    {
+      signalName: "appointments_this_month",
+      value: activity.appointments,
+      realDescription: `appointments table COUNT WHERE created_at >= ${activity.periodStart} — bookings made this month`,
+    },
+    {
+      signalName: "calls_this_month",
+      value: activity.calls,
+      realDescription: `agent_calls table COUNT WHERE created_at >= ${activity.periodStart} — voice calls this month`,
+    },
+    {
+      signalName: "total_events_this_month",
+      value: totalEvents,
+      realDescription: "Sum of conversations + leads + appointments + calls for the current UTC month — combined platform activity signal",
+    },
+  ];
+
+  const now_iso = new Date().toISOString();
+  const insertRows = signals.map((s) => ({
+    employee_id: employeeId,
+    signal_name: s.signalName,
+    real_description: s.realDescription,
+    value: s.value,
+    computed_at: now_iso,
+  }));
+
+  const { error: insertError } = await admin.from("employee_signals").insert(insertRows);
+  if (insertError) throw new Error(`computeAnalyticsAgentSignals/insert: ${insertError.message}`);
+
+  return { employeeId, signalsWritten: signals.length, signals };
+}
