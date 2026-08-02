@@ -198,7 +198,7 @@ Phase 1 (Design Intelligence) — DONE. Phase 2a (Hero pool) — DONE. Phase 2b 
 
 26. ✅ **AI Trainer 2.0 — commit `698e272`, 50/50 checks.** Closes all remaining gaps from the Phase A item 6 follow-up audit. Five fixes: **(1)** `save-call/route.ts` now accepts `toolCallKb` from the training page — injects into GPT prompt for services parsing; deterministically overrides `business.hours/address/bookingPolicy` post-extraction (no longer re-extracted from noisy speech-to-text); appends `businessType` + `special` to `kb.extra` with "Business type:" / "Unique selling point:" markers. **(2)** `training/page.tsx` now passes `toolCallKb` to `/api/ai-agent/save-call` — was previously only sent to the call log. **(3)** `training-context/route.ts` now regex-extracts businessType + special back out of `kb.extra` markers and populates `existingKb.businessType` / `existingKb.special` — skip/confirm logic now fires for all 7 topics on repeat interviews, not just 5. Markers are stripped before mapping to `existingKb.faqs` so FAQ display is clean. **(4)** `assistant/route.ts` chat interview expanded 5 → 7 steps: Step 1 "What does your business do?" + Step 7 "What makes you stand out?"; `[save_kb:...]` token now writes both with markers into `extra`; `ALREADY ON FILE` block shows businessType + special when present; `ivFaqsText` strips markers from extra before showing as "common questions"; pricing fixed $79/$159/$299 → $95/$295/$595 to match `pricing.ts`. **(5)** `ai-training/route.ts` merge strategy flipped existing-wins → new-wins (re-training now actually updates KB; extra appended not discarded). **No new SQL — no new columns.** **Future AI Trainer 3.0 ideas (tracked, not scheduled):** differential re-training (only surface empty/stale topics); individual service editing without full interview; parse `kb.faqs` as structured Q&A array from interview; KB staleness signal (>90 days nudge); multi-language KB.
 
-### Mission Control — Phase 1 (active)
+### Mission Control — Phase 1 ✅ complete / Phase 2 Stage 1 ✅ complete
 Step 1 ✅ **FULLY VERIFIED end-to-end — July 31, 2026** — Schema instrumentation + agent_calls repair:
 - `migration_v13b.sql` run successfully. Diagnostic v2 (`diag-mc-phase1-tables-v2.mjs`): zero PGRST205/42P01, all 13 agent_calls columns ✓, `knowledge_base_updated_at` ✓, `vapi_phone_number_id` ✓.
 - E2E functional verification (`e2e-agent-calls-verify.mjs`, **17/17 checks**): row insert ✓, Calls page GET returns data ✓, AI Agent Overview context stats non-zero ✓, voice-minute usage (getUsageSummary) non-zero ✓.
@@ -217,7 +217,13 @@ Step 2 ✅ **Access control — deployed `dpl_8GbDAb4BTHvEinqSS11FYEfd8qbQ`:**
 - **Live verified (4/4):** `/mission-control` no-session → 307 login ✓; `/mission-control/login` → 200 ✓; `/mission-control/totp` no-pending-cookie → 307 login?error=session_expired ✓; `/app` unaffected → 307 auth/login ✓.
 - **⚠️ Before going live:** (1) Replace `OWNER_EMAILS` placeholders with real emails in `mission-control-auth.ts` and deploy. (2) Generate real TOTP secret (`node -e "require('crypto').randomBytes(20).toString('base32')"` or use an authenticator app's QR setup flow) and replace `MC_TOTP_SECRET`. (3) Configure Google OAuth provider in Supabase dashboard (Authentication → Providers → Google). (4) Run `migration_v14.sql`.
 
-Step 3 (next) — Phase 1 data routes: Theoretical MRR, tenant roster, voice-minute margin, at-risk proxy, engagement signals, activity aggregation.
+Step 3 ✅ **Phase 1 data routes — commit `29ddc9c`:** `src/lib/mission-control/queries.ts` with 7 query functions (getTenantRoster, getTheoreticalMRR, getVoiceMarginSummary, getTenantEngagement, getTenantActivity, getPlatformActivitySummary, getAtRiskTenants). Three API routes: `GET /api/mission-control/overview`, `GET /api/mission-control/tenants`, `GET /api/mission-control/tenants/[id]`. All 401 when no session (cookie path restriction means Server Components fetch directly — no HTTP hop). **Live verified 12/12:** 36 tenants, $16,620 theoretical MRR, voice margin, at-risk computed in real time.
+
+Step 4 ✅ **Phase 1 overview dashboard — commit `b7d6fd4`:** `src/app/mission-control/page.tsx` — async Server Component, dark theme, 4-col summary cards, plan breakdown + voice margin (2-col), at-risk amber section, full tenant roster table. All data fetched server-side via `Promise.allSettled` (each section fails independently). Labeling discipline enforced: "Theoretical MRR" label, "At-Risk (behavioral)" visible text.
+
+Step 5 ✅ **Phase 1 tenant detail page — commit `f9f19c2`:** `src/app/mission-control/tenants/[id]/page.tsx` — not-found handling, engagement key-values (last login, KB age, channels), voice mini-stats, activity drill-down (conversations/leads + appointments/calls 2×2 grid). Fixed `getTenantEngagement`: removed `whatsapp_waba_id` from SELECT (migration_v9.sql still PENDING — column absent in production). **Live verified 12/12.**
+
+Phase 2, Stage 1 ✅ **AI-Employee layer foundation — commit `1070221`, deployed `dpl_D7wEdQA38bFnYuxheGvhnQhWmoxc`:** `supabase/migration_v15.sql` (departments/employees/employee_signals/learning_log — ⚠️ **RUN IN SUPABASE SQL EDITOR**). `queries.ts` extended: `getEmployeeRoster`, `getEmployeeDetail`, `computeWebsiteAgentSignals`. Seed script `src/scripts/seed-website-agent.mjs` (idempotent, 10-check verification — **run after migration_v15.sql**). Routes: `GET /api/mission-control/employees`, `GET /api/mission-control/employees/[id]`. Pages: `/mission-control/employees` (roster), `/mission-control/employees/[id]` (detail + signal history + learning log). Website Agent is the only seeded employee — 5 real signals from `websites` table. See §13 Phase 2 completion record.
 
 ### Phase E — Launch
 27. Custom domain (getvela.ai or similar)
@@ -459,6 +465,22 @@ NOTIFY pgrst, 'reload schema';
 ---
 
 ### Phase 2 — AI-Employee Layer
+
+#### Stage 1 ✅ Foundation — complete (commit `1070221`, August 2, 2026)
+
+Real tables shipped: `departments`, `employees`, `employee_signals`, `learning_log` — all accessed via admin client only (RLS enabled, no tenant-scoped policies; these tables are outside the tenant data model, like `mission_control_access_log`). Schema is deliberately open: the `reports_to` self-reference on `employees` and the absence of CEO/Executive/Company-Brain/Shared-KB tables is intentional — those layers are not built yet because nothing real requires them. No rework needed when they are.
+
+**Website Agent** is the first and currently only real AI employee. It wraps the existing Website Builder pipeline and exposes 5 signals computed directly from the `websites` table: `total_sites`, `sites_with_draft`, `published_sites`, `generation_success_rate` (%), `publish_rate` (%). Every signal has a `real_description` field naming the exact source column (Hard Rule 22 enforced at the data-model level — the field is NOT NULL).
+
+**Hard discipline confirmed and enforced:**
+- No fake employees. No placeholder dormant rows for absent capabilities (Trainer, Phone Agent, etc. have no rows yet — they get a row when real signal data exists for them, not before).
+- No fake metrics, no invented operational states, no synthetic personality scores.
+- Every `departments`, `employees`, `employee_signals` row that exists corresponds to something genuinely real and currently running.
+- The seed script (`src/scripts/seed-website-agent.mjs`) is idempotent and includes 10-check verification. Run it after `migration_v15.sql`.
+
+**Standing pattern for all future employees:** wrap an existing real system → expose signals from named real data sources only → seed a row only when the underlying capability is genuinely real. Never add a roster row ahead of real capability.
+
+**Next:** Stage 2 will add the second real employee (Trainer — reads `knowledge_base_updated_at` + KB completeness signals), then Phone Agent (reads `agent_calls`). Each follows the same wrap-real-system pattern. UI: `/mission-control/employees` roster page + `/mission-control/employees/[id]` detail page both live and showing real data.
 
 Phase 2 builds on Phase 1's data foundation. Employees read from Phase 1 signals; they cannot hallucinate signals that don't exist. Implementation is a separate larger effort — this section records the locked architecture decisions.
 
