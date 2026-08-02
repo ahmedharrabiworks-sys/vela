@@ -134,7 +134,8 @@ export async function getTenantEngagement(admin: AdminClient, tenantId: string) 
     admin.from("tenants").select("owner_id").eq("id", tenantId).single(),
     admin
       .from("tenant_config")
-      .select("knowledge_base_updated_at, instagram_connected, whatsapp_waba_id")
+      // whatsapp_waba_id omitted — migration_v9.sql (PENDING); WA status comes from whatsapp_accounts table
+      .select("knowledge_base_updated_at, instagram_connected")
       .eq("tenant_id", tenantId)
       .single(),
     admin
