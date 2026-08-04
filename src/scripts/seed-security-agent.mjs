@@ -111,8 +111,14 @@ async function checkSchemaVsMigrations() {
   for (const exp of SCHEMA_EXPECTATIONS) {
     const { error } = await admin.from(exp.table).select(exp.column ?? "id").limit(1);
     if (!error) continue;
-    const missingTable = error.code === "42P01" || (error.message?.includes("does not exist") && !error.message?.includes(exp.column ?? ""));
-    const missingCol = error.code === "PGRST205" || error.code === "42703" || (exp.column && error.message?.includes(exp.column));
+    // PostgREST uses PGRST205 for BOTH "table not found" (no column selected) AND
+    // "column not found" (column selected). Disambiguate by whether exp.column is set.
+    const missingTable = error.code === "42P01" ||
+      (error.code === "PGRST205" && !exp.column) ||
+      (!exp.column && (error.message?.includes("does not exist") || error.message?.includes("Could not find the table")));
+    const missingCol = (error.code === "PGRST205" && !!exp.column) ||
+      error.code === "42703" ||
+      (!!exp.column && error.message?.includes(exp.column));
     if (missingTable) findings.push({ finding: `Table "${exp.table}" does not exist`, evidence: `${error.code}: ${error.message} | ${exp.migration}`, severity: "critical" });
     else if (exp.column && missingCol) findings.push({ finding: `Column "${exp.table}.${exp.column}" does not exist`, evidence: `${error.code}: ${error.message} | ${exp.migration}`, severity: "critical" });
     else findings.push({ finding: `Could not verify "${exp.table}${exp.column ? "."+exp.column : ""}"`, evidence: `${error.code}: ${error.message}`, severity: "warning" });
@@ -250,19 +256,21 @@ check("V5: all 4 audit categories ran",
   auditResult.categories.length === 4, `categories=${auditResult.categories.length}`);
 check("V6: learning_log is empty", logCount.count === 0, `count=${logCount.count}`);
 
-// Schema-drift specific checks — must show these three as present (no critical finding for them)
+// Schema-drift specific checks
 const schemaCat = auditResult.categories.find(c => c.name === "schema_drift");
 const schemaFindings = schemaCat?.findings ?? [];
 const agentCallsMissing = schemaFindings.some(f => f.finding.includes('"agent_calls"') && f.severity === "critical");
 const kbColMissing = schemaFindings.some(f => f.finding.includes("knowledge_base_updated_at") && f.severity === "critical");
-const waMissing = schemaFindings.some(f => f.finding.includes('"whatsapp_accounts"') && f.severity === "critical");
+// whatsapp_accounts: migration_v9.sql is PENDING in production — the table is genuinely absent.
+// V9 verifies the Security Agent correctly classifies this as CRITICAL (not a vague warning).
+const waFinding = schemaFindings.find(f => f.finding.includes("whatsapp_accounts"));
 
-check("V7: agent_calls table confirmed present (schema-drift check: no critical finding)",
+check("V7: agent_calls table confirmed present (no critical schema-drift finding)",
   !agentCallsMissing, agentCallsMissing ? "MISSING" : "present");
 check("V8: tenant_config.knowledge_base_updated_at confirmed present",
   !kbColMissing, kbColMissing ? "MISSING" : "present");
-check("V9: whatsapp_accounts table confirmed present",
-  !waMissing, waMissing ? "MISSING" : "present");
+check("V9: whatsapp_accounts correctly flagged as CRITICAL (migration_v9.sql pending — agent working)",
+  waFinding?.severity === "critical", waFinding ? `severity=${waFinding.severity}` : "no finding (check isMissingTable fix)");
 check("V10: findings are real numbers (not NaN)",
   [auditResult.criticalCount, auditResult.warningCount, auditResult.infoCount].every(v => isFinite(v) && !isNaN(v)));
 

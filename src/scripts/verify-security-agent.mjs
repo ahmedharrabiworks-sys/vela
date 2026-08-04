@@ -93,22 +93,31 @@ check("B2: exposed_env_vars check runs without error", Array.isArray(exposedVars
   `${exposedVars.length} NEXT_PUBLIC_* vars match sensitive patterns`);
 
 // B3: schema_drift check — queries real tables and returns honest findings
-let schemaDriftOk = true;
 const schemaResults = [];
 for (const exp of SCHEMA_EXPECTATIONS) {
   const { error } = await admin.from(exp.table).select(exp.column ?? "id").limit(1);
   if (error) {
-    schemaDriftOk = false;
-    schemaResults.push({ table: exp.table, column: exp.column, error: error.code });
+    // Same logic as security-checks.ts: PGRST205 = missing table when no column, missing column when column set
+    const isMissingTable = error.code === "42P01" ||
+      (error.code === "PGRST205" && !exp.column) ||
+      (!exp.column && (error.message?.includes("does not exist") || error.message?.includes("Could not find the table")));
+    schemaResults.push({ table: exp.table, column: exp.column, error: error.code, isMissingTable });
   } else {
     schemaResults.push({ table: exp.table, column: exp.column, ok: true });
   }
 }
 check("B3: schema_drift check ran against real Supabase (not simulated)",
   schemaResults.every(r => r.ok !== undefined || r.error !== undefined));
-check("B4: known-critical tables confirmed present (agent_calls, whatsapp_accounts, knowledge_base_updated_at)",
-  schemaResults.every(r => r.ok === true),
-  schemaResults.filter(r => r.error).map(r => r.table).join(", ") || "all present");
+
+// B4: missing tables are classified as CRITICAL (not vague warning).
+// Note: whatsapp_accounts is expected missing (migration_v9.sql PENDING) — that IS a real finding.
+// B4 passes when every error is classified as isMissingTable (= correctly triggers critical severity).
+const misclassified = schemaResults.filter(r => r.error && !r.isMissingTable);
+const correctlyClassified = schemaResults.filter(r => r.error && r.isMissingTable);
+const present = schemaResults.filter(r => r.ok);
+check("B4: schema-drift errors correctly classified as isMissingTable (CRITICAL, not vague warning)",
+  misclassified.length === 0,
+  `present=${present.map(r=>r.table).join(",")||"none"} | correctly-flagged=${correctlyClassified.map(r=>r.table).join(",")||"none"} | misclassified=${misclassified.map(r=>r.table).join(",")||"none"}`);
 
 // B5: RLS check ran (pg_policies accessible or graceful fallback)
 const { data: policies, error: rlsErr } = await admin

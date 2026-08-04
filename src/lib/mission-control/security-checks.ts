@@ -217,13 +217,19 @@ export async function checkSchemaVsMigrations(admin: AdminClient): Promise<Secur
 
     if (!error) continue; // present — no finding
 
+    // PostgREST uses PGRST205 for BOTH "table not found" (when no column is selected)
+    // AND "column not found" (when a specific column is selected). Disambiguate by exp.column.
     const isMissingTable =
       error.code === "42P01" ||
-      (error.message && error.message.includes("does not exist") && !error.message.includes(selectField));
+      (error.code === "PGRST205" && !exp.column) ||
+      (!exp.column && error.message && (
+        error.message.includes("does not exist") ||
+        error.message.includes("Could not find the table")
+      ));
     const isMissingColumn =
-      error.code === "PGRST205" ||
+      (error.code === "PGRST205" && !!exp.column) ||
       error.code === "42703" ||
-      (error.message && error.message.includes(selectField ?? ""));
+      (!!exp.column && error.message && error.message.includes(exp.column));
 
     if (isMissingTable) {
       findings.push({
