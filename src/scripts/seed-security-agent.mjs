@@ -49,9 +49,10 @@ const ADMIN_ONLY_TABLES = [
 ];
 
 async function checkRlsPolicies() {
-  const { data: policies, error } = await admin
-    .from("pg_policies").select("tablename,policyname,permissive,cmd,qual").eq("schemaname","public");
-  if (error) return [{ finding: "pg_policies not accessible via PostgREST", evidence: `Error ${error.code}: ${error.message}`, severity: "info" }];
+  // pg_policies lives in pg_catalog — PostgREST never exposes that schema.
+  // get_rls_policies() is a SECURITY DEFINER function created by migration_v19.sql.
+  const { data: policies, error } = await admin.rpc("get_rls_policies");
+  if (error) return [{ finding: "get_rls_policies() RPC not accessible — migration_v19.sql may not have been run", evidence: `Error ${error.code}: ${error.message}`, severity: "warning" }];
 
   const tableMap = new Map();
   for (const p of policies ?? []) {

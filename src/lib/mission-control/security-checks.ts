@@ -46,18 +46,16 @@ const ADMIN_ONLY_TABLES = [
 export async function checkRlsPolicies(admin: AdminClient): Promise<SecurityFinding[]> {
   const findings: SecurityFinding[] = [];
 
-  const { data: policies, error } = await admin
-    .from("pg_policies")
-    .select("tablename, policyname, permissive, cmd, qual")
-    .eq("schemaname", "public");
+  // pg_policies lives in pg_catalog — PostgREST never exposes that schema.
+  // get_rls_policies() is a SECURITY DEFINER function in public that wraps the query.
+  // Created by migration_v19.sql. If this RPC errors, that migration hasn't been run yet.
+  const { data: policies, error } = await admin.rpc("get_rls_policies");
 
   if (error) {
-    // pg_policies is in pg_catalog — not always accessible via PostgREST.
-    // This is an informational gap, not a confirmed vulnerability.
     findings.push({
-      finding: "pg_policies view not accessible via PostgREST API",
-      evidence: `Error ${error.code}: ${error.message}. Manual verification required: Supabase dashboard → Authentication → Policies for each tenant table.`,
-      severity: "info",
+      finding: "get_rls_policies() RPC not accessible — migration_v19.sql may not have been run",
+      evidence: `Error ${error.code}: ${error.message}. Run supabase/migration_v19.sql in Supabase SQL Editor to create the SECURITY DEFINER wrapper function.`,
+      severity: "warning",
     });
     return findings;
   }

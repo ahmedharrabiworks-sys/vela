@@ -119,17 +119,21 @@ check("B4: schema-drift errors correctly classified as isMissingTable (CRITICAL,
   misclassified.length === 0,
   `present=${present.map(r=>r.table).join(",")||"none"} | correctly-flagged=${correctlyClassified.map(r=>r.table).join(",")||"none"} | misclassified=${misclassified.map(r=>r.table).join(",")||"none"}`);
 
-// B5: RLS check ran (pg_policies accessible or graceful fallback)
-const { data: policies, error: rlsErr } = await admin
-  .from("pg_policies").select("tablename,policyname,permissive,qual").eq("schemaname","public");
+// B5: RLS check via get_rls_policies() RPC (created by migration_v19.sql)
+// Before migration: expect PGRST202/42883 (function not found) — graceful warning.
+// After migration:  expect real policy rows back.
+const { data: policies, error: rlsErr } = await admin.rpc("get_rls_policies");
 if (rlsErr) {
-  check("B5: RLS check ran gracefully (pg_policies not accessible — expected)", true,
-    `Info: ${rlsErr.code}: ${rlsErr.message.slice(0,80)}`);
+  check("B5: get_rls_policies() RPC — graceful warning (migration_v19.sql not yet run)", true,
+    `Warning: ${rlsErr.code}: ${rlsErr.message.slice(0,100)}`);
 } else {
   const tableCount = new Set((policies ?? []).map(p => p.tablename)).size;
   const permissiveOpen = (policies ?? []).filter(p => p.permissive === "PERMISSIVE" && p.qual === "true");
-  check("B5: RLS check ran against pg_policies", policies !== null,
+  check("B5: get_rls_policies() RPC returned real policy data", policies !== null,
     `${tableCount} tables with policies, ${permissiveOpen.length} permissive-open (critical if any)`);
+  // Show all table names so we can confirm coverage
+  const tableNames = [...new Set((policies ?? []).map(p => p.tablename))].sort();
+  console.log(`    Tables: ${tableNames.join(", ")}`);
 }
 
 // ── Section C: employee_insights rows written (requires migrations v16+v17) ──
