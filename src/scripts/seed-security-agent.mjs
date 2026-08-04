@@ -261,16 +261,14 @@ const schemaCat = auditResult.categories.find(c => c.name === "schema_drift");
 const schemaFindings = schemaCat?.findings ?? [];
 const agentCallsMissing = schemaFindings.some(f => f.finding.includes('"agent_calls"') && f.severity === "critical");
 const kbColMissing = schemaFindings.some(f => f.finding.includes("knowledge_base_updated_at") && f.severity === "critical");
-// whatsapp_accounts: migration_v9.sql is PENDING in production — the table is genuinely absent.
-// V9 verifies the Security Agent correctly classifies this as CRITICAL (not a vague warning).
-const waFinding = schemaFindings.find(f => f.finding.includes("whatsapp_accounts"));
+const waMissing = schemaFindings.some(f => f.finding.includes("whatsapp_accounts") && f.severity === "critical");
 
 check("V7: agent_calls table confirmed present (no critical schema-drift finding)",
   !agentCallsMissing, agentCallsMissing ? "MISSING" : "present");
 check("V8: tenant_config.knowledge_base_updated_at confirmed present",
   !kbColMissing, kbColMissing ? "MISSING" : "present");
-check("V9: whatsapp_accounts correctly flagged as CRITICAL (migration_v9.sql pending — agent working)",
-  waFinding?.severity === "critical", waFinding ? `severity=${waFinding.severity}` : "no finding (check isMissingTable fix)");
+check("V9: whatsapp_accounts table confirmed present (no critical schema-drift finding)",
+  !waMissing, waMissing ? "MISSING — run migration_v9.sql" : "present");
 check("V10: findings are real numbers (not NaN)",
   [auditResult.criticalCount, auditResult.warningCount, auditResult.infoCount].every(v => isFinite(v) && !isNaN(v)));
 
