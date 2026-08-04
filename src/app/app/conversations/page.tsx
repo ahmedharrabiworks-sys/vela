@@ -70,6 +70,7 @@ export default function ConversationsPage() {
   const [msgLoading, setMsgLoading]         = useState(false);
   const [showThread, setShowThread]         = useState(false);
   const [error, setError]                   = useState<string | null>(null);
+  const [resolving, setResolving]           = useState<string | null>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
@@ -187,6 +188,25 @@ export default function ConversationsPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  /* ── Resolve escalation ── */
+  const handleResolve = async (convId: string) => {
+    if (resolving) return;
+    setResolving(convId);
+    try {
+      const res = await fetch(`/api/conversations/${convId}/resolve`, { method: "PATCH" });
+      if (!res.ok) throw new Error("resolve failed");
+      // Optimistic update
+      setConversations((prev) =>
+        prev.map((c) => c.id === convId ? { ...c, needs_human: false } : c)
+      );
+      if (selected?.id === convId) setSelected((s) => s ? { ...s, needs_human: false } : s);
+    } catch {
+      // Silently fail — next refetch will sync
+    } finally {
+      setResolving(null);
+    }
+  };
 
   /* ── Toggle AI ── */
   const toggleAI = async (enabled: boolean) => {
@@ -358,7 +378,16 @@ export default function ConversationsPage() {
                     <span className="text-xs font-semibold text-[#111111] truncate">{conv.customer_name}</span>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       {conv.needs_human && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
+                        <>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleResolve(conv.id); }}
+                            disabled={resolving === conv.id}
+                            aria-label="Mark resolved"
+                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors whitespace-nowrap min-h-[20px]">
+                            {resolving === conv.id ? "…" : "Resolved"}
+                          </button>
+                        </>
                       )}
                       {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
                       <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at, t)}</span>
@@ -409,6 +438,14 @@ export default function ConversationsPage() {
                     <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${selected.ai_enabled ? "left-4" : "left-0.5"}`} />
                   </button>
                 </div>
+                {selected.needs_human && (
+                  <button
+                    onClick={() => handleResolve(selected.id)}
+                    disabled={resolving === selected.id}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-all whitespace-nowrap min-h-[36px]">
+                    {resolving === selected.id ? "…" : "Mark Resolved"}
+                  </button>
+                )}
                 <button
                   onClick={() => toggleAI(false)}
                   className="hidden md:block text-xs font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">

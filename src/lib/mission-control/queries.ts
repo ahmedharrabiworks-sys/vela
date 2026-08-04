@@ -743,6 +743,103 @@ export async function computeTrainerAgentSignals(
   return { employeeId, signalsWritten: signals.length, signals };
 }
 
+// ── 12. Compute + write Support Agent signals ─────────────────────────────────
+// Source of truth: conversations table — needs_human flag and needs_human_resolved_at.
+// Written by /api/conversations/[id]/resolve (sets needs_human=false + resolved_at).
+// Level 0 — observed only. No ticket system, no inbound email, no SLA tracking.
+// Hard Rule 22: every trait maps to a named, queryable real signal.
+
+export interface SupportAgentSignalResult {
+  employeeId: string;
+  signalsWritten: number;
+  signals: Array<{ signalName: string; value: number; realDescription: string }>;
+}
+
+export async function computeSupportAgentSignals(
+  admin: AdminClient,
+  employeeId: string,
+): Promise<SupportAgentSignalResult> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 3_600_000).toISOString();
+
+  const [openRes, staleRes, tenantsRes, resolvedRes] = await Promise.all([
+    // open escalations: needs_human = true (all tenants, all time)
+    admin
+      .from("conversations")
+      .select("id, tenant_id", { count: "exact", head: true })
+      .eq("needs_human", true),
+    // stale: needs_human = true AND last_message_at older than 24h
+    admin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("needs_human", true)
+      .lt("last_message_at", twentyFourHoursAgo),
+    // distinct tenants with open escalations (needs full rows to deduplicate)
+    admin
+      .from("conversations")
+      .select("tenant_id")
+      .eq("needs_human", true),
+    // resolved in last 30 days
+    admin
+      .from("conversations")
+      .select("id", { count: "exact", head: true })
+      .not("needs_human_resolved_at", "is", null)
+      .gte("needs_human_resolved_at", thirtyDaysAgo),
+  ]);
+
+  if (openRes.error) throw new Error(`computeSupportAgentSignals/open: ${openRes.error.message}`);
+  if (staleRes.error) throw new Error(`computeSupportAgentSignals/stale: ${staleRes.error.message}`);
+  if (resolvedRes.error) throw new Error(`computeSupportAgentSignals/resolved: ${resolvedRes.error.message}`);
+
+  const openCount = openRes.count ?? 0;
+  const staleCount = staleRes.count ?? 0;
+  const tenantsWithEscalations = new Set(
+    (tenantsRes.data ?? []).map((r: { tenant_id: string }) => r.tenant_id),
+  ).size;
+  const resolvedLast30d = resolvedRes.count ?? 0;
+
+  const signals = [
+    {
+      signalName: "open_escalations_count",
+      value: openCount,
+      realDescription:
+        "conversations table COUNT WHERE needs_human = true — total open human-handoff requests (all tenants, never reset without explicit resolve)",
+    },
+    {
+      signalName: "stale_escalations_count",
+      value: staleCount,
+      realDescription:
+        "conversations WHERE needs_human = true AND last_message_at < now() - 24h — escalations with no recent activity (aging proxy)",
+    },
+    {
+      signalName: "tenants_with_escalations",
+      value: tenantsWithEscalations,
+      realDescription:
+        "COUNT DISTINCT tenant_id WHERE needs_human = true — number of tenants that currently have at least one open escalation",
+    },
+    {
+      signalName: "resolved_last_30_days",
+      value: resolvedLast30d,
+      realDescription:
+        "conversations WHERE needs_human_resolved_at IS NOT NULL AND needs_human_resolved_at >= now() - 30 days — escalations explicitly marked resolved in the last 30 days",
+    },
+  ];
+
+  const now_iso = new Date().toISOString();
+  const insertRows = signals.map((s) => ({
+    employee_id: employeeId,
+    signal_name: s.signalName,
+    real_description: s.realDescription,
+    value: s.value,
+    computed_at: now_iso,
+  }));
+
+  const { error: insertError } = await admin.from("employee_signals").insert(insertRows);
+  if (insertError) throw new Error(`computeSupportAgentSignals/insert: ${insertError.message}`);
+
+  return { employeeId, signalsWritten: signals.length, signals };
+}
+
 // ── 14. Compute + write Analytics/Insights Agent signals ─────────────────────
 // Source of truth: getPlatformActivitySummary() — reuses the same four COUNT
 // queries already verified in Phase 1 (conversations, leads, appointments,
