@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import FeatureTabs from "@/components/landing/FeatureTabs";
 import Pricing from "@/components/landing/Pricing";
 import FAQ from "@/components/landing/FAQ";
 import CTA from "@/components/landing/CTA";
@@ -10,6 +11,7 @@ export default function LandingPage() {
     <main className="overflow-x-hidden">
       <Navbar />
       <Hero />
+      <FeatureTabs />
       <Pricing />
       <FAQ />
       <CTA />

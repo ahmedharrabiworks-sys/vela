@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import PhoneMockup from "@/components/landing/PhoneMockup";
 import DemoModal from "@/components/landing/DemoModal";
 import { useI18n } from "@/lib/i18n";
 
@@ -16,6 +15,76 @@ const item = {
   hidden: { opacity: 0, y: 24 },
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
 };
+
+function VideoPlaceholder({ onClick }: { onClick: () => void }) {
+  return (
+    <div className="relative w-full max-w-[500px]">
+      <button
+        onClick={onClick}
+        className="group relative w-full rounded-2xl overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2"
+        style={{ aspectRatio: "16/9" }}
+        aria-label="Watch 60-second product demo"
+      >
+        {/* Background */}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(145deg,#0c0f1a 0%,#141929 65%,#0f1520 100%)" }} />
+
+        {/* Abstract dashboard shapes */}
+        <div className="absolute inset-0 p-5 flex flex-col gap-3" style={{ opacity: 0.18 }}>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-16 h-2 rounded-full bg-white" />
+            <div className="ml-auto flex gap-1.5">
+              <div className="w-8 h-2 rounded-full bg-white" />
+              <div className="w-8 h-2 rounded-full bg-white" />
+              <div className="w-16 h-2 rounded-full bg-white" />
+            </div>
+          </div>
+          <div className="flex gap-3 flex-1 min-h-0">
+            <div className="w-1/4 flex flex-col gap-2">
+              {[80, 100, 65, 90, 55].map((w, i) => (
+                <div key={i} className="h-1.5 rounded-full bg-white" style={{ width: `${w}%` }} />
+              ))}
+            </div>
+            <div className="flex-1 flex flex-col gap-2 min-h-0">
+              <div className="grid grid-cols-3 gap-2 shrink-0">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-10 rounded-xl border border-white/20" style={{ background: "rgba(255,255,255,0.12)" }} />
+                ))}
+              </div>
+              <div className="flex-1 rounded-xl border border-white/10" style={{ background: "rgba(255,255,255,0.06)" }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Vignette overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 65% at 50% 50%,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.72) 100%)" }} />
+        {/* Brand glow */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 55% 45% at 50% 50%,rgba(255,107,53,0.10),transparent)" }} />
+
+        {/* Play button */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 0 48px rgba(255,107,53,0.5),0 0 96px rgba(255,107,53,0.2)" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 4.5l10 5.5-10 5.5V4.5z" fill="white" />
+            </svg>
+          </div>
+          <span className="text-white/50 text-sm font-medium tracking-wide">60-second product demo</span>
+        </div>
+
+        {/* Border */}
+        <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10 pointer-events-none" />
+      </button>
+
+      {/* Glow shadow below */}
+      <div
+        className="absolute inset-x-10 -bottom-4 h-8 rounded-full blur-xl pointer-events-none"
+        style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.28),rgba(255,51,102,0.28))" }}
+      />
+    </div>
+  );
+}
 
 export default function Hero() {
   const [demoOpen, setDemoOpen] = useState(false);
@@ -109,14 +178,14 @@ export default function Hero() {
               </motion.div>
             </motion.div>
 
-            {/* ── Right: phone mockup — desktop only ── */}
+            {/* ── Right: video placeholder — desktop only ── */}
             <motion.div
               initial={{ opacity: 0, x: 28 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-              className="hidden lg:flex items-center justify-end overflow-visible"
+              className="hidden lg:flex items-center justify-center"
             >
-              <PhoneMockup />
+              <VideoPlaceholder onClick={() => setDemoOpen(true)} />
             </motion.div>
 
           </div>
