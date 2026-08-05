@@ -250,7 +250,7 @@ export default function PhoneMockup() {
         </div>
         <div>
           <p className="text-[9px] text-[#94A3B8] font-medium">Avg. reply time</p>
-          <p className="text-[13px] font-extrabold text-[#0F172A] leading-tight">48 seconds</p>
+          <p className="text-[12px] font-semibold text-[#0F172A] leading-tight">Always instant</p>
         </div>
       </motion.div>
 
@@ -275,8 +275,8 @@ export default function PhoneMockup() {
           </svg>
         </div>
         <div>
-          <p className="text-[9px] text-[#94A3B8] font-medium">Booked today</p>
-          <p className="text-[13px] font-extrabold text-[#0F172A] leading-tight">8 appointments</p>
+          <p className="text-[9px] text-[#94A3B8] font-medium">Appointments</p>
+          <p className="text-[12px] font-semibold text-[#0F172A] leading-tight">Auto-booked</p>
         </div>
       </motion.div>
     </div>

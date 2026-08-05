@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
-import { ThemePicker } from "@/components/ui/ThemePicker";
 import { useI18n } from "@/lib/i18n";
 
 const NAV_LINKS = [
@@ -75,7 +74,7 @@ export default function Navbar() {
         {/* Logo — far left */}
         <Logo showText />
 
-        {/* Desktop right group: nav links → ThemePicker → lang → CTAs */}
+        {/* Desktop right group: nav links → lang → CTAs */}
         <div className="hidden md:flex items-center gap-1">
           {/* Nav links */}
           <div className="flex items-center gap-1 mr-3">
@@ -90,9 +89,6 @@ export default function Navbar() {
               </a>
             ))}
           </div>
-
-          {/* Theme picker */}
-          <ThemePicker />
 
           {/* Language switcher */}
           <div ref={langRef} className="relative">

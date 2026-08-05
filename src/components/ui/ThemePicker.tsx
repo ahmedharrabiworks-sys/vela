@@ -3,12 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useColorTheme } from "@/lib/theme";
 
-type ColorThemeId = "classic" | "ocean" | "sunset";
+type ColorThemeId = "orange" | "blue" | "teal";
 
 const THEMES: { id: ColorThemeId; name: string; color: string }[] = [
-  { id: "classic", name: "Classic", color: "#FF6B35" },
-  { id: "ocean",   name: "Ocean",   color: "#3B82F6" },
-  { id: "sunset",  name: "Sunset",  color: "#FB8C42" },
+  { id: "orange", name: "Orange", color: "#ed5426" },
+  { id: "blue",   name: "Blue",   color: "#2431ed" },
+  { id: "teal",   name: "Teal",   color: "#177173" },
 ];
 
 export function ThemePicker() {
@@ -33,7 +33,7 @@ export function ThemePicker() {
         onClick={() => setOpen(!open)}
         title="Color theme"
         aria-label="Choose color theme"
-        className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all duration-200"
+        className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6B7280] hover:text-[var(--vp-color)] hover:bg-[var(--vp-08)] transition-all duration-200"
       >
         {/* Palette / swatch icon */}
         <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
