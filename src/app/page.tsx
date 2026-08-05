@@ -1,6 +1,7 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import FeatureTabs from "@/components/landing/FeatureTabs";
+import IntegrationsStrip from "@/components/landing/IntegrationsStrip";
 import Pricing from "@/components/landing/Pricing";
 import FAQ from "@/components/landing/FAQ";
 import CTA from "@/components/landing/CTA";
@@ -12,6 +13,7 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <FeatureTabs />
+      <IntegrationsStrip />
       <Pricing />
       <FAQ />
       <CTA />

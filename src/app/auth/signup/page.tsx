@@ -277,6 +277,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   /* Step 2 */
   const [businessDesc, setBusinessDesc] = useState("");
@@ -383,7 +384,7 @@ export default function SignupPage() {
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
             <h1 className="text-xl font-bold text-[#111111] mb-1">Create your account</h1>
             <p className="text-[#6B7280] text-sm mb-7">Get your AI receptionist set up in minutes.</p>
-            <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); if (agreedToTerms) setStep(2); }} className="space-y-4">
               <div>
                 <label className={labelCls}>Full Name</label>
                 <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required className={inputCls} />
@@ -396,7 +397,48 @@ export default function SignupPage() {
                 <label className={labelCls}>Password</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} className={inputCls} />
               </div>
-              <button type="submit" className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <div className="relative mt-0.5 shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div
+                    className="w-5 h-5 rounded flex items-center justify-center border-2 transition-all duration-150"
+                    style={agreedToTerms
+                      ? { background: "var(--vela-gradient)", borderColor: "transparent" }
+                      : { background: "white", borderColor: "#D1D5DB" }
+                    }
+                  >
+                    {agreedToTerms && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M1.5 5.5l2 2 5-4.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-[#6B7280] leading-relaxed">
+                  I agree to the{" "}
+                  <Link href="/terms" className="font-semibold hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy" className="font-semibold hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+              <button
+                type="submit"
+                disabled={!agreedToTerms}
+                className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 transition-all duration-200"
+                style={agreedToTerms
+                  ? { background: "var(--vela-gradient)", opacity: 1 }
+                  : { background: "#D1D5DB", cursor: "not-allowed", opacity: 1 }
+                }
+              >
                 Continue →
               </button>
             </form>

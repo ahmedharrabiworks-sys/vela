@@ -20,8 +20,8 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
       >
         <defs>
           <linearGradient id="vela-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FF6B35" />
-            <stop offset="100%" stopColor="#FF3366" />
+            <stop offset="0%" stopColor="var(--vp-color)" />
+            <stop offset="100%" stopColor="var(--va-color)" />
           </linearGradient>
         </defs>
         {/* V shape — two sharp angled strokes meeting at a point */}

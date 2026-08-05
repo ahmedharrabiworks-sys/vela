@@ -58,13 +58,13 @@ function VideoPlaceholder({ onClick }: { onClick: () => void }) {
         {/* Vignette overlay */}
         <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 65% at 50% 50%,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.72) 100%)" }} />
         {/* Brand glow */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 55% 45% at 50% 50%,rgba(255,107,53,0.10),transparent)" }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 55% 45% at 50% 50%,var(--vp-10),transparent)" }} />
 
         {/* Play button */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 0 48px rgba(255,107,53,0.5),0 0 96px rgba(255,107,53,0.2)" }}
+            style={{ background: "var(--vela-gradient)", boxShadow: "0 0 48px var(--vp-50),0 0 96px var(--vp-20)" }}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M7 4.5l10 5.5-10 5.5V4.5z" fill="white" />
@@ -80,7 +80,7 @@ function VideoPlaceholder({ onClick }: { onClick: () => void }) {
       {/* Glow shadow below */}
       <div
         className="absolute inset-x-10 -bottom-4 h-8 rounded-full blur-xl pointer-events-none"
-        style={{ background: "linear-gradient(135deg,rgba(255,107,53,0.28),rgba(255,51,102,0.28))" }}
+        style={{ background: "linear-gradient(135deg,var(--vp-30),var(--va-color))", opacity: 0.4 }}
       />
     </div>
   );
@@ -168,9 +168,9 @@ export default function Hero() {
               <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 {[t("landing.hero.trust1"), t("landing.hero.trust2")].map((label) => (
                   <span key={label} className="flex items-center gap-2 text-sm text-[#6B7280]">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <circle cx="7" cy="7" r="6" stroke="#FF6B35" strokeWidth="1.2" />
-                      <path d="M4.5 7l2 2 3-3" stroke="#FF6B35" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "var(--vp-color)" }}>
+                      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+                      <path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     {label}
                   </span>

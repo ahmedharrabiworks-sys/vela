@@ -43,14 +43,14 @@ function ConversationsPanel() {
             Hi! I want to book an appointment 📅
           </div>
           <div className="self-end max-w-[82%] px-3 py-2 rounded-2xl rounded-tr-sm text-[10px] text-white leading-relaxed"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            style={{ background: "var(--vela-gradient)" }}>
             Hey! What service are you looking for?
           </div>
           <div className="self-start max-w-[82%] px-3 py-2 rounded-2xl rounded-tl-sm bg-white border border-[#E5E7EB] text-[10px] text-[#374151] leading-relaxed">
             Dental cleaning please
           </div>
           <div className="self-end max-w-[82%] px-3 py-2 rounded-2xl rounded-tr-sm text-[10px] text-white leading-relaxed"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+            style={{ background: "var(--vela-gradient)" }}>
             How does Tuesday at 3 PM sound?
           </div>
         </div>
@@ -66,7 +66,7 @@ function VoicePanel() {
       <div className="w-52 rounded-2xl overflow-hidden border border-white/10" style={{ background: "rgba(255,255,255,0.05)" }}>
         <div className="px-4 py-4 text-center border-b border-white/8">
           <div className="w-12 h-12 rounded-full mx-auto mb-2.5 flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 0 32px rgba(255,107,53,0.4)" }}>
+            style={{ background: "var(--vela-gradient)", boxShadow: "0 0 32px var(--vp-35)" }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <path d="M3 5.25A2.25 2.25 0 015.25 3h.375a1.125 1.125 0 011.069.768l.9 2.7a1.125 1.125 0 01-.309 1.185L5.906 8.81a10.5 10.5 0 004.285 4.285l1.157-1.38a1.125 1.125 0 011.185-.308l2.7.9A1.125 1.125 0 0116.5 13.5v.375A2.25 2.25 0 0114.25 16.125c-7.107 0-12.875-5.768-12.875-12.875V5.25z" fill="white"/>
             </svg>
@@ -77,7 +77,7 @@ function VoicePanel() {
         <div className="px-4 py-4 flex items-end justify-center gap-1" style={{ height: 52 }}>
           {[3, 7, 10, 6, 14, 9, 5, 12, 8, 4, 9, 6, 3].map((h, i) => (
             <div key={i} className="w-1 rounded-full"
-              style={{ height: h * 2.5, background: i >= 4 && i <= 7 ? "linear-gradient(180deg,#FF6B35,#FF3366)" : "rgba(255,255,255,0.2)" }} />
+              style={{ height: h * 2.5, background: i >= 4 && i <= 7 ? "var(--vela-gradient-180)" : "rgba(255,255,255,0.2)" }} />
           ))}
         </div>
         <div className="px-4 py-3 flex justify-center gap-3 border-t border-white/8">
@@ -114,26 +114,26 @@ function WebsitePanel() {
       <div className="flex flex-col flex-1 bg-white overflow-hidden">
         {/* Nav */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-[#F1F5F9] shrink-0">
-          <div className="w-14 h-2.5 rounded-full" style={{ background: "linear-gradient(90deg,#FF6B35,#FF3366)" }} />
+          <div className="w-14 h-2.5 rounded-full" style={{ background: "var(--vela-gradient-90)" }} />
           <div className="flex items-center gap-2">
             <div className="w-8 h-1.5 rounded-full bg-[#E5E7EB]" />
             <div className="w-8 h-1.5 rounded-full bg-[#E5E7EB]" />
-            <div className="w-16 h-5 rounded-full" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }} />
+            <div className="w-16 h-5 rounded-full" style={{ background: "var(--vela-gradient)" }} />
           </div>
         </div>
         {/* Hero */}
-        <div className="flex items-center justify-center py-5 shrink-0" style={{ background: "linear-gradient(135deg,#fff 0%,#fff5f0 100%)" }}>
+        <div className="flex items-center justify-center py-5 shrink-0" style={{ background: "linear-gradient(135deg,#fff 0%,var(--vt-color) 100%)" }}>
           <div className="text-center">
             <div className="w-36 h-3 rounded-full bg-[#111111]/70 mx-auto mb-2" />
             <div className="w-24 h-2 rounded-full bg-[#9CA3AF] mx-auto mb-3" />
-            <div className="w-20 h-6 rounded-full mx-auto" style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }} />
+            <div className="w-20 h-6 rounded-full mx-auto" style={{ background: "var(--vela-gradient)" }} />
           </div>
         </div>
         {/* Services */}
         <div className="grid grid-cols-3 gap-2 p-3 flex-1">
           {[0, 1, 2].map((i) => (
             <div key={i} className="rounded-xl bg-[#F8FAFC] border border-[#F1F5F9] flex flex-col items-center justify-center gap-1.5 p-2">
-              <div className="w-5 h-5 rounded-lg" style={{ background: "rgba(255,107,53,0.18)" }} />
+              <div className="w-5 h-5 rounded-lg" style={{ background: "var(--vp-20)" }} />
               <div className="w-12 h-1.5 rounded-full bg-[#E5E7EB]" />
               <div className="w-8 h-1 rounded-full bg-[#F1F5F9]" />
             </div>
@@ -207,7 +207,7 @@ function AnalyticsPanel() {
               <div key={i} className="flex-1 rounded-t-sm"
                 style={{
                   height: `${h}%`,
-                  background: i === 5 ? "linear-gradient(180deg,#FF6B35,#FF3366)" : "#F1F5F9",
+                  background: i === 5 ? "var(--vela-gradient-180)" : "#F1F5F9",
                 }} />
             ))}
           </div>
@@ -369,8 +369,8 @@ export default function FeatureTabs() {
                 style={
                   active === i
                     ? {
-                        background: "linear-gradient(135deg,#FF6B35,#FF3366)",
-                        boxShadow: "0 0 24px rgba(255,107,53,0.3)",
+                        background: "var(--vela-gradient)",
+                        boxShadow: "0 0 24px var(--vp-30)",
                       }
                     : {}
                 }
@@ -398,8 +398,8 @@ export default function FeatureTabs() {
               >
                 {/* Icon badge */}
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-[#FF6B35]"
-                  style={{ background: "rgba(255,107,53,0.12)", border: "1px solid rgba(255,107,53,0.2)" }}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: "var(--vp-12)", border: "1px solid var(--vp-20)", color: "var(--vp-color)" }}
                 >
                   {tab.icon}
                 </div>
@@ -418,10 +418,10 @@ export default function FeatureTabs() {
                     <li key={item} className="flex items-start gap-3">
                       <span
                         className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: "rgba(255,107,53,0.12)" }}
+                        style={{ background: "var(--vp-12)" }}
                       >
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M1.5 5.5l2 2 5-4.5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ color: "var(--vp-color)" }}>
+                          <path d="M1.5 5.5l2 2 5-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </span>
                       <span className="text-[#374151] text-[14px] md:text-sm leading-relaxed">{item}</span>
