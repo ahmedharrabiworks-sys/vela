@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
     const { data: tenant } = await db
       .from("tenants")
-      .select("id, business_name, owner_name")
+      .select("id, business_name")
       .eq("owner_id", user.id)
       .single();
 
@@ -117,6 +117,7 @@ export default function DashboardPage() {
           .from("messages")
           .select("role, content")
           .eq("conversation_id", c.id)
+          .eq("is_test", false)
           .order("created_at", { ascending: false })
           .limit(1);
         const last = (msgs ?? [])[0] as { role: string; content: string } | undefined;

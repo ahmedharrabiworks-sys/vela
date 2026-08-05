@@ -44,12 +44,14 @@ export async function POST(req: NextRequest) {
     message,
     channel = "website",
     customerName = "Customer",
+    isTest = false,
   } = body as {
     tenantId?: string;
     conversationId?: string;
     message?: string;
     channel?: string;
     customerName?: string;
+    isTest?: boolean;
   };
 
   if (!tenantId || !message) {
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
   const planId = ((tenant.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
   const msgLimit = PLAN_CONFIG[planId]?.textMessages ?? PLAN_CONFIG.starter.textMessages;
 
-  if (msgLimit !== Infinity) {
+  if (msgLimit !== Infinity && !isTest) {
     const usage = await getUsageSummary(admin, tenantId);
     if (usage.messagesUsed >= msgLimit) {
       return NextResponse.json(
@@ -158,11 +160,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  /* ── 4. Load last 10 messages for context ── */
+  /* ── 4. Load last 10 messages for context (exclude test messages) ── */
   const { data: history } = await admin
     .from("messages")
     .select("role, content")
     .eq("conversation_id", convId)
+    .eq("is_test", false)
     .order("created_at", { ascending: true })
     .limit(10);
 
@@ -172,6 +175,7 @@ export async function POST(req: NextRequest) {
     tenant_id: tenantId,
     role: "user",
     content: message,
+    is_test: isTest === true,
   });
 
   /* ── 6. Load already-booked slots for double-booking prevention ── */
@@ -347,6 +351,7 @@ Rules:
     tenant_id: tenantId,
     role: "assistant",
     content: aiReply,
+    is_test: isTest === true,
   });
 
   /* ── 11. Update conversation ── */

@@ -10,7 +10,7 @@ type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   isNew?: boolean;
   needs_human?: boolean;
 };
-type Message = Database["public"]["Tables"]["messages"]["Row"];
+type Message = Database["public"]["Tables"]["messages"]["Row"] & { is_test?: boolean };
 
 function ChannelIcon({ channel }: { channel: string }) {
   if (channel === "instagram")
@@ -71,6 +71,7 @@ export default function ConversationsPage() {
   const [showThread, setShowThread]         = useState(false);
   const [error, setError]                   = useState<string | null>(null);
   const [resolving, setResolving]           = useState<string | null>(null);
+  const [replyError, setReplyError]         = useState<string | null>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
@@ -125,6 +126,7 @@ export default function ConversationsPage() {
           .from("messages")
           .select("role, content")
           .eq("conversation_id", conv.id)
+          .eq("is_test", false)
           .order("created_at", { ascending: false })
           .limit(1);
         const last = msgs?.[0] as { role: string; content: string } | undefined;
@@ -231,17 +233,18 @@ export default function ConversationsPage() {
     setSending(true);
 
     if (selected.ai_enabled) {
-      // Optimistic: show user message right away
+      // Test the AI — simulates a customer message. Marked is_test=true so it never
+      // affects previews, usage counts, or real AI context history.
       const tempUser: Message = {
         id: `tmp-u-${Date.now()}`,
         conversation_id: selected.id,
         role: "user",
         content: text,
         created_at: new Date().toISOString(),
+        is_test: true,
       };
       setMessages((prev) => [...prev, tempUser]);
 
-      // Call AI engine — it saves both user + AI messages to Supabase
       try {
         const res = await fetch("/api/ai/reply", {
           method: "POST",
@@ -252,48 +255,59 @@ export default function ConversationsPage() {
             message: text,
             channel: selected.channel,
             customerName: selected.customer_name,
+            isTest: true,
           }),
         });
         const data = await res.json();
 
-        // If realtime is not enabled yet, manually add AI reply
         if (data.reply) {
           setMessages((prev) => {
-            // Remove temp user message (realtime may have already added the real one)
             const withoutTemp = prev.filter((m) => m.id !== tempUser.id);
             const hasReal = withoutTemp.some((m) => m.content === text && m.role === "user" && m.id !== tempUser.id);
             const baseList = hasReal ? withoutTemp : [...withoutTemp, { ...tempUser, id: `real-u-${Date.now()}` }];
-            // Add AI reply if realtime hasn't already
             const hasAI = baseList.some((m) => m.content === data.reply && m.role === "assistant");
             if (hasAI) return baseList;
             return [
               ...baseList,
-              { id: `ai-${Date.now()}`, conversation_id: selected.id, role: "assistant" as const, content: data.reply, created_at: new Date().toISOString() },
+              { id: `ai-${Date.now()}`, conversation_id: selected.id, role: "assistant" as const, content: data.reply, created_at: new Date().toISOString(), is_test: true },
             ];
           });
         }
       } catch { /* realtime will sync if available */ }
     } else {
-      // Manual mode: owner is replying as themselves (assistant role)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = getSupabase() as any;
-      const { data: saved } = await db.from("messages").insert({
+      // Takeover mode — send real message to the actual customer via their channel.
+      // Optimistic: show message in thread immediately.
+      const tempMsg: Message = {
+        id: `tmp-t-${Date.now()}`,
         conversation_id: selected.id,
         role: "assistant",
         content: text,
-      }).select("*").single();
+        created_at: new Date().toISOString(),
+        is_test: false,
+      };
+      setMessages((prev) => [...prev, tempMsg]);
 
-      if (saved) {
-        const savedMsg = saved as Message;
-        setMessages((prev) =>
-          prev.some((m) => m.id === savedMsg.id) ? prev : [...prev, savedMsg]
-        );
+      try {
+        const res = await fetch(`/api/conversations/${selected.id}/reply`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json() as { ok?: boolean; error?: string; channelError?: string; channelNote?: string };
+
+        if (!res.ok) {
+          setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+          setReplyError(data.error || "Failed to send — please try again");
+          setTimeout(() => setReplyError(null), 5000);
+        } else if (data.channelError) {
+          setReplyError(data.channelError);
+          setTimeout(() => setReplyError(null), 7000);
+        }
+      } catch {
+        setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+        setReplyError("Network error — please try again");
+        setTimeout(() => setReplyError(null), 5000);
       }
-
-      await db
-        .from("conversations")
-        .update({ last_message_at: new Date().toISOString() })
-        .eq("id", selected.id);
     }
 
     setSending(false);
@@ -467,22 +481,32 @@ export default function ConversationsPage() {
                 </div>
               )}
 
-              {!msgLoading && messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-white text-[#111111] rounded-tl-sm border border-[#E5E7EB]"
-                      : "text-white rounded-tr-sm"
-                  }`}
-                    style={msg.role !== "user" ? { background: "var(--vela-gradient)" } : {}}>
-                    <p>{msg.content}</p>
-                    <p className="text-[10px] mt-1.5 opacity-50">
-                      {msg.role === "assistant" ? t("conversations.velaAiPrefix") : ""}
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
+              {!msgLoading && messages.map((msg) => {
+                const isTestMsg = msg.is_test === true;
+                return (
+                  <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
+                    <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? isTestMsg
+                          ? "bg-[#FFF8F5] text-[#374151] rounded-tl-sm border border-[#FFD8C7]"
+                          : "bg-white text-[#111111] rounded-tl-sm border border-[#E5E7EB]"
+                        : isTestMsg
+                          ? "bg-[#F3F4F6] text-[#374151] rounded-tr-sm border border-[#E5E7EB]"
+                          : "text-white rounded-tr-sm"
+                    }`}
+                      style={msg.role !== "user" && !isTestMsg ? { background: "var(--vela-gradient)" } : {}}>
+                      {isTestMsg && (
+                        <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-1.5 block">Test</span>
+                      )}
+                      <p>{msg.content}</p>
+                      <p className="text-[10px] mt-1.5 opacity-50">
+                        {msg.role === "assistant" && !isTestMsg ? t("conversations.velaAiPrefix") : ""}
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {sending && (
                 <div className="flex justify-end">
@@ -502,7 +526,13 @@ export default function ConversationsPage() {
 
             {/* Reply box */}
             <div className="px-4 md:px-5 py-4 border-t border-[#F3F4F6] bg-white">
-              {!selected.ai_enabled && (
+              {replyError && (
+                <p className="text-xs text-red-500 font-medium mb-2 flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/><path d="M6 3.5v3M6 8h.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  {replyError}
+                </p>
+              )}
+              {!selected.ai_enabled && !replyError && (
                 <p className="text-xs text-[#FF6B35] font-medium mb-2 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#FF6B35]" /> {t("conversations.replyingManually")}
                 </p>

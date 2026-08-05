@@ -20,12 +20,13 @@ export async function getUsageSummary(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   ).toISOString();
 
-  // AI reply count — assistant rows only (idx_messages_tenant_period covers this)
+  // AI reply count — assistant rows only, excluding owner test messages
   const { count: msgCount } = await admin
     .from("messages")
     .select("*", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .eq("role", "assistant")
+    .eq("is_test", false)
     .gte("created_at", periodStart);
 
   // Voice minutes — sum duration_seconds, convert to minutes
