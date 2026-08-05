@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import DemoModal from "@/components/landing/DemoModal";
 import { useI18n } from "@/lib/i18n";
@@ -21,7 +22,7 @@ function VideoPlaceholder({ onClick }: { onClick: () => void }) {
     <div className="relative w-full max-w-[500px]">
       <button
         onClick={onClick}
-        className="group relative w-full rounded-2xl overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B35] focus-visible:ring-offset-2"
+        className="group relative w-full rounded-2xl overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2"
         style={{ aspectRatio: "16/9" }}
         aria-label="Watch 60-second product demo"
       >
@@ -77,6 +78,30 @@ function VideoPlaceholder({ onClick }: { onClick: () => void }) {
         <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10 pointer-events-none" />
       </button>
 
+      {/* Chat bubble accent — floats top-left of video */}
+      <div className="absolute -top-5 -left-6 hidden xl:block pointer-events-none z-10">
+        <Image
+          src="/assets/chat-bubble.png"
+          alt=""
+          width={72}
+          height={72}
+          className="object-contain drop-shadow-xl"
+          unoptimized
+        />
+      </div>
+
+      {/* Mascot — floats bottom-right */}
+      <div className="absolute -bottom-8 -right-8 hidden lg:block pointer-events-none z-10">
+        <Image
+          src="/assets/mascot.png"
+          alt="Vela mascot"
+          width={96}
+          height={96}
+          className="object-contain drop-shadow-2xl"
+          unoptimized
+        />
+      </div>
+
       {/* Glow shadow below */}
       <div
         className="absolute inset-x-10 -bottom-4 h-8 rounded-full blur-xl pointer-events-none"
@@ -92,18 +117,29 @@ export default function Hero() {
 
   return (
     <>
-      <section className="relative min-h-screen flex items-center pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen overflow-hidden">
-
-        {/* Subtle grid texture over the global body::before gradient */}
-        <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-          <div className="landing-grid" />
+      <section
+        className="relative min-h-screen flex items-center pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #1A0800 0%, #2C1005 40%, #FF6B35 100%)" }}
+      >
+        {/* Hero background image */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <Image
+            src="/assets/hero-bg.png"
+            alt=""
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+          {/* Dark overlay for text contrast */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(15,6,0,0.72) 0%, rgba(20,8,0,0.55) 50%, rgba(40,12,0,0.30) 100%)" }} />
         </div>
 
         {/* Content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
 
-            {/* ── Left: copy ── */}
+            {/* ── Left: copy (white text for dark hero) ── */}
             <motion.div
               variants={container}
               initial="hidden"
@@ -112,7 +148,7 @@ export default function Hero() {
             >
               {/* Badge */}
               <motion.div variants={item}>
-                <span className="section-label">
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-widest border border-white/20 text-white/70" style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)" }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] animate-pulse" />
                   {t("landing.hero.badge")}
                 </span>
@@ -121,7 +157,7 @@ export default function Hero() {
               {/* Headline */}
               <motion.h1
                 variants={item}
-                className="vela-heading text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] leading-none text-[#111111]"
+                className="vela-heading text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] leading-none text-white"
               >
                 {t("landing.hero.headline1")}
                 <br />
@@ -131,7 +167,7 @@ export default function Hero() {
               {/* Subtext */}
               <motion.p
                 variants={item}
-                className="text-[#6B7280] text-base md:text-lg leading-relaxed max-w-[440px] mx-auto lg:mx-0"
+                className="text-white/65 text-base md:text-lg leading-relaxed max-w-[440px] mx-auto lg:mx-0"
               >
                 {t("landing.hero.subtext")}
               </motion.p>
@@ -146,7 +182,8 @@ export default function Hero() {
                 </Link>
                 <Link
                   href="/demo"
-                  className="inline-flex items-center gap-2 text-base px-8 py-3.5 rounded-xl font-semibold border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200 justify-center"
+                  className="inline-flex items-center gap-2 text-base px-8 py-3.5 rounded-xl font-semibold border border-white/20 text-white/80 hover:border-white/50 hover:text-white transition-all duration-200 justify-center"
+                  style={{ background: "rgba(255,255,255,0.08)" }}
                 >
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.4" />
@@ -158,7 +195,7 @@ export default function Hero() {
               <motion.div variants={item}>
                 <button
                   onClick={() => setDemoOpen(true)}
-                  className="text-sm font-medium text-[#6B7280] hover:text-[#374151] transition-colors underline underline-offset-4"
+                  className="text-sm font-medium text-white/40 hover:text-white/70 transition-colors underline underline-offset-4"
                 >
                   {t("landing.hero.watchPreview")}
                 </button>
@@ -167,7 +204,7 @@ export default function Hero() {
               {/* Trust row */}
               <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 {[t("landing.hero.trust1"), t("landing.hero.trust2")].map((label) => (
-                  <span key={label} className="flex items-center gap-2 text-sm text-[#6B7280]">
+                  <span key={label} className="flex items-center gap-2 text-sm text-white/50">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "var(--vp-color)" }}>
                       <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
                       <path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />

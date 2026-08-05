@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
-import { ThemePicker } from "@/components/ui/ThemePicker";
-
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
@@ -28,8 +26,6 @@ export default function Navbar() {
 
         {/* Right group */}
         <div className="flex items-center gap-2">
-          <ThemePicker />
-
           <div className="w-px h-5 bg-[#E5E7EB] mx-1 hidden sm:block" />
 
           <Link

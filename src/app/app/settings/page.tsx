@@ -840,40 +840,23 @@ export default function SettingsPage() {
             <>
               <div>
                 <h2 className="font-semibold text-[#111111]">Appearance</h2>
-                <p className="text-xs text-[#9CA3AF] mt-0.5">Choose an accent colour for your dashboard. Changes apply immediately.</p>
+                <p className="text-xs text-[#9CA3AF] mt-0.5">Vela uses its signature orange brand colour. Toggle dark mode from the icon in the top bar.</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {([
-                  { id: "orange" as const, name: "Orange", desc: "Warm & bold",   color: "#ed5426", accent: "#9e3819" },
-                  { id: "blue"   as const, name: "Blue",   desc: "Cool & clear",  color: "#2431ed", accent: "#4753f5" },
-                  { id: "teal"   as const, name: "Teal",   desc: "Fresh & calm",  color: "#177173", accent: "#32eaed" },
-                ]).map((th) => (
-                  <button
-                    key={th.id}
-                    onClick={() => setColorTheme(th.id)}
-                    className={`relative flex flex-col items-start gap-3 p-4 rounded-2xl border-2 transition-all text-left ${
-                      colorTheme === th.id ? "shadow-sm" : "border-[#E5E7EB] hover:border-[#D1D5DB]"
-                    }`}
-                    style={{ borderColor: colorTheme === th.id ? th.color : undefined }}
-                  >
-                    <div className="flex gap-1.5">
-                      <span className="w-7 h-7 rounded-full" style={{ background: th.color }} />
-                      <span className="w-7 h-7 rounded-full" style={{ background: th.accent }} />
-                      <span className="w-7 h-7 rounded-full bg-white border border-[#E5E7EB]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#111111]">{th.name}</p>
-                      <p className="text-xs text-[#6B7280]">{th.desc}</p>
-                    </div>
-                    {colorTheme === th.id && (
-                      <span className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: th.color }}>
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </span>
-                    )}
-                  </button>
-                ))}
+              <div className="flex items-center gap-4 p-4 rounded-2xl border border-[#E5E7EB] bg-[#FFF8F5] w-fit">
+                <div className="flex gap-1.5">
+                  <span className="w-7 h-7 rounded-full" style={{ background: "#ed5426" }} />
+                  <span className="w-7 h-7 rounded-full" style={{ background: "#FF3366" }} />
+                  <span className="w-7 h-7 rounded-full bg-white border border-[#E5E7EB]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#111111]">Vela Orange</p>
+                  <p className="text-xs text-[#9CA3AF]">Brand colour — fixed</p>
+                </div>
+                <span className="ml-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "#ed5426" }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
               </div>
             </>
           )}

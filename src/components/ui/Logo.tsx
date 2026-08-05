@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface LogoProps {
   size?: number;
   showText?: boolean;
@@ -7,9 +9,30 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 36, showText = true, light = false }: LogoProps) {
+  // height = size; width auto-calculated at 3:1 ratio (typical wordmark)
+  const imgHeight = size;
+  const imgWidth = Math.round(size * 3);
+
+  if (showText) {
+    // Full wordmark PNG — includes both the mark and the text
+    return (
+      <div className="flex items-center group cursor-pointer">
+        <Image
+          src="/logo.png"
+          alt="Vela"
+          height={imgHeight}
+          width={imgWidth}
+          className={`object-contain transition-opacity duration-200 group-hover:opacity-85${light ? " brightness-[100]" : ""}`}
+          priority
+          unoptimized
+        />
+      </div>
+    );
+  }
+
+  // Icon-only fallback (no text): keep the SVG V mark
   return (
-    <div className="flex items-center gap-2.5 group cursor-pointer">
-      {/* V mark with dot */}
+    <div className="flex items-center group cursor-pointer">
       <svg
         width={size}
         height={size}
@@ -24,27 +47,16 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
             <stop offset="100%" stopColor="var(--va-color)" />
           </linearGradient>
         </defs>
-        {/* V shape — two sharp angled strokes meeting at a point */}
         <path
           d="M5 7L18 28L31 7"
-          stroke="url(#vela-logo-grad)"
+          stroke={light ? "white" : "url(#vela-logo-grad)"}
           strokeWidth="4.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
         />
-        {/* Dot at the bottom point */}
-        <circle cx="18" cy="30" r="2.5" fill="url(#vela-logo-grad)" />
+        <circle cx="18" cy="30" r="2.5" fill={light ? "white" : "url(#vela-logo-grad)"} />
       </svg>
-
-      {showText && (
-        <span
-          className={`logo-wordmark text-xl font-extrabold tracking-tightest transition-all duration-300${light ? " !text-white" : ""}`}
-          style={{ letterSpacing: "-0.04em", color: light ? undefined : "#1A0A00" }}
-        >
-          vela
-        </span>
-      )}
     </div>
   );
 }

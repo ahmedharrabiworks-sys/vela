@@ -309,61 +309,65 @@ export default function SignupPage() {
     setLoading(true);
     setAuthError("");
 
-    const supabase = getSupabase();
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          business_type: detectedType,
+    try {
+      // Server-side creation — uses admin client with email_confirm:true to bypass
+      // the Supabase free-tier email rate limit (2/hour) that breaks client signUp.
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          businessDesc,
+          detectedType,
           country: country.name,
           city,
           phone: country.dial + " " + phone,
           plan,
-        },
-      },
-    });
+        }),
+      });
 
-    if (error) {
-      // Log real error server-side equivalent; don't surface Supabase messages like
-      // "User already registered" which would reveal whether an email exists (enumeration).
-      // Once Resend + email confirmation is wired, Supabase handles this safely itself.
-      console.warn("[signup] auth error:", error.message);
-      setAuthError("Could not create account — please check your details and try again.");
-      setLoading(false);
-      return;
-    }
-
-    saveProfile({
-      ownerName: fullName,
-      email,
-      businessName: businessDesc,
-      businessType: detectedType,
-      country: country.name,
-      city,
-      phone: country.dial + " " + phone,
-      plan,
-    });
-    if (detectedType) localStorage.setItem("vela_business_type", detectedType);
-
-    if (data.user) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any).from("tenants").insert({
-          owner_id: data.user.id,
-          business_name: businessDesc || detectedType,
-          plan: plan as "starter" | "pro" | "premium",
-        });
-      } catch {
-        // Table may not exist yet — auth still works, proceed to dashboard
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === "already_exists") {
+          setAuthError("This email is already registered — try signing in instead.");
+        } else {
+          setAuthError("Could not create account — please try again.");
+        }
+        setLoading(false);
+        return;
       }
-    }
 
-    setLoading(false);
-    setStep(4);
-    setTimeout(() => router.push("/app/welcome"), 1800);
+      // Account created — sign in immediately (email is already confirmed)
+      const supabase = getSupabase();
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (signInError) {
+        setAuthError("Account created but sign-in failed — try logging in manually.");
+        setLoading(false);
+        return;
+      }
+
+      saveProfile({
+        ownerName: fullName,
+        email,
+        businessName: businessDesc,
+        businessType: detectedType,
+        country: country.name,
+        city,
+        phone: country.dial + " " + phone,
+        plan,
+      });
+      if (detectedType) localStorage.setItem("vela_business_type", detectedType);
+
+      setLoading(false);
+      setStep(4);
+      setTimeout(() => router.push("/app/welcome"), 1800);
+    } catch {
+      setAuthError("Something went wrong — please try again.");
+      setLoading(false);
+    }
   };
 
   return (

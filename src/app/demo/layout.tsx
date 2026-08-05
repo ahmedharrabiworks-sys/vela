@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/dashboard/Sidebar";
-import { ThemePicker } from "@/components/ui/ThemePicker";
+
 import { useTheme } from "@/lib/theme";
 import { DEMO_PROFILE } from "@/lib/demo-data";
 
@@ -89,7 +89,6 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <div className="flex items-center gap-2">
-              <ThemePicker />
               <ThemeToggle />
               {/* Unlock CTA */}
               <Link

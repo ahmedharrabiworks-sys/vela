@@ -604,89 +604,101 @@ export default function DemoModal({ onClose }: Props) {
   };
 
   return (
+    /* Backdrop — click outside closes */
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.35 }}
-      className="fixed inset-0 z-[100] overflow-hidden cursor-pointer"
-      style={{ background: "#07070A" }}
-      onClick={goNext}
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6"
+      style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(6px)" }}
+      onClick={onClose}
     >
-      {/* Ambient glow */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 70% 55% at 50% 52%, rgba(255,107,53,0.07), transparent)" }} />
+      {/* Modal box — click inside does NOT close */}
+      <div
+        className="relative w-full max-w-[1100px] rounded-2xl overflow-hidden"
+        style={{ background: "#07070A", height: "min(620px, 85vh)", minHeight: "480px" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Ambient glow */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 70% 55% at 50% 52%, rgba(255,107,53,0.07), transparent)" }} />
 
-      {/* Progress bar */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex h-[2px]">
-        {Array.from({ length: TOTAL }).map((_, i) => (
-          <div key={i} className="flex-1 overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-            {i < slide && <div className="h-full w-full" style={{ background: "var(--vp-color)" }} />}
-            {i === slide && (
-              <motion.div
-                key={`p-${slide}`}
-                className="h-full"
-                style={{ background: "var(--vp-color)" }}
-                initial={{ width: "0%" }}
-                animate={{ width: "100%" }}
-                transition={{ duration: slide < TOTAL - 1 ? SLIDE_DURATION / 1000 : 0.3, ease: "linear" }}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 pt-6">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--vp-color)" }} />
-          <span className="font-mono text-white/20 text-xs tracking-widest">VELA</span>
+        {/* Progress bar */}
+        <div className="absolute top-0 left-0 right-0 z-30 flex h-[2px]">
+          {Array.from({ length: TOTAL }).map((_, i) => (
+            <div key={i} className="flex-1 overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+              {i < slide && <div className="h-full w-full" style={{ background: "var(--vp-color)" }} />}
+              {i === slide && (
+                <motion.div
+                  key={`p-${slide}`}
+                  className="h-full"
+                  style={{ background: "var(--vp-color)" }}
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: slide < TOTAL - 1 ? SLIDE_DURATION / 1000 : 0.3, ease: "linear" }}
+                />
+              )}
+            </div>
+          ))}
         </div>
-        <button
-          onClick={e => { e.stopPropagation(); onClose(); }}
-          className="text-white/25 hover:text-white/70 text-sm font-medium px-3 py-1.5 rounded-xl transition-all hover:bg-white/8 cursor-pointer"
-          style={{ backdropFilter: "blur(8px)" }}
-        >
-          Skip ✕
-        </button>
-      </div>
 
-      {/* Slide */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={slide}
-          variants={slideVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute inset-0 flex items-center justify-center overflow-y-auto pt-20 pb-24"
-          style={{ cursor: "default" }}
-        >
-          {slide === 0 && <S1 />}
-          {slide === 1 && <S2 />}
-          {slide === 2 && <S3 />}
-          {slide === 3 && <S4 />}
-          {slide === 4 && <S5 />}
-          {slide === 5 && <S6 onCTA={handleCTA} onClose={onClose} />}
-        </motion.div>
-      </AnimatePresence>
+        {/* Top bar */}
+        <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-5 pt-5">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--vp-color)" }} />
+            <span className="font-mono text-white/20 text-xs tracking-widest">VELA</span>
+          </div>
+          {/* Visible close button */}
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.10)", backdropFilter: "blur(8px)" }}
+            aria-label="Close"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
 
-      {/* Bottom nav */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-6 pb-8">
-        <button
-          onClick={e => { e.stopPropagation(); goPrev(); }}
-          disabled={slide === 0}
-          className="text-white/20 hover:text-white/60 text-2xl transition-colors disabled:opacity-0 cursor-pointer"
-        >‹</button>
-        <span className="text-white/25 text-xs font-mono tracking-widest">
-          {slide + 1} <span className="text-white/10">of</span> {TOTAL}
-        </span>
-        <button
-          onClick={e => { e.stopPropagation(); goNext(); }}
-          disabled={slide === TOTAL - 1}
-          className="text-white/20 hover:text-white/60 text-2xl transition-colors disabled:opacity-0 cursor-pointer"
-        >›</button>
+        {/* Slide — click advances */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={slide}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 flex items-center justify-center overflow-y-auto pt-16 pb-20 cursor-pointer"
+            onClick={goNext}
+          >
+            {slide === 0 && <S1 />}
+            {slide === 1 && <S2 />}
+            {slide === 2 && <S3 />}
+            {slide === 3 && <S4 />}
+            {slide === 4 && <S5 />}
+            {slide === 5 && <S6 onCTA={handleCTA} onClose={onClose} />}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Bottom nav */}
+        <div className="absolute bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-6 pb-5">
+          <button
+            onClick={goPrev}
+            disabled={slide === 0}
+            className="text-white/20 hover:text-white/60 text-2xl transition-colors disabled:opacity-0 cursor-pointer"
+          >‹</button>
+          <span className="text-white/25 text-xs font-mono tracking-widest">
+            {slide + 1} <span className="text-white/10">of</span> {TOTAL}
+          </span>
+          <button
+            onClick={goNext}
+            disabled={slide === TOTAL - 1}
+            className="text-white/20 hover:text-white/60 text-2xl transition-colors disabled:opacity-0 cursor-pointer"
+          >›</button>
+        </div>
       </div>
     </motion.div>
   );
