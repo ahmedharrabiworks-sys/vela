@@ -844,9 +844,9 @@ export default function SettingsPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {([
-                  { id: "classic" as const, name: "Classic", desc: "Orange & rose",  color: "#FF6B35", accent: "#FF3366" },
-                  { id: "ocean"   as const, name: "Ocean",   desc: "Blue & sky",     color: "#3B82F6", accent: "#60A5FA" },
-                  { id: "sunset"  as const, name: "Sunset",  desc: "Warm amber",     color: "#FB8C42", accent: "#FBA94C" },
+                  { id: "orange" as const, name: "Orange", desc: "Warm & bold",   color: "#ed5426", accent: "#9e3819" },
+                  { id: "blue"   as const, name: "Blue",   desc: "Cool & clear",  color: "#2431ed", accent: "#4753f5" },
+                  { id: "teal"   as const, name: "Teal",   desc: "Fresh & calm",  color: "#177173", accent: "#32eaed" },
                 ]).map((th) => (
                   <button
                     key={th.id}
