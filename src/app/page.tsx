@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import ComparisonSection from "@/components/landing/ComparisonSection";
 import MascotSection from "@/components/landing/MascotSection";
 import FeatureTabs from "@/components/landing/FeatureTabs";
 import Pricing from "@/components/landing/Pricing";
@@ -11,6 +12,7 @@ export default function LandingPage() {
     <main className="overflow-x-hidden">
       <Navbar />
       <Hero />
+      <ComparisonSection />
       <MascotSection />
       <FeatureTabs />
       <Pricing />

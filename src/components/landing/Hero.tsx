@@ -32,11 +32,17 @@ export default function Hero() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        {/* Overlay — keeps text readable while letting the real image show through */}
+        {/* Overlay — darkens the top for text legibility, fades to nothing at the bottom */}
         <div
           className="absolute inset-0 pointer-events-none"
           aria-hidden="true"
-          style={{ background: "linear-gradient(160deg, rgba(10,3,0,0.52) 0%, rgba(15,5,0,0.32) 50%, rgba(25,8,0,0.12) 100%)" }}
+          style={{ background: "linear-gradient(to bottom, rgba(10,3,0,0.55) 0%, rgba(10,3,0,0.22) 65%, transparent 94%)" }}
+        />
+        {/* Short clean white fade — hard cut into white sections below, zero grey/brown zone */}
+        <div
+          className="absolute bottom-0 left-0 right-0 pointer-events-none"
+          aria-hidden="true"
+          style={{ height: "80px", background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
         />
 
         {/* ── Content ── */}
