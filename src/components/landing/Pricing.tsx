@@ -16,15 +16,15 @@ export default function Pricing() {
       <div className="max-w-7xl mx-auto px-5 md:px-6">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="vela-heading text-4xl md:text-5xl text-[#111111]">
+          <h2 className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight">
             {t("landing.pricing.headline1")}{" "}
             <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
           </h2>
-          <p className="mt-5 text-[#6B7280] text-lg max-w-lg mx-auto">
+          <p className="mt-6 text-[#6B7280] text-lg max-w-lg mx-auto">
             {t("landing.pricing.cancelAnytime")}
           </p>
 
-          <div className="mt-6">
+          <div className="mt-10">
             <Link
               href="/demo"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200"

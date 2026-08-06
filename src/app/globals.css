@@ -96,7 +96,7 @@ html.dark body::before { display: none; }
 
 @layer components {
   .vela-heading {
-    @apply font-inter font-extrabold tracking-tightest leading-none;
+    @apply font-inter font-bold tracking-tightest leading-none;
     letter-spacing: -0.04em;
   }
 

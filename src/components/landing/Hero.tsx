@@ -68,7 +68,7 @@ export default function Hero() {
               {/* Headline */}
               <motion.h1
                 variants={item}
-                className="vela-heading text-[40px] sm:text-[52px] md:text-[60px] lg:text-[72px] leading-none text-white"
+                className="vela-heading font-extrabold text-[40px] sm:text-[52px] md:text-[60px] lg:text-[72px] leading-none text-white"
               >
                 {t("landing.hero.headline1")}
                 <br />

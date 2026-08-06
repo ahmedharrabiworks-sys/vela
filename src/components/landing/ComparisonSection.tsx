@@ -9,7 +9,7 @@ export default function ComparisonSection() {
         {/* Section header */}
         <div className="text-center mb-10 md:mb-14">
           <h2
-            className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] text-[#111111] leading-tight"
+            className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight"
             style={{ textWrap: "balance" } as React.CSSProperties}
           >
             One platform.{" "}
