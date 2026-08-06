@@ -25,7 +25,7 @@ export default function Pricing() {
             {t("landing.pricing.cancelAnytime")}
           </p>
 
-          <div className="mt-6">
+          <div className="mt-3">
             <Link
               href="/demo"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200"
@@ -39,7 +39,7 @@ export default function Pricing() {
           </div>
 
           {/* Toggle */}
-          <div className="inline-flex items-center gap-1 mt-8 p-1 rounded-full bg-white border border-[#E5E7EB] shadow-sm">
+          <div className="inline-flex items-center gap-1 mt-4 p-1 rounded-full bg-white border border-[#E5E7EB] shadow-sm">
             <button
               onClick={() => setAnnual(false)}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
@@ -161,9 +161,6 @@ export default function Pricing() {
           </Link>
         </div>
 
-        <p className="text-center text-sm text-[#6B7280] mt-8">
-          {t("landing.pricing.cancelNote")}
-        </p>
       </div>
     </section>
   );

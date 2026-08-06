@@ -269,8 +269,7 @@ export default function FeatureTabs() {
 
         {/* Section header */}
         <div className="text-center mb-12 md:mb-16">
-          <span className="section-label inline-flex mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35]" />
+          <span className="section-label mb-4">
             How It Works
           </span>
           <h2

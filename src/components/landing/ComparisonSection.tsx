@@ -8,8 +8,7 @@ export default function ComparisonSection() {
 
         {/* Section header */}
         <div className="text-center mb-10 md:mb-14">
-          <span className="section-label inline-flex mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35]" aria-hidden="true" />
+          <span className="section-label mb-4">
             Why Vela
           </span>
           <h2

@@ -5,20 +5,22 @@ export default function DashboardSection() {
   return (
     <section className="py-10 md:py-14 bg-white">
       <div className="max-w-6xl mx-auto px-5 md:px-6">
-        <Image
-          src="/assets/dashboard-mockup.png"
-          alt="Vela dashboard — AI employee managing your business channels"
-          width={1408}
-          height={768}
-          className="w-full h-auto rounded-2xl"
-          unoptimized
-          priority={false}
-        />
-        {/* CTA left-aligned below the dashboard image */}
-        <div className="mt-5">
-          <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
-            Get Started
-          </Link>
+        <div className="relative">
+          <Image
+            src="/assets/dashboard-mockup.png"
+            alt="Vela dashboard — AI employee managing your business channels"
+            width={1408}
+            height={768}
+            className="w-full h-auto rounded-2xl"
+            unoptimized
+            priority={false}
+          />
+          {/* CTA positioned in the blank space baked into the bottom of the image */}
+          <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2">
+            <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+              Get Started
+            </Link>
+          </div>
         </div>
       </div>
     </section>

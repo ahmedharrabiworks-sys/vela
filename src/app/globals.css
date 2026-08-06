@@ -136,9 +136,8 @@ html.dark body::before { display: none; }
   }
 
   .section-label {
-    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full;
-    background: var(--vp-12);
-    color: var(--vp-color);
+    @apply inline-block text-xs font-semibold uppercase tracking-widest;
+    color: #111111;
   }
 
   .card-glass {
