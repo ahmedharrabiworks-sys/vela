@@ -20,25 +20,8 @@ export default function Pricing() {
             {t("landing.pricing.headline1")}{" "}
             <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
           </h2>
-          <p className="mt-6 text-[#6B7280] text-lg max-w-lg mx-auto">
-            {t("landing.pricing.cancelAnytime")}
-          </p>
-
-          <div className="mt-10">
-            <Link
-              href="/demo"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all duration-200"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M5.5 4.8l4.2 2.2-4.2 2.2V4.8z" fill="currentColor" />
-              </svg>
-              {t("landing.nav.tryDemo")}
-            </Link>
-          </div>
-
           {/* Toggle */}
-          <div className="inline-flex items-center gap-1 mt-4 p-1 rounded-full bg-white border border-[#E5E7EB] shadow-sm">
+          <div className="inline-flex items-center gap-1 mt-6 p-1 rounded-full bg-white border border-[#E5E7EB] shadow-sm">
             <button
               onClick={() => setAnnual(false)}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
