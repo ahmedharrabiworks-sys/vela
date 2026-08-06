@@ -1,8 +1,9 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function ComparisonSection() {
   return (
-    <section className="py-20 md:py-28 bg-white">
+    <section className="pt-20 md:pt-28 pb-0 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
         {/* Section header */}
@@ -23,17 +24,24 @@ export default function ComparisonSection() {
           </p>
         </div>
 
-        {/* Comparison table image — 1024×1536 source, capped at max-w-3xl for readability */}
+        {/* Comparison table image with CTA button in the image's blank space */}
         <div className="flex justify-center">
-          <Image
-            src="/assets/comparison-bg.png"
-            alt="Vela vs other tools — full feature comparison table"
-            width={1024}
-            height={1536}
-            className="w-full max-w-3xl h-auto rounded-2xl"
-            style={{ boxShadow: "0 4px 32px rgba(0,0,0,0.08)" }}
-            unoptimized
-          />
+          <div className="relative w-full max-w-3xl">
+            <Image
+              src="/assets/comparison-bg.png"
+              alt="Vela vs other tools — full feature comparison table"
+              width={1023}
+              height={1537}
+              className="w-full h-auto rounded-2xl"
+              unoptimized
+            />
+            {/* CTA positioned in the blank area baked into the bottom of the image */}
+            <div className="absolute bottom-[6%] left-1/2 -translate-x-1/2">
+              <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+                Get Started
+              </Link>
+            </div>
+          </div>
         </div>
 
       </div>
