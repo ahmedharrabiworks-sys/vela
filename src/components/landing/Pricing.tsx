@@ -12,7 +12,7 @@ export default function Pricing() {
   const { t } = useI18n();
 
   return (
-    <section id="pricing" className="py-20 md:py-28 section-tint">
+    <section id="pricing" className="py-20 md:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
         {/* Header */}
         <div className="text-center mb-12">

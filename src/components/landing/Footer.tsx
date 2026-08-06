@@ -67,7 +67,7 @@ export default function Footer() {
   const { t } = useI18n();
 
   return (
-    <footer className="section-tint border-t border-[#E5E7EB]">
+    <footer className="section-tint">
       <div className="max-w-7xl mx-auto px-5 md:px-6 py-14 md:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-14">
           {/* Brand */}

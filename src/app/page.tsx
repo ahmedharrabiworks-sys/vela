@@ -14,8 +14,8 @@ export default function LandingPage() {
       <Hero />
       <FeatureTabs />
       <ComparisonSection />
-      <Pricing />
       <DashboardSection />
+      <Pricing />
       <Footer />
       <SignupTimerPopup />
     </main>

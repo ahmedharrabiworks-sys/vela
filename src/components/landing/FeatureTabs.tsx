@@ -264,7 +264,7 @@ const FEATURES = [
 
 export default function FeatureTabs() {
   return (
-    <section className="py-20 md:py-28 bg-white border-t border-[#E5E7EB]">
+    <section className="py-20 md:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
         {/* Section header */}

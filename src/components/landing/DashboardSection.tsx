@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function DashboardSection() {
   return (
-    <section className="py-20 md:py-28 bg-white border-t border-[#F0E8E0]">
+    <section className="py-20 md:py-28 bg-white">
       <div className="max-w-6xl mx-auto px-5 md:px-6 flex justify-center">
         <Image
           src="/assets/dashboard-mockup.png"
