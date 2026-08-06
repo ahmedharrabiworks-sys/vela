@@ -1,9 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function DashboardSection() {
   return (
-    <section className="py-20 md:py-28 bg-white">
-      <div className="max-w-6xl mx-auto px-5 md:px-6 flex justify-center">
+    <section className="py-10 md:py-14 bg-white">
+      <div className="max-w-6xl mx-auto px-5 md:px-6">
         <Image
           src="/assets/dashboard-mockup.png"
           alt="Vela dashboard — AI employee managing your business channels"
@@ -13,6 +14,12 @@ export default function DashboardSection() {
           unoptimized
           priority={false}
         />
+        {/* CTA left-aligned below the dashboard image */}
+        <div className="mt-5">
+          <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+            Get Started
+          </Link>
+        </div>
       </div>
     </section>
   );

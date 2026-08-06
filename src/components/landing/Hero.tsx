@@ -23,7 +23,7 @@ export default function Hero() {
   return (
     <>
       <section
-        className="relative min-h-[85vh] flex items-center py-32 overflow-hidden"
+        className="relative min-h-[85vh] flex items-center py-16 overflow-hidden"
         style={{
           background: "#1A0800",
           backgroundImage: "url('/assets/hero-bg.png')",

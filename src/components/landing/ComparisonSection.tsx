@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function ComparisonSection() {
   return (
-    <section className="py-20 md:py-28 bg-white">
+    <section className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
         {/* Section header */}
