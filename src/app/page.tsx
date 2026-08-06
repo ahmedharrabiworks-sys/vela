@@ -1,3 +1,4 @@
+import PromoBanner from "@/components/landing/PromoBanner";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import FeatureTabs from "@/components/landing/FeatureTabs";
@@ -11,6 +12,7 @@ import SignupTimerPopup from "@/components/landing/SignupTimerPopup";
 export default function LandingPage() {
   return (
     <main className="overflow-x-hidden">
+      <PromoBanner />
       <Navbar />
       <Hero />
       <FeatureTabs />
