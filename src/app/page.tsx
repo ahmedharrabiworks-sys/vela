@@ -1,11 +1,10 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import FeatureTabs from "@/components/landing/FeatureTabs";
-import IntegrationsStrip from "@/components/landing/IntegrationsStrip";
 import Pricing from "@/components/landing/Pricing";
-import FAQ from "@/components/landing/FAQ";
 import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
+import SignupTimerPopup from "@/components/landing/SignupTimerPopup";
 
 export default function LandingPage() {
   return (
@@ -13,11 +12,11 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       <FeatureTabs />
-      <IntegrationsStrip />
+      {/* SECTION: MISSION — pending new asset */}
       <Pricing />
-      <FAQ />
       <CTA />
       <Footer />
+      <SignupTimerPopup />
     </main>
   );
 }

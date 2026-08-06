@@ -22,7 +22,7 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
           alt="Vela"
           height={imgHeight}
           width={imgWidth}
-          className={`object-contain transition-opacity duration-200 group-hover:opacity-85${light ? " brightness-[100]" : ""}`}
+          className="object-contain transition-opacity duration-200 group-hover:opacity-85"
           priority
           unoptimized
         />

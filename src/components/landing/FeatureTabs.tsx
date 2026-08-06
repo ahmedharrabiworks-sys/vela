@@ -1,13 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─────────────────────────────────────────
    Panel components (CSS-only UI illustrations)
 ───────────────────────────────────────── */
 
+const CONV_MSGS = [
+  { role: "user", text: "Hi! I want to book an appointment 📅" },
+  { role: "ai",   text: "Hey! What service are you looking for?" },
+  { role: "user", text: "Dental cleaning please" },
+  { role: "ai",   text: "How does Tuesday at 3 PM sound?" },
+  { role: "user", text: "That works for me!" },
+  { role: "ai",   text: "Booked for Tuesday 3:00 PM ✓" },
+];
+const CONV_SHOW = [600, 1500, 2600, 3700, 4800, 5900];
+const CONV_LOOP = CONV_SHOW[CONV_SHOW.length - 1] + 3000;
+
 function ConversationsPanel() {
+  const [count, setCount] = useState(4);
+  const [typing, setTyping] = useState(false);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    function run() {
+      setCount(2);
+      setTyping(false);
+      CONV_MSGS.forEach((msg, i) => {
+        if (msg.role === "ai") {
+          timers.push(setTimeout(() => setTyping(true), CONV_SHOW[i] - 700));
+        }
+        timers.push(setTimeout(() => { setTyping(false); setCount(i + 1); }, CONV_SHOW[i]));
+      });
+      timers.push(setTimeout(run, CONV_LOOP));
+    }
+    run();
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const visible = CONV_MSGS.slice(0, count);
+
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden border border-[#E5E7EB] flex flex-col" style={{ background: "#F8FAFC" }}>
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#F1F5F9] shrink-0">
@@ -38,21 +71,38 @@ function ConversationsPanel() {
           ))}
         </div>
         {/* Chat area */}
-        <div className="flex-1 flex flex-col p-3 gap-2 overflow-hidden">
-          <div className="self-start max-w-[82%] px-3 py-2 rounded-2xl rounded-tl-sm bg-white border border-[#E5E7EB] text-[10px] text-[#374151] leading-relaxed">
-            Hi! I want to book an appointment 📅
-          </div>
-          <div className="self-end max-w-[82%] px-3 py-2 rounded-2xl rounded-tr-sm text-[10px] text-white leading-relaxed"
-            style={{ background: "var(--vela-gradient)" }}>
-            Hey! What service are you looking for?
-          </div>
-          <div className="self-start max-w-[82%] px-3 py-2 rounded-2xl rounded-tl-sm bg-white border border-[#E5E7EB] text-[10px] text-[#374151] leading-relaxed">
-            Dental cleaning please
-          </div>
-          <div className="self-end max-w-[82%] px-3 py-2 rounded-2xl rounded-tr-sm text-[10px] text-white leading-relaxed"
-            style={{ background: "var(--vela-gradient)" }}>
-            How does Tuesday at 3 PM sound?
-          </div>
+        <div className="flex-1 flex flex-col p-3 gap-2 overflow-hidden justify-end">
+          <AnimatePresence initial={false}>
+            {visible.map((msg, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className="max-w-[82%] px-3 py-2 rounded-2xl text-[10px] leading-relaxed"
+                  style={msg.role === "user"
+                    ? { background: "var(--vela-gradient)", color: "white", borderBottomRightRadius: 4 }
+                    : { background: "white", color: "#374151", border: "1px solid #E5E7EB", borderBottomLeftRadius: 4 }
+                  }
+                >
+                  {msg.text}
+                </div>
+              </motion.div>
+            ))}
+            {typing && (
+              <motion.div key="typing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="flex justify-start">
+                <div className="flex items-center gap-1 px-3 py-2 rounded-2xl rounded-bl-sm bg-white border border-[#E5E7EB]">
+                  {[0,1,2].map(i => (
+                    <motion.span key={i} className="block w-1.5 h-1.5 rounded-full bg-[#94A3B8]"
+                      animate={{ y: [0, -4, 0] }} transition={{ duration: 0.65, delay: i * 0.14, repeat: Infinity }} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
@@ -75,10 +125,16 @@ function VoicePanel() {
           <p className="text-white/40 text-[9px] mt-0.5">Vela AI answering · Live</p>
         </div>
         <div className="px-4 py-4 flex items-end justify-center gap-1" style={{ height: 52 }}>
-          {[3, 7, 10, 6, 14, 9, 5, 12, 8, 4, 9, 6, 3].map((h, i) => (
-            <div key={i} className="w-1 rounded-full"
-              style={{ height: h * 2.5, background: i >= 4 && i <= 7 ? "var(--vela-gradient-180)" : "rgba(255,255,255,0.2)" }} />
-          ))}
+          {([3, 7, 10, 6, 14, 9, 5, 12, 8, 4, 9, 6, 3] as const).map((h, i) => {
+            const mults = [0.5,0.9,0.6,1.1,0.4,0.85,0.65,0.95,0.55,1.0,0.7,0.8,0.45];
+            return (
+              <motion.div key={i} className="w-1 rounded-full"
+                style={{ background: i >= 4 && i <= 7 ? "var(--vela-gradient-180)" : "rgba(255,255,255,0.2)" }}
+                animate={{ height: [h * 2.5, h * 2.5 * mults[i], h * 2.5] }}
+                transition={{ duration: 0.7 + i * 0.08, delay: i * 0.06, repeat: Infinity, ease: "easeInOut" }}
+              />
+            );
+          })}
         </div>
         <div className="px-4 py-3 flex justify-center gap-3 border-t border-white/8">
           <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
@@ -180,8 +236,19 @@ function LeadsPanel() {
   );
 }
 
+const ANALYTICS_BARS_A = [38, 62, 52, 78, 68, 90, 72];
+const ANALYTICS_BARS_B = [55, 48, 74, 60, 82, 70, 88];
+
 function AnalyticsPanel() {
-  const bars = [38, 62, 52, 78, 68, 90, 72];
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setPhase(p => 1 - p), 3200);
+    return () => clearInterval(t);
+  }, []);
+
+  const bars = phase === 0 ? ANALYTICS_BARS_A : ANALYTICS_BARS_B;
+
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden border border-[#E5E7EB] flex flex-col" style={{ background: "#F8FAFC" }}>
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#F1F5F9] shrink-0">
@@ -204,11 +271,11 @@ function AnalyticsPanel() {
           <p className="text-[8px] text-[#9CA3AF] font-semibold uppercase tracking-wide mb-2 shrink-0">Activity this week</p>
           <div className="flex items-end gap-1 flex-1">
             {bars.map((h, i) => (
-              <div key={i} className="flex-1 rounded-t-sm"
-                style={{
-                  height: `${h}%`,
-                  background: i === 5 ? "var(--vela-gradient-180)" : "#F1F5F9",
-                }} />
+              <motion.div key={i} className="flex-1 rounded-t-sm"
+                animate={{ height: `${h}%` }}
+                transition={{ duration: 0.7, ease: "easeInOut", delay: i * 0.04 }}
+                style={{ background: i === 5 ? "var(--vela-gradient-180)" : "#F1F5F9" }}
+              />
             ))}
           </div>
           <div className="flex justify-between mt-1.5 shrink-0">
@@ -336,7 +403,7 @@ export default function FeatureTabs() {
         <div className="text-center mb-10 md:mb-12">
           <span className="section-label inline-flex mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35]" />
-            Platform
+            How It Works
           </span>
           <h2 className="vela-heading text-[28px] sm:text-[36px] md:text-[42px] text-[#111111] leading-tight mt-3" style={{ textWrap: "balance" } as React.CSSProperties}>
             Everything your business needs,{" "}

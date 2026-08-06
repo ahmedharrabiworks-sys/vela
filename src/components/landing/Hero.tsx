@@ -17,96 +17,139 @@ const item = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
 };
 
-function VideoPlaceholder({ onClick }: { onClick: () => void }) {
+function ProductPreview({ onClick }: { onClick: () => void }) {
   return (
-    <div className="relative w-full max-w-[500px]">
-      <button
-        onClick={onClick}
-        className="group relative w-full rounded-2xl overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2"
-        style={{ aspectRatio: "16/9" }}
-        aria-label="Watch 60-second product demo"
+    <div className="relative w-full">
+      {/* Browser chrome wrapper */}
+      <div
+        className="w-full rounded-2xl overflow-hidden"
+        style={{
+          background: "#0d1117",
+          border: "1px solid rgba(255,255,255,0.10)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.05)",
+        }}
       >
-        {/* Background */}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(145deg,#0c0f1a 0%,#141929 65%,#0f1520 100%)" }} />
-
-        {/* Abstract dashboard shapes */}
-        <div className="absolute inset-0 p-5 flex flex-col gap-3" style={{ opacity: 0.18 }}>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-16 h-2 rounded-full bg-white" />
-            <div className="ml-auto flex gap-1.5">
-              <div className="w-8 h-2 rounded-full bg-white" />
-              <div className="w-8 h-2 rounded-full bg-white" />
-              <div className="w-16 h-2 rounded-full bg-white" />
-            </div>
+        {/* Browser bar */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/8" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <div className="flex gap-1.5">
+            {["#FF6058","#FFC12E","#27CA41"].map(c => (
+              <div key={c} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
+            ))}
           </div>
-          <div className="flex gap-3 flex-1 min-h-0">
-            <div className="w-1/4 flex flex-col gap-2">
-              {[80, 100, 65, 90, 55].map((w, i) => (
-                <div key={i} className="h-1.5 rounded-full bg-white" style={{ width: `${w}%` }} />
-              ))}
-            </div>
-            <div className="flex-1 flex flex-col gap-2 min-h-0">
-              <div className="grid grid-cols-3 gap-2 shrink-0">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="h-10 rounded-xl border border-white/20" style={{ background: "rgba(255,255,255,0.12)" }} />
+          <div className="flex-1 mx-3 h-5 rounded-md flex items-center px-3 gap-2" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5a4 4 0 108 0 4 4 0 00-8 0zM7.5 7.5L9 9" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            <div className="w-20 h-1.5 rounded-full bg-white/10" />
+          </div>
+        </div>
+
+        {/* App shell */}
+        <div className="flex" style={{ height: 320 }}>
+          {/* Sidebar */}
+          <div className="w-14 flex flex-col items-center py-4 gap-3 shrink-0 border-r border-white/8" style={{ background: "rgba(0,0,0,0.35)" }}>
+            <div className="w-7 h-7 rounded-xl flex items-center justify-center text-white text-xs font-bold" style={{ background: "var(--vela-gradient)" }}>V</div>
+            {[
+              <path key="a" d="M2.5 9a1 1 0 011-1h7a1 1 0 011 1v4H2.5V9z" stroke="currentColor" strokeWidth="1.3"/>,
+              <path key="b" d="M2 9.5A1.5 1.5 0 013.5 8h1a1 1 0 01.95.684l.6 1.8a1 1 0 01-.273 1.054l-.65.585a7 7 0 002.857 2.857l.585-.65a1 1 0 011.054-.273l1.8.6A1 1 0 0112 14.5v1A1.5 1.5 0 0110.5 17" stroke="currentColor" strokeWidth="1.3" fill="none"/>,
+              <><circle key="c1" cx="7" cy="6" r="3" stroke="currentColor" strokeWidth="1.3"/><path key="c2" d="M1 11c0-2 2-3 6-3s6 1 6 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></>,
+              <path key="d" d="M2 12V8M4.5 12V5.5M7 12V3M9.5 12V6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>,
+            ].map((icon, i) => (
+              <div key={i} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${i === 0 ? "text-[#FF6B35]" : "text-white/25 hover:text-white/50"}`} style={i === 0 ? { background: "rgba(255,107,53,0.15)" } : {}}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">{icon}</svg>
+              </div>
+            ))}
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Topbar */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/8 shrink-0">
+              <div>
+                <p className="text-white text-[11px] font-semibold">Conversations</p>
+                <p className="text-white/30 text-[9px]">3 active threads</p>
+              </div>
+              <div className="flex gap-1.5">
+                {["IG","WA","Web"].map(l => (
+                  <span key={l} className="text-[9px] px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.08)" }}>{l}</span>
                 ))}
               </div>
-              <div className="flex-1 rounded-xl border border-white/10" style={{ background: "rgba(255,255,255,0.06)" }} />
+            </div>
+
+            {/* Conversation list + chat */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Thread list */}
+              <div className="w-32 flex flex-col border-r border-white/8 shrink-0">
+                {[
+                  { name: "Layla M.", ch: "#E1306C", msg: "Book appt...", active: true },
+                  { name: "Omar K.", ch: "#25D366", msg: "What are yo...", active: false },
+                  { name: "Site visitor", ch: "#FF6B35", msg: "Hi! I want...", active: false },
+                ].map((c, i) => (
+                  <div key={i} className={`px-3 py-2.5 border-b border-white/5 flex items-start gap-2 ${c.active ? "bg-white/6" : ""}`}>
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-white text-[8px] font-bold mt-0.5" style={{ background: c.ch }}>
+                      {c.name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-semibold text-white/80 truncate">{c.name}</p>
+                      <p className="text-[8px] text-white/30 truncate mt-0.5">{c.msg}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Chat area */}
+              <div className="flex-1 flex flex-col p-3 gap-2 overflow-hidden justify-end">
+                {[
+                  { role: "user", text: "Hi! I want to book an appointment 📅" },
+                  { role: "ai",   text: "Hey! What service are you looking for?" },
+                  { role: "user", text: "Dental cleaning please" },
+                  { role: "ai",   text: "How does Tuesday at 3 PM sound?" },
+                ].map((m, i) => (
+                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className="max-w-[80%] px-2.5 py-1.5 rounded-xl text-[9px] leading-relaxed"
+                      style={m.role === "user"
+                        ? { background: "var(--vela-gradient)", color: "white" }
+                        : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.08)" }
+                      }
+                    >
+                      {m.text}
+                    </div>
+                  </div>
+                ))}
+                {/* Typing indicator */}
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {[0,1,2].map(i => (
+                      <motion.span
+                        key={i}
+                        className="block w-1 h-1 rounded-full bg-white/40"
+                        animate={{ y: [0, -3, 0] }}
+                        transition={{ duration: 0.7, delay: i * 0.15, repeat: Infinity }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Vignette overlay */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 70% 65% at 50% 50%,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.72) 100%)" }} />
-        {/* Brand glow */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 55% 45% at 50% 50%,var(--vp-10),transparent)" }} />
-
-        {/* Play button */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-            style={{ background: "var(--vela-gradient)", boxShadow: "0 0 48px var(--vp-50),0 0 96px var(--vp-20)" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M7 4.5l10 5.5-10 5.5V4.5z" fill="white" />
-            </svg>
-          </div>
-          <span className="text-white/50 text-sm font-medium tracking-wide">60-second product demo</span>
-        </div>
-
-        {/* Border */}
-        <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10 pointer-events-none" />
+      {/* Play overlay badge */}
+      <button
+        onClick={onClick}
+        className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-4 py-2.5 rounded-full font-semibold text-xs text-white transition-transform duration-200 hover:scale-105"
+        style={{ background: "var(--vela-gradient)", boxShadow: "0 8px 32px var(--vp-40)" }}
+        aria-label="Watch 60-second product demo"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" fill="rgba(255,255,255,0.2)"/>
+          <path d="M5.5 4.8l4 2.2-4 2.2V4.8z" fill="white"/>
+        </svg>
+        Watch 60-second demo
       </button>
 
-      {/* Chat bubble accent — floats top-left of video */}
-      <div className="absolute -top-5 -left-6 hidden xl:block pointer-events-none z-10">
-        <Image
-          src="/assets/chat-bubble.png"
-          alt=""
-          width={72}
-          height={72}
-          className="object-contain drop-shadow-xl"
-          unoptimized
-        />
-      </div>
-
-      {/* Mascot — floats bottom-right */}
-      <div className="absolute -bottom-8 -right-8 hidden lg:block pointer-events-none z-10">
-        <Image
-          src="/assets/mascot.png"
-          alt="Vela mascot"
-          width={96}
-          height={96}
-          className="object-contain drop-shadow-2xl"
-          unoptimized
-        />
-      </div>
-
-      {/* Glow shadow below */}
-      <div
-        className="absolute inset-x-10 -bottom-4 h-8 rounded-full blur-xl pointer-events-none"
-        style={{ background: "linear-gradient(135deg,var(--vp-30),var(--va-color))", opacity: 0.4 }}
-      />
+      {/* Ambient glow */}
+      <div className="absolute inset-x-10 -bottom-6 h-10 rounded-full blur-2xl pointer-events-none" style={{ background: "linear-gradient(135deg,var(--vp-30),var(--va-color))", opacity: 0.35 }} />
     </div>
   );
 }
@@ -118,7 +161,7 @@ export default function Hero() {
   return (
     <>
       <section
-        className="relative min-h-screen flex items-center pt-24 pb-16 md:pt-0 md:pb-0 md:h-screen overflow-hidden"
+        className="relative min-h-screen flex items-center pt-24 pb-20 md:pt-0 md:pb-0 md:h-screen overflow-hidden"
         style={{ background: "linear-gradient(160deg, #1A0800 0%, #2C1005 40%, #FF6B35 100%)" }}
       >
         {/* Hero background image */}
@@ -137,9 +180,9 @@ export default function Hero() {
 
         {/* Content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-            {/* ── Left: copy (white text for dark hero) ── */}
+            {/* ── Left: copy ── */}
             <motion.div
               variants={container}
               initial="hidden"
@@ -192,14 +235,6 @@ export default function Hero() {
                   {t("landing.nav.tryDemo")}
                 </Link>
               </motion.div>
-              <motion.div variants={item}>
-                <button
-                  onClick={() => setDemoOpen(true)}
-                  className="text-sm font-medium text-white/40 hover:text-white/70 transition-colors underline underline-offset-4"
-                >
-                  {t("landing.hero.watchPreview")}
-                </button>
-              </motion.div>
 
               {/* Trust row */}
               <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -215,14 +250,14 @@ export default function Hero() {
               </motion.div>
             </motion.div>
 
-            {/* ── Right: video placeholder — desktop only ── */}
+            {/* ── Right: product preview — desktop only ── */}
             <motion.div
               initial={{ opacity: 0, x: 28 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-              className="hidden lg:flex items-center justify-center"
+              className="hidden lg:flex items-center justify-center pb-4"
             >
-              <VideoPlaceholder onClick={() => setDemoOpen(true)} />
+              <ProductPreview onClick={() => setDemoOpen(true)} />
             </motion.div>
 
           </div>
