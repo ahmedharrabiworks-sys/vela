@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import MascotSection from "@/components/landing/MascotSection";
 import FeatureTabs from "@/components/landing/FeatureTabs";
 import Pricing from "@/components/landing/Pricing";
 import Footer from "@/components/landing/Footer";
@@ -10,8 +11,8 @@ export default function LandingPage() {
     <main className="overflow-x-hidden">
       <Navbar />
       <Hero />
+      <MascotSection />
       <FeatureTabs />
-      {/* SECTION: MISSION — pending new asset */}
       <Pricing />
       <Footer />
       <SignupTimerPopup />
