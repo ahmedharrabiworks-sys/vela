@@ -46,21 +46,8 @@ const fadeUp = {
 
 export default function MascotSection() {
   return (
-    <section
-      className="relative overflow-hidden"
-      style={{ background: "#0F0804" }}
-    >
-      {/* Warm radial glow centred on mascot */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 60% at 50% 44%, rgba(255,107,53,0.16) 0%, transparent 72%)",
-        }}
-      />
-
-      <div className="relative z-10 max-w-5xl mx-auto px-5 md:px-6 py-20 md:py-28 flex flex-col items-center text-center">
+    <section className="py-20 md:py-28 section-tint relative overflow-hidden">
+      <div className="max-w-5xl mx-auto px-5 md:px-6 flex flex-col items-center text-center">
 
         {/* Eyebrow */}
         <motion.span
@@ -68,8 +55,7 @@ export default function MascotSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-widest border border-white/15 text-white/55 mb-8"
-          style={{ background: "rgba(255,255,255,0.05)" }}
+          className="section-label mb-8"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35]" aria-hidden="true" />
           Meet Vela
@@ -81,7 +67,7 @@ export default function MascotSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-          className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] lg:text-[52px] text-white leading-tight mb-4 max-w-2xl"
+          className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] lg:text-[52px] text-[#111111] leading-tight mb-4 max-w-2xl"
         >
           Your AI employee that{" "}
           <span className="vela-gradient-text">never clocks out.</span>
@@ -92,7 +78,7 @@ export default function MascotSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
-          className="text-white/45 text-base md:text-lg max-w-md mb-14 leading-relaxed"
+          className="text-[#6B7280] text-base md:text-lg max-w-md mb-12 leading-relaxed"
         >
           Built to handle every customer touchpoint so you can focus on running your business.
         </motion.p>
@@ -103,43 +89,45 @@ export default function MascotSection() {
           whileInView={{ opacity: 1, scale: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mb-16"
+          className="relative mb-12"
         >
-          {/* Ambient halo — blooms behind and beyond the image */}
+          {/* Warm glow disc — sits behind the image in the light section */}
           <div
             className="absolute inset-0 pointer-events-none"
             aria-hidden="true"
             style={{
               background:
-                "radial-gradient(ellipse at 50% 52%, rgba(255,107,53,0.32) 0%, rgba(255,107,53,0.10) 42%, transparent 68%)",
-              filter: "blur(30px)",
-              transform: "scale(1.4)",
+                "radial-gradient(ellipse at 50% 55%, rgba(255,107,53,0.18) 0%, rgba(255,107,53,0.06) 52%, transparent 76%)",
+              filter: "blur(22px)",
+              transform: "scale(1.3)",
             }}
           />
-          {/* Ground glow disc */}
+          {/*
+            Radial mask: fades the baked JPEG dark background into the section
+            colour at the edges, so no hard rectangular border is visible.
+          */}
           <div
-            className="absolute -bottom-6 left-1/2 -translate-x-1/2 pointer-events-none"
-            aria-hidden="true"
+            className="relative z-10"
             style={{
-              width: "90%",
-              height: "80px",
-              background: "radial-gradient(ellipse at center, rgba(255,107,53,0.45) 0%, transparent 70%)",
-              filter: "blur(20px)",
+              maskImage:
+                "radial-gradient(ellipse at 50% 50%, black 52%, transparent 84%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse at 50% 50%, black 52%, transparent 84%)",
             }}
-          />
-          {/* mix-blend-screen dissolves the baked dark background into the section */}
-          <Image
-            src="/assets/mascot.png"
-            alt="Vela AI assistant"
-            width={560}
-            height={560}
-            className="object-contain relative z-10 mix-blend-screen w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] md:w-[480px] md:h-[480px] lg:w-[560px] lg:h-[560px]"
-            unoptimized
-            priority={false}
-          />
+          >
+            <Image
+              src="/assets/mascot.png"
+              alt="Vela AI assistant"
+              width={560}
+              height={560}
+              className="object-contain w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] md:w-[480px] md:h-[480px] lg:w-[560px] lg:h-[560px]"
+              unoptimized
+              priority={false}
+            />
+          </div>
         </motion.div>
 
-        {/* Pillars */}
+        {/* Pillars — card-feature matches the site's existing light card style */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full max-w-3xl">
           {PILLARS.map((pillar, i) => (
             <motion.div
@@ -149,30 +137,20 @@ export default function MascotSection() {
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, margin: "-30px" }}
-              className="flex flex-col items-center gap-3 px-6 py-7 rounded-2xl"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
+              className="card-feature flex flex-col items-center gap-3 text-center"
             >
-              <span className="text-[#FF6B35]">{pillar.icon}</span>
-              <span className="text-white font-semibold text-sm tracking-[0.06em] uppercase">
+              <span style={{ color: "var(--vp-color)" }}>{pillar.icon}</span>
+              <span className="text-[#111111] font-semibold text-sm tracking-[0.06em] uppercase">
                 {pillar.title}
               </span>
-              <span className="text-white/40 text-sm leading-relaxed text-center">
+              <span className="text-[#6B7280] text-sm leading-relaxed">
                 {pillar.desc}
               </span>
             </motion.div>
           ))}
         </div>
       </div>
-
-      {/* Bottom fade to white (FeatureTabs is bg-white) */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none"
-        aria-hidden="true"
-        style={{ background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
-      />
+      {/* No bottom fade — section-tint flows cleanly into adjacent light sections */}
     </section>
   );
 }
