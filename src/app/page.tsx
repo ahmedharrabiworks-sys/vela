@@ -2,7 +2,6 @@ import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import FeatureTabs from "@/components/landing/FeatureTabs";
 import Pricing from "@/components/landing/Pricing";
-import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
 import SignupTimerPopup from "@/components/landing/SignupTimerPopup";
 
@@ -14,7 +13,6 @@ export default function LandingPage() {
       <FeatureTabs />
       {/* SECTION: MISSION — pending new asset */}
       <Pricing />
-      <CTA />
       <Footer />
       <SignupTimerPopup />
     </main>

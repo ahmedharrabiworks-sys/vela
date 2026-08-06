@@ -25,46 +25,73 @@ export default function Hero() {
     <>
       <section
         className="relative min-h-screen flex items-center pt-24 pb-20 md:pt-0 md:pb-0 md:h-screen overflow-hidden"
-        style={{ background: "#1A0800" }}
+        style={{
+          background: "#1A0800",
+          backgroundImage: "url('/assets/hero-bg.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
       >
-        {/* ── Real hero background image (FIX 1) ── */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <Image
-            src="/assets/hero-bg.png"
-            alt=""
-            fill
-            className="object-cover"
-            priority
-            unoptimized
-          />
-          {/* Overlay — lighter than before so the real image shows through */}
-          <div
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(160deg, rgba(10,3,0,0.70) 0%, rgba(15,5,0,0.50) 50%, rgba(25,8,0,0.25) 100%)" }}
-          />
-        </div>
+        {/* Overlay — keeps text readable while letting the real image show through */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          aria-hidden="true"
+          style={{ background: "linear-gradient(160deg, rgba(10,3,0,0.52) 0%, rgba(15,5,0,0.32) 50%, rgba(25,8,0,0.12) 100%)" }}
+        />
 
-        {/* ── Clean bottom edge (FIX 4) — prevents gradient bleed into next section ── */}
+        {/* Bottom fade into next section */}
         <div
           className="absolute bottom-0 left-0 right-0 h-36 pointer-events-none"
           aria-hidden="true"
-          style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(5,1,0,0.98) 100%)" }}
+          style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(5,1,0,0.95) 100%)" }}
         />
 
-        {/* ── Mascot (FIX 1) — real visible element, bottom-right of hero ── */}
+        {/* Mascot + speech bubble — visible from lg (1024px+), hidden on mobile */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute bottom-8 right-8 hidden xl:block pointer-events-none z-10"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.0, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute bottom-8 right-8 hidden lg:flex flex-col items-end gap-2.5 pointer-events-none z-10"
           aria-hidden="true"
         >
+          {/* Speech bubble */}
+          <div
+            className="relative"
+            style={{
+              background: "rgba(255,255,255,0.94)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              borderRadius: "12px 12px 4px 12px",
+              padding: "8px 14px",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "#111111",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Hey, I&apos;m Vela 👋
+            {/* Bubble tail */}
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                bottom: -6,
+                right: 14,
+                width: 0,
+                height: 0,
+                borderLeft: "6px solid transparent",
+                borderTop: "6px solid rgba(255,255,255,0.94)",
+              }}
+            />
+          </div>
           <Image
             src="/assets/mascot.png"
-            alt="Vela mascot"
-            width={140}
-            height={140}
-            className="object-contain drop-shadow-2xl"
+            alt="Vela"
+            width={200}
+            height={200}
+            className="object-contain drop-shadow-2xl w-[140px] h-[140px] xl:w-[180px] xl:h-[180px]"
             unoptimized
           />
         </motion.div>
