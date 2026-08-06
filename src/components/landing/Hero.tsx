@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import DemoModal from "@/components/landing/DemoModal";
+import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
 
 const container = {
@@ -23,7 +24,8 @@ export default function Hero() {
   return (
     <>
       <section
-        className="relative min-h-[85vh] flex items-center py-16 overflow-hidden"
+        id="hero-section"
+        className="relative min-h-[85vh] flex flex-col overflow-hidden"
         style={{
           background: "#1A0800",
           backgroundImage: "url('/assets/hero-bg.png')",
@@ -45,8 +47,26 @@ export default function Hero() {
           style={{ height: "80px", background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
         />
 
+        {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 flex items-center justify-between shrink-0">
+          <Link href="/" aria-label="Vela home">
+            <Logo showText size={40} />
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/auth/login"
+              className="hidden sm:inline-flex text-sm font-semibold text-white/80 hover:text-white px-4 py-2.5 rounded-lg transition-colors duration-200"
+            >
+              Log in
+            </Link>
+            <Link href="/auth/signup" className="btn-primary text-sm px-6 py-3 justify-center">
+              {t("landing.nav.getStarted")}
+            </Link>
+          </div>
+        </div>
+
         {/* ── Content ── */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 py-16 flex-1 flex items-center">
           <div className="max-w-3xl">
             <motion.div
               variants={container}
