@@ -1,14 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-const STORAGE_KEY = "vela_signup_popup_dismissed";
+const STORAGE_KEY = "vela_signup_popup_v2";
 const DELAY_MS = 5500;
 
 export default function SignupTimerPopup() {
   const [visible, setVisible] = useState(false);
+  const [name,  setName]  = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -22,53 +27,140 @@ export default function SignupTimerPopup() {
     setVisible(false);
   }
 
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    dismiss();
+    const p = new URLSearchParams();
+    if (name)  p.set("name", name);
+    if (email) p.set("email", email);
+    if (phone) p.set("phone", phone);
+    router.push(`/auth/signup?${p.toString()}`);
+  }
+
   return (
     <AnimatePresence>
       {visible && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 12, scale: 0.97 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed bottom-6 right-5 sm:right-6 z-[90] w-[300px] sm:w-[340px] rounded-2xl p-5"
-          style={{
-            background: "#fff",
-            border: "1.5px solid #E5E7EB",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.14), 0 4px 16px rgba(0,0,0,0.06)",
-          }}
-        >
-          {/* Dismiss */}
-          <button
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[100]"
+            style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(6px)" }}
             onClick={dismiss}
-            className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-[#9CA3AF] hover:bg-[#F3F4F6] hover:text-[#374151] transition-colors"
-            aria-label="Dismiss"
-          >
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-              <path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
-          </button>
+          />
 
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--vp-10)", border: "1px solid var(--vp-20)" }}>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ color: "var(--vp-color)" }}>
-                <path d="M9 2L11 7H16L12 10.5L13.5 16L9 12.5L4.5 16L6 10.5L2 7H7L9 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-bold text-[#111111] leading-tight">Ready to automate your business?</p>
-              <p className="text-[11px] text-[#6B7280] mt-0.5">Be live in 7 days — no setup required.</p>
-            </div>
-          </div>
-
-          <Link
-            href="/auth/signup"
-            onClick={dismiss}
-            className="btn-primary w-full text-sm py-2.5 justify-center"
-            style={{ display: "flex" }}
+          {/* Modal */}
+          <motion.div
+            key="modal"
+            initial={{ opacity: 0, scale: 0.93, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
           >
-            Get Started — Cancel anytime
-          </Link>
-        </motion.div>
+            <div
+              className="pointer-events-auto w-full max-w-[460px] rounded-3xl overflow-hidden"
+              style={{ boxShadow: "0 40px 100px rgba(0,0,0,0.30), 0 8px 24px rgba(0,0,0,0.12)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Dark header band */}
+              <div
+                className="relative px-8 pt-8 pb-6 text-center"
+                style={{ background: "linear-gradient(145deg, #130800 0%, #2C1005 55%, #ff6b3520 100%)" }}
+              >
+                <button
+                  onClick={dismiss}
+                  aria-label="Close"
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  </svg>
+                </button>
+
+                <div className="flex justify-center mb-4">
+                  <Image src="/assets/mascot.png" alt="Vela" width={72} height={72} className="object-contain drop-shadow-xl" unoptimized />
+                </div>
+                <h2 className="text-[22px] font-bold text-white leading-tight mb-1.5">
+                  Be live in 7 days
+                </h2>
+                <p className="text-white/55 text-sm leading-relaxed">
+                  AI that answers your customers 24/7 —<br className="hidden sm:block" />
+                  on every channel, in every language.
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="bg-white px-8 py-7 flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-semibold text-[#374151] uppercase tracking-wider">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="Ahmed Al-Rashid"
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-[#E5E7EB] text-sm text-[#111111] placeholder-[#9CA3AF] transition-colors focus:outline-none"
+                      style={{ boxShadow: "none" }}
+                      onFocus={e => (e.target.style.borderColor = "var(--vp-color)")}
+                      onBlur={e => (e.target.style.borderColor = "#E5E7EB")}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-semibold text-[#374151] uppercase tracking-wider">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className="w-full px-4 py-3 rounded-xl border border-[#E5E7EB] text-sm text-[#111111] placeholder-[#9CA3AF] transition-colors focus:outline-none"
+                      style={{ boxShadow: "none" }}
+                      onFocus={e => (e.target.style.borderColor = "var(--vp-color)")}
+                      onBlur={e => (e.target.style.borderColor = "#E5E7EB")}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-[#374151] uppercase tracking-wider">
+                    Work Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="you@yourbusiness.com"
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-[#E5E7EB] text-sm text-[#111111] placeholder-[#9CA3AF] transition-colors focus:outline-none"
+                    style={{ boxShadow: "none" }}
+                    onFocus={e => (e.target.style.borderColor = "var(--vp-color)")}
+                    onBlur={e => (e.target.style.borderColor = "#E5E7EB")}
+                  />
+                </div>
+
+                <button type="submit" className="btn-primary w-full py-3.5 text-base justify-center mt-1">
+                  Get Started — Cancel anytime
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                    <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+
+                <p className="text-center text-xs text-[#9CA3AF]">
+                  No credit card required to get started.
+                </p>
+              </form>
+            </div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
