@@ -10,7 +10,9 @@ export default function Navbar() {
   useEffect(() => {
     const update = () => {
       const heroEl = document.getElementById("hero-section");
-      const threshold = heroEl ? heroEl.offsetHeight * 0.9 : window.innerHeight * 0.9;
+      // Show sticky nav once the in-hero nav row (~72px) has scrolled off the top.
+      // Fall back to viewport height if the hero element isn't in the DOM yet.
+      const threshold = heroEl ? Math.min(heroEl.offsetHeight * 0.9, 80) : 80;
       setPastHero(window.scrollY > threshold);
     };
     update();
@@ -32,19 +34,19 @@ export default function Navbar() {
       }}
       aria-hidden={!pastHero}
     >
-      <div className="max-w-7xl mx-auto px-5 md:px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-5 md:px-6 h-[72px] flex items-center justify-between">
         <Link href="/" aria-label="Vela home">
-          <Logo showText size={28} />
+          <Logo showText size={40} />
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Link
             href="/auth/login"
-            className="hidden sm:inline-flex text-sm font-medium px-4 py-2 rounded-lg text-[#374151] hover:text-[var(--vp-color)] transition-colors duration-200"
+            className="hidden sm:inline-flex text-base font-medium px-5 py-3 rounded-lg text-[#374151] hover:text-[var(--vp-color)] transition-colors duration-200"
           >
             Log in
           </Link>
-          <Link href="/auth/signup" className="btn-primary text-sm px-5 py-2.5">
+          <Link href="/auth/signup" className="btn-primary text-base px-7 py-3.5">
             Get Started
           </Link>
         </div>

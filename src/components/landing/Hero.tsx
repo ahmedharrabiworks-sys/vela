@@ -50,16 +50,16 @@ export default function Hero() {
         {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 flex items-center justify-between shrink-0">
           <Link href="/" aria-label="Vela home">
-            <Logo showText size={40} />
+            <Logo showText light size={48} />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Link
               href="/auth/login"
-              className="hidden sm:inline-flex text-sm font-semibold text-white/80 hover:text-white px-4 py-2.5 rounded-lg transition-colors duration-200"
+              className="hidden sm:inline-flex text-base font-semibold text-white/80 hover:text-white px-5 py-3 rounded-lg transition-colors duration-200"
             >
               Log in
             </Link>
-            <Link href="/auth/signup" className="btn-primary text-sm px-6 py-3 justify-center">
+            <Link href="/auth/signup" className="btn-primary text-base px-8 py-4 justify-center">
               {t("landing.nav.getStarted")}
             </Link>
           </div>

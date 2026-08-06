@@ -14,11 +14,12 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
   const imgWidth = Math.round(size * 3);
 
   if (showText) {
-    // Full wordmark PNG — includes both the mark and the text
+    // Full wordmark PNG — light=true uses the white version for dark backgrounds
+    const wordmarkSrc = light ? "/logo-light.png" : "/logo.png";
     return (
       <div className="flex items-center group cursor-pointer">
         <Image
-          src="/logo.png"
+          src={wordmarkSrc}
           alt="Vela"
           height={imgHeight}
           width={imgWidth}
