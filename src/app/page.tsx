@@ -2,9 +2,9 @@ import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import FeatureTabs from "@/components/landing/FeatureTabs";
 import ComparisonSection from "@/components/landing/ComparisonSection";
-import RobotSection from "@/components/landing/RobotSection";
 import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
+import RobotSection from "@/components/landing/RobotSection";
 import Footer from "@/components/landing/Footer";
 import SignupTimerPopup from "@/components/landing/SignupTimerPopup";
 
@@ -15,9 +15,9 @@ export default function LandingPage() {
       <Hero />
       <FeatureTabs />
       <ComparisonSection />
-      <RobotSection />
       <DashboardSection />
       <Pricing />
+      <RobotSection />
       <Footer />
       <SignupTimerPopup />
     </main>

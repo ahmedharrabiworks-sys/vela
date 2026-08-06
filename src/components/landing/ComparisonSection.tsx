@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function ComparisonSection() {
   return (
-    <section className="pt-20 md:pt-28 pb-0 bg-white">
+    <section className="py-20 md:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
         {/* Section header */}
@@ -36,7 +36,7 @@ export default function ComparisonSection() {
               unoptimized
             />
             {/* CTA positioned in the blank area baked into the bottom of the image */}
-            <div className="absolute bottom-[6%] left-1/2 -translate-x-1/2">
+            <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2">
               <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
                 Get Started
               </Link>
