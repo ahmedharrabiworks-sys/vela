@@ -23,7 +23,7 @@ const MSGS: ChatMsg[] = [
   { role: "user", at: 7600, text: "(555) 012-3456" },
   { role: "vela", at: 8700, text: "What date works best for you?" },
   { role: "user", at: 10100, text: "Tuesday afternoon please" },
-  { role: "vela", at: 11200, text: "I have Tuesday at 3:00 PM — shall I confirm?" },
+  { role: "vela", at: 11200, text: "I have Tuesday at 3:00 PM. Shall I confirm?" },
   { role: "user", at: 12600, text: "Yes, perfect!" },
 ];
 
@@ -224,7 +224,7 @@ const FEATURES = [
       </svg>
     ),
     title: "AI replies 24/7",
-    desc: "Instagram, WhatsApp & website — all handled automatically.",
+    desc: "Instagram, WhatsApp, and website: all handled automatically.",
   },
   {
     icon: (
@@ -269,18 +269,15 @@ export default function FeatureTabs() {
 
         {/* Section header */}
         <div className="text-center mb-12 md:mb-16">
-          <span className="section-label mb-4">
-            How It Works
-          </span>
           <h2
-            className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] text-[#111111] leading-tight mt-3"
+            className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] text-[#111111] leading-tight"
             style={{ textWrap: "balance" } as React.CSSProperties}
           >
             Watch Vela handle a booking{" "}
             <span className="vela-gradient-text">from first message to confirmed</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">
-            A customer messages. Vela replies, collects their details, and confirms their appointment — no human needed.
+            A customer messages. Vela replies, collects their details, and confirms their appointment. No human needed.
           </p>
         </div>
 

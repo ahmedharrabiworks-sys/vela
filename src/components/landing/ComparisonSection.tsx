@@ -8,18 +8,15 @@ export default function ComparisonSection() {
 
         {/* Section header */}
         <div className="text-center mb-10 md:mb-14">
-          <span className="section-label mb-4">
-            Why Vela
-          </span>
           <h2
-            className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] text-[#111111] leading-tight mt-4"
+            className="vela-heading text-[28px] sm:text-[36px] md:text-[44px] text-[#111111] leading-tight"
             style={{ textWrap: "balance" } as React.CSSProperties}
           >
             One platform.{" "}
             <span className="vela-gradient-text">Everything included.</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">
-            Replace the tools you&apos;re already paying for — Vela handles it all at a fraction of the cost.
+            Replace the tools you&apos;re already paying for. Vela handles it all at a fraction of the cost.
           </p>
         </div>
 
@@ -28,7 +25,7 @@ export default function ComparisonSection() {
           <div className="relative w-full max-w-3xl">
             <Image
               src="/assets/comparison-bg.png"
-              alt="Vela vs other tools — full feature comparison table"
+              alt="Vela vs other tools: full feature comparison table"
               width={1023}
               height={1537}
               className="w-full h-auto rounded-2xl"

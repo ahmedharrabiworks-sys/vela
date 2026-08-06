@@ -89,7 +89,7 @@ export default function SignupTimerPopup() {
                   Be live in 7 days
                 </h2>
                 <p className="text-white/55 text-sm leading-relaxed">
-                  AI that answers your customers 24/7 —<br className="hidden sm:block" />
+                  AI that answers your customers 24/7,<br className="hidden sm:block" />
                   on every channel, in every language.
                 </p>
               </div>
@@ -148,7 +148,7 @@ export default function SignupTimerPopup() {
                 </div>
 
                 <button type="submit" className="btn-primary w-full py-3.5 text-base justify-center mt-1">
-                  Get Started — Cancel anytime
+                  Get started, cancel anytime
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>

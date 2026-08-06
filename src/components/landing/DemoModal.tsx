@@ -362,7 +362,7 @@ function S4() {
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="self-end rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[90%]"
                 style={{ background: "var(--vela-gradient)" }}>
-                <p className="text-white text-sm leading-relaxed">⚡ Hi Sara! Dental cleaning is AED 350 — 45 min. We have tomorrow at 11 AM or 3 PM. Which works?</p>
+                <p className="text-white text-sm leading-relaxed">⚡ Hi Sara! Dental cleaning is AED 350, 45 min. We have tomorrow at 11 AM or 3 PM. Which works?</p>
                 <p className="text-white/50 text-[10px] mt-0.5 text-right">02:17 ✓✓</p>
               </motion.div>
             )}
@@ -430,7 +430,7 @@ function S5() {
         transition={{ delay: 0.48, duration: 0.6 }}
         className="text-white/35 text-lg leading-relaxed mb-10 max-w-md"
       >
-        Every message, every lead, every booking — tracked in one dashboard.
+        Every message, every lead, every booking: tracked in one dashboard.
       </motion.p>
 
       {/* Mini dashboard mockup */}

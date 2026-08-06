@@ -8,7 +8,7 @@ export default function DashboardSection() {
         <div className="relative">
           <Image
             src="/assets/dashboard-mockup.png"
-            alt="Vela dashboard — AI employee managing your business channels"
+            alt="Vela dashboard showing AI managing your business channels"
             width={1408}
             height={768}
             className="w-full h-auto rounded-2xl"
@@ -16,7 +16,7 @@ export default function DashboardSection() {
             priority={false}
           />
           {/* CTA positioned in the blank space baked into the bottom of the image */}
-          <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2">
+          <div className="absolute bottom-[8%] left-[5%]">
             <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
               Get Started
             </Link>
