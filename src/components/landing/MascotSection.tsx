@@ -56,7 +56,7 @@ export default function MascotSection() {
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(ellipse 65% 55% at 50% 42%, rgba(255,107,53,0.12) 0%, transparent 72%)",
+            "radial-gradient(ellipse 70% 60% at 50% 44%, rgba(255,107,53,0.16) 0%, transparent 72%)",
         }}
       />
 
@@ -105,23 +105,35 @@ export default function MascotSection() {
           transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="relative mb-16"
         >
-          {/* Ground glow disc */}
+          {/* Ambient halo — blooms behind and beyond the image */}
           <div
-            className="absolute -bottom-4 left-1/2 -translate-x-1/2 pointer-events-none"
+            className="absolute inset-0 pointer-events-none"
             aria-hidden="true"
             style={{
-              width: "70%",
-              height: "60px",
-              background: "radial-gradient(ellipse at center, rgba(255,107,53,0.28) 0%, transparent 70%)",
-              filter: "blur(12px)",
+              background:
+                "radial-gradient(ellipse at 50% 52%, rgba(255,107,53,0.32) 0%, rgba(255,107,53,0.10) 42%, transparent 68%)",
+              filter: "blur(30px)",
+              transform: "scale(1.4)",
             }}
           />
+          {/* Ground glow disc */}
+          <div
+            className="absolute -bottom-6 left-1/2 -translate-x-1/2 pointer-events-none"
+            aria-hidden="true"
+            style={{
+              width: "90%",
+              height: "80px",
+              background: "radial-gradient(ellipse at center, rgba(255,107,53,0.45) 0%, transparent 70%)",
+              filter: "blur(20px)",
+            }}
+          />
+          {/* mix-blend-screen dissolves the baked dark background into the section */}
           <Image
             src="/assets/mascot.png"
             alt="Vela AI assistant"
-            width={460}
-            height={460}
-            className="object-contain relative z-10 w-[240px] h-[240px] sm:w-[320px] sm:h-[320px] md:w-[400px] md:h-[400px] lg:w-[460px] lg:h-[460px]"
+            width={560}
+            height={560}
+            className="object-contain relative z-10 mix-blend-screen w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] md:w-[480px] md:h-[480px] lg:w-[560px] lg:h-[560px]"
             unoptimized
             priority={false}
           />
