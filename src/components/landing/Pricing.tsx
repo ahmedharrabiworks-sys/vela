@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -26,7 +26,7 @@ export default function Pricing() {
     <section id="pricing" className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h2 className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight">
             {t("landing.pricing.headline1")}{" "}
             <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
@@ -56,14 +56,14 @@ export default function Pricing() {
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-5 md:gap-6 items-stretch">
+        <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch">
           {TIER_PLANS.map((plan) => {
             const price = annual ? plan.annual : plan.monthly;
             const planKey = plan.name.toLowerCase();
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-6 md:p-8 flex flex-col transition-all duration-300 ${
+                className={`relative rounded-2xl p-5 md:p-6 flex flex-col transition-all duration-300 ${
                   plan.popular
                     ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
                     : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
@@ -83,33 +83,40 @@ export default function Pricing() {
                   </div>
                 )}
 
-                <div className="mb-6">
-                  <p className={`text-sm font-semibold uppercase tracking-widest mb-1 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                {/* Tier header — name, price, tagline */}
+                <div className="mb-4">
+                  <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                     {t(`landing.pricing.plans.${planKey}.name`)}
                   </p>
-                  <p className="text-xs text-[#9CA3AF] mb-3">
-                    {TAGLINES[planKey]}
-                  </p>
-                  <div className="flex items-end gap-1 mb-2">
-                    <span className="text-5xl font-extrabold text-[#111111]">
+                  <div className="flex items-end gap-1 mb-1">
+                    <span className="text-4xl font-extrabold text-[#111111]">
                       ${price}
                     </span>
-                    <span className="text-sm mb-2 text-[#9CA3AF]">/mo</span>
+                    <span className="text-sm mb-1 text-[#9CA3AF]">/mo</span>
                   </div>
+                  {/* FIX 3 — tagline now sits directly under price */}
+                  <p className="text-xs text-[#9CA3AF] mt-1">
+                    {TAGLINES[planKey]}
+                  </p>
                   {annual && (
-                    <p className="text-xs font-medium text-[#FF6B35]">
+                    <p className="text-xs font-medium text-[#FF6B35] mt-1">
                       {t("landing.pricing.save")} ${(plan.monthly - plan.annual) * 12}/year
                     </p>
                   )}
-                  <p className="text-sm mt-3 leading-relaxed text-[#6B7280]">
-                    {t(`landing.pricing.plans.${planKey}.description`)}
-                  </p>
                 </div>
 
-                <ul className="flex flex-col gap-3 flex-1 mb-8">
+                {/* FIX 1: description line removed entirely */}
+
+                {/* Feature list */}
+                <ul className="flex flex-col gap-2 flex-1 mb-5">
+                  {/* FIX 2 — inherit line as normal checkmark bullet */}
                   {INHERIT_LINE[planKey] && (
-                    <li className="flex items-start">
-                      <span className="text-xs italic text-[#9CA3AF] pb-1">{INHERIT_LINE[planKey]}</span>
+                    <li className="flex items-start gap-3">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                        <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
+                        <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
                     </li>
                   )}
                   {plan.features.map((feat, i) => (
@@ -134,7 +141,7 @@ export default function Pricing() {
 
                 <Link
                   href="/auth/signup"
-                  className={`text-center py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                  className={`text-center py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 ${
                     plan.popular
                       ? "btn-primary"
                       : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
@@ -142,11 +149,14 @@ export default function Pricing() {
                 >
                   {t(`landing.pricing.plans.${planKey}.cta`)}
                 </Link>
+                {/* FIX 4 — trial reassurance line under button */}
+                <p className="text-center text-[11px] text-[#9CA3AF] mt-2">
+                  Experience it for 7 Days FREE
+                </p>
               </div>
             );
           })}
         </div>
-
 
       </div>
     </section>
