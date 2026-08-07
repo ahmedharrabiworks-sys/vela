@@ -8,24 +8,33 @@ interface LogoProps {
   light?: boolean;
   /**
    * Only affects icon-only renders (showText=false).
-   * Wordmark height is always 32px mobile / 40px desktop via CSS — size is ignored.
+   * Wordmark height is controlled by CSS classes, not this prop.
    */
   size?: number;
+  /**
+   * Override the default responsive height CSS classes for wordmark renders.
+   * Use when a specific context needs a non-standard height (e.g. Hero navbar).
+   */
+  heightClass?: string;
 }
 
-// Single source of truth for logo height across the entire app.
-// h-8  = 32px on mobile  (< 640px)
-// sm:h-10 = 40px on desktop (>= 640px)
-const H = "h-8 sm:h-10";
+// Light-background wordmark (/assets/logo-full.png)  →  34px mobile / 44px desktop
+const LIGHT_BG_H = "h-[34px] sm:h-11";
+// Dark-background wordmark (/logo-light.png)          →  32px mobile / 40px desktop
+const DARK_BG_H  = "h-8 sm:h-10";
 
-export default function Logo({ showText = true, light = false, size }: LogoProps) {
+export default function Logo({ showText = true, light = false, size, heightClass }: LogoProps) {
   if (showText) {
+    // light=true  → white wordmark on dark backgrounds  → /logo-light.png
+    // light=false → dark wordmark on light backgrounds  → /assets/logo-full.png
+    const src = light ? "/logo-light.png" : "/assets/logo-full.png";
+    const H   = heightClass ?? (light ? DARK_BG_H : LIGHT_BG_H);
     return (
       <div className="flex items-center group cursor-pointer">
         <Image
-          src={light ? "/logo-light.png" : "/logo.png"}
+          src={src}
           alt="Vela"
-          height={40}
+          height={light ? 40 : 44}
           width={160}
           className={`${H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`}
           style={{ maxWidth: "160px" }}
@@ -36,18 +45,17 @@ export default function Logo({ showText = true, light = false, size }: LogoProps
     );
   }
   // Icon-only: use explicit size when provided (e.g. collapsed sidebar at 28px),
-  // otherwise fall back to responsive CSS height.
+  // otherwise use responsive CSS height.
   return <LogoMark size={size} light={light} />;
 }
 
 function LogoMark({ size, light = false }: { size?: number; light?: boolean }) {
   const [failed, setFailed] = useState(false);
-  // Use responsive CSS classes when no explicit size override given
   const hasExplicit = size !== undefined;
   const imgStyle = hasExplicit ? { width: size, height: size } : undefined;
   const imgClass = hasExplicit
     ? "object-contain transition-opacity duration-200 group-hover:opacity-85"
-    : `${H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`;
+    : `${DARK_BG_H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`;
 
   if (!failed) {
     return (
@@ -68,13 +76,12 @@ function LogoMark({ size, light = false }: { size?: number; light?: boolean }) {
   }
 
   // SVG fallback when logo-mark.png is absent
-  const svgSize = size ?? undefined;
   return (
     <div className="flex items-center group cursor-pointer">
       <svg
-        width={svgSize}
-        height={svgSize}
-        className={hasExplicit ? "transition-transform duration-300 group-hover:scale-110" : `${H} w-auto transition-transform duration-300 group-hover:scale-110`}
+        width={size}
+        height={size}
+        className={hasExplicit ? "transition-transform duration-300 group-hover:scale-110" : `${DARK_BG_H} w-auto transition-transform duration-300 group-hover:scale-110`}
         viewBox="0 0 36 36"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
