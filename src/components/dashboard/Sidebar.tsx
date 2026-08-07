@@ -171,10 +171,12 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     }
     const profile = getProfile();
     if (profile?.ownerName) {
-      setDisplayName(profile.ownerName);
       const parts = profile.ownerName.split(" ");
       setInitials(parts.map((p) => p[0]).slice(0, 2).join("").toUpperCase());
     }
+    // Show company name if set; fall back to owner's personal name
+    const nameToShow = profile?.businessName || profile?.ownerName;
+    if (nameToShow) setDisplayName(nameToShow);
     if (profile?.plan) setDisplayPlan(profile.plan.toLowerCase());
     if (profile?.email) setDisplayEmail(profile.email);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,15 +191,18 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
         if (user?.email) setDisplayEmail(user.email);
         const name = (user?.user_metadata?.full_name || user?.user_metadata?.name) as string | undefined;
         if (name) {
-          setDisplayName(name);
+          // Personal name drives initials; business_name overrides display below
           const parts = name.split(" ");
           setInitials(parts.map((p) => p[0]).slice(0, 2).join("").toUpperCase());
+          setDisplayName(name);
         }
         if (user) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: tenant } = await (supabase as any)
-            .from("tenants").select("plan").eq("owner_id", user.id).single();
+            .from("tenants").select("plan, business_name").eq("owner_id", user.id).single();
           if (tenant?.plan) setDisplayPlan((tenant.plan as string).toLowerCase());
+          // Prefer business_name over personal name; falls back to personal name already set above
+          if (tenant?.business_name) setDisplayName(tenant.business_name as string);
         }
       } catch { /* no auth session */ }
     }

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
 
 const container = {
@@ -45,8 +44,13 @@ export default function Hero() {
 
       {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
-        <Link href="/" aria-label="Vela home">
-          <Logo showText light heightClass="h-10 sm:h-12" />
+        {/* Direct img — bypasses Logo.tsx's maxWidth:160px which fights the height class */}
+        <Link href="/" aria-label="Vela home" className="group shrink-0">
+          <img
+            src="/logo-light.png"
+            alt="Vela"
+            className="h-10 sm:h-14 w-auto object-contain transition-opacity duration-200 group-hover:opacity-85"
+          />
         </Link>
         <div className="flex items-center gap-4">
           <Link
