@@ -18,6 +18,13 @@ const INHERIT_LINE: Record<string, string> = {
   premium: "Everything in Pro, plus:",
 };
 
+// Indices into the already-filtered (included-only) features array to show on the card
+const CARD_INDICES: Record<string, number[]> = {
+  starter: [0, 2, 3, 5],   // 150 voice min, 1 channel, 1 team member, basic analytics
+  pro:     [0, 1, 2, 6],   // AI Voice Phone Agent, all 3 channels, 650 voice min, full CRM
+  premium: [0, 4, 7],      // 1,300 voice min, unlimited team members, dedicated support
+};
+
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const { t } = useI18n();
@@ -32,24 +39,24 @@ export default function Pricing() {
             <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
           </h2>
           {/* Toggle */}
-          <div className="inline-flex items-center gap-1 mt-6 p-1 rounded-full bg-white border border-[#E5E7EB] shadow-sm">
+          <div className="inline-flex items-center p-0.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] mt-6">
             <button
               onClick={() => setAnnual(false)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
-                !annual ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+                !annual ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
               }`}
             >
               {t("landing.pricing.monthly")}
             </button>
             <button
               onClick={() => setAnnual(true)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                annual ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+                annual ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
               }`}
             >
               {t("landing.pricing.annual")}
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FF6B35] text-white">
-                −20%
+              <span className={`ml-1.5 text-xs ${annual ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>
+                · Save 20%
               </span>
             </button>
           </div>
@@ -119,21 +126,20 @@ export default function Pricing() {
                       <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
                     </li>
                   )}
-                  {plan.features.filter(f => f.included).map((feat, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      {feat.included ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                          <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.04)" />
-                          <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" />
-                        </svg>
-                      )}
-                      <span className={`text-sm ${feat.included ? "text-[#374151]" : "text-[#D1D5DB] line-through"}`}>
-                        {t(`landing.pricing.plans.${planKey}.features.${i}`)}
+                  {plan.features.filter(f => f.included)
+                    .map((feat, originalIdx) => ({ feat, originalIdx }))
+                    .filter(({ originalIdx }) => {
+                      const show = CARD_INDICES[planKey];
+                      return !show || show.includes(originalIdx);
+                    })
+                    .map(({ originalIdx }) => (
+                    <li key={originalIdx} className="flex items-start gap-3">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                        <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
+                        <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-sm text-[#374151]">
+                        {t(`landing.pricing.plans.${planKey}.features.${originalIdx}`)}
                       </span>
                     </li>
                   ))}

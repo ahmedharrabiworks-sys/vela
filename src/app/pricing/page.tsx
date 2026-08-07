@@ -10,8 +10,8 @@ const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
   { label: "Channels",             values: ["1",                "All 3",                "All 3 + priority"      ] },
   { label: "AI Voice Phone Agent", values: [false,              true,                   true                    ] },
   { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited"             ] },
-  { label: "Websites",             values: ["—",                "1 + custom domain",    "3 + custom domains"    ] },
-  { label: "Multi-location",       values: ["—",                "2 locations",          "Unlimited"             ] },
+  { label: "Websites",             values: [false,              "1 + custom domain",    "3 + custom domains"    ] },
+  { label: "Multi-location",       values: [false,              "2 locations",          "Unlimited"             ] },
   { label: "CRM",                  values: ["View-only",        "Full + automation",    "Full + custom pipelines"] },
   { label: "Team members",         values: ["1",                "3",                    "Unlimited"             ] },
   { label: "AI training",          values: ["Single interview", "Unlimited edits",      "Priority retraining"   ] },
@@ -23,7 +23,7 @@ const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
 const FAQ_ITEMS = [
   {
     q: "Is there a free trial?",
-    a: "Yes — try Vela free for 7 days, no commitment required. Explore the full product before your first charge. Cancel anytime.",
+    a: "Yes. Try Vela free for 7 days, no commitment required. Explore the full product before your first charge. Cancel anytime.",
   },
   {
     q: "When do payments launch?",
@@ -31,16 +31,16 @@ const FAQ_ITEMS = [
   },
   {
     q: "Can I switch plans?",
-    a: "Yes — upgrade or downgrade anytime from your Settings page. Upgrades are prorated, downgrades take effect at the next billing cycle.",
+    a: "Yes. Upgrade or downgrade anytime from your Settings page. Upgrades are prorated, downgrades take effect at the next billing cycle.",
   },
   {
-    q: "What channels are included?",
-    a: "Starter gets 1 channel. Pro and Premium get all three: WhatsApp, Instagram, and Website chat.",
+    q: "Do I need any technical skills to set up Vela?",
+    a: "No. Connect your channels, train the AI on your business info, and you're live. No code, no developer, no setup calls.",
   },
 ];
 
 export const metadata = {
-  title: "Compare Plans — Vela",
+  title: "Compare Plans | Vela",
   description: "Full feature comparison across Vela's Starter, Pro, and Premium plans.",
 };
 
@@ -52,8 +52,8 @@ export default function PricingPage() {
       {/* Early access banner */}
       <div className="bg-[#FF6B35]/8 border-b border-[#FF6B35]/15 px-5 py-3 text-center">
         <p className="text-sm text-[#FF6B35] font-medium">
-          <span className="font-bold">Payments launching soon</span>
-          {" — "}you&apos;re on the early list. Lock in your price today.
+          <span className="font-bold">Payments launching soon.</span>
+          {" "}You&apos;re on the early list. Lock in your price today.
         </p>
       </div>
 
@@ -64,7 +64,7 @@ export default function PricingPage() {
             Compare Plans
           </h1>
           <p className="text-[#6B7280] mt-2">
-            All three plans, every feature — side by side.{" "}
+            All three plans, every feature, side by side.{" "}
             <Link href="/#pricing" className="text-[#FF6B35] hover:underline font-medium">
               Back to pricing ↑
             </Link>
@@ -119,7 +119,10 @@ export default function PricingPage() {
                             />
                           </svg>
                         ) : (
-                          <span className="text-[#D1D5DB] font-medium">—</span>
+                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mx-auto">
+                            <circle cx="9" cy="9" r="8" fill="rgba(0,0,0,0.04)" />
+                            <path d="M6 6l6 6M12 6l-6 6" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
                         )
                       ) : (
                         <span className={ci === PRO_COL ? "font-semibold text-[#111111]" : "text-[#6B7280]"}>
