@@ -431,7 +431,7 @@
       "plans": {
         "starter": {
           "name": "Starter",
-          "description": "Get your AI agent live on one channel and start handling leads automatically.",
+          "description": "One AI channel — automated replies, lead capture, and CRM.",
           "cta": "Start Your Trial",
           "features": [
             "150 voice minutes/month",
@@ -448,7 +448,7 @@
         },
         "pro": {
           "name": "Pro",
-          "description": "The complete system: AI phone agent, all channels, website, and full CRM.",
+          "description": "All channels, phone agent, website, and full CRM.",
           "cta": "Start Your Trial",
           "features": [
             "AI Voice Phone Agent",
@@ -465,7 +465,7 @@
         },
         "premium": {
           "name": "Premium",
-          "description": "For businesses that demand zero compromise: priority everything, 3 websites, unlimited team.",
+          "description": "Everything in Pro — priority routing, 3 websites, and unlimited team.",
           "cta": "Start Your Trial",
           "features": [
             "1,300 voice minutes/month",

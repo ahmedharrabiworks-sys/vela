@@ -55,7 +55,7 @@ export default function Hero() {
           >
             Log in
           </Link>
-          <Link href="/auth/signup" className="btn-primary text-base px-8 py-4 justify-center">
+          <Link href="/auth/signup" className="btn-primary text-sm px-6 py-2.5 justify-center">
             {t("landing.nav.getStarted")}
           </Link>
         </div>
@@ -63,7 +63,7 @@ export default function Hero() {
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 py-16 flex-1 flex items-center">
-        <div className="max-w-3xl md:pl-10 md:mt-8">
+        <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}
             initial="hidden"
