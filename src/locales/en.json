@@ -410,10 +410,10 @@
       "getStarted": "Start 7-Day Free Trial"
     },
     "hero": {
-      "badge": "AI Business Operating System",
-      "headline1": "Never miss",
-      "headline2": "another lead.",
-      "subtext": "Vela runs your customer communications 24/7. AI replies, qualifies, and books appointments on Instagram, WhatsApp, and your website.",
+      "badge": "ONE PLATFORM. EVERY TOOL.",
+      "headline1": "The AI Operating System for Businesses",
+      "headline2": "",
+      "subtext": "Replace 40+ business tools with one intelligent platform. Vela manages your customer conversations, phone calls, website, CRM, bookings, follow-ups, analytics, marketing, and daily operations so you can run and grow your business from a single place.",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
@@ -451,10 +451,10 @@
           "description": "The complete system: AI phone agent, all channels, website, and full CRM.",
           "cta": "Start Your Trial",
           "features": [
+            "AI Voice Phone Agent",
+            "All 3 channels (phone, Instagram, WhatsApp)",
             "650 voice minutes/month",
             "Unlimited text messages",
-            "All 3 channels (phone, Instagram, WhatsApp)",
-            "AI Voice Phone Agent",
             "1 website + custom domain",
             "3 team members",
             "Full CRM + automation",
@@ -466,10 +466,9 @@
         "premium": {
           "name": "Premium",
           "description": "For businesses that demand zero compromise: priority everything, 3 websites, unlimited team.",
-          "cta": "Get Premium",
+          "cta": "Start Your Trial",
           "features": [
             "1,300 voice minutes/month",
-            "Unlimited text messages",
             "All 3 channels + priority routing",
             "AI Voice Phone Agent + priority retraining",
             "3 websites + custom domains",

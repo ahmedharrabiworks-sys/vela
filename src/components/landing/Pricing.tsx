@@ -13,6 +13,11 @@ const TAGLINES: Record<string, string> = {
   premium: "For teams that need zero compromise.",
 };
 
+const INHERIT_LINE: Record<string, string> = {
+  pro:     "Everything in Starter, plus:",
+  premium: "Everything in Pro, plus:",
+};
+
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const { t } = useI18n();
@@ -102,6 +107,11 @@ export default function Pricing() {
                 </div>
 
                 <ul className="flex flex-col gap-3 flex-1 mb-8">
+                  {INHERIT_LINE[planKey] && (
+                    <li className="flex items-start">
+                      <span className="text-xs italic text-[#9CA3AF] pb-1">{INHERIT_LINE[planKey]}</span>
+                    </li>
+                  )}
                   {plan.features.map((feat, i) => (
                     <li key={i} className="flex items-start gap-3">
                       {feat.included ? (

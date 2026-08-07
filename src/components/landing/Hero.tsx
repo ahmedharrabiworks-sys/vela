@@ -81,14 +81,12 @@ export default function Hero() {
               </span>
             </motion.div>
 
-            {/* Headline */}
+            {/* Headline — plain white, no gradient, no decorative treatment */}
             <motion.h1
               variants={item}
-              className="vela-heading font-extrabold text-[40px] sm:text-[52px] md:text-[60px] lg:text-[72px] leading-none text-white"
+              className="font-inter font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-white"
             >
               {t("landing.hero.headline1")}
-              <br />
-              <span className="vela-gradient-text">{t("landing.hero.headline2")}</span>
             </motion.h1>
 
             {/* Subtext */}
@@ -109,18 +107,6 @@ export default function Hero() {
               </Link>
             </motion.div>
 
-            {/* Trust row */}
-            <motion.div variants={item} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {[t("landing.hero.trust1"), t("landing.hero.trust2")].map((label) => (
-                <span key={label} className="flex items-center gap-2 text-sm text-white">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: "var(--vp-color)" }}>
-                    <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-                    <path d="M4.5 7l2 2 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  {label}
-                </span>
-              ))}
-            </motion.div>
           </motion.div>
         </div>
       </div>

@@ -57,10 +57,10 @@ export const PLANS: Plan[] = [
       "Priority support (24h)",
     ],
     features: [
+      { text: "AI Voice Phone Agent",                        included: true },
+      { text: "All 3 channels (phone, Instagram, WhatsApp)", included: true },
       { text: "650 voice minutes/month",                     included: true },
       { text: "Unlimited text messages",                     included: true },
-      { text: "All 3 channels (phone, Instagram, WhatsApp)", included: true },
-      { text: "AI Voice Phone Agent",                        included: true },
       { text: "1 website + custom domain",                   included: true },
       { text: "3 team members",                              included: true },
       { text: "Full CRM + automation",                       included: true },
@@ -75,7 +75,7 @@ export const PLANS: Plan[] = [
     monthly: 595,
     annual: 476,
     popular: false,
-    cta: "Get Premium",
+    cta: "Get Started",
     description: "For businesses that demand zero compromise — priority everything, 3 websites, unlimited team.",
     highlightFeatures: [
       "All 3 channels + priority routing",
@@ -86,7 +86,6 @@ export const PLANS: Plan[] = [
     ],
     features: [
       { text: "1,300 voice minutes/month",                  included: true },
-      { text: "Unlimited text messages",                    included: true },
       { text: "All 3 channels + priority routing",          included: true },
       { text: "AI Voice Phone Agent + priority retraining", included: true },
       { text: "3 websites + custom domains",                included: true },
