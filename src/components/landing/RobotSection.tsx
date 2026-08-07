@@ -25,7 +25,7 @@ export default function RobotSection() {
             />
             {/* CTA in bottom-left open space, below the 3-column feature row */}
             <div className="absolute bottom-[8%] left-[5%]">
-              <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+              <Link href="/auth/signup" className="btn-primary whitespace-nowrap text-xs py-2 px-4 sm:text-sm sm:py-3.5 sm:px-7">
                 Get Started
               </Link>
             </div>

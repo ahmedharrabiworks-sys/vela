@@ -62,7 +62,7 @@ export default function Hero() {
           >
             Log in
           </Link>
-          <Link href="/auth/signup" className="btn-primary text-sm px-6 py-2.5 justify-center">
+          <Link href="/auth/signup" className="hidden sm:inline-flex btn-primary text-sm px-6 py-2.5 justify-center">
             {t("landing.nav.getStarted")}
           </Link>
         </div>

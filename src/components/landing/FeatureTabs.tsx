@@ -77,7 +77,7 @@ function VelaShowcase() {
     >
       {/* ── App header with real logo ── */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[#F1F5F9] shrink-0" style={{ background: "#FAFAFA" }}>
-        <Image src="/logo.png" alt="Vela" height={22} width={66} className="object-contain" unoptimized priority />
+        <Image src="/assets/logo-full.png" alt="Vela" height={22} width={88} className="object-contain" unoptimized priority />
         <div className="w-px h-4 bg-[#E5E7EB]" />
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-green-400" />
