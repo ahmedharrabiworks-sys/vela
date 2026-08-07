@@ -7,6 +7,12 @@ import { useI18n } from "@/lib/i18n";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
+const TAGLINES: Record<string, string> = {
+  starter: "For solo operators getting started.",
+  pro:     "For businesses ready to go all-in.",
+  premium: "For teams that need zero compromise.",
+};
+
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
   const { t } = useI18n();
@@ -73,8 +79,11 @@ export default function Pricing() {
                 )}
 
                 <div className="mb-6">
-                  <p className={`text-sm font-semibold uppercase tracking-widest mb-4 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                  <p className={`text-sm font-semibold uppercase tracking-widest mb-1 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                     {t(`landing.pricing.plans.${planKey}.name`)}
+                  </p>
+                  <p className="text-xs text-[#9CA3AF] mb-3">
+                    {TAGLINES[planKey]}
                   </p>
                   <div className="flex items-end gap-1 mb-2">
                     <span className="text-5xl font-extrabold text-[#111111]">
