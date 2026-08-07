@@ -1,7 +1,7 @@
 import PromoBanner from "@/components/landing/PromoBanner";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
-import FeatureTabs from "@/components/landing/FeatureTabs";
+import ProductTourDemo from "@/components/landing/ProductTourDemo";
 import ComparisonSection from "@/components/landing/ComparisonSection";
 import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
@@ -13,7 +13,7 @@ export default function LandingPage() {
       <PromoBanner />
       <Navbar />
       <Hero />
-      <FeatureTabs />
+      <ProductTourDemo />
       <ComparisonSection />
       <DashboardSection />
       <Pricing />
