@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
 
 const container = {
@@ -29,7 +30,7 @@ export default function Hero() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Darkening overlay — fades to nothing at the bottom */}
+      {/* Darkening overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden="true"
@@ -41,6 +42,24 @@ export default function Hero() {
         aria-hidden="true"
         style={{ height: "80px", background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
       />
+
+      {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
+        <Link href="/" aria-label="Vela home">
+          <Logo showText light size={48} />
+        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/auth/login"
+            className="hidden sm:inline-flex text-base font-semibold text-white hover:text-white/80 px-5 py-3 rounded-lg transition-colors duration-200"
+          >
+            Log in
+          </Link>
+          <Link href="/auth/signup" className="btn-primary text-base px-8 py-4 justify-center">
+            {t("landing.nav.getStarted")}
+          </Link>
+        </div>
+      </div>
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 py-16 flex-1 flex items-center">

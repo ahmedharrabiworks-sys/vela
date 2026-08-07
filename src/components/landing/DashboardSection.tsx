@@ -18,7 +18,7 @@ export default function DashboardSection() {
           {/* CTA positioned in the blank space baked into the bottom of the image */}
           <div className="absolute bottom-[8%] left-[5%]">
             <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
-              Start your 7 day free trial
+              Start 7-Day Free Trial
             </Link>
           </div>
         </div>
