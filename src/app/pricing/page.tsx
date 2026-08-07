@@ -30,7 +30,6 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   const [joined, setJoined] = useState<string | null>(null);
-  const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
     async function loadPlan() {
@@ -205,19 +204,14 @@ export default function PricingPage() {
           </a>
         </div>
 
-        {/* Compare all features toggle */}
-        <div className="mt-10 text-center">
-          <button
-            onClick={() => setShowComparison((v) => !v)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#6B7280] hover:text-[#111111] transition-colors"
-          >
-            {showComparison ? "Hide comparison ↑" : "Compare all features ↓"}
-          </button>
+        {/* Full Feature Comparison */}
+        <div className="mt-12 mb-5">
+          <h2 className="text-xl font-bold text-[#111111]">Full Feature Comparison</h2>
+          <p className="text-sm text-[#6B7280] mt-1">Every feature across all plans, side by side.</p>
         </div>
 
         {/* Comparison table — horizontally scrollable on mobile */}
-        {showComparison && (
-          <div className="mt-5 overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
             <table className="w-full min-w-[580px] text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#E5E7EB]">
@@ -263,7 +257,6 @@ export default function PricingPage() {
               </tbody>
             </table>
           </div>
-        )}
 
         {/* Footer note */}
         <p className="text-center text-sm text-[#9CA3AF] mt-10">

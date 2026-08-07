@@ -56,14 +56,14 @@ export default function Pricing() {
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch">
+        <div className="max-w-[900px] mx-auto grid md:grid-cols-3 gap-4 md:gap-5 items-stretch">
           {TIER_PLANS.map((plan) => {
             const price = annual ? plan.annual : plan.monthly;
             const planKey = plan.name.toLowerCase();
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-5 md:p-6 flex flex-col transition-all duration-300 ${
+                className={`relative rounded-2xl p-4 md:p-5 flex flex-col transition-all duration-300 ${
                   plan.popular
                     ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
                     : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
@@ -119,7 +119,7 @@ export default function Pricing() {
                       <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
                     </li>
                   )}
-                  {plan.features.map((feat, i) => (
+                  {plan.features.filter(f => f.included).map((feat, i) => (
                     <li key={i} className="flex items-start gap-3">
                       {feat.included ? (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
@@ -139,23 +139,37 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <Link
-                  href="/auth/signup"
-                  className={`text-center py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                    plan.popular
-                      ? "btn-primary"
-                      : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                  }`}
-                >
-                  {t(`landing.pricing.plans.${planKey}.cta`)}
-                </Link>
-                {/* FIX 4 — trial reassurance line under button */}
-                <p className="text-center text-[11px] text-[#9CA3AF] mt-2">
-                  Experience it for 7 Days FREE
-                </p>
+                <div className="flex flex-col items-center gap-1.5">
+                  <Link
+                    href="/auth/signup"
+                    className={`py-2.5 px-7 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                      plan.popular
+                        ? "btn-primary"
+                        : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                    }`}
+                  >
+                    {t(`landing.pricing.plans.${planKey}.cta`)}
+                  </Link>
+                  <p className="text-[11px] text-[#9CA3AF]">
+                    Experience it for 7 Days FREE
+                  </p>
+                </div>
               </div>
             );
           })}
+        </div>
+
+        {/* See full comparison link */}
+        <div className="text-center mt-6">
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
+          >
+            See full feature comparison
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Link>
         </div>
 
       </div>
