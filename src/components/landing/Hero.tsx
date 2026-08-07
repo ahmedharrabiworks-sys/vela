@@ -44,12 +44,15 @@ export default function Hero() {
 
       {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
-        {/* Direct img — bypasses Logo.tsx's maxWidth:160px which fights the height class */}
+        {/* Plain <img> — no Next.js Image layout constraints.
+            !important on height/width overrides Tailwind preflight's img{height:auto}.
+            48px mobile / 72px desktop makes logo visually dominant over the nav buttons. */}
         <Link href="/" aria-label="Vela home" className="group shrink-0">
           <img
             src="/logo-light.png"
             alt="Vela"
-            className="h-10 sm:h-14 w-auto object-contain transition-opacity duration-200 group-hover:opacity-85"
+            className="block !h-12 sm:!h-[72px] !w-auto transition-opacity duration-200 group-hover:opacity-85"
+            style={{ flexShrink: 0 }}
           />
         </Link>
         <div className="flex items-center gap-4">
