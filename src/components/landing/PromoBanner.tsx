@@ -1,20 +1,40 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function PromoBanner() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 120);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <div
-      className="sticky top-0 z-40 w-full px-5 md:px-8 py-3 flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-4"
-      style={{ background: "linear-gradient(90deg, #FF6B35 0%, #FF3366 100%)" }}
+      className="fixed top-0 left-0 right-0 z-40"
+      style={{
+        background: "linear-gradient(90deg, #E55A18 0%, #FF6B35 100%)",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(-100%)",
+        transition: "opacity 0.25s ease, transform 0.25s ease",
+        pointerEvents: visible ? "auto" : "none",
+      }}
+      aria-hidden={!visible}
     >
-      <p className="text-sm font-medium text-white text-center sm:text-left leading-snug">
-        Bring your business to the next level with our AI Business Operating System
-      </p>
-      <Link
-        href="/auth/signup"
-        className="shrink-0 text-sm font-bold px-5 py-2 rounded-lg bg-white text-[#FF6B35] hover:bg-white/90 transition-colors whitespace-nowrap"
-      >
-        Get Started
-      </Link>
+      <div className="max-w-5xl mx-auto px-5 py-2.5 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-5">
+        <p className="text-sm font-medium text-white text-center leading-snug">
+          Bring your business to the next level with our AI Business Operating System
+        </p>
+        <Link
+          href="/auth/signup"
+          className="shrink-0 text-sm font-bold px-5 py-1.5 rounded-lg bg-white text-[#FF6B35] hover:bg-white/90 transition-colors whitespace-nowrap"
+        >
+          Start your 7 day free trial
+        </Link>
+      </div>
     </div>
   );
 }

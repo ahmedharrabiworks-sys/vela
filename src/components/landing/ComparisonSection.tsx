@@ -34,7 +34,7 @@ export default function ComparisonSection() {
             {/* CTA positioned in the blank area baked into the bottom of the image */}
             <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2">
               <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
-                Get Started
+                Start your 7 day free trial
               </Link>
             </div>
           </div>
