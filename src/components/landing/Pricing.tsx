@@ -9,9 +9,9 @@ import TrialCTAButton from "@/components/landing/TrialCTAButton";
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
 const TAGLINES: Record<string, string> = {
-  starter: "For solo operators getting started.",
-  pro:     "For businesses ready to go all-in.",
-  premium: "For teams that need zero compromise.",
+  starter: "For freelancers & solo businesses",
+  pro:     "For growing teams",
+  premium: "For pro companies & businesses",
 };
 
 const INHERIT_LINE: Record<string, string> = {
@@ -20,10 +20,11 @@ const INHERIT_LINE: Record<string, string> = {
 };
 
 // Indices into the already-filtered (included-only) features array to show on the card
+// Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
 const CARD_INDICES: Record<string, number[]> = {
   starter: [0, 2, 3, 5],
   pro:     [0, 1, 2, 6],
-  premium: [0, 4, 7],
+  premium: [0, 2, 3, 7, 8],
 };
 
 export default function Pricing() {

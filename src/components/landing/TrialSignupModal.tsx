@@ -7,7 +7,7 @@ const inputCls =
   "w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
 
 export default function TrialSignupModal() {
-  const { isOpen, close } = useTrialModal();
+  const { isOpen, open, close } = useTrialModal();
 
   const [step, setStep]       = useState(1);
   const [done, setDone]       = useState(false);
@@ -31,6 +31,20 @@ export default function TrialSignupModal() {
     }
   }, [isOpen]);
 
+  // Auto-open 3 s after page load — once per session (sessionStorage guard)
+  // CTA buttons still open it manually even after it was dismissed
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = "vela_popup_shown";
+    if (sessionStorage.getItem(key)) return;
+    const t = setTimeout(() => {
+      sessionStorage.setItem(key, "1");
+      open();
+    }, 3000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!isOpen) return null;
 
   function handleStep1(e: React.FormEvent) {
@@ -46,21 +60,13 @@ export default function TrialSignupModal() {
   }
 
   return (
-    <>
-      {/* Backdrop */}
+    /* Popup — floats near top-center, no backdrop dim, rest of page stays interactive */
+    <div className="fixed inset-x-0 top-0 z-[101] flex justify-center px-4 pointer-events-none" style={{ paddingTop: "36px" }}>
       <div
-        className="fixed inset-0 z-[100]"
-        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
-        onClick={close}
-      />
-
-      {/* Modal */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
-        <div
-          className="pointer-events-auto w-full max-w-[480px] bg-white rounded-2xl overflow-hidden"
-          style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.08)", maxHeight: "90vh", overflowY: "auto" }}
-          onClick={(e) => e.stopPropagation()}
-        >
+        className="pointer-events-auto w-full max-w-[660px] bg-white rounded-2xl overflow-hidden"
+        style={{ boxShadow: "0 12px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.07)", maxHeight: "90vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#F3F4F6]">
             {/* Step indicator */}
@@ -284,8 +290,7 @@ export default function TrialSignupModal() {
             )}
 
           </div>
-        </div>
       </div>
-    </>
+    </div>
   );
 }
