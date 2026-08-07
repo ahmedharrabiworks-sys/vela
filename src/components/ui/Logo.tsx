@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 
 interface LogoProps {
   size?: number;
@@ -9,12 +10,10 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 36, showText = true, light = false }: LogoProps) {
-  // height = size; width auto-calculated at 3:1 ratio (typical wordmark)
   const imgHeight = size;
-  const imgWidth = Math.round(size * 3);
+  const imgWidth  = Math.round(size * 3);
 
   if (showText) {
-    // Full wordmark PNG — light=true uses the white version for dark backgrounds
     const wordmarkSrc = light ? "/logo-light.png" : "/logo.png";
     return (
       <div className="flex items-center group cursor-pointer">
@@ -23,6 +22,9 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
           alt="Vela"
           height={imgHeight}
           width={imgWidth}
+          // width:auto ensures both light and dark PNGs render at identical visual height
+          // regardless of internal whitespace differences between the two PNG files
+          style={{ height: `${imgHeight}px`, width: "auto", maxWidth: `${imgWidth}px` }}
           className="object-contain transition-opacity duration-200 group-hover:opacity-85"
           priority
           unoptimized
@@ -31,7 +33,32 @@ export default function Logo({ size = 36, showText = true, light = false }: Logo
     );
   }
 
-  // Icon-only fallback (no text): keep the SVG V mark
+  // Icon-only: try /assets/logo-mark.png, fall back to inline SVG V mark
+  return <LogoMark size={size} light={light} />;
+}
+
+function LogoMark({ size, light }: { size: number; light: boolean }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!failed) {
+    return (
+      <div className="flex items-center group cursor-pointer">
+        <Image
+          src="/assets/logo-mark.png"
+          alt="Vela"
+          width={size}
+          height={size}
+          style={{ width: size, height: size }}
+          className="object-contain transition-opacity duration-200 group-hover:opacity-85"
+          onError={() => setFailed(true)}
+          priority
+          unoptimized
+        />
+      </div>
+    );
+  }
+
+  // SVG fallback while logo-mark.png is not yet in /public/assets/
   return (
     <div className="flex items-center group cursor-pointer">
       <svg

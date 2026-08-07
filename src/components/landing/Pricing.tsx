@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
+import TrialCTAButton from "@/components/landing/TrialCTAButton";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -20,9 +21,9 @@ const INHERIT_LINE: Record<string, string> = {
 
 // Indices into the already-filtered (included-only) features array to show on the card
 const CARD_INDICES: Record<string, number[]> = {
-  starter: [0, 2, 3, 5],   // 150 voice min, 1 channel, 1 team member, basic analytics
-  pro:     [0, 1, 2, 6],   // AI Voice Phone Agent, all 3 channels, 650 voice min, full CRM
-  premium: [0, 4, 7],      // 1,300 voice min, unlimited team members, dedicated support
+  starter: [0, 2, 3, 5],
+  pro:     [0, 1, 2, 6],
+  premium: [0, 4, 7],
 };
 
 export default function Pricing() {
@@ -62,112 +63,106 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Cards */}
+        {/* Cards — glow hugs the card row bounding box */}
         <div className="relative max-w-[900px] mx-auto">
-          {/* Glow hugging the cards row */}
           <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
-            style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.07)", filter: "blur(60px)", zIndex: 0 }} />
-        <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch" style={{ position: "relative", zIndex: 1 }}>
-          {TIER_PLANS.map((plan) => {
-            const price = annual ? plan.annual : plan.monthly;
-            const planKey = plan.name.toLowerCase();
-            return (
-              <div
-                key={plan.name}
-                className={`relative rounded-2xl p-7 md:p-10 flex flex-col transition-all duration-300 ${
-                  plan.popular
-                    ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
-                    : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
-                }`}
-                style={
-                  plan.popular
-                    ? { border: "2px solid #FF6B35", boxShadow: "0 8px 32px rgba(255,107,53,0.12)" }
-                    : {}
-                }
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="px-4 py-1 rounded-full text-xs font-bold text-white"
-                      style={{ background: "var(--vela-gradient)" }}>
-                      {t("landing.pricing.mostPopular")}
-                    </span>
-                  </div>
-                )}
-
-                {/* Tier header — name, price, tagline */}
-                <div className="mb-6">
-                  <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
-                    {t(`landing.pricing.plans.${planKey}.name`)}
-                  </p>
-                  <div className="flex items-end gap-1 mb-1">
-                    <span className="text-4xl font-extrabold text-[#111111]">
-                      ${price}
-                    </span>
-                    <span className="text-sm mb-1 text-[#9CA3AF]">/mo</span>
-                  </div>
-                  {/* FIX 3 — tagline now sits directly under price */}
-                  <p className="text-xs text-[#9CA3AF] mt-1">
-                    {TAGLINES[planKey]}
-                  </p>
-                  {annual && (
-                    <p className="text-xs font-medium text-[#FF6B35] mt-1">
-                      {t("landing.pricing.save")} ${(plan.monthly - plan.annual) * 12}/year
-                    </p>
-                  )}
-                </div>
-
-                {/* FIX 1: description line removed entirely */}
-
-                {/* Feature list */}
-                <ul className="flex flex-col gap-4 flex-1 mb-6 md:gap-5">
-                  {/* FIX 2 — inherit line as normal checkmark bullet */}
-                  {INHERIT_LINE[planKey] && (
-                    <li className="flex items-start gap-3">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                        <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                        <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
-                    </li>
-                  )}
-                  {plan.features.filter(f => f.included)
-                    .map((feat, originalIdx) => ({ feat, originalIdx }))
-                    .filter(({ originalIdx }) => {
-                      const show = CARD_INDICES[planKey];
-                      return !show || show.includes(originalIdx);
-                    })
-                    .map(({ originalIdx }) => (
-                    <li key={originalIdx} className="flex items-start gap-3">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                        <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                        <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="text-sm text-[#374151]">
-                        {t(`landing.pricing.plans.${planKey}.features.${originalIdx}`)}
+            style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.22)", filter: "blur(60px)", zIndex: 0 }} />
+          <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch" style={{ position: "relative", zIndex: 1 }}>
+            {TIER_PLANS.map((plan) => {
+              const price = annual ? plan.annual : plan.monthly;
+              const planKey = plan.name.toLowerCase();
+              return (
+                <div
+                  key={plan.name}
+                  className={`relative rounded-2xl p-8 md:p-11 flex flex-col transition-all duration-300 ${
+                    plan.popular
+                      ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
+                      : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
+                  }`}
+                  style={
+                    plan.popular
+                      ? { border: "2px solid #FF6B35", boxShadow: "0 8px 32px rgba(255,107,53,0.12)" }
+                      : {}
+                  }
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                      <span className="px-4 py-1 rounded-full text-xs font-bold text-white"
+                        style={{ background: "var(--vela-gradient)" }}>
+                        {t("landing.pricing.mostPopular")}
                       </span>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
 
-                <div className="flex flex-col items-center gap-1.5">
-                  <Link
-                    href="/auth/signup"
-                    className={`py-2.5 px-7 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                      plan.popular
-                        ? "btn-primary"
-                        : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                    }`}
-                  >
-                    {t(`landing.pricing.plans.${planKey}.cta`)}
-                  </Link>
-                  <p className="text-[11px] text-[#9CA3AF]">
-                    Experience it for 7 Days FREE
-                  </p>
+                  {/* Tier header */}
+                  <div className="mb-7">
+                    <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                      {t(`landing.pricing.plans.${planKey}.name`)}
+                    </p>
+                    <div className="flex items-end gap-1.5 mb-1.5">
+                      <span className="text-5xl font-black text-[#111111] leading-none">
+                        ${price}
+                      </span>
+                      <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
+                    </div>
+                    <p className="text-sm text-[#9CA3AF] mt-1">
+                      {TAGLINES[planKey]}
+                    </p>
+                    {annual && (
+                      <p className="text-sm font-medium text-[#FF6B35] mt-1">
+                        {t("landing.pricing.save")} ${(plan.monthly - plan.annual) * 12}/year
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Feature list with hairline dividers */}
+                  <ul className="flex-1 mb-7 divide-y divide-[#F3F4F6]">
+                    {INHERIT_LINE[planKey] && (
+                      <li className="flex items-start gap-3 py-3.5">
+                        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                          <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
+                          <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="text-base text-[#374151]">{INHERIT_LINE[planKey]}</span>
+                      </li>
+                    )}
+                    {plan.features.filter(f => f.included)
+                      .map((feat, originalIdx) => ({ feat, originalIdx }))
+                      .filter(({ originalIdx }) => {
+                        const show = CARD_INDICES[planKey];
+                        return !show || show.includes(originalIdx);
+                      })
+                      .map(({ originalIdx }) => (
+                        <li key={originalIdx} className="flex items-start gap-3 py-3.5">
+                          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                            <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
+                            <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span className="text-base text-[#374151]">
+                            {t(`landing.pricing.plans.${planKey}.features.${originalIdx}`)}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+
+                  <div className="flex flex-col items-center gap-2">
+                    <TrialCTAButton
+                      className={`w-full py-3 px-7 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                        plan.popular
+                          ? "btn-primary"
+                          : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      }`}
+                    >
+                      {t(`landing.pricing.plans.${planKey}.cta`)}
+                    </TrialCTAButton>
+                    <p className="text-[11px] text-[#9CA3AF]">
+                      Experience it for 7 Days FREE
+                    </p>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* See full comparison link */}
@@ -176,7 +171,7 @@ export default function Pricing() {
             href="/pricing"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
           >
-            See full feature
+            See full feature comparison
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
               <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>

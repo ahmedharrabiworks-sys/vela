@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { getProfile } from "@/lib/business-profile";
 import { useI18n } from "@/lib/i18n";
 import { useBottomSheetOpen } from "@/lib/useBottomSheetState";
@@ -42,16 +43,77 @@ function extractSaveKbToken(text: string): { json: string; stripped: string } | 
 }
 
 function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const icon = Math.round(size * 0.52);
   return (
     <div
-      className={`rounded-full shrink-0 flex items-center justify-center${mt ? " mt-0.5" : ""}`}
+      className={`rounded-full shrink-0 flex items-center justify-center overflow-hidden${mt ? " mt-0.5" : ""}`}
       style={{ width: size, height: size, background: "var(--vela-gradient)" }}
     >
-      <svg width={icon} height={icon} viewBox="0 0 14 14" fill="none">
-        <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
+      {!imgFailed ? (
+        <Image
+          src="/assets/logo-mark.png"
+          alt="Vela"
+          width={size}
+          height={size}
+          style={{ width: size, height: size, objectFit: "contain" }}
+          onError={() => setImgFailed(true)}
+          unoptimized
+        />
+      ) : (
+        <svg width={icon} height={icon} viewBox="0 0 14 14" fill="none">
+          <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
     </div>
+  );
+}
+
+// Floating launcher icon — logo-mark.png, falls back to chat bubble SVG
+function LauncherIcon() {
+  const [failed, setFailed] = useState(false);
+  if (!failed) {
+    return (
+      <Image
+        src="/assets/logo-mark.png"
+        alt="Vela"
+        width={26}
+        height={26}
+        style={{ width: 26, height: 26, objectFit: "contain" }}
+        onError={() => setFailed(true)}
+        className="relative z-10"
+        unoptimized
+      />
+    );
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="relative z-10">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="1.8" strokeLinejoin="round"/>
+      <path d="M8 10h8M8 14h5" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// Panel header icon — logo-mark.png, falls back to V SVG
+function HeaderIcon() {
+  const [failed, setFailed] = useState(false);
+  if (!failed) {
+    return (
+      <Image
+        src="/assets/logo-mark.png"
+        alt="Vela"
+        width={20}
+        height={20}
+        style={{ width: 20, height: 20, objectFit: "contain" }}
+        onError={() => setFailed(true)}
+        unoptimized
+      />
+    );
+  }
+  return (
+    <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+      <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   );
 }
 
@@ -272,10 +334,7 @@ export function VelaAssistant() {
             <path d="M4 4l12 12M16 4L4 16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="relative z-10">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="1.8" strokeLinejoin="round"/>
-            <path d="M8 10h8M8 14h5" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
-          </svg>
+          <LauncherIcon />
         )}
       </button>
 
@@ -296,10 +355,8 @@ export function VelaAssistant() {
               style={{ background: "var(--vela-gradient)" }}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                  <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 overflow-hidden">
+                  <HeaderIcon />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white leading-none">{t("velaAssistant.title")}</p>

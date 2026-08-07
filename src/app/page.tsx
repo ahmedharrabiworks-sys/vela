@@ -7,7 +7,7 @@ import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
 import RobotSection from "@/components/landing/RobotSection";
 import Footer from "@/components/landing/Footer";
-import SignupTimerPopup from "@/components/landing/SignupTimerPopup";
+import TrialSignupModal from "@/components/landing/TrialSignupModal";
 
 export default function LandingPage() {
   return (
@@ -21,7 +21,7 @@ export default function LandingPage() {
       <Pricing />
       <RobotSection />
       <Footer />
-      <SignupTimerPopup />
+      <TrialSignupModal />
     </main>
   );
 }

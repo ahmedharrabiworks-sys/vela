@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import TrialCTAButton from "@/components/landing/TrialCTAButton";
 
 export default function ComparisonSection() {
   return (
@@ -20,28 +20,27 @@ export default function ComparisonSection() {
           </p>
         </div>
 
-        {/* Comparison table image with CTA button in the image's blank space */}
+        {/* Comparison table image — glow hugs the image box */}
         <div className="flex justify-center">
-          {/* Glow hugging the comparison image */}
           <div className="relative w-full max-w-3xl">
             <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
-              style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.065)", filter: "blur(60px)", zIndex: 0 }} />
-          <div className="relative w-full overflow-hidden rounded-2xl" style={{ zIndex: 1 }}>
-            <Image
-              src="/assets/comparison-bg.png"
-              alt="Vela vs other tools: full feature comparison table"
-              width={1023}
-              height={1537}
-              className="w-full h-auto rounded-2xl"
-              unoptimized
-            />
-            {/* CTA positioned in the blank area baked into the bottom of the image */}
-            <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2">
-              <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
-                Start 7-Day Free Trial
-              </Link>
+              style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.2)", filter: "blur(60px)", zIndex: 0 }} />
+            <div className="relative w-full overflow-hidden rounded-2xl" style={{ zIndex: 1 }}>
+              <Image
+                src="/assets/comparison-bg.png"
+                alt="Vela vs other tools: full feature comparison table"
+                width={1023}
+                height={1537}
+                className="w-full h-auto rounded-2xl"
+                unoptimized
+              />
+              {/* CTA positioned in the blank area baked into the bottom of the image */}
+              <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2">
+                <TrialCTAButton className="btn-primary whitespace-nowrap">
+                  Start 7-Day Free Trial
+                </TrialCTAButton>
+              </div>
             </div>
-          </div>
           </div>
         </div>
 

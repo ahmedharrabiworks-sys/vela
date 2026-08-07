@@ -6,20 +6,25 @@ import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { getSupabase } from "@/lib/supabase";
 
+const PLATFORM_LANGS = ["English", "Arabic", "French", "German", "Spanish", "Portuguese"];
+
 export default function LoginPage() {
   const router = useRouter();
 
   // ── Login state ──
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
 
   // ── Forgot-password state ──
-  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotMode, setForgotMode]   = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const [resetError, setResetError] = useState("");
+  const [resetSent, setResetSent]     = useState(false);
+  const [resetError, setResetError]   = useState("");
+
+  // ── Language selection (stored, not yet wired to i18n) ──
+  const [platformLang, setPlatformLang] = useState("English");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,13 +35,26 @@ export default function LoginPage() {
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
-      setError(authError.message);
+      setError("Invalid email or password. Please try again.");
       setLoading(false);
       return;
     }
 
     router.push("/app");
     router.refresh();
+  };
+
+  const handleGoogleSignIn = async () => {
+    // Requires Google OAuth to be enabled in Supabase dashboard:
+    // Authentication > Providers > Google > enable + add client ID/secret
+    const supabase = getSupabase();
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${appUrl}/app` },
+    });
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -55,7 +73,7 @@ export default function LoginPage() {
     setResetLoading(false);
 
     if (resetErr) {
-      setResetError("Could not send reset email — please try again.");
+      setResetError("Could not send reset email. Please try again.");
       return;
     }
 
@@ -67,11 +85,32 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
-      {/* V logo top-left */}
+
+      {/* Logo top-left — icon mark only */}
       <div className="absolute top-0 left-0 p-6 z-10">
         <Link href="/">
-          <Logo showText />
+          <Logo showText={false} size={32} />
         </Link>
+      </div>
+
+      {/* Platform language selector — top right */}
+      <div className="absolute top-0 right-0 p-6 z-10">
+        <div className="relative">
+          <select
+            value={platformLang}
+            onChange={(e) => setPlatformLang(e.target.value)}
+            className="appearance-none bg-white border border-[#E5E7EB] rounded-lg pl-3 pr-8 py-2 text-xs font-medium text-[#374151] focus:outline-none focus:border-[#FF6B35] transition-colors cursor-pointer"
+          >
+            {PLATFORM_LANGS.map((lang) => (
+              <option key={lang} value={lang}>{lang}</option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M2 3.5l3 3 3-3" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -132,6 +171,29 @@ export default function LoginPage() {
                   {loading ? "Signing in..." : "Sign in"}
                 </button>
               </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-6">
+                <div className="flex-1 h-px bg-[#E5E7EB]" />
+                <span className="text-xs text-[#9CA3AF] font-medium">Or continue with</span>
+                <div className="flex-1 h-px bg-[#E5E7EB]" />
+              </div>
+
+              {/* Google sign-in */}
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#9CA3AF] hover:bg-[#F9FAFB] transition-all duration-200"
+              >
+                {/* Google "G" icon */}
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+              </button>
 
               <p className="text-center text-sm text-[#6B7280] mt-6">
                 Don&apos;t have an account?{" "}
