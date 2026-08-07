@@ -27,7 +27,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Do I need a credit card to start?",
-    a: "No credit card required. Start your free trial today, and we'll let you know before any billing begins.",
+    a: "Yes. We ask for your card to start the trial, but you won't be charged until day 8. Cancel anytime before then and pay nothing.",
   },
   {
     q: "Can I switch plans?",
@@ -49,19 +49,12 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#F9FAFB]">
       <PublicPageHeader />
 
-      {/* Early access banner */}
-      <div className="bg-[#FF6B35]/8 border-b border-[#FF6B35]/15 px-5 py-3 text-center">
-        <p className="text-sm text-[#FF6B35] font-medium">
-          <span className="font-bold">Payments launching soon.</span>
-          {" "}You&apos;re on the early list. Lock in your price today.
-        </p>
-      </div>
-
       <div className="max-w-4xl mx-auto px-5 py-10 md:py-14">
         {/* Page title */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-[#111111] tracking-tight leading-tight">
-            Compare Plans
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-[#111111]">
+            Full Plan{" "}
+            <span className="vela-gradient-text">Details</span>
           </h1>
           <p className="text-[#6B7280] mt-2">
             All three plans, every feature, side by side.{" "}
@@ -139,7 +132,7 @@ export default function PricingPage() {
 
         {/* CTA note */}
         <p className="text-center text-sm text-[#9CA3AF] mt-8">
-          Cancel anytime, no questions asked.{" · "}
+          Cancel anytime{" · "}
           <Link href="/auth/signup" className="text-[#FF6B35] hover:underline font-medium">
             Start your 7-day trial →
           </Link>
