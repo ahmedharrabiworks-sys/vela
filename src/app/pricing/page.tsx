@@ -26,8 +26,8 @@ const FAQ_ITEMS = [
     a: "Yes. Try Vela free for 7 days, no commitment required. Explore the full product before your first charge. Cancel anytime.",
   },
   {
-    q: "When do payments launch?",
-    a: "We're activating billing shortly. Everyone who signs up before launch locks in their plan at current prices.",
+    q: "Do I need a credit card to start?",
+    a: "No credit card required. Start your free trial today, and we'll let you know before any billing begins.",
   },
   {
     q: "Can I switch plans?",

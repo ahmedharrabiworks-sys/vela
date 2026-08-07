@@ -7,6 +7,7 @@ import Logo from "@/components/ui/Logo";
 import { getProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { useI18n, LANGUAGES } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 
 const NAV = [
   {
@@ -145,6 +146,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   const router = useRouter();
   const { t, langName, setLocale } = useI18n();
 
+  const { theme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [displayName, setDisplayName] = useState("Your Account");
   const [displayEmail, setDisplayEmail] = useState("");
@@ -259,9 +261,9 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     >
       {/* Logo row */}
       <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-[#E5E7EB] shrink-0">
-        {!collapsed && <Link href="/" onClick={onClose}><Logo showText size={28} /></Link>}
-        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} size={28} /></Link></span>}
-        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText size={28} /></Link></span>}
+        {!collapsed && <Link href="/" onClick={onClose}><Logo showText size={28} light={theme === "dark"} /></Link>}
+        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} size={28} light={theme === "dark"} /></Link></span>}
+        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText size={28} light={theme === "dark"} /></Link></span>}
 
         <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-all" aria-label="Close sidebar">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>

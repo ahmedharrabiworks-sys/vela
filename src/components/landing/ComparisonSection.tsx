@@ -3,8 +3,13 @@ import Link from "next/link";
 
 export default function ComparisonSection() {
   return (
-    <section className="py-10 md:py-14 bg-white">
-      <div className="max-w-7xl mx-auto px-5 md:px-6">
+    <section className="py-10 md:py-14 bg-white relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true" style={{ zIndex: 0 }}>
+        <div style={{ position: "absolute", width: 700, height: 700, top: "20%", left: "55%", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.06)", filter: "blur(100px)" }} />
+        <div style={{ position: "absolute", width: 450, height: 450, bottom: -80, left: "10%", borderRadius: "50%", background: "rgba(255,51,102,0.04)", filter: "blur(90px)" }} />
+      </div>
+      <div className="max-w-7xl mx-auto px-5 md:px-6" style={{ position: "relative", zIndex: 1 }}>
 
         {/* Section header */}
         <div className="text-center mb-10 md:mb-14">
@@ -22,7 +27,7 @@ export default function ComparisonSection() {
 
         {/* Comparison table image with CTA button in the image's blank space */}
         <div className="flex justify-center">
-          <div className="relative w-full max-w-3xl">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl">
             <Image
               src="/assets/comparison-bg.png"
               alt="Vela vs other tools: full feature comparison table"

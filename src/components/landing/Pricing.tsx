@@ -30,8 +30,13 @@ export default function Pricing() {
   const { t } = useI18n();
 
   return (
-    <section id="pricing" className="py-10 md:py-14 bg-white">
-      <div className="max-w-7xl mx-auto px-5 md:px-6">
+    <section id="pricing" className="py-10 md:py-14 bg-white relative overflow-hidden">
+      {/* Ambient glow — barely visible brand warmth */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true" style={{ zIndex: 0 }}>
+        <div style={{ position: "absolute", width: 650, height: 650, top: -120, right: -100, borderRadius: "50%", background: "rgba(255,107,53,0.065)", filter: "blur(90px)" }} />
+        <div style={{ position: "absolute", width: 500, height: 500, bottom: -60, left: -80, borderRadius: "50%", background: "rgba(255,51,102,0.045)", filter: "blur(100px)" }} />
+      </div>
+      <div className="max-w-7xl mx-auto px-5 md:px-6" style={{ position: "relative", zIndex: 1 }}>
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight">
@@ -70,7 +75,7 @@ export default function Pricing() {
             return (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl p-4 md:p-5 flex flex-col transition-all duration-300 ${
+                className={`relative rounded-2xl p-5 md:p-7 flex flex-col transition-all duration-300 ${
                   plan.popular
                     ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
                     : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
@@ -91,7 +96,7 @@ export default function Pricing() {
                 )}
 
                 {/* Tier header — name, price, tagline */}
-                <div className="mb-4">
+                <div className="mb-6">
                   <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                     {t(`landing.pricing.plans.${planKey}.name`)}
                   </p>
@@ -115,7 +120,7 @@ export default function Pricing() {
                 {/* FIX 1: description line removed entirely */}
 
                 {/* Feature list */}
-                <ul className="flex flex-col gap-2 flex-1 mb-5">
+                <ul className="flex flex-col gap-3 flex-1 mb-6 md:gap-4">
                   {/* FIX 2 — inherit line as normal checkmark bullet */}
                   {INHERIT_LINE[planKey] && (
                     <li className="flex items-start gap-3">
