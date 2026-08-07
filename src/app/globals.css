@@ -108,7 +108,7 @@ html.dark body::before { display: none; }
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200;
     background: var(--vela-gradient);
     box-shadow: 0 4px 24px var(--vp-35);
   }

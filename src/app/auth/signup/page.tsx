@@ -356,7 +356,7 @@ export default function SignupPage() {
       {/* V logo top-left */}
       <div className="absolute top-0 left-0 p-6 z-10">
         <Link href="/">
-          <Logo showText size={44} />
+          <Logo showText={false} />
         </Link>
       </div>
 

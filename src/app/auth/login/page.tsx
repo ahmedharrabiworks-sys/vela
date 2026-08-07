@@ -86,10 +86,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
 
-      {/* Logo top-left — full wordmark */}
+      {/* Logo top-left — icon mark only on auth pages */}
       <div className="absolute top-0 left-0 p-6 z-10">
         <Link href="/">
-          <Logo showText size={44} />
+          <Logo showText={false} />
         </Link>
       </div>
 
