@@ -58,7 +58,7 @@ export default function Hero() {
         <div className="flex items-center gap-4">
           <Link
             href="/auth/login"
-            className="hidden sm:inline-flex text-base font-semibold text-white hover:text-white/80 px-5 py-3 rounded-lg transition-colors duration-200"
+            className="hidden sm:inline-flex text-base font-semibold text-white hover:text-white/80 px-5 py-2.5 rounded-lg transition-colors duration-200"
           >
             Log in
           </Link>

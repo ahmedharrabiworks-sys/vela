@@ -98,7 +98,7 @@ export default function LoginPage() {
       {/* Platform language selector — top right */}
       <div className="absolute top-0 right-0 p-6 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-[#6B7280] whitespace-nowrap">Platform Language:</span>
+          <span className="hidden sm:inline text-xs font-medium text-[#6B7280] whitespace-nowrap">Platform Language:</span>
           <div className="relative">
           <select
             value={platformLang}

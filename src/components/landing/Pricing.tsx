@@ -74,9 +74,9 @@ export default function Pricing() {
               return (
                 <div
                   key={plan.name}
-                  className={`relative rounded-2xl p-8 md:p-11 flex flex-col transition-all duration-300 ${
+                  className={`relative rounded-2xl p-6 md:p-11 flex flex-col transition-all duration-300 ${
                     plan.popular
-                      ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0"
+                      ? "bg-[#FFF8F5] md:scale-[1.02]"
                       : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
                   }`}
                   style={
