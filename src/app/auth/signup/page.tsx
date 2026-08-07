@@ -259,7 +259,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [companyName, setCompanyName] = useState("");
 
   const handleGoogleSignIn = async () => {
     const supabase = getSupabase();
@@ -312,6 +312,7 @@ export default function SignupPage() {
           email,
           password,
           fullName,
+          companyName,
           businessDesc,
           detectedType,
           country: country.name,
@@ -345,7 +346,7 @@ export default function SignupPage() {
       saveProfile({
         ownerName: fullName,
         email,
-        businessName: businessDesc,
+        businessName: companyName || businessDesc,
         businessType: detectedType,
         country: country.name,
         city,
@@ -380,35 +381,7 @@ export default function SignupPage() {
             <h1 className="text-xl font-bold text-[#111111] mb-1">Create your account</h1>
             <p className="text-[#6B7280] text-sm mb-6">Get your AI receptionist set up in minutes.</p>
 
-            {/* Google signup */}
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#9CA3AF] hover:bg-[#F9FAFB] transition-all duration-200 mb-2"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-                <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-            </button>
-            <p className="text-center text-xs text-[#9CA3AF] mb-5">
-              By continuing, you agree to our{" "}
-              <Link href="/terms" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Terms</Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Privacy Policy</Link>
-            </p>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px bg-[#E5E7EB]" />
-              <span className="text-xs text-[#9CA3AF] font-medium">Or continue with email</span>
-              <div className="flex-1 h-px bg-[#E5E7EB]" />
-            </div>
-
-            <form onSubmit={(e) => { e.preventDefault(); if (agreedToTerms) setStep(2); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
               <div>
                 <label className={labelCls}>Full Name</label>
                 <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required className={inputCls} />
@@ -450,54 +423,44 @@ export default function SignupPage() {
                   </button>
                 </div>
               </div>
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <div className="relative mt-0.5 shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div
-                    className="w-5 h-5 rounded flex items-center justify-center border-2 transition-all duration-150"
-                    style={agreedToTerms
-                      ? { background: "var(--vela-gradient)", borderColor: "transparent" }
-                      : { background: "white", borderColor: "#D1D5DB" }
-                    }
-                  >
-                    {agreedToTerms && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M1.5 5.5l2 2 5-4.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                <span className="text-sm text-[#6B7280] leading-relaxed">
-                  I agree to the{" "}
-                  <Link href="/terms" className="font-semibold hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="font-semibold hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">
-                    Privacy Policy
-                  </Link>
-                </span>
-              </label>
               <button
                 type="submit"
-                disabled={!agreedToTerms}
                 className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 transition-all duration-200"
-                style={agreedToTerms
-                  ? { background: "var(--vela-gradient)", opacity: 1 }
-                  : { background: "#D1D5DB", cursor: "not-allowed", opacity: 1 }
-                }
+                style={{ background: "var(--vela-gradient)" }}
               >
                 Continue →
               </button>
             </form>
-            <p className="text-center text-sm text-[#6B7280] mt-6">
+
+            <p className="text-center text-sm text-[#6B7280] mt-4 mb-5">
               Already have an account?{" "}
               <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">Sign in</Link>
+            </p>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-[#E5E7EB]" />
+              <span className="text-xs text-[#9CA3AF] font-medium">Or continue with</span>
+              <div className="flex-1 h-px bg-[#E5E7EB]" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#9CA3AF] hover:bg-[#F9FAFB] transition-all duration-200 mb-3"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </button>
+            <p className="text-center text-xs text-[#9CA3AF]">
+              By continuing, you agree to our{" "}
+              <Link href="/terms" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Terms</Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Privacy Policy</Link>
             </p>
           </div>
         )}
@@ -508,6 +471,10 @@ export default function SignupPage() {
             <h1 className="text-xl font-bold text-[#111111] mb-1">Tell us about your business</h1>
             <p className="text-[#6B7280] text-sm mb-7">Vela will personalise everything for you automatically</p>
             <form onSubmit={handleStep2} className="space-y-4">
+              <div>
+                <label className={labelCls}>Company Name</label>
+                <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your business name" required className={inputCls} />
+              </div>
               <div>
                 <label className={labelCls}>What&apos;s your business?</label>
                 <textarea
@@ -550,8 +517,8 @@ export default function SignupPage() {
                   </div>
                 )}
                 {detectedType && detectedType !== "Other" && !aiDetecting && (
-                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#FF6B35]/20 w-fit" style={{ background: "rgba(255,107,53,0.06)" }}>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] w-fit">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     <span className="text-[11px] text-[#6B7280]">Detected: <span className="text-[#111111] font-semibold">{detectedType}</span></span>
                     <button type="button" onClick={() => setDetectedType("")} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-xs ml-0.5">✕</button>
                   </div>
@@ -647,10 +614,10 @@ export default function SignupPage() {
             </div>
 
             {detectedType && (
-              <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#FF6B35]/20 max-w-md mx-auto" style={{ background: "rgba(255,107,53,0.06)" }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#FF6B35" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] max-w-md mx-auto">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 <p className="text-sm text-[#6B7280]">
-                  Vela AI detected: <span className="text-[#111111] font-semibold">{detectedType}</span>
+                  Detected: <span className="text-[#111111] font-semibold">{detectedType}</span>
                 </p>
               </div>
             )}
@@ -666,13 +633,13 @@ export default function SignupPage() {
                     key={p.id}
                     type="button"
                     onClick={() => setPlan(p.id)}
-                    className={`relative rounded-2xl p-8 md:p-11 flex flex-col text-left transition-all duration-300 w-full ${
-                      p.popular ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0" : "bg-white border border-[#E5E7EB]"
+                    className={`relative rounded-2xl p-5 md:p-6 flex flex-col text-left transition-all duration-300 w-full ${
+                      p.popular ? "bg-white md:scale-[1.02] mt-4 md:mt-0" : "bg-white"
                     }`}
                     style={
-                      isSelected || p.popular
+                      isSelected
                         ? { border: "2px solid #FF6B35", boxShadow: "0 8px 32px rgba(255,107,53,0.12)" }
-                        : {}
+                        : { border: "1px solid #E5E7EB" }
                     }
                   >
                     {p.popular && (
@@ -685,12 +652,12 @@ export default function SignupPage() {
                     )}
 
                     {/* Tier header */}
-                    <div className="mb-7">
+                    <div className="mb-4">
                       <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${p.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                         {p.name}
                       </p>
                       <div className="flex items-end gap-1.5 mb-1.5">
-                        <span className="text-5xl font-black text-[#111111] leading-none">${price}</span>
+                        <span className="text-4xl font-black text-[#111111] leading-none">${price}</span>
                         <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
                       </div>
                       <p className="text-sm text-[#9CA3AF] mt-1">{TAGLINES[planKey]}</p>
@@ -702,14 +669,14 @@ export default function SignupPage() {
                     </div>
 
                     {/* Feature list — top-line bullets only, matching /pricing page */}
-                    <ul className="flex-1 mb-7 divide-y divide-[#F3F4F6]">
+                    <ul className="flex-1 mb-4 divide-y divide-[#F3F4F6]">
                       {INHERIT_LINE[planKey] && (
-                        <li className="flex items-start gap-3 py-3.5">
-                          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                        <li className="flex items-start gap-3 py-2">
+                          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                             <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                             <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                          <span className="text-base text-[#374151]">{INHERIT_LINE[planKey]}</span>
+                          <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
                         </li>
                       )}
                       {p.features.filter(f => f.included)
@@ -719,22 +686,20 @@ export default function SignupPage() {
                           return !show || show.includes(originalIdx);
                         })
                         .map(({ feat, originalIdx }) => (
-                          <li key={originalIdx} className="flex items-start gap-3 py-3.5">
-                            <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                          <li key={originalIdx} className="flex items-start gap-3 py-2">
+                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                               <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                               <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
-                            <span className="text-base text-[#374151]">{feat.text}</span>
+                            <span className="text-sm text-[#374151]">{feat.text}</span>
                           </li>
                         ))
                       }
                     </ul>
 
-                    <div className={`w-full py-2.5 px-6 rounded-xl text-sm font-semibold text-center transition-all ${
-                      isSelected ? "text-white" : "border border-[#E5E7EB] text-[#374151]"
-                    }`}
-                    style={isSelected ? { background: "var(--vela-gradient)" } : {}}
-                    >
+                    <div className={`w-full py-2 px-6 rounded-xl text-sm font-semibold text-center transition-all ${
+                      isSelected ? "bg-[#111111] text-white" : "border border-[#E5E7EB] text-[#374151]"
+                    }`}>
                       {isSelected ? "Selected" : "Select Plan"}
                     </div>
                   </button>

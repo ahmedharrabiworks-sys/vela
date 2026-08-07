@@ -46,7 +46,7 @@ export default function Hero() {
       {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
         <Link href="/" aria-label="Vela home">
-          <Logo showText light heightClass="h-[34px] sm:h-11" />
+          <Logo showText light heightClass="h-10 sm:h-12" />
         </Link>
         <div className="flex items-center gap-4">
           <Link

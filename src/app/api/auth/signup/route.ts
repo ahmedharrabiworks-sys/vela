@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from "@/lib/supabase-server";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, fullName, businessDesc, detectedType, country, city, phone, plan } =
+    const { email, password, fullName, companyName, businessDesc, detectedType, country, city, phone, plan } =
       await req.json();
 
     if (!email || !password) {
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
         .from("tenants")
         .insert({
           owner_id: data.user.id,
-          business_name: businessDesc || detectedType || "My Business",
+          business_name: companyName || businessDesc || detectedType || "My Business",
           plan: (plan ?? "pro") as "starter" | "pro" | "premium",
         })
         .then(() => {})
