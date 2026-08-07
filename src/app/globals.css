@@ -172,6 +172,13 @@ html.dark body::before { display: none; }
   }
 }
 
+/* FIX 5 — Sharp corners on all form input and textarea fields sitewide.
+   Buttons are NOT affected — this targets only data-entry elements. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+textarea {
+  border-radius: 0 !important;
+}
+
 /* Canvas/Three.js containers */
 canvas {
   display: block;

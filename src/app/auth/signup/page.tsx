@@ -185,7 +185,7 @@ const BUSINESS_CATEGORIES = [
 ];
 
 
-const inputCls = "w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
+const inputCls = "w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
 const labelCls = "text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5";
 
 /* Searchable country dropdown */
@@ -258,7 +258,19 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    const supabase = getSupabase();
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${appUrl}/app` },
+    });
+  };
 
   /* Step 2 */
   const [businessDesc, setBusinessDesc] = useState("");
@@ -366,7 +378,36 @@ export default function SignupPage() {
         {step === 1 && (
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
             <h1 className="text-xl font-bold text-[#111111] mb-1">Create your account</h1>
-            <p className="text-[#6B7280] text-sm mb-7">Get your AI receptionist set up in minutes.</p>
+            <p className="text-[#6B7280] text-sm mb-6">Get your AI receptionist set up in minutes.</p>
+
+            {/* Google signup */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#9CA3AF] hover:bg-[#F9FAFB] transition-all duration-200 mb-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </button>
+            <p className="text-center text-xs text-[#9CA3AF] mb-5">
+              By continuing, you agree to our{" "}
+              <Link href="/terms" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Terms</Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Privacy Policy</Link>
+            </p>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 h-px bg-[#E5E7EB]" />
+              <span className="text-xs text-[#9CA3AF] font-medium">Or continue with email</span>
+              <div className="flex-1 h-px bg-[#E5E7EB]" />
+            </div>
+
             <form onSubmit={(e) => { e.preventDefault(); if (agreedToTerms) setStep(2); }} className="space-y-4">
               <div>
                 <label className={labelCls}>Full Name</label>
@@ -378,7 +419,36 @@ export default function SignupPage() {
               </div>
               <div>
                 <label className={labelCls}>Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength={8} className={inputCls} />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    required
+                    minLength={8}
+                    className={`${inputCls} pr-10`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <label className="flex items-start gap-3 cursor-pointer select-none">
                 <div className="relative mt-0.5 shrink-0">
@@ -468,7 +538,7 @@ export default function SignupPage() {
                   placeholder="e.g. Dental clinic in Dubai, Real estate agency, Hair salon…"
                   required
                   rows={3}
-                  className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all resize-none"
+                  className="w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all resize-none"
                 />
                 {aiDetecting && (
                   <div className="flex items-center gap-2 mt-2">

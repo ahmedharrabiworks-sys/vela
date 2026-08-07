@@ -1,5 +1,5 @@
 import Image from "next/image";
-import TrialCTAButton from "@/components/landing/TrialCTAButton";
+import Link from "next/link";
 
 export default function DashboardSection() {
   return (
@@ -21,9 +21,9 @@ export default function DashboardSection() {
             />
             {/* CTA positioned in the blank space baked into the bottom of the image */}
             <div className="absolute bottom-[8%] left-[5%]">
-              <TrialCTAButton className="btn-primary whitespace-nowrap">
-                Start 7-Day Free Trial
-              </TrialCTAButton>
+              <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+                Get Started
+              </Link>
             </div>
           </div>
         </div>

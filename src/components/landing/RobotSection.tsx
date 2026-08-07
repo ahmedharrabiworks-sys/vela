@@ -1,5 +1,5 @@
 import Image from "next/image";
-import TrialCTAButton from "@/components/landing/TrialCTAButton";
+import Link from "next/link";
 
 export default function RobotSection() {
   return (
@@ -25,9 +25,9 @@ export default function RobotSection() {
             />
             {/* CTA in bottom-left open space, below the 3-column feature row */}
             <div className="absolute bottom-[8%] left-[5%]">
-              <TrialCTAButton className="btn-primary whitespace-nowrap">
-                Start 7-Day Free Trial
-              </TrialCTAButton>
+              <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+                Get Started
+              </Link>
             </div>
           </div>
         </div>

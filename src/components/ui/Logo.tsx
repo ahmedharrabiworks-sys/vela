@@ -20,8 +20,8 @@ interface LogoProps {
 
 // Light-background wordmark (/assets/logo-full.png)  →  34px mobile / 44px desktop
 const LIGHT_BG_H = "h-[34px] sm:h-11";
-// Dark-background wordmark (/logo-light.png)          →  32px mobile / 40px desktop
-const DARK_BG_H  = "h-8 sm:h-10";
+// Dark-background wordmark (/logo-light.png)          →  34px mobile / 44px desktop (matches LIGHT_BG_H)
+const DARK_BG_H  = "h-[34px] sm:h-11";
 
 export default function Logo({ showText = true, light = false, size, heightClass }: LogoProps) {
   if (showText) {

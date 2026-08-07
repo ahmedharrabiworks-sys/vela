@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
-import TrialCTAButton from "@/components/landing/TrialCTAButton";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -147,17 +146,18 @@ export default function Pricing() {
                   </ul>
 
                   <div className="flex flex-col gap-2 w-full">
-                    <TrialCTAButton
-                      className={`w-full py-3 px-7 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                    <Link
+                      href="/auth/signup"
+                      className={`w-full py-3 px-7 rounded-xl font-semibold text-sm transition-all duration-200 text-center ${
                         plan.popular
                           ? "btn-primary"
                           : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
                       }`}
                     >
                       {t(`landing.pricing.plans.${planKey}.cta`)}
-                    </TrialCTAButton>
+                    </Link>
                     <p className="text-[11px] text-[#9CA3AF]">
-                      Experience it for 7 Days FREE
+                      Cancel anytime
                     </p>
                   </div>
                 </div>

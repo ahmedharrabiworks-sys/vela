@@ -7,8 +7,6 @@ import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
 import RobotSection from "@/components/landing/RobotSection";
 import Footer from "@/components/landing/Footer";
-import TrialSignupModal from "@/components/landing/TrialSignupModal";
-
 export default function LandingPage() {
   return (
     <main className="overflow-x-hidden">
@@ -21,7 +19,6 @@ export default function LandingPage() {
       <Pricing />
       <RobotSection />
       <Footer />
-      <TrialSignupModal />
     </main>
   );
 }

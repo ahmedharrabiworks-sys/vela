@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
-import TrialCTAButton from "@/components/landing/TrialCTAButton";
 
 const container = {
   hidden: {},
@@ -47,7 +46,7 @@ export default function Hero() {
       {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
         <Link href="/" aria-label="Vela home">
-          <Logo showText light heightClass="h-9 sm:h-12" />
+          <Logo showText light heightClass="h-[34px] sm:h-11" />
         </Link>
         <div className="flex items-center gap-4">
           <Link
@@ -56,9 +55,9 @@ export default function Hero() {
           >
             Log in
           </Link>
-          <TrialCTAButton className="btn-primary text-sm px-6 py-2.5 justify-center">
+          <Link href="/auth/signup" className="btn-primary text-sm px-6 py-2.5 justify-center">
             {t("landing.nav.getStarted")}
-          </TrialCTAButton>
+          </Link>
         </div>
       </div>
 
@@ -100,12 +99,12 @@ export default function Hero() {
 
             {/* CTA */}
             <motion.div variants={item}>
-              <TrialCTAButton className="btn-primary text-base px-8 py-3.5 justify-center inline-flex items-center gap-2">
+              <Link href="/auth/signup" className="btn-primary text-base px-8 py-3.5 justify-center inline-flex items-center gap-2">
                 {t("landing.nav.getStarted")}
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                   <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </TrialCTAButton>
+              </Link>
             </motion.div>
 
           </motion.div>

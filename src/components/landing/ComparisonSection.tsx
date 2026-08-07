@@ -1,5 +1,5 @@
 import Image from "next/image";
-import TrialCTAButton from "@/components/landing/TrialCTAButton";
+import Link from "next/link";
 
 export default function ComparisonSection() {
   return (
@@ -36,9 +36,9 @@ export default function ComparisonSection() {
               />
               {/* CTA positioned in the blank area baked into the bottom of the image */}
               <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2">
-                <TrialCTAButton className="btn-primary whitespace-nowrap">
-                  Start 7-Day Free Trial
-                </TrialCTAButton>
+                <Link href="/auth/signup" className="btn-primary whitespace-nowrap">
+                  Get Started
+                </Link>
               </div>
             </div>
           </div>
