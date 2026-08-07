@@ -7,6 +7,7 @@ import Logo from "@/components/ui/Logo";
 import { saveProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { PLANS } from "@/lib/pricing";
+import { TAGLINES, INHERIT_LINE, CARD_INDICES } from "@/components/landing/Pricing";
 
 /* ── All countries with dial codes ── */
 const COUNTRIES = [
@@ -183,26 +184,6 @@ const BUSINESS_CATEGORIES = [
   "Construction", "Accounting & Finance", "Recruitment",
 ];
 
-function StepBar({ step }: { step: number }) {
-  return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {[1, 2, 3].map((n) => (
-        <div key={n} className="flex items-center">
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-            n <= step ? "bg-[#FF6B35] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
-          }`}>
-            {n < step ? (
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6l2.5 2.5 5.5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            ) : n}
-          </div>
-          {n < 3 && <div className={`w-10 h-px mx-1 ${n < step ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`} />}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 const inputCls = "w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
 const labelCls = "text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5";
@@ -375,13 +356,11 @@ export default function SignupPage() {
       {/* V logo top-left */}
       <div className="absolute top-0 left-0 p-6 z-10">
         <Link href="/">
-          <Logo showText />
+          <Logo showText size={44} />
         </Link>
       </div>
 
       <div className={`relative z-10 w-full transition-all duration-300 ${step === 3 ? "max-w-5xl" : "max-w-lg"}`}>
-
-        {step <= 3 && <StepBar step={step} />}
 
         {/* ── Step 1: Account ── */}
         {step === 1 && (
@@ -573,20 +552,26 @@ export default function SignupPage() {
         {/* ── Step 3: Plan ── */}
         {step === 3 && (
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-10 shadow-card">
-            <div className="text-center mb-7">
-              <h1 className="text-2xl md:text-3xl font-bold text-[#111111] mb-2">Choose your plan</h1>
-              <p className="text-[#6B7280] text-sm md:text-base mb-5">Cancel anytime</p>
+            <div className="text-center mb-8">
+              <h1 className="text-xl font-bold text-[#111111] mb-1">Choose your plan</h1>
+              <p className="text-[#6B7280] text-sm mb-5">Cancel anytime</p>
 
-              {/* Billing toggle */}
-              <div className="inline-flex items-center gap-1 p-1 rounded-full border border-[#E5E7EB] bg-white shadow-sm">
+              {/* Billing toggle — matches /pricing page */}
+              <div className="inline-flex items-center p-0.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
                 <button type="button" onClick={() => setBilling("monthly")}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "monthly" ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"}`}>
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+                    billing === "monthly" ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
+                  }`}>
                   Monthly
                 </button>
                 <button type="button" onClick={() => setBilling("annual")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${billing === "annual" ? "bg-[#FF6B35] text-white shadow-sm" : "text-[#6B7280] hover:text-[#374151]"}`}>
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
+                    billing === "annual" ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
+                  }`}>
                   Annual
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FF6B35] text-white">−20%</span>
+                  <span className={`ml-1.5 text-xs ${billing === "annual" ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>
+                    · Save 20%
+                  </span>
                 </button>
               </div>
             </div>
@@ -600,28 +585,25 @@ export default function SignupPage() {
               </div>
             )}
 
-            <div className="grid md:grid-cols-3 gap-5 mb-8 items-start">
+            {/* Cards — same style as /pricing page */}
+            <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch mb-4">
               {PLANS.filter((p) => !p.isCustom).map((p) => {
                 const isSelected = plan === p.id;
                 const price = billing === "annual" ? p.annual : p.monthly;
+                const planKey = p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => setPlan(p.id)}
-                    className={`relative flex flex-col text-left rounded-2xl p-6 md:p-7 transition-all duration-200 w-full ${
-                      p.popular ? "md:scale-[1.03]" : ""
-                    } ${
-                      isSelected ? "bg-[#FFF8F5]" : "bg-white hover:bg-[#F9FAFB]"
+                    className={`relative rounded-2xl p-8 md:p-11 flex flex-col text-left transition-all duration-300 w-full ${
+                      p.popular ? "bg-[#FFF8F5] md:scale-[1.02] mt-4 md:mt-0" : "bg-white border border-[#E5E7EB]"
                     }`}
-                    style={{
-                      border: isSelected ? "2px solid #FF6B35" : p.popular ? "2px solid rgba(255,107,53,0.3)" : "2px solid #E5E7EB",
-                      boxShadow: isSelected
-                        ? "0 0 0 4px rgba(255,107,53,0.08), 0 8px 24px rgba(255,107,53,0.15)"
-                        : p.popular
-                        ? "0 4px 24px rgba(255,107,53,0.08)"
-                        : "none",
-                    }}
+                    style={
+                      isSelected || p.popular
+                        ? { border: "2px solid #FF6B35", boxShadow: "0 8px 32px rgba(255,107,53,0.12)" }
+                        : {}
+                    }
                   >
                     {p.popular && (
                       <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
@@ -632,51 +614,72 @@ export default function SignupPage() {
                       </div>
                     )}
 
-                    {/* Plan name + radio */}
-                    <div className="flex items-center gap-2.5 mb-4">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "border-[#FF6B35]" : "border-[#D1D5DB]"}`}>
-                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B35]" />}
+                    {/* Tier header */}
+                    <div className="mb-7">
+                      <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${p.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                        {p.name}
+                      </p>
+                      <div className="flex items-end gap-1.5 mb-1.5">
+                        <span className="text-5xl font-black text-[#111111] leading-none">${price}</span>
+                        <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
                       </div>
-                      <span className={`text-sm font-semibold uppercase tracking-widest ${p.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>{p.name}</span>
+                      <p className="text-sm text-[#9CA3AF] mt-1">{TAGLINES[planKey]}</p>
+                      {billing === "annual" && (
+                        <p className="text-sm font-medium text-[#FF6B35] mt-1">
+                          Save ${(p.monthly - p.annual) * 12}/year
+                        </p>
+                      )}
                     </div>
 
-                    {/* Price */}
-                    <div className="flex items-end gap-1 mb-1">
-                      <span className="text-5xl font-extrabold text-[#111111]">${price}</span>
-                      <span className="text-sm text-[#9CA3AF] mb-2">/mo</span>
-                    </div>
-                    {billing === "annual" ? (
-                      <p className="text-xs text-[#FF6B35] mb-3">Billed ${price * 12}/yr · Save ${(p.monthly - p.annual) * 12}/yr</p>
-                    ) : (
-                      <p className="text-xs text-[#9CA3AF] mb-3">Billed monthly</p>
-                    )}
-
-                    <p className="text-xs text-[#6B7280] leading-relaxed mb-4">{p.description}</p>
-
-                    {/* Feature list */}
-                    <ul className="flex flex-col gap-2.5">
-                      {p.features.map((feat) => (
-                        <li key={feat.text} className="flex items-start gap-2.5">
-                          {feat.included ? (
-                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                    {/* Feature list — top-line bullets only, matching /pricing page */}
+                    <ul className="flex-1 mb-7 divide-y divide-[#F3F4F6]">
+                      {INHERIT_LINE[planKey] && (
+                        <li className="flex items-start gap-3 py-3.5">
+                          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                            <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
+                            <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <span className="text-base text-[#374151]">{INHERIT_LINE[planKey]}</span>
+                        </li>
+                      )}
+                      {p.features.filter(f => f.included)
+                        .map((feat, originalIdx) => ({ feat, originalIdx }))
+                        .filter(({ originalIdx }) => {
+                          const show = CARD_INDICES[planKey];
+                          return !show || show.includes(originalIdx);
+                        })
+                        .map(({ feat, originalIdx }) => (
+                          <li key={originalIdx} className="flex items-start gap-3 py-3.5">
+                            <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                               <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                               <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
-                          ) : (
-                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                              <circle cx="8" cy="8" r="7" fill="rgba(0,0,0,0.04)" />
-                              <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                          )}
-                          <span className={`text-xs leading-relaxed ${feat.included ? "text-[#374151]" : "text-[#D1D5DB] line-through"}`}>
-                            {feat.text}
-                          </span>
-                        </li>
-                      ))}
+                            <span className="text-base text-[#374151]">{feat.text}</span>
+                          </li>
+                        ))
+                      }
                     </ul>
+
+                    <div className={`w-full py-2.5 px-6 rounded-xl text-sm font-semibold text-center transition-all ${
+                      isSelected ? "text-white" : "border border-[#E5E7EB] text-[#374151]"
+                    }`}
+                    style={isSelected ? { background: "var(--vela-gradient)" } : {}}
+                    >
+                      {isSelected ? "Selected" : "Select Plan"}
+                    </div>
                   </button>
                 );
               })}
+            </div>
+
+            {/* See full plan details */}
+            <div className="text-center mb-6">
+              <Link href="/pricing" target="_blank" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors">
+                See full plan details
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </Link>
             </div>
 
             {authError && (

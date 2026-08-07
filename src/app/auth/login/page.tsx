@@ -86,16 +86,18 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
 
-      {/* Logo top-left — icon mark only */}
+      {/* Logo top-left — full wordmark */}
       <div className="absolute top-0 left-0 p-6 z-10">
         <Link href="/">
-          <Logo showText={false} size={32} />
+          <Logo showText size={44} />
         </Link>
       </div>
 
       {/* Platform language selector — top right */}
       <div className="absolute top-0 right-0 p-6 z-10">
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[#6B7280] whitespace-nowrap">Platform Language:</span>
+          <div className="relative">
           <select
             value={platformLang}
             onChange={(e) => setPlatformLang(e.target.value)}
@@ -109,6 +111,7 @@ export default function LoginPage() {
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
               <path d="M2 3.5l3 3 3-3" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
+          </div>
           </div>
         </div>
       </div>

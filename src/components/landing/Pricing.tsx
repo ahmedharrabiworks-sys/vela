@@ -8,20 +8,20 @@ import TrialCTAButton from "@/components/landing/TrialCTAButton";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
-const TAGLINES: Record<string, string> = {
+export const TAGLINES: Record<string, string> = {
   starter: "For freelancers & solo businesses",
   pro:     "For growing teams",
   premium: "For pro companies & businesses",
 };
 
-const INHERIT_LINE: Record<string, string> = {
+export const INHERIT_LINE: Record<string, string> = {
   pro:     "Everything in Starter, plus:",
   premium: "Everything in Pro, plus:",
 };
 
 // Indices into the already-filtered (included-only) features array to show on the card
 // Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
-const CARD_INDICES: Record<string, number[]> = {
+export const CARD_INDICES: Record<string, number[]> = {
   starter: [0, 2, 3, 5],
   pro:     [0, 1, 2, 6],
   premium: [0, 2, 3, 7, 8],
@@ -146,7 +146,7 @@ export default function Pricing() {
                       ))}
                   </ul>
 
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col gap-2 w-full">
                     <TrialCTAButton
                       className={`w-full py-3 px-7 rounded-xl font-semibold text-sm transition-all duration-200 ${
                         plan.popular
@@ -172,7 +172,7 @@ export default function Pricing() {
             href="/pricing"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
           >
-            See full feature comparison
+            See full feature
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
               <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
