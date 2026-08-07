@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Navbar from "@/components/landing/Navbar";
+import PublicPageHeader from "@/components/landing/PublicPageHeader";
 import Footer from "@/components/landing/Footer";
 
 export const metadata = {
@@ -10,8 +10,8 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <>
-      <Navbar />
-      <main className="min-h-screen pt-24 pb-20">
+      <PublicPageHeader />
+      <main className="min-h-screen pt-6 pb-20">
         <div className="max-w-2xl mx-auto px-5 md:px-6">
           <div className="mb-10">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-3">Legal</p>
