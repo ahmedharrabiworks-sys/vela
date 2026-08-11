@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -268,27 +268,29 @@ function SceneAppointments() {
 
   const stageRef = useRef<HTMLDivElement>(null);
   const iconRef = useRef<HTMLDivElement>(null);
+  const rescheduleBtnRef = useRef<HTMLButtonElement>(null);
   const [iconPos, setIconPos] = useState({ top:"73%", left:"88%" });
   const [reschedulePos, setReschedulePos] = useState({ top:"58%", left:"46%" });
-
-  // Measure the real 3-dot icon position once it has rendered inside the
-  // Status cell, instead of guessing a percentage against the stage box.
-  useLayoutEffect(() => {
-    if (iconRef.current && stageRef.current) {
-      setIconPos(pctPosition(iconRef.current, stageRef.current));
-    }
-  }, []);
-
-  // Measure the Reschedule button the moment it mounts inside the popup.
-  const measureReschedule = useCallback((el: HTMLButtonElement | null) => {
-    if (el && stageRef.current) {
-      setReschedulePos(pctPosition(el, stageRef.current));
-    }
-  }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (s: number, delay: number) => { timers.push(setTimeout(() => setStep(s), delay)); };
+    // Measurements are scheduled after the relevant ancestor's own entrance
+    // transition has settled (the outer scene fade/scale for the icon, the
+    // popup's own scale-in for the Reschedule button). Measuring mid-transition
+    // captures a not-yet-final getBoundingClientRect and produces a real offset,
+    // not just a rounding error, so both are deferred well past their settle time
+    // and well before the cursor actually needs to move toward them.
+    timers.push(setTimeout(() => {
+      if (iconRef.current && stageRef.current) {
+        setIconPos(pctPosition(iconRef.current, stageRef.current));
+      }
+    }, 550));
+    timers.push(setTimeout(() => {
+      if (rescheduleBtnRef.current && stageRef.current) {
+        setReschedulePos(pctPosition(rescheduleBtnRef.current, stageRef.current));
+      }
+    }, 3300));
     at(APPT_STEP.ZOOM_IN, 800);
     at(APPT_STEP.CURSOR_TO_MENU, 1700);
     at(APPT_STEP.CLICK_MENU, 2500);
@@ -417,10 +419,13 @@ function SceneAppointments() {
             </tbody>
           </table>
 
-          {/* Simulated cursor */}
+          {/* Simulated cursor. CursorIcon's pointer tip sits at (2.5,1.5) in its
+              own 16x16 box, not the box center, so the anchor offset must
+              shift by that exact amount for the tip (not the icon's middle)
+              to land on the target coordinate. */}
           <motion.div
             className="absolute pointer-events-none z-30"
-            style={{ transform:"translate(-50%,-50%)" }}
+            style={{ transform:"translate(-2.5px, -1.5px)" }}
             animate={cursor}
             transition={{ duration:0.7, ease:"easeInOut" }}
           >
@@ -499,7 +504,7 @@ function SceneAppointments() {
                   {panelView === "menu" && (
                     <motion.div key="view-menu" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-0.5">
                       <p className="text-[8px] font-semibold text-[#9CA3AF] px-0.5 mb-0.5">Quick actions</p>
-                      <button ref={measureReschedule} className="text-[9px] font-bold text-white rounded-lg px-1.5 py-1 leading-none" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
+                      <button ref={rescheduleBtnRef} className="text-[9px] font-bold text-white rounded-lg px-1.5 py-1 leading-none" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
                       <button className="text-[9px] font-medium text-[#374151] rounded-lg px-1.5 py-1 leading-none border border-[#E5E7EB]">Message</button>
                       <button className="text-[9px] font-medium text-[#DC2626] rounded-lg px-1.5 py-1 leading-none border border-[#FECACA]">Cancel</button>
                     </motion.div>
@@ -641,9 +646,22 @@ function SceneChannels() {
   const targetIdx = 2; // Website Chat, starts Not connected
   const [step, setStep] = useState<number>(CHAN_STEP.PAUSE);
 
+  const connectStageRef = useRef<HTMLDivElement>(null);
+  const connectBtnRef = useRef<HTMLButtonElement>(null);
+  const [connectPos, setConnectPos] = useState({ top:"50%", left:"85%" });
+
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (s: number, delay: number) => { timers.push(setTimeout(() => setStep(s), delay)); };
+    // Measure the real Connect button position after the outer scene entrance
+    // transition has settled, so the cursor and ripple are mathematically tied
+    // to its actual rendered position instead of a hardcoded approximation.
+    // Measuring immediately on mount would capture a mid-transition rect.
+    timers.push(setTimeout(() => {
+      if (connectBtnRef.current && connectStageRef.current) {
+        setConnectPos(pctPosition(connectBtnRef.current, connectStageRef.current));
+      }
+    }, 550));
     at(CHAN_STEP.ZOOM, 700);
     at(CHAN_STEP.CURSOR_TO_CONNECT, 1600);
     at(CHAN_STEP.CLICK_CONNECT, 2300);
@@ -731,22 +749,35 @@ function SceneChannels() {
                     <p className="text-[10px] text-[#9CA3AF] truncate">{ch.handle}</p>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0 relative">
+                <div className="flex gap-1 shrink-0 relative" ref={isTarget ? connectStageRef : undefined}>
                   {connected ? (
                     <>
                       <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">Manage</button>
                       <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">Disconnect</button>
                     </>
                   ) : (
-                    <button className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background:"var(--vela-gradient)" }}>Connect</button>
+                    <button ref={isTarget ? connectBtnRef : undefined} className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background:"var(--vela-gradient)" }}>Connect</button>
                   )}
 
                   {isTarget && (
                     <>
+                      {/* CursorIcon's pointer tip sits at (2.5,1.5) in its own
+                          16x16 box, not the box center, so the anchor offset
+                          shifts by that exact amount for the tip to land on
+                          the measured Connect button position. The "off"
+                          state uses a plain percentage, not calc(), since
+                          Framer Motion does not cleanly tween a calc()
+                          expression against a plain percentage target --
+                          it was measured to drift after arriving, rather
+                          than settle. */}
                       <motion.div
                         className="absolute pointer-events-none z-30"
-                        style={{ top:"50%", transform:"translate(50%,-50%)" }}
-                        animate={{ opacity: showCursor?1:0, right: showCursor? -6 : 26 }}
+                        style={{ transform:"translate(-2.5px, -1.5px)" }}
+                        animate={{
+                          opacity: showCursor?1:0,
+                          top: connectPos.top,
+                          left: showCursor ? connectPos.left : "95%",
+                        }}
                         transition={{ duration:0.5, ease:"easeInOut" }}
                       >
                         <CursorIcon />
@@ -756,7 +787,7 @@ function SceneChannels() {
                           <motion.div
                             key="chan-ripple"
                             className="absolute rounded-full pointer-events-none z-20"
-                            style={{ top:"50%", right:-6, width:20, height:20, transform:"translate(50%,-50%)", border:"2px solid #ed5426" }}
+                            style={{ top:connectPos.top, left:connectPos.left, width:20, height:20, marginLeft:-10, marginTop:-10, border:"2px solid #ed5426" }}
                             initial={{ scale:0.4, opacity:0 }}
                             animate={{ scale:[0.4, 0.6, 2.2], opacity:[0, 0.7, 0] }}
                             transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
