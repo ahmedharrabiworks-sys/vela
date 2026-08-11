@@ -9,7 +9,7 @@ const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [3000, 9400, 3000, 8100, 3000, 3000];
+const SCENE_DURATIONS: number[] = [3000, 9400, 3000, 8900, 3000, 3000];
 /* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -259,7 +259,7 @@ function pctPosition(el: HTMLElement, stage: HTMLElement) {
    5 quick actions popup reveals (Reschedule / Message / Cancel)
    6 cursor moves again and clicks Reschedule
    7 popup morphs into a reschedule view, time/date updates with a flash
-   8 an Updated checkmark confirmation shows on the row
+   8 the popup shows a single Appointment updated confirmation with a checkmark
    9 zoom back out to the full table, now showing the new time
 ═══════════════════════════════════════════════════════════════ */
 function SceneAppointments() {
@@ -422,9 +422,12 @@ function SceneAppointments() {
           {/* Simulated cursor. CursorIcon's pointer tip sits at (2.5,1.5) in its
               own 16x16 box, not the box center, so the anchor offset must
               shift by that exact amount for the tip (not the icon's middle)
-              to land on the target coordinate. */}
+              to land on the target coordinate. z-50 keeps it strictly above
+              the table, the ripples, and the popup (all z-30 or lower) for
+              its entire travel path, so it never passes behind anything on
+              its way from the 3-dot icon to the Reschedule button. */}
           <motion.div
-            className="absolute pointer-events-none z-30"
+            className="absolute pointer-events-none z-50"
             style={{ transform:"translate(-2.5px, -1.5px)" }}
             animate={cursor}
             transition={{ duration:0.7, ease:"easeInOut" }}
@@ -460,36 +463,15 @@ function SceneAppointments() {
             )}
           </AnimatePresence>
 
-          {/* Updated badge shown right on the row.
-              The positioning transform lives on a plain (non-motion) wrapper
-              because Framer Motion owns the `transform` CSS property on any
-              element whose `animate` includes `scale` -- putting both on the
-              same node lets Framer silently overwrite the anchor offset. */}
-          <div className="absolute z-30 pointer-events-none" style={{ top:iconPos.top, left:iconPos.left, transform:"translate(-50%,-50%)" }}>
-            <AnimatePresence>
-              {step===APPT_STEP.CONFIRMED && (
-                <motion.div
-                  key="row-updated-badge"
-                  className="flex items-center gap-1 rounded-full"
-                  style={{ background:"#DCFCE7", padding:"2px 6px", whiteSpace:"nowrap" }}
-                  initial={{ opacity:0, scale:0.6 }}
-                  animate={{ opacity:1, scale:1 }}
-                  exit={{ opacity:0, scale:0.8 }}
-                  transition={{ duration:0.3 }}
-                >
-                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="text-[8px] font-bold text-[#16A34A]">Updated</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
           {/* Quick actions / reschedule / confirmed popup.
               Anchored to the measured icon position and opened upward-left via
               a transform on a plain wrapper div (see note above -- the inner
               motion.div owns the scale/opacity entrance animation instead, so
-              the two transforms never fight). Always fully inside the frame. */}
-          <div className="absolute z-30" style={{ top:iconPos.top, left:iconPos.left, width:100, transform:"translate(-88%, calc(-100% - 8px))" }}>
+              the two transforms never fight). Always fully inside the frame.
+              The confirmed view gets a touch more width so the single closing
+              message has real breathing room instead of competing with a
+              second floating badge for the same small space. */}
+          <div className="absolute z-30" style={{ top:iconPos.top, left:iconPos.left, width:panelView==="confirmed"?132:100, transform:"translate(-88%, calc(-100% - 8px))" }}>
             <AnimatePresence>
               {panelView !== "hidden" && (
               <motion.div
@@ -529,11 +511,11 @@ function SceneAppointments() {
                     </motion.div>
                   )}
                   {panelView === "confirmed" && (
-                    <motion.div key="view-confirmed" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex items-center gap-1 py-0.5">
-                      <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <motion.div key="view-confirmed" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex items-center gap-2 py-1">
+                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      <p className="text-[9px] font-bold text-[#16A34A] leading-tight">Appointment updated</p>
+                      <p className="text-[9px] font-bold text-[#16A34A] leading-snug">Appointment updated</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -599,12 +581,14 @@ const CHAN_STEP = {
   ZOOM: 1,
   CURSOR_TO_CONNECT: 2,
   CLICK_CONNECT: 3,
-  FLOW_CHOOSE: 4,
+  FLOW_NUMBER: 4,
   FLOW_AUTHORIZE: 5,
   FLOW_CONNECTED: 6,
   CARD_CONNECTED: 7,
   SETTLE: 8,
 } as const;
+
+const WHATSAPP_NUMBER = "+971 4 123 4567";
 
 function parseStatValue(v: string): number {
   return parseFloat(v.replace(/,/g, "").replace("%",""));
@@ -635,20 +619,21 @@ function CountUp({ target, format, duration=1200 }: { target:number; format:(n:n
    Scene 3 — Channels
    overflow:hidden — 3 cards fit comfortably
    Choreography (numbered to match the spec):
-   1 pause: Instagram and WhatsApp connected, Website Chat not connected
-   2 zoom/highlight on the Website Chat card
+   1 pause: Instagram and Website Chat connected, WhatsApp Business not connected
+   2 zoom/highlight on the WhatsApp Business card
    3 cursor clicks its Connect button
-   4 illustrative connect flow: Choose channel -> Authorize -> Connected!
+   4 illustrative connect flow: Enter number -> Authorize -> Connected!
    5 card flips to Connected, stats count up from 0
    6 brief pause on the now-all-connected state before the scene ends
 ═══════════════════════════════════════════════════════════════ */
 function SceneChannels() {
-  const targetIdx = 2; // Website Chat, starts Not connected
+  const targetIdx = 1; // WhatsApp Business, starts Not connected
   const [step, setStep] = useState<number>(CHAN_STEP.PAUSE);
 
   const connectStageRef = useRef<HTMLDivElement>(null);
   const connectBtnRef = useRef<HTMLButtonElement>(null);
   const [connectPos, setConnectPos] = useState({ top:"50%", left:"85%" });
+  const [phoneReveal, setPhoneReveal] = useState(0);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -665,13 +650,30 @@ function SceneChannels() {
     at(CHAN_STEP.ZOOM, 700);
     at(CHAN_STEP.CURSOR_TO_CONNECT, 1600);
     at(CHAN_STEP.CLICK_CONNECT, 2300);
-    at(CHAN_STEP.FLOW_CHOOSE, 2450);
-    at(CHAN_STEP.FLOW_AUTHORIZE, 3300);
-    at(CHAN_STEP.FLOW_CONNECTED, 4100);
-    at(CHAN_STEP.CARD_CONNECTED, 4900);
-    at(CHAN_STEP.SETTLE, 6900);
+    at(CHAN_STEP.FLOW_NUMBER, 2450);
+    at(CHAN_STEP.FLOW_AUTHORIZE, 3950);
+    at(CHAN_STEP.FLOW_CONNECTED, 4850);
+    at(CHAN_STEP.CARD_CONNECTED, 5650);
+    at(CHAN_STEP.SETTLE, 7650);
     return () => timers.forEach(clearTimeout);
   }, []);
+
+  // Types the WhatsApp number in one character at a time while the Enter
+  // number step is active, so it reads as a real number being entered.
+  useEffect(() => {
+    if (step !== CHAN_STEP.FLOW_NUMBER) {
+      if (step < CHAN_STEP.FLOW_NUMBER) setPhoneReveal(0);
+      return;
+    }
+    setPhoneReveal(0);
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setPhoneReveal(i);
+      if (i >= WHATSAPP_NUMBER.length) clearInterval(id);
+    }, 85);
+    return () => clearInterval(id);
+  }, [step]);
 
   const allConnected = step >= CHAN_STEP.CARD_CONNECTED;
 
@@ -709,7 +711,7 @@ function SceneChannels() {
         <span className="text-[10px] font-medium" style={{ color: allConnected?"#15803D":"#B45309" }}>
           {allConnected
             ? "All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website."
-            : "2 of 3 channels connected. Connect your website chat to go fully live."}
+            : "2 of 3 channels connected. Connect WhatsApp Business to go fully live."}
         </span>
       </div>
 
@@ -720,9 +722,9 @@ function SceneChannels() {
           const zoomed = isTarget && step >= CHAN_STEP.ZOOM && step < CHAN_STEP.SETTLE;
           const dimmed = !isTarget && step >= CHAN_STEP.ZOOM && step < CHAN_STEP.SETTLE;
           const connected = !isTarget || step >= CHAN_STEP.CARD_CONNECTED;
-          const showFlow = isTarget && (step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_CHOOSE || step===CHAN_STEP.FLOW_AUTHORIZE || step===CHAN_STEP.FLOW_CONNECTED);
+          const showFlow = isTarget && (step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_NUMBER || step===CHAN_STEP.FLOW_AUTHORIZE || step===CHAN_STEP.FLOW_CONNECTED);
           const showCursor = isTarget && (step===CHAN_STEP.CURSOR_TO_CONNECT || step===CHAN_STEP.CLICK_CONNECT);
-          const showRipple = isTarget && (step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_CHOOSE);
+          const showRipple = isTarget && (step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_NUMBER);
 
           return (
             <motion.div
@@ -825,12 +827,16 @@ function SceneChannels() {
                   >
                     <div className="flex flex-col items-center gap-2">
                       <AnimatePresence mode="wait">
-                        {(step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_CHOOSE) && (
+                        {(step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_NUMBER) && (
                           <motion.div key="f0" initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:0.25}} className="flex flex-col items-center gap-1.5">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:"#F3F4F6" }}>
-                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="9" rx="1.5" stroke="#6B7280" strokeWidth="1.3"/><path d="M1 5.5h12" stroke="#6B7280" strokeWidth="1.3"/></svg>
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:"rgba(37,211,102,0.1)" }}>
+                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="4" y="1" width="6" height="12" rx="1.2" stroke="#25D366" strokeWidth="1.3"/><path d="M6.2 11.2h1.6" stroke="#25D366" strokeWidth="1.3" strokeLinecap="round"/></svg>
                             </div>
-                            <p className="text-[10px] font-semibold text-[#374151]">Choose channel</p>
+                            <div className="rounded-lg border border-[#E5E7EB] bg-white px-2 py-1 text-left" style={{ width:104 }}>
+                              <span className="text-[10px] font-mono font-semibold text-[#111111]">{WHATSAPP_NUMBER.slice(0, phoneReveal)}</span>
+                              <span className="text-[10px] font-mono text-[#25D366]">|</span>
+                            </div>
+                            <p className="text-[10px] font-semibold text-[#374151]">Enter number</p>
                           </motion.div>
                         )}
                         {step===CHAN_STEP.FLOW_AUTHORIZE && (
