@@ -9,7 +9,7 @@ const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [11800, 9400, 3000, 8900, 3000, 3000];
+const SCENE_DURATIONS: number[] = [11800, 9400, 3000, 8900, 3600, 3800];
 /* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -652,21 +652,29 @@ function makeStatFormatter(v: string): (n:number)=>string {
   return v.includes("%") ? (n)=> n.toFixed(1) + "%" : (n)=> Math.round(n).toLocaleString();
 }
 
-/* One-shot count-up from 0 to target, mounted only once the card is marked connected */
-function CountUp({ target, format, duration=1200 }: { target:number; format:(n:number)=>string; duration?:number }) {
+/* One-shot count-up from 0 to target, replayed every time the owning scene
+   remounts (the outer AnimatePresence keys each scene by index, so a fresh
+   mount happens every loop -- same replay mechanism Appointments/Channels/
+   Conversation already rely on for their own timers). Optional delay lets
+   callers stagger several stat cards without needing separate state. */
+function CountUp({ target, format, duration=1200, delay=0 }: { target:number; format:(n:number)=>string; duration?:number; delay?:number }) {
   const [val, setVal] = useState(0);
   useEffect(() => {
     let raf = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min(1, (now-start)/duration);
-      const eased = 1 - Math.pow(1-t, 3);
-      setVal(target*eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
+    let cancelled = false;
+    const startTimer = setTimeout(() => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (cancelled) return;
+        const t = Math.min(1, (now-start)/duration);
+        const eased = 1 - Math.pow(1-t, 3);
+        setVal(target*eased);
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, delay);
+    return () => { cancelled = true; clearTimeout(startTimer); cancelAnimationFrame(raf); };
+  }, [target, duration, delay]);
   return <>{format(val)}</>;
 }
 
@@ -935,29 +943,43 @@ function SceneChannels() {
   );
 }
 
+/* Shared count-up format helpers -- reused by AI Agent Overview and Analytics. */
+function fmtInt(n: number): string { return Math.round(n).toLocaleString(); }
+function fmtPctWhole(n: number): string { return Math.round(n) + "%"; }
+function fmtDuration(n: number): string {
+  const m = Math.floor(n/60), s = Math.round(n%60);
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Scene 4 — AI Agent
    overflow:hidden — 3 call rows, content verified to fit 480 px
+   All animated content replays on every loop, since the outer
+   AnimatePresence keys each scene by index and remounts it fresh
+   each time it comes back around (same mechanism the other scenes
+   already rely on for their own timers).
 ═══════════════════════════════════════════════════════════════ */
 function SceneAgent() {
   const maxBar = Math.max(...BAR_VALS);
   const barH = 78, barW = 28, barGap = 36;
-  const r = 34, circ = 2*Math.PI*r, fill = circ*0.94;
+  const r = 34;
 
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
       <SceneHdr title="AI Phone Agent" sub="Your 24/7 voice AI assistant" btn="Test Voice Agent" />
 
-      {/* Stat cards */}
+      {/* Stat cards -- each number counts up from 0, staggered ~120ms apart */}
       <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
         {[
-          { val:"847",  label:"Total Calls"    },
-          { val:"94%",  label:"Resolved by AI" },
-          { val:"2:34", label:"Avg Duration"   },
-          { val:"132",  label:"This Week", sub:"+12%" },
-        ].map(({val,label,sub})=>(
+          { target:847,  format:fmtInt,       label:"Total Calls"    },
+          { target:94,   format:fmtPctWhole,  label:"Resolved by AI" },
+          { target:154,  format:fmtDuration,  label:"Avg Duration"   },
+          { target:132,  format:fmtInt,       label:"This Week", sub:"+12%" },
+        ].map(({target,format,label,sub}, i)=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
-            <p className="text-base font-black text-[#111111] leading-none">{val}</p>
+            <p className="text-base font-black text-[#111111] leading-none">
+              <CountUp target={target} format={format} duration={1200} delay={i*120} />
+            </p>
             <p className="text-[9px] text-[#9CA3AF] mt-0.5 leading-tight">{label}</p>
             {sub&&<p className="text-[9px] font-bold text-green-600 mt-0.5">{sub}</p>}
           </div>
@@ -978,7 +1000,12 @@ function SceneAgent() {
               const bh=(v/maxBar)*barH;
               return (
                 <g key={i}>
-                  <rect x={i*barGap+4} y={barH-bh} width={barW} height={bh} rx={3} fill="url(#ptBarGrad)" />
+                  <motion.rect
+                    x={i*barGap+4} width={barW} rx={3} fill="url(#ptBarGrad)"
+                    initial={{ height:0, y:barH }}
+                    animate={{ height:bh, y:barH-bh }}
+                    transition={{ duration:0.55, delay:0.15+i*0.07, ease:"easeOut" }}
+                  />
                   <text x={i*barGap+4+barW/2} y={barH+13} textAnchor="middle" fontSize="8" fill="#9CA3AF">{BAR_DAYS[i]}</text>
                 </g>
               );
@@ -988,21 +1015,37 @@ function SceneAgent() {
         <div className="bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex flex-col items-center justify-center shrink-0" style={{ width:92 }}>
           <svg width="72" height="72" viewBox="0 0 84 84">
             <circle cx="42" cy="42" r={r} fill="none" stroke="#F3F4F6" strokeWidth="9"/>
-            <circle cx="42" cy="42" r={r} fill="none" stroke="#ed5426" strokeWidth="9"
-              strokeDasharray={`${fill} ${circ}`} strokeLinecap="round" transform="rotate(-90 42 42)"/>
-            <text x="42" y="47" textAnchor="middle" fontSize="16" fontWeight="800" fill="#111111">94%</text>
+            {/* pathLength drives Framer's own stroke-dasharray/dashoffset from the
+                circle's real measured circumference, so it fills to exactly 0.94
+                of the ring regardless of the r/circumference math. */}
+            <motion.circle
+              cx="42" cy="42" r={r} fill="none" stroke="#ed5426" strokeWidth="9"
+              strokeLinecap="round" transform="rotate(-90 42 42)"
+              initial={{ pathLength:0 }}
+              animate={{ pathLength:0.94 }}
+              transition={{ duration:1.1, delay:0.25, ease:"easeOut" }}
+            />
+            <text x="42" y="47" textAnchor="middle" fontSize="16" fontWeight="800" fill="#111111">
+              <CountUp target={94} format={fmtPctWhole} duration={1100} delay={250} />
+            </text>
           </svg>
           <p className="text-[9px] font-semibold text-[#374151] text-center leading-tight mt-0.5">AI Resolution</p>
           <p className="text-[8px] text-[#9CA3AF] text-center">6% escalated</p>
         </div>
       </div>
 
-      {/* Recent calls — overflow:hidden, exactly 3 rows */}
+      {/* Recent calls — overflow:hidden, exactly 3 rows, light staggered reveal */}
       <div className="flex-1 overflow-hidden px-4 pb-2">
         <p className="text-[10px] font-bold text-[#374151] mb-1.5">Recent Calls</p>
         <div className="flex flex-col gap-1.5">
           {CALLS.map((call,ci)=>(
-            <div key={call.name} className="bg-white border border-[#E5E7EB] rounded-xl px-3 py-2">
+            <motion.div
+              key={call.name}
+              className="bg-white border border-[#E5E7EB] rounded-xl px-3 py-2"
+              initial={{ opacity:0, y:8 }}
+              animate={{ opacity:1, y:0 }}
+              transition={{ duration:0.3, delay:0.5+ci*0.1, ease:[0.22,1,0.36,1] }}
+            >
               <div className="flex items-start gap-2">
                 <Av i={call.i} sz={24} />
                 <div className="flex-1 min-w-0">
@@ -1017,7 +1060,7 @@ function SceneAgent() {
                   <p className="text-[9px] text-[#9CA3AF]">{call.time}</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -1053,19 +1096,22 @@ function SceneAnalytics() {
         </div>
       </div>
 
+      {/* Stat cards -- each number counts up from 0, staggered ~120ms apart */}
       <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
         {[
-          {label:"Total Leads",   val:"167",pct:"+23%"},
-          {label:"Conversations", val:"225",pct:"+18%"},
-          {label:"Appts Booked",  val:"100",pct:"+31%"},
-          {label:"AI Resolution", val:"94%", pct:"+2%" },
-        ].map(({label,val,pct})=>(
+          {label:"Total Leads",   target:167, format:fmtInt,      pct:"+23%"},
+          {label:"Conversations", target:225, format:fmtInt,      pct:"+18%"},
+          {label:"Appts Booked",  target:100, format:fmtInt,      pct:"+31%"},
+          {label:"AI Resolution", target:94,  format:fmtPctWhole, pct:"+2%" },
+        ].map(({label,target,format,pct}, i)=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
             <div className="flex items-start justify-between gap-1 mb-1">
               <span className="text-[9px] text-[#9CA3AF] font-medium leading-tight">{label}</span>
               <span className="text-[9px] font-bold text-green-600 shrink-0">{pct}</span>
             </div>
-            <p className="text-base font-black text-[#111111] leading-none">{val}</p>
+            <p className="text-base font-black text-[#111111] leading-none">
+              <CountUp target={target} format={format} duration={1200} delay={i*120} />
+            </p>
           </div>
         ))}
       </div>
@@ -1087,9 +1133,27 @@ function SceneAnalytics() {
               <stop offset="100%" stopColor="rgba(237,84,38,0)"/>
             </linearGradient>
           </defs>
-          <path d={areaD} fill="url(#ptLineArea)"/>
-          <path d={pathD} fill="none" stroke="#ed5426" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx={cW} cy={lastY} r="3.5" fill="#ed5426"/>
+          <motion.path
+            d={areaD} fill="url(#ptLineArea)"
+            initial={{ opacity:0 }}
+            animate={{ opacity:1 }}
+            transition={{ duration:0.6, delay:0.9 }}
+          />
+          {/* The line draws itself via pathLength (Framer manages the real
+              stroke-dasharray/dashoffset off the path's actual measured
+              length), not a fade -- reads as the line being traced live. */}
+          <motion.path
+            d={pathD} fill="none" stroke="#ed5426" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+            initial={{ pathLength:0 }}
+            animate={{ pathLength:1 }}
+            transition={{ duration:1.2, delay:0.3, ease:"easeInOut" }}
+          />
+          <motion.circle
+            cx={cW} cy={lastY} r="3.5" fill="#ed5426"
+            initial={{ scale:0, opacity:0 }}
+            animate={{ scale:1, opacity:1 }}
+            transition={{ duration:0.25, delay:1.5, ease:[0.34,1.56,0.64,1] }}
+          />
           {["/21","6/26","7/1","7/6","7/11","7/16","7/20"].map((lbl,i)=>(
             <text key={i} x={(i/6)*cW} y={cH+14} textAnchor="middle" fontSize="8" fill="#9CA3AF">{lbl}</text>
           ))}
@@ -1105,7 +1169,7 @@ function SceneAnalytics() {
           {name:"WhatsApp", color:"#25D366", leads:74, convs:98, pct:44},
           {name:"Instagram",color:"#E1306C", leads:58, convs:79, pct:35},
           {name:"Website",  color:"#6366F1", leads:35, convs:48, pct:21},
-        ].map(({name,color,leads,convs,pct})=>(
+        ].map(({name,color,leads,convs,pct}, i)=>(
           <div key={name} className="grid grid-cols-4 items-center py-1.5 border-t border-[#F3F4F6]">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full shrink-0" style={{background:color}}/>
@@ -1115,7 +1179,13 @@ function SceneAnalytics() {
             <span className="text-[11px] text-[#374151]">{convs}</span>
             <div className="flex items-center gap-1.5">
               <div className="flex-1 h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
-                <div className="h-full rounded-full" style={{width:`${pct}%`, background:color}}/>
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background:color }}
+                  initial={{ width:"0%" }}
+                  animate={{ width:`${pct}%` }}
+                  transition={{ duration:0.7, delay:1.0+i*0.15, ease:"easeOut" }}
+                />
               </div>
               <span className="text-[10px] text-[#374151] font-semibold">{pct}%</span>
             </div>
