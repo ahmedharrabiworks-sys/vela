@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
-const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
-const SCENE_COUNT = 6;
+const CONV = 0, APPT = 1, CHAN = 2, AGENT = 3, ANALY = 4;
+const SCENE_COUNT = 5;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [11800, 9400, 3000, 8900, 9200, 4800];
-/* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
+const SCENE_DURATIONS: number[] = [11800, 9400, 8900, 9200, 4800];
+/* index matches CONV, APPT, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
 type ApptRow = {
@@ -25,26 +26,6 @@ const APPTS: ApptRow[] = [
   { i:"LM", name:"Layla Mansouri",  service:"Dental Cleaning",  time:"11:00", ch:"WA",  status:"Confirmed" },
   { i:"KI", name:"Khaled Ibrahim",  service:"Cavity Filling",   time:"12:00", ch:"WEB", status:"Pending"   },
   { i:"FN", name:"Fatima Nasser",   service:"Root Canal",       time:"13:30", ch:"IG",  status:"Cancelled" },
-];
-
-/* ─── Leads / CRM data ──────────────────────────────────────── */
-type Lead = { i: string; name: string; time: string; ch: "WA" | "IG" | "WEB" };
-const LEAD_COLS: { label: string; color: string; leads: Lead[] }[] = [
-  { label:"New",       color:"#6B7280",
-    leads:[{ i:"SK", name:"Sara Khalid",     time:"2m ago",  ch:"WA"  },
-           { i:"MH", name:"Mohammed Hassan", time:"5m ago",  ch:"IG"  }]},
-  { label:"Contacted", color:"#3B82F6",
-    leads:[{ i:"LM", name:"Layla Mansouri",  time:"18m ago", ch:"WA"  },
-           { i:"OA", name:"Omar Al-Farsi",   time:"1h ago",  ch:"WA"  }]},
-  { label:"Qualified", color:"#8B5CF6",
-    leads:[{ i:"FN", name:"Fatima Nasser",   time:"3h ago",  ch:"IG"  },
-           { i:"RM", name:"Rania Mahmoud",   time:"5h ago",  ch:"WA"  }]},
-  { label:"Booked",    color:"#F97316",
-    leads:[{ i:"KI", name:"Khaled Ibrahim",  time:"8h ago",  ch:"WA"  },
-           { i:"NA", name:"Nour Al-Saad",    time:"12h ago", ch:"WEB" }]},
-  { label:"Client",    color:"#10B981",
-    leads:[{ i:"AQ", name:"Aisha Qasim",     time:"1d ago",  ch:"IG"  },
-           { i:"HY", name:"Hassan Youssef",  time:"2d ago",  ch:"WA"  }]},
 ];
 
 /* ─── Recent calls ──────────────────────────────────────────── */
@@ -600,51 +581,6 @@ function SceneAppointments() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Scene 2 — Leads / CRM
-   overflow:hidden + framer-motion auto-pan (no scrollbar ever)
-═══════════════════════════════════════════════════════════════ */
-function SceneLeads() {
-  return (
-    <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
-      <SceneHdr title="Leads / CRM" sub="10 leads across 5 stages" btn="+ Add Lead" />
-
-      {/* Kanban — outer clips, inner pans automatically */}
-      <div className="flex-1 overflow-hidden px-4 pb-3">
-        <motion.div
-          className="flex gap-3 h-full"
-          animate={{ x: [0, -200, -200, 0] }}
-          transition={{ duration:2.6, times:[0, 0.42, 0.58, 1], ease:"easeInOut", delay:0.2 }}
-        >
-          {LEAD_COLS.map(col=>(
-            <div key={col.label} className="flex flex-col shrink-0" style={{ width:144 }}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ background:col.color }} />
-                <span className="text-[11px] font-semibold text-[#374151]">{col.label}</span>
-                <span className="text-[10px] font-bold w-4 h-4 rounded-full bg-[#F3F4F6] text-[#6B7280] flex items-center justify-center shrink-0">{col.leads.length}</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {col.leads.map(lead=>(
-                  <div key={lead.name} className="bg-white rounded-xl border border-[#E5E7EB] p-2.5 shadow-sm">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Av i={lead.i} sz={24} />
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold text-[#111111] truncate leading-tight">{lead.name}</p>
-                        <p className="text-[10px] text-[#9CA3AF] leading-tight">{lead.time}</p>
-                      </div>
-                    </div>
-                    <ChBadge ch={lead.ch} />
-                  </div>
-                ))}
-                <button className="text-[10px] text-[#9CA3AF] border border-dashed border-[#E5E7EB] rounded-xl py-2 text-center">+ Add</button>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Channels scene: step machine driving a simulated connect flow ─── */
 const CHAN_STEP = {
@@ -1343,31 +1279,90 @@ function SceneAnalytics() {
   );
 }
 
-/* ─── Feature cards ──────────────────────────────────────────── */
-const FEATURE_CARDS = [
+/* ─── Tour panels: tab row + left content panel per scene ──────
+   color is used only for the panel's icon circle + checklist tint
+   (kept within Vela's orange/rose palette, varied per scene) --
+   the tab row itself keeps the site's single-accent active style. */
+const TOUR_PANELS = [
   {
     sceneIdx: CONV,
+    tabLabel: "Conversation",
+    color: "#ed5426",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 10.5a1.5 1.5 0 01-1.5 1.5H5.25L2.5 15V4a1.5 1.5 0 011.5-1.5h10A1.5 1.5 0 0115 4v6.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>,
-    title: "AI replies 24/7",
-    desc:  "Instagram, WhatsApp, and website: all handled automatically.",
+    headline: "Never miss a conversation",
+    subtext: "Your AI replies across every channel, day or night.",
+    checklist: [
+      "AI replies 24/7",
+      "Instagram, WhatsApp & Website",
+      "Collects name & contact details",
+      "Books appointments in-chat",
+      "Answers FAQs instantly",
+      "Escalates when needed",
+    ],
+  },
+  {
+    sceneIdx: APPT,
+    tabLabel: "Appointments",
+    color: "#F97316",
+    icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/><path d="M2.5 7h13M6 2v3M12 2v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M6.5 10.5l1.5 1.5 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    headline: "Bookings that manage themselves",
+    subtext: "Every appointment tracked, confirmed, and easy to change.",
+    checklist: [
+      "Auto-synced booking calendar",
+      "Confirmed, Pending & Cancelled views",
+      "One-tap reschedule",
+      "Message customers directly",
+      "Cancel with one click",
+      "Every channel in one table",
+    ],
+  },
+  {
+    sceneIdx: CHAN,
+    tabLabel: "Channels",
+    color: "#FF6B35",
+    icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="4" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="13.5" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="14" cy="9" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M5.7 5.4L12.3 8.1M5.7 12.6L12.3 9.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+    headline: "One AI, every channel",
+    subtext: "Connect Instagram, WhatsApp, and your website in minutes.",
+    checklist: [
+      "Instagram DMs",
+      "WhatsApp Business",
+      "Website live chat",
+      "One-click connect flow",
+      "Unified inbox, every channel",
+      "Per-channel performance stats",
+    ],
   },
   {
     sceneIdx: AGENT,
+    tabLabel: "AI Agent",
+    color: "#9e3819",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5.5A2.5 2.5 0 015.5 3h.5a1 1 0 01.95.684l.9 2.7a1 1 0 01-.273 1.054l-.9.9A9 9 0 009.66 11.32l.9-.9a1 1 0 011.054-.273l2.7.9A1 1 0 0115 12.01V12.5A2.5 2.5 0 0112.5 15C7.253 15 3 10.747 3 5.5z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    title: "Voice phone agent",
-    desc:  "Answers inbound calls, qualifies leads, books appointments.",
-  },
-  {
-    sceneIdx: LEADS_S,
-    icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M12 16v-1.5A3 3 0 009 11.5H5a3 3 0 00-3 3V16" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><circle cx="7" cy="6" r="3" stroke="currentColor" strokeWidth="1.4"/><path d="M16 16v-1.5A3 3 0 0014 11.7M13 3.1a3 3 0 010 5.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
-    title: "Leads & CRM",
-    desc:  "Every customer captured, tracked, and ready to follow up.",
+    headline: "A voice agent that never misses a call",
+    subtext: "Answers every inbound call and books the appointment.",
+    checklist: [
+      "Answers inbound calls 24/7",
+      "Multilingual conversations",
+      "Books appointments by phone",
+      "Full call transcripts",
+      "Call resolution tracking",
+      "Transfers complex calls",
+    ],
   },
   {
     sceneIdx: ANALY,
+    tabLabel: "Analytics",
+    color: "#FF3366",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 14h14M5 14V9m3 5V6m3 8V4m3 10v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    title: "Analytics",
-    desc:  "Full-funnel insights across every channel and touchpoint.",
+    headline: "See exactly what's working",
+    subtext: "Full-funnel insights across every channel and touchpoint.",
+    checklist: [
+      "Leads, conversations & bookings",
+      "30-day trend line chart",
+      "Channel-by-channel breakdown",
+      "AI resolution rate tracking",
+      "7d / 30d / 90d ranges",
+      "Full-funnel visibility",
+    ],
   },
 ] as const;
 
@@ -1406,12 +1401,11 @@ export default function ProductTourDemo() {
 
   function renderScene(s: number) {
     switch (s) {
-      case CONV:    return <SceneConversation />;
-      case APPT:    return <SceneAppointments />;
-      case LEADS_S: return <SceneLeads />;
-      case CHAN:    return <SceneChannels />;
-      case AGENT:   return <SceneAgent />;
-      case ANALY:   return <SceneAnalytics />;
+      case CONV:  return <SceneConversation />;
+      case APPT:  return <SceneAppointments />;
+      case CHAN:  return <SceneChannels />;
+      case AGENT: return <SceneAgent />;
+      case ANALY: return <SceneAnalytics />;
       default:      return null;
     }
   }
@@ -1430,49 +1424,98 @@ export default function ProductTourDemo() {
             <span className="vela-gradient-text">and keep it organized for you.</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">
-            Six core screens. Click any card to explore or let the tour run.
+            Five core screens. Click any card to explore or let the tour run.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
 
-          {/* Feature cards */}
-          <div className="order-last lg:order-first flex flex-col gap-3 lg:pt-2">
-            {FEATURE_CARDS.map(f => {
-              const active = scene === f.sceneIdx;
-              return (
-                <button
-                  key={f.title}
-                  onClick={() => goToScene(f.sceneIdx)}
-                  className="flex items-start gap-4 p-4 rounded-2xl text-left transition-all duration-200 w-full"
-                  style={{
-                    background:   active ? "var(--vt-color)" : "#FAFAFA",
-                    border:       active ? "1.5px solid var(--vp-color)" : "1.5px solid #F1F5F9",
-                    boxShadow:    active ? "0 4px 16px var(--vp-10)" : "none",
-                  }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors duration-200"
-                    style={{
-                      background: active ? "var(--vp-10)" : "#F1F5F9",
-                      color:      active ? "var(--vp-color)" : "#6B7280",
-                      border:     active ? "1px solid var(--vp-15)" : "1px solid transparent",
-                    }}
-                  >{f.icon}</div>
-                  <div className="flex-1">
-                    <p className="text-[14px] font-bold text-[#111111] leading-tight">{f.title}</p>
-                    <p className="text-[13px] text-[#6B7280] mt-1 leading-relaxed">{f.desc}</p>
-                  </div>
-                  {active && (
-                    <div className="shrink-0 mt-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ background:"var(--vp-color)" }} />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+          {/* Left text panel: tab row + icon/headline/subtext/checklist panel + persistent CTA */}
+          <div className="order-last lg:order-first flex flex-col lg:pt-2">
 
-            <div className="flex flex-wrap gap-2 items-center mt-1 px-1">
+            {/* Tab row -- 5 literal-name tabs, single-accent active style (unchanged
+                click-to-jump + autoplay-continues behavior via goToScene). */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {TOUR_PANELS.map(p => {
+                const active = scene === p.sceneIdx;
+                return (
+                  <button
+                    key={p.tabLabel}
+                    onClick={() => goToScene(p.sceneIdx)}
+                    className="flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-200"
+                    style={{
+                      background: active ? "var(--vt-color)" : "#FAFAFA",
+                      border:     active ? "1.5px solid var(--vp-color)" : "1.5px solid #F1F5F9",
+                      color:      active ? "var(--vp-color)" : "#6B7280",
+                    }}
+                  >
+                    <span
+                      className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 [&>svg]:w-3.5 [&>svg]:h-3.5"
+                      style={{
+                        background: active ? "var(--vp-10)" : "#F1F5F9",
+                        color:      active ? "var(--vp-color)" : "#9CA3AF",
+                      }}
+                    >{p.icon}</span>
+                    {p.tabLabel}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Content panel -- icon circle, headline, subtext, 2-col checklist.
+                Swapped per scene via AnimatePresence (fade/slide), same transition
+                feel as the rest of the file. CTA lives outside this block so it
+                never unmounts/re-animates on scene change (FIX 4: persistent). */}
+            <AnimatePresence mode="wait">
+              {(() => {
+                const p = TOUR_PANELS.find(x => x.sceneIdx === scene) ?? TOUR_PANELS[0];
+                return (
+                  <motion.div
+                    key={scene}
+                    initial={{ opacity:0, y:10 }}
+                    animate={{ opacity:1, y:0 }}
+                    exit={{ opacity:0, y:-10 }}
+                    transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}
+                  >
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center mb-4 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:text-white"
+                      style={{ background:p.color }}
+                    >{p.icon}</div>
+                    <h3 className="font-inter font-extrabold text-[24px] md:text-[28px] text-[#111111] leading-tight tracking-tight">
+                      {p.headline}
+                    </h3>
+                    <p className="text-[15px] text-[#6B7280] mt-2 leading-relaxed">{p.subtext}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 mt-5">
+                      {p.checklist.map(item => (
+                        <div key={item} className="flex items-center gap-2">
+                          <span
+                            className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                            style={{ background:`${p.color}1A` }}
+                          >
+                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                              <path d="M1.5 4.5l2 2 4-4" stroke={p.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </span>
+                          <span className="text-[13px] text-[#374151] font-medium leading-snug">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+
+            <Link
+              href="/auth/signup"
+              className="btn-primary text-base px-8 py-3.5 justify-center inline-flex items-center gap-2 mt-7 w-full sm:w-auto"
+            >
+              Start 7-Day Free Trial
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+
+            <div className="flex flex-wrap gap-2 items-center mt-5 px-1">
               <span className="text-xs text-[#9CA3AF] font-medium mr-1">Works on:</span>
               {[
                 { label:"Instagram DMs", color:"#E1306C" },
