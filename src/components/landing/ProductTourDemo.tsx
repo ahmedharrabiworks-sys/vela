@@ -9,7 +9,7 @@ const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [11800, 9400, 3000, 8900, 3600, 3800];
+const SCENE_DURATIONS: number[] = [11800, 9400, 3000, 8900, 9200, 4800];
 /* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -53,6 +53,22 @@ const CALLS: CallRow[] = [
   { i:"SK", name:"Sara Khalid",     status:"Booked",      dur:"2:14", time:"09:41", summary:"Caller booked a dental cleaning for Tuesday at 11:00 AM. Confirmed name and contact details." },
   { i:"MH", name:"Mohammed Hassan", status:"Transferred", dur:"1:47", time:"09:35", summary:"Caller asked about whitening prices and payment plan options. Transferred to billing team." },
   { i:"LM", name:"Layla Mansouri",  status:"Booked",      dur:"3:22", time:"09:20", summary:"Caller booked a cleaning and asked about parking and procedure comfort." },
+];
+
+/* ─── Recent calls: full transcript for the clickable Sara Khalid row ── */
+const SARA_TRANSCRIPT: { who:"ai"|"caller"; text:string }[] = [
+  { who:"ai",     text:"Thank you for calling Ahmed Dental Clinic. How can I help today?" },
+  { who:"caller", text:"Hi, I'd like to book a cleaning appointment." },
+  { who:"ai",     text:"Sure. Can I get your full name, please?" },
+  { who:"caller", text:"Sara Khalid." },
+  { who:"ai",     text:"Thanks, Sara. What day works best for you?" },
+  { who:"caller", text:"Do you have anything on Tuesday?" },
+  { who:"ai",     text:"Yes, Tuesday at 11:00 AM is open. Does that work?" },
+  { who:"caller", text:"That works great." },
+  { who:"ai",     text:"Perfect. Is this the best number to reach you?" },
+  { who:"caller", text:"Yes, it is." },
+  { who:"ai",     text:"You're booked: cleaning on Tuesday at 11:00 AM. A confirmation text is on its way." },
+  { who:"caller", text:"Great, thank you!" },
 ];
 
 /* ─── Bar chart ──────────────────────────────────────────────── */
@@ -951,6 +967,20 @@ function fmtDuration(n: number): string {
   return `${m}:${String(s).padStart(2,"0")}`;
 }
 
+/* Step machine for the Recent Calls click-through, appended after the
+   stat/bar/donut/list reveal has settled (~3.1s in). Mirrors the cursor
+   move -> click ripple -> panel pattern already established in
+   SceneAppointments, but the "panel" here is a full-stage transcript
+   view instead of a small popup. */
+const AGENT_STEP = {
+  REVEAL: 0,
+  CURSOR_IN: 1,
+  CURSOR_AT_ROW: 2,
+  CLICKED: 3,
+  TRANSCRIPT: 4,
+  RETURNING: 5,
+} as const;
+
 /* ═══════════════════════════════════════════════════════════════
    Scene 4 — AI Agent
    overflow:hidden — 3 call rows, content verified to fit 480 px
@@ -958,17 +988,53 @@ function fmtDuration(n: number): string {
    AnimatePresence keys each scene by index and remounts it fresh
    each time it comes back around (same mechanism the other scenes
    already rely on for their own timers).
+   Choreography:
+   1 stat cards count up, bars grow, donut fills, call rows reveal (~3.1s)
+   2 cursor moves to the Sara Khalid row and clicks it
+   3 that row zooms into a full call transcript view
+   4 hold on the transcript, then transition back to the Recent Calls list
 ═══════════════════════════════════════════════════════════════ */
 function SceneAgent() {
   const maxBar = Math.max(...BAR_VALS);
   const barH = 78, barW = 28, barGap = 36;
   const r = 34;
 
+  const [step, setStep] = useState<number>(AGENT_STEP.REVEAL);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const row0Ref = useRef<HTMLDivElement>(null);
+  const [row0Pos, setRow0Pos] = useState({ top:"70%", left:"50%" });
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (s: number, delay: number) => { timers.push(setTimeout(() => setStep(s), delay)); };
+    // Measured once the row's own entrance reveal has settled, so the cursor
+    // and ripple are tied to its real rendered position (see pctPosition).
+    timers.push(setTimeout(() => {
+      if (row0Ref.current && stageRef.current) {
+        setRow0Pos(pctPosition(row0Ref.current, stageRef.current));
+      }
+    }, 2800));
+    at(AGENT_STEP.CURSOR_IN, 3500);
+    at(AGENT_STEP.CURSOR_AT_ROW, 4250);
+    at(AGENT_STEP.CLICKED, 4550);
+    at(AGENT_STEP.TRANSCRIPT, 4900);
+    at(AGENT_STEP.RETURNING, 8000);
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const cursor =
+    step < AGENT_STEP.CURSOR_IN   ? { opacity:0, top:"8%", left:"50%" } :
+    step < AGENT_STEP.TRANSCRIPT  ? { opacity:1, ...row0Pos } :
+    { opacity:0, ...row0Pos };
+
+  const rowHighlighted = step === AGENT_STEP.CURSOR_AT_ROW || step === AGENT_STEP.CLICKED;
+  const showTranscript = step === AGENT_STEP.TRANSCRIPT;
+
   return (
-    <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
+    <div ref={stageRef} className="relative flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
       <SceneHdr title="AI Phone Agent" sub="Your 24/7 voice AI assistant" btn="Test Voice Agent" />
 
-      {/* Stat cards -- each number counts up from 0, staggered ~120ms apart */}
+      {/* Stat cards -- each number counts up from 0, staggered ~180ms apart */}
       <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
         {[
           { target:847,  format:fmtInt,       label:"Total Calls"    },
@@ -978,7 +1044,7 @@ function SceneAgent() {
         ].map(({target,format,label,sub}, i)=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
             <p className="text-base font-black text-[#111111] leading-none">
-              <CountUp target={target} format={format} duration={1200} delay={i*120} />
+              <CountUp target={target} format={format} duration={1700} delay={i*180} />
             </p>
             <p className="text-[9px] text-[#9CA3AF] mt-0.5 leading-tight">{label}</p>
             {sub&&<p className="text-[9px] font-bold text-green-600 mt-0.5">{sub}</p>}
@@ -1004,7 +1070,7 @@ function SceneAgent() {
                     x={i*barGap+4} width={barW} rx={3} fill="url(#ptBarGrad)"
                     initial={{ height:0, y:barH }}
                     animate={{ height:bh, y:barH-bh }}
-                    transition={{ duration:0.55, delay:0.15+i*0.07, ease:"easeOut" }}
+                    transition={{ duration:0.95, delay:0.3+i*0.11, ease:"easeOut" }}
                   />
                   <text x={i*barGap+4+barW/2} y={barH+13} textAnchor="middle" fontSize="8" fill="#9CA3AF">{BAR_DAYS[i]}</text>
                 </g>
@@ -1023,10 +1089,10 @@ function SceneAgent() {
               strokeLinecap="round" transform="rotate(-90 42 42)"
               initial={{ pathLength:0 }}
               animate={{ pathLength:0.94 }}
-              transition={{ duration:1.1, delay:0.25, ease:"easeOut" }}
+              transition={{ duration:1.8, delay:0.45, ease:"easeOut" }}
             />
             <text x="42" y="47" textAnchor="middle" fontSize="16" fontWeight="800" fill="#111111">
-              <CountUp target={94} format={fmtPctWhole} duration={1100} delay={250} />
+              <CountUp target={94} format={fmtPctWhole} duration={1800} delay={450} />
             </text>
           </svg>
           <p className="text-[9px] font-semibold text-[#374151] text-center leading-tight mt-0.5">AI Resolution</p>
@@ -1034,17 +1100,27 @@ function SceneAgent() {
         </div>
       </div>
 
-      {/* Recent calls — overflow:hidden, exactly 3 rows, light staggered reveal */}
+      {/* Recent calls — overflow:hidden, exactly 3 rows, light staggered reveal.
+          Row 0 is clickable in spirit (simulated cursor drives the demo, not
+          real pointer events) and gets a highlight tint + ref for the zoom. */}
       <div className="flex-1 overflow-hidden px-4 pb-2">
         <p className="text-[10px] font-bold text-[#374151] mb-1.5">Recent Calls</p>
         <div className="flex flex-col gap-1.5">
           {CALLS.map((call,ci)=>(
             <motion.div
               key={call.name}
-              className="bg-white border border-[#E5E7EB] rounded-xl px-3 py-2"
+              ref={ci===0 ? row0Ref : undefined}
+              className="border border-[#E5E7EB] rounded-xl px-3 py-2"
               initial={{ opacity:0, y:8 }}
-              animate={{ opacity:1, y:0 }}
-              transition={{ duration:0.3, delay:0.5+ci*0.1, ease:[0.22,1,0.36,1] }}
+              animate={{
+                opacity:1, y:0,
+                backgroundColor: ci===0 && rowHighlighted ? "rgba(237,84,38,0.08)" : "#ffffff",
+              }}
+              transition={{
+                opacity:{ duration:0.3, delay:2.0+ci*0.26, ease:[0.22,1,0.36,1] },
+                y:{ duration:0.3, delay:2.0+ci*0.26, ease:[0.22,1,0.36,1] },
+                backgroundColor:{ duration:0.3, ease:"easeInOut" },
+              }}
             >
               <div className="flex items-start gap-2">
                 <Av i={call.i} sz={24} />
@@ -1064,6 +1140,71 @@ function SceneAgent() {
           ))}
         </div>
       </div>
+
+      {/* Simulated cursor + click ripple, same technique as SceneAppointments. */}
+      <motion.div
+        className="absolute pointer-events-none z-50"
+        style={{ transform:"translate(-2.5px, -1.5px)" }}
+        animate={cursor}
+        transition={{ duration:0.75, ease:"easeInOut" }}
+      >
+        <CursorIcon />
+      </motion.div>
+      <AnimatePresence>
+        {step===AGENT_STEP.CLICKED && (
+          <motion.div
+            key="ripple-row0"
+            className="absolute rounded-full pointer-events-none z-40"
+            style={{ top:row0Pos.top, left:row0Pos.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
+            initial={{ scale:0.4, opacity:0 }}
+            animate={{ scale:[0.4, 0.6, 2], opacity:[0, 0.7, 0] }}
+            transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Full call transcript — zooms in from the clicked row's position,
+          holds, then zooms back out to the Recent Calls list. */}
+      <AnimatePresence>
+        {showTranscript && (
+          <motion.div
+            key="transcript"
+            className="absolute inset-0 z-30 bg-white flex flex-col"
+            style={{ transformOrigin:`${row0Pos.left} ${row0Pos.top}` }}
+            initial={{ opacity:0, scale:0.25 }}
+            animate={{ opacity:1, scale:1 }}
+            exit={{ opacity:0, scale:0.25 }}
+            transition={{ duration:0.6, ease:[0.22,1,0.36,1] }}
+          >
+            <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-[#F3F4F6] shrink-0">
+              <Av i={CALLS[0].i} sz={28} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] font-bold text-[#111111]">{CALLS[0].name}</span>
+                  <CallPill s={CALLS[0].status} />
+                </div>
+                <p className="text-[9px] text-[#9CA3AF]">Call transcript - {CALLS[0].dur}</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden px-4 py-2.5 flex flex-col gap-1.5">
+              {SARA_TRANSCRIPT.map((line, li)=>(
+                <motion.div
+                  key={li}
+                  initial={{ opacity:0, y:6 }}
+                  animate={{ opacity:1, y:0 }}
+                  transition={{ duration:0.3, delay:0.15+li*0.14, ease:[0.22,1,0.36,1] }}
+                  className="flex items-baseline gap-1.5"
+                >
+                  <span className="text-[9px] font-bold shrink-0" style={{ color: line.who==="ai" ? "#ed5426" : "#374151", width:34 }}>
+                    {line.who==="ai" ? "AI:" : "Sara:"}
+                  </span>
+                  <span className="text-[10px] text-[#374151] leading-snug">{line.text}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1110,7 +1251,7 @@ function SceneAnalytics() {
               <span className="text-[9px] font-bold text-green-600 shrink-0">{pct}</span>
             </div>
             <p className="text-base font-black text-[#111111] leading-none">
-              <CountUp target={target} format={format} duration={1200} delay={i*120} />
+              <CountUp target={target} format={format} duration={1700} delay={i*180} />
             </p>
           </div>
         ))}
@@ -1137,7 +1278,7 @@ function SceneAnalytics() {
             d={areaD} fill="url(#ptLineArea)"
             initial={{ opacity:0 }}
             animate={{ opacity:1 }}
-            transition={{ duration:0.6, delay:0.9 }}
+            transition={{ duration:0.5, delay:2.1 }}
           />
           {/* The line draws itself via pathLength (Framer manages the real
               stroke-dasharray/dashoffset off the path's actual measured
@@ -1146,13 +1287,13 @@ function SceneAnalytics() {
             d={pathD} fill="none" stroke="#ed5426" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
             initial={{ pathLength:0 }}
             animate={{ pathLength:1 }}
-            transition={{ duration:1.2, delay:0.3, ease:"easeInOut" }}
+            transition={{ duration:1.9, delay:0.4, ease:"easeInOut" }}
           />
           <motion.circle
             cx={cW} cy={lastY} r="3.5" fill="#ed5426"
             initial={{ scale:0, opacity:0 }}
             animate={{ scale:1, opacity:1 }}
-            transition={{ duration:0.25, delay:1.5, ease:[0.34,1.56,0.64,1] }}
+            transition={{ duration:0.3, delay:2.3, ease:[0.34,1.56,0.64,1] }}
           />
           {["/21","6/26","7/1","7/6","7/11","7/16","7/20"].map((lbl,i)=>(
             <text key={i} x={(i/6)*cW} y={cH+14} textAnchor="middle" fontSize="8" fill="#9CA3AF">{lbl}</text>
@@ -1175,8 +1316,12 @@ function SceneAnalytics() {
               <span className="w-2 h-2 rounded-full shrink-0" style={{background:color}}/>
               <span className="text-[11px] text-[#374151]">{name}</span>
             </div>
-            <span className="text-[11px] text-[#374151]">{leads}</span>
-            <span className="text-[11px] text-[#374151]">{convs}</span>
+            <span className="text-[11px] text-[#374151]">
+              <CountUp target={leads} format={fmtInt} duration={700} delay={2500+i*380} />
+            </span>
+            <span className="text-[11px] text-[#374151]">
+              <CountUp target={convs} format={fmtInt} duration={700} delay={2500+i*380} />
+            </span>
             <div className="flex items-center gap-1.5">
               <div className="flex-1 h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
                 <motion.div
@@ -1184,7 +1329,7 @@ function SceneAnalytics() {
                   style={{ background:color }}
                   initial={{ width:"0%" }}
                   animate={{ width:`${pct}%` }}
-                  transition={{ duration:0.7, delay:1.0+i*0.15, ease:"easeOut" }}
+                  transition={{ duration:0.7, delay:2.5+i*0.38, ease:"easeOut" }}
                 />
               </div>
               <span className="text-[10px] text-[#374151] font-semibold">{pct}%</span>
