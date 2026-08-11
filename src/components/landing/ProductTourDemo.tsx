@@ -1332,7 +1332,9 @@ function SceneAnalytics() {
                   transition={{ duration:0.7, delay:2.5+i*0.38, ease:"easeOut" }}
                 />
               </div>
-              <span className="text-[10px] text-[#374151] font-semibold">{pct}%</span>
+              <span className="text-[10px] text-[#374151] font-semibold">
+                <CountUp target={pct} format={fmtPctWhole} duration={700} delay={2500+i*380} />
+              </span>
             </div>
           </div>
         ))}
