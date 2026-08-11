@@ -8,68 +8,42 @@ import { motion, AnimatePresence } from "framer-motion";
 const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
-/* ─── Auto-advance durations (ms) ──────────────────────────── */
-const SCENE_MS = [18500, 4200, 4200, 4200, 4200, 4200];
-
-/* ─── Chat animation script ─────────────────────────────────── */
-type Msg = { role: "ai" | "user"; text: string; at: number };
-const CHAT_MSGS: Msg[] = [
-  { role: "ai",   at:  900,  text: "Hi! I'm Vela, your AI business assistant. How can I help?" },
-  { role: "user", at: 2300,  text: "I'd like to book a dental cleaning" },
-  { role: "ai",   at: 3600,  text: "Happy to help! What's your name?" },
-  { role: "user", at: 5000,  text: "Sara Khalid" },
-  { role: "ai",   at: 6200,  text: "Got it, Sara! Your phone number?" },
-  { role: "user", at: 7600,  text: "+971 50 123 4567" },
-  { role: "ai",   at: 8700,  text: "What date works best for you?" },
-  { role: "user", at: 10100, text: "Tuesday afternoon please" },
-  { role: "ai",   at: 11200, text: "I have Tuesday at 3:00 PM. Shall I confirm?" },
-  { role: "user", at: 12600, text: "Yes, perfect!" },
-];
-const CONFIRM_AT = 13800;
+/* ─── Auto-advance: exactly 3 s per scene ───────────────────── */
+const SCENE_MS = 3000;
 
 /* ─── Appointments data ─────────────────────────────────────── */
 type ApptRow = {
-  i: string; name: string; phone: string;
+  i: string; name: string;
   service: string; time: string;
   ch: "WA" | "IG" | "WEB"; status: "Confirmed" | "Pending" | "Cancelled";
 };
 const APPTS: ApptRow[] = [
-  { i:"SK", name:"Sara Khalid",     phone:"+971 50 123 4567", service:"Dental Cleaning",  time:"09:00", ch:"WA",  status:"Confirmed" },
-  { i:"RM", name:"Rania Mahmoud",   phone:"+971 52 345 6789", service:"Teeth Whitening",  time:"09:45", ch:"IG",  status:"Confirmed" },
-  { i:"MH", name:"Mohammed Hassan", phone:"+971 55 456 7890", service:"Teeth Whitening",  time:"10:30", ch:"IG",  status:"Confirmed" },
-  { i:"LM", name:"Layla Mansouri",  phone:"+971 55 987 6543", service:"Dental Cleaning",  time:"11:00", ch:"WA",  status:"Confirmed" },
-  { i:"KI", name:"Khaled Ibrahim",  phone:"+971 50 456 7890", service:"Cavity Filling",   time:"12:00", ch:"WEB", status:"Pending"   },
-  { i:"FN", name:"Fatima Nasser",   phone:"",                 service:"Root Canal",        time:"13:30", ch:"IG",  status:"Cancelled" },
+  { i:"SK", name:"Sara Khalid",     service:"Dental Cleaning",  time:"09:00", ch:"WA",  status:"Confirmed" },
+  { i:"RM", name:"Rania Mahmoud",   service:"Teeth Whitening",  time:"09:45", ch:"IG",  status:"Confirmed" },
+  { i:"MH", name:"Mohammed Hassan", service:"Teeth Whitening",  time:"10:30", ch:"IG",  status:"Confirmed" },
+  { i:"LM", name:"Layla Mansouri",  service:"Dental Cleaning",  time:"11:00", ch:"WA",  status:"Confirmed" },
+  { i:"KI", name:"Khaled Ibrahim",  service:"Cavity Filling",   time:"12:00", ch:"WEB", status:"Pending"   },
+  { i:"FN", name:"Fatima Nasser",   service:"Root Canal",       time:"13:30", ch:"IG",  status:"Cancelled" },
 ];
 
 /* ─── Leads / CRM data ──────────────────────────────────────── */
-type Lead = { i: string; name: string; time: string; ch: "WA" | "IG" | "WEB"; phone: string };
+type Lead = { i: string; name: string; time: string; ch: "WA" | "IG" | "WEB" };
 const LEAD_COLS: { label: string; color: string; leads: Lead[] }[] = [
   { label:"New",       color:"#6B7280",
-    leads:[
-      { i:"SK", name:"Sara Khalid",     time:"2m ago",  ch:"WA",  phone:"+971 50 123 4567" },
-      { i:"MH", name:"Mohammed Hassan", time:"5m ago",  ch:"IG",  phone:"" },
-    ]},
+    leads:[{ i:"SK", name:"Sara Khalid",     time:"2m ago",  ch:"WA"  },
+           { i:"MH", name:"Mohammed Hassan", time:"5m ago",  ch:"IG"  }]},
   { label:"Contacted", color:"#3B82F6",
-    leads:[
-      { i:"LM", name:"Layla Mansouri",  time:"18m ago", ch:"WA",  phone:"+971 55 887 6543" },
-      { i:"OA", name:"Omar Al-Farsi",   time:"1h ago",  ch:"WA",  phone:"+971 56 234 5678" },
-    ]},
-  { label:"Qualified",  color:"#8B5CF6",
-    leads:[
-      { i:"FN", name:"Fatima Nasser",   time:"3h ago",  ch:"IG",  phone:"" },
-      { i:"RM", name:"Rania Mahmoud",   time:"5h ago",  ch:"WA",  phone:"+971 52 345 6789" },
-    ]},
+    leads:[{ i:"LM", name:"Layla Mansouri",  time:"18m ago", ch:"WA"  },
+           { i:"OA", name:"Omar Al-Farsi",   time:"1h ago",  ch:"WA"  }]},
+  { label:"Qualified", color:"#8B5CF6",
+    leads:[{ i:"FN", name:"Fatima Nasser",   time:"3h ago",  ch:"IG"  },
+           { i:"RM", name:"Rania Mahmoud",   time:"5h ago",  ch:"WA"  }]},
   { label:"Booked",    color:"#F97316",
-    leads:[
-      { i:"KI", name:"Khaled Ibrahim",  time:"8h ago",  ch:"WA",  phone:"+971 50 456 7890" },
-      { i:"NA", name:"Nour Al-Saad",    time:"12h ago", ch:"WEB", phone:"+971 54 567 8901" },
-    ]},
+    leads:[{ i:"KI", name:"Khaled Ibrahim",  time:"8h ago",  ch:"WA"  },
+           { i:"NA", name:"Nour Al-Saad",    time:"12h ago", ch:"WEB" }]},
   { label:"Client",    color:"#10B981",
-    leads:[
-      { i:"AQ", name:"Aisha Qasim",     time:"1d ago",  ch:"IG",  phone:"" },
-      { i:"HY", name:"Hassan Youssef",  time:"2d ago",  ch:"WA",  phone:"+971 50 678 9012" },
-    ]},
+    leads:[{ i:"AQ", name:"Aisha Qasim",     time:"1d ago",  ch:"IG"  },
+           { i:"HY", name:"Hassan Youssef",  time:"2d ago",  ch:"WA"  }]},
 ];
 
 /* ─── Recent calls ──────────────────────────────────────────── */
@@ -78,10 +52,9 @@ const CALLS: CallRow[] = [
   { i:"SK", name:"Sara Khalid",     status:"Booked",      dur:"2:14", time:"09:41", summary:"Caller booked a dental cleaning for Tuesday at 11:00 AM. Confirmed name and contact details." },
   { i:"MH", name:"Mohammed Hassan", status:"Transferred", dur:"1:47", time:"09:35", summary:"Caller asked about whitening prices and payment plan options. Transferred to billing team." },
   { i:"LM", name:"Layla Mansouri",  status:"Booked",      dur:"3:22", time:"09:20", summary:"Caller booked a cleaning and asked about parking and procedure comfort." },
-  { i:"RM", name:"Rania Mahmoud",   status:"Resolved",    dur:"0:58", time:"08:45", summary:"Caller confirmed their existing appointment and asked what to bring. Fully resolved." },
 ];
 
-/* ─── Bar chart (calls this week) ──────────────────────────── */
+/* ─── Bar chart ──────────────────────────────────────────────── */
 const BAR_DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const BAR_VALS = [17, 22, 19, 21, 24, 20, 15];
 
@@ -122,8 +95,7 @@ function StatusPill({ s }: { s:ApptRow["status"] }) {
   }[s];
   return (
     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color:m.text, background:m.bg }}>
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background:m.dot }} />
-      {s}
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background:m.dot }} />{s}
     </span>
   );
 }
@@ -137,7 +109,6 @@ function CallPill({ s }: { s:CallRow["status"] }) {
   return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={m}>{s}</span>;
 }
 
-/* ─── Scene header (shared) ─────────────────────────────────── */
 function SceneHdr({ title, sub, btn }: { title:string; sub:string; btn:string }) {
   return (
     <div className="flex items-start justify-between px-4 pt-3 pb-2 shrink-0">
@@ -151,23 +122,13 @@ function SceneHdr({ title, sub, btn }: { title:string; sub:string; btn:string })
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Scene 0 — Conversation
+   Scene 0 — Conversation (static stagger — fits 3 s)
 ═══════════════════════════════════════════════════════════════ */
 function SceneConversation() {
-  const [shown, setShown]       = useState<Msg[]>([]);
-  const [typing, setTyping]     = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
-
-  useEffect(() => {
-    const t: ReturnType<typeof setTimeout>[] = [];
-    setShown([]); setTyping(false); setConfirmed(false);
-    CHAT_MSGS.forEach(msg => {
-      if (msg.role === "ai") t.push(setTimeout(() => setTyping(true), msg.at - 900));
-      t.push(setTimeout(() => { setTyping(false); setShown(p => [...p, msg]); }, msg.at));
-    });
-    t.push(setTimeout(() => setConfirmed(true), CONFIRM_AT));
-    return () => t.forEach(clearTimeout);
-  }, []);
+  const msgs = [
+    { role:"user" as const, text:"I'd like to book a dental cleaning, please" },
+    { role:"ai"   as const, text:"Done! Sara Khalid is confirmed for Dental Cleaning, Tuesday at 3:00 PM." },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -180,7 +141,7 @@ function SceneConversation() {
           <span className="text-[11px] text-[#6B7280] font-medium">AI Assistant · Online</span>
         </div>
         <div className="ml-auto flex gap-1">
-          {["IG","WA","Web"].map(l => (
+          {["IG","WA","Web"].map(l=>(
             <span key={l} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#F1F5F9] text-[#6B7280] font-semibold border border-[#E5E7EB]">{l}</span>
           ))}
         </div>
@@ -188,67 +149,57 @@ function SceneConversation() {
 
       {/* Messages */}
       <div className="flex-1 overflow-hidden flex flex-col justify-end px-4 py-3 gap-2" style={{ background:"#F8FAFC" }}>
-        <AnimatePresence initial={false}>
-          {shown.map((msg, idx) => (
-            <motion.div key={idx}
-              initial={{ opacity:0, y:10, scale:0.97 }}
-              animate={{ opacity:1, y:0, scale:1 }}
-              transition={{ duration:0.3, ease:[0.22,1,0.36,1] }}
-              className={`flex gap-2 ${msg.role==="user"?"justify-end":"justify-start"}`}
-            >
-              {msg.role==="ai" && (
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
-              )}
-              <div className="max-w-[72%] px-3 py-2 rounded-2xl text-[12px] leading-relaxed"
-                style={msg.role==="user"
-                  ? { background:"var(--vela-gradient)", color:"white", borderBottomRightRadius:4 }
-                  : { background:"white", color:"#374151", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
-              >{msg.text}</div>
-            </motion.div>
-          ))}
+        {msgs.map((msg, idx)=>(
+          <motion.div
+            key={idx}
+            initial={{ opacity:0, y:8, scale:0.97 }}
+            animate={{ opacity:1, y:0, scale:1 }}
+            transition={{ duration:0.35, delay:idx*0.35, ease:[0.22,1,0.36,1] }}
+            className={`flex gap-2 ${msg.role==="user"?"justify-end":"justify-start"}`}
+          >
+            {msg.role==="ai" && (
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
+            )}
+            <div className="max-w-[72%] px-3 py-2 rounded-2xl text-[12px] leading-relaxed"
+              style={msg.role==="user"
+                ? { background:"var(--vela-gradient)", color:"white", borderBottomRightRadius:4 }
+                : { background:"white", color:"#374151", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
+            >{msg.text}</div>
+          </motion.div>
+        ))}
 
-          {typing && (
-            <motion.div key="typing" initial={{ opacity:0,y:6 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0 }} transition={{ duration:0.2 }} className="flex items-end gap-2">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background:"var(--vela-gradient)" }}>V</div>
-              <div className="flex items-center gap-1 px-3 py-2.5 rounded-2xl rounded-bl-sm bg-white border border-[#E5E7EB]">
-                {[0,1,2].map(j => (
-                  <motion.span key={j} className="block w-1.5 h-1.5 rounded-full bg-[#94A3B8]"
-                    animate={{ y:[0,-4,0] }} transition={{ duration:0.65, delay:j*0.14, repeat:Infinity }} />
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {confirmed && (
-            <motion.div key="confirm"
-              initial={{ opacity:0, scale:0.88, y:12 }}
-              animate={{ opacity:1, scale:1, y:0 }}
-              transition={{ duration:0.55, ease:[0.22,1,0.36,1] }}
-              className="mx-2 rounded-2xl overflow-hidden"
-              style={{ background:"linear-gradient(135deg,#052e16 0%,#14532d 100%)", border:"1px solid rgba(34,197,94,0.3)" }}
-            >
-              <div className="flex items-center gap-3 px-4 py-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center shrink-0">
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <p className="text-green-300 text-[10px] font-bold uppercase tracking-wide">Appointment Confirmed!</p>
-                  </div>
-                  <p className="text-white text-sm font-semibold">Sara Khalid</p>
-                  <p className="text-white/60 text-xs mt-0.5">Dental Cleaning · Tuesday, 3:00 PM</p>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <svg width="10" height="10" viewBox="0 0 11 11" fill="none" style={{ color:"rgba(255,255,255,0.4)" }}><rect x="1" y="2" width="9" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M3.5 1v2M7.5 1v2M1 5h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                    <span className="text-white/40 text-[10px]">Booked via Vela AI · Reminder sent</span>
-                  </div>
+        {/* Confirmation card */}
+        <motion.div
+          initial={{ opacity:0, scale:0.9, y:12 }}
+          animate={{ opacity:1, scale:1, y:0 }}
+          transition={{ duration:0.45, delay:0.85, ease:[0.22,1,0.36,1] }}
+          className="mx-2 rounded-2xl overflow-hidden"
+          style={{ background:"linear-gradient(135deg,#052e16 0%,#14532d 100%)", border:"1px solid rgba(34,197,94,0.3)" }}
+        >
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center shrink-0">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
-                <motion.div initial={{ opacity:0, scale:0.5, rotate:-10 }} animate={{ opacity:1, scale:1, rotate:0 }} transition={{ duration:0.5, delay:0.2, ease:[0.34,1.56,0.64,1] }}>
-                  <Image src="/assets/mascot.png" alt="Vela" width={52} height={52} className="object-contain drop-shadow-lg" unoptimized />
-                </motion.div>
+                <p className="text-green-300 text-[10px] font-bold uppercase tracking-wide">Appointment Confirmed!</p>
               </div>
+              <p className="text-white text-sm font-semibold">Sara Khalid</p>
+              <p className="text-white/60 text-xs mt-0.5">Dental Cleaning · Tuesday, 3:00 PM</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <svg width="10" height="10" viewBox="0 0 11 11" fill="none" style={{ color:"rgba(255,255,255,0.4)" }}><rect x="1" y="2" width="9" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M3.5 1v2M7.5 1v2M1 5h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                <span className="text-white/40 text-[10px]">Booked via Vela AI · Reminder sent</span>
+              </div>
+            </div>
+            <motion.div
+              initial={{ opacity:0, scale:0.5, rotate:-10 }}
+              animate={{ opacity:1, scale:1, rotate:0 }}
+              transition={{ duration:0.5, delay:1.1, ease:[0.34,1.56,0.64,1] }}
+            >
+              <Image src="/assets/mascot.png" alt="Vela" width={52} height={52} className="object-contain drop-shadow-lg" unoptimized />
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        </motion.div>
       </div>
 
       {/* Input bar */}
@@ -264,6 +215,7 @@ function SceneConversation() {
 
 /* ═══════════════════════════════════════════════════════════════
    Scene 1 — Appointments
+   No overflow-x-auto: table-fixed + overflow:hidden
 ═══════════════════════════════════════════════════════════════ */
 function SceneAppointments() {
   return (
@@ -290,38 +242,45 @@ function SceneAppointments() {
       </div>
       <div className="h-px bg-[#E5E7EB] mx-4 mb-1 shrink-0" />
 
-      {/* Table */}
-      <div className="flex-1 overflow-hidden">
-        <div className="overflow-x-auto h-full">
-          <table className="w-full" style={{ minWidth:560 }}>
-            <thead>
-              <tr className="border-b border-[#F3F4F6]">
-                {["NAME","SERVICE","TIME","CHANNEL","STATUS"].map(h=>(
-                  <th key={h} className="text-left text-[9px] font-semibold text-[#9CA3AF] px-3 py-2 uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {APPTS.map(row=>(
-                <tr key={row.name} className="border-b border-[#F9FAFB]">
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Av i={row.i} sz={24} />
-                      <span className="text-[11px] font-semibold text-[#111111] whitespace-nowrap">{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-[11px] text-[#374151] whitespace-nowrap">{row.service}</td>
-                  <td className="px-3 py-2">
-                    <p className="text-[11px] font-bold text-[#111111]">{row.time}</p>
-                    <p className="text-[10px] text-[#9CA3AF]">Jul 21</p>
-                  </td>
-                  <td className="px-3 py-2"><ChBadge ch={row.ch} /></td>
-                  <td className="px-3 py-2"><StatusPill s={row.status} /></td>
-                </tr>
+      {/* Table — overflow:hidden, table-fixed, no scrollbar ever */}
+      <div className="flex-1 overflow-hidden px-4">
+        <table style={{ tableLayout:"fixed", width:"100%", borderCollapse:"collapse" }}>
+          <colgroup>
+            <col style={{ width:"28%" }} />
+            <col style={{ width:"26%" }} />
+            <col style={{ width:"13%" }} />
+            <col style={{ width:"13%" }} />
+            <col style={{ width:"20%" }} />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-[#F3F4F6]">
+              {["NAME","SERVICE","TIME","CH","STATUS"].map(h=>(
+                <th key={h} className="text-left text-[9px] font-semibold text-[#9CA3AF] px-2 py-2 uppercase tracking-wider">{h}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody>
+            {APPTS.map(row=>(
+              <tr key={row.name} className="border-b border-[#F9FAFB]">
+                <td className="px-2 py-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Av i={row.i} sz={22} />
+                    <span className="text-[10px] font-semibold text-[#111111] truncate">{row.name}</span>
+                  </div>
+                </td>
+                <td className="px-2 py-1.5">
+                  <span className="text-[10px] text-[#374151] truncate block">{row.service}</span>
+                </td>
+                <td className="px-2 py-1.5">
+                  <p className="text-[10px] font-bold text-[#111111]">{row.time}</p>
+                  <p className="text-[9px] text-[#9CA3AF]">Jul 21</p>
+                </td>
+                <td className="px-2 py-1.5"><ChBadge ch={row.ch} /></td>
+                <td className="px-2 py-1.5"><StatusPill s={row.status} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -329,17 +288,22 @@ function SceneAppointments() {
 
 /* ═══════════════════════════════════════════════════════════════
    Scene 2 — Leads / CRM
+   overflow:hidden + framer-motion auto-pan (no scrollbar ever)
 ═══════════════════════════════════════════════════════════════ */
 function SceneLeads() {
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
       <SceneHdr title="Leads / CRM" sub="10 leads across 5 stages" btn="+ Add Lead" />
 
-      {/* Kanban board */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden px-4 pb-3">
-        <div className="flex gap-3 h-full" style={{ minWidth:780 }}>
+      {/* Kanban — outer clips, inner pans automatically */}
+      <div className="flex-1 overflow-hidden px-4 pb-3">
+        <motion.div
+          className="flex gap-3 h-full"
+          animate={{ x: [0, -200, -200, 0] }}
+          transition={{ duration:2.6, times:[0, 0.42, 0.58, 1], ease:"easeInOut", delay:0.2 }}
+        >
           {LEAD_COLS.map(col=>(
-            <div key={col.label} className="flex flex-col shrink-0" style={{ width:152 }}>
+            <div key={col.label} className="flex flex-col shrink-0" style={{ width:144 }}>
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background:col.color }} />
                 <span className="text-[11px] font-semibold text-[#374151]">{col.label}</span>
@@ -349,23 +313,20 @@ function SceneLeads() {
                 {col.leads.map(lead=>(
                   <div key={lead.name} className="bg-white rounded-xl border border-[#E5E7EB] p-2.5 shadow-sm">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <Av i={lead.i} sz={26} />
+                      <Av i={lead.i} sz={24} />
                       <div className="min-w-0">
                         <p className="text-[11px] font-semibold text-[#111111] truncate leading-tight">{lead.name}</p>
                         <p className="text-[10px] text-[#9CA3AF] leading-tight">{lead.time}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <ChBadge ch={lead.ch} />
-                      {lead.phone && <span className="text-[9px] text-[#9CA3AF] truncate">{lead.phone.slice(0,12)}</span>}
-                    </div>
+                    <ChBadge ch={lead.ch} />
                   </div>
                 ))}
                 <button className="text-[10px] text-[#9CA3AF] border border-dashed border-[#E5E7EB] rounded-xl py-2 text-center">+ Add</button>
               </div>
             </div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -373,6 +334,7 @@ function SceneLeads() {
 
 /* ═══════════════════════════════════════════════════════════════
    Scene 3 — Channels
+   overflow:hidden — 3 cards fit comfortably
 ═══════════════════════════════════════════════════════════════ */
 function SceneChannels() {
   const channels = [
@@ -400,14 +362,13 @@ function SceneChannels() {
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
       <SceneHdr title="Channels" sub="Connected messaging channels" btn="+ Connect" />
 
-      {/* All-connected banner */}
       <div className="mx-4 mb-2 px-3 py-2 rounded-xl flex items-center gap-2 shrink-0" style={{ background:"#F0FDF4", border:"1px solid #BBF7D0" }}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5l3 3 7-6" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         <span className="text-[10px] font-medium text-[#15803D]">All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website.</span>
       </div>
 
-      {/* Channel cards */}
-      <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-2 pb-3">
+      {/* overflow:hidden — 3 cards fit without scrolling */}
+      <div className="flex-1 overflow-hidden px-4 flex flex-col gap-2 pb-3">
         {channels.map(ch=>(
           <div key={ch.name} className="bg-white border border-[#E5E7EB] rounded-xl p-3">
             <div className="flex items-center justify-between gap-2">
@@ -443,11 +404,12 @@ function SceneChannels() {
 
 /* ═══════════════════════════════════════════════════════════════
    Scene 4 — AI Agent
+   overflow:hidden — 3 call rows, content verified to fit 480 px
 ═══════════════════════════════════════════════════════════════ */
 function SceneAgent() {
   const maxBar = Math.max(...BAR_VALS);
-  const barH = 84, barW = 28, barGap = 36;
-  const r = 36, circ = 2*Math.PI*r, fill = circ*0.94;
+  const barH = 78, barW = 28, barGap = 36;
+  const r = 34, circ = 2*Math.PI*r, fill = circ*0.94;
 
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
@@ -456,10 +418,10 @@ function SceneAgent() {
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
         {[
-          { val:"847",  label:"Total Calls"   },
-          { val:"94%",  label:"Resolved by AI"},
-          { val:"2:34", label:"Avg Duration"  },
-          { val:"132",  label:"This Week",  sub:"+12%" },
+          { val:"847",  label:"Total Calls"    },
+          { val:"94%",  label:"Resolved by AI" },
+          { val:"2:34", label:"Avg Duration"   },
+          { val:"132",  label:"This Week", sub:"+12%" },
         ].map(({val,label,sub})=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
             <p className="text-base font-black text-[#111111] leading-none">{val}</p>
@@ -469,16 +431,14 @@ function SceneAgent() {
         ))}
       </div>
 
-      {/* Charts row */}
+      {/* Charts */}
       <div className="flex gap-2 px-4 mb-2 shrink-0">
-        {/* Bar chart */}
         <div className="flex-1 bg-white border border-[#E5E7EB] rounded-xl p-2.5">
           <p className="text-[10px] font-semibold text-[#374151] mb-1.5">Calls This Week</p>
           <svg width="100%" height={barH+16} viewBox={`0 0 ${BAR_DAYS.length*barGap} ${barH+16}`} preserveAspectRatio="none">
             <defs>
               <linearGradient id="ptBarGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ed5426" />
-                <stop offset="100%" stopColor="#f59e6b" />
+                <stop offset="0%" stopColor="#ed5426" /><stop offset="100%" stopColor="#f59e6b" />
               </linearGradient>
             </defs>
             {BAR_VALS.map((v,i)=>{
@@ -492,22 +452,20 @@ function SceneAgent() {
             })}
           </svg>
         </div>
-
-        {/* Ring chart */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex flex-col items-center justify-center shrink-0" style={{ width:96 }}>
-          <svg width="76" height="76" viewBox="0 0 90 90">
-            <circle cx="45" cy="45" r={r} fill="none" stroke="#F3F4F6" strokeWidth="9"/>
-            <circle cx="45" cy="45" r={r} fill="none" stroke="#ed5426" strokeWidth="9"
-              strokeDasharray={`${fill} ${circ}`} strokeLinecap="round" transform="rotate(-90 45 45)"/>
-            <text x="45" y="50" textAnchor="middle" fontSize="17" fontWeight="800" fill="#111111">94%</text>
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex flex-col items-center justify-center shrink-0" style={{ width:92 }}>
+          <svg width="72" height="72" viewBox="0 0 84 84">
+            <circle cx="42" cy="42" r={r} fill="none" stroke="#F3F4F6" strokeWidth="9"/>
+            <circle cx="42" cy="42" r={r} fill="none" stroke="#ed5426" strokeWidth="9"
+              strokeDasharray={`${fill} ${circ}`} strokeLinecap="round" transform="rotate(-90 42 42)"/>
+            <text x="42" y="47" textAnchor="middle" fontSize="16" fontWeight="800" fill="#111111">94%</text>
           </svg>
           <p className="text-[9px] font-semibold text-[#374151] text-center leading-tight mt-0.5">AI Resolution</p>
           <p className="text-[8px] text-[#9CA3AF] text-center">6% escalated</p>
         </div>
       </div>
 
-      {/* Recent calls */}
-      <div className="flex-1 overflow-y-auto px-4 pb-2">
+      {/* Recent calls — overflow:hidden, exactly 3 rows */}
+      <div className="flex-1 overflow-hidden px-4 pb-2">
         <p className="text-[10px] font-bold text-[#374151] mb-1.5">Recent Calls</p>
         <div className="flex flex-col gap-1.5">
           {CALLS.map((call,ci)=>(
@@ -519,7 +477,7 @@ function SceneAgent() {
                     <span className="text-[11px] font-semibold text-[#111111]">{call.name}</span>
                     <CallPill s={call.status} />
                   </div>
-                  {ci===0 && <p className="text-[10px] text-[#9CA3AF] leading-tight line-clamp-2">{call.summary}</p>}
+                  {ci===0&&<p className="text-[10px] text-[#9CA3AF] leading-tight line-clamp-2">{call.summary}</p>}
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] font-bold text-[#374151]">{call.dur}</p>
@@ -538,7 +496,7 @@ function SceneAgent() {
    Scene 5 — Analytics
 ═══════════════════════════════════════════════════════════════ */
 function SceneAnalytics() {
-  const cW=400, cH=90;
+  const cW=400, cH=88;
   const minV=Math.min(...LINE_DATA), maxV=Math.max(...LINE_DATA);
   const pts = LINE_DATA.map((v,i)=>`${(i/(LINE_DATA.length-1))*cW},${cH-((v-minV)/(maxV-minV))*cH}`);
   const pathD=`M ${pts.join(" L ")}`;
@@ -562,13 +520,12 @@ function SceneAnalytics() {
         </div>
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
         {[
-          {label:"Total Leads",         val:"167",pct:"+23%"},
-          {label:"Conversations",       val:"225",pct:"+18%"},
-          {label:"Appts Booked",        val:"100",pct:"+31%"},
-          {label:"AI Resolution",       val:"94%", pct:"+2%" },
+          {label:"Total Leads",   val:"167",pct:"+23%"},
+          {label:"Conversations", val:"225",pct:"+18%"},
+          {label:"Appts Booked",  val:"100",pct:"+31%"},
+          {label:"AI Resolution", val:"94%", pct:"+2%" },
         ].map(({label,val,pct})=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
             <div className="flex items-start justify-between gap-1 mb-1">
@@ -580,7 +537,6 @@ function SceneAnalytics() {
         ))}
       </div>
 
-      {/* Line chart */}
       <div className="mx-4 bg-white border border-[#E5E7EB] rounded-xl p-2.5 mb-2 shrink-0">
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-[10px] font-semibold text-[#374151]">New Leads over time</p>
@@ -591,7 +547,7 @@ function SceneAnalytics() {
             ))}
           </div>
         </div>
-        <svg width="100%" height={cH+20} viewBox={`0 0 ${cW} ${cH+20}`} preserveAspectRatio="none">
+        <svg width="100%" height={cH+18} viewBox={`0 0 ${cW} ${cH+18}`} preserveAspectRatio="none">
           <defs>
             <linearGradient id="ptLineArea" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(237,84,38,0.18)"/>
@@ -602,12 +558,11 @@ function SceneAnalytics() {
           <path d={pathD} fill="none" stroke="#ed5426" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           <circle cx={cW} cy={lastY} r="3.5" fill="#ed5426"/>
           {["/21","6/26","7/1","7/6","7/11","7/16","7/20"].map((lbl,i)=>(
-            <text key={i} x={(i/6)*cW} y={cH+16} textAnchor="middle" fontSize="8" fill="#9CA3AF">{lbl}</text>
+            <text key={i} x={(i/6)*cW} y={cH+14} textAnchor="middle" fontSize="8" fill="#9CA3AF">{lbl}</text>
           ))}
         </svg>
       </div>
 
-      {/* Channel breakdown */}
       <div className="mx-4 bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex-1 overflow-hidden">
         <p className="text-[10px] font-semibold text-[#374151] mb-2">Channel Breakdown</p>
         <div className="grid grid-cols-4 text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-1">
@@ -638,9 +593,7 @@ function SceneAnalytics() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Feature cards config
-═══════════════════════════════════════════════════════════════ */
+/* ─── Feature cards ──────────────────────────────────────────── */
 const FEATURE_CARDS = [
   {
     sceneIdx: CONV,
@@ -668,11 +621,13 @@ const FEATURE_CARDS = [
   },
 ] as const;
 
-/* ─── Scene transition variants ─────────────────────────────── */
+/* ─── Smooth 3D dissolve transition (shallow angle + fade + scale) */
 const sceneVariants = {
-  enter:  { rotateY: 90 },
-  center: { rotateY: 0,  transition:{ duration:0.28, ease:[0.22,1,0.36,1] as [number,number,number,number] } },
-  exit:   { rotateY:-90, transition:{ duration:0.22, ease:[0.55,0,1,0.45]  as [number,number,number,number] } },
+  enter:  { opacity: 0, rotateY:  10, scale: 0.97 },
+  center: { opacity: 1, rotateY:   0, scale: 1,
+            transition:{ duration: 0.42, ease:[0.22,1,0.36,1] as [number,number,number,number] } },
+  exit:   { opacity: 0, rotateY: -10, scale: 0.97,
+            transition:{ duration: 0.28, ease:[0.55,0,1,0.45] as [number,number,number,number] } },
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -682,12 +637,13 @@ export default function ProductTourDemo() {
   const [scene, setScene] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-advance: re-registers whenever scene changes (including after manual click)
+  // Hands-off autoplay: every scene advances after exactly 3 s.
+  // Re-registers on every scene change (manual click resets the timer too).
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setScene(prev => (prev + 1) % SCENE_COUNT);
-    }, SCENE_MS[scene]);
+    }, SCENE_MS);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [scene]);
 
@@ -712,24 +668,23 @@ export default function ProductTourDemo() {
     <section className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
-        {/* Section header */}
+        {/* Section header — FIX 5+6 applied */}
         <div className="text-center mb-10 md:mb-14">
           <h2
             className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight"
             style={{ textWrap:"balance" } as React.CSSProperties}
           >
-            Watch Vela handle a booking{" "}
-            <span className="vela-gradient-text">from first message to confirmed</span>
+            Watch Vela handle it all{" "}
+            <span className="vela-gradient-text">and keep it organized for you.</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">
-            Six core screens. One platform. Click any card to explore or let the tour run.
+            Six core screens. Click any card to explore or let the tour run.
           </p>
         </div>
 
-        {/* Two-column: cards left, demo right */}
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
 
-          {/* Feature cards (shown below on mobile, left on desktop) */}
+          {/* Feature cards */}
           <div className="order-last lg:order-first flex flex-col gap-3 lg:pt-2">
             {FEATURE_CARDS.map(f => {
               const active = scene === f.sceneIdx;
@@ -765,7 +720,6 @@ export default function ProductTourDemo() {
               );
             })}
 
-            {/* Channel badges */}
             <div className="flex flex-wrap gap-2 items-center mt-1 px-1">
               <span className="text-xs text-[#9CA3AF] font-medium mr-1">Works on:</span>
               {[
@@ -802,10 +756,10 @@ export default function ProductTourDemo() {
                 <div style={{ width:52 }}/>
               </div>
 
-              {/* Scene area with 3D perspective */}
+              {/* Scene area — perspective + overflow:hidden = no scrollbars ever */}
               <div
                 className="relative"
-                style={{ height:480, perspective:1200, perspectiveOrigin:"50% 50%", overflow:"hidden" }}
+                style={{ height:480, perspective:1400, perspectiveOrigin:"50% 40%", overflow:"hidden" }}
               >
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -815,13 +769,13 @@ export default function ProductTourDemo() {
                     animate="center"
                     exit="exit"
                     className="absolute inset-0"
-                    style={{ backfaceVisibility:"hidden" }}
+                    style={{ backfaceVisibility:"hidden", willChange:"transform, opacity" }}
                   >
                     {renderScene(scene)}
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Scene progress dots */}
+                {/* Progress dots */}
                 <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-none">
                   {Array.from({ length:SCENE_COUNT }).map((_,i)=>(
                     <div
