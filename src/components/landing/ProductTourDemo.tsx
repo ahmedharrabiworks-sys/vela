@@ -9,7 +9,7 @@ const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [9600, 9400, 3000, 8900, 3000, 3000];
+const SCENE_DURATIONS: number[] = [11800, 9400, 3000, 8900, 3000, 3000];
 /* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -79,6 +79,23 @@ function Av({ i, sz=28 }: { i:string; sz?:number }) {
   );
 }
 
+/* Small illustrated circular avatar for the Conversation scene's customer
+   side, in place of a text-initials badge. Inline SVG (not a photo asset)
+   so the scene stays 100% self-contained -- no external image URL, no
+   network dependency, no real person's likeness used without rights. */
+function CustomerAvatar({ sz=28 }: { sz?:number }) {
+  return (
+    <div className="rounded-full overflow-hidden shrink-0" style={{ width:sz, height:sz }}>
+      <svg width={sz} height={sz} viewBox="0 0 28 28" style={{ display:"block" }}>
+        <rect width="28" height="28" fill="#FDE7D3"/>
+        <ellipse cx="14" cy="10" rx="7.5" ry="8" fill="#4A2E1E"/>
+        <circle cx="14" cy="12.5" r="5.2" fill="#F0BA92"/>
+        <ellipse cx="14" cy="30" rx="10" ry="8" fill="#D96C8C"/>
+      </svg>
+    </div>
+  );
+}
+
 function ChBadge({ ch }: { ch:"WA"|"IG"|"WEB" }) {
   const m = {
     WA:  { bg:"#DCFCE7", color:"#16A34A" },
@@ -123,10 +140,12 @@ function SceneHdr({ title, sub, btn }: { title:string; sub:string; btn:string })
 }
 
 /* ─── Conversation scene: a static-framed chat feed, no camera movement.
-   Messages mount progressively (one at a time, driven by a revealed-count
-   timer) rather than all being pre-rendered opacity-hidden -- if every
+   Every message (both AI and customer) gets a brief three-dot typing/sending
+   indicator before it lands, so the thread reads as a live back-and-forth
+   rather than a stagger reveal. Messages (and the indicator itself) mount
+   progressively rather than being pre-rendered opacity-hidden -- if every
    bubble occupied layout space from mount, the bottom-anchored flex column
-   would anchor against the full 9-message stack immediately, pushing
+   would anchor against the full message stack immediately, pushing
    already-revealed early bubbles off-screen behind still-invisible later
    ones. Mounting only what has actually arrived keeps justify-end doing
    real, correct auto-scroll: newest revealed bubble always stays in view.
@@ -136,21 +155,64 @@ const CONV_MSGS = [
   { role:"user" as const, text:"Hi! I'd like to book a dental cleaning, please" },
   { role:"ai"   as const, text:"Of course! Could I get your name?" },
   { role:"user" as const, text:"Sara Khalid" },
-  { role:"ai"   as const, text:"Thanks, Sara! And a good phone number for you?" },
+  { role:"ai"   as const, text:"Thanks, Sara! What's the best number to reach you?" },
   { role:"user" as const, text:"055 123 4567" },
   { role:"ai"   as const, text:"Got it. What day and time work best for you?" },
   { role:"user" as const, text:"Is 2 PM next Tuesday free?" },
-  { role:"ai"   as const, text:"Let me check... yes, 2 PM Tuesday is open!" },
-  { role:"ai"   as const, text:"Booking confirmed! Sara Khalid, Dental Cleaning, Tuesday at 2:00 PM. See you then!" },
+  { role:"ai"   as const, text:"Let me check..." },
+  { role:"ai"   as const, text:"Yes, 2 PM Tuesday works!" },
+  { role:"ai"   as const, text:"You're all set! See you Tuesday." },
 ];
-/* One reveal time per message above, ms from scene mount. */
-const CONV_REVEAL_AT = [300, 1200, 2050, 3000, 3800, 4750, 5600, 6600, 7600];
+/* Typing indicator start and bubble reveal time per message, ms from scene mount. */
+const CONV_TYPING_AT = [300, 1200, 2250, 3150, 4200, 5100, 6150, 7050, 8150, 9200];
+const CONV_REVEAL_AT = [950, 2000, 2900, 3950, 4850, 5900, 6800, 7850, 8950, 10000];
+
+function AiAvatar() {
+  return (
+    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
+  );
+}
+
+/* Three-dot typing/sending indicator, shaped like the sender's own bubble. */
+function TypingIndicator({ role }: { role:"ai"|"user" }) {
+  return (
+    <motion.div
+      initial={{ opacity:0, y:8 }}
+      animate={{ opacity:1, y:0 }}
+      transition={{ duration:0.25, ease:[0.22,1,0.36,1] }}
+      className={`flex items-start gap-2 ${role==="user"?"justify-end":"justify-start"}`}
+    >
+      {role==="ai" && <AiAvatar />}
+      <div className="px-3.5 py-3 rounded-2xl flex items-center gap-1"
+        style={role==="user"
+          ? { background:"var(--vela-gradient)", borderBottomRightRadius:4 }
+          : { background:"white", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
+      >
+        {[0,1,2].map(i=>(
+          <motion.span
+            key={i}
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: role==="user" ? "rgba(255,255,255,0.85)" : "#9CA3AF" }}
+            animate={{ y:[0,-4,0] }}
+            transition={{ duration:0.9, repeat:Infinity, delay:i*0.15, ease:"easeInOut" }}
+          />
+        ))}
+      </div>
+      {role==="user" && <div className="mt-0.5 shrink-0"><CustomerAvatar sz={28} /></div>}
+    </motion.div>
+  );
+}
 
 function SceneConversation() {
   const [revealed, setRevealed] = useState(0);
+  const [typingRole, setTypingRole] = useState<"ai"|"user"|null>(null);
 
   useEffect(() => {
-    const timers = CONV_REVEAL_AT.map((ms, idx) => setTimeout(() => setRevealed(idx + 1), ms));
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    CONV_MSGS.forEach((msg, idx) => {
+      timers.push(setTimeout(() => setTypingRole(msg.role), CONV_TYPING_AT[idx]));
+      timers.push(setTimeout(() => { setTypingRole(null); setRevealed(idx+1); }, CONV_REVEAL_AT[idx]));
+    });
     return () => timers.forEach(clearTimeout);
   }, []);
 
@@ -182,19 +244,18 @@ function SceneConversation() {
             transition={{ duration:0.3, ease:[0.22,1,0.36,1] }}
             className={`flex items-start gap-2 ${msg.role==="user"?"justify-end":"justify-start"}`}
           >
-            {msg.role==="ai" && (
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
-            )}
+            {msg.role==="ai" && <AiAvatar />}
             <div className="max-w-[72%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-snug"
               style={msg.role==="user"
                 ? { background:"var(--vela-gradient)", color:"white", borderBottomRightRadius:4 }
                 : { background:"white", color:"#374151", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
             >{msg.text}</div>
             {msg.role==="user" && (
-              <div className="mt-0.5 shrink-0"><Av i="SK" sz={28} /></div>
+              <div className="mt-0.5 shrink-0"><CustomerAvatar sz={28} /></div>
             )}
           </motion.div>
         ))}
+        {typingRole && <TypingIndicator role={typingRole} />}
       </div>
 
       {/* Input bar */}
@@ -742,7 +803,10 @@ function SceneChannels() {
                         ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>Connected</span>
                         : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F3F4F6", color:"#6B7280" }}>Not connected</span>}
                     </div>
-                    <p className="text-[10px] text-[#9CA3AF] truncate">{ch.handle}</p>
+                    {/* While the target card is not yet connected, its real number has not
+                        been entered yet -- showing it here would leak the connect flow's
+                        own reveal. It only appears once actually connected. */}
+                    <p className="text-[10px] text-[#9CA3AF] truncate">{isTarget && !connected ? "No number connected yet" : ch.handle}</p>
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0 relative" ref={isTarget ? connectStageRef : undefined}>
