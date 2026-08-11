@@ -9,7 +9,7 @@ const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [3000, 6200, 3000, 5400, 3000, 3000];
+const SCENE_DURATIONS: number[] = [3000, 9400, 3000, 8100, 3000, 3000];
 /* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -214,7 +214,7 @@ function SceneConversation() {
   );
 }
 
-/* ─── Small pointer icon used by the Appointments click choreography ─── */
+/* ─── Small pointer icon used by the click choreography scenes ─── */
 function CursorIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -223,15 +223,73 @@ function CursorIcon() {
   );
 }
 
+/* ─── Appointments scene: step machine driving the full click-through ─── */
+const APPT_STEP = {
+  PAUSE: 0,
+  ZOOM_IN: 1,
+  CURSOR_TO_MENU: 2,
+  CLICK_MENU: 3,
+  MENU_OPEN: 4,
+  CURSOR_TO_RESCHEDULE: 5,
+  CLICK_RESCHEDULE: 6,
+  TIME_UPDATE: 7,
+  CONFIRMED: 8,
+  ZOOM_OUT: 9,
+} as const;
+
+const APPT_ICON_POS = { top:"73%", left:"90%" };
+const APPT_RESCHEDULE_POS = { top:"68%", left:"73%" };
+
 /* ═══════════════════════════════════════════════════════════════
    Scene 1 — Appointments
    No overflow-x-auto: table-fixed + overflow:hidden
-   Choreography: pause on the full table, zoom into the Pending row,
-   a cursor moves in and clicks it, a quick-actions panel reveals,
-   then the scene zooms back out to the full table before it ends.
+   Choreography (numbered to match the spec):
+   1 pause on the full table
+   2 zoom into the Pending row
+   3 cursor moves to that row's 3-dot menu icon
+   4 click ripple lands exactly on the icon
+   5 quick actions popup reveals (Reschedule / Message / Cancel)
+   6 cursor moves again and clicks Reschedule
+   7 popup morphs into a reschedule view, time/date updates with a flash
+   8 an Updated checkmark confirmation shows on the row
+   9 zoom back out to the full table, now showing the new time
 ═══════════════════════════════════════════════════════════════ */
 function SceneAppointments() {
-  const targetIdx = 4; // Khaled Ibrahim, Pending status
+  const targetIdx = 4; // Khaled Ibrahim, Cavity Filling, starts Pending
+  const [step, setStep] = useState<number>(APPT_STEP.PAUSE);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (s: number, delay: number) => { timers.push(setTimeout(() => setStep(s), delay)); };
+    at(APPT_STEP.ZOOM_IN, 800);
+    at(APPT_STEP.CURSOR_TO_MENU, 1700);
+    at(APPT_STEP.CLICK_MENU, 2500);
+    at(APPT_STEP.MENU_OPEN, 2650);
+    at(APPT_STEP.CURSOR_TO_RESCHEDULE, 4100);
+    at(APPT_STEP.CLICK_RESCHEDULE, 4700);
+    at(APPT_STEP.TIME_UPDATE, 5600);
+    at(APPT_STEP.CONFIRMED, 6500);
+    at(APPT_STEP.ZOOM_OUT, 7500);
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const zoomed = step >= APPT_STEP.ZOOM_IN && step < APPT_STEP.ZOOM_OUT;
+  const rescheduled = step >= APPT_STEP.TIME_UPDATE;
+
+  const cursor =
+    step < APPT_STEP.CURSOR_TO_MENU ? { opacity:0, top:"15%", left:"48%" } :
+    step <= APPT_STEP.MENU_OPEN ? { opacity:1, ...APPT_ICON_POS } :
+    step === APPT_STEP.CURSOR_TO_RESCHEDULE || step === APPT_STEP.CLICK_RESCHEDULE ? { opacity:1, ...APPT_RESCHEDULE_POS } :
+    { opacity:0, ...APPT_RESCHEDULE_POS };
+
+  const panelView =
+    step === APPT_STEP.MENU_OPEN || step === APPT_STEP.CURSOR_TO_RESCHEDULE ? "menu" :
+    step === APPT_STEP.CLICK_RESCHEDULE || step === APPT_STEP.TIME_UPDATE ? "reschedule" :
+    step === APPT_STEP.CONFIRMED ? "confirmed" : "hidden";
+
+  const rowBg =
+    step === APPT_STEP.TIME_UPDATE ? "rgba(237,84,38,0.16)" :
+    zoomed ? "rgba(237,84,38,0.06)" : "rgba(237,84,38,0)";
 
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
@@ -257,12 +315,14 @@ function SceneAppointments() {
       </div>
       <div className="h-px bg-[#E5E7EB] mx-4 mb-1 shrink-0" />
 
-      {/* Table stage: overflow:hidden, relative wrapper hosts the zoom/click overlay */}
-      <div className="relative flex-1 overflow-hidden px-4">
+      {/* Table stage: overflow:hidden. The zoom wrapper hosts the table plus the whole
+          click-through overlay so the cursor, ripples, and popup all zoom in sync with it. */}
+      <div className="flex-1 overflow-hidden px-4">
         <motion.div
+          className="relative h-full"
           style={{ transformOrigin:"85% 74%" }}
-          animate={{ scale:[1, 1, 1.3, 1.3, 1] }}
-          transition={{ duration:5.6, times:[0, 0.16, 0.34, 0.82, 1], ease:"easeInOut", delay:0.2 }}
+          animate={{ scale: zoomed ? 1.3 : 1 }}
+          transition={{ duration:0.8, ease:"easeInOut" }}
         >
           <table style={{ tableLayout:"fixed", width:"100%", borderCollapse:"collapse" }}>
             <colgroup>
@@ -280,70 +340,157 @@ function SceneAppointments() {
               </tr>
             </thead>
             <tbody>
-              {APPTS.map((row, rowIdx)=>(
-                <motion.tr
-                  key={row.name}
-                  className="border-b border-[#F9FAFB]"
-                  animate={rowIdx===targetIdx
-                    ? { backgroundColor:["rgba(237,84,38,0)","rgba(237,84,38,0)","rgba(237,84,38,0.08)","rgba(237,84,38,0.08)","rgba(237,84,38,0)","rgba(237,84,38,0)"] }
-                    : undefined}
-                  transition={rowIdx===targetIdx
-                    ? { duration:5.6, times:[0, 0.30, 0.34, 0.84, 0.90, 1], delay:0.2 }
-                    : undefined}
-                >
-                  <td className="px-2 py-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Av i={row.i} sz={22} />
-                      <span className="text-[10px] font-semibold text-[#111111] truncate">{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <span className="text-[10px] text-[#374151] truncate block">{row.service}</span>
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <p className="text-[10px] font-bold text-[#111111]">{row.time}</p>
-                    <p className="text-[9px] text-[#9CA3AF]">Jul 21</p>
-                  </td>
-                  <td className="px-2 py-1.5"><ChBadge ch={row.ch} /></td>
-                  <td className="px-2 py-1.5"><StatusPill s={row.status} /></td>
-                </motion.tr>
-              ))}
+              {APPTS.map((row, rowIdx)=>{
+                const isTarget = rowIdx===targetIdx;
+                const displayTime = isTarget && rescheduled ? "3:00 PM" : row.time;
+                const displayDate = isTarget && rescheduled ? "Jul 22" : "Jul 21";
+                const displayStatus: ApptRow["status"] = isTarget && rescheduled ? "Confirmed" : row.status;
+                return (
+                  <motion.tr
+                    key={row.name}
+                    className="border-b border-[#F9FAFB]"
+                    animate={isTarget ? { backgroundColor: rowBg } : undefined}
+                    transition={isTarget ? { duration:0.5, ease:"easeInOut" } : undefined}
+                  >
+                    <td className="px-2 py-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Av i={row.i} sz={22} />
+                        <span className="text-[10px] font-semibold text-[#111111] truncate">{row.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <span className="text-[10px] text-[#374151] truncate block">{row.service}</span>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <p className="text-[10px] font-bold text-[#111111]">{displayTime}</p>
+                      <p className="text-[9px] text-[#9CA3AF]">{displayDate}</p>
+                    </td>
+                    <td className="px-2 py-1.5"><ChBadge ch={row.ch} /></td>
+                    <td className="px-2 py-1.5"><StatusPill s={displayStatus} /></td>
+                  </motion.tr>
+                );
+              })}
             </tbody>
           </table>
-        </motion.div>
 
-        {/* Simulated cursor moving toward the Pending row */}
-        <motion.div
-          className="absolute pointer-events-none z-20"
-          animate={{
-            opacity:[0, 0, 1, 1, 0, 0],
-            top:["28%", "28%", "72%", "72%", "72%", "72%"],
-            left:["42%", "42%", "84%", "84%", "84%", "84%"],
-          }}
-          transition={{ duration:5.6, times:[0, 0.28, 0.42, 0.86, 0.94, 1], ease:"easeInOut", delay:0.2 }}
-        >
-          <CursorIcon />
-        </motion.div>
+          {/* 3-dot actions trigger on the target row */}
+          <div
+            className="absolute rounded-full flex items-center justify-center pointer-events-none z-10"
+            style={{ top:APPT_ICON_POS.top, left:APPT_ICON_POS.left, width:16, height:16, transform:"translate(-50%,-50%)", background:"white", border:"1px solid #E5E7EB" }}
+          >
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+              <circle cx="1.3" cy="4.5" r="1.1" fill="#6B7280"/><circle cx="4.5" cy="4.5" r="1.1" fill="#6B7280"/><circle cx="7.7" cy="4.5" r="1.1" fill="#6B7280"/>
+            </svg>
+          </div>
 
-        {/* Click ripple, timed to the cursor's arrival */}
-        <motion.div
-          className="absolute rounded-full pointer-events-none z-10"
-          style={{ top:"72%", left:"84%", width:24, height:24, marginLeft:-12, marginTop:-12, border:"2px solid #ed5426" }}
-          animate={{ scale:[0.3, 0.3, 0.5, 2.1, 2.1], opacity:[0, 0, 0.7, 0, 0] }}
-          transition={{ duration:5.6, times:[0, 0.40, 0.43, 0.55, 1], ease:"easeOut", delay:0.2 }}
-        />
+          {/* Simulated cursor */}
+          <motion.div
+            className="absolute pointer-events-none z-30"
+            style={{ transform:"translate(-50%,-50%)" }}
+            animate={cursor}
+            transition={{ duration:0.7, ease:"easeInOut" }}
+          >
+            <CursorIcon />
+          </motion.div>
 
-        {/* Revealed quick-actions panel */}
-        <motion.div
-          className="absolute z-20 bg-white rounded-xl border border-[#E5E7EB] shadow-lg px-2.5 py-2 flex flex-col gap-1"
-          style={{ top:"64%", left:"52%", width:120 }}
-          animate={{ opacity:[0, 0, 1, 1, 0, 0], scale:[0.85, 0.85, 1, 1, 0.9, 0.9] }}
-          transition={{ duration:5.6, times:[0, 0.44, 0.49, 0.84, 0.92, 1], ease:[0.22,1,0.36,1], delay:0.2 }}
-        >
-          <p className="text-[9px] font-semibold text-[#9CA3AF] px-0.5">Quick actions</p>
-          <button className="text-[10px] font-bold text-white rounded-lg px-2 py-1" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
-          <button className="text-[10px] font-medium text-[#374151] rounded-lg px-2 py-1 border border-[#E5E7EB]">Message</button>
-          <button className="text-[10px] font-medium text-[#DC2626] rounded-lg px-2 py-1 border border-[#FECACA]">Cancel</button>
+          {/* Click ripple: 3-dot icon */}
+          <AnimatePresence>
+            {(step===APPT_STEP.CLICK_MENU || step===APPT_STEP.MENU_OPEN) && (
+              <motion.div
+                key="ripple-menu"
+                className="absolute rounded-full pointer-events-none z-20"
+                style={{ top:APPT_ICON_POS.top, left:APPT_ICON_POS.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
+                initial={{ scale:0.4, opacity:0 }}
+                animate={{ scale:[0.4, 0.6, 2], opacity:[0, 0.7, 0] }}
+                transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Click ripple: Reschedule button */}
+          <AnimatePresence>
+            {(step===APPT_STEP.CLICK_RESCHEDULE || step===APPT_STEP.TIME_UPDATE) && (
+              <motion.div
+                key="ripple-reschedule"
+                className="absolute rounded-full pointer-events-none z-20"
+                style={{ top:APPT_RESCHEDULE_POS.top, left:APPT_RESCHEDULE_POS.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
+                initial={{ scale:0.4, opacity:0 }}
+                animate={{ scale:[0.4, 0.6, 2], opacity:[0, 0.7, 0] }}
+                transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Updated badge shown right on the row */}
+          <AnimatePresence>
+            {step===APPT_STEP.CONFIRMED && (
+              <motion.div
+                key="row-updated-badge"
+                className="absolute z-30 flex items-center gap-1 rounded-full pointer-events-none"
+                style={{ top:APPT_ICON_POS.top, left:APPT_ICON_POS.left, transform:"translate(-50%,-50%)", background:"#DCFCE7", padding:"2px 6px", whiteSpace:"nowrap" }}
+                initial={{ opacity:0, scale:0.6 }}
+                animate={{ opacity:1, scale:1 }}
+                exit={{ opacity:0, scale:0.8 }}
+                transition={{ duration:0.3 }}
+              >
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span className="text-[8px] font-bold text-[#16A34A]">Updated</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Quick actions / reschedule / confirmed popup */}
+          <AnimatePresence>
+            {panelView !== "hidden" && (
+              <motion.div
+                key="appt-panel"
+                className="absolute z-30 bg-white rounded-xl border border-[#E5E7EB] shadow-lg px-2.5 py-2"
+                style={{ top:"64%", left:"52%", width:130 }}
+                initial={{ opacity:0, scale:0.85 }}
+                animate={{ opacity:1, scale:1 }}
+                exit={{ opacity:0, scale:0.9 }}
+                transition={{ duration:0.3, ease:[0.22,1,0.36,1] }}
+              >
+                <AnimatePresence mode="wait">
+                  {panelView === "menu" && (
+                    <motion.div key="view-menu" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-1">
+                      <p className="text-[9px] font-semibold text-[#9CA3AF] px-0.5">Quick actions</p>
+                      <button className="text-[10px] font-bold text-white rounded-lg px-2 py-1" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
+                      <button className="text-[10px] font-medium text-[#374151] rounded-lg px-2 py-1 border border-[#E5E7EB]">Message</button>
+                      <button className="text-[10px] font-medium text-[#DC2626] rounded-lg px-2 py-1 border border-[#FECACA]">Cancel</button>
+                    </motion.div>
+                  )}
+                  {panelView === "reschedule" && (
+                    <motion.div key="view-reschedule" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-1.5">
+                      <p className="text-[9px] font-semibold text-[#9CA3AF] px-0.5">Cavity Filling</p>
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={rescheduled ? "new" : "old"}
+                          initial={{ opacity:0, y:-4 }}
+                          animate={{ opacity:1, y:0 }}
+                          exit={{ opacity:0, y:4 }}
+                          transition={{ duration:0.35 }}
+                          className="rounded-lg px-2 py-1.5"
+                          style={{ background: rescheduled ? "rgba(34,197,94,0.12)" : "rgba(156,163,175,0.12)" }}
+                        >
+                          <p className="text-[11px] font-bold" style={{ color: rescheduled ? "#16A34A" : "#374151" }}>{rescheduled ? "3:00 PM" : "12:00"}</p>
+                          <p className="text-[9px] text-[#9CA3AF]">{rescheduled ? "Jul 22" : "Jul 21"}</p>
+                        </motion.div>
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                  {panelView === "confirmed" && (
+                    <motion.div key="view-confirmed" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex items-center gap-1.5 py-1">
+                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </div>
+                      <p className="text-[10px] font-bold text-[#16A34A]">Appointment updated</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </div>
@@ -396,15 +543,75 @@ function SceneLeads() {
   );
 }
 
+/* ─── Channels scene: step machine driving a simulated connect flow ─── */
+const CHAN_STEP = {
+  PAUSE: 0,
+  ZOOM: 1,
+  CURSOR_TO_CONNECT: 2,
+  CLICK_CONNECT: 3,
+  FLOW_CHOOSE: 4,
+  FLOW_AUTHORIZE: 5,
+  FLOW_CONNECTED: 6,
+  CARD_CONNECTED: 7,
+  SETTLE: 8,
+} as const;
+
+function parseStatValue(v: string): number {
+  return parseFloat(v.replace(/,/g, "").replace("%",""));
+}
+function makeStatFormatter(v: string): (n:number)=>string {
+  return v.includes("%") ? (n)=> n.toFixed(1) + "%" : (n)=> Math.round(n).toLocaleString();
+}
+
+/* One-shot count-up from 0 to target, mounted only once the card is marked connected */
+function CountUp({ target, format, duration=1200 }: { target:number; format:(n:number)=>string; duration?:number }) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now-start)/duration);
+      const eased = 1 - Math.pow(1-t, 3);
+      setVal(target*eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return <>{format(val)}</>;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Scene 3 — Channels
    overflow:hidden — 3 cards fit comfortably
-   Choreography: pause on all 3 cards, zoom into the WhatsApp card
-   while the other two dim, its stats pulse-highlight, then zoom
-   back out to show all 3 cards before the scene ends.
+   Choreography (numbered to match the spec):
+   1 pause: Instagram and WhatsApp connected, Website Chat not connected
+   2 zoom/highlight on the Website Chat card
+   3 cursor clicks its Connect button
+   4 illustrative connect flow: Choose channel -> Authorize -> Connected!
+   5 card flips to Connected, stats count up from 0
+   6 brief pause on the now-all-connected state before the scene ends
 ═══════════════════════════════════════════════════════════════ */
 function SceneChannels() {
-  const targetIdx = 1; // WhatsApp Business
+  const targetIdx = 2; // Website Chat, starts Not connected
+  const [step, setStep] = useState<number>(CHAN_STEP.PAUSE);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (s: number, delay: number) => { timers.push(setTimeout(() => setStep(s), delay)); };
+    at(CHAN_STEP.ZOOM, 700);
+    at(CHAN_STEP.CURSOR_TO_CONNECT, 1600);
+    at(CHAN_STEP.CLICK_CONNECT, 2300);
+    at(CHAN_STEP.FLOW_CHOOSE, 2450);
+    at(CHAN_STEP.FLOW_AUTHORIZE, 3300);
+    at(CHAN_STEP.FLOW_CONNECTED, 4100);
+    at(CHAN_STEP.CARD_CONNECTED, 4900);
+    at(CHAN_STEP.SETTLE, 6900);
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const allConnected = step >= CHAN_STEP.CARD_CONNECTED;
+
   const channels = [
     {
       iconBg:"linear-gradient(45deg,#833AB4,#FD1D1D,#F77737)",
@@ -430,32 +637,41 @@ function SceneChannels() {
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
       <SceneHdr title="Channels" sub="Connected messaging channels" btn="+ Connect" />
 
-      <div className="mx-4 mb-2 px-3 py-2 rounded-xl flex items-center gap-2 shrink-0" style={{ background:"#F0FDF4", border:"1px solid #BBF7D0" }}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5l3 3 7-6" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        <span className="text-[10px] font-medium text-[#15803D]">All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website.</span>
+      <div className="mx-4 mb-2 px-3 py-2 rounded-xl flex items-center gap-2 shrink-0" style={{ background: allConnected?"#F0FDF4":"#FFFBEB", border: allConnected?"1px solid #BBF7D0":"1px solid #FDE68A" }}>
+        {allConnected ? (
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5l3 3 7-6" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        ) : (
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="#D97706" strokeWidth="1.4"/><path d="M6.5 4v3.2M6.5 9h.01" stroke="#D97706" strokeWidth="1.4" strokeLinecap="round"/></svg>
+        )}
+        <span className="text-[10px] font-medium" style={{ color: allConnected?"#15803D":"#B45309" }}>
+          {allConnected
+            ? "All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website."
+            : "2 of 3 channels connected. Connect your website chat to go fully live."}
+        </span>
       </div>
 
       {/* overflow:hidden — 3 cards fit without scrolling */}
       <div className="flex-1 overflow-hidden px-4 flex flex-col gap-2 pb-3">
         {channels.map((ch, chIdx)=>{
           const isTarget = chIdx===targetIdx;
+          const zoomed = isTarget && step >= CHAN_STEP.ZOOM && step < CHAN_STEP.SETTLE;
+          const dimmed = !isTarget && step >= CHAN_STEP.ZOOM && step < CHAN_STEP.SETTLE;
+          const connected = !isTarget || step >= CHAN_STEP.CARD_CONNECTED;
+          const showFlow = isTarget && (step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_CHOOSE || step===CHAN_STEP.FLOW_AUTHORIZE || step===CHAN_STEP.FLOW_CONNECTED);
+          const showCursor = isTarget && (step===CHAN_STEP.CURSOR_TO_CONNECT || step===CHAN_STEP.CLICK_CONNECT);
+          const showRipple = isTarget && (step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_CHOOSE);
+
           return (
             <motion.div
               key={ch.name}
-              className="bg-white border border-[#E5E7EB] rounded-xl p-3"
-              style={{ transformOrigin:"center", position:"relative", zIndex:isTarget?10:1 }}
-              animate={isTarget
-                ? {
-                    scale:[1, 1, 1.08, 1.08, 1, 1],
-                    boxShadow:[
-                      "0 0px 0px rgba(0,0,0,0)","0 0px 0px rgba(0,0,0,0)",
-                      "0 8px 24px rgba(237,84,38,0.18)","0 8px 24px rgba(237,84,38,0.18)",
-                      "0 0px 0px rgba(0,0,0,0)","0 0px 0px rgba(0,0,0,0)",
-                    ],
-                  }
-                : { opacity:[1, 1, 0.45, 0.45, 1, 1] }
+              className="bg-white border border-[#E5E7EB] rounded-xl p-3 relative overflow-hidden"
+              style={{ transformOrigin:"center", zIndex:isTarget?10:1 }}
+              animate={
+                zoomed ? { scale:1.07, opacity:1, boxShadow:"0 8px 24px rgba(237,84,38,0.18)" } :
+                dimmed ? { scale:1, opacity:0.45, boxShadow:"0 0px 0px rgba(0,0,0,0)" } :
+                { scale:1, opacity:1, boxShadow:"0 0px 0px rgba(0,0,0,0)" }
               }
-              transition={{ duration:5.0, times:[0, 0.18, 0.40, 0.75, 0.90, 1], ease:"easeInOut", delay:0.2 }}
+              transition={{ duration:0.6, ease:"easeInOut" }}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -463,35 +679,117 @@ function SceneChannels() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[13px] font-bold text-[#111111]">{ch.name}</span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>Connected</span>
+                      {connected
+                        ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>Connected</span>
+                        : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F3F4F6", color:"#6B7280" }}>Not connected</span>}
                     </div>
                     <p className="text-[10px] text-[#9CA3AF] truncate">{ch.handle}</p>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">Manage</button>
-                  <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">Disconnect</button>
+                <div className="flex gap-1 shrink-0 relative">
+                  {connected ? (
+                    <>
+                      <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">Manage</button>
+                      <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">Disconnect</button>
+                    </>
+                  ) : (
+                    <button className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background:"var(--vela-gradient)" }}>Connect</button>
+                  )}
+
+                  {isTarget && (
+                    <>
+                      <motion.div
+                        className="absolute pointer-events-none z-30"
+                        style={{ top:"50%", transform:"translate(50%,-50%)" }}
+                        animate={{ opacity: showCursor?1:0, right: showCursor? -6 : 26 }}
+                        transition={{ duration:0.5, ease:"easeInOut" }}
+                      >
+                        <CursorIcon />
+                      </motion.div>
+                      <AnimatePresence>
+                        {showRipple && (
+                          <motion.div
+                            key="chan-ripple"
+                            className="absolute rounded-full pointer-events-none z-20"
+                            style={{ top:"50%", right:-6, width:20, height:20, transform:"translate(50%,-50%)", border:"2px solid #ed5426" }}
+                            initial={{ scale:0.4, opacity:0 }}
+                            animate={{ scale:[0.4, 0.6, 2.2], opacity:[0, 0.7, 0] }}
+                            transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
+                          />
+                        )}
+                      </AnimatePresence>
+                    </>
+                  )}
                 </div>
               </div>
+
               <div className="flex gap-6 mt-2 pl-[52px]">
-                {ch.stats.map(({val,label}, si)=>(
-                  <motion.div
-                    key={label}
-                    animate={isTarget
-                      ? {
-                          scale:[1, 1, 1, 1.22, 1, 1, 1],
-                          color:["#111111","#111111","#111111","#ed5426","#111111","#111111","#111111"],
-                        }
-                      : undefined}
-                    transition={isTarget
-                      ? { duration:5.0, times:[0, 0.40, 0.46, 0.52, 0.60, 0.75, 1], delay:0.2+si*0.08 }
-                      : undefined}
-                  >
-                    <p className="text-[13px] font-black leading-none" style={{ color:"inherit" }}>{val}</p>
+                {ch.stats.map(({val,label})=>(
+                  <div key={label}>
+                    <p className="text-[13px] font-black text-[#111111] leading-none">
+                      {isTarget
+                        ? (step >= CHAN_STEP.CARD_CONNECTED
+                            ? <CountUp target={parseStatValue(val)} format={makeStatFormatter(val)} />
+                            : "--")
+                        : val}
+                    </p>
                     <p className="text-[10px] text-[#9CA3AF]">{label}</p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
+
+              {/* Illustrative connect flow: Choose channel -> Authorize -> Connected! */}
+              <AnimatePresence>
+                {isTarget && showFlow && (
+                  <motion.div
+                    key="connect-flow"
+                    className="absolute inset-0 z-20 flex items-center justify-center"
+                    style={{ background:"rgba(255,255,255,0.97)" }}
+                    initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.25 }}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <AnimatePresence mode="wait">
+                        {(step===CHAN_STEP.CLICK_CONNECT || step===CHAN_STEP.FLOW_CHOOSE) && (
+                          <motion.div key="f0" initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:0.25}} className="flex flex-col items-center gap-1.5">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:"#F3F4F6" }}>
+                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="9" rx="1.5" stroke="#6B7280" strokeWidth="1.3"/><path d="M1 5.5h12" stroke="#6B7280" strokeWidth="1.3"/></svg>
+                            </div>
+                            <p className="text-[10px] font-semibold text-[#374151]">Choose channel</p>
+                          </motion.div>
+                        )}
+                        {step===CHAN_STEP.FLOW_AUTHORIZE && (
+                          <motion.div key="f1" initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-4}} transition={{duration:0.25}} className="flex flex-col items-center gap-1.5">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:"#FFF7ED" }}>
+                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="3" y="6" width="8" height="6" rx="1.3" stroke="#ed5426" strokeWidth="1.3"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#ed5426" strokeWidth="1.3"/></svg>
+                            </div>
+                            <p className="text-[10px] font-semibold text-[#374151]">Authorize</p>
+                          </motion.div>
+                        )}
+                        {step===CHAN_STEP.FLOW_CONNECTED && (
+                          <motion.div key="f2" initial={{opacity:0,scale:0.7}} animate={{opacity:1,scale:1}} exit={{opacity:0}} transition={{duration:0.3,ease:[0.34,1.56,0.64,1]}} className="flex flex-col items-center gap-1.5">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center bg-green-100">
+                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="#16A34A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <p className="text-[10px] font-bold text-[#16A34A]">Connected!</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {[0,1,2].map(i=>{
+                          const activeIdx = step===CHAN_STEP.FLOW_AUTHORIZE ? 1 : step===CHAN_STEP.FLOW_CONNECTED ? 2 : 0;
+                          return (
+                            <span
+                              key={i}
+                              className="rounded-full"
+                              style={{ width: activeIdx===i?14:6, height:6, background: i<=activeIdx?"#25D366":"#E5E7EB", transition:"width 0.25s, background 0.25s" }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           );
         })}
