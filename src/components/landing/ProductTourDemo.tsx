@@ -8,8 +8,9 @@ import { motion, AnimatePresence } from "framer-motion";
 const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
-/* ─── Auto-advance: exactly 3 s per scene ───────────────────── */
-const SCENE_MS = 3000;
+/* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
+const SCENE_DURATIONS: number[] = [3000, 6200, 3000, 5400, 3000, 3000];
+/* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
 type ApptRow = {
@@ -213,11 +214,25 @@ function SceneConversation() {
   );
 }
 
+/* ─── Small pointer icon used by the Appointments click choreography ─── */
+function CursorIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2.5 1.5L13.5 8L8.2 9L6 14L2.5 1.5Z" fill="#111111" stroke="white" strokeWidth="1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Scene 1 — Appointments
    No overflow-x-auto: table-fixed + overflow:hidden
+   Choreography: pause on the full table, zoom into the Pending row,
+   a cursor moves in and clicks it, a quick-actions panel reveals,
+   then the scene zooms back out to the full table before it ends.
 ═══════════════════════════════════════════════════════════════ */
 function SceneAppointments() {
+  const targetIdx = 4; // Khaled Ibrahim, Pending status
+
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
       <SceneHdr title="Appointments" sub="Today - Jul 21, 2026" btn="+ New Appointment" />
@@ -242,45 +257,94 @@ function SceneAppointments() {
       </div>
       <div className="h-px bg-[#E5E7EB] mx-4 mb-1 shrink-0" />
 
-      {/* Table — overflow:hidden, table-fixed, no scrollbar ever */}
-      <div className="flex-1 overflow-hidden px-4">
-        <table style={{ tableLayout:"fixed", width:"100%", borderCollapse:"collapse" }}>
-          <colgroup>
-            <col style={{ width:"28%" }} />
-            <col style={{ width:"26%" }} />
-            <col style={{ width:"13%" }} />
-            <col style={{ width:"13%" }} />
-            <col style={{ width:"20%" }} />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-[#F3F4F6]">
-              {["NAME","SERVICE","TIME","CH","STATUS"].map(h=>(
-                <th key={h} className="text-left text-[9px] font-semibold text-[#9CA3AF] px-2 py-2 uppercase tracking-wider">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {APPTS.map(row=>(
-              <tr key={row.name} className="border-b border-[#F9FAFB]">
-                <td className="px-2 py-1.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Av i={row.i} sz={22} />
-                    <span className="text-[10px] font-semibold text-[#111111] truncate">{row.name}</span>
-                  </div>
-                </td>
-                <td className="px-2 py-1.5">
-                  <span className="text-[10px] text-[#374151] truncate block">{row.service}</span>
-                </td>
-                <td className="px-2 py-1.5">
-                  <p className="text-[10px] font-bold text-[#111111]">{row.time}</p>
-                  <p className="text-[9px] text-[#9CA3AF]">Jul 21</p>
-                </td>
-                <td className="px-2 py-1.5"><ChBadge ch={row.ch} /></td>
-                <td className="px-2 py-1.5"><StatusPill s={row.status} /></td>
+      {/* Table stage: overflow:hidden, relative wrapper hosts the zoom/click overlay */}
+      <div className="relative flex-1 overflow-hidden px-4">
+        <motion.div
+          style={{ transformOrigin:"85% 74%" }}
+          animate={{ scale:[1, 1, 1.3, 1.3, 1] }}
+          transition={{ duration:5.6, times:[0, 0.16, 0.34, 0.82, 1], ease:"easeInOut", delay:0.2 }}
+        >
+          <table style={{ tableLayout:"fixed", width:"100%", borderCollapse:"collapse" }}>
+            <colgroup>
+              <col style={{ width:"28%" }} />
+              <col style={{ width:"26%" }} />
+              <col style={{ width:"13%" }} />
+              <col style={{ width:"13%" }} />
+              <col style={{ width:"20%" }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-[#F3F4F6]">
+                {["NAME","SERVICE","TIME","CH","STATUS"].map(h=>(
+                  <th key={h} className="text-left text-[9px] font-semibold text-[#9CA3AF] px-2 py-2 uppercase tracking-wider">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {APPTS.map((row, rowIdx)=>(
+                <motion.tr
+                  key={row.name}
+                  className="border-b border-[#F9FAFB]"
+                  animate={rowIdx===targetIdx
+                    ? { backgroundColor:["rgba(237,84,38,0)","rgba(237,84,38,0)","rgba(237,84,38,0.08)","rgba(237,84,38,0.08)","rgba(237,84,38,0)","rgba(237,84,38,0)"] }
+                    : undefined}
+                  transition={rowIdx===targetIdx
+                    ? { duration:5.6, times:[0, 0.30, 0.34, 0.84, 0.90, 1], delay:0.2 }
+                    : undefined}
+                >
+                  <td className="px-2 py-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Av i={row.i} sz={22} />
+                      <span className="text-[10px] font-semibold text-[#111111] truncate">{row.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <span className="text-[10px] text-[#374151] truncate block">{row.service}</span>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <p className="text-[10px] font-bold text-[#111111]">{row.time}</p>
+                    <p className="text-[9px] text-[#9CA3AF]">Jul 21</p>
+                  </td>
+                  <td className="px-2 py-1.5"><ChBadge ch={row.ch} /></td>
+                  <td className="px-2 py-1.5"><StatusPill s={row.status} /></td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+
+        {/* Simulated cursor moving toward the Pending row */}
+        <motion.div
+          className="absolute pointer-events-none z-20"
+          animate={{
+            opacity:[0, 0, 1, 1, 0, 0],
+            top:["28%", "28%", "72%", "72%", "72%", "72%"],
+            left:["42%", "42%", "84%", "84%", "84%", "84%"],
+          }}
+          transition={{ duration:5.6, times:[0, 0.28, 0.42, 0.86, 0.94, 1], ease:"easeInOut", delay:0.2 }}
+        >
+          <CursorIcon />
+        </motion.div>
+
+        {/* Click ripple, timed to the cursor's arrival */}
+        <motion.div
+          className="absolute rounded-full pointer-events-none z-10"
+          style={{ top:"72%", left:"84%", width:24, height:24, marginLeft:-12, marginTop:-12, border:"2px solid #ed5426" }}
+          animate={{ scale:[0.3, 0.3, 0.5, 2.1, 2.1], opacity:[0, 0, 0.7, 0, 0] }}
+          transition={{ duration:5.6, times:[0, 0.40, 0.43, 0.55, 1], ease:"easeOut", delay:0.2 }}
+        />
+
+        {/* Revealed quick-actions panel */}
+        <motion.div
+          className="absolute z-20 bg-white rounded-xl border border-[#E5E7EB] shadow-lg px-2.5 py-2 flex flex-col gap-1"
+          style={{ top:"64%", left:"52%", width:120 }}
+          animate={{ opacity:[0, 0, 1, 1, 0, 0], scale:[0.85, 0.85, 1, 1, 0.9, 0.9] }}
+          transition={{ duration:5.6, times:[0, 0.44, 0.49, 0.84, 0.92, 1], ease:[0.22,1,0.36,1], delay:0.2 }}
+        >
+          <p className="text-[9px] font-semibold text-[#9CA3AF] px-0.5">Quick actions</p>
+          <button className="text-[10px] font-bold text-white rounded-lg px-2 py-1" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
+          <button className="text-[10px] font-medium text-[#374151] rounded-lg px-2 py-1 border border-[#E5E7EB]">Message</button>
+          <button className="text-[10px] font-medium text-[#DC2626] rounded-lg px-2 py-1 border border-[#FECACA]">Cancel</button>
+        </motion.div>
       </div>
     </div>
   );
@@ -335,8 +399,12 @@ function SceneLeads() {
 /* ═══════════════════════════════════════════════════════════════
    Scene 3 — Channels
    overflow:hidden — 3 cards fit comfortably
+   Choreography: pause on all 3 cards, zoom into the WhatsApp card
+   while the other two dim, its stats pulse-highlight, then zoom
+   back out to show all 3 cards before the scene ends.
 ═══════════════════════════════════════════════════════════════ */
 function SceneChannels() {
+  const targetIdx = 1; // WhatsApp Business
   const channels = [
     {
       iconBg:"linear-gradient(45deg,#833AB4,#FD1D1D,#F77737)",
@@ -369,34 +437,64 @@ function SceneChannels() {
 
       {/* overflow:hidden — 3 cards fit without scrolling */}
       <div className="flex-1 overflow-hidden px-4 flex flex-col gap-2 pb-3">
-        {channels.map(ch=>(
-          <div key={ch.name} className="bg-white border border-[#E5E7EB] rounded-xl p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:ch.iconBg }}>{ch.icon}</div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[13px] font-bold text-[#111111]">{ch.name}</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>Connected</span>
+        {channels.map((ch, chIdx)=>{
+          const isTarget = chIdx===targetIdx;
+          return (
+            <motion.div
+              key={ch.name}
+              className="bg-white border border-[#E5E7EB] rounded-xl p-3"
+              style={{ transformOrigin:"center", position:"relative", zIndex:isTarget?10:1 }}
+              animate={isTarget
+                ? {
+                    scale:[1, 1, 1.08, 1.08, 1, 1],
+                    boxShadow:[
+                      "0 0px 0px rgba(0,0,0,0)","0 0px 0px rgba(0,0,0,0)",
+                      "0 8px 24px rgba(237,84,38,0.18)","0 8px 24px rgba(237,84,38,0.18)",
+                      "0 0px 0px rgba(0,0,0,0)","0 0px 0px rgba(0,0,0,0)",
+                    ],
+                  }
+                : { opacity:[1, 1, 0.45, 0.45, 1, 1] }
+              }
+              transition={{ duration:5.0, times:[0, 0.18, 0.40, 0.75, 0.90, 1], ease:"easeInOut", delay:0.2 }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:ch.iconBg }}>{ch.icon}</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[13px] font-bold text-[#111111]">{ch.name}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>Connected</span>
+                    </div>
+                    <p className="text-[10px] text-[#9CA3AF] truncate">{ch.handle}</p>
                   </div>
-                  <p className="text-[10px] text-[#9CA3AF] truncate">{ch.handle}</p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">Manage</button>
+                  <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">Disconnect</button>
                 </div>
               </div>
-              <div className="flex gap-1 shrink-0">
-                <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">Manage</button>
-                <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">Disconnect</button>
+              <div className="flex gap-6 mt-2 pl-[52px]">
+                {ch.stats.map(({val,label}, si)=>(
+                  <motion.div
+                    key={label}
+                    animate={isTarget
+                      ? {
+                          scale:[1, 1, 1, 1.22, 1, 1, 1],
+                          color:["#111111","#111111","#111111","#ed5426","#111111","#111111","#111111"],
+                        }
+                      : undefined}
+                    transition={isTarget
+                      ? { duration:5.0, times:[0, 0.40, 0.46, 0.52, 0.60, 0.75, 1], delay:0.2+si*0.08 }
+                      : undefined}
+                  >
+                    <p className="text-[13px] font-black leading-none" style={{ color:"inherit" }}>{val}</p>
+                    <p className="text-[10px] text-[#9CA3AF]">{label}</p>
+                  </motion.div>
+                ))}
               </div>
-            </div>
-            <div className="flex gap-6 mt-2 pl-[52px]">
-              {ch.stats.map(({val,label})=>(
-                <div key={label}>
-                  <p className="text-[13px] font-black text-[#111111] leading-none">{val}</p>
-                  <p className="text-[10px] text-[#9CA3AF]">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
@@ -637,13 +735,15 @@ export default function ProductTourDemo() {
   const [scene, setScene] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hands-off autoplay: every scene advances after exactly 3 s.
+  // Hands-off autoplay: each scene advances after its own duration,
+  // long enough for that scene's choreography to finish and settle.
   // Re-registers on every scene change (manual click resets the timer too).
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    const duration = SCENE_DURATIONS[scene] ?? 3000;
     timerRef.current = setTimeout(() => {
       setScene(prev => (prev + 1) % SCENE_COUNT);
-    }, SCENE_MS);
+    }, duration);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [scene]);
 
