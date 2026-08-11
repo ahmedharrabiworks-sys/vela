@@ -9,7 +9,7 @@ const CONV = 0, APPT = 1, LEADS_S = 2, CHAN = 3, AGENT = 4, ANALY = 5;
 const SCENE_COUNT = 6;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [3000, 9400, 3000, 8900, 3000, 3000];
+const SCENE_DURATIONS: number[] = [7300, 9400, 3000, 8900, 3000, 3000];
 /* index matches CONV, APPT, LEADS_S, CHAN, AGENT, ANALY */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -122,18 +122,80 @@ function SceneHdr({ title, sub, btn }: { title:string; sub:string; btn:string })
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Scene 0 — Conversation (static stagger — fits 3 s)
-═══════════════════════════════════════════════════════════════ */
+/* ─── Conversation scene: step machine driving the per-message camera ───
+   WIDE establishing shot, then push in on each bubble as it lands, with a
+   brief pull-back-and-swivel between targets (masks the transform-origin
+   snap inside a low-zoom moment, since origin changes are invisible at
+   scale 1 but visible mid-zoom). Same camera-move technique (scale +
+   transformOrigin on a container, measured via getBoundingClientRect
+   after the entrance transition settles) as Appointments/Channels. */
+const CONV_STEP = {
+  WIDE: 0,
+  USER: 1,
+  PULLBACK_1: 2,
+  AI: 3,
+  PULLBACK_2: 4,
+  CONFIRM: 5,
+} as const;
+
 function SceneConversation() {
   const msgs = [
     { role:"user" as const, text:"I'd like to book a dental cleaning, please" },
     { role:"ai"   as const, text:"Done! Sara Khalid is confirmed for Dental Cleaning, Tuesday at 3:00 PM." },
   ];
 
+  const [step, setStep] = useState<number>(CONV_STEP.WIDE);
+  const cameraRef = useRef<HTMLDivElement>(null);
+  const userBubbleRef = useRef<HTMLDivElement>(null);
+  const aiBubbleRef = useRef<HTMLDivElement>(null);
+  const confirmCardRef = useRef<HTMLDivElement>(null);
+  const [userPos, setUserPos] = useState({ top:"70%", left:"75%" });
+  const [aiPos, setAiPos] = useState({ top:"45%", left:"35%" });
+  const [confirmPos, setConfirmPos] = useState({ top:"20%", left:"50%" });
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (s: number, delay: number) => { timers.push(setTimeout(() => setStep(s), delay)); };
+    // The flex column is justify-end, so all three targets already occupy
+    // their final layout position from mount (only opacity/transform reveal
+    // later) -- one measurement, taken after the outer scene entrance
+    // transition settles, stays valid for the whole scene.
+    timers.push(setTimeout(() => {
+      if (!cameraRef.current) return;
+      if (userBubbleRef.current) setUserPos(pctPosition(userBubbleRef.current, cameraRef.current));
+      if (aiBubbleRef.current) setAiPos(pctPosition(aiBubbleRef.current, cameraRef.current));
+      if (confirmCardRef.current) setConfirmPos(pctPosition(confirmCardRef.current, cameraRef.current));
+    }, 500));
+    at(CONV_STEP.USER, 600);
+    at(CONV_STEP.PULLBACK_1, 2000);
+    at(CONV_STEP.AI, 2450);
+    at(CONV_STEP.PULLBACK_2, 4450);
+    at(CONV_STEP.CONFIRM, 4900);
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Zoom is deliberately modest (not the 1.3x used for a fixed table row in
+  // Appointments): the user bubble is right-aligned and the AI bubble is
+  // left-aligned via justify-end/justify-start, so their own edges already
+  // sit close to the frame edge before any zoom. Scaling from a bubble's own
+  // true center still pushes its far edge outward by (scale-1) * halfWidth --
+  // a bubble already snug against the edge overflows at anything beyond
+  // roughly 1.1x. 1.08 keeps every target's edges safely inside the frame
+  // (verified numerically, see report) while still reading as a clear push in.
+  const camScale =
+    step === CONV_STEP.WIDE ? 1 :
+    step === CONV_STEP.PULLBACK_1 || step === CONV_STEP.PULLBACK_2 ? 1.02 :
+    1.08;
+
+  const camPos =
+    step === CONV_STEP.WIDE ? { top:"50%", left:"50%" } :
+    step === CONV_STEP.USER || step === CONV_STEP.PULLBACK_1 ? userPos :
+    step === CONV_STEP.AI || step === CONV_STEP.PULLBACK_2 ? aiPos :
+    confirmPos;
+
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* App header */}
+      {/* App header -- chrome, stays outside the camera so it never zooms */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#F1F5F9] shrink-0" style={{ background:"#FAFAFA" }}>
         <Image src="/assets/logo-full.png" alt="Vela" height={20} width={80} className="object-contain" unoptimized priority />
         <div className="w-px h-4 bg-[#E5E7EB]" />
@@ -148,62 +210,72 @@ function SceneConversation() {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-hidden flex flex-col justify-end px-4 py-3 gap-2" style={{ background:"#F8FAFC" }}>
-        {msgs.map((msg, idx)=>(
-          <motion.div
-            key={idx}
-            initial={{ opacity:0, y:8, scale:0.97 }}
-            animate={{ opacity:1, y:0, scale:1 }}
-            transition={{ duration:0.35, delay:idx*0.35, ease:[0.22,1,0.36,1] }}
-            className={`flex gap-2 ${msg.role==="user"?"justify-end":"justify-start"}`}
-          >
-            {msg.role==="ai" && (
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
-            )}
-            <div className="max-w-[72%] px-3 py-2 rounded-2xl text-[12px] leading-relaxed"
-              style={msg.role==="user"
-                ? { background:"var(--vela-gradient)", color:"white", borderBottomRightRadius:4 }
-                : { background:"white", color:"#374151", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
-            >{msg.text}</div>
-          </motion.div>
-        ))}
-
-        {/* Confirmation card */}
+      {/* Camera stage: overflow:hidden clips, the inner motion.div pans/zooms */}
+      <div className="flex-1 overflow-hidden" style={{ background:"#F8FAFC" }}>
         <motion.div
-          initial={{ opacity:0, scale:0.9, y:12 }}
-          animate={{ opacity:1, scale:1, y:0 }}
-          transition={{ duration:0.45, delay:0.85, ease:[0.22,1,0.36,1] }}
-          className="mx-2 rounded-2xl overflow-hidden"
-          style={{ background:"linear-gradient(135deg,#052e16 0%,#14532d 100%)", border:"1px solid rgba(34,197,94,0.3)" }}
+          ref={cameraRef}
+          className="h-full flex flex-col justify-end px-4 py-3 gap-2"
+          style={{ transformOrigin:`${camPos.left} ${camPos.top}` }}
+          animate={{ scale: camScale }}
+          transition={{ duration:0.45, ease:"easeInOut" }}
         >
-          <div className="flex items-center gap-3 px-4 py-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center shrink-0">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </div>
-                <p className="text-green-300 text-[10px] font-bold uppercase tracking-wide">Appointment Confirmed!</p>
-              </div>
-              <p className="text-white text-sm font-semibold">Sara Khalid</p>
-              <p className="text-white/60 text-xs mt-0.5">Dental Cleaning · Tuesday, 3:00 PM</p>
-              <div className="flex items-center gap-1.5 mt-2">
-                <svg width="10" height="10" viewBox="0 0 11 11" fill="none" style={{ color:"rgba(255,255,255,0.4)" }}><rect x="1" y="2" width="9" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M3.5 1v2M7.5 1v2M1 5h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                <span className="text-white/40 text-[10px]">Booked via Vela AI · Reminder sent</span>
-              </div>
-            </div>
+          {msgs.map((msg, idx)=>(
             <motion.div
-              initial={{ opacity:0, scale:0.5, rotate:-10 }}
-              animate={{ opacity:1, scale:1, rotate:0 }}
-              transition={{ duration:0.5, delay:1.1, ease:[0.34,1.56,0.64,1] }}
+              key={idx}
+              ref={idx===0 ? userBubbleRef : aiBubbleRef}
+              initial={{ opacity:0, y:8, scale:0.97 }}
+              animate={{ opacity:1, y:0, scale:1 }}
+              transition={{ duration:0.35, delay:idx===0?0.6:2.45, ease:[0.22,1,0.36,1] }}
+              className={`flex gap-2 ${msg.role==="user"?"justify-end":"justify-start"}`}
             >
-              <Image src="/assets/mascot.png" alt="Vela" width={52} height={52} className="object-contain drop-shadow-lg" unoptimized />
+              {msg.role==="ai" && (
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
+              )}
+              <div className="max-w-[72%] px-3 py-2 rounded-2xl text-[12px] leading-relaxed"
+                style={msg.role==="user"
+                  ? { background:"var(--vela-gradient)", color:"white", borderBottomRightRadius:4 }
+                  : { background:"white", color:"#374151", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
+              >{msg.text}</div>
             </motion.div>
-          </div>
+          ))}
+
+          {/* Confirmation card -- the payoff: camera holds here longest */}
+          <motion.div
+            ref={confirmCardRef}
+            initial={{ opacity:0, scale:0.9, y:12 }}
+            animate={{ opacity:1, scale:1, y:0 }}
+            transition={{ duration:0.45, delay:4.9, ease:[0.22,1,0.36,1] }}
+            className="mx-2 rounded-2xl overflow-hidden"
+            style={{ background:"linear-gradient(135deg,#052e16 0%,#14532d 100%)", border:"1px solid rgba(34,197,94,0.3)" }}
+          >
+            <div className="flex items-center gap-3 px-4 py-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-5 h-5 rounded-full bg-green-400 flex items-center justify-center shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <p className="text-green-300 text-[10px] font-bold uppercase tracking-wide">Appointment Confirmed!</p>
+                </div>
+                <p className="text-white text-sm font-semibold">Sara Khalid</p>
+                <p className="text-white/60 text-xs mt-0.5">Dental Cleaning · Tuesday, 3:00 PM</p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <svg width="10" height="10" viewBox="0 0 11 11" fill="none" style={{ color:"rgba(255,255,255,0.4)" }}><rect x="1" y="2" width="9" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M3.5 1v2M7.5 1v2M1 5h9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  <span className="text-white/40 text-[10px]">Booked via Vela AI · Reminder sent</span>
+                </div>
+              </div>
+              <motion.div
+                initial={{ opacity:0, scale:0.5, rotate:-10 }}
+                animate={{ opacity:1, scale:1, rotate:0 }}
+                transition={{ duration:0.5, delay:5.15, ease:[0.34,1.56,0.64,1] }}
+              >
+                <Image src="/assets/mascot.png" alt="Vela" width={52} height={52} className="object-contain drop-shadow-lg" unoptimized />
+              </motion.div>
+            </div>
+          </motion.div>
         </motion.div>
       </div>
 
-      {/* Input bar */}
+      {/* Input bar -- chrome, stays outside the camera */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[#F1F5F9] bg-white shrink-0">
         <div className="flex-1 h-8 rounded-full flex items-center px-4 text-xs text-[#9CA3AF]" style={{ background:"#F8FAFC", border:"1px solid #E5E7EB" }}>Message...</div>
         <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background:"var(--vela-gradient)" }}>
