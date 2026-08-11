@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -237,8 +237,16 @@ const APPT_STEP = {
   ZOOM_OUT: 9,
 } as const;
 
-const APPT_ICON_POS = { top:"73%", left:"90%" };
-const APPT_RESCHEDULE_POS = { top:"68%", left:"73%" };
+/* Percentage position of an element's center relative to a stage box, measured
+   from the real rendered layout (getBoundingClientRect is scale-invariant as a
+   ratio, so this stays correct whether measured before or during the zoom). */
+function pctPosition(el: HTMLElement, stage: HTMLElement) {
+  const s = stage.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const top = ((r.top + r.height/2 - s.top) / s.height) * 100;
+  const left = ((r.left + r.width/2 - s.left) / s.width) * 100;
+  return { top:`${top}%`, left:`${left}%` };
+}
 
 /* ═══════════════════════════════════════════════════════════════
    Scene 1 — Appointments
@@ -257,6 +265,26 @@ const APPT_RESCHEDULE_POS = { top:"68%", left:"73%" };
 function SceneAppointments() {
   const targetIdx = 4; // Khaled Ibrahim, Cavity Filling, starts Pending
   const [step, setStep] = useState<number>(APPT_STEP.PAUSE);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const iconRef = useRef<HTMLDivElement>(null);
+  const [iconPos, setIconPos] = useState({ top:"73%", left:"88%" });
+  const [reschedulePos, setReschedulePos] = useState({ top:"58%", left:"46%" });
+
+  // Measure the real 3-dot icon position once it has rendered inside the
+  // Status cell, instead of guessing a percentage against the stage box.
+  useLayoutEffect(() => {
+    if (iconRef.current && stageRef.current) {
+      setIconPos(pctPosition(iconRef.current, stageRef.current));
+    }
+  }, []);
+
+  // Measure the Reschedule button the moment it mounts inside the popup.
+  const measureReschedule = useCallback((el: HTMLButtonElement | null) => {
+    if (el && stageRef.current) {
+      setReschedulePos(pctPosition(el, stageRef.current));
+    }
+  }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -278,9 +306,9 @@ function SceneAppointments() {
 
   const cursor =
     step < APPT_STEP.CURSOR_TO_MENU ? { opacity:0, top:"15%", left:"48%" } :
-    step <= APPT_STEP.MENU_OPEN ? { opacity:1, ...APPT_ICON_POS } :
-    step === APPT_STEP.CURSOR_TO_RESCHEDULE || step === APPT_STEP.CLICK_RESCHEDULE ? { opacity:1, ...APPT_RESCHEDULE_POS } :
-    { opacity:0, ...APPT_RESCHEDULE_POS };
+    step <= APPT_STEP.MENU_OPEN ? { opacity:1, ...iconPos } :
+    step === APPT_STEP.CURSOR_TO_RESCHEDULE || step === APPT_STEP.CLICK_RESCHEDULE ? { opacity:1, ...reschedulePos } :
+    { opacity:0, ...reschedulePos };
 
   const panelView =
     step === APPT_STEP.MENU_OPEN || step === APPT_STEP.CURSOR_TO_RESCHEDULE ? "menu" :
@@ -319,8 +347,9 @@ function SceneAppointments() {
           click-through overlay so the cursor, ripples, and popup all zoom in sync with it. */}
       <div className="flex-1 overflow-hidden px-4">
         <motion.div
+          ref={stageRef}
           className="relative h-full"
-          style={{ transformOrigin:"85% 74%" }}
+          style={{ transformOrigin:`${iconPos.left} ${iconPos.top}` }}
           animate={{ scale: zoomed ? 1.3 : 1 }}
           transition={{ duration:0.8, ease:"easeInOut" }}
         >
@@ -366,22 +395,27 @@ function SceneAppointments() {
                       <p className="text-[9px] text-[#9CA3AF]">{displayDate}</p>
                     </td>
                     <td className="px-2 py-1.5"><ChBadge ch={row.ch} /></td>
-                    <td className="px-2 py-1.5"><StatusPill s={displayStatus} /></td>
+                    <td className="px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <StatusPill s={displayStatus} />
+                        {isTarget && (
+                          <div
+                            ref={iconRef}
+                            className="rounded-full flex items-center justify-center shrink-0"
+                            style={{ width:14, height:14, background:"white", border:"1px solid #E5E7EB" }}
+                          >
+                            <svg width="8" height="8" viewBox="0 0 9 9" fill="none">
+                              <circle cx="1.3" cy="4.5" r="1.1" fill="#6B7280"/><circle cx="4.5" cy="4.5" r="1.1" fill="#6B7280"/><circle cx="7.7" cy="4.5" r="1.1" fill="#6B7280"/>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </td>
                   </motion.tr>
                 );
               })}
             </tbody>
           </table>
-
-          {/* 3-dot actions trigger on the target row */}
-          <div
-            className="absolute rounded-full flex items-center justify-center pointer-events-none z-10"
-            style={{ top:APPT_ICON_POS.top, left:APPT_ICON_POS.left, width:16, height:16, transform:"translate(-50%,-50%)", background:"white", border:"1px solid #E5E7EB" }}
-          >
-            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-              <circle cx="1.3" cy="4.5" r="1.1" fill="#6B7280"/><circle cx="4.5" cy="4.5" r="1.1" fill="#6B7280"/><circle cx="7.7" cy="4.5" r="1.1" fill="#6B7280"/>
-            </svg>
-          </div>
 
           {/* Simulated cursor */}
           <motion.div
@@ -399,7 +433,7 @@ function SceneAppointments() {
               <motion.div
                 key="ripple-menu"
                 className="absolute rounded-full pointer-events-none z-20"
-                style={{ top:APPT_ICON_POS.top, left:APPT_ICON_POS.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
+                style={{ top:iconPos.top, left:iconPos.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
                 initial={{ scale:0.4, opacity:0 }}
                 animate={{ scale:[0.4, 0.6, 2], opacity:[0, 0.7, 0] }}
                 transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
@@ -413,7 +447,7 @@ function SceneAppointments() {
               <motion.div
                 key="ripple-reschedule"
                 className="absolute rounded-full pointer-events-none z-20"
-                style={{ top:APPT_RESCHEDULE_POS.top, left:APPT_RESCHEDULE_POS.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
+                style={{ top:reschedulePos.top, left:reschedulePos.left, width:18, height:18, marginLeft:-9, marginTop:-9, border:"2px solid #ed5426" }}
                 initial={{ scale:0.4, opacity:0 }}
                 animate={{ scale:[0.4, 0.6, 2], opacity:[0, 0.7, 0] }}
                 transition={{ duration:0.6, times:[0, 0.15, 1], ease:"easeOut" }}
@@ -421,31 +455,41 @@ function SceneAppointments() {
             )}
           </AnimatePresence>
 
-          {/* Updated badge shown right on the row */}
-          <AnimatePresence>
-            {step===APPT_STEP.CONFIRMED && (
-              <motion.div
-                key="row-updated-badge"
-                className="absolute z-30 flex items-center gap-1 rounded-full pointer-events-none"
-                style={{ top:APPT_ICON_POS.top, left:APPT_ICON_POS.left, transform:"translate(-50%,-50%)", background:"#DCFCE7", padding:"2px 6px", whiteSpace:"nowrap" }}
-                initial={{ opacity:0, scale:0.6 }}
-                animate={{ opacity:1, scale:1 }}
-                exit={{ opacity:0, scale:0.8 }}
-                transition={{ duration:0.3 }}
-              >
-                <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <span className="text-[8px] font-bold text-[#16A34A]">Updated</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Updated badge shown right on the row.
+              The positioning transform lives on a plain (non-motion) wrapper
+              because Framer Motion owns the `transform` CSS property on any
+              element whose `animate` includes `scale` -- putting both on the
+              same node lets Framer silently overwrite the anchor offset. */}
+          <div className="absolute z-30 pointer-events-none" style={{ top:iconPos.top, left:iconPos.left, transform:"translate(-50%,-50%)" }}>
+            <AnimatePresence>
+              {step===APPT_STEP.CONFIRMED && (
+                <motion.div
+                  key="row-updated-badge"
+                  className="flex items-center gap-1 rounded-full"
+                  style={{ background:"#DCFCE7", padding:"2px 6px", whiteSpace:"nowrap" }}
+                  initial={{ opacity:0, scale:0.6 }}
+                  animate={{ opacity:1, scale:1 }}
+                  exit={{ opacity:0, scale:0.8 }}
+                  transition={{ duration:0.3 }}
+                >
+                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span className="text-[8px] font-bold text-[#16A34A]">Updated</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-          {/* Quick actions / reschedule / confirmed popup */}
-          <AnimatePresence>
-            {panelView !== "hidden" && (
+          {/* Quick actions / reschedule / confirmed popup.
+              Anchored to the measured icon position and opened upward-left via
+              a transform on a plain wrapper div (see note above -- the inner
+              motion.div owns the scale/opacity entrance animation instead, so
+              the two transforms never fight). Always fully inside the frame. */}
+          <div className="absolute z-30" style={{ top:iconPos.top, left:iconPos.left, width:100, transform:"translate(-88%, calc(-100% - 8px))" }}>
+            <AnimatePresence>
+              {panelView !== "hidden" && (
               <motion.div
                 key="appt-panel"
-                className="absolute z-30 bg-white rounded-xl border border-[#E5E7EB] shadow-lg px-2.5 py-2"
-                style={{ top:"64%", left:"52%", width:130 }}
+                className="bg-white rounded-xl border border-[#E5E7EB] shadow-lg px-2 py-1.5"
                 initial={{ opacity:0, scale:0.85 }}
                 animate={{ opacity:1, scale:1 }}
                 exit={{ opacity:0, scale:0.9 }}
@@ -453,16 +497,16 @@ function SceneAppointments() {
               >
                 <AnimatePresence mode="wait">
                   {panelView === "menu" && (
-                    <motion.div key="view-menu" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-1">
-                      <p className="text-[9px] font-semibold text-[#9CA3AF] px-0.5">Quick actions</p>
-                      <button className="text-[10px] font-bold text-white rounded-lg px-2 py-1" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
-                      <button className="text-[10px] font-medium text-[#374151] rounded-lg px-2 py-1 border border-[#E5E7EB]">Message</button>
-                      <button className="text-[10px] font-medium text-[#DC2626] rounded-lg px-2 py-1 border border-[#FECACA]">Cancel</button>
+                    <motion.div key="view-menu" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-0.5">
+                      <p className="text-[8px] font-semibold text-[#9CA3AF] px-0.5 mb-0.5">Quick actions</p>
+                      <button ref={measureReschedule} className="text-[9px] font-bold text-white rounded-lg px-1.5 py-1 leading-none" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
+                      <button className="text-[9px] font-medium text-[#374151] rounded-lg px-1.5 py-1 leading-none border border-[#E5E7EB]">Message</button>
+                      <button className="text-[9px] font-medium text-[#DC2626] rounded-lg px-1.5 py-1 leading-none border border-[#FECACA]">Cancel</button>
                     </motion.div>
                   )}
                   {panelView === "reschedule" && (
-                    <motion.div key="view-reschedule" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-1.5">
-                      <p className="text-[9px] font-semibold text-[#9CA3AF] px-0.5">Cavity Filling</p>
+                    <motion.div key="view-reschedule" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-1">
+                      <p className="text-[8px] font-semibold text-[#9CA3AF] px-0.5 truncate">Cavity Filling</p>
                       <AnimatePresence mode="wait">
                         <motion.div
                           key={rescheduled ? "new" : "old"}
@@ -470,27 +514,28 @@ function SceneAppointments() {
                           animate={{ opacity:1, y:0 }}
                           exit={{ opacity:0, y:4 }}
                           transition={{ duration:0.35 }}
-                          className="rounded-lg px-2 py-1.5"
+                          className="rounded-lg px-1.5 py-1"
                           style={{ background: rescheduled ? "rgba(34,197,94,0.12)" : "rgba(156,163,175,0.12)" }}
                         >
-                          <p className="text-[11px] font-bold" style={{ color: rescheduled ? "#16A34A" : "#374151" }}>{rescheduled ? "3:00 PM" : "12:00"}</p>
-                          <p className="text-[9px] text-[#9CA3AF]">{rescheduled ? "Jul 22" : "Jul 21"}</p>
+                          <p className="text-[10px] font-bold leading-tight" style={{ color: rescheduled ? "#16A34A" : "#374151" }}>{rescheduled ? "3:00 PM" : "12:00"}</p>
+                          <p className="text-[8px] text-[#9CA3AF] leading-tight">{rescheduled ? "Jul 22" : "Jul 21"}</p>
                         </motion.div>
                       </AnimatePresence>
                     </motion.div>
                   )}
                   {panelView === "confirmed" && (
-                    <motion.div key="view-confirmed" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex items-center gap-1.5 py-1">
-                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <motion.div key="view-confirmed" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex items-center gap-1 py-0.5">
+                      <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      <p className="text-[10px] font-bold text-[#16A34A]">Appointment updated</p>
+                      <p className="text-[9px] font-bold text-[#16A34A] leading-tight">Appointment updated</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
     </div>
