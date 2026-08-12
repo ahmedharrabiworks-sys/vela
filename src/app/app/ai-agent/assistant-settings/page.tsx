@@ -35,12 +35,12 @@ export default function AssistantSettingsPage() {
   const [saveError, setSaveError]     = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const bg          = isDark ? "#0B0D14" : "#F8F9FF";
-  const cardBg      = isDark ? "#111420" : "#FFFFFF";
-  const border      = isDark ? "#1E2235" : "#E5E7EB";
-  const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const inputBg     = isDark ? "#0B0D14" : "#F9FAFB";
+  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const inputBg     = isDark ? "var(--dm-bg)" : "#F9FAFB";
 
   useEffect(() => {
     async function load() {
@@ -179,7 +179,7 @@ export default function AssistantSettingsPage() {
                         <div
                           className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                           style={{
-                            background: active ? "linear-gradient(135deg,#FF6B35,#FF3366)" : (isDark ? "#1A1D2A" : "#F3F4F6"),
+                            background: active ? "linear-gradient(135deg,#FF6B35,#FF3366)" : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
                             color: active ? "white" : textMuted,
                           }}
                         >
@@ -193,7 +193,7 @@ export default function AssistantSettingsPage() {
                           onClick={(e) => { e.stopPropagation(); void playPreview(v.id); }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0"
                           style={{
-                            background: (isPlaying || isGenerating) ? (isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0") : (isDark ? "#1A1D2A" : "#F3F4F6"),
+                            background: (isPlaying || isGenerating) ? (isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0") : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
                             color:      (isPlaying || isGenerating) ? "#FF6B35" : textMuted,
                             border:     `1px solid ${(isPlaying || isGenerating) ? "#FF6B35" : border}`,
                           }}
@@ -254,7 +254,7 @@ export default function AssistantSettingsPage() {
                 type="range" min={0.7} max={1.2} step={0.05} value={speed}
                 onChange={(e) => setSpeed(parseFloat(e.target.value))}
                 className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                style={{ background: `linear-gradient(to right, #FF6B35 ${speedPct}%, ${isDark ? "#2A2D3A" : "#E5E7EB"} ${speedPct}%)` }}
+                style={{ background: `linear-gradient(to right, #FF6B35 ${speedPct}%, ${isDark ? "var(--dm-border)" : "#E5E7EB"} ${speedPct}%)` }}
               />
               <div className="flex justify-between mt-1.5">
                 <span className="text-[9px]" style={{ color: textMuted }}>0.7× Slower</span>
@@ -266,7 +266,7 @@ export default function AssistantSettingsPage() {
                 onClick={() => void playPreview(selectedVoice)}
                 className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all"
                 style={{
-                  background: isDark ? "#1A1D2A" : "#F3F4F6",
+                  background: isDark ? "var(--dm-card2)" : "#F3F4F6",
                   border: `1px solid ${generating === selectedVoice || playing === selectedVoice ? "#FF6B35" : border}`,
                   color: generating === selectedVoice || playing === selectedVoice ? "#FF6B35" : textMuted,
                 }}

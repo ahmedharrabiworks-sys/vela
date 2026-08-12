@@ -28,10 +28,10 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
 
-  const border      = isDark ? "#1E2235" : "#E5E7EB";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
-  const cardBg      = isDark ? "#111420" : "#FFFFFF";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
 
   const isAssistantSection = pathname === "/app/ai-agent" || ASSISTANT_HREFS.includes(pathname);
   const isPhoneSection     = PHONE_HREFS.includes(pathname);
@@ -96,7 +96,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
               style={{
                 background: isAssistantSection
                   ? "linear-gradient(135deg,#FF6B35,#FF3366)"
-                  : (isDark ? "#1A1D2A" : "#F3F4F6"),
+                  : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
               }}
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -130,7 +130,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
               style={{
                 background: isPhoneSection
                   ? "linear-gradient(135deg,#FF6B35,#FF3366)"
-                  : (isDark ? "#1A1D2A" : "#F3F4F6"),
+                  : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
               }}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -163,7 +163,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
                 {tab.badge && (
                   <span
                     className="text-[8px] font-bold px-1.5 py-0.5 rounded"
-                    style={{ background: isDark ? "rgba(100,116,139,0.2)" : "#F3F4F6", color: textMuted }}
+                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textMuted }}
                   >
                     {tab.badge}
                   </span>

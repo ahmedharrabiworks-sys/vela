@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import DashboardPageUI from "@/components/dashboard/pages/DashboardPageUI";
+import { ResumeLastAppRoute } from "@/lib/last-route";
 
 type Conv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 type Appt = { id: string; time: string; name: string; service: string; status: string };
@@ -192,18 +193,21 @@ export default function DashboardPage() {
   };
 
   return (
-    <DashboardPageUI
-      loading={loading}
-      firstName={firstName}
-      bName={bName}
-      kpis={kpis}
-      convs={convs}
-      appts={appts}
-      showBanner={showBanner}
-      onDismissBanner={dismissBanner}
-      showKbBanner={showKbBanner}
-      kbScore={kbScore}
-      onDismissKbBanner={dismissKbBanner}
-    />
+    <>
+      <ResumeLastAppRoute />
+      <DashboardPageUI
+        loading={loading}
+        firstName={firstName}
+        bName={bName}
+        kpis={kpis}
+        convs={convs}
+        appts={appts}
+        showBanner={showBanner}
+        onDismissBanner={dismissBanner}
+        showKbBanner={showKbBanner}
+        kbScore={kbScore}
+        onDismissKbBanner={dismissKbBanner}
+      />
+    </>
   );
 }

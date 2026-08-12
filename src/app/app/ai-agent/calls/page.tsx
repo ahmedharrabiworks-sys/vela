@@ -48,7 +48,7 @@ function LangFlag({ lang }: { lang?: string }) {
 }
 
 function OutcomeBadge({ outcome, isDark }: { outcome?: string; isDark: boolean }) {
-  if (!outcome || outcome === "—") return <span className="text-xs" style={{ color: isDark ? "#64748B" : "#9CA3AF" }}>—</span>;
+  if (!outcome || outcome === "—") return <span className="text-xs" style={{ color: isDark ? "var(--dm-muted)" : "#9CA3AF" }}>—</span>;
   const isBooked = /book|appointment|schedule/i.test(outcome);
   const isComp   = outcome === "completed";
   return (
@@ -59,8 +59,8 @@ function OutcomeBadge({ outcome, isDark }: { outcome?: string; isDark: boolean }
           ? "rgba(34,197,94,0.12)"
           : isComp
           ? (isDark ? "rgba(255,107,53,0.1)" : "#FFF5F0")
-          : (isDark ? "#1E2130" : "#F3F4F6"),
-        color: isBooked ? "#22C55E" : isComp ? "#FF6B35" : (isDark ? "#64748B" : "#9CA3AF"),
+          : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
+        color: isBooked ? "#22C55E" : isComp ? "#FF6B35" : (isDark ? "var(--dm-muted)" : "#9CA3AF"),
       }}
     >
       {isBooked ? "Booked" : isComp ? "Complete" : outcome}
@@ -77,14 +77,14 @@ export default function CallsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  const headerBg    = isDark ? "#0D1017" : "#F8F9FB";
-  const cardBg      = isDark ? "#13161F" : "#FFFFFF";
+  const headerBg    = isDark ? "var(--dm-bg)" : "#F8F9FB";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
   const rowHover    = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)";
-  const rowExpanded = isDark ? "#0F1117" : "#F9FAFB";
-  const border      = isDark ? "#1E2130" : "#E5E7EB";
-  const textPrimary = isDark ? "#F1F5F9" : "#111111";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const textSub     = isDark ? "#94A3B8" : "#6B7280";
+  const rowExpanded = isDark ? "var(--dm-card2)" : "#F9FAFB";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textPrimary = isDark ? "var(--dm-text)" : "#111111";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const textSub     = isDark ? "var(--dm-text2)" : "#6B7280";
 
   const load = useCallback(async () => {
     try {
@@ -139,7 +139,7 @@ export default function CallsPage() {
         <button
           onClick={() => { setLoading(true); load(); }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-          style={{ background: isDark ? "#1E2130" : "#F3F4F6", color: textMuted, border: `1px solid ${border}` }}
+          style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textMuted, border: `1px solid ${border}` }}
         >
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
             <path d="M9.5 2A5 5 0 109 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -153,7 +153,7 @@ export default function CallsPage() {
       {error && error.includes("migration") && (
         <div className="rounded-2xl border p-5" style={{ background: isDark ? "rgba(255,107,53,0.05)" : "#FFF5F0", borderColor: "rgba(255,107,53,0.3)" }}>
           <p className="text-sm font-semibold mb-2" style={{ color: "#FF6B35" }}>{t("aiAgent.calls.dbRequired")}</p>
-          <pre className="text-[10px] p-3 rounded-lg overflow-x-auto" style={{ background: isDark ? "#0F1117" : "#F3F4F6", color: textSub }}>
+          <pre className="text-[10px] p-3 rounded-lg overflow-x-auto" style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}>
 {`CREATE TABLE IF NOT EXISTS agent_calls (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id        UUID NOT NULL,
@@ -192,7 +192,7 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
             <a href="/app/ai-agent/training" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
               {t("aiAgent.calls.startTraining")}
             </a>
-            <a href="/app/ai-agent/phone" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium" style={{ background: isDark ? "#1E2130" : "#F3F4F6", color: textSub }}>
+            <a href="/app/ai-agent/phone" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium" style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}>
               {t("aiAgent.calls.setupPhone")}
             </a>
           </div>
@@ -350,7 +350,7 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
                                           style={{
                                             background: line.role === "assistant"
                                               ? "linear-gradient(135deg,#FF3366,#FF6B35)"
-                                              : (isDark ? "#2A2D3A" : "#F3F4F6"),
+                                              : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
                                             color: line.role === "assistant" ? "white" : textMuted,
                                           }}
                                         >
@@ -361,7 +361,7 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
                                           style={{
                                             background: line.role === "assistant"
                                               ? (isDark ? "rgba(255,51,102,0.07)" : "#FFF0F5")
-                                              : (isDark ? "#1E2130" : "#F3F4F6"),
+                                              : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
                                             color: textSub,
                                           }}
                                         >

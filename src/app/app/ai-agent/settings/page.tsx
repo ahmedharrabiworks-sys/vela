@@ -53,13 +53,13 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
 
-  const bg          = isDark ? "#0B0D14" : "#F8F9FF";
-  const cardBg      = isDark ? "#111420" : "#FFFFFF";
-  const border      = isDark ? "#1E2235" : "#E5E7EB";
-  const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const inputBg     = isDark ? "#0B0D14" : "#F9FAFB";
-  const inputText   = isDark ? "#CBD5E1" : "#374151";
+  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const inputBg     = isDark ? "var(--dm-bg)" : "#F9FAFB";
+  const inputText   = isDark ? "var(--dm-text)" : "#374151";
 
   useEffect(() => {
     async function load() {
@@ -195,7 +195,7 @@ export default function SettingsPage() {
                 value={speed}
                 onChange={(e) => set("speed", parseFloat(e.target.value))}
                 className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                style={{ background: `linear-gradient(to right, #FF6B35 ${speedPct}%, ${isDark ? "#2A2D3A" : "#E5E7EB"} ${speedPct}%)` }}
+                style={{ background: `linear-gradient(to right, #FF6B35 ${speedPct}%, ${isDark ? "var(--dm-border)" : "#E5E7EB"} ${speedPct}%)` }}
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[9px]" style={{ color: textMuted }}>0.7× Slower</span>

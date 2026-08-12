@@ -56,7 +56,8 @@ const WAVE_D = (() => {
 
 /* ── Knowledge field definitions ── */
 function KbIcon({ field, filled, current }: { field: string; filled: boolean; current: boolean }) {
-  const color = filled ? "white" : current ? "#FF6B35" : "#64748B";
+  const { isDark } = useAgentTheme();
+  const color = filled ? "white" : current ? "#FF6B35" : (isDark ? "var(--dm-faint)" : "#64748B");
   const icons: Record<string, JSX.Element> = {
     businessType: (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -139,12 +140,12 @@ export default function TrainingPage() {
   const scaleRef     = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
-  const bg          = isDark ? "#0B0D14" : "#F8F9FF";
-  const cardBg      = isDark ? "#111420" : "#FFFFFF";
-  const border      = isDark ? "#1E2235" : "#E5E7EB";
-  const textPrimary = isDark ? "#F1F5F9" : "#111111";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const textSub     = isDark ? "#94A3B8" : "#6B7280";
+  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textPrimary = isDark ? "var(--dm-text)" : "#111111";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const textSub     = isDark ? "var(--dm-text2)" : "#6B7280";
 
   useEffect(() => {
     // Voice/speed come from the phone agent settings (owner hears what callers hear).
@@ -364,7 +365,7 @@ export default function TrainingPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{
-              background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : status==="ended" ? "#6B7280" : isDark?"#1E2235":"#E5E7EB",
+              background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : status==="ended" ? "#6B7280" : isDark?"var(--dm-border)":"#E5E7EB",
               boxShadow: isActive ? "0 0 8px #22C55E" : "none",
             }}/>
             <span className="text-xs font-medium" style={{ color: textMuted }}>
@@ -447,7 +448,7 @@ export default function TrainingPage() {
                     <div className="flex items-center justify-center gap-5">
                       <button onClick={toggleMute}
                         className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95"
-                        style={{ background: muted?(isDark?"rgba(255,107,53,0.15)":"#FFF5F0"):(isDark?"#1E2235":"#F3F4F6"), border:`1.5px solid ${muted?"#FF6B35":border}` }}
+                        style={{ background: muted?(isDark?"rgba(255,107,53,0.15)":"#FFF5F0"):(isDark?"var(--dm-card2)":"#F3F4F6"), border:`1.5px solid ${muted?"#FF6B35":border}` }}
                         title={muted ? "Unmute" : "Mute"}
                       >
                         {muted ? (
@@ -479,7 +480,7 @@ export default function TrainingPage() {
                   {status === "ended" && !extracting && (
                     <button onClick={reset}
                       className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium transition-all"
-                      style={{ background: isDark?"#1E2235":"#F3F4F6", color: textSub }}>
+                      style={{ background: isDark?"var(--dm-card2)":"#F3F4F6", color: textSub }}>
                       {t("aiAgent.training.newInterview")}
                     </button>
                   )}
@@ -518,11 +519,11 @@ export default function TrainingPage() {
                   transcript.slice(-20).map((line, i) => (
                     <div key={i} className={`flex gap-2 ${line.role === "user" ? "flex-row-reverse" : ""}`}>
                       <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[7px] font-bold"
-                        style={{ background: line.role==="assistant"?"linear-gradient(135deg,#FF3366,#FF6B35)":isDark?"#2A2D3A":"#F3F4F6", color: line.role==="assistant"?"white":textMuted }}>
+                        style={{ background: line.role==="assistant"?"linear-gradient(135deg,#FF3366,#FF6B35)":isDark?"var(--dm-card2)":"#F3F4F6", color: line.role==="assistant"?"white":textMuted }}>
                         {line.role === "assistant" ? "V" : "Y"}
                       </div>
                       <div className="max-w-[88%] rounded-xl px-2.5 py-1.5 text-[10px] leading-relaxed"
-                        style={{ background: line.role==="assistant"?(isDark?"rgba(255,51,102,0.08)":"#FFF0F5"):(isDark?"#1E2235":"#F3F4F6"), color: textSub }}>
+                        style={{ background: line.role==="assistant"?(isDark?"rgba(255,51,102,0.08)":"#FFF0F5"):(isDark?"var(--dm-card2)":"#F3F4F6"), color: textSub }}>
                         {line.text}
                       </div>
                     </div>
@@ -541,7 +542,7 @@ export default function TrainingPage() {
                     placeholder={isActive ? "Type your answer…" : "Start the session to type…"}
                     disabled={!isActive}
                     className="flex-1 rounded-lg px-3 py-2 text-xs outline-none disabled:opacity-40"
-                    style={{ background: isDark ? "#0B0D14" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
+                    style={{ background: isDark ? "var(--dm-bg)" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
                   />
                   <button
                     onClick={sendTypedAnswer}
@@ -574,7 +575,7 @@ export default function TrainingPage() {
                         : t("aiAgent.training.knowledgeSub")}
                     </p>
                     {/* Progress bar */}
-                    <div className="h-1 rounded-full mt-3" style={{ background: isDark?"#1E2235":"#F1F5F9" }}>
+                    <div className="h-1 rounded-full mt-3" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}>
                       <div
                         className="h-1 rounded-full transition-all duration-700"
                         style={{ width:`${progressPct}%`, background:"linear-gradient(to right,#FF6B35,#FF3366)" }}
@@ -613,7 +614,7 @@ export default function TrainingPage() {
                         className="flex items-start gap-3 p-3 rounded-xl border"
                         style={{ background: isDark?"rgba(255,255,255,0.02)":"#F9FAFB", borderColor: border }}
                       >
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: isDark?"#1E2235":"#F3F4F6" }}>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: isDark?"var(--dm-card2)":"#F3F4F6" }}>
                           <KbIcon field={f.key} filled={false} current={false}/>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -660,7 +661,7 @@ export default function TrainingPage() {
                                   ? "linear-gradient(135deg,#FF6B35,#FF3366)"
                                   : isCurrent
                                   ? "rgba(255,107,53,0.15)"
-                                  : isDark?"#1E2235":"#F3F4F6",
+                                  : isDark?"var(--dm-card2)":"#F3F4F6",
                               }}
                             >
                               {answered ? (

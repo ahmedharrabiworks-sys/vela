@@ -19,13 +19,13 @@ export default function PhonePage() {
   const [error, setError]               = useState<string | null>(null);
   const [copied, setCopied]             = useState(false);
 
-  const bg          = isDark ? "#0B0D14" : "#F8F9FF";
-  const cardBg      = isDark ? "#111420" : "#FFFFFF";
-  const border      = isDark ? "#1E2235" : "#E5E7EB";
-  const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const textSub     = isDark ? "#94A3B8" : "#475569";
-  const inputBg     = isDark ? "#0B0D14" : "#F9FAFB";
+  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const textSub     = isDark ? "var(--dm-text2)" : "#475569";
+  const inputBg     = isDark ? "var(--dm-bg)" : "#F9FAFB";
 
   useEffect(() => {
     async function load() {
@@ -97,7 +97,7 @@ export default function PhonePage() {
               <div
                 className="rounded-2xl border p-5 h-full"
                 style={{
-                  background:  isDark ? "linear-gradient(135deg,#111420,#161928)" : "linear-gradient(135deg,#FFFAF8,#FFF5F0)",
+                  background:  isDark ? "linear-gradient(135deg, var(--dm-card), var(--dm-card2))" : "linear-gradient(135deg,#FFFAF8,#FFF5F0)",
                   borderColor: "rgba(255,107,53,0.3)",
                   boxShadow:   isDark ? "0 0 24px rgba(255,107,53,0.08)" : "0 0 16px rgba(255,107,53,0.06)",
                 }}
