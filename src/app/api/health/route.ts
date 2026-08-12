@@ -66,6 +66,7 @@ export async function GET() {
   const elevenLabsKeyPrefix = elevenLabsKey ? elevenLabsKey.slice(0, 4) : null;
   let elevenLabsReachable = false;
   let elevenLabsError: string | undefined;
+  let elevenLabsErrorDetail: string | undefined;
 
   if (elevenLabsKeyPresent) {
     try {
@@ -76,6 +77,9 @@ export async function GET() {
       elevenLabsReachable = res.ok;
       if (!res.ok) {
         elevenLabsError = res.status === 401 ? "invalid_api_key" : `http_${res.status}`;
+        // ElevenLabs' own error message about the request, not our secret -- safe to
+        // surface, truncated defensively in case it ever echoes back request headers.
+        elevenLabsErrorDetail = (await res.text().catch(() => "")).slice(0, 300);
       }
     } catch {
       elevenLabsError = "network_error";
@@ -94,6 +98,7 @@ export async function GET() {
     elevenLabsKeyPrefix,
     elevenLabsReachable,
     ...(elevenLabsError ? { elevenLabsError } : {}),
+    ...(elevenLabsErrorDetail ? { elevenLabsErrorDetail } : {}),
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "not set",
   });
 }
