@@ -15,6 +15,17 @@ function buildTrackScript(websiteId: string): string {
   return `<script>(function(){if(window.self!==window.top)return;try{fetch('/api/site/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({websiteId:${wid},path:window.location.pathname,referrer:document.referrer}),keepalive:true});}catch(e){}})();</script>`;
 }
 
+function buildWidgetScript(tenantId: string): string {
+  // The same embeddable chat widget a business can paste into an external
+  // site (see /api/embed/[tenantId] + /widget/[tenantId]) -- auto-injected
+  // here so a published Vela-built site has the AI assistant live with zero
+  // manual setup. Skips inside an iframe (e.g. builder preview) the same
+  // way the tracking script does, so the bubble never appears in the editor.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") || "https://app.vela.ai";
+  const src = `${appUrl}/api/embed/${encodeURIComponent(tenantId)}`;
+  return `<script>if(window.self===window.top){var s=document.createElement('script');s.src=${JSON.stringify(src)};s.async=true;document.body.appendChild(s);}</script>`;
+}
+
 function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClient, websiteIdForTracking?: string) {
   // Increment visit counter fire-and-forget (best-effort read-modify-write)
   if (tenantIdForCount && admin) {
@@ -33,13 +44,16 @@ function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClie
     })();
   }
 
-  // Inject client-side analytics tracking script before </body>
+  // Inject client-side analytics tracking script + the AI chat widget before </body>
   let finalHtml = html;
-  if (websiteIdForTracking) {
-    const script = buildTrackScript(websiteIdForTracking);
+  const injections = [
+    websiteIdForTracking ? buildTrackScript(websiteIdForTracking) : "",
+    tenantIdForCount ? buildWidgetScript(tenantIdForCount) : "",
+  ].join("");
+  if (injections) {
     finalHtml = html.includes("</body>")
-      ? html.replace("</body>", script + "</body>")
-      : html + script;
+      ? html.replace("</body>", injections + "</body>")
+      : html + injections;
   }
 
   return new NextResponse(finalHtml, {

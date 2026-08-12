@@ -387,12 +387,21 @@ type ChannelStatus = {
   whatsapp:  { connected: boolean; phone: string; displayName?: string };
 };
 
+type WebsiteState = {
+  published: boolean;
+  siteUrl: string | null;
+  visits: number;
+  conversations: number;
+};
+
 function ChannelsPageContent() {
   const { t }                 = useI18n();
   const { isStarter, config } = usePlan();
   const searchParams          = useSearchParams();
 
   const [channels, setChannels]     = useState<ChannelStatus>({ instagram: { connected: false, username: "" }, whatsapp: { connected: false, phone: "" } });
+  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0 });
+  const [showEmbed, setShowEmbed]   = useState(false);
   const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
   const [copied, setCopied]         = useState(false);
@@ -422,7 +431,7 @@ function ChannelsPageContent() {
 
       const { data: cfg } = await s
         .from("tenant_config")
-        .select("instagram_connected, instagram_username, whatsapp_connected, whatsapp_phone")
+        .select("instagram_connected, instagram_username, whatsapp_connected, whatsapp_phone, website_visit_count")
         .eq("tenant_id", tenant.id)
         .maybeSingle();
 
@@ -431,6 +440,35 @@ function ChannelsPageContent() {
           instagram: { connected: !!cfg.instagram_connected, username: cfg.instagram_username ?? "" },
           whatsapp:  { connected: !!cfg.whatsapp_connected,  phone: cfg.whatsapp_phone ?? "" },
         });
+      }
+
+      // Website channel: tied to Website Builder, not a manual connect flow.
+      // "Connected" only when a real site has actually been published.
+      const { data: siteRow } = await s
+        .from("websites")
+        .select("slug, id")
+        .eq("tenant_id", tenant.id)
+        .eq("is_published", true)
+        .order("published_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (siteRow) {
+        const slug = (siteRow.slug as string | null) || (tenant.id as string);
+        const { count: websiteConvCount } = await s
+          .from("conversations")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenant.id)
+          .eq("channel", "website");
+
+        setWebsite({
+          published: true,
+          siteUrl: `${appUrl}/site/${slug}`,
+          visits: (cfg?.website_visit_count as number) ?? 0,
+          conversations: websiteConvCount ?? 0,
+        });
+      } else {
+        setWebsite({ published: false, siteUrl: null, visits: 0, conversations: 0 });
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -656,77 +694,134 @@ function ChannelsPageContent() {
           );
         })}
 
-        {/* Website Chat Widget */}
+        {/* Website channel — tied to Website Builder, fully optional */}
         <div className="p-4 rounded-xl bg-white border border-[#E5E7EB]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="10" r="7.5" stroke="#3B82F6" strokeWidth="1.5"/>
-                  <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#3B82F6" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="7.5" stroke="#ed5426" strokeWidth="1.5"/>
+                <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#ed5426" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-[#111111]">{t("channels.website.name")}</p>
+                <span className={`flex items-center gap-1 text-[10px] font-semibold ${website.published ? "text-green-600" : "text-[#9CA3AF]"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${website.published ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
+                  {website.published ? t("channels.connected") : t("channels.notConnected")}
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#111111]">{t("channels.website.name")}</p>
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    {t("channels.readyToEmbed")}
-                  </span>
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                {website.published
+                  ? "Your AI assistant is live on your published Vela website — no setup needed."
+                  : "Optional. Build a website with Vela and your AI assistant is added automatically — Vela works fully without one too."}
+              </p>
+            </div>
+          </div>
+
+          {website.published ? (
+            <div className="mt-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
+                  <p className="text-lg font-bold text-[#111111]">{website.visits.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#6B7280]">Website visits</p>
                 </div>
-                <p className="text-xs text-[#6B7280] mt-0.5">Paste one line of code — a chat bubble appears on your site instantly</p>
+                <div className="p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
+                  <p className="text-lg font-bold text-[#111111]">{website.conversations.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#6B7280]">Chat conversations</p>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 mb-4">
-            {[
-              { n: 1, text: "Copy the embed code below" },
-              { n: 2, text: "Paste it before the </body> tag on your website" },
-              { n: 3, text: "The chat bubble appears in the bottom-right corner" },
-            ].map((s) => (
-              <div key={s.n} className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-[11px] font-bold flex items-center justify-center shrink-0">{s.n}</span>
-                <p className="text-xs text-[#374151]">{s.text}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="relative mb-4">
-            <div className="bg-[#111111] rounded-xl p-4 font-mono text-xs text-[#FF6B35] overflow-x-auto leading-relaxed pr-24">
-              {embedCode}
-            </div>
-            <button
-              onClick={copyEmbed}
-              className="absolute top-2.5 right-2.5 flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all"
-              style={{
-                background: copied ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.08)",
-                color: copied ? "#16A34A" : "rgba(255,255,255,0.6)",
-              }}
-            >
-              {copied ? (
-                <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>{t("common.copied")}</>
-              ) : (
-                <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="3.5" y="3.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.1"/><path d="M3.5 3.5V2.5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H6.5" stroke="currentColor" strokeWidth="1.1"/></svg>{t("common.copy")} Code</>
+              {website.siteUrl && (
+                <a
+                  href={website.siteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors"
+                >
+                  View your site
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 8l5-5M3.5 3h4.5v4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </a>
               )}
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <Link
+                href="/app/website"
+                className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+              >
+                Build a website →
+              </Link>
+            </div>
+          )}
 
-          {/* Preview */}
-          <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4">
-            <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3">Chat Bubble Preview</p>
-            <div className="relative h-16">
-              <div className="absolute bottom-0 right-0 flex items-end gap-2">
-                <div className="bg-white border border-[#E5E7EB] rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
-                  <p className="text-xs text-[#374151] font-medium whitespace-nowrap">Hi! How can I help?</p>
+          {/* Connect an existing external website — separate, optional, collapsed by default */}
+          <div className="mt-4 pt-4 border-t border-[#F3F4F6]">
+            <button
+              onClick={() => setShowEmbed((v) => !v)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <div>
+                <p className="text-xs font-semibold text-[#111111]">Have your own website?</p>
+                <p className="text-[11px] text-[#6B7280] mt-0.5">Paste one line of code to add the same AI assistant to any existing site.</p>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`shrink-0 ml-3 transition-transform ${showEmbed ? "rotate-180" : ""}`}>
+                <path d="M2.5 4.5l3.5 3.5 3.5-3.5" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {showEmbed && (
+              <div className="mt-4">
+                <div className="space-y-3 mb-4">
+                  {[
+                    { n: 1, text: "Copy the embed code below" },
+                    { n: 2, text: "Paste it before the </body> tag on your website" },
+                    { n: 3, text: "The chat bubble appears in the bottom-right corner" },
+                  ].map((s) => (
+                    <div key={s.n} className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-[11px] font-bold flex items-center justify-center shrink-0">{s.n}</span>
+                      <p className="text-xs text-[#374151]">{s.text}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-lg" style={{ background: "var(--vela-gradient)" }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+
+                <div className="relative mb-4">
+                  <div className="bg-[#111111] rounded-xl p-4 font-mono text-xs text-[#FF6B35] overflow-x-auto leading-relaxed pr-24">
+                    {embedCode}
+                  </div>
+                  <button
+                    onClick={copyEmbed}
+                    className="absolute top-2.5 right-2.5 flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all"
+                    style={{
+                      background: copied ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.08)",
+                      color: copied ? "#16A34A" : "rgba(255,255,255,0.6)",
+                    }}
+                  >
+                    {copied ? (
+                      <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>{t("common.copied")}</>
+                    ) : (
+                      <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="3.5" y="3.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.1"/><path d="M3.5 3.5V2.5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H6.5" stroke="currentColor" strokeWidth="1.1"/></svg>{t("common.copy")} Code</>
+                    )}
+                  </button>
+                </div>
+
+                {/* Preview */}
+                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4">
+                  <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3">Chat Bubble Preview</p>
+                  <div className="relative h-16">
+                    <div className="absolute bottom-0 right-0 flex items-end gap-2">
+                      <div className="bg-white border border-[#E5E7EB] rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
+                        <p className="text-xs text-[#374151] font-medium whitespace-nowrap">Hi! How can I help?</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-lg" style={{ background: "var(--vela-gradient)" }}>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

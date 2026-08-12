@@ -114,7 +114,6 @@
     "subtitle": "Connect your messaging channels. Vela AI will reply automatically on each.",
     "connected": "Connected",
     "notConnected": "Not connected",
-    "readyToEmbed": "Ready to embed",
     "upgradeTitle": "Upgrade to Pro for more channels",
     "upgradeDesc": "Starter plan includes 1 channel. Upgrade to connect all 3.",
     "instagram": {
@@ -126,7 +125,7 @@
       "desc": "AI replies to WhatsApp Business messages automatically"
     },
     "website": {
-      "name": "Website Chat Widget",
+      "name": "Website",
       "desc": "Add an AI chat bubble to any website"
     }
   },
