@@ -18,11 +18,14 @@ const ThemeContext = createContext<ThemeContextType>({
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
   const pathname = usePathname();
-  const isDashboard = (pathname?.startsWith("/app") || pathname?.startsWith("/demo")) ?? false;
+  // Only the exact root homepage (hero + marketing sections) is hardcoded
+  // to always render light, regardless of the stored preference. Every
+  // other route (dashboard, pricing, privacy, terms, etc.) respects it.
+  const isHomepage = (pathname ?? "/") === "/";
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark" && isDashboard);
-  }, [theme, isDashboard]);
+    document.documentElement.classList.toggle("dark", theme === "dark" && !isHomepage);
+  }, [theme, isHomepage]);
 
   useEffect(() => {
     const saved = localStorage.getItem("vela_theme") as Theme | null;

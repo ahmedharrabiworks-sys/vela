@@ -44,8 +44,8 @@ function CircleRing({ value, size = 64, isDark }: { value: number; size?: number
   const r    = size / 2 - 7;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - value / 100);
-  const light = isDark ? "#1E2235" : "#F1F5F9";
-  const txt   = isDark ? "#F1F5F9" : "#0F172A";
+  const light = isDark ? "var(--dm-card2)" : "#F1F5F9";
+  const txt   = isDark ? "var(--dm-text)" : "#0F172A";
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <defs>
@@ -78,9 +78,9 @@ function BarChart({ data, isDark }: { data: number[]; isDark: boolean }) {
   const hasData = data.some(v => v > 0);
   const W = 320; const H = 90; const barW = 28;
   const gap = (W - 7 * barW) / 8;
-  const gridColor = isDark ? "#1A1D2B" : "#F1F5F9";
-  const axisColor = isDark ? "#2A2D3A" : "#E5E7EB";
-  const labelColor = isDark ? "#4A5568" : "#9CA3AF";
+  const gridColor = isDark ? "var(--dm-border2)" : "#F1F5F9";
+  const axisColor = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const labelColor = isDark ? "var(--dm-faint)" : "#9CA3AF";
   return (
     <div className="relative">
       <svg viewBox={`0 0 ${W} ${H + 28}`} className="w-full overflow-visible">
@@ -99,7 +99,7 @@ function BarChart({ data, isDark }: { data: number[]; isDark: boolean }) {
           const x = gap + i*(barW+gap);
           return (
             <g key={i}>
-              <rect x={x} y={H-2} width={barW} height={2} rx="1" fill={isDark?"#1E2235":"#E9EBF0"}/>
+              <rect x={x} y={H-2} width={barW} height={2} rx="1" fill={isDark?"var(--dm-card2)":"#E9EBF0"}/>
               {val > 0 && <rect x={x} y={H-barH} width={barW} height={barH} rx="4" fill="url(#bar-ov)"/>}
               <text x={x+barW/2} y={H+18} textAnchor="middle" fontSize="9" fill={labelColor}>{labels[i]}</text>
             </g>
@@ -108,7 +108,7 @@ function BarChart({ data, isDark }: { data: number[]; isDark: boolean }) {
       </svg>
       {!hasData && (
         <div className="absolute inset-0 flex items-center justify-center pb-4 pointer-events-none">
-          <p className="text-xs" style={{ color: isDark?"#4A5568":"#9CA3AF" }}>No calls yet — activity will appear here</p>
+          <p className="text-xs" style={{ color: isDark?"var(--dm-faint)":"#9CA3AF" }}>No calls yet — activity will appear here</p>
         </div>
       )}
     </div>
@@ -172,12 +172,12 @@ export default function OverviewPage() {
   const BAR_BASES = [0.4, 0.7, 1.0, 0.7, 0.4];
 
   /* Theme */
-  const bg          = isDark ? "#0B0D14" : "#F8F9FF";
-  const cardBg      = isDark ? "#111420" : "#FFFFFF";
-  const border      = isDark ? "#1E2235" : "#E5E7EB";
-  const textPrimary = isDark ? "#F1F5F9" : "#0F172A";
-  const textMuted   = isDark ? "#64748B" : "#9CA3AF";
-  const textSub     = isDark ? "#94A3B8" : "#475569";
+  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
+  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
+  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  const textSub     = isDark ? "var(--dm-text2)" : "#475569";
   const accentBg    = isDark ? "rgba(255,107,53,0.07)" : "rgba(255,107,53,0.05)";
   const accentBorder = isDark ? "rgba(255,107,53,0.2)" : "rgba(255,107,53,0.15)";
 
@@ -438,7 +438,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>{t("aiAgent.overview.answerRate")}</p>
             <div className="flex items-center gap-3">
               {loadingCalls
-                ? <div className="w-[60px] h-[60px] rounded-full border-4 animate-pulse" style={{ borderColor: isDark?"#1E2235":"#F1F5F9" }}/>
+                ? <div className="w-[60px] h-[60px] rounded-full border-4 animate-pulse" style={{ borderColor: isDark?"var(--dm-border)":"#F1F5F9" }}/>
                 : <CircleRing value={totalCalls > 0 ? 100 : 0} size={60} isDark={isDark}/>
               }
               <div>
@@ -463,7 +463,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
               </div>
             </div>
             {loadingCalls
-              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"#1E2235":"#F1F5F9" }}/>
+              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{totalCalls}</p>
             }
             <p className="text-[10px]" style={{ color: textMuted }}>Training + live calls</p>
@@ -481,7 +481,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
               </div>
             </div>
             {loadingCalls
-              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"#1E2235":"#F1F5F9" }}/>
+              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{fmtDuration(avgSecs)}</p>
             }
             <p className="text-[10px]" style={{ color: textMuted }}>Per call average</p>
@@ -499,7 +499,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
               </div>
             </div>
             {loadingCalls
-              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"#1E2235":"#F1F5F9" }}/>
+              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{voiceMins > 0 ? `${voiceMins}` : "0"}</p>
             }
             <p className="text-[10px]" style={{ color: textMuted }}>Total minutes used</p>
@@ -520,7 +520,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                   <p className="text-[10px] mt-0.5" style={{ color: textMuted }}>{t("aiAgent.overview.callActivitySub")}</p>
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg"
-                  style={{ background: isDark?"#1A1D2B":"#F9FAFB", color: textMuted }}>
+                  style={{ background: isDark?"var(--dm-card2)":"#F9FAFB", color: textMuted }}>
                   <span className="w-2 h-2 rounded-sm" style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}/>
                   Calls
                 </div>
@@ -608,7 +608,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                     <p className="text-xs font-semibold" style={{ color: textPrimary }}>Phone Number</p>
                     <p className="text-[10px]" style={{ color: textMuted }}>AI answers your calls 24/7</p>
                   </div>
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: isDark?"#1E2235":"#F3F4F6", color: textMuted }}>Soon</span>
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: isDark?"var(--dm-card2)":"#F3F4F6", color: textMuted }}>Soon</span>
                 </div>
               </div>
             </div>
@@ -617,7 +617,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
             <div
               className="rounded-2xl border overflow-hidden"
               style={{
-                background: isDark ? "linear-gradient(135deg,#111420,#161928)" : "linear-gradient(135deg,#FFFAF8,#FFF5F0)",
+                background: isDark ? "linear-gradient(135deg, var(--dm-card), var(--dm-card2))" : "linear-gradient(135deg,#FFFAF8,#FFF5F0)",
                 borderColor: accentBorder,
                 boxShadow: isDark ? "0 0 24px rgba(255,107,53,0.08)" : "0 0 16px rgba(255,107,53,0.06)",
               }}
@@ -652,7 +652,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                         alignSelf: "flex-end",
                         background: isActive
                           ? "linear-gradient(to top,#FF6B35,#FF3366)"
-                          : isConnecting ? "#FF6B35" : isDark ? "#1E2235" : "#E9EBF0",
+                          : isConnecting ? "#FF6B35" : isDark ? "var(--dm-card2)" : "#E9EBF0",
                         transition: "background 0.3s, height 0.05s",
                         animation: isConnecting ? `pulse2 ${0.7 + i * 0.12}s ease-in-out infinite` : "none",
                       }}
@@ -705,7 +705,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                     <button onClick={toggleMute}
                       className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95"
                       style={{
-                        background: muted ? "linear-gradient(135deg,#FF6B35,#FF3366)" : isDark ? "#1E2235" : "#F3F4F6",
+                        background: muted ? "linear-gradient(135deg,#FF6B35,#FF3366)" : isDark ? "var(--dm-card2)" : "#F3F4F6",
                         boxShadow: muted ? "0 2px 8px rgba(255,107,53,0.35)" : "none",
                         border: muted ? "none" : `1.5px solid ${border}`,
                       }}
@@ -764,7 +764,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                 {callStatus === "ended" && !wasEjected && (
                   <button onClick={resetCall}
                     className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-medium transition-all"
-                    style={{ background: isDark ? "#1E2235" : "#F3F4F6", color: textSub }}
+                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}
                   >
                     {t("aiAgent.overview.newCall")}
                   </button>

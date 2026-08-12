@@ -366,7 +366,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
           <Link
-            href="/auth/signup"
+            href="/pricing"
             className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90"
             style={{ background: "var(--vela-gradient)" }}
             onClick={() => { track("upgrade_clicked", { source: "channels" }); onClose(); }}

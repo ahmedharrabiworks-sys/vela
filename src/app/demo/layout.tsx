@@ -46,7 +46,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
           className="shrink-0 text-xs font-bold px-4 py-1.5 rounded-lg text-white whitespace-nowrap hover:opacity-90 transition-opacity"
           style={{ background: "var(--vp-color)" }}
         >
-          Get Started →
+          Start 7-Day Free Trial →
         </Link>
       </div>
 

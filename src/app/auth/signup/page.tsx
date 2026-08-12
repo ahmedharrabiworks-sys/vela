@@ -1,7 +1,7 @@
 ﻿"use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { saveProfile } from "@/lib/business-profile";
@@ -249,9 +249,15 @@ function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChan
   );
 }
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const searchParams = useSearchParams();
+  // Arrived here from /auth/callback after a first-time Google sign-in with
+  // no tenant yet -- skip the email/password step entirely (they already
+  // have a real Supabase auth account) and go straight to business info.
+  const isGoogleOnboarding = searchParams.get("onboarding") === "google";
+  const [step, setStep] = useState(isGoogleOnboarding ? 2 : 1);
+  const [googleFlow, setGoogleFlow] = useState(isGoogleOnboarding);
   const [authError, setAuthError] = useState("");
 
   /* Step 1 */
@@ -260,26 +266,24 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [companyName, setCompanyName] = useState("");
-  const [googleError, setGoogleError] = useState("");
 
-  const handleGoogleSignIn = async () => {
-    setGoogleError("");
-    const supabase = getSupabase();
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-      (typeof window !== "undefined" ? window.location.origin : "");
-    // Must point at the callback route (which exchanges the OAuth code for a
-    // session), not directly at /app -- /app has no code-exchange logic, so
-    // middleware would see no session yet and bounce back to /auth/login.
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${appUrl}/auth/callback` },
-    });
-    if (oauthError) {
-      console.error("[Google sign-in] signInWithOAuth failed:", oauthError.message);
-      setGoogleError("Could not start Google sign-in. Please try again.");
-    }
-  };
+  useEffect(() => {
+    if (!isGoogleOnboarding) return;
+    (async () => {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // Stale/bogus link with no real session behind it -- fall back to
+        // normal email/password signup instead of a dead-end step 2.
+        setGoogleFlow(false);
+        setStep(1);
+        return;
+      }
+      setFullName((user.user_metadata?.full_name as string | undefined) || (user.user_metadata?.name as string | undefined) || "");
+      setEmail(user.email || "");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Step 2 */
   const [businessDesc, setBusinessDesc] = useState("");
@@ -312,6 +316,47 @@ export default function SignupPage() {
     setAuthError("");
 
     try {
+      if (googleFlow) {
+        // Already authenticated via Google (session created in /auth/callback) --
+        // no auth user to create, just finish onboarding by creating the tenant.
+        const res = await fetch("/api/auth/complete-google-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            companyName,
+            businessDesc,
+            detectedType,
+            country: country.name,
+            city,
+            phone: country.dial + " " + phone,
+            plan,
+          }),
+        });
+
+        if (!res.ok) {
+          setAuthError("Could not finish setting up your account — please try again.");
+          setLoading(false);
+          return;
+        }
+
+        saveProfile({
+          ownerName: fullName,
+          email,
+          businessName: companyName || businessDesc,
+          businessType: detectedType,
+          country: country.name,
+          city,
+          phone: country.dial + " " + phone,
+          plan,
+        });
+        if (detectedType) localStorage.setItem("vela_business_type", detectedType);
+
+        setLoading(false);
+        setStep(4);
+        setTimeout(() => router.push("/app/welcome"), 1800);
+        return;
+      }
+
       // Server-side creation — uses admin client with email_confirm:true to bypass
       // the Supabase free-tier email rate limit (2/hour) that breaks client signUp.
       const res = await fetch("/api/auth/signup", {
@@ -446,31 +491,6 @@ export default function SignupPage() {
               <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">Sign in</Link>
             </p>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px bg-[#E5E7EB]" />
-              <span className="text-xs text-[#9CA3AF] font-medium">Or continue with</span>
-              <div className="flex-1 h-px bg-[#E5E7EB]" />
-            </div>
-
-            {googleError && (
-              <div className="mb-3 px-4 py-3 rounded-xl text-sm text-red-600 border border-red-200 bg-red-50">
-                {googleError}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#9CA3AF] hover:bg-[#F9FAFB] transition-all duration-200 mb-3"
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-                <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-            </button>
             <p className="text-center text-xs text-[#9CA3AF]">
               By continuing, you agree to our{" "}
               <Link href="/terms" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Terms</Link>{" "}
@@ -580,11 +600,14 @@ export default function SignupPage() {
               </div>
 
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">
-                  Back
-                </button>
+                {/* Google onboarding skips step 1 entirely (already authenticated) -- nothing to go back to. */}
+                {!googleFlow && (
+                  <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">
+                    Back
+                  </button>
+                )}
                 <button type="submit" disabled={detecting}
-                  className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-60"
+                  className={`py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-60 ${googleFlow ? "w-full" : "flex-[2]"}`}
                   style={{ background: "var(--vela-gradient)" }}>
                   {detecting ? (
                     <span className="flex items-center justify-center gap-2">
@@ -776,5 +799,13 @@ export default function SignupPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
   );
 }

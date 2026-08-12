@@ -20,7 +20,7 @@ export default function DemoPageNotYet() {
         className="text-sm font-bold px-5 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
         style={{ background: "var(--vp-color)" }}
       >
-        Get Started Free →
+        Start 7-Day Free Trial →
       </Link>
     </div>
   );

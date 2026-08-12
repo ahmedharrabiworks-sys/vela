@@ -169,7 +169,7 @@ export default function Pricing() {
         {/* See full comparison link */}
         <div className="text-center mt-6">
           <Link
-            href="/pricing"
+            href="/pricing#compare"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
           >
             See full feature

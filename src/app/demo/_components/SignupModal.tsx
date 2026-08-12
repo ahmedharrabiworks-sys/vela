@@ -33,7 +33,7 @@ export function SignupModal({ onClose }: { onClose: () => void }) {
           className="block w-full py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity mb-3"
           style={{ background: "var(--vp-color)" }}
         >
-          Get Started Free →
+          Start 7-Day Free Trial →
         </Link>
         <button
           onClick={onClose}

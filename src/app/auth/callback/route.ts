@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseRouteHandlerClient } from "@/lib/supabase-server";
-import { ensureTenant } from "@/lib/ensure-tenant";
+import { createSupabaseRouteHandlerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 
 // Supabase OAuth (Google, etc.) redirects here with ?code=... after the
 // provider consent step. This exchanges that code for a real session
@@ -22,19 +21,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login?error=auth_failed", request.url));
   }
 
-  // Self-heal: a brand-new Google sign-in has no tenant row yet. /app's
-  // dashboard queries tenants directly and bails out blank if none exists,
-  // so create one now (idempotent -- no-op for a returning user who already
-  // has one) the same way email signup ends up with a real tenant.
-  try {
-    await ensureTenant(
-      data.session.user.id,
-      data.session.user.email ?? undefined,
-      data.session.user.user_metadata,
-    );
-  } catch (e) {
-    console.error("[auth/callback] ensureTenant failed:", e);
+  // Returning user (tenant already exists) -> straight into the app.
+  // First-time Google sign-in (no tenant yet) -> business info + plan
+  // selection (signup step 2/3), same as email/password signup -- a real
+  // tenant is only created once that onboarding completes, not here.
+  const admin = createSupabaseAdmin();
+  const { data: existingTenant } = await admin
+    .from("tenants")
+    .select("id")
+    .eq("owner_id", data.session.user.id)
+    .maybeSingle();
+
+  if (existingTenant) {
+    return NextResponse.redirect(new URL("/app", request.url));
   }
 
-  return NextResponse.redirect(new URL("/app", request.url));
+  return NextResponse.redirect(new URL("/auth/signup?onboarding=google", request.url));
 }

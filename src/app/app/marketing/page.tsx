@@ -474,8 +474,8 @@ export default function MarketingPage() {
 
         {/* Upgrade overlay for Starter */}
         {!isPro && (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.7)" }}>
-            <div className="max-w-sm text-center p-8 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
+          <div className="absolute inset-0 flex items-center justify-center upgrade-lock-backdrop">
+            <div className="max-w-sm text-center p-8 bg-white upgrade-lock-card rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
                 style={{ background: "var(--vela-gradient-tint)" }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -486,7 +486,7 @@ export default function MarketingPage() {
               <h3 className="text-lg font-bold text-[#111111] mb-2">{t("marketing.upgradeCta")}</h3>
               <p className="text-sm text-[#6B7280] mb-5">{t("marketing.upgradeDesc")}</p>
               <Link
-                href="/auth/signup"
+                href="/pricing"
                 onClick={() => track("upgrade_clicked", { source: "marketing" })}
                 className="inline-block px-6 py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
                 style={{ background: "var(--vela-gradient)" }}

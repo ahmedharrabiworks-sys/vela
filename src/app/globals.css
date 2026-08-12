@@ -300,6 +300,16 @@ html.dark .border-\[\#FFD5C2\] { border-color: var(--vp-25) !important; }
 html.dark thead tr { background-color: var(--dm-card2) !important; }
 html.dark kbd { background-color: var(--dm-card2) !important; border-color: var(--dm-border) !important; color: var(--dm-text2) !important; }
 
+/* Locked-feature ("Upgrade to Pro to unlock X") overlay — Analytics,
+   Marketing, and any page using the same pattern. Light wash in light mode;
+   dark elevated wash in dark mode instead of a leftover white tint. The
+   inner card keeps bg-white for light mode but is pinned to the elevated
+   dark surface (#1E1E24) specifically here, not the plain card color every
+   other bg-white element gets, since it's floating above blurred content. */
+.upgrade-lock-backdrop { background: rgba(255,255,255,0.7); }
+html.dark .upgrade-lock-backdrop { background: rgba(16,16,20,0.75) !important; }
+html.dark .bg-white.upgrade-lock-card { background-color: var(--dm-card2) !important; }
+
 html.dark input:not([type="checkbox"]):not([type="radio"]),
 html.dark textarea,
 html.dark select {

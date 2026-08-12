@@ -159,8 +159,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages -- except a
+  // first-time Google sign-in with no tenant yet, who must be allowed to
+  // stay on /auth/signup to finish the business-info + plan onboarding
+  // steps (see /auth/callback and /auth/signup?onboarding=google).
   if ((path.startsWith("/auth/login") || path.startsWith("/auth/signup")) && user) {
+    if (path.startsWith("/auth/signup")) {
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+      if (!tenant) {
+        return response;
+      }
+    }
     return NextResponse.redirect(new URL("/app", request.url));
   }
 

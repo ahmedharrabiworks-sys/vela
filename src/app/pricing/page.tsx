@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PublicPageHeader from "@/components/landing/PublicPageHeader";
+import Pricing from "@/components/landing/Pricing";
 
 const COL_HEADERS = ["Starter", "Pro", "Premium"];
 const PRO_COL = 1;
@@ -49,18 +50,20 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#F9FAFB]">
       <PublicPageHeader />
 
-      <div className="max-w-4xl mx-auto px-5 py-10 md:py-14">
-        {/* Page title */}
+      {/* Plan-card selection — the default landing view for any "Upgrade Now" /
+          "Upgrade to Pro" click across the app. Reuses the same component as
+          the homepage's #pricing section (same cards, same copy, same links). */}
+      <Pricing />
+
+      <div id="compare" className="max-w-4xl mx-auto px-5 py-10 md:py-14 scroll-mt-6">
+        {/* Section title */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-[#111111]">
             Full Plan{" "}
             <span className="vela-gradient-text">Details</span>
           </h1>
           <p className="text-[#6B7280] mt-2">
-            All three plans, every feature, side by side.{" "}
-            <Link href="/#pricing" className="text-[#FF6B35] hover:underline font-medium">
-              Back to pricing ↑
-            </Link>
+            All three plans, every feature, side by side.
           </p>
         </div>
 

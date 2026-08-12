@@ -346,8 +346,8 @@ export default function AnalyticsPage() {
 
         {/* Upgrade overlay — blurs the empty state above, not fake numbers */}
         {!isPro && (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.7)" }}>
-            <div className="max-w-sm text-center p-8 bg-white rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
+          <div className="absolute inset-0 flex items-center justify-center upgrade-lock-backdrop">
+            <div className="max-w-sm text-center p-8 bg-white upgrade-lock-card rounded-2xl border border-[#E5E7EB] shadow-xl mx-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
                 style={{ background: "var(--vela-gradient-tint)" }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
