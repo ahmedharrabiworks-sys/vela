@@ -110,6 +110,59 @@ export function getSpeakingPlanConfig() {
   };
 }
 
+// ── Shared web call error handling ─────────────────────────────────────────────
+// Single source of truth for interpreting Vapi Web SDK "error" events, used by
+// both the Overview "Talk to Vela" call and the Training interview call. Before
+// this was centralized, each page had its own copy that had drifted: neither
+// correctly recognized the real shape Vapi's underlying Daily.co transport sends
+// for an ejection, which is nested two levels deep, e.g.
+//   { type: "daily-error", error: { error: { type: "ejected", msg: "..." } } }
+// Overview's old check only looked at e.type / e.error.type (one level), so it
+// never matched and fell through to a fully generic "unexpected error" message.
+// Training's old check didn't recognize ejections as a distinct case at all, so
+// it fell through to a raw JSON.stringify of the whole event.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function isVapiEjection(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const anyE = e as Record<string, any>;
+  if (anyE.type === "ejected") return true;
+  const err = anyE.error;
+  if (err && typeof err === "object") {
+    if (err.type === "ejected") return true;
+    if (err.error && typeof err.error === "object" && err.error.type === "ejected") return true;
+    if (err.message && typeof err.message === "object" && err.message.type === "ejected") return true;
+  }
+  return false;
+}
+
+export function vapiErrorText(e: unknown): string {
+  if (typeof e === "string") {
+    if (e.startsWith("{") || e.startsWith("[")) {
+      try { return JSON.stringify(JSON.parse(e)); } catch { return e; }
+    }
+    return e;
+  }
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const anyE = e as Record<string, any>;
+    if (typeof anyE.message === "string") return anyE.message;
+    if (typeof anyE.msg === "string") return anyE.msg;
+    if (typeof anyE.error === "string") return anyE.error;
+    if (anyE.error && typeof anyE.error === "object") {
+      const inner = anyE.error as Record<string, any>;
+      if (typeof inner.message === "string") return inner.message;
+      if (typeof inner.msg === "string") return inner.msg;
+      if (typeof inner.errorMsg === "string") return inner.errorMsg;
+      // Daily.co shape: error.error.msg / error.message.msg (one level deeper)
+      if (inner.error && typeof inner.error === "object" && typeof inner.error.msg === "string") return inner.error.msg;
+      if (inner.message && typeof inner.message === "object" && typeof inner.message.msg === "string") return inner.message.msg;
+    }
+    try { return JSON.stringify(e); } catch { /* ignore */ }
+  }
+  return "An unexpected error occurred. Please try again.";
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // ── Shared voice config builder ───────────────────────────────────────────────
 // voiceId is always used as-is — the language-aware default is applied BEFORE
 // calling this function (via getDefaultVoiceId). Owner's explicit choice wins.

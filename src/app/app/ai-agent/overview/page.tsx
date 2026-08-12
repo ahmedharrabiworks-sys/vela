@@ -13,31 +13,15 @@ import {
   getSpeakingPlanConfig,
   getVoiceConfig,
   CALL_LIMITS,
+  isVapiEjection,
+  vapiErrorText,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
 type CallStatus = "idle" | "connecting" | "active" | "ended";
 
-function toErrorText(e: unknown): string {
-  if (typeof e === "string") {
-    if (e.startsWith("{") || e.startsWith("[")) return "An unexpected error occurred. Please try again.";
-    return e;
-  }
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === "object") {
-    const anyE = e as Record<string, unknown>;
-    if (typeof anyE.message === "string") return anyE.message;
-    if (typeof anyE.msg === "string") return anyE.msg;
-    if (typeof anyE.error === "string") return anyE.error;
-    if (anyE.error && typeof anyE.error === "object") {
-      const inner = anyE.error as Record<string, unknown>;
-      if (typeof inner.message === "string") return inner.message;
-      if (typeof inner.msg === "string") return inner.msg;
-    }
-  }
-  return "An unexpected error occurred. Please try again.";
-}
+const toErrorText = vapiErrorText;
 
 /* Circle ring */
 function CircleRing({ value, size = 64, isDark }: { value: number; size?: number; isDark: boolean }) {
@@ -335,7 +319,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
       vapi.on("error", (e: any) => {
         console.error("[vapi error]", e);
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        const isEjected = e?.type === "ejected" || e?.error?.type === "ejected";
+        const isEjected = isVapiEjection(e);
         if (isEjected) {
           setWasEjected(true);
           setCallStatus("ended");
@@ -747,7 +731,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                 {callStatus === "ended" && wasEjected && (
                   <div className="space-y-2">
                     <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      Call dropped. Tab was hidden too long
+                      Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted
                     </p>
                     <button onClick={startCall}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"

@@ -13,6 +13,8 @@ import {
   buildTrainingSystem,
   RECORD_ANSWER_TOOL,
   CALL_LIMITS,
+  isVapiEjection,
+  vapiErrorText,
   type TrainingContext,
 } from "@/lib/vapi-agent-config";
 
@@ -21,23 +23,7 @@ type VapiInstance = any;
 type CallStatus = "idle" | "connecting" | "active" | "ended";
 type TLine = { role: "user" | "assistant"; text: string };
 
-function toErrorText(e: unknown): string {
-  if (typeof e === "string") return e;
-  if (e instanceof Error) return e.message;
-  if (e && typeof e === "object") {
-    const anyE = e as Record<string, unknown>;
-    if (typeof anyE.message === "string") return anyE.message;
-    if (typeof anyE.error === "string") return anyE.error;
-    if (anyE.error && typeof anyE.error === "object") {
-      const inner = anyE.error as Record<string, unknown>;
-      if (typeof inner.message === "string") return inner.message;
-      if (typeof inner.msg === "string") return inner.msg;
-      try { return JSON.stringify(anyE.error); } catch { /* ignore */ }
-    }
-    try { return JSON.stringify(e); } catch { /* ignore */ }
-  }
-  return "An unexpected error occurred. Please try again.";
-}
+const toErrorText = vapiErrorText;
 
 interface LearnedKb {
   services?: Array<{ name: string; price?: string }>;
@@ -45,14 +31,9 @@ interface LearnedKb {
   extra?: string;
 }
 
-const WAVE_D = (() => {
-  const pts: string[] = [];
-  for (let x = 0; x <= 560; x += 2) {
-    const y = (20 + 12 * Math.sin((x / 70) * Math.PI)).toFixed(1);
-    pts.push(`${x === 0 ? "M" : "L"}${x},${y}`);
-  }
-  return pts.join(" ");
-})();
+// Same 5-bar volume-driven waveform as the Overview "Talk to Vela" panel, for a
+// consistent call status indicator across both surfaces.
+const BAR_BASES = [0.4, 0.7, 1.0, 0.7, 0.4];
 
 /* ── Knowledge field definitions ── */
 function KbIcon({ field, filled, current }: { field: string; filled: boolean; current: boolean }) {
@@ -122,6 +103,7 @@ export default function TrainingPage() {
   const { t } = useI18n();
   const [status, setStatus]       = useState<CallStatus>("idle");
   const [callError, setCallError]         = useState<string | null>(null);
+  const [wasEjected, setWasEjected]       = useState(false);
   const [muted, setMuted]                 = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
@@ -130,6 +112,7 @@ export default function TrainingPage() {
   const [liveKb, setLiveKb]       = useState<Record<string, string>>({});
   const [extracting, setExtracting] = useState(false);
   const [callStart, setCallStart] = useState<number>(0);
+  const [callDuration, setCallDuration] = useState(0);
   const voiceIdRef           = useRef(DEFAULT_VOICE_ID);
   const speedRef             = useRef(0.85);
   const agentLanguageRef     = useRef<string | undefined>(undefined);
@@ -137,8 +120,16 @@ export default function TrainingPage() {
   const linesRef             = useRef<TLine[]>([]);
   const toolKbRef            = useRef<Record<string, string>>({});
   const vapiRef      = useRef<VapiInstance>(null);
-  const scaleRef     = useRef<HTMLDivElement>(null);
+  const barRefs       = useRef<(HTMLDivElement | null)[]>([]);
+  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+
+  function fmtTimer(s: number) {
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  }
+  function resetBars() {
+    BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${b * 6}px`; });
+  }
 
   const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
   const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
@@ -222,6 +213,7 @@ export default function TrainingPage() {
 
   const startCall = useCallback(async () => {
     if (status !== "idle") return;
+    if (timerRef.current) clearInterval(timerRef.current);
     setStatus("connecting");
     setTranscript([]);
     setLearnedKb(null);
@@ -230,31 +222,47 @@ export default function TrainingPage() {
     toolKbRef.current = {};
     const started = Date.now();
     setCallStart(started);
+    setCallDuration(0);
     setCallError(null);
+    setWasEjected(false);
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
       vapiRef.current = vapi;
 
-      vapi.on("call-start", () => setStatus("active"));
+      vapi.on("call-start", () => {
+        setStatus("active");
+        setCallDuration(0);
+        timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+      });
       vapi.on("call-end",   () => {
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         setStatus("ended");
-        if (scaleRef.current) scaleRef.current.style.transform = "scaleY(0.2)";
+        resetBars();
         extractKb([...linesRef.current], started, { ...toolKbRef.current });
       });
       vapi.on("call-start-failed", (e: any) => {
         console.error("[vapi call-start-failed]", e);
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         setCallError(toErrorText(e));
         setStatus("idle");
+        resetBars();
       });
       vapi.on("error", (e: any) => {
         console.error("[vapi error]", e);
-        setCallError(toErrorText(e));
-        setStatus("idle");
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (isVapiEjection(e)) {
+          setWasEjected(true);
+          setStatus("ended");
+        } else {
+          setCallError(toErrorText(e));
+          setStatus("idle");
+        }
+        resetBars();
       });
 
       vapi.on("volume-level", (vol: number) => {
-        if (scaleRef.current) scaleRef.current.style.transform = `scaleY(${Math.max(0.2, 1 + vol * 5)})`;
+        BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${Math.max(4, b * (8 + vol * 22))}px`; });
       });
 
       vapi.on("message", (msg: any) => {
@@ -299,8 +307,10 @@ export default function TrainingPage() {
       });
     } catch (err: unknown) {
       console.error("[call]", err);
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       setCallError(toErrorText(err));
       setStatus("idle");
+      resetBars();
     }
   }, [status, extractKb]);
 
@@ -310,7 +320,23 @@ export default function TrainingPage() {
     const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
   }, [muted]);
   const reset = useCallback(() => {
-    setStatus("idle"); setCallError(null); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); vapiRef.current = null;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setStatus("idle"); setCallError(null); setWasEjected(false); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); setCallDuration(0); vapiRef.current = null;
+    resetBars();
+  }, []);
+
+  useEffect(() => {
+    function onVisChange() {
+      if (!document.hidden && vapiRef.current && status === "active") {
+        vapiRef.current.setMuted(muted);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisChange);
+    return () => document.removeEventListener("visibilitychange", onVisChange);
+  }, [status, muted]);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
   const sendTypedAnswer = useCallback(() => {
@@ -347,6 +373,7 @@ export default function TrainingPage() {
       <style>{`
         @keyframes waveFlow { from{transform:translateX(0)} to{transform:translateX(-280px)} }
         @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes pulse2 { 0%,100%{opacity:.4;transform:scale(.85)} 50%{opacity:1;transform:scale(1)} }
         @keyframes kbPop {
           0%   { opacity:0; transform:scale(0.92) translateY(6px); }
           60%  { opacity:1; transform:scale(1.03) translateY(-1px); }
@@ -381,121 +408,160 @@ export default function TrainingPage() {
           <div className="md:col-span-2 flex flex-col">
             <div className="rounded-2xl border flex flex-col flex-1 h-full" style={{ background: cardBg, borderColor: border }}>
 
-              {/* Waveform */}
-              <div className="flex flex-col items-center gap-4 px-5 pt-6 pb-5 border-b shrink-0" style={{ borderColor: border }}>
-                <div className="relative flex items-center justify-center" style={{ width: 240, height: 48 }}>
-                  <div className="absolute inset-0 rounded-full blur-2xl" style={{
-                    background: "radial-gradient(ellipse, rgba(255,51,102,0.22) 0%, transparent 70%)",
-                    opacity: isActive ? 0.9 : 0.1,
-                    transition: "opacity 0.3s",
-                  }}/>
-                  <div style={{ width: 240, height: 36, overflow: "hidden", borderRadius: 4 }}>
-                    <div style={{ width: 560, height: 36, animation: (isActive||isConnecting) ? "waveFlow 2.2s linear infinite" : "none", opacity: isActive ? 1 : isConnecting ? 0.5 : 0.12, transition: "opacity 0.4s" }}>
-                      <div ref={scaleRef} style={{ width: 560, height: 36, transform: "scaleY(0.2)", transformOrigin: "280px 18px", transition: "transform 0.05s" }}>
-                        <svg viewBox="0 0 560 40" width="560" height="40">
-                          <defs>
-                            <linearGradient id="wg-tr" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#FF6B35"/>
-                              <stop offset="50%" stopColor="#FF3366"/>
-                              <stop offset="100%" stopColor="#FF6B35"/>
-                            </linearGradient>
-                          </defs>
-                          <path d={WAVE_D} fill="none" stroke="url(#wg-tr)" strokeWidth="2.5" strokeLinecap="round"/>
-                        </svg>
-                      </div>
-                    </div>
+              {/* Call status header — same pattern as the Overview "Talk to Vela" panel */}
+              <div className="flex flex-col gap-3 px-5 pt-5 pb-5 border-b shrink-0" style={{ borderColor: border }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Business Interview</p>
+                    <p className="text-[11px]" style={{ color: textMuted }}>
+                      {isActive
+                        ? (muted ? t("aiAgent.training.muted") : t("aiAgent.training.speakNaturally"))
+                        : isConnecting ? t("common.connecting")
+                        : status === "ended" ? (wasEjected ? "Connection lost" : t("aiAgent.training.complete"))
+                        : extracting ? t("aiAgent.training.saving")
+                        : t("aiAgent.training.ready")}
+                    </p>
                   </div>
+                  <div className="w-2 h-2 rounded-full" style={{
+                    background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : status === "ended" ? "#6B7280" : "#FF6B35",
+                    boxShadow: isActive ? "0 0 6px #22C55E" : "none",
+                  }}/>
                 </div>
 
-                <p className="text-sm text-center" style={{ color: isConnecting?"#FF6B35":isActive?textPrimary:textMuted }}>
-                  {isConnecting ? t("common.connecting") : isActive ? (muted ? t("aiAgent.training.muted") : t("aiAgent.training.speakNaturally")) : status==="ended" ? t("aiAgent.training.complete") : extracting ? t("aiAgent.training.saving") : t("aiAgent.training.ready")}
-                </p>
+                {/* Waveform — 5 bars, volume-driven when active, same as Overview */}
+                <div className="flex items-end justify-center gap-[5px]" style={{ height: 32 }}>
+                  {BAR_BASES.map((b, i) => (
+                    <div key={i} ref={el => { barRefs.current[i] = el; }}
+                      style={{
+                        width: 5,
+                        height: b * 6,
+                        borderRadius: 3,
+                        alignSelf: "flex-end",
+                        background: isActive
+                          ? "linear-gradient(to top,#FF6B35,#FF3366)"
+                          : isConnecting ? "#FF6B35" : isDark ? "var(--dm-card2)" : "#E9EBF0",
+                        transition: "background 0.3s, height 0.05s",
+                        animation: isConnecting ? `pulse2 ${0.7 + i * 0.12}s ease-in-out infinite` : "none",
+                      }}
+                    />
+                  ))}
+                </div>
 
-                <div className="flex items-center gap-2 flex-wrap justify-center">
-                  {status === "idle" && (
+                {status === "idle" && (
+                  <div className="flex flex-col items-center gap-2">
                     <button onClick={startCall}
                       disabled={!settingsReady}
-                      className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:hover:scale-100"
-                      style={{ background:"linear-gradient(135deg,#FF3366,#FF6B35)", boxShadow:"0 4px 20px rgba(255,51,102,0.35)" }}>
+                      className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
+                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.4)" }}>
                       {!settingsReady
-                        ? <div className="w-3.5 h-3.5 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" />
-                        : <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <circle cx="7" cy="7" r="5.5" stroke="white" strokeWidth="1.3"/>
-                            <path d="M5.5 5l3.5 2-3.5 2V5z" fill="white"/>
+                        ? <div className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
+                        : <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                            <path d="M5 3.5l5 3-5 3V3.5z" fill="white"/>
                           </svg>
                       }
-                      {t("aiAgent.training.start")}
                     </button>
-                  )}
-                  {isConnecting && (
-                    <div className="flex flex-col items-center gap-2.5">
-                      <div className="flex items-center gap-2">
-                        <div style={{ width:14, height:14, borderRadius:"50%", border:"2px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
-                        <span className="text-sm" style={{ color: textMuted }}>Connecting…</span>
-                      </div>
-                      <button onClick={endCall}
-                        className="flex items-center justify-center w-12 h-12 rounded-full text-white transition-all hover:scale-105 active:scale-95"
-                        style={{ background:"#EF4444", boxShadow:"0 4px 16px rgba(239,68,68,0.45)" }}
-                        title="Cancel call"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                          <path d="M3 3l10 10M13 3L3 13" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                      </button>
+                    <span className="text-[10px] font-medium" style={{ color: textMuted }}>
+                      {!settingsReady ? "Loading…" : t("aiAgent.training.start")}
+                    </span>
+                  </div>
+                )}
+
+                {isConnecting && (
+                  <div className="flex flex-col items-center gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <div style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}/>
+                      <span className="text-[10px]" style={{ color: textMuted }}>Connecting…</span>
                     </div>
-                  )}
-                  {isActive && (
-                    <div className="flex items-center justify-center gap-5">
-                      <button onClick={toggleMute}
-                        className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95"
-                        style={{ background: muted?(isDark?"rgba(255,107,53,0.15)":"#FFF5F0"):(isDark?"var(--dm-card2)":"#F3F4F6"), border:`1.5px solid ${muted?"#FF6B35":border}` }}
-                        title={muted ? "Unmute" : "Mute"}
-                      >
-                        {muted ? (
-                          <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                            <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill="#FF6B35"/>
-                            <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
-                            <path d="M2 2l10 10" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
-                          </svg>
-                        ) : (
-                          <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
-                            <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill={textMuted}/>
-                            <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke={textMuted} strokeWidth="1.3" strokeLinecap="round"/>
-                          </svg>
-                        )}
-                      </button>
-                      <button onClick={endCall}
-                        className="flex items-center justify-center w-12 h-12 rounded-full text-white transition-all hover:scale-105 active:scale-95"
-                        style={{ background:"#EF4444", boxShadow:"0 4px 16px rgba(239,68,68,0.45)" }}
-                        title="End call"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                          <path d="M2 9c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="white" strokeWidth="1.4"/>
-                          <path d="M4.5 9.5c.5 1 1.3 1.9 2.2 2.5l1.3-1.3a.5.5 0 0 1 .6-.1c.6.2 1.3.3 2 .3.3 0 .4.2.4.5v2a.4.4 0 0 1-.4.4C6.2 13.8 4 10.9 4 7.6c0-.3.2-.5.5-.5h2c.3 0 .5.2.5.5 0 .7.1 1.4.3 2a.5.5 0 0 1-.1.6L5.9 11.4" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-                        </svg>
-                      </button>
-                      <div style={{ width: 40 }} />
-                    </div>
-                  )}
-                  {status === "ended" && !extracting && (
-                    <button onClick={reset}
-                      className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-medium transition-all"
-                      style={{ background: isDark?"var(--dm-card2)":"#F3F4F6", color: textSub }}>
-                      {t("aiAgent.training.newInterview")}
+                    <button onClick={endCall}
+                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                      style={{ background: "#EF4444", boxShadow: "0 3px 10px rgba(239,68,68,0.4)" }}
+                      title="Cancel"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+                      </svg>
                     </button>
-                  )}
-                  {extracting && (
-                    <div className="flex items-center gap-2 px-4 py-2">
-                      <div style={{ width:12, height:12, borderRadius:"50%", border:"1.5px solid #FF6B35", borderTopColor:"transparent", animation:"spin 0.8s linear infinite" }}/>
-                      <span className="text-xs" style={{ color: "#FF6B35" }}>{t("aiAgent.training.saving")}</span>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {isActive && (
+                  <div className="flex items-center justify-center gap-4">
+                    <button onClick={toggleMute}
+                      className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95"
+                      style={{
+                        background: muted ? "linear-gradient(135deg,#FF6B35,#FF3366)" : isDark ? "var(--dm-card2)" : "#F3F4F6",
+                        boxShadow: muted ? "0 2px 8px rgba(255,107,53,0.35)" : "none",
+                        border: muted ? "none" : `1.5px solid ${border}`,
+                      }}
+                      title={muted ? "Unmute" : "Mute"}
+                    >
+                      {muted ? (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill="white"/>
+                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                          <path d="M2 2l10 10" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill={textMuted}/>
+                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke={textMuted} strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      )}
+                    </button>
+
+                    <span className="text-sm font-mono font-bold tabular-nums min-w-[44px] text-center" style={{ color: textPrimary }}>
+                      {fmtTimer(callDuration)}
+                    </span>
+
+                    <button onClick={endCall}
+                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                      style={{ background: "#EF4444", boxShadow: "0 3px 12px rgba(239,68,68,0.4)" }}
+                      title="End call"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10 2l4 4M14 2l-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {status === "ended" && wasEjected && (
+                  <div className="space-y-2">
+                    <p className="text-[9px] text-center" style={{ color: textMuted }}>
+                      Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted
+                    </p>
+                    <button onClick={startCall}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.35)" }}
+                    >
+                      Reconnect
+                    </button>
+                    <button onClick={reset} className="w-full text-[9px] text-center hover:underline" style={{ color: textMuted }}>
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                {status === "ended" && !wasEjected && !extracting && (
+                  <button onClick={reset}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-medium transition-all"
+                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}>
+                    {t("aiAgent.training.newInterview")}
+                  </button>
+                )}
+
+                {extracting && (
+                  <div className="flex items-center justify-center gap-2 py-1">
+                    <div style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}/>
+                    <span className="text-xs" style={{ color: "#FF6B35" }}>{t("aiAgent.training.saving")}</span>
+                  </div>
+                )}
 
                 {callError && (
-                  <div className="w-full rounded-xl p-3" style={{ background: isDark?"rgba(239,68,68,0.08)":"#FFF5F5", border:"1px solid rgba(239,68,68,0.2)" }}>
-                    <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed to start</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>{typeof callError === "string" ? callError : "An unexpected error occurred."}</p>
+                  <div className="rounded-xl p-2.5" style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#FFF5F5", border: "1px solid rgba(239,68,68,0.2)" }}>
+                    <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
                     <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
                   </div>
                 )}
