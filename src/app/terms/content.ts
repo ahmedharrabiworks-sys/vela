@@ -556,7 +556,7 @@ export const TERMS_SECTIONS: LegalSection[] = [
     id: "dispute-resolution",
     title: "32. Dispute Resolution and Governing Law",
     blocks: [
-      { type: "p", text: "These Terms are governed by the laws of [GOVERNING LAW JURISDICTION TO BE CONFIRMED], without regard to conflict of law principles, except where a different governing law is required by applicable mandatory consumer protection rules in your jurisdiction." },
+      { type: "p", text: "Vela has not yet finalized a governing jurisdiction for these Terms. Once finalized, these Terms will be governed by the laws of [GOVERNING LAW JURISDICTION TO BE CONFIRMED], without regard to conflict of law principles, except where a different governing law is required by applicable mandatory consumer protection rules in your jurisdiction." },
       { type: "p", text: "We encourage you to contact us first to resolve any dispute informally using the contact details in Section 35. If a dispute cannot be resolved informally, it will be subject to the exclusive jurisdiction of the competent courts of [GOVERNING LAW JURISDICTION TO BE CONFIRMED], unless applicable law requires otherwise. This Section does not limit any right you may have to bring a claim in your local courts under mandatory consumer protection law, and does not require arbitration unless a separate arbitration agreement is entered into by the parties." },
     ],
   },
@@ -619,8 +619,8 @@ export const TERMS_SECTIONS: LegalSection[] = [
     id: "contact",
     title: "35. Contact Information",
     blocks: [
-      { type: "p", text: "If you have any questions about these Terms, please contact us at legal@tryvela.com." },
-      { type: "note", text: "Operating entity, registered address, and jurisdiction: [LEGAL ENTITY NAME], [REGISTERED ADDRESS], [JURISDICTION OF INCORPORATION]. This information will be completed once Vela's corporate structure is finalized." },
+      { type: "p", text: "If you have any questions about these Terms, please contact us at velaOsSupport@gmail.com. This is currently our general customer support contact and handles questions about these Terms as well, since dedicated legal and privacy inboxes have not yet been established." },
+      { type: "note", text: "Operating entity, registered address, and governing jurisdiction: Vela is not currently incorporated as a separate legal entity, does not yet have a registered business address, and has not yet finalized a governing jurisdiction. Placeholders for this information: [LEGAL ENTITY NAME], [REGISTERED ADDRESS], [JURISDICTION OF INCORPORATION]. This section will be updated with accurate information once Vela's corporate structure is finalized." },
     ],
   },
 ];

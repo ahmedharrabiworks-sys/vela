@@ -488,8 +488,8 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
     id: "contact",
     title: "23. Contact Information",
     blocks: [
-      { type: "p", text: "For privacy related questions, to exercise any of the rights described in this Privacy Policy, or to request a data processing addendum, contact us at privacy@tryvela.com." },
-      { type: "note", text: "Operating entity, registered address, and jurisdiction: [LEGAL ENTITY NAME], [REGISTERED ADDRESS], [JURISDICTION OF INCORPORATION]. This information will be completed once Vela's corporate structure is finalized. If your jurisdiction requires you to be told the identity of a specific data protection officer or representative, and one has been appointed, that information will also be provided here." },
+      { type: "p", text: "For privacy related questions, to exercise any of the rights described in this Privacy Policy, or to request a data processing addendum, contact us at velaOsSupport@gmail.com. This is currently our general customer support contact and handles privacy related questions as well, since a dedicated privacy inbox has not yet been established." },
+      { type: "note", text: "Operating entity, registered address, and governing jurisdiction: Vela is not currently incorporated as a separate legal entity, does not yet have a registered business address, and has not yet finalized a governing jurisdiction. Placeholders for this information: [LEGAL ENTITY NAME], [REGISTERED ADDRESS], [JURISDICTION OF INCORPORATION]. This section will be updated with accurate information once Vela's corporate structure is finalized. If your jurisdiction requires you to be told the identity of a specific data protection officer or representative, and one has been appointed, that information will also be provided here." },
     ],
   },
 ];
