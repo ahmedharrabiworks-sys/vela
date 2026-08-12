@@ -22,7 +22,7 @@ export default function DashboardSection() {
             {/* CTA positioned in the blank space baked into the bottom of the image */}
             <div className="absolute bottom-[8%] left-[5%]">
               <Link href="/auth/signup" className="btn-primary whitespace-nowrap text-xs py-2 px-4 sm:text-sm sm:py-3.5 sm:px-7">
-                Get Started
+                Start 7-Day Free Trial
               </Link>
             </div>
           </div>

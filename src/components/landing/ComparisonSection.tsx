@@ -37,7 +37,7 @@ export default function ComparisonSection() {
               {/* CTA positioned in the blank area baked into the bottom of the image */}
               <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2">
                 <Link href="/auth/signup" className="btn-primary whitespace-nowrap text-xs py-2 px-4 sm:text-sm sm:py-3.5 sm:px-7">
-                  Get Started
+                  Start 7-Day Free Trial
                 </Link>
               </div>
             </div>

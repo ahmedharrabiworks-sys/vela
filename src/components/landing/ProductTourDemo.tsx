@@ -1380,24 +1380,37 @@ const sceneVariants = {
 ═══════════════════════════════════════════════════════════════ */
 export default function ProductTourDemo() {
   const [scene, setScene] = useState(0);
+  // false = hands-off autoplay (cycles all scenes forward, default).
+  // true  = manual mode, entered by clicking a tab: the active scene loops
+  // in place on repeat instead of advancing, until a different tab is clicked.
+  const [manualMode, setManualMode] = useState(false);
+  // Bumped each time the active scene needs to replay itself in manual mode
+  // (scene index alone doesn't change on a loop, so this feeds the remount
+  // key below to force a fresh mount -- same mechanism every scene already
+  // relies on to replay its internal timers).
+  const [replayTick, setReplayTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hands-off autoplay: each scene advances after its own duration,
-  // long enough for that scene's choreography to finish and settle.
-  // Re-registers on every scene change (manual click resets the timer too).
+  // Autoplay advances to the next scene after its own duration; manual mode
+  // instead replays the same scene (bumps replayTick, scene index unchanged).
+  // Re-registers whenever scene/mode/tick changes.
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     const duration = SCENE_DURATIONS[scene] ?? 3000;
     timerRef.current = setTimeout(() => {
-      setScene(prev => (prev + 1) % SCENE_COUNT);
+      if (manualMode) {
+        setReplayTick(t => t + 1);
+      } else {
+        setScene(prev => (prev + 1) % SCENE_COUNT);
+      }
     }, duration);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [scene]);
+  }, [scene, manualMode, replayTick]);
 
-  const goToScene = useCallback((idx: number) => {
-    if (idx === scene) return;
+  const handleTabClick = useCallback((idx: number) => {
+    setManualMode(true);
     setScene(idx);
-  }, [scene]);
+  }, []);
 
   function renderScene(s: number) {
     switch (s) {
@@ -1433,29 +1446,26 @@ export default function ProductTourDemo() {
           {/* Left text panel: tab row + icon/headline/subtext/checklist panel + persistent CTA */}
           <div className="order-last lg:order-first flex flex-col lg:pt-2">
 
-            {/* Tab row -- 5 literal-name tabs, single-accent active style (unchanged
-                click-to-jump + autoplay-continues behavior via goToScene). */}
-            <div className="flex flex-wrap gap-2 mb-6">
+            {/* Tab row -- 5 literal-name tabs, text-only, single-accent active
+                style (unchanged click-to-jump behavior, now manual-mode --
+                see handleTabClick). Fits on one line at desktop widths via
+                tight padding/font-size; falls back to horizontal scroll only
+                if a narrow desktop width can't fit all 5; wraps freely on
+                mobile where one-line isn't required. */}
+            <div className="flex flex-wrap lg:flex-nowrap gap-1.5 mb-6 lg:overflow-x-auto lg:pb-1">
               {TOUR_PANELS.map(p => {
                 const active = scene === p.sceneIdx;
                 return (
                   <button
                     key={p.tabLabel}
-                    onClick={() => goToScene(p.sceneIdx)}
-                    className="flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-200"
+                    onClick={() => handleTabClick(p.sceneIdx)}
+                    className="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
                     style={{
                       background: active ? "var(--vt-color)" : "#FAFAFA",
                       border:     active ? "1.5px solid var(--vp-color)" : "1.5px solid #F1F5F9",
                       color:      active ? "var(--vp-color)" : "#6B7280",
                     }}
                   >
-                    <span
-                      className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 [&>svg]:w-3.5 [&>svg]:h-3.5"
-                      style={{
-                        background: active ? "var(--vp-10)" : "#F1F5F9",
-                        color:      active ? "var(--vp-color)" : "#9CA3AF",
-                      }}
-                    >{p.icon}</span>
                     {p.tabLabel}
                   </button>
                 );
@@ -1507,28 +1517,13 @@ export default function ProductTourDemo() {
 
             <Link
               href="/auth/signup"
-              className="btn-primary text-base px-8 py-3.5 justify-center inline-flex items-center gap-2 mt-7 w-full sm:w-auto"
+              className="btn-primary text-sm px-6 py-2.5 justify-center inline-flex items-center gap-2 mt-7 self-start"
             >
               Start 7-Day Free Trial
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
-
-            <div className="flex flex-wrap gap-2 items-center mt-5 px-1">
-              <span className="text-xs text-[#9CA3AF] font-medium mr-1">Works on:</span>
-              {[
-                { label:"Instagram DMs", color:"#E1306C" },
-                { label:"WhatsApp",      color:"#25D366" },
-                { label:"Website chat",  color:"#ed5426" },
-                { label:"Phone calls",   color:"#6B7280" },
-              ].map(ch=>(
-                <span key={ch.label} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-[#E5E7EB] text-[#374151]">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background:ch.color }}/>
-                  {ch.label}
-                </span>
-              ))}
-            </div>
           </div>
 
           {/* Demo window */}
@@ -1558,7 +1553,7 @@ export default function ProductTourDemo() {
               >
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={scene}
+                    key={`${scene}-${replayTick}`}
                     variants={sceneVariants}
                     initial="enter"
                     animate="center"
@@ -1569,21 +1564,6 @@ export default function ProductTourDemo() {
                     {renderScene(scene)}
                   </motion.div>
                 </AnimatePresence>
-
-                {/* Progress dots */}
-                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 pointer-events-none">
-                  {Array.from({ length:SCENE_COUNT }).map((_,i)=>(
-                    <div
-                      key={i}
-                      className="rounded-full transition-all duration-300"
-                      style={{
-                        width:  i===scene ? 16 : 6,
-                        height: 6,
-                        background: i===scene ? "var(--vp-color)" : "rgba(0,0,0,0.18)",
-                      }}
-                    />
-                  ))}
-                </div>
               </div>
             </div>
           </div>
