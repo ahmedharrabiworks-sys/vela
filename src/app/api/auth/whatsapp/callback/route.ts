@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   if (!tokenRes.ok || !tokenData.access_token) {
     console.error("[whatsapp/callback] Token exchange failed:", tokenData.error?.message);
-    return NextResponse.json({ error: "Meta authentication failed — please try again." }, { status: 400 });
+    return NextResponse.json({ error: "Meta authentication failed. Please try again." }, { status: 400 });
   }
 
   const accessToken = tokenData.access_token;
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   if (!phoneRes.ok) {
     console.error("[whatsapp/callback] Phone number validation failed:", phoneData.error?.message);
     return NextResponse.json(
-      { error: "Could not verify your WhatsApp Business number — please try again." },
+      { error: "Could not verify your WhatsApp Business number. Please try again." },
       { status: 400 }
     );
   }
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
   if (!subscribeRes.ok || !subscribeData.success) {
     console.error("[whatsapp/callback] Webhook subscription failed:", subscribeData.error?.message);
     return NextResponse.json(
-      { error: "Webhook subscription failed — please try again." },
+      { error: "Webhook subscription failed. Please try again." },
       { status: 400 }
     );
   }

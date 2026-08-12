@@ -2296,6 +2296,7 @@ export async function POST(req: NextRequest) {
     contactInfo?: { phone?: string; email?: string; address?: string; hours?: string };
     chat?: Array<{ role: string; content: string; isError?: boolean }>;
     intake?: { phone?: string; email?: string; address?: string; hours?: string; language?: string };
+    embedAiAssistant?: boolean;
   };
 
   const { message, currentHtml, images = [], contactInfo } = body;
@@ -2809,6 +2810,7 @@ export async function POST(req: NextRequest) {
           draft_spec: spec as unknown as Record<string, unknown>,
           updated_at: new Date().toISOString(),
           ...(designStrategy ? { design_strategy: designStrategy as unknown as Record<string, unknown> } : {}),
+          ...(typeof body.embedAiAssistant === "boolean" ? { embed_ai_assistant: body.embedAiAssistant } : {}),
         })
         .eq("id", websiteId);
       if (draftErr) console.error("[website/generate] draft save error:", draftErr.message);

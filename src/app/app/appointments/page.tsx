@@ -476,7 +476,7 @@ export default function AppointmentsPage() {
                         <div className="w-11 h-11 rounded-2xl bg-[#F3F4F6] flex items-center justify-center">
                           <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="16" height="15" rx="2" stroke="#9CA3AF" strokeWidth="1.3"/><path d="M6 2v2M14 2v2M2 7h16" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/></svg>
                         </div>
-                        <p className="text-sm font-semibold text-[#374151]">No appointments yet — they&apos;ll appear here automatically</p>
+                        <p className="text-sm font-semibold text-[#374151]">No appointments yet. They&apos;ll appear here automatically</p>
                         <p className="text-xs text-[#9CA3AF] max-w-xs">When customers book through your AI chat, appointments show up here in real time.</p>
                         <Link href="/app/channels" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 mt-1" style={{ background: "var(--vp-color)" }}>
                           Connect a channel

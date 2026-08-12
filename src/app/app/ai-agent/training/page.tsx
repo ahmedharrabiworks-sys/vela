@@ -691,7 +691,7 @@ export default function TrainingPage() {
                                 </p>
                               ) : (
                                 <p className="text-[10px]" style={{ color: isDark?"#374151":textMuted }}>
-                                  {isCurrent ? "Answer this question…" : isPending ? `Question ${f.q} — coming up` : "Waiting…"}
+                                  {isCurrent ? "Answer this question…" : isPending ? `Question ${f.q}: coming up` : "Waiting…"}
                                 </p>
                               )}
                             </div>
@@ -717,7 +717,7 @@ export default function TrainingPage() {
                       <div className="mb-2">
                         <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{ color: textMuted }}>Services</p>
                         {learnedKb.services.slice(0,4).map((s, i) => (
-                          <p key={i} className="text-[10px]" style={{ color: textSub }}>• {s.name}{s.price?` — ${s.price}`:""}</p>
+                          <p key={i} className="text-[10px]" style={{ color: textSub }}>• {s.name}{s.price?`: ${s.price}`:""}</p>
                         ))}
                       </div>
                     )}

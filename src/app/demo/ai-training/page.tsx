@@ -193,7 +193,7 @@ export default function DemoAITrainingPage() {
                   <label className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block mb-1.5">
                     Additional Information &amp; FAQs
                   </label>
-                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mb-2">Add anything else your AI should know — FAQs, special instructions, certifications, etc.</p>
+                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mb-2">Add anything else your AI should know. FAQs, special instructions, certifications, etc.</p>
                   <textarea
                     defaultValue={DEMO_KB.extra}
                     onFocus={() => setShowModal(true)}

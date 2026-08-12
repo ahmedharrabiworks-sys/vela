@@ -53,7 +53,7 @@ export default function PhonePage() {
         setState(data);
       }
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error. Please try again.");
     }
     setProvisioning(false);
   };
@@ -249,7 +249,7 @@ export default function PhonePage() {
             <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>How inbound calls work</h2>
             <div className="space-y-4">
               {[
-                { step: "1", title: "Customer calls your number", desc: "Vela answers immediately — no hold music, no voicemail." },
+                { step: "1", title: "Customer calls your number", desc: "Vela answers immediately. No hold music, no voicemail." },
                 { step: "2", title: "Language detection", desc: "Vela detects the caller's language in the first few words and switches automatically." },
                 { step: "3", title: "Uses your training", desc: "Vela answers using the business knowledge you taught it in the Training interview." },
                 { step: "4", title: "Books appointments", desc: "If the caller wants to book, Vela collects details and confirms the appointment." },

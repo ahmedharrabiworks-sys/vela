@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   // Validate URL shape
   try { new URL(url); } catch {
-    return NextResponse.json({ error: "Invalid URL — please enter a full website address like https://yourbusiness.com" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid URL. Please enter a full website address like https://yourbusiness.com" }, { status: 400 });
   }
 
   // Fetch the page
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       signal: AbortSignal.timeout(8000),
     });
     if (!resp.ok) {
-      return NextResponse.json({ error: `Site returned ${resp.status} — check the URL and try again.` }, { status: 422 });
+      return NextResponse.json({ error: `Site returned ${resp.status}. Check the URL and try again.` }, { status: 422 });
     }
     rawHtml = await resp.text();
   } catch (err) {
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     try {
       kb = JSON.parse(raw) as KnowledgeBase;
     } catch {
-      return NextResponse.json({ error: "AI returned unexpected format — try again." }, { status: 500 });
+      return NextResponse.json({ error: "AI returned unexpected format. Try again." }, { status: 500 });
     }
 
     // Validate minimal shape
@@ -146,6 +146,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ kb });
   } catch (err) {
     console.error("[ai-training/import] OpenAI error:", err);
-    return NextResponse.json({ error: "AI extraction failed — try again in a moment." }, { status: 500 });
+    return NextResponse.json({ error: "AI extraction failed. Try again in a moment." }, { status: 500 });
   }
 }

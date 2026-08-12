@@ -24,7 +24,7 @@ const G = ({ children }: { children: React.ReactNode }) => (
 );
 
 /* ════════════════════════════════════════
-   SLIDE 1 — The Problem
+   SLIDE 1. The Problem
    ════════════════════════════════════════ */
 function S1() {
   return (
@@ -107,7 +107,7 @@ function S1() {
 }
 
 /* ════════════════════════════════════════
-   SLIDE 2 — The Old Way
+   SLIDE 2. The Old Way
    ════════════════════════════════════════ */
 function S2() {
   const channels = [
@@ -191,7 +191,7 @@ function S2() {
 }
 
 /* ════════════════════════════════════════
-   SLIDE 3 — Meet Vela
+   SLIDE 3. Meet Vela
    ════════════════════════════════════════ */
 function S3() {
   const features = ["Replies in seconds", "Books appointments", "Qualifies leads", "Never misses a message"];
@@ -282,7 +282,7 @@ function S3() {
 }
 
 /* ════════════════════════════════════════
-   SLIDE 4 — Watch It Work (animated chat)
+   SLIDE 4. Watch It Work (animated chat)
    ════════════════════════════════════════ */
 function S4() {
   const [phase, setPhase] = useState<"typing" | "replied" | "booking">("typing");
@@ -393,7 +393,7 @@ function S4() {
 }
 
 /* ════════════════════════════════════════
-   SLIDE 5 — The Dashboard
+   SLIDE 5. The Dashboard
    ════════════════════════════════════════ */
 function S5() {
   const stats = [
@@ -493,7 +493,7 @@ function S5() {
 }
 
 /* ════════════════════════════════════════
-   SLIDE 6 — Your Turn (CTA)
+   SLIDE 6. Your Turn (CTA)
    ════════════════════════════════════════ */
 function S6({ onCTA, onClose }: { onCTA: () => void; onClose: () => void }) {
   return (

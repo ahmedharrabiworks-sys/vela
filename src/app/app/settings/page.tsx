@@ -698,8 +698,8 @@ export default function SettingsPage() {
                           </svg>
                           <p className="text-xs text-[#9A3412] leading-relaxed">
                             {msgWarn
-                              ? `You've used ${usage.messages.used.toLocaleString()} of ${usage.messages.limit!.toLocaleString()} messages this month — `
-                              : `You've used ${usage.voiceMinutes.used} of ${usage.voiceMinutes.limit} voice minutes — `
+                              ? `You've used ${usage.messages.used.toLocaleString()} of ${usage.messages.limit!.toLocaleString()} messages this month, `
+                              : `You've used ${usage.voiceMinutes.used} of ${usage.voiceMinutes.limit} voice minutes, `
                             }
                             <Link href="/pricing" className="font-semibold underline">upgrade to Pro</Link>
                             {" "}for unlimited messages.
@@ -850,7 +850,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[#111111]">Vela Orange</p>
-                  <p className="text-xs text-[#9CA3AF]">Brand colour — fixed</p>
+                  <p className="text-xs text-[#9CA3AF]">Brand colour. Fixed</p>
                 </div>
                 <span className="ml-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "#ed5426" }}>
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const query = admin
     .from("websites")
-    .select("id, name, slug, domain, domain_status, is_published, published_at")
+    .select("id, name, slug, domain, domain_status, is_published, published_at, embed_ai_assistant")
     .eq("tenant_id", tenant.id);
 
   const { data: site } = websiteId
@@ -44,9 +44,10 @@ export async function GET(req: NextRequest) {
 // domain_status here would silently reset "verified" → "pending" on every save.
 export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
-    websiteId?: string;
-    name?:      string;
-    slug?:      string;
+    websiteId?:        string;
+    name?:              string;
+    slug?:              string;
+    embedAiAssistant?:  boolean;
     // domain is intentionally omitted — use /api/website/domain
   };
 
@@ -82,7 +83,7 @@ export async function PUT(req: NextRequest) {
     const slug = body.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (!SLUG_RE.test(slug)) {
       return NextResponse.json(
-        { error: "Slug must be 3–50 characters: lowercase letters, numbers, and hyphens only." },
+        { error: "Slug must be 3-50 characters: lowercase letters, numbers, and hyphens only." },
         { status: 400 }
       );
     }
@@ -92,12 +93,19 @@ export async function PUT(req: NextRequest) {
         .from("websites").select("id").eq("slug", slug).maybeSingle();
       if (conflict) {
         return NextResponse.json(
-          { error: "This URL slug is already taken — try another." },
+          { error: "This URL slug is already taken. Try another." },
           { status: 409 }
         );
       }
     }
     updates.slug = slug;
+  }
+
+  // AI assistant embed toggle — lets a tenant turn the widget on/off after
+  // publish (e.g. they said "not now" during the build flow and changed
+  // their mind, or want to pause it). Read at serve time by site/[tenantId]/route.ts.
+  if (typeof body.embedAiAssistant === "boolean") {
+    updates.embed_ai_assistant = body.embedAiAssistant;
   }
 
   // NOTE: domain / domain_status intentionally NOT handled here.
@@ -109,7 +117,7 @@ export async function PUT(req: NextRequest) {
     .from("websites")
     .update(updates)
     .eq("id", (site as { id: string }).id)
-    .select("id, name, slug, domain, domain_status")
+    .select("id, name, slug, domain, domain_status, embed_ai_assistant")
     .single();
 
   if (updateErr) {

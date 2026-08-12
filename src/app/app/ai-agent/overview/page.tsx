@@ -108,7 +108,7 @@ function BarChart({ data, isDark }: { data: number[]; isDark: boolean }) {
       </svg>
       {!hasData && (
         <div className="absolute inset-0 flex items-center justify-center pb-4 pointer-events-none">
-          <p className="text-xs" style={{ color: isDark?"var(--dm-faint)":"#9CA3AF" }}>No calls yet — activity will appear here</p>
+          <p className="text-xs" style={{ color: isDark?"var(--dm-faint)":"#9CA3AF" }}>No calls yet. Activity will appear here</p>
         </div>
       )}
     </div>
@@ -129,8 +129,8 @@ interface CallRecord { id: string; created_at: string; duration_seconds?: number
 function buildContextString(ctx: LiveContext): string {
   const lines = [
     `Business: ${ctx.business.name}`,
-    `Leads: ${ctx.leads.total} total${ctx.leads.recent.length > 0 ? ` — latest: ${ctx.leads.recent.map((l:any)=>l.name||"Unknown").join(", ")}` : ""}`,
-    `Appointments: ${ctx.appointments.total} total${ctx.appointments.upcoming.length>0 ? ` — upcoming: ${ctx.appointments.upcoming.map((a:any)=>`${a.customer_name||"?"} (${a.service||"?"}) at ${a.scheduled_at?new Date(a.scheduled_at).toLocaleDateString():""}`).join(", ")}` : " (none upcoming)"}`,
+    `Leads: ${ctx.leads.total} total${ctx.leads.recent.length > 0 ? `. Latest: ${ctx.leads.recent.map((l:any)=>l.name||"Unknown").join(", ")}` : ""}`,
+    `Appointments: ${ctx.appointments.total} total${ctx.appointments.upcoming.length>0 ? `. Upcoming: ${ctx.appointments.upcoming.map((a:any)=>`${a.customer_name||"?"} (${a.service||"?"}) at ${a.scheduled_at?new Date(a.scheduled_at).toLocaleDateString():""}`).join(", ")}` : " (none upcoming)"}`,
     `Training calls recorded: ${ctx.calls.total} (${ctx.calls.totalMinutes} voice minutes)`,
   ];
   if (ctx.business.services?.length > 0) {
@@ -276,7 +276,7 @@ export default function OverviewPage() {
     setMuted(false);
     const STYLE_LINES: Record<string, string> = {
       direct:   "Be direct. Answer immediately with no preamble. Skip filler phrases like \"Great question\" or \"Of course\". One clear answer, nothing more.",
-      warm:     "Be warm and conversational. Natural, friendly language — like a trusted colleague. A brief acknowledgment before answering is fine.",
+      warm:     "Be warm and conversational. Natural, friendly language. Like a trusted colleague. A brief acknowledgment before answering is fine.",
       thorough: "Be thorough. Provide full context when it adds value. Walk through reasoning where helpful. Err on the side of completeness over brevity.",
       brief:    "Be maximally brief. Every word must earn its place. Compress to the minimum required for clarity and accuracy.",
     };
@@ -288,15 +288,15 @@ export default function OverviewPage() {
     const langInstruction = lang
       ? `MANDATORY: Speak ONLY in ${LANG_NAMES[lang] ?? lang} throughout the entire conversation. Never switch languages. Not mid-sentence, not ever.`
       : "Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic (العربية), French, German, Spanish, and English fluently.";
-    const velaSystem = `You are Vela — a warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
+    const velaSystem = `You are Vela. A warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
 
 ## YOUR ROLE
-You have read-only access to the owner's live account data. Help them understand their business performance, answer data questions, and give actionable insights about their Vela phone agent. Think like a trusted advisor — give real insights, not just data readouts.
+You have read-only access to the owner's live account data. Help them understand their business performance, answer data questions, and give actionable insights about their Vela phone agent. Think like a trusted advisor. Give real insights, not just data readouts.
 
 Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
 
 ## OPENING
-Open the conversation immediately — greet the owner warmly and briefly, then wait for their question. You speak first. Keep it to one sentence. Vary your exact wording every session — never open with "مرحبا" or any other fixed phrase two sessions in a row.
+Open the conversation immediately. Greet the owner warmly and briefly, then wait for their question. You speak first. Keep it to one sentence. Vary your exact wording every session. Never open with "مرحبا" or any other fixed phrase two sessions in a row.
 
 ## LANGUAGE
 ${langInstruction}
@@ -308,9 +308,9 @@ ${STYLE_LINES[convStyleRef.current] ?? STYLE_LINES.warm}
 Starter $79/mo · Pro $159/mo (most popular) · Premium $299/mo. Annual saves 20%.
 
 ## LIVE ACCOUNT DATA
-${ctx ? buildContextString(ctx) : "Account data loading — answer general questions about Vela."}
+${ctx ? buildContextString(ctx) : "Account data loading. Answer general questions about Vela."}
 
-Do not read raw data aloud — synthesize it into natural, helpful insights.`;
+Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
@@ -747,7 +747,7 @@ Do not read raw data aloud — synthesize it into natural, helpful insights.`;
                 {callStatus === "ended" && wasEjected && (
                   <div className="space-y-2">
                     <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      Call dropped — tab was hidden too long
+                      Call dropped. Tab was hidden too long
                     </p>
                     <button onClick={startCall}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"

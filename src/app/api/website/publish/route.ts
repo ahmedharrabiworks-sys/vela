@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
   if (!htmlToPublish) {
     console.error("[website/publish] no draft_html for site", site?.id ?? "none", "tenant", tenant.id);
     return NextResponse.json(
-      { error: "No website draft found — generate a site first." },
+      { error: "No website draft found. Generate a site first." },
       { status: 400 }
     );
   }
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     if (publishErr) {
       console.error("[website/publish] websites update error:", publishErr.message);
-      return NextResponse.json({ error: "Failed to publish — please try again." }, { status: 500 });
+      return NextResponse.json({ error: "Failed to publish. Please try again." }, { status: 500 });
     }
 
     // Save a publish snapshot to version history
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     }, { onConflict: "tenant_id" });
   if (configErr) {
     console.error("[website/publish] tenant_config upsert error:", configErr.message);
-    return NextResponse.json({ error: "Failed to save site — please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save site. Please try again." }, { status: 500 });
   }
 
   // Derive a human-readable slug from the site name if the current slug is missing or UUID-shaped

@@ -66,7 +66,7 @@ export default function ExecutivePage() {
 
       setMessages([...next, { role: "assistant", content: data.reply }]);
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error. Please try again.");
       setMessages(messages);
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export default function ExecutivePage() {
         {messages.length === 0 && (
           <div style={{ maxWidth: 600, margin: "0 auto", paddingTop: 40 }}>
             <p style={{ fontSize: 13, color: T.dim, marginBottom: 20 }}>
-              Ask anything about your platform data. All answers come from live database queries — no estimates, no invented numbers.
+              Ask anything about your platform data. All answers come from live database queries. No estimates, no invented numbers.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {SUGGESTIONS.map((s) => (

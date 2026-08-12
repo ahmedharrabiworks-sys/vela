@@ -200,7 +200,7 @@
     },
     "showing": "Anzeige von",
     "bookingCounter": "Buchungen diesen Monat",
-    "bookingLimitReached": "Buchungslimit erreicht — upgraden Sie auf Pro für unbegrenzte Buchungen"
+    "bookingLimitReached": "Buchungslimit erreicht. Upgraden Sie auf Pro für unbegrenzte Buchungen"
   },
   "greeting": {
     "morning": "Guten Morgen",
@@ -245,7 +245,7 @@
     "widgetHint": "Nachrichten aus Ihrem Widget erscheinen hier",
     "needsAttention": "Aufmerksamkeit erforderlich",
     "replyingManually": "Manuell als Team antworten",
-    "aiModeHint": "Testmodus — Nachrichten hier sind nur Tests und werden nicht an den Kunden gesendet",
+    "aiModeHint": "Testmodus. Nachrichten hier sind nur Tests und werden nicht an den Kunden gesendet",
     "simulatePlaceholder": "Testnachricht eingeben…",
     "replyPlaceholder": "Antwort eingeben…",
     "send": "Senden",
@@ -289,7 +289,7 @@
     "publish": "Veröffentlichen →",
     "previewEmpty": "Vorschau erscheint hier",
     "building": "Website wird erstellt…",
-    "livePreview": "yoursite.vela.ai — Live-Vorschau"
+    "livePreview": "yoursite.vela.ai. Live-Vorschau"
   },
   "aiTraining": {
     "title": "KI trainieren",
@@ -298,20 +298,20 @@
     "wellTrained": "Gut trainiert",
     "gettingThere": "Auf gutem Weg",
     "needsInfo": "Braucht mehr Infos",
-    "importPlaceholder": "Ihre Website einfügen — Vela lernt alles ✨",
+    "importPlaceholder": "Ihre Website einfügen. Vela lernt alles ✨",
     "analyzing": "Analyse läuft",
     "importBtn": "Importieren",
     "uploadPriceList": "Preisliste hochladen",
     "answerQuestions": "5 kurze Fragen beantworten",
     "or": "oder",
-    "instagramSoon": "Instagram-Import kommt bald — fügen Sie stattdessen Ihre Website-URL ein oder laden Sie ein PDF hoch.",
-    "reviewTitle": "Auszug von Ihrer Website — bitte vor dem Speichern prüfen",
+    "instagramSoon": "Instagram-Import kommt bald. Fügen Sie stattdessen Ihre Website-URL ein oder laden Sie ein PDF hoch.",
+    "reviewTitle": "Auszug von Ihrer Website. Bitte vor dem Speichern prüfen",
     "reviewServices": "Leistungen",
     "reviewExtraInfo": "Zusätzliche Informationen",
     "reviewBusinessInfo": "Unternehmensinfo",
     "reviewHours": "Öffnungszeiten:",
     "reviewAddress": "Adresse:",
-    "saveBtn": "Passt so — Speichern",
+    "saveBtn": "Passt so. Speichern",
     "discardBtn": "Verwerfen",
     "tabs": {
       "services": "Leistungen",
@@ -332,7 +332,7 @@
     },
     "businessInfo": {
       "hours": "Öffnungszeiten",
-      "hoursPlaceholder": "Mo–Fr 9–18 Uhr, Sa 10–16 Uhr",
+      "hoursPlaceholder": "Mo-Fr 9-18 Uhr, Sa 10-16 Uhr",
       "address": "Adresse / Standort",
       "addressPlaceholder": "z. B. Hauptstraße 5, Stadt",
       "bookingPolicy": "Buchungsrichtlinien",
@@ -347,19 +347,19 @@
     },
     "extra": {
       "label": "Zusätzliches Wissen",
-      "hint": "Alles, was Ihre KI wissen sollte — Richtlinien, FAQ, Aktionen, Team-Infos…",
+      "hint": "Alles, was Ihre KI wissen sollte. Richtlinien, FAQ, Aktionen, Team-Infos…",
       "uploadTitle": "Dokument hochladen",
-      "uploadHint": "PDF oder Bild — wir extrahieren den Text zur Überprüfung.",
+      "uploadHint": "PDF oder Bild. Wir extrahieren den Text zur Überprüfung.",
       "chooseFile": "Datei auswählen",
       "extracting": "Extrahiere…",
-      "extractionFailed": "Extraktion fehlgeschlagen — versuchen Sie eine andere Datei oder fügen Sie den Text manuell ein.",
-      "reviewExtracted": "Extrahierter Text — bitte vor dem Hinzufügen prüfen:",
+      "extractionFailed": "Extraktion fehlgeschlagen. Versuchen Sie eine andere Datei oder fügen Sie den Text manuell ein.",
+      "reviewExtracted": "Extrahierter Text. Bitte vor dem Hinzufügen prüfen:",
       "discard": "Verwerfen",
       "addToKB": "Zur Wissensbasis hinzufügen",
       "textareaPlaceholder": "z. B. 'Wir verwenden ausschließlich vegane Produkte.' oder 'F: Gibt es Rabatte?\nA: Ja, 15% dienstags.'"
     },
     "importFailed": "Import fehlgeschlagen.",
-    "connectionError": "Verbindungsfehler — bitte erneut versuchen.",
+    "connectionError": "Verbindungsfehler. Bitte erneut versuchen.",
     "moreCount": " weitere",
     "saved": "Gespeichert ✓",
     "savedImported": "Importiert & gespeichert ✓"
@@ -375,15 +375,15 @@
     "keyboardSend": "zum Senden · ",
     "keyboardNewline": "für neue Zeile",
     "greeting": "Hallo",
-    "greetingMessage": "Ich bin Vela, Ihr KI-Unternehmensassistent. Fragen Sie mich zu Ihren Leads, Terminen oder Gesprächen — oder ich helfe Ihnen, Antworten und Marketingtexte zu verfassen.",
+    "greetingMessage": "Ich bin Vela, Ihr KI-Unternehmensassistent. Fragen Sie mich zu Ihren Leads, Terminen oder Gesprächen. Oder ich helfe Ihnen, Antworten und Marketingtexte zu verfassen.",
     "errorUnauthorized": "Bitte melden Sie sich an, um Vela AI zu nutzen.",
     "errorTenantNotFound": "Schließen Sie die Kontoeinrichtung ab, um den Assistenten freizuschalten.",
     "errorNotConfigured": "Der KI-Dienst ist noch nicht konfiguriert. Wenden Sie sich an den Support.",
-    "errorGeneric": "Etwas ist schiefgelaufen — tippen Sie unten auf 'Wiederholen'.",
+    "errorGeneric": "Etwas ist schiefgelaufen. Tippen Sie unten auf 'Wiederholen'.",
     "errorNoResponse": "Keine Antwort generiert. Bitte erneut versuchen.",
-    "errorConnection": "Verbindungsfehler — überprüfen Sie Ihr Internet und tippen Sie auf 'Wiederholen'.",
+    "errorConnection": "Verbindungsfehler. Überprüfen Sie Ihr Internet und tippen Sie auf 'Wiederholen'.",
     "kbUpdated": "✓ Ihre KI-Wissensbasis wurde aktualisiert! Besuchen Sie 'KI trainieren', um alles zu überprüfen.",
-    "kbSaveFailed": "Das Interview ist abgeschlossen, aber das Speichern ist fehlgeschlagen — bitte 'KI trainieren' besuchen und manuell speichern.",
+    "kbSaveFailed": "Das Interview ist abgeschlossen, aber das Speichern ist fehlgeschlagen. Bitte 'KI trainieren' besuchen und manuell speichern.",
     "quickActions": {
       "todayAppointments": "Heutige Termine",
       "recentLeads": "Aktuelle Leads",
@@ -396,7 +396,7 @@
       "recentLeads": "Zeig mir meine neuesten Leads",
       "needsAttention": "Welche Gespräche erfordern menschliche Unterstützung?",
       "writeReply": "Hilf mir, eine professionelle Antwort auf eine Preisanfrage zu schreiben",
-      "trainMe": "Ich möchte meine KI trainieren — bitte starte das Interview jetzt."
+      "trainMe": "Ich möchte meine KI trainieren. Bitte starte das Interview jetzt."
     }
   },
   "landing": {
@@ -476,7 +476,7 @@
             "Alle 3 Kanäle + Prioritätsantworten",
             "Vollständige benutzerdefinierte Website + Animationen",
             "Unbegrenzte Buchungen",
-            "Fortgeschrittene KI — lernt mit der Zeit",
+            "Fortgeschrittene KI. Lernt mit der Zeit",
             "Vollständiger Kalender + Erinnerungen + Analysen",
             "Erweiterte Follow-up-Sequenzen",
             "Vollständiges CRM + Umsatzberichte",
@@ -493,12 +493,30 @@
       "headline1": "Haben Sie Fragen?",
       "headline2": "Wir haben Antworten.",
       "questions": [
-        { "q": "Wie schnell kann ich loslegen?", "a": "Die meisten Unternehmen sind innerhalb von 7 Tagen live. Nach der Anmeldung verbindet unser Onboarding-Team Ihre Kanäle, trainiert die KI mit Ihren Leistungen und testet alles vor dem Start. Sie müssen keine einzige Zeile Code schreiben." },
-        { "q": "Funktioniert Vela wirklich auf Instagram und WhatsApp?", "a": "Ja. Vela integriert sich direkt mit der offiziellen Instagram API und der WhatsApp Business API. Jede DM, Kommentarantwort und Story-Reaktion wird von Ihrem KI-Assistenten verwaltet. WhatsApp ist besonders leistungsstark für buchungsbasierte Unternehmen wie Kliniken und Salons." },
-        { "q": "Kann ich anpassen, was die KI sagt?", "a": "Absolut. Beim Einrichten geben Sie Ihre Leistungsliste, Preise, FAQs, Ton und Buchungsregeln an. Die KI wird speziell für Ihr Unternehmen trainiert. Sie können auch Eskalationsregeln festlegen, damit die KI komplexe Fälle an einen Menschen übergibt." },
-        { "q": "Was passiert, wenn ein Kunde etwas fragt, das die KI nicht weiß?", "a": "Die KI erkennt höflich, dass sie diese Information nicht hat, und bietet an, den Kunden mit einem Teammitglied zu verbinden. Sie erhalten sofort eine Benachrichtigung, um einzugreifen. Sie können die Wissensbasis der KI jederzeit in Ihren Einstellungen erweitern." },
-        { "q": "Sind meine Kundendaten sicher?", "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert — Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir teilen oder verkaufen niemals Kundendaten. DSGVO-Konformität ist eingebaut." },
-        { "q": "Kann ich mein Abonnement kündigen?", "a": "Ja, jederzeit. Keine Verträge, keine Stornierungsgebühren. Sie können direkt in Ihren Abrechnungseinstellungen kündigen. Ihre Daten stehen 30 Tage nach der Kündigung zum Export zur Verfügung." }
+        {
+          "q": "Wie schnell kann ich loslegen?",
+          "a": "Die meisten Unternehmen sind innerhalb von 7 Tagen live. Nach der Anmeldung verbindet unser Onboarding-Team Ihre Kanäle, trainiert die KI mit Ihren Leistungen und testet alles vor dem Start. Sie müssen keine einzige Zeile Code schreiben."
+        },
+        {
+          "q": "Funktioniert Vela wirklich auf Instagram und WhatsApp?",
+          "a": "Ja. Vela integriert sich direkt mit der offiziellen Instagram API und der WhatsApp Business API. Jede DM, Kommentarantwort und Story-Reaktion wird von Ihrem KI-Assistenten verwaltet. WhatsApp ist besonders leistungsstark für buchungsbasierte Unternehmen wie Kliniken und Salons."
+        },
+        {
+          "q": "Kann ich anpassen, was die KI sagt?",
+          "a": "Absolut. Beim Einrichten geben Sie Ihre Leistungsliste, Preise, FAQs, Ton und Buchungsregeln an. Die KI wird speziell für Ihr Unternehmen trainiert. Sie können auch Eskalationsregeln festlegen, damit die KI komplexe Fälle an einen Menschen übergibt."
+        },
+        {
+          "q": "Was passiert, wenn ein Kunde etwas fragt, das die KI nicht weiß?",
+          "a": "Die KI erkennt höflich, dass sie diese Information nicht hat, und bietet an, den Kunden mit einem Teammitglied zu verbinden. Sie erhalten sofort eine Benachrichtigung, um einzugreifen. Sie können die Wissensbasis der KI jederzeit in Ihren Einstellungen erweitern."
+        },
+        {
+          "q": "Sind meine Kundendaten sicher?",
+          "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert. Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir teilen oder verkaufen niemals Kundendaten. DSGVO-Konformität ist eingebaut."
+        },
+        {
+          "q": "Kann ich mein Abonnement kündigen?",
+          "a": "Ja, jederzeit. Keine Verträge, keine Stornierungsgebühren. Sie können direkt in Ihren Abrechnungseinstellungen kündigen. Ihre Daten stehen 30 Tage nach der Kündigung zum Export zur Verfügung."
+        }
       ]
     },
     "cta": {
@@ -571,8 +589,8 @@
       "setupPhoneSub": "Nummer für Ihren Agenten holen",
       "viewCalls": "Anrufverlauf anzeigen",
       "viewCallsSub": "Vollständigen Verlauf anzeigen",
-      "onboardingTitle": "Ihr Telefonagent ist bereit — 3 Schritte zum Start",
-      "step1Pre": "Trainieren Sie Ihren Agenten — führen Sie das Interview durch in",
+      "onboardingTitle": "Ihr Telefonagent ist bereit. 3 Schritte zum Start",
+      "step1Pre": "Trainieren Sie Ihren Agenten. Führen Sie das Interview durch in",
       "step1Link": "Training →",
       "step2Pre": "Richten Sie Ihre Telefonnummer ein in",
       "step2Link": "Telefonnummer →",
@@ -612,8 +630,8 @@
     },
     "phone": {
       "pageTitle": "Telefonnummer",
-      "subtitle": "Verbinden Sie eine Telefonnummer, damit Vela Ihre Anrufe 24/7 entgegennimmt — Anfragen bearbeitet, Termine bucht und in jeder Sprache antwortet.",
-      "active": "Aktiv — nimmt Anrufe entgegen",
+      "subtitle": "Verbinden Sie eine Telefonnummer, damit Vela Ihre Anrufe 24/7 entgegennimmt. Anfragen bearbeitet, Termine bucht und in jeder Sprache antwortet.",
+      "active": "Aktiv. Nimmt Anrufe entgegen",
       "getTitle": "Holen Sie sich Ihre KI-Telefonnummer",
       "getDesc": "Stellen Sie eine echte Telefonnummer bereit. Vela beantwortet jeden Anruf mit Ihrem trainierten Geschäftswissen, in der Sprache des Anrufers.",
       "getBtn": "Telefonnummer holen",
@@ -635,7 +653,7 @@
     },
     "settings": {
       "pageTitle": "Agenteneinstellungen",
-      "subtitle": "Konfigurieren Sie Ihren KI-Telefonagenten — Klang, Verhalten und Unternehmensrepräsentation.",
+      "subtitle": "Konfigurieren Sie Ihren KI-Telefonagenten. Klang, Verhalten und Unternehmensrepräsentation.",
       "identity": "Identität",
       "agentName": "Agentenname",
       "agentNamePlaceholder": "z.B. Vela",

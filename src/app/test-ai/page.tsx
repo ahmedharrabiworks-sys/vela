@@ -37,7 +37,7 @@ export default function TestAIPage() {
         setBusinessName(t.business_name);
         addLog(`✓ Found tenant: ${t.business_name} (${t.id})`);
       } else {
-        addLog("⚠ No tenant found — enter a tenant ID manually below");
+        addLog("⚠ No tenant found. Enter a tenant ID manually below");
       }
     })();
   }, []);
@@ -107,7 +107,7 @@ export default function TestAIPage() {
   const reset = () => {
     setConversationId(null);
     setMessages([]);
-    addLog("↺ Reset — new conversation will be created on next send");
+    addLog("↺ Reset. New conversation will be created on next send");
   };
 
   return (
@@ -117,7 +117,7 @@ export default function TestAIPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#111111]">AI Reply Engine — Test Console</h1>
+            <h1 className="text-2xl font-bold text-[#111111]">AI Reply Engine: Test Console</h1>
             <p className="text-sm text-[#6B7280] mt-1">Test the full loop: message → AI reply → booking detection → Supabase save</p>
           </div>
           <a href="/app/conversations"

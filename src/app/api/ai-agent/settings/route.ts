@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       (typeof upsertErr.message === "string" && upsertErr.message.includes("does not exist"));
     if (isMissingColumn) {
       return NextResponse.json(
-        { error: "Database column missing — run Migration v6 in your Supabase SQL Editor to create the required columns." },
+        { error: "Database column missing. Run Migration v6 in your Supabase SQL Editor to create the required columns." },
         { status: 422 }
       );
     }

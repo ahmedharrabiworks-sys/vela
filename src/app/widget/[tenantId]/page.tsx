@@ -5,10 +5,17 @@ export const dynamic = "force-dynamic";
 
 export default async function WidgetPage({
   params,
+  searchParams,
 }: {
   params: { tenantId: string };
+  searchParams: { source?: string };
 }) {
   const { tenantId } = params;
+  // source=site means this widget is the one auto-injected on a published
+  // Vela-built site (see site/[tenantId]/route.ts); anything else is an
+  // externally pasted embed. Tagged on the conversation as the channel so
+  // the two are distinguishable in Conversations/Analytics.
+  const channel = searchParams?.source === "site" ? "website" : "website_embed";
 
   let businessName = "Business";
   let industry = "business";
@@ -27,7 +34,7 @@ export default async function WidgetPage({
       businessName = t.business_name || "Business";
       industry = t.industry || "business";
     }
-  } catch { /* tenant not found — show generic widget */ }
+  } catch { /* tenant not found. Show generic widget */ }
 
   const greeting = `Hi there! 👋 Welcome to ${businessName}. How can I help you today?`;
 
@@ -36,6 +43,7 @@ export default async function WidgetPage({
       tenantId={tenantId}
       businessName={businessName}
       greeting={greeting}
+      channel={channel}
     />
   );
 }

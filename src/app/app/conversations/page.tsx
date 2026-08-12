@@ -35,6 +35,15 @@ function ChannelIcon({ channel }: { channel: string }) {
   );
 }
 
+// website = the auto-injected widget on a Vela-built site; website_embed = the
+// same widget pasted onto an external site via the Channels embed code.
+function channelLabel(channel: string): string {
+  if (channel === "instagram") return "Instagram";
+  if (channel === "whatsapp") return "WhatsApp";
+  if (channel === "website_embed") return "Website (embed)";
+  return "Website";
+}
+
 function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
@@ -297,7 +306,7 @@ export default function ConversationsPage() {
 
         if (!res.ok) {
           setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
-          setReplyError(data.error || "Failed to send — please try again");
+          setReplyError(data.error || "Failed to send. Please try again");
           setTimeout(() => setReplyError(null), 5000);
         } else if (data.channelError) {
           setReplyError(data.channelError);
@@ -305,7 +314,7 @@ export default function ConversationsPage() {
         }
       } catch {
         setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
-        setReplyError("Network error — please try again");
+        setReplyError("Network error. Please try again");
         setTimeout(() => setReplyError(null), 5000);
       }
     }
@@ -321,6 +330,7 @@ export default function ConversationsPage() {
   const filtered = conversations.filter((c) => {
     if (filter === "All") return true;
     if (filter === "Unread") return c.isNew;
+    if (filter === "website") return c.channel === "website" || c.channel === "website_embed";
     return c.channel === filter;
   });
 
@@ -441,7 +451,7 @@ export default function ConversationsPage() {
 
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[#111111] text-sm leading-tight">{selected.customer_name}</p>
-                <p className="text-[10px] text-[#6B7280] mt-0.5 capitalize">{t("conversations.via")} {selected.channel}</p>
+                <p className="text-[10px] text-[#6B7280] mt-0.5">{t("conversations.via")} {channelLabel(selected.channel)}</p>
               </div>
 
               <div className="flex items-center gap-2">

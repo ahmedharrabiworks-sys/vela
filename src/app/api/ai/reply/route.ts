@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   // Per-tenant rate limit — checked before any OpenAI calls
   if (isTenantRateLimited(tenantId)) {
     return NextResponse.json(
-      { error: "Too many requests — please slow down" },
+      { error: "Too many requests. Please slow down" },
       { status: 429, headers: CORS }
     );
   }

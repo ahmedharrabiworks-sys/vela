@@ -93,7 +93,7 @@ export default function AssistantSettingsPage() {
     } catch {
       setGenerating(null);
       setPlaying(null);
-      setPreviewNote("Preview unavailable — add ELEVEN_LABS_API_KEY to .env.local to enable voice samples.");
+      setPreviewNote("Preview unavailable. Add ELEVEN_LABS_API_KEY to .env.local to enable voice samples.");
     }
   };
 
@@ -108,24 +108,24 @@ export default function AssistantSettingsPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
-        setSaveError(data.error ?? "Save failed — please try again");
+        setSaveError(data.error ?? "Save failed. Please try again");
         setSaving(false);
         return;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setSaveError("Network error — please check your connection");
+      setSaveError("Network error. Please check your connection");
     }
     setSaving(false);
   };
 
   const speedPct = ((speed - 0.7) / 0.5) * 100;
   const speedLabel =
-    speed < 0.85  ? "Slower — clear and deliberate"
+    speed < 0.85  ? "Slower. Clear and deliberate"
     : speed <= 1.0 ? "Natural conversational speed"
-    : speed <= 1.1 ? "Slightly faster — energetic and efficient"
-    :                "Fast — concise, high-paced";
+    : speed <= 1.1 ? "Slightly faster. Energetic and efficient"
+    :                "Fast. Concise, high-paced";
 
   if (loading) {
     return (
@@ -145,7 +145,7 @@ export default function AssistantSettingsPage() {
         <div>
           <h1 className="text-xl font-bold mb-1" style={{ color: textPrimary }}>Assistant Settings</h1>
           <p className="text-sm" style={{ color: textMuted }}>
-            Configure how Vela sounds and communicates when talking to you — independent from your phone agent.
+            Configure how Vela sounds and communicates when talking to you. Independent from your phone agent.
           </p>
         </div>
 

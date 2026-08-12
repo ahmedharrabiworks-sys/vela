@@ -118,7 +118,7 @@ export default function WelcomePage() {
         {
           id: "ai",
           title: "Train your AI",
-          description: "Teach your AI your services, prices, and hours — it will answer customers perfectly from day one.",
+          description: "Teach your AI your services, prices, and hours. It will answer customers perfectly from day one.",
           cta: aiDone ? "Trained" : "Train your AI",
           href: "/app/ai-training",
           status: aiDone ? "done" : "pending",
@@ -133,7 +133,7 @@ export default function WelcomePage() {
         {
           id: "website",
           title: "Build your website",
-          description: "Launch a beautiful, AI-powered website for your business — no code needed, live in minutes.",
+          description: "Launch a beautiful, AI-powered website for your business. No code needed, live in minutes.",
           cta: websiteDone ? "Built" : "Build website",
           href: "/app/website",
           status: websiteDone ? "done" : "pending",
@@ -193,7 +193,7 @@ export default function WelcomePage() {
         <h1 className="text-2xl md:text-3xl font-bold text-[#111111] mb-2">
           Welcome to Vela, {name}!
         </h1>
-        <p className="text-sm text-[#6B7280]">Get live in 3 steps — takes less than 5 minutes.</p>
+        <p className="text-sm text-[#6B7280]">Get live in 3 steps. Takes less than 5 minutes.</p>
 
         {/* Progress bar */}
         <div className="mt-5 max-w-xs mx-auto">

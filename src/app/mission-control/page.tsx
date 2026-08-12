@@ -178,7 +178,7 @@ export default async function MissionControlHome() {
             {mrr ? `$${n(mrr.theoreticalMRR)}` : "—"}
           </p>
           <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>
-            Plan price × tenants — not actual billing
+            Plan price × tenants. Not actual billing
           </p>
         </div>
 
@@ -233,7 +233,7 @@ export default async function MissionControlHome() {
           }}>
             {atRisk ? n(atRisk.length) : "—"}
           </p>
-          <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>Proxy signals — never "churned"</p>
+          <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>Proxy signals. Never "churned"</p>
         </div>
       </div>
 
@@ -285,7 +285,7 @@ export default async function MissionControlHome() {
 
         {/* Voice margin */}
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: "8px", padding: "20px" }}>
-          <SectionHead>Voice Margin — This Month</SectionHead>
+          <SectionHead>Voice Margin: This Month</SectionHead>
           {voice ? (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
@@ -337,7 +337,7 @@ export default async function MissionControlHome() {
                 <p style={{ fontSize: "0.78rem", color: T.muted, margin: 0 }}>
                   No voice usage this month.{" "}
                   <span style={{ color: "#555" }}>
-                    VAPI_WEBHOOK_SECRET credential pending (Hard Rule 20 — add on final integration day).
+                    VAPI_WEBHOOK_SECRET credential pending (Hard Rule 20. Add on final integration day).
                   </span>
                 </p>
               )}
@@ -362,7 +362,7 @@ export default async function MissionControlHome() {
               <span style={{ fontSize: "0.9rem", lineHeight: 1 }}>⚠</span>
             )}
             <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600, color: atRisk.length > 0 ? T.amber : "#f5f5f5" }}>
-              At-Risk (behavioral){atRisk.length > 0 ? ` — ${n(atRisk.length)} tenant${atRisk.length !== 1 ? "s" : ""}` : " — none"}
+              At-Risk (behavioral){atRisk.length > 0 ? `: ${n(atRisk.length)} tenant${atRisk.length !== 1 ? "s" : ""}` : ": none"}
             </p>
             <span style={{
               marginLeft: "auto",
@@ -413,7 +413,7 @@ export default async function MissionControlHome() {
       {/* ── Tenant roster ── */}
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: "8px", padding: "20px" }}>
         <SectionHead>
-          Tenant Roster — {roster ? n(roster.totalCount) : "?"} accounts
+          Tenant Roster: {roster ? n(roster.totalCount) : "?"} accounts
         </SectionHead>
         {roster ? (
           <div style={{ overflowX: "auto" }}>

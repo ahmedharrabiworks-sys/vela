@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
   if (restoreErr) {
     console.error("[website/restore] error:", restoreErr.message);
-    return NextResponse.json({ error: "Restore failed — please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Restore failed. Please try again." }, { status: 500 });
   }
 
   // Record a restore snapshot in website_versions table

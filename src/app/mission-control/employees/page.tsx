@@ -89,7 +89,7 @@ export default async function EmployeesPage() {
       {employees === null && (
         <div style={{ ...S.card, ...S.emptyBox }}>
           <p style={{ color: T.amber, margin: 0 }}>
-            Could not load employees — run <code>supabase/migration_v15.sql</code> first.
+            Could not load employees. Run <code>supabase/migration_v15.sql</code> first.
           </p>
         </div>
       )}
@@ -97,7 +97,7 @@ export default async function EmployeesPage() {
       {/* Empty state */}
       {employees !== null && employees.length === 0 && (
         <div style={{ ...S.card, ...S.emptyBox }}>
-          <p style={{ margin: 0 }}>No employees yet — run the seed script to create the Website Agent.</p>
+          <p style={{ margin: 0 }}>No employees yet. Run the seed script to create the Website Agent.</p>
           <code style={{ display: "block", marginTop: 8, fontSize: 12, color: T.dim }}>
             node src/scripts/seed-website-agent.mjs
           </code>

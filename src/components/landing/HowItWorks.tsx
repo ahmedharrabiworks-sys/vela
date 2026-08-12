@@ -7,21 +7,21 @@ const STEPS = [
     number: "01",
     title: "Customer sends a message",
     description:
-      "A lead reaches out on Instagram DM, WhatsApp, or your website chat — any time of day or night.",
+      "A lead reaches out on Instagram DM, WhatsApp, or your website chat. Any time of day or night.",
     chips: ["Instagram DM", "WhatsApp", "Website Chat"],
   },
   {
     number: "02",
     title: "Vela AI replies in under 60 seconds",
     description:
-      "Your AI assistant responds immediately, in your brand voice, in any language — even at 2 AM.",
+      "Your AI assistant responds immediately, in your brand voice, in any language. Even at 2 AM.",
     chips: ["< 60s response", "Multilingual", "Brand-trained"],
   },
   {
     number: "03",
     title: "AI qualifies the lead",
     description:
-      "Smart follow-up questions gather the right information: service interest, timeline, budget — automatically.",
+      "Smart follow-up questions gather the right information: service interest, timeline, budget. Automatically.",
     chips: ["Service type", "Budget range", "Urgency"],
   },
   {

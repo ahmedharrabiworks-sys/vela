@@ -189,7 +189,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
 
   const handleConnect = () => {
     if (!window.FB) {
-      setErrorMsg("Facebook SDK not loaded yet — please wait a moment and try again.");
+      setErrorMsg("Facebook SDK not loaded yet. Please wait a moment and try again.");
       setStatus("error");
       return;
     }
@@ -209,7 +209,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
       const phone_number_id = response.authResponse.session_info?.phone_number_id as string | undefined;
 
       if (!waba_id || !phone_number_id) {
-        setErrorMsg("Could not retrieve WhatsApp Business account info — please try again.");
+        setErrorMsg("Could not retrieve WhatsApp Business account info. Please try again.");
         setStatus("error");
         return;
       }
@@ -228,7 +228,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
         };
 
         if (!res.ok || !data.ok) {
-          setErrorMsg(data.error ?? "Connection failed — please try again.");
+          setErrorMsg(data.error ?? "Connection failed. Please try again.");
           setStatus("error");
           return;
         }
@@ -237,7 +237,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
         setConnectedName(data.displayName ?? "");
         setStatus("success");
       } catch {
-        setErrorMsg("Network error — please check your connection and try again.");
+        setErrorMsg("Network error. Please check your connection and try again.");
         setStatus("error");
       }
     },
@@ -362,7 +362,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
           </svg>
         </div>
         <h3 className="text-lg font-bold text-[#111111] mb-2">Upgrade to connect more channels</h3>
-        <p className="text-sm text-[#6B7280] mb-6">Connect all 3 channels — WhatsApp, Instagram, and Website — on the Pro plan.</p>
+        <p className="text-sm text-[#6B7280] mb-6">Connect all 3 channels (WhatsApp, Instagram, and Website) on the Pro plan.</p>
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
           <Link
@@ -392,6 +392,8 @@ type WebsiteState = {
   siteUrl: string | null;
   visits: number;
   conversations: number;
+  websiteId: string | null;
+  embedAssistant: boolean;
 };
 
 function ChannelsPageContent() {
@@ -400,7 +402,8 @@ function ChannelsPageContent() {
   const searchParams          = useSearchParams();
 
   const [channels, setChannels]     = useState<ChannelStatus>({ instagram: { connected: false, username: "" }, whatsapp: { connected: false, phone: "" } });
-  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0 });
+  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, websiteId: null, embedAssistant: true });
+  const [savingAssistant, setSavingAssistant] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
   const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
@@ -446,7 +449,7 @@ function ChannelsPageContent() {
       // "Connected" only when a real site has actually been published.
       const { data: siteRow } = await s
         .from("websites")
-        .select("slug, id")
+        .select("slug, id, embed_ai_assistant")
         .eq("tenant_id", tenant.id)
         .eq("is_published", true)
         .order("published_at", { ascending: false })
@@ -466,9 +469,11 @@ function ChannelsPageContent() {
           siteUrl: `${appUrl}/site/${slug}`,
           visits: (cfg?.website_visit_count as number) ?? 0,
           conversations: websiteConvCount ?? 0,
+          websiteId: siteRow.id as string,
+          embedAssistant: siteRow.embed_ai_assistant !== false,
         });
       } else {
-        setWebsite({ published: false, siteUrl: null, visits: 0, conversations: 0 });
+        setWebsite({ published: false, siteUrl: null, visits: 0, conversations: 0, websiteId: null, embedAssistant: true });
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -495,7 +500,7 @@ function ChannelsPageContent() {
       setToast({ msg: `Instagram connection failed: ${reason.replace(/_/g, " ")}`, type: "error" });
       window.history.replaceState({}, "", "/app/channels");
     } else if (ig === "not_configured") {
-      setToast({ msg: "Meta App ID not configured yet — add META_APP_ID to .env.local", type: "info" });
+      setToast({ msg: "Meta App ID not configured yet. Add META_APP_ID to .env.local", type: "info" });
       window.history.replaceState({}, "", "/app/channels");
     }
   }, [searchParams]);
@@ -546,6 +551,25 @@ function ChannelsPageContent() {
       setToast({ msg: "Embed code copied to clipboard", type: "success" });
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const toggleEmbedAssistant = async () => {
+    if (!website.websiteId || savingAssistant) return;
+    const next = !website.embedAssistant;
+    setSavingAssistant(true);
+    try {
+      const res = await fetch("/api/website/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: website.websiteId, embedAiAssistant: next }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setWebsite((prev) => ({ ...prev, embedAssistant: next }));
+      setToast({ msg: next ? "AI assistant enabled on your site" : "AI assistant removed from your site", type: "success" });
+    } catch {
+      setToast({ msg: "Could not update your site. Please try again.", type: "error" });
+    }
+    setSavingAssistant(false);
   };
 
   const CHANNELS = [
@@ -607,7 +631,7 @@ function ChannelsPageContent() {
               </svg>
             </div>
             <div>
-              <p className="text-xs font-bold text-[#111111]">Starter Plan — {connectedSocialCount}/{config.channels} social channel{config.channels > 1 ? "s" : ""}</p>
+              <p className="text-xs font-bold text-[#111111]">Starter Plan: {connectedSocialCount}/{config.channels} social channel{config.channels > 1 ? "s" : ""}</p>
               <p className="text-[11px] text-[#6B7280]">Upgrade to Pro to connect all 3 channels</p>
             </div>
           </div>
@@ -696,30 +720,40 @@ function ChannelsPageContent() {
 
         {/* Website channel — tied to Website Builder, fully optional */}
         <div className="p-4 rounded-xl bg-white border border-[#E5E7EB]">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="7.5" stroke="#ed5426" strokeWidth="1.5"/>
-                <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#ed5426" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-[#111111]">{t("channels.website.name")}</p>
-                <span className={`flex items-center gap-1 text-[10px] font-semibold ${website.published ? "text-green-600" : "text-[#9CA3AF]"}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${website.published ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
-                  {website.published ? t("channels.connected") : t("channels.notConnected")}
-                </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="7.5" stroke="#ed5426" strokeWidth="1.5"/>
+                  <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#ed5426" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
               </div>
-              <p className="text-xs text-[#6B7280] mt-0.5">
-                {website.published
-                  ? "Your AI assistant is live on your published Vela website — no setup needed."
-                  : "Optional. Build a website with Vela and your AI assistant is added automatically — Vela works fully without one too."}
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-[#111111]">{t("channels.website.name")}</p>
+                  <span className={`flex items-center gap-1 text-[10px] font-semibold ${website.published ? "text-green-600" : "text-[#9CA3AF]"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${website.published ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
+                    {website.published ? t("channels.connected") : t("channels.notConnected")}
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  {website.published
+                    ? "Your AI assistant is live on your published Vela website. No setup needed."
+                    : "Don't have a website? Build one and it's automatically connected to Vela."}
+                </p>
+              </div>
             </div>
+            {!website.published && (
+              <Link
+                href="/app/website"
+                className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
+              >
+                Build a website
+              </Link>
+            )}
           </div>
 
-          {website.published ? (
+          {website.published && (
             <div className="mt-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
@@ -742,15 +776,17 @@ function ChannelsPageContent() {
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 8l5-5M3.5 3h4.5v4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </a>
               )}
-            </div>
-          ) : (
-            <div className="mt-4">
-              <Link
-                href="/app/website"
-                className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
-              >
-                Build a website →
-              </Link>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
+                <p className="text-xs font-semibold text-[#374151]">AI assistant on this site</p>
+                <button
+                  onClick={toggleEmbedAssistant}
+                  disabled={savingAssistant}
+                  aria-label="Toggle AI assistant on this site"
+                  className={`w-9 h-5 rounded-full transition-all duration-200 relative shrink-0 disabled:opacity-50 ${website.embedAssistant ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${website.embedAssistant ? "left-4" : "left-0.5"}`} />
+                </button>
+              </div>
             </div>
           )}
 

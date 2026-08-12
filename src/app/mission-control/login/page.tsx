@@ -1,7 +1,7 @@
 import { McLoginButton } from "./McLoginButton";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  no_code:           "Authentication failed — no code received.",
+  no_code:           "Authentication failed. No code received.",
   auth_failed:       "Authentication failed. Please try again.",
   not_authorized:    "Access denied.",
   oauth_init_failed: "Could not start sign-in. Try again.",

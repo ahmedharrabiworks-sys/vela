@@ -334,7 +334,7 @@ function SignupPageContent() {
         });
 
         if (!res.ok) {
-          setAuthError("Could not finish setting up your account — please try again.");
+          setAuthError("Could not finish setting up your account. Please try again.");
           setLoading(false);
           return;
         }
@@ -379,9 +379,9 @@ function SignupPageContent() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.error === "already_exists") {
-          setAuthError("This email is already registered — try signing in instead.");
+          setAuthError("This email is already registered. Try signing in instead.");
         } else {
-          setAuthError("Could not create account — please try again.");
+          setAuthError("Could not create account. Please try again.");
         }
         setLoading(false);
         return;
@@ -392,7 +392,7 @@ function SignupPageContent() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
       if (signInError) {
-        setAuthError("Account created but sign-in failed — try logging in manually.");
+        setAuthError("Account created but sign-in failed. Try logging in manually.");
         setLoading(false);
         return;
       }
@@ -413,7 +413,7 @@ function SignupPageContent() {
       setStep(4);
       setTimeout(() => router.push("/app/welcome"), 1800);
     } catch {
-      setAuthError("Something went wrong — please try again.");
+      setAuthError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };
@@ -560,7 +560,7 @@ function SignupPageContent() {
                 )}
                 {!aiDetecting && detectedType === "Other" && (
                   <div className="mt-2">
-                    <p className="text-[10px] text-[#9CA3AF] mb-1.5">AI couldn&apos;t auto-detect — please select your business type:</p>
+                    <p className="text-[10px] text-[#9CA3AF] mb-1.5">AI couldn&apos;t auto-detect. Please select your business type:</p>
                     <select
                       value=""
                       onChange={(e) => { if (e.target.value) setDetectedType(e.target.value); }}

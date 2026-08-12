@@ -13,7 +13,7 @@ export default function DemoPageNotYet() {
       </div>
       <p className="text-base font-bold text-[#111111] mb-1.5">Live in the full version</p>
       <p className="text-sm text-[#6B7280] mb-6 max-w-xs leading-relaxed">
-        Create a free account to access this feature with your real business data — no credit card required.
+        Create a free account to access this feature with your real business data. No credit card required.
       </p>
       <Link
         href="/auth/signup"

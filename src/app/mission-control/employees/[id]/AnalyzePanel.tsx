@@ -79,7 +79,7 @@ export function AnalyzePanel({ employeeId }: { employeeId: string }) {
       }
       setResult(data as AnalyzeEmployeeResult);
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export function AnalyzePanel({ employeeId }: { employeeId: string }) {
             fontSize: 12, fontWeight: 600, textTransform: "uppercase",
             letterSpacing: "0.05em", color: T.dim,
           }}>
-            Analysis — On-demand
+            Analysis: on-demand
           </span>
           <button
             onClick={runAnalysis}
@@ -148,7 +148,7 @@ export function AnalyzePanel({ employeeId }: { employeeId: string }) {
         {result?.status === "insufficient_history" && (
           <div style={{ padding: "20px" }}>
             <p style={{ fontSize: 13, color: T.amber, margin: 0 }}>
-              Not enough history yet — {result.distinctRuns} compute run(s) on record.
+              Not enough history yet. {result.distinctRuns} compute run(s) on record.
             </p>
             <p style={{ fontSize: 12, color: T.dim, margin: "8px 0 0" }}>
               {result.message}

@@ -26,7 +26,7 @@ export default function DashboardPreview() {
             <span className="vela-gradient-text">from above.</span>
           </h2>
           <p className="mt-5 text-white/55 text-lg max-w-xl mx-auto">
-            Every lead, every conversation, every booking — in one unified view.
+            Every lead, every conversation, every booking. In one unified view.
             Move your cursor to explore.
           </p>
         </div>

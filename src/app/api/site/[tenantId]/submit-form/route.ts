@@ -73,7 +73,7 @@ export async function POST(
 
   if ((recentCount ?? 0) >= RATE_LIMIT_MAX) {
     return NextResponse.json(
-      { error: "Too many requests — please wait before submitting again." },
+      { error: "Too many requests. Please wait before submitting again." },
       { status: 429 }
     );
   }
@@ -127,7 +127,7 @@ export async function POST(
 
   if (insertErr) {
     console.error("[submit-form] insert error:", insertErr.message);
-    return NextResponse.json({ error: "Failed to save — please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
   }
 
   // ── Email notification via Resend (activates when RESEND_API_KEY is set) ──

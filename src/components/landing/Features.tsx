@@ -24,7 +24,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Instagram Automation",
-    description: "Every DM answered instantly. Story replies, comment responses, and lead capture — fully automated.",
+    description: "Every DM answered instantly. Story replies, comment responses, and lead capture. Fully automated.",
     tag: "Channel",
   },
   {
@@ -34,7 +34,7 @@ const FEATURES = [
       </svg>
     ),
     title: "WhatsApp AI",
-    description: "Books appointments, answers questions, and qualifies leads through WhatsApp — your #1 channel.",
+    description: "Books appointments, answers questions, and qualifies leads through WhatsApp. Your #1 channel.",
     tag: "Channel",
   },
   {

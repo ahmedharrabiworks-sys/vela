@@ -304,7 +304,7 @@ export default async function TenantDetailPage({
         </SectionCard>
 
         {/* Voice margin for this tenant */}
-        <SectionCard title="Voice — This Month">
+        <SectionCard title="Voice: This Month">
           <p style={{ margin: "0 0 14px", fontSize: "0.68rem", color: T.muted, fontStyle: "italic" }}>
             Voice cost ($0.12/min) vs. theoretical plan revenue. Not actual profit margin.
           </p>

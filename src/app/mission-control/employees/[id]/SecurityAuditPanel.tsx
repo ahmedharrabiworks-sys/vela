@@ -92,7 +92,7 @@ export function SecurityAuditPanel({ employeeId }: { employeeId: string }) {
       }
       setResult(data as SecurityAuditResult);
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -112,7 +112,7 @@ export function SecurityAuditPanel({ employeeId }: { employeeId: string }) {
             fontSize: 12, fontWeight: 600, textTransform: "uppercase" as const,
             letterSpacing: "0.05em", color: T.dim,
           }}>
-            Security Audit — On-demand · Report-only · Zero execution authority
+            Security Audit: On-demand · Report-only · Zero execution authority
           </span>
           <button
             onClick={runAudit}

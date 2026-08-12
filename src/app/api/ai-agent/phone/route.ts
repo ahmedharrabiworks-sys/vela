@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.VAPI_API_KEY) {
     console.error("[ai-agent/phone] VAPI_API_KEY not configured");
-    return NextResponse.json({ error: "Phone service is not configured — contact support." }, { status: 422 });
+    return NextResponse.json({ error: "Phone service is not configured. Contact support." }, { status: 422 });
   }
 
   const admin = createSupabaseAdmin() as any;
@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[ai-agent/phone] provision error:", err?.message ?? err);
     return NextResponse.json(
-      { error: "Failed to provision phone number — please try again." },
+      { error: "Failed to provision phone number. Please try again." },
       { status: 502 }
     );
   }

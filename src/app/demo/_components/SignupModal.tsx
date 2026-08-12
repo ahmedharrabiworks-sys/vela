@@ -26,7 +26,7 @@ export function SignupModal({ onClose }: { onClose: () => void }) {
           Sign up to do this for real
         </h3>
         <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mb-6 leading-relaxed">
-          Create a free account to use this feature with your actual business data — no credit card required.
+          Create a free account to use this feature with your actual business data. No credit card required.
         </p>
         <Link
           href="/auth/signup"

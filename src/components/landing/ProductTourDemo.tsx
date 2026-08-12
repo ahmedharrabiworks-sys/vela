@@ -301,7 +301,7 @@ function pctPosition(el: HTMLElement, stage: HTMLElement) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Scene 1 — Appointments
+   Scene 1. Appointments
    No overflow-x-auto: table-fixed + overflow:hidden
    Choreography (numbered to match the spec):
    1 pause on the full table
@@ -631,8 +631,8 @@ function CountUp({ target, format, duration=1200, delay=0 }: { target:number; fo
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Scene 3 — Channels
-   overflow:hidden — 3 cards fit comfortably
+   Scene 3. Channels
+   overflow:hidden. 3 cards fit comfortably
    Choreography (numbered to match the spec):
    1 pause: Instagram and Website Chat connected, WhatsApp Business not connected
    2 zoom/highlight on the WhatsApp Business card
@@ -918,8 +918,8 @@ const AGENT_STEP = {
 } as const;
 
 /* ═══════════════════════════════════════════════════════════════
-   Scene 4 — AI Agent
-   overflow:hidden — 3 call rows, content verified to fit 480 px
+   Scene 4. AI Agent
+   overflow:hidden. 3 call rows, content verified to fit 480 px
    All animated content replays on every loop, since the outer
    AnimatePresence keys each scene by index and remounts it fresh
    each time it comes back around (same mechanism the other scenes
@@ -1146,7 +1146,7 @@ function SceneAgent() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Scene 5 — Analytics
+   Scene 5. Analytics
 ═══════════════════════════════════════════════════════════════ */
 function SceneAnalytics() {
   const cW=400, cH=88;
@@ -1376,7 +1376,7 @@ const sceneVariants = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ProductTourDemo — main export
+   ProductTourDemo. Main export
 ═══════════════════════════════════════════════════════════════ */
 export default function ProductTourDemo() {
   const [scene, setScene] = useState(0);

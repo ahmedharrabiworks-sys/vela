@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     if (updateErr) {
-      setError("Failed to update password — please try again or request a new reset link.");
+      setError("Failed to update password. Please try again or request a new reset link.");
       return;
     }
 

@@ -8,10 +8,12 @@ export default function WidgetChat({
   tenantId,
   businessName,
   greeting,
+  channel,
 }: {
   tenantId: string;
   businessName: string;
   greeting: string;
+  channel: string;
 }) {
   const [messages, setMessages] = useState<Msg[]>([
     { id: "welcome", role: "assistant", content: greeting },
@@ -51,12 +53,19 @@ export default function WidgetChat({
           tenantId,
           conversationId,
           message: text,
-          channel: "website",
+          channel,
           customerName: "Website Visitor",
         }),
       });
 
       const data = await res.json();
+
+      if (!res.ok) {
+        // Logged for the site owner/developer console -- never shown to the
+        // visitor, who still gets a friendly reply below. Common causes: an
+        // invalid tenantId in the embed script, or a plan message limit hit.
+        console.error("[vela-widget] ai/reply failed:", res.status, data?.error);
+      }
 
       if (data.conversationId) {
         setConversationId(data.conversationId);
@@ -69,7 +78,8 @@ export default function WidgetChat({
         content: data.reply ?? "I'll get back to you shortly!",
       };
       setMessages((prev) => [...prev, aiMsg]);
-    } catch {
+    } catch (err) {
+      console.error("[vela-widget] network error:", err);
       setMessages((prev) => [
         ...prev,
         { id: `err-${Date.now()}`, role: "assistant", content: "Something went wrong. Please try again." },

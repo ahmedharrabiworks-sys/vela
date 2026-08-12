@@ -92,7 +92,7 @@ Do NOT include emojis unless they fit naturally.`;
 
   if (!process.env.OPENAI_API_KEY) {
     console.error("[marketing] OPENAI_API_KEY not set");
-    return NextResponse.json({ error: "AI not configured — contact support." }, { status: 500 });
+    return NextResponse.json({ error: "AI not configured. Contact support." }, { status: 500 });
   }
 
   try {

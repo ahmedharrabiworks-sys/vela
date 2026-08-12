@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
   if (!checkRateLimit(tenant.id)) {
-    return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
+    return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   }
 
   const admin = createSupabaseAdmin() as AdminClient;
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
   if (!checkRateLimit(tenant.id)) {
-    return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
+    return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   }
 
   const admin = createSupabaseAdmin() as AdminClient;
@@ -216,7 +216,7 @@ export async function DELETE(req: NextRequest) {
   const { tenant, error: authErr } = await getAuthedTenant(req);
   if (authErr || !tenant) return authErr!;
   if (!checkRateLimit(tenant.id)) {
-    return NextResponse.json({ error: "Too many requests — please wait a moment." }, { status: 429 });
+    return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   }
 
   if (!websiteId) return NextResponse.json({ error: "websiteId required" }, { status: 400 });

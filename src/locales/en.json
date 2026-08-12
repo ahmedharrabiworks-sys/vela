@@ -199,7 +199,7 @@
     },
     "showing": "Showing",
     "bookingCounter": "bookings this month",
-    "bookingLimitReached": "Booking limit reached — upgrade to Pro for unlimited bookings"
+    "bookingLimitReached": "Booking limit reached. Upgrade to Pro for unlimited bookings"
   },
   "greeting": {
     "morning": "Good morning",
@@ -244,7 +244,7 @@
     "widgetHint": "Messages from your widget will appear here",
     "needsAttention": "Needs attention",
     "replyingManually": "Replying manually as your team",
-    "aiModeHint": "Test mode — messages here are test-only and won't be delivered to the customer",
+    "aiModeHint": "Test mode. Messages here are test-only and won't be delivered to the customer",
     "simulatePlaceholder": "Try a test message…",
     "replyPlaceholder": "Type your reply…",
     "send": "Send",
@@ -288,7 +288,7 @@
     "publish": "Publish →",
     "previewEmpty": "Preview will appear here",
     "building": "Building your website…",
-    "livePreview": "yoursite.vela.ai — live preview"
+    "livePreview": "yoursite.vela.ai. Live preview"
   },
   "aiTraining": {
     "title": "Train Your AI",
@@ -297,20 +297,20 @@
     "wellTrained": "Well trained",
     "gettingThere": "Getting there",
     "needsInfo": "Needs info",
-    "importPlaceholder": "Paste your website — Vela learns everything ✨",
+    "importPlaceholder": "Paste your website. Vela learns everything ✨",
     "analyzing": "Analyzing",
     "importBtn": "Import",
     "uploadPriceList": "upload a price list",
     "answerQuestions": "answer 5 quick questions",
     "or": "or",
-    "instagramSoon": "Instagram import is coming soon — paste your website URL or upload a price list PDF instead.",
-    "reviewTitle": "Extracted from your website — review before saving",
+    "instagramSoon": "Instagram import is coming soon. Paste your website URL or upload a price list PDF instead.",
+    "reviewTitle": "Extracted from your website. Review before saving",
     "reviewServices": "Services",
     "reviewExtraInfo": "Extra Info",
     "reviewBusinessInfo": "Business Info",
     "reviewHours": "Hours:",
     "reviewAddress": "Address:",
-    "saveBtn": "Looks good — Save",
+    "saveBtn": "Looks good. Save",
     "discardBtn": "Discard",
     "tabs": {
       "services": "Services",
@@ -331,7 +331,7 @@
     },
     "businessInfo": {
       "hours": "Working Hours",
-      "hoursPlaceholder": "Mon–Fri 9am–6pm, Sat 10am–4pm",
+      "hoursPlaceholder": "Mon-Fri 9am-6pm, Sat 10am-4pm",
       "address": "Address / Location",
       "addressPlaceholder": "e.g. Shop 5, Main Road, City",
       "bookingPolicy": "Booking Policy",
@@ -346,19 +346,19 @@
     },
     "extra": {
       "label": "Extra Knowledge",
-      "hint": "Anything your AI should know — policies, common questions & answers, promotions, team info…",
+      "hint": "Anything your AI should know. Policies, common questions & answers, promotions, team info…",
       "uploadTitle": "Upload document",
-      "uploadHint": "PDF or image — we'll extract the text for review.",
+      "uploadHint": "PDF or image. We'll extract the text for review.",
       "chooseFile": "Choose File",
       "extracting": "Extracting…",
-      "extractionFailed": "Extraction failed — try a different file or paste the text manually.",
-      "reviewExtracted": "Extracted text — review before adding:",
+      "extractionFailed": "Extraction failed. Try a different file or paste the text manually.",
+      "reviewExtracted": "Extracted text. Review before adding:",
       "discard": "Discard",
       "addToKB": "Add to Knowledge Base",
       "textareaPlaceholder": "e.g. 'We use only vegan products.' or 'Q: Do you offer discounts?\\nA: Yes, 15% off on Tuesdays.'"
     },
     "importFailed": "Import failed.",
-    "connectionError": "Connection error — please try again.",
+    "connectionError": "Connection error. Please try again.",
     "moreCount": " more",
     "saved": "Saved ✓",
     "savedImported": "Imported & Saved ✓"
@@ -374,15 +374,15 @@
     "keyboardSend": "to send · ",
     "keyboardNewline": "for new line",
     "greeting": "Hi",
-    "greetingMessage": "I'm Vela, your AI business assistant. Ask me about your leads, appointments, or conversations — or I'll help you write replies and marketing copy.",
+    "greetingMessage": "I'm Vela, your AI business assistant. Ask me about your leads, appointments, or conversations. Or I'll help you write replies and marketing copy.",
     "errorUnauthorized": "Please sign in to use Vela AI.",
     "errorTenantNotFound": "Finish setting up your account to unlock the assistant.",
     "errorNotConfigured": "The AI service isn't configured yet. Contact support.",
-    "errorGeneric": "Something went wrong — tap Retry below to try again.",
+    "errorGeneric": "Something went wrong. Tap Retry below to try again.",
     "errorNoResponse": "I couldn't generate a response. Please try again.",
-    "errorConnection": "Connection error — check your internet and tap Retry.",
+    "errorConnection": "Connection error. Check your internet and tap Retry.",
     "kbUpdated": "✓ Your AI knowledge base has been updated! Visit Train your AI to review or adjust anything.",
-    "kbSaveFailed": "I've finished the interview but had trouble saving — please visit Train your AI to save manually.",
+    "kbSaveFailed": "I've finished the interview but had trouble saving. Please visit Train your AI to save manually.",
     "quickActions": {
       "todayAppointments": "Today's appointments",
       "recentLeads": "Recent leads",
@@ -395,7 +395,7 @@
       "recentLeads": "Show me my most recent leads",
       "needsAttention": "Which conversations need human attention?",
       "writeReply": "Help me write a professional reply to a customer asking about pricing",
-      "trainMe": "I want to train my AI — please start the interview now."
+      "trainMe": "I want to train my AI. Please start the interview now."
     }
   },
   "landing": {
@@ -430,7 +430,7 @@
       "plans": {
         "starter": {
           "name": "Starter",
-          "description": "One AI channel — automated replies, lead capture, and CRM.",
+          "description": "One AI channel. Automated replies, lead capture, and CRM.",
           "cta": "Start Your Trial",
           "features": [
             "150 voice minutes/month",
@@ -464,7 +464,7 @@
         },
         "premium": {
           "name": "Premium",
-          "description": "Everything in Pro — priority routing, 3 websites, and unlimited team.",
+          "description": "Everything in Pro. Priority routing, 3 websites, and unlimited team.",
           "cta": "Start Your Trial",
           "features": [
             "1,300 voice minutes/month",
@@ -503,7 +503,7 @@
         },
         {
           "q": "Is my customer data safe?",
-          "a": "All data is stored encrypted in Supabase with Row Level Security — meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. GDPR and data protection compliance is built in."
+          "a": "All data is stored encrypted in Supabase with Row Level Security. Meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. GDPR and data protection compliance is built in."
         },
         {
           "q": "Can I cancel my subscription?",
@@ -581,8 +581,8 @@
       "setupPhoneSub": "Get a number for your agent",
       "viewCalls": "View call records",
       "viewCallsSub": "See full call history",
-      "onboardingTitle": "Your phone agent is ready — 3 steps to go live",
-      "step1Pre": "Train your agent — run the business interview in",
+      "onboardingTitle": "Your phone agent is ready. 3 steps to go live",
+      "step1Pre": "Train your agent. Run the business interview in",
       "step1Link": "Training →",
       "step2Pre": "Set up your phone number in",
       "step2Link": "Phone Number →",
@@ -622,8 +622,8 @@
     },
     "phone": {
       "pageTitle": "Phone Number",
-      "subtitle": "Connect a phone number so Vela answers your calls 24/7 — handling inquiries, booking appointments, and responding in any language.",
-      "active": "Active — answering calls",
+      "subtitle": "Connect a phone number so Vela answers your calls 24/7. Handling inquiries, booking appointments, and responding in any language.",
+      "active": "Active. Answering calls",
       "getTitle": "Get your AI phone number",
       "getDesc": "Provision a real phone number. Vela answers every call using your trained business knowledge, in the caller's language.",
       "getBtn": "Get Phone Number",
@@ -645,7 +645,7 @@
     },
     "settings": {
       "pageTitle": "Agent Settings",
-      "subtitle": "Configure your AI phone agent — how it sounds, behaves, and represents your business.",
+      "subtitle": "Configure your AI phone agent. How it sounds, behaves, and represents your business.",
       "identity": "Identity",
       "agentName": "Agent Name",
       "agentNamePlaceholder": "e.g. Vela",

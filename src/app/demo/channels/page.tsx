@@ -43,7 +43,7 @@ const CHANNELS = [
     id: "website",
     name: "Website Chat",
     handle: "ahmeddentalclinic.ae",
-    desc: "Chat widget on your website — live AI conversations with visitors",
+    desc: "Chat widget on your website. Live AI conversations with visitors",
     color: "#6366F1",
     bg: "bg-[#6366F1]",
     icon: (
@@ -88,7 +88,7 @@ export default function DemoChannelsPage() {
             <path d="M5 9l2.5 2.5 5.5-5" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           <p className="text-sm font-semibold text-[#065F46] dark:text-[#34D399]">
-            All 3 channels connected — your AI agent is live across Instagram, WhatsApp, and your website
+            All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website
           </p>
         </div>
 

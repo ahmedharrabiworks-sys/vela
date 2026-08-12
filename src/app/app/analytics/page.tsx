@@ -41,7 +41,7 @@ function computeChange(current: number, prior: number): number | null {
 
 function TrendBadge({ change }: { change: number | null }) {
   if (change === null) {
-    return <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF]">— New</span>;
+    return <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF]">New</span>;
   }
   const up = change >= 0;
   return (
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
             <path d="M8 5v3.5M8 10.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
           <p className="text-sm text-red-700 flex-1">
-            We couldn&apos;t load your analytics right now — tap retry.
+            We couldn&apos;t load your analytics right now. Tap retry.
           </p>
           <button
             onClick={doFetch}

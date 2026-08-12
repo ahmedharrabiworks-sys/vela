@@ -39,7 +39,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
         <p className="text-sm flex items-center gap-2 min-w-0">
           <span className="w-2 h-2 rounded-full shrink-0 animate-pulse" style={{ background: "var(--vp-color)" }} />
           <span className="text-white font-semibold">Demo mode</span>
-          <span className="hidden sm:inline text-white/40 truncate">— explore every feature, no sign-up required</span>
+          <span className="hidden sm:inline text-white/40 truncate">Explore every feature, no sign-up required</span>
         </p>
         <Link
           href="/auth/signup"

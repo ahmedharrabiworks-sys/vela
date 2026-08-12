@@ -79,7 +79,7 @@ export default function VoicePage() {
     } catch {
       setGenerating(null);
       setPlaying(null);
-      setPreviewNote("Preview unavailable — add ELEVEN_LABS_API_KEY to .env.local to enable voice samples.");
+      setPreviewNote("Preview unavailable. Add ELEVEN_LABS_API_KEY to .env.local to enable voice samples.");
     }
   };
 
@@ -94,24 +94,24 @@ export default function VoicePage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
-        setSaveError(data.error ?? "Save failed — please try again");
+        setSaveError(data.error ?? "Save failed. Please try again");
         setSaving(false);
         return;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setSaveError("Network error — please check your connection");
+      setSaveError("Network error. Please check your connection");
     }
     setSaving(false);
   };
 
   const speedPct = ((speed - 0.7) / 0.5) * 100;
   const speedLabel =
-    speed < 0.85  ? "Slower — clear and deliberate"
+    speed < 0.85  ? "Slower. Clear and deliberate"
     : speed <= 1.0 ? "Natural conversational speed"
-    : speed <= 1.1 ? "Slightly faster — energetic and efficient"
-    : "Fast — concise, high-paced";
+    : speed <= 1.1 ? "Slightly faster. Energetic and efficient"
+    : "Fast. Concise, high-paced";
 
   if (loading) {
     return (
@@ -291,7 +291,7 @@ export default function VoicePage() {
             {/* Save card */}
             <div className="rounded-2xl border p-5 flex flex-col gap-3" style={{ background: cardBg, borderColor: border }}>
               <p className="text-xs" style={{ color: textMuted }}>
-                Changes apply to all new calls — active calls are not affected.
+                Changes apply to all new calls. Active calls are not affected.
               </p>
               {saved && (
                 <span className="text-sm text-green-500 flex items-center gap-1.5">

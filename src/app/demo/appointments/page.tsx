@@ -75,7 +75,7 @@ export default function DemoAppointmentsPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-[#111827] dark:text-white">Appointments</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Today — Jul 21, 2026</p>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Today. Jul 21, 2026</p>
           </div>
           <button
             onClick={() => setShowModal(true)}

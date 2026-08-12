@@ -475,7 +475,7 @@ const INITIAL_MSG = (btype: string | null, lang?: string): Msg => ({
   content: lang
     ? (btype && INDUSTRY_SUGGESTIONS[btype]
       ? `Great! I'll build your ${btype} website in ${lang}. What's your business name and location?`
-      : `Great! I'll build your website in ${lang}. Tell me about your business — name, what you do, and your city.`)
+      : `Great! I'll build your website in ${lang}. Tell me about your business. Name, what you do, and your city.`)
     : "Hi! First, what language should your website be in?",
 });
 
@@ -569,17 +569,17 @@ function PublishPanel({
       await new Promise(r => setTimeout(r, 220));
       push({ id: "contact", label: "Contact info present",
         status: hasContactInfo ? "pass" : "warn",
-        detail: !hasContactInfo ? "No phone or email — visitors won't be able to call or email you." : undefined });
+        detail: !hasContactInfo ? "No phone or email. Visitors won't be able to call or email you." : undefined });
       await new Promise(r => setTimeout(r, 220));
       let endpointOk = false;
       try { const r = await fetch("/api/health"); endpointOk = r.ok; } catch { endpointOk = false; }
       push({ id: "endpoint", label: "Booking endpoint reachable",
         status: endpointOk ? "pass" : "fail",
-        detail: !endpointOk ? "Cannot reach the API — try refreshing the page." : undefined });
+        detail: !endpointOk ? "Cannot reach the API. Try refreshing the page." : undefined });
       await new Promise(r => setTimeout(r, 220));
       push({ id: "slug", label: "URL slug configured",
         status: siteSlug.length >= 3 ? "pass" : "warn",
-        detail: siteSlug.length < 3 ? "No slug set — your site will use a generated URL." : undefined });
+        detail: siteSlug.length < 3 ? "No slug set. Your site will use a generated URL." : undefined });
       setChecksRunning(false);
     })();
   }, [step, hasDraft, hasContactInfo, siteSlug]);
@@ -635,7 +635,7 @@ function PublishPanel({
         setCustomDomain(data.domain ?? domainInput.trim());
         setDomainStatus("pending");
       }
-    } catch { setDomainError("Connection error — please try again."); }
+    } catch { setDomainError("Connection error. Please try again."); }
     finally { setConnectingDomain(false); }
   };
 
@@ -651,7 +651,7 @@ function PublishPanel({
         if (data.status) setDomainStatus(data.status as "pending" | "verified" | "failed");
         setDomainError(data.message ?? "");
       }
-    } catch { setDomainError("Connection error — please try again."); }
+    } catch { setDomainError("Connection error. Please try again."); }
     finally { setCheckingDomain(false); }
   };
 
@@ -699,7 +699,7 @@ function PublishPanel({
                 domainStatus === "verified" ? "bg-green-50 text-green-700" :
                 domainStatus === "failed"   ? "bg-red-50 text-red-700"     : "bg-yellow-50 text-yellow-700"}`}>
                 {domainStatus === "verified" ? "Connected" :
-                 domainStatus === "failed"   ? "Failed — records not found yet" : "Pending — add DNS records"}
+                 domainStatus === "failed"   ? "Failed. Records not found yet" : "Pending. Add DNS records"}
               </span>
             </div>
 
@@ -809,13 +809,13 @@ function PublishPanel({
         )}
         {isDirty && savedSlug.length >= 3 && (
           <p className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 rounded-lg px-2.5 py-1.5 leading-snug">
-            Unsaved — your site is still at <span className="font-mono">/site/{savedSlug}</span>
+            Unsaved. Your site is still at <span className="font-mono">/site/{savedSlug}</span>
           </p>
         )}
       </div>
       <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-lg px-3 py-2">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-        <span className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]"><strong className="text-[#374151] dark:text-[#E5E7EB]">Public</strong> — anyone with the URL can view</span>
+        <span className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]"><strong className="text-[#374151] dark:text-[#E5E7EB]">Public</strong>. Anyone with the URL can view</span>
       </div>
       {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
       <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
@@ -916,7 +916,7 @@ function PublishPanel({
                   <>
                     {checks.some(c => c.status === "warn") && (
                       <p className="text-[10px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg px-3 py-2">
-                        Some info is missing — your site will still publish.
+                        Some info is missing. Your site will still publish.
                       </p>
                     )}
                     <button onClick={onPublish} disabled={publishing}
@@ -973,7 +973,7 @@ function PublishPanel({
                 {publishing ? "Updating…" : draftDiffers ? "Push Updates Live" : "Update Site"}
               </button>
               {!draftDiffers && (
-                <p className="text-center text-[10px] text-[#9CA3AF]">Site is up to date — republish anytime</p>
+                <p className="text-center text-[10px] text-[#9CA3AF]">Site is up to date. Republish anytime</p>
               )}
             </div>
 
@@ -1052,6 +1052,19 @@ export default function WebsitePage() {
   const [siteLanguage, setSiteLanguage] = useState<string>(() => {
     if (typeof window !== "undefined") return localStorage.getItem("vela_site_language") ?? "";
     return "";
+  });
+
+  // ── Add AI assistant to this site? (persisted, question #2, default yes) ───
+  const [embedAssistant, setEmbedAssistant] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("vela_embed_assistant");
+      if (saved === "no") return false;
+    }
+    return true;
+  });
+  const [embedAssistantChosen, setEmbedAssistantChosen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") return !!localStorage.getItem("vela_embed_assistant");
+    return false;
   });
 
   // ── Core state ──────────────────────────────────────────────────────────────
@@ -1288,7 +1301,7 @@ export default function WebsitePage() {
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
         if (data.domainStatus) setDomainStatus(data.domainStatus as "pending" | "verified" | "failed");
 
-      } catch { /* ignore — show empty state */ }
+      } catch { /* ignore. Show empty state */ }
       setLoading(false);
       void refreshProjects();
     })();
@@ -1334,6 +1347,13 @@ export default function WebsitePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [btype]);
 
+  // ── Add AI assistant to this site? (question #2, default yes) ───────────────
+  const handleSelectEmbedAssistant = useCallback((choice: boolean) => {
+    setEmbedAssistant(choice);
+    setEmbedAssistantChosen(true);
+    localStorage.setItem("vela_embed_assistant", choice ? "yes" : "no");
+  }, []);
+
   // ── Persist chat + intake ─────────────────────────────────────────────────────
   const persistChat = useCallback((finalMsgs: Msg[], intake: ContactInfo) => {
     const chatToSave = finalMsgs
@@ -1366,7 +1386,7 @@ export default function WebsitePage() {
       });
       const data = await res.json() as { url?: string; slug?: string; error?: string };
       if (!res.ok || !data.url) {
-        alert(data.error ?? "Publish failed — please try again.");
+        alert(data.error ?? "Publish failed. Please try again.");
         return;
       }
       const finalUrl = data.slug ? `/site/${data.slug}` : (data.url ?? "");
@@ -1477,6 +1497,9 @@ export default function WebsitePage() {
     // Clear persisted language so the language picker re-appears for the new project
     setSiteLanguage("");
     if (typeof window !== "undefined") localStorage.removeItem("vela_site_language");
+    // Clear persisted AI assistant choice so that question re-appears for the new project too
+    setEmbedAssistant(true); setEmbedAssistantChosen(false);
+    if (typeof window !== "undefined") localStorage.removeItem("vela_embed_assistant");
     setMsgs([INITIAL_MSG(btype, undefined)]);
   }, [btype, websiteId, siteName, siteSlug, savedSlug, isPublished]);
 
@@ -1633,7 +1656,7 @@ export default function WebsitePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ websiteId: p.id }),
       });
-    } catch { /* ignore — UI already updated */ }
+    } catch { /* ignore. UI already updated */ }
     void refreshProjects();
   }, [deleteTarget, btype, siteLanguage, refreshProjects]);
 
@@ -1710,6 +1733,7 @@ export default function WebsitePage() {
           contactInfo:     (contactInfo.phone || contactInfo.email || contactInfo.address || contactInfo.hours) ? contactInfo : undefined,
           chat:            chatToSend,
           intake:          Object.keys(intakePayload).length ? intakePayload : undefined,
+          embedAiAssistant: embedAssistant,
         }),
       });
 
@@ -1740,7 +1764,7 @@ export default function WebsitePage() {
       if (!res.ok || !data.html) {
         const errText =
           data.error === "Unauthorized"      ? "Please sign in to use the website builder." :
-          data.error === "AI not configured"  ? "The AI service isn't set up yet — contact support." :
+          data.error === "AI not configured"  ? "The AI service isn't set up yet. Contact support." :
           (data.error ?? "Something went wrong. Please try again.");
         setMsgs([...msgs, userMsg, { role: "ai", content: errText, isError: true }]);
         setBuilding(false);
@@ -1784,7 +1808,7 @@ export default function WebsitePage() {
 
       const successMsg = built
         ? "Done! Your website has been updated. Click \"Update Site\" to push it live, or keep refining."
-        : "Got it — your website is ready! Check the preview →\n\nYou can say things like \"make the hero darker\", \"add a gallery section\", or upload a photo to refine it.";
+        : "Got it. Your website is ready! Check the preview →\n\nYou can say things like \"make the hero darker\", \"add a gallery section\", or upload a photo to refine it.";
 
       const finalMsgs: Msg[] = [
         ...msgs, userMsg,
@@ -1816,7 +1840,7 @@ export default function WebsitePage() {
     }
     setBuilding(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, attachedImages, building, built, html, msgs, contactInfo, persistChat]);
+  }, [input, attachedImages, building, built, html, msgs, contactInfo, persistChat, embedAssistant]);
 
   // ── Inline edit: save edited spec to server ───────────────────────────────────
   const handleSaveEdit = useCallback(async (spec: WebsiteSpec) => {
@@ -2091,7 +2115,7 @@ export default function WebsitePage() {
       ? previewHtml.replace("</body>", inject + "</body>")
       : previewHtml + inject;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editMode, previewHtml]); // editSpec intentionally excluded — uses ref
+  }, [editMode, previewHtml]); // editSpec intentionally excluded. Uses ref
 
   const iframeSrc = editMode ? (editSrcDoc ?? previewHtml) : previewHtml;
 
@@ -2390,7 +2414,7 @@ export default function WebsitePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">
-                        {i === 0 ? "Current draft" : (v.type === "publish" ? `Published — ${timeAgo(v.created_at)}` : v.label)}
+                        {i === 0 ? "Current draft" : (v.type === "publish" ? `Published ${timeAgo(v.created_at)}` : v.label)}
                       </p>
                       {v.type !== "publish" && (
                         <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(v.created_at)}</p>
@@ -2492,8 +2516,25 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* Quick-start suggestions — only after language is selected and before first user message */}
-          {msgs.filter((m) => m.role === "user").length === 0 && !!siteLanguage && (
+          {/* AI assistant toggle — only for fresh sessions, after language is picked */}
+          {!built && msgs.filter((m) => m.role === "user").length === 0 && !!siteLanguage && !embedAssistantChosen && (
+            <div className="px-4 pb-2">
+              <p className="text-[10px] text-[#9CA3AF] mb-2">Add your AI assistant to this website?</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button onClick={() => handleSelectEmbedAssistant(true)}
+                  className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                  Yes, add it
+                </button>
+                <button onClick={() => handleSelectEmbedAssistant(false)}
+                  className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                  Not now
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Quick-start suggestions — only after language + AI assistant choice, before first user message */}
+          {msgs.filter((m) => m.role === "user").length === 0 && !!siteLanguage && embedAssistantChosen && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">{t("website.quickStarts")}</p>
               <div className="flex flex-wrap gap-1.5">
@@ -2566,7 +2607,7 @@ export default function WebsitePage() {
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full shrink-0 ${isPublished ? "bg-green-400" : built ? "bg-yellow-400 animate-pulse" : "bg-[#9CA3AF]"}`} />
               <p className="text-xs font-medium text-[#6B7280]">
-                {previewVersionHtml ? "Previewing version — not your draft" :
+                {previewVersionHtml ? "Previewing version. Not your draft" :
                  isPublished ? "Live" : built ? t("website.livePreview") : t("website.previewEmpty")}
               </p>
               {previewVersionHtml && (
@@ -2707,7 +2748,7 @@ export default function WebsitePage() {
                     </svg>
                   </div>
                   <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Your website preview</p>
-                  <p className="text-xs text-[#9CA3AF]">Describe your business in the chat — I&apos;ll build a premium site with real photos in seconds</p>
+                  <p className="text-xs text-[#9CA3AF]">Describe your business in the chat. I&apos;ll build a premium site with real photos in seconds</p>
                 </div>
               </div>
 
@@ -2774,7 +2815,7 @@ export default function WebsitePage() {
                       ))}
                     </div>
                     <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                      <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Daily visits — last 30 days</p>
+                      <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Daily visits: last 30 days</p>
                       {(() => {
                         const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
                         return (
@@ -2911,7 +2952,7 @@ export default function WebsitePage() {
           <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-base font-bold text-[#111111] dark:text-white">Start a new website?</h2>
             <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
-              Your current project will be saved in the sidebar — you can switch back anytime.
+              Your current project will be saved in the sidebar. You can switch back anytime.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button

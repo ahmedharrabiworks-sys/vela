@@ -200,7 +200,7 @@
     },
     "showing": "Affichage de",
     "bookingCounter": "réservations ce mois",
-    "bookingLimitReached": "Limite de réservations atteinte — passez à Pro pour des réservations illimitées"
+    "bookingLimitReached": "Limite de réservations atteinte. Passez à Pro pour des réservations illimitées"
   },
   "greeting": {
     "morning": "Bonjour",
@@ -245,7 +245,7 @@
     "widgetHint": "Les messages de votre widget apparaîtront ici",
     "needsAttention": "Nécessite une attention",
     "replyingManually": "Réponse manuelle en tant qu'équipe",
-    "aiModeHint": "Mode test — les messages ici sont de test uniquement et ne seront pas envoyés au client",
+    "aiModeHint": "Mode test. Les messages ici sont de test uniquement et ne seront pas envoyés au client",
     "simulatePlaceholder": "Essayez un message de test…",
     "replyPlaceholder": "Tapez votre réponse…",
     "send": "Envoyer",
@@ -289,7 +289,7 @@
     "publish": "Publier →",
     "previewEmpty": "L'aperçu apparaîtra ici",
     "building": "Construction de votre site…",
-    "livePreview": "yoursite.vela.ai — aperçu en direct"
+    "livePreview": "yoursite.vela.ai. Aperçu en direct"
   },
   "aiTraining": {
     "title": "Entraîner votre IA",
@@ -298,20 +298,20 @@
     "wellTrained": "Bien entraînée",
     "gettingThere": "En bonne voie",
     "needsInfo": "Manque d'informations",
-    "importPlaceholder": "Collez votre site web — Vela apprend tout ✨",
+    "importPlaceholder": "Collez votre site web. Vela apprend tout ✨",
     "analyzing": "Analyse en cours",
     "importBtn": "Importer",
     "uploadPriceList": "télécharger une liste de prix",
     "answerQuestions": "répondre à 5 questions rapides",
     "or": "ou",
-    "instagramSoon": "L'importation Instagram arrive bientôt — collez l'URL de votre site ou téléchargez un PDF à la place.",
-    "reviewTitle": "Extrait de votre site — vérifiez avant d'enregistrer",
+    "instagramSoon": "L'importation Instagram arrive bientôt. Collez l'URL de votre site ou téléchargez un PDF à la place.",
+    "reviewTitle": "Extrait de votre site. Vérifiez avant d'enregistrer",
     "reviewServices": "Services",
     "reviewExtraInfo": "Informations supplémentaires",
     "reviewBusinessInfo": "Infos entreprise",
     "reviewHours": "Horaires :",
     "reviewAddress": "Adresse :",
-    "saveBtn": "Ça me convient — Enregistrer",
+    "saveBtn": "Ça me convient. Enregistrer",
     "discardBtn": "Ignorer",
     "tabs": {
       "services": "Services",
@@ -332,7 +332,7 @@
     },
     "businessInfo": {
       "hours": "Horaires d'ouverture",
-      "hoursPlaceholder": "Lun–Ven 9h–18h, Sam 10h–16h",
+      "hoursPlaceholder": "Lun-Ven 9h-18h, Sam 10h-16h",
       "address": "Adresse / Localisation",
       "addressPlaceholder": "ex. 5 rue Principale, Ville",
       "bookingPolicy": "Politique de réservation",
@@ -347,19 +347,19 @@
     },
     "extra": {
       "label": "Connaissances supplémentaires",
-      "hint": "Tout ce que votre IA doit savoir — politiques, questions fréquentes, promotions, infos équipe…",
+      "hint": "Tout ce que votre IA doit savoir. Politiques, questions fréquentes, promotions, infos équipe…",
       "uploadTitle": "Télécharger un document",
-      "uploadHint": "PDF ou image — nous extrairons le texte pour révision.",
+      "uploadHint": "PDF ou image. Nous extrairons le texte pour révision.",
       "chooseFile": "Choisir un fichier",
       "extracting": "Extraction en cours…",
-      "extractionFailed": "Extraction échouée — essayez un autre fichier ou collez le texte manuellement.",
-      "reviewExtracted": "Texte extrait — vérifiez avant d'ajouter :",
+      "extractionFailed": "Extraction échouée. Essayez un autre fichier ou collez le texte manuellement.",
+      "reviewExtracted": "Texte extrait. Vérifiez avant d'ajouter :",
       "discard": "Ignorer",
       "addToKB": "Ajouter à la base de connaissances",
       "textareaPlaceholder": "ex. 'Nous utilisons uniquement des produits vegan.' ou 'Q : Offrez-vous des remises ?\nR : Oui, 15% le mardi.'"
     },
     "importFailed": "Importation échouée.",
-    "connectionError": "Erreur de connexion — veuillez réessayer.",
+    "connectionError": "Erreur de connexion. Veuillez réessayer.",
     "moreCount": " de plus",
     "saved": "Enregistré ✓",
     "savedImported": "Importé & Enregistré ✓"
@@ -375,15 +375,15 @@
     "keyboardSend": "pour envoyer · ",
     "keyboardNewline": "pour nouvelle ligne",
     "greeting": "Bonjour",
-    "greetingMessage": "Je suis Vela, votre assistant IA d'entreprise. Interrogez-moi sur vos prospects, rendez-vous ou conversations — ou demandez-moi de rédiger des réponses et du contenu marketing.",
+    "greetingMessage": "Je suis Vela, votre assistant IA d'entreprise. Interrogez-moi sur vos prospects, rendez-vous ou conversations. Ou demandez-moi de rédiger des réponses et du contenu marketing.",
     "errorUnauthorized": "Veuillez vous connecter pour utiliser Vela AI.",
     "errorTenantNotFound": "Finalisez la configuration de votre compte pour débloquer l'assistant.",
     "errorNotConfigured": "Le service IA n'est pas encore configuré. Contactez le support.",
-    "errorGeneric": "Une erreur s'est produite — cliquez sur Réessayer ci-dessous.",
+    "errorGeneric": "Une erreur s'est produite. Cliquez sur Réessayer ci-dessous.",
     "errorNoResponse": "Impossible de générer une réponse. Veuillez réessayer.",
-    "errorConnection": "Erreur de connexion — vérifiez votre internet et cliquez sur Réessayer.",
+    "errorConnection": "Erreur de connexion. Vérifiez votre internet et cliquez sur Réessayer.",
     "kbUpdated": "✓ Votre base de connaissances IA a été mise à jour ! Visitez 'Entraîner votre IA' pour revoir ou ajuster.",
-    "kbSaveFailed": "L'entretien est terminé mais l'enregistrement a échoué — veuillez visiter 'Entraîner votre IA' pour enregistrer manuellement.",
+    "kbSaveFailed": "L'entretien est terminé mais l'enregistrement a échoué. Veuillez visiter 'Entraîner votre IA' pour enregistrer manuellement.",
     "quickActions": {
       "todayAppointments": "Rendez-vous du jour",
       "recentLeads": "Derniers prospects",
@@ -396,7 +396,7 @@
       "recentLeads": "Montrez-moi mes derniers prospects",
       "needsAttention": "Quelles conversations nécessitent une intervention humaine ?",
       "writeReply": "Aidez-moi à rédiger une réponse professionnelle à un client qui demande les tarifs",
-      "trainMe": "Je veux entraîner mon IA — commencez l'entretien maintenant."
+      "trainMe": "Je veux entraîner mon IA. Commencez l'entretien maintenant."
     }
   },
   "landing": {
@@ -476,7 +476,7 @@
             "Les 3 canaux + réponses prioritaires",
             "Site web personnalisé complet + animations",
             "Réservations illimitées",
-            "IA avancée — apprend avec le temps",
+            "IA avancée. Apprend avec le temps",
             "Calendrier complet + rappels + analytiques",
             "Séquences de suivi avancées",
             "CRM complet + rapports de revenus",
@@ -493,12 +493,30 @@
       "headline1": "Des questions ?",
       "headline2": "Nous avons les réponses.",
       "questions": [
-        { "q": "En combien de temps peut-on démarrer ?", "a": "La plupart des entreprises sont opérationnelles en 7 jours. Après l'inscription, notre équipe d'intégration connecte vos canaux, forme l'IA sur vos services et teste tout avant le lancement. Vous n'avez pas besoin d'écrire une seule ligne de code." },
-        { "q": "Vela fonctionne-t-il vraiment sur Instagram et WhatsApp ?", "a": "Oui. Vela s'intègre directement avec l'API officielle d'Instagram et l'API WhatsApp Business. Chaque DM, réponse à un commentaire et réponse aux stories est géré par votre assistant IA. WhatsApp est particulièrement puissant pour les entreprises basées sur les réservations comme les cliniques et les salons." },
-        { "q": "Puis-je personnaliser ce que dit l'IA ?", "a": "Absolument. Lors de la configuration, vous fournissez votre liste de services, vos tarifs, vos FAQ, votre ton et vos règles de réservation. L'IA est formée spécifiquement pour votre entreprise. Vous pouvez aussi définir des règles d'escalade pour que l'IA transfère les cas complexes à un humain." },
-        { "q": "Que se passe-t-il si un client pose une question que l'IA ne connaît pas ?", "a": "L'IA reconnaît élégamment qu'elle n'a pas cette information et propose de mettre le client en contact avec un membre de l'équipe. Vous recevez une notification instantanée pour intervenir. Vous pouvez aussi enrichir la base de connaissances de l'IA à tout moment depuis vos paramètres." },
-        { "q": "Les données de mes clients sont-elles en sécurité ?", "a": "Toutes les données sont stockées chiffrées dans Supabase avec Row Level Security — vos données sont complètement isolées des autres entreprises sur la plateforme. Nous ne partageons ni ne vendons jamais les données clients. La conformité RGPD est intégrée." },
-        { "q": "Puis-je annuler mon abonnement ?", "a": "Oui, à tout moment. Pas de contrats, pas de frais d'annulation. Vous pouvez annuler directement depuis vos paramètres de facturation. Vos données sont disponibles pour export pendant 30 jours après l'annulation." }
+        {
+          "q": "En combien de temps peut-on démarrer ?",
+          "a": "La plupart des entreprises sont opérationnelles en 7 jours. Après l'inscription, notre équipe d'intégration connecte vos canaux, forme l'IA sur vos services et teste tout avant le lancement. Vous n'avez pas besoin d'écrire une seule ligne de code."
+        },
+        {
+          "q": "Vela fonctionne-t-il vraiment sur Instagram et WhatsApp ?",
+          "a": "Oui. Vela s'intègre directement avec l'API officielle d'Instagram et l'API WhatsApp Business. Chaque DM, réponse à un commentaire et réponse aux stories est géré par votre assistant IA. WhatsApp est particulièrement puissant pour les entreprises basées sur les réservations comme les cliniques et les salons."
+        },
+        {
+          "q": "Puis-je personnaliser ce que dit l'IA ?",
+          "a": "Absolument. Lors de la configuration, vous fournissez votre liste de services, vos tarifs, vos FAQ, votre ton et vos règles de réservation. L'IA est formée spécifiquement pour votre entreprise. Vous pouvez aussi définir des règles d'escalade pour que l'IA transfère les cas complexes à un humain."
+        },
+        {
+          "q": "Que se passe-t-il si un client pose une question que l'IA ne connaît pas ?",
+          "a": "L'IA reconnaît élégamment qu'elle n'a pas cette information et propose de mettre le client en contact avec un membre de l'équipe. Vous recevez une notification instantanée pour intervenir. Vous pouvez aussi enrichir la base de connaissances de l'IA à tout moment depuis vos paramètres."
+        },
+        {
+          "q": "Les données de mes clients sont-elles en sécurité ?",
+          "a": "Toutes les données sont stockées chiffrées dans Supabase avec Row Level Security. Vos données sont complètement isolées des autres entreprises sur la plateforme. Nous ne partageons ni ne vendons jamais les données clients. La conformité RGPD est intégrée."
+        },
+        {
+          "q": "Puis-je annuler mon abonnement ?",
+          "a": "Oui, à tout moment. Pas de contrats, pas de frais d'annulation. Vous pouvez annuler directement depuis vos paramètres de facturation. Vos données sont disponibles pour export pendant 30 jours après l'annulation."
+        }
       ]
     },
     "cta": {
@@ -571,8 +589,8 @@
       "setupPhoneSub": "Obtenez un numéro pour votre agent",
       "viewCalls": "Voir les appels",
       "viewCallsSub": "Voir l'historique complet",
-      "onboardingTitle": "Votre agent est prêt — 3 étapes pour commencer",
-      "step1Pre": "Formez votre agent — passez l'interview dans",
+      "onboardingTitle": "Votre agent est prêt. 3 étapes pour commencer",
+      "step1Pre": "Formez votre agent. Passez l'interview dans",
       "step1Link": "Formation →",
       "step2Pre": "Configurez votre numéro dans",
       "step2Link": "Numéro de téléphone →",
@@ -612,8 +630,8 @@
     },
     "phone": {
       "pageTitle": "Numéro de téléphone",
-      "subtitle": "Connectez un numéro pour que Vela réponde à vos appels 24/7 — gérant les demandes, réservant des rendez-vous et répondant dans n'importe quelle langue.",
-      "active": "Actif — répond aux appels",
+      "subtitle": "Connectez un numéro pour que Vela réponde à vos appels 24/7. Gérant les demandes, réservant des rendez-vous et répondant dans n'importe quelle langue.",
+      "active": "Actif. Répond aux appels",
       "getTitle": "Obtenez votre numéro de téléphone IA",
       "getDesc": "Provisionnez un vrai numéro de téléphone. Vela répond à chaque appel avec vos connaissances métier, dans la langue de l'appelant.",
       "getBtn": "Obtenir un numéro",
@@ -635,7 +653,7 @@
     },
     "settings": {
       "pageTitle": "Paramètres de l'agent",
-      "subtitle": "Configurez votre agent téléphonique IA — son son, son comportement et sa façon de représenter votre activité.",
+      "subtitle": "Configurez votre agent téléphonique IA. Son son, son comportement et sa façon de représenter votre activité.",
       "identity": "Identité",
       "agentName": "Nom de l'agent",
       "agentNamePlaceholder": "ex. Vela",

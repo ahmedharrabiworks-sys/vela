@@ -21,12 +21,14 @@ function buildWidgetScript(tenantId: string): string {
   // here so a published Vela-built site has the AI assistant live with zero
   // manual setup. Skips inside an iframe (e.g. builder preview) the same
   // way the tracking script does, so the bubble never appears in the editor.
+  // source=site distinguishes this auto-injected case from an externally
+  // pasted embed so conversations can be tagged with the correct channel.
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") || "https://app.vela.ai";
-  const src = `${appUrl}/api/embed/${encodeURIComponent(tenantId)}`;
+  const src = `${appUrl}/api/embed/${encodeURIComponent(tenantId)}?source=site`;
   return `<script>if(window.self===window.top){var s=document.createElement('script');s.src=${JSON.stringify(src)};s.async=true;document.body.appendChild(s);}</script>`;
 }
 
-function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClient, websiteIdForTracking?: string) {
+function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClient, websiteIdForTracking?: string, embedAssistant = true) {
   // Increment visit counter fire-and-forget (best-effort read-modify-write)
   if (tenantIdForCount && admin) {
     (async () => {
@@ -48,7 +50,7 @@ function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClie
   let finalHtml = html;
   const injections = [
     websiteIdForTracking ? buildTrackScript(websiteIdForTracking) : "",
-    tenantIdForCount ? buildWidgetScript(tenantIdForCount) : "",
+    tenantIdForCount && embedAssistant ? buildWidgetScript(tenantIdForCount) : "",
   ].join("");
   if (injections) {
     finalHtml = html.includes("</body>")
@@ -86,13 +88,13 @@ export async function GET(
   if (!UUID_RE.test(tenantId)) {
     const { data: site } = await admin
       .from("websites")
-      .select("published_html, tenant_id, id")
+      .select("published_html, tenant_id, id, embed_ai_assistant")
       .eq("slug", tenantId)
       .eq("is_published", true)
       .maybeSingle();
 
     if (site?.published_html) {
-      return htmlResponse(site.published_html as string, site.tenant_id as string | undefined, admin, site.id as string | undefined);
+      return htmlResponse(site.published_html as string, site.tenant_id as string | undefined, admin, site.id as string | undefined, site.embed_ai_assistant !== false);
     }
 
     return new NextResponse("Site not found", { status: 404 });
@@ -102,7 +104,7 @@ export async function GET(
   // Look up the website by tenant_id (old URL format).
   const { data: site } = await admin
     .from("websites")
-    .select("published_html, slug, tenant_id, id")
+    .select("published_html, slug, tenant_id, id, embed_ai_assistant")
     .eq("tenant_id", tenantId)
     .eq("is_published", true)
     .order("published_at", { ascending: false })
@@ -116,7 +118,7 @@ export async function GET(
       const redirectUrl = new URL(`/site/${siteSlug}`, req.url);
       return NextResponse.redirect(redirectUrl, 301);
     }
-    return htmlResponse(site.published_html as string, tenantId, admin, site.id as string | undefined);
+    return htmlResponse(site.published_html as string, tenantId, admin, site.id as string | undefined, site.embed_ai_assistant !== false);
   }
 
   // Backward compat: sites published before websites table migration live in tenant_config.

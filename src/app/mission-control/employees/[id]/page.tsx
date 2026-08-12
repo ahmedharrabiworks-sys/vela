@@ -99,7 +99,7 @@ export default async function EmployeeDetailPage({
           <Link href="/mission-control/employees" style={{ color: T.muted, textDecoration: "none" }}>← Employees</Link>
         </div>
         <p style={{ color: T.amber }}>
-          Could not load employee — run <code>supabase/migration_v15.sql</code> first.
+          Could not load employee. Run <code>supabase/migration_v15.sql</code> first.
         </p>
       </div>
     );
@@ -157,9 +157,9 @@ export default async function EmployeeDetailPage({
 
       {/* Current signals */}
       <div style={S.card}>
-        <div style={S.cardHead}>Current Signals — latest value per signal name</div>
+        <div style={S.cardHead}>Current Signals: latest value per signal name</div>
         {Object.keys(latestSignals).length === 0 ? (
-          <div style={S.empty}>No signals yet — run the seed script.</div>
+          <div style={S.empty}>No signals yet. Run the seed script.</div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>

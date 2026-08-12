@@ -1,13 +1,18 @@
 import { NextRequest } from "next/server";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { tenantId: string } }
 ) {
   const { tenantId } = params;
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
     "https://app.vela.ai";
+  // source=site (set only by the auto-injected script on a published Vela
+  // site, see site/[tenantId]/route.ts) vs. absent (an externally pasted
+  // embed) -- passed through to the widget so conversations are tagged
+  // with the correct channel.
+  const source = req.nextUrl.searchParams.get("source") === "site" ? "site" : "";
 
   const js = `
 (function () {
@@ -15,6 +20,7 @@ export async function GET(
 
   var tenantId = ${JSON.stringify(tenantId)};
   var base     = ${JSON.stringify(base)};
+  var source   = ${JSON.stringify(source)};
 
   /* Floating button */
   var btn = document.createElement('button');
@@ -33,11 +39,11 @@ export async function GET(
   /* iframe */
   var frame = document.createElement('iframe');
   frame.id    = '__vela_widget';
-  frame.src   = base + '/widget/' + tenantId;
+  frame.src   = base + '/widget/' + tenantId + (source ? '?source=' + source : '');
   frame.title = 'Chat with us';
   frame.style.cssText = [
     'position:fixed', 'bottom:96px', 'right:24px',
-    'width: min(400px, calc(100vw - 48px))', 'height:600px',
+    'width: min(400px, calc(100vw - 48px))', 'height:520px',
     'border:none', 'border-radius:16px',
     'box-shadow:0 8px 40px rgba(0,0,0,0.18)',
     'z-index:9999', 'display:none',

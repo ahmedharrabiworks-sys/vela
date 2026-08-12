@@ -13,11 +13,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Vela — AI Business Operating System",
+  title: "Vela: AI Business Operating System",
   description:
-    "One platform. Every tool your business needs. AI that handles Instagram, WhatsApp & website chat 24/7 — plus booking, CRM, and analytics.",
+    "One platform. Every tool your business needs. AI that handles Instagram, WhatsApp & website chat 24/7. Plus booking, CRM, and analytics.",
   openGraph: {
-    title: "Vela — AI Business Operating System",
+    title: "Vela: AI Business Operating System",
     description: "Never miss another lead. Vela runs your customer communications 24/7.",
     type: "website",
   },

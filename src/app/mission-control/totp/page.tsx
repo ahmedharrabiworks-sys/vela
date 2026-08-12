@@ -48,7 +48,7 @@ export default async function McTotpPage({
             border: "1px solid rgba(248,113,113,0.2)",
           }}
         >
-          Invalid code — please try again.
+          Invalid code. Please try again.
         </p>
       )}
 

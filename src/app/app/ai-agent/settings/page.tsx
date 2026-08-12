@@ -89,14 +89,14 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
-        setSaveError(data.error ?? "Save failed — please try again");
+        setSaveError(data.error ?? "Save failed. Please try again");
         setSaving(false);
         return;
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setSaveError("Network error — please check your connection");
+      setSaveError("Network error. Please check your connection");
     }
     setSaving(false);
   };
@@ -158,12 +158,12 @@ export default function SettingsPage() {
                 >
                   <optgroup label="Male">
                     {VOICES.filter((v) => v.gender === "male").map((v) => (
-                      <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
+                      <option key={v.id} value={v.id}>{v.name}: {v.description}</option>
                     ))}
                   </optgroup>
                   <optgroup label="Female">
                     {VOICES.filter((v) => v.gender === "female").map((v) => (
-                      <option key={v.id} value={v.id}>{v.name} — {v.description}</option>
+                      <option key={v.id} value={v.id}>{v.name}: {v.description}</option>
                     ))}
                   </optgroup>
                 </select>
@@ -185,7 +185,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>
-                Speaking Speed — <span style={{ color: "#FF6B35" }}>{speed.toFixed(2)}×</span>
+                Speaking Speed: <span style={{ color: "#FF6B35" }}>{speed.toFixed(2)}×</span>
               </label>
               <input
                 type="range"
