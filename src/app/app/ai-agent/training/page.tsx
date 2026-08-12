@@ -104,6 +104,7 @@ export default function TrainingPage() {
   const [status, setStatus]       = useState<CallStatus>("idle");
   const [callError, setCallError]         = useState<string | null>(null);
   const [wasEjected, setWasEjected]       = useState(false);
+  const [ejectedEarly, setEjectedEarly]   = useState(false);
   const [muted, setMuted]                 = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
   const [transcript, setTranscript] = useState<TLine[]>([]);
@@ -123,6 +124,9 @@ export default function TrainingPage() {
   const barRefs       = useRef<(HTMLDivElement | null)[]>([]);
   const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  // Set on call-start, read inside the error handler to tell a genuine mid-call
+  // drop apart from an immediate voice/transcription provider failure.
+  const activeSinceRef = useRef<number | null>(null);
 
   function fmtTimer(s: number) {
     return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -225,6 +229,7 @@ export default function TrainingPage() {
     setCallDuration(0);
     setCallError(null);
     setWasEjected(false);
+    setEjectedEarly(false);
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
@@ -233,10 +238,12 @@ export default function TrainingPage() {
       vapi.on("call-start", () => {
         setStatus("active");
         setCallDuration(0);
+        activeSinceRef.current = Date.now();
         timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
       });
       vapi.on("call-end",   () => {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        activeSinceRef.current = null;
         setStatus("ended");
         resetBars();
         extractKb([...linesRef.current], started, { ...toolKbRef.current });
@@ -252,6 +259,12 @@ export default function TrainingPage() {
         console.error("[vapi error]", e);
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         if (isVapiEjection(e)) {
+          // A drop within seconds of connecting is essentially never caused by the
+          // tab being backgrounded -- it means the call never properly established,
+          // almost always a voice/transcription provider failure.
+          const activeMs = activeSinceRef.current ? Date.now() - activeSinceRef.current : 0;
+          setEjectedEarly(activeMs < 15000);
+          activeSinceRef.current = null;
           setWasEjected(true);
           setStatus("ended");
         } else {
@@ -321,7 +334,7 @@ export default function TrainingPage() {
   }, [muted]);
   const reset = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    setStatus("idle"); setCallError(null); setWasEjected(false); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); setCallDuration(0); vapiRef.current = null;
+    setStatus("idle"); setCallError(null); setWasEjected(false); setEjectedEarly(false); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); setCallDuration(0); vapiRef.current = null;
     resetBars();
   }, []);
 
@@ -417,7 +430,7 @@ export default function TrainingPage() {
                       {isActive
                         ? (muted ? t("aiAgent.training.muted") : t("aiAgent.training.speakNaturally"))
                         : isConnecting ? t("common.connecting")
-                        : status === "ended" ? (wasEjected ? "Connection lost" : t("aiAgent.training.complete"))
+                        : status === "ended" ? (wasEjected ? (ejectedEarly ? "Couldn't connect" : "Connection lost") : t("aiAgent.training.complete"))
                         : extracting ? t("aiAgent.training.saving")
                         : t("aiAgent.training.ready")}
                     </p>
@@ -529,7 +542,9 @@ export default function TrainingPage() {
                 {status === "ended" && wasEjected && (
                   <div className="space-y-2">
                     <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted
+                      {ejectedEarly
+                        ? "The call disconnected right after connecting. This usually points to a voice service configuration issue rather than your connection."
+                        : "Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted."}
                     </p>
                     <button onClick={startCall}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"

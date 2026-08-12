@@ -141,6 +141,7 @@ export default function OverviewPage() {
   const [muted, setMuted]               = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [wasEjected, setWasEjected]     = useState(false);
+  const [ejectedEarly, setEjectedEarly] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
   const voiceIdRef     = useRef(DEFAULT_VOICE_ID);
   const speedRef       = useRef(0.85);
@@ -149,6 +150,9 @@ export default function OverviewPage() {
   const prefLangRef    = useRef<string | undefined>(undefined);
   const vapiRef  = useRef<VapiInstance>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Set on call-start, read (not via stale state) inside the error handler to
+  // tell a genuine mid-call drop apart from an immediate provider failure.
+  const activeSinceRef = useRef<number | null>(null);
   const { t } = useI18n();
 
   /* Volume bars (DOM-direct) — 5 bars */
@@ -257,6 +261,7 @@ export default function OverviewPage() {
     setCallError(null);
     setCallDuration(0);
     setWasEjected(false);
+    setEjectedEarly(false);
     setMuted(false);
     const STYLE_LINES: Record<string, string> = {
       direct:   "Be direct. Answer immediately with no preamble. Skip filler phrases like \"Great question\" or \"Of course\". One clear answer, nothing more.",
@@ -302,10 +307,12 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
       vapi.on("call-start", () => {
         setCallStatus("active");
         setCallDuration(0);
+        activeSinceRef.current = Date.now();
         timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
       });
       vapi.on("call-end", () => {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        activeSinceRef.current = null;
         setCallStatus("ended");
         resetBars();
       });
@@ -321,6 +328,13 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         const isEjected = isVapiEjection(e);
         if (isEjected) {
+          // A drop within seconds of connecting is essentially never caused by the
+          // tab being backgrounded (that requires the tab to have been hidden for a
+          // real stretch of time first) -- it means the call never properly
+          // established, almost always a voice/transcription provider failure.
+          const activeMs = activeSinceRef.current ? Date.now() - activeSinceRef.current : 0;
+          setEjectedEarly(activeMs < 15000);
+          activeSinceRef.current = null;
           setWasEjected(true);
           setCallStatus("ended");
         } else {
@@ -362,6 +376,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
     setMuted(false);
     setCallDuration(0);
     setWasEjected(false);
+    setEjectedEarly(false);
     resetBars();
     vapiRef.current = null;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -615,7 +630,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                       {isActive
                         ? (muted ? "Muted" : "Listening…")
                         : isConnecting ? "Connecting…"
-                        : callStatus === "ended" ? (wasEjected ? "Connection lost" : "Call ended")
+                        : callStatus === "ended" ? (wasEjected ? (ejectedEarly ? "Couldn't connect" : "Connection lost") : "Call ended")
                         : "Your business advisor"}
                     </p>
                   </div>
@@ -731,7 +746,9 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                 {callStatus === "ended" && wasEjected && (
                   <div className="space-y-2">
                     <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted
+                      {ejectedEarly
+                        ? "The call disconnected right after connecting. This usually points to a voice service configuration issue rather than your connection."
+                        : "Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted."}
                     </p>
                     <button onClick={startCall}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"

@@ -6,10 +6,9 @@ import { getProfile, saveProfile } from "@/lib/business-profile";
 import { usePlan } from "@/lib/plans";
 import { PLAN_CONFIG } from "@/lib/plan-config";
 import { useI18n } from "@/lib/i18n";
-import { useColorTheme } from "@/lib/theme";
 import Link from "next/link";
 
-type Section = "business" | "ai" | "notifications" | "billing" | "appearance";
+type Section = "business" | "ai" | "notifications" | "billing";
 
 type UsageData = {
   messages:     { used: number; limit: number | null };
@@ -169,9 +168,8 @@ export default function SettingsPage() {
   const [savingSection, setSavingSection] = useState<Section | null>(null);
   const [savedSection, setSavedSection]   = useState<Section | null>(null);
 
-  const { isPro }                     = usePlan();
-  const { t }                         = useI18n();
-  const { colorTheme, setColorTheme } = useColorTheme();
+  const { isPro } = usePlan();
+  const { t }     = useI18n();
 
   useEffect(() => {
     async function load() {
@@ -413,18 +411,6 @@ export default function SettingsPage() {
           <rect x="1.5" y="3.5" width="11" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
           <path d="M1.5 6.5h11" stroke="currentColor" strokeWidth="1.2"/>
           <path d="M4 8.5h1.5M7.5 8.5h2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-        </svg>
-      ),
-    },
-    {
-      id: "appearance",
-      labelKey: "settings.tabs.appearance",
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/>
-          <path d="M4 10c1.5-2 4-2 6 0" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-          <circle cx="5" cy="5.5" r="0.8" fill="currentColor"/>
-          <circle cx="9" cy="5.5" r="0.8" fill="currentColor"/>
         </svg>
       ),
     },
@@ -831,32 +817,6 @@ export default function SettingsPage() {
                 >
                   {t("settings.billing.addPayment")}
                 </button>
-              </div>
-            </>
-          )}
-
-          {/* ── Appearance ── */}
-          {section === "appearance" && (
-            <>
-              <div>
-                <h2 className="font-semibold text-[#111111]">Appearance</h2>
-                <p className="text-xs text-[#9CA3AF] mt-0.5">Vela uses its signature orange brand colour. Toggle dark mode from the icon in the top bar.</p>
-              </div>
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-[#E5E7EB] bg-[#FFF8F5] w-fit">
-                <div className="flex gap-1.5">
-                  <span className="w-7 h-7 rounded-full" style={{ background: "#ed5426" }} />
-                  <span className="w-7 h-7 rounded-full" style={{ background: "#FF3366" }} />
-                  <span className="w-7 h-7 rounded-full bg-white border border-[#E5E7EB]" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#111111]">Vela Orange</p>
-                  <p className="text-xs text-[#9CA3AF]">Brand colour. Fixed</p>
-                </div>
-                <span className="ml-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "#ed5426" }}>
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </span>
               </div>
             </>
           )}
