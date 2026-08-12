@@ -815,7 +815,7 @@ function ChannelsPageContent() {
                   {[
                     { n: 1, text: "Copy the code below" },
                     { n: 2, text: "Paste it into your website's custom code or embed section, or send it to whoever manages your site" },
-                    { n: 3, text: "Your AI assistant appears as a chat bubble in the bottom right corner, exactly like the live preview below" },
+                    { n: 3, text: "Your AI assistant appears as a chat bubble in the bottom right corner of your site" },
                   ].map((s) => (
                     <div key={s.n} className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-[11px] font-bold flex items-center justify-center shrink-0">{s.n}</span>
@@ -842,30 +842,6 @@ function ChannelsPageContent() {
                       <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="3.5" y="3.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.1"/><path d="M3.5 3.5V2.5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H6.5" stroke="currentColor" strokeWidth="1.1"/></svg>{t("common.copy")} Code</>
                     )}
                   </button>
-                </div>
-
-                {/* Live preview -- the real embed script running inside a sandboxed frame,
-                    so the bubble position, styling, and AI replies are the genuine article,
-                    not a mockup. Tenant-scoped, so it is safe to click and try for real. */}
-                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3">
-                  <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3">Live preview, try it for real</p>
-                  <div className="rounded-lg border border-[#E5E7EB] bg-white overflow-hidden">
-                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#F3F4F6] bg-[#FAFAFA]">
-                      <span className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
-                      <span className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
-                      <span className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
-                      <span className="ml-2 text-[10px] text-[#9CA3AF] truncate">yourwebsite.com</span>
-                    </div>
-                    <iframe
-                      title="Live widget preview"
-                      srcDoc={`<!DOCTYPE html><html><head><style>html,body{margin:0;height:100%;background:#fff;}</style></head><body>${embedCode}</body></html>`}
-                      className="w-full block"
-                      style={{ height: 360, border: "none" }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-[#9CA3AF] mt-2.5">
-                    This is the real widget connected to your account. Click the bubble in the bottom right corner above to test it, just like a visitor would on your live site.
-                  </p>
                 </div>
               </div>
             )}

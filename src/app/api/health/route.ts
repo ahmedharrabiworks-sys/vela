@@ -55,11 +55,45 @@ export async function GET() {
     }
   } catch { /* unreachable */ }
 
+  // TEMPORARY DIAGNOSTIC — added to pin down why an updated ELEVEN_LABS_API_KEY
+  // in Vercel wasn't taking effect. Never returns the full key, only presence,
+  // length, and the first 4 characters, so the deployed value can be confirmed
+  // against what was set in Vercel without exposing the secret. Remove once the
+  // key mismatch is confirmed resolved.
+  const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
+  const elevenLabsKeyPresent = !!elevenLabsKey;
+  const elevenLabsKeyLength = elevenLabsKey?.length ?? 0;
+  const elevenLabsKeyPrefix = elevenLabsKey ? elevenLabsKey.slice(0, 4) : null;
+  let elevenLabsReachable = false;
+  let elevenLabsError: string | undefined;
+
+  if (elevenLabsKeyPresent) {
+    try {
+      const res = await fetch("https://api.elevenlabs.io/v1/user", {
+        headers: { "xi-api-key": elevenLabsKey! },
+        signal: AbortSignal.timeout(4000),
+      });
+      elevenLabsReachable = res.ok;
+      if (!res.ok) {
+        elevenLabsError = res.status === 401 ? "invalid_api_key" : `http_${res.status}`;
+      }
+    } catch {
+      elevenLabsError = "network_error";
+    }
+  } else {
+    elevenLabsError = "key_not_set";
+  }
+
   return NextResponse.json({
     openaiKeyPresent,
     openaiReachable,
     ...(openaiError ? { openaiError } : {}),
     supabaseReachable,
+    elevenLabsKeyPresent,
+    elevenLabsKeyLength,
+    elevenLabsKeyPrefix,
+    elevenLabsReachable,
+    ...(elevenLabsError ? { elevenLabsError } : {}),
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "not set",
   });
 }
