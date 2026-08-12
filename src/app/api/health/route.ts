@@ -88,6 +88,40 @@ export async function GET() {
     elevenLabsError = "key_not_set";
   }
 
+  // TEMPORARY DIAGNOSTIC — added while root-causing the Vapi "ejected / Meeting
+  // has ended" failure on Training and the generic call failure on Overview, to
+  // rule in or out a Vapi account/credit/auth problem as a shared cause. Never
+  // returns the full key, only presence, length, and reachability against
+  // Vapi's own /org endpoint. Remove once the call failures are confirmed fixed.
+  const vapiKey = process.env.VAPI_API_KEY;
+  const vapiKeyPresent = !!vapiKey;
+  const vapiKeyLength = vapiKey?.length ?? 0;
+  const vapiKeyPrefix = vapiKey ? vapiKey.slice(0, 4) : null;
+  let vapiReachable = false;
+  let vapiError: string | undefined;
+  let vapiErrorDetail: string | undefined;
+
+  if (vapiKeyPresent) {
+    try {
+      const res = await fetch("https://api.vapi.ai/org", {
+        headers: { Authorization: `Bearer ${vapiKey}` },
+        signal: AbortSignal.timeout(4000),
+      });
+      vapiReachable = res.ok;
+      if (!res.ok) {
+        vapiError = res.status === 401 ? "invalid_api_key" : `http_${res.status}`;
+        vapiErrorDetail = (await res.text().catch(() => "")).slice(0, 300);
+      }
+    } catch {
+      vapiError = "network_error";
+    }
+  } else {
+    vapiError = "key_not_set";
+  }
+
+  const vapiPublicKeyPresent = !!process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY;
+  const vapiWebhookSecretPresent = !!process.env.VAPI_WEBHOOK_SECRET;
+
   return NextResponse.json({
     openaiKeyPresent,
     openaiReachable,
@@ -99,6 +133,14 @@ export async function GET() {
     elevenLabsReachable,
     ...(elevenLabsError ? { elevenLabsError } : {}),
     ...(elevenLabsErrorDetail ? { elevenLabsErrorDetail } : {}),
+    vapiKeyPresent,
+    vapiKeyLength,
+    vapiKeyPrefix,
+    vapiReachable,
+    ...(vapiError ? { vapiError } : {}),
+    ...(vapiErrorDetail ? { vapiErrorDetail } : {}),
+    vapiPublicKeyPresent,
+    vapiWebhookSecretPresent,
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "not set",
   });
 }
