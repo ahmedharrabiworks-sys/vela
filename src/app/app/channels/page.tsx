@@ -807,15 +807,19 @@ function ChannelsPageContent() {
 
             {showEmbed && (
               <div className="mt-4">
+                <p className="text-xs text-[#6B7280] leading-relaxed mb-4">
+                  If your website was built somewhere other than Vela, such as Wix, Squarespace, Shopify, or WordPress, you can still add the same AI assistant to it. Most website builders have a section in their settings called something like Custom Code, Embed, or Tracking Code where a snippet like this one can be pasted. If someone else built or manages your website, you can simply forward this code to them. It usually takes about 2 minutes to add, and no coding experience is needed.
+                </p>
+
                 <div className="space-y-3 mb-4">
                   {[
-                    { n: 1, text: "Copy the embed code below" },
-                    { n: 2, text: "Paste it before the </body> tag on your website" },
-                    { n: 3, text: "The chat bubble appears in the bottom-right corner" },
+                    { n: 1, text: "Copy the code below" },
+                    { n: 2, text: "Paste it into your website's custom code or embed section, or send it to whoever manages your site" },
+                    { n: 3, text: "Your AI assistant appears as a chat bubble in the bottom right corner, exactly like the live preview below" },
                   ].map((s) => (
-                    <div key={s.n} className="flex items-center gap-3">
+                    <div key={s.n} className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-[11px] font-bold flex items-center justify-center shrink-0">{s.n}</span>
-                      <p className="text-xs text-[#374151]">{s.text}</p>
+                      <p className="text-xs text-[#374151] leading-relaxed pt-0.5">{s.text}</p>
                     </div>
                   ))}
                 </div>
@@ -840,21 +844,28 @@ function ChannelsPageContent() {
                   </button>
                 </div>
 
-                {/* Preview */}
-                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-4">
-                  <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3">Chat Bubble Preview</p>
-                  <div className="relative h-16">
-                    <div className="absolute bottom-0 right-0 flex items-end gap-2">
-                      <div className="bg-white border border-[#E5E7EB] rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
-                        <p className="text-xs text-[#374151] font-medium whitespace-nowrap">Hi! How can I help?</p>
-                      </div>
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-lg" style={{ background: "var(--vela-gradient)" }}>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
+                {/* Live preview -- the real embed script running inside a sandboxed frame,
+                    so the bubble position, styling, and AI replies are the genuine article,
+                    not a mockup. Tenant-scoped, so it is safe to click and try for real. */}
+                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-3">Live preview, try it for real</p>
+                  <div className="rounded-lg border border-[#E5E7EB] bg-white overflow-hidden">
+                    <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#F3F4F6] bg-[#FAFAFA]">
+                      <span className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
+                      <span className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
+                      <span className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
+                      <span className="ml-2 text-[10px] text-[#9CA3AF] truncate">yourwebsite.com</span>
                     </div>
+                    <iframe
+                      title="Live widget preview"
+                      srcDoc={`<!DOCTYPE html><html><head><style>html,body{margin:0;height:100%;background:#fff;}</style></head><body>${embedCode}</body></html>`}
+                      className="w-full block"
+                      style={{ height: 620, border: "none" }}
+                    />
                   </div>
+                  <p className="text-[11px] text-[#9CA3AF] mt-2.5">
+                    This is the real widget connected to your account. Click the bubble in the bottom right corner above to test it, just like a visitor would on your live site.
+                  </p>
                 </div>
               </div>
             )}

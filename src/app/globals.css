@@ -259,6 +259,7 @@ html.dark body {
   color: var(--dm-text);
 }
 
+html.dark .section-tint    { background: var(--dm-bg)           !important; }
 html.dark .bg-\[\#F8F9FA\]  { background-color: var(--dm-bg)      !important; }
 html.dark .bg-\[\#F9FAFB\]  { background-color: var(--dm-card2)   !important; }
 html.dark .bg-\[\#FAFAFA\]  { background-color: var(--dm-card2)   !important; }
