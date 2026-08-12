@@ -260,16 +260,25 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [companyName, setCompanyName] = useState("");
+  const [googleError, setGoogleError] = useState("");
 
   const handleGoogleSignIn = async () => {
+    setGoogleError("");
     const supabase = getSupabase();
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
       (typeof window !== "undefined" ? window.location.origin : "");
-    await supabase.auth.signInWithOAuth({
+    // Must point at the callback route (which exchanges the OAuth code for a
+    // session), not directly at /app -- /app has no code-exchange logic, so
+    // middleware would see no session yet and bounce back to /auth/login.
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${appUrl}/app` },
+      options: { redirectTo: `${appUrl}/auth/callback` },
     });
+    if (oauthError) {
+      console.error("[Google sign-in] signInWithOAuth failed:", oauthError.message);
+      setGoogleError("Could not start Google sign-in. Please try again.");
+    }
   };
 
   /* Step 2 */
@@ -442,6 +451,12 @@ export default function SignupPage() {
               <span className="text-xs text-[#9CA3AF] font-medium">Or continue with</span>
               <div className="flex-1 h-px bg-[#E5E7EB]" />
             </div>
+
+            {googleError && (
+              <div className="mb-3 px-4 py-3 rounded-xl text-sm text-red-600 border border-red-200 bg-red-50">
+                {googleError}
+              </div>
+            )}
 
             <button
               type="button"

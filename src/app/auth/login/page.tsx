@@ -49,14 +49,22 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     // Requires Google OAuth to be enabled in Supabase dashboard:
     // Authentication > Providers > Google > enable + add client ID/secret
+    setError("");
     const supabase = getSupabase();
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
       (typeof window !== "undefined" ? window.location.origin : "");
-    await supabase.auth.signInWithOAuth({
+    // Must point at the callback route (which exchanges the OAuth code for a
+    // session), not directly at /app -- /app has no code-exchange logic, so
+    // middleware would see no session yet and bounce back to /auth/login.
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${appUrl}/app` },
+      options: { redirectTo: `${appUrl}/auth/callback` },
     });
+    if (oauthError) {
+      console.error("[Google sign-in] signInWithOAuth failed:", oauthError.message);
+      setError("Could not start Google sign-in. Please try again.");
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
