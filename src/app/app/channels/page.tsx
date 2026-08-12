@@ -860,7 +860,7 @@ function ChannelsPageContent() {
                       title="Live widget preview"
                       srcDoc={`<!DOCTYPE html><html><head><style>html,body{margin:0;height:100%;background:#fff;}</style></head><body>${embedCode}</body></html>`}
                       className="w-full block"
-                      style={{ height: 620, border: "none" }}
+                      style={{ height: 360, border: "none" }}
                     />
                   </div>
                   <p className="text-[11px] text-[#9CA3AF] mt-2.5">
