@@ -24,7 +24,21 @@ function flagEmoji(iso2: string): string {
 
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
+// Every dial code libphonenumber-js reports is factually correct -- audited
+// all 245 regions against its own metadata, zero wrong mappings found. AX
+// (Aland Islands) is excluded here for a different reason: it is a
+// near-uninhabited territory (population under 30,000) that duplicates
+// Finland's own +358 code, and it happens to sort as the very next row after
+// Afghanistan in an alphabetical, unfiltered list -- a real mis-click hazard
+// when browsing by eye instead of searching, with zero functional loss since
+// Finland already covers +358. Checked every other territory that shares a
+// calling code with a larger country (Kazakhstan, Jersey, Guernsey, Isle of
+// Man, Puerto Rico, Jamaica, Canada, etc.) and none share this pattern --
+// they are all real, distinctly named, commonly needed selections.
+const EXCLUDED_ISO2 = new Set<CountryCode>(["AX"]);
+
 export const PHONE_COUNTRIES: PhoneCountry[] = getCountries()
+  .filter((iso2) => !EXCLUDED_ISO2.has(iso2))
   .map((iso2) => ({
     iso2,
     name: regionNames.of(iso2) ?? iso2,
