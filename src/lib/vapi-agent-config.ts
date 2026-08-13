@@ -230,8 +230,10 @@ export function buildInboundSystem(
   const extra = (kb.extra as string | undefined) ?? "";
   const personality = (settings.personality as string | undefined) ?? "professional";
   const greetingStyle = (settings.greetingStyle as string | undefined) ?? "warm";
+  const customGreeting = (settings.customGreeting as string | undefined) ?? "";
   const customInstructions = (settings.customInstructions as string | undefined) ?? "";
   const language = (settings.language as string | undefined) ?? "";
+  const greetingLanguage = (settings.greetingLanguage as string | undefined) ?? "";
 
   const svcList =
     services.length > 0
@@ -248,9 +250,25 @@ export function buildInboundSystem(
       : "Concise and efficient — respect the caller's time.";
 
   const greetingInstruction =
-    greetingStyle === "pro"
-      ? `Your first sentence MUST name the business: "${businessName}". Example: "Thanks for calling ${businessName}, how can I help you today?" Polished and brief, then listen.`
+    greetingStyle === "custom" && customGreeting.trim()
+      ? `Your opening greeting MUST be exactly this, translated naturally into the greeting language below while keeping the same meaning and structure — do not invent a different greeting: "${customGreeting.trim()}"`
+      : greetingStyle === "pro"
+      ? `Your first sentence MUST name the business: "${businessName}". Example: "Welcome to ${businessName}, how can I assist you today?" Polished and brief, then listen.`
       : `Your first sentence MUST name the business: "${businessName}". Example: "Hi, thanks for calling ${businessName}! How can I help you today?" Warm and short, then let them speak.`;
+
+  const greetingVaryLine =
+    greetingStyle === "custom" && customGreeting.trim()
+      ? "Use the exact greeting specified above every call — do not vary its wording or meaning."
+      : `Generate your greeting naturally. Vary your exact wording every call — never open with the same phrase twice, and never use a fixed word like "مرحبا" or "Hello" as a rote opener.`;
+
+  // The AI speaks first, before it has heard the caller -- so the opening line's
+  // language cannot come from auto-detecting the caller's speech. greetingLanguage
+  // lets the owner fix it explicitly; falling back to the Identity language field
+  // (the tenant's own primary language, if set) as "match business language".
+  const effectiveGreetingLang = greetingLanguage || language;
+  const greetingLanguageLine = effectiveGreetingLang
+    ? `Speak your OPENING GREETING specifically in ${LANG_NAMES[effectiveGreetingLang] ?? effectiveGreetingLang} — this is fixed regardless of what language the rest of the call ends up in. Immediately after the greeting, follow the LANGUAGE rule above for the remainder of the call.`
+    : `You have not heard the caller speak yet, so default your OPENING GREETING to English, then switch immediately once you hear the caller's language, per the LANGUAGE rule above.`;
 
   const languageInstruction =
     language && language !== "en"
@@ -267,7 +285,8 @@ ${languageInstruction}
 
 ## OPENING
 ${greetingInstruction}
-Generate your greeting naturally. Vary your exact wording every call — never open with the same phrase twice, and never use a fixed word like "مرحبا" or "Hello" as a rote opener. You speak first.
+${greetingLanguageLine}
+${greetingVaryLine} You speak first.
 
 ## BUSINESS KNOWLEDGE
 ${svcList ? `Services: ${svcList}` : "No services listed — let callers ask about what you offer."}

@@ -13,7 +13,9 @@ interface AgentSettings {
   agentName?: string;
   personality?: string;
   greetingStyle?: string;
+  customGreeting?: string;
   language?: string;
+  greetingLanguage?: string;
 }
 
 async function getAuthAndTenant(req: NextRequest) {
@@ -91,7 +93,9 @@ export async function POST(req: NextRequest) {
     ...(body.agentName          !== undefined ? { agentName:          body.agentName }          : {}),
     ...(body.personality        !== undefined ? { personality:        body.personality }        : {}),
     ...(body.greetingStyle      !== undefined ? { greetingStyle:      body.greetingStyle }      : {}),
+    ...(body.customGreeting     !== undefined ? { customGreeting:     body.customGreeting }     : {}),
     ...(body.language           !== undefined ? { language:           body.language }           : {}),
+    ...(body.greetingLanguage   !== undefined ? { greetingLanguage:   body.greetingLanguage }   : {}),
   };
 
   const { error: upsertErr } = await admin

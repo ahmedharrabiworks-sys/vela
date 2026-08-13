@@ -14,8 +14,8 @@ const PERSONALITIES = [
 
 const GREETING_STYLES = [
   { value: "warm",   label: "Warm welcome",  description: "\"Hi! Thanks for calling [Business]…\"" },
-  { value: "pro",    label: "Professional",  description: "\"Good day, you've reached [Business]…\"" },
-  { value: "custom", label: "Custom",        description: "Use your custom instructions for greeting" },
+  { value: "pro",    label: "Professional",  description: "\"Welcome to [Business], how can I assist you today?\"" },
+  { value: "custom", label: "Custom",        description: "Write exactly what your AI should say" },
 ];
 
 const LANGUAGES = [
@@ -27,6 +27,15 @@ const LANGUAGES = [
   { value: "es", label: "Spanish (Español)" },
 ];
 
+const GREETING_LANGUAGES = [
+  { value: "",   label: "Match business language" },
+  { value: "en", label: "English" },
+  { value: "fr", label: "French (Français)" },
+  { value: "ar", label: "Arabic (العربية)" },
+  { value: "es", label: "Spanish (Español)" },
+  { value: "de", label: "German (Deutsch)" },
+];
+
 interface Settings {
   agentName?:          string;
   voiceId?:            string;
@@ -34,7 +43,9 @@ interface Settings {
   personality?:        string;
   customInstructions?: string;
   greetingStyle?:      string;
+  customGreeting?:     string;
   language?:           string;
+  greetingLanguage?:   string;
 }
 
 interface PhoneAgentKb {
@@ -59,7 +70,9 @@ export default function SettingsPage() {
     personality:        "professional",
     customInstructions: "",
     greetingStyle:      "warm",
+    customGreeting:     "",
     language:           "",
+    greetingLanguage:   "",
   });
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
@@ -312,47 +325,79 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Greeting */}
-          <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-            <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.greeting")}</h2>
-            <div className="space-y-2">
-              {GREETING_STYLES.map((g) => {
-                const active = settings.greetingStyle === g.value;
-                return (
-                  <button
-                    key={g.value}
-                    onClick={() => set("greetingStyle", g.value)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all"
-                    style={{
-                      background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
-                      borderColor: active ? "#FF6B35" : border,
-                    }}
-                  >
-                    <div
-                      className="w-3 h-3 rounded-full border-2 shrink-0"
-                      style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
-                    />
-                    <div>
-                      <p className="text-xs font-semibold" style={{ color: textPrimary }}>{g.label}</p>
-                      <p className="text-[10px]" style={{ color: textMuted }}>{g.description}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
-        {/* Voice — full width (merged in from the former standalone Voice tab) */}
+        {/* Greeting Style + Speaking Speed — merged two-column card. Each column
+            uses items-start so a taller sibling never pads out the shorter one. */}
         <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-          <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.voice.pageTitle")}</h2>
-          <p className="text-xs mb-4" style={{ color: textMuted }}>{t("aiAgent.voice.subtitle")}</p>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.greeting")}</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
-          {/* Speaking Speed panel now sits above the voice list, full width and
-              sized to its own content -- was a narrow column height-matched
-              against the ~10-item voice list beside it, leaving a large void
-              below the Preview speed button. */}
-          <div className="rounded-xl border p-4 mb-5" style={{ background: inputBg, borderColor: border }}>
+            {/* Greeting Style + custom script + Greeting Language — left */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {GREETING_STYLES.map((g) => {
+                  const active = settings.greetingStyle === g.value;
+                  return (
+                    <button
+                      key={g.value}
+                      onClick={() => set("greetingStyle", g.value)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all"
+                      style={{
+                        background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
+                        borderColor: active ? "#FF6B35" : border,
+                      }}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full border-2 shrink-0"
+                        style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
+                      />
+                      <div>
+                        <p className="text-xs font-semibold" style={{ color: textPrimary }}>{g.label}</p>
+                        <p className="text-[10px]" style={{ color: textMuted }}>{g.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {settings.greetingStyle === "custom" && (
+                <div>
+                  <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Custom greeting script</label>
+                  <textarea
+                    value={settings.customGreeting ?? ""}
+                    onChange={(e) => set("customGreeting", e.target.value)}
+                    placeholder="Write exactly what your AI should say when it answers a call..."
+                    rows={3}
+                    maxLength={300}
+                    className="w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 transition-all"
+                    style={{ background: inputBg, borderColor: border, color: inputText }}
+                  />
+                  <p className="text-[10px] mt-1.5" style={{ color: textMuted }}>
+                    {(settings.customGreeting ?? "").length} / 300 characters
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Greeting Language</label>
+                <select
+                  value={settings.greetingLanguage ?? ""}
+                  onChange={(e) => set("greetingLanguage", e.target.value)}
+                  className={inputClass}
+                  style={inputStyle}
+                >
+                  {GREETING_LANGUAGES.map((l) => (
+                    <option key={l.value} value={l.value}>{l.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] mt-1.5" style={{ color: textMuted }}>
+                  Controls only the opening line, spoken before Vela has heard the caller.
+                </p>
+              </div>
+            </div>
+
+            {/* Speaking Speed — right */}
             <div className="max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.voice.speakingSpeed")}</h3>
@@ -412,8 +457,15 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Voice list — full width */}
+        {/* Voice — full width (merged in from the former standalone Voice tab).
+            Speaking Speed now lives in the merged Greeting card above; this card
+            is voice selection only. */}
+        <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+          <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.voice.pageTitle")}</h2>
+          <p className="text-xs mb-4" style={{ color: textMuted }}>{t("aiAgent.voice.subtitle")}</p>
+
           <div>
             <h3 className="text-xs font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.voice.selectVoice")}</h3>
               {(["male", "female"] as const).map((gender) => (
