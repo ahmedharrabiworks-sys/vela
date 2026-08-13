@@ -10,6 +10,7 @@ import {
   buildInboundSystem,
   CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
+import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 
 export const dynamic = "force-dynamic";
 
@@ -56,14 +57,14 @@ export async function POST(req: NextRequest) {
     if (tenantId) {
       const { data } = await admin
         .from("tenant_config")
-        .select("tenant_id, agent_settings, knowledge_base")
+        .select("tenant_id, agent_settings, knowledge_base, phone_agent_knowledge_base")
         .eq("tenant_id", tenantId)
         .maybeSingle();
       tenantRow = data;
     } else if (phoneNumberId) {
       const { data } = await admin
         .from("tenant_config")
-        .select("tenant_id, agent_settings, knowledge_base")
+        .select("tenant_id, agent_settings, knowledge_base, phone_agent_knowledge_base")
         .eq("vapi_phone_number_id", phoneNumberId)
         .maybeSingle();
       tenantRow = data;
@@ -80,18 +81,24 @@ export async function POST(req: NextRequest) {
       .eq("id", tenantRow.tenant_id)
       .maybeSingle();
 
-    let kb: Record<string, any> = {};
+    let rawKb: Record<string, any> = {};
+    let rawPhoneKb: Record<string, any> = {};
     let settings: Record<string, any> = {};
     try {
       if (tenantRow.knowledge_base) {
         const raw = tenantRow.knowledge_base;
-        kb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
+        rawKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
+      }
+      if (tenantRow.phone_agent_knowledge_base) {
+        const raw = tenantRow.phone_agent_knowledge_base;
+        rawPhoneKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
       }
       if (tenantRow.agent_settings) {
         const raw = tenantRow.agent_settings;
         settings = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
       }
     } catch { /* ignore */ }
+    const kb = mergeKnowledgeBases(rawKb, rawPhoneKb);
 
     const agentName    = (settings.agentName as string | undefined) || "Vela";
     const language     = (settings.language as string | undefined) || "";
@@ -202,17 +209,53 @@ export async function POST(req: NextRequest) {
       console.error("[call-webhook] insert error:", err?.message ?? err);
     }
 
-    // If appointment was booked, also insert into appointments table
+    // If appointment was booked, route it into the same appointments table
+    // Instagram/WhatsApp/Website use -- appointments always hang off a lead
+    // (lead_id is NOT NULL), so find-or-create the caller as a "phone" lead
+    // first, tagged consistently with the other channels' lead.channel values.
     if (appointmentBooked && callerNumber) {
       try {
-        await admin.from("appointments").insert({
-          tenant_id:     resolvedTenantId,
-          customer_name: callerNumber,
-          source:        "ai_phone",
-          notes:         summary?.slice(0, 500) ?? null,
-          scheduled_at:  new Date(Date.now() + 86400000).toISOString(), // placeholder: tomorrow
-        }).select("id").single();
-      } catch { /* appointments table may have required fields — ignore */ }
+        const { data: existingLead } = await admin
+          .from("leads")
+          .select("id")
+          .eq("tenant_id", resolvedTenantId)
+          .eq("phone", callerNumber)
+          .eq("channel", "phone")
+          .maybeSingle();
+
+        let leadId = (existingLead as { id?: string } | null)?.id;
+        if (leadId) {
+          await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
+        } else {
+          const { data: newLead } = await admin
+            .from("leads")
+            .insert({
+              tenant_id: resolvedTenantId,
+              name:      callerNumber,
+              phone:     callerNumber,
+              channel:   "phone",
+              status:    "booked",
+            })
+            .select("id")
+            .single();
+          leadId = (newLead as { id?: string } | null)?.id;
+        }
+
+        if (leadId) {
+          await admin.from("appointments").insert({
+            tenant_id:    resolvedTenantId,
+            lead_id:      leadId,
+            service_name: "",
+            // Placeholder until real date/time extraction exists -- the call
+            // summary regex only detects THAT a booking happened, not when.
+            datetime:     new Date(Date.now() + 86400000).toISOString(),
+            status:       "pending",
+            notes:        summary?.slice(0, 500) ?? null,
+          });
+        }
+      } catch (err) {
+        console.error("[call-webhook] appointment insert error:", err);
+      }
     }
 
     return NextResponse.json({ ok: true });

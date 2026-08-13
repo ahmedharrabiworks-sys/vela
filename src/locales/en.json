@@ -551,7 +551,7 @@
       "training": "Training",
       "voice": "Voice",
       "phone": "Phone Number",
-      "calls": "Calls & Appointments",
+      "calls": "Calls",
       "settings": "Settings",
       "soon": "Soon"
     },
@@ -634,7 +634,7 @@
       "techTitle": "Technical details"
     },
     "calls": {
-      "pageTitle": "Calls & Appointments",
+      "pageTitle": "Calls",
       "noCallsYet": "No calls yet",
       "refresh": "Refresh",
       "dbRequired": "Database setup required",

@@ -11,6 +11,7 @@ import {
   buildInboundSystem,
   CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
+import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 
 export const dynamic = "force-dynamic";
 
@@ -85,22 +86,28 @@ export async function POST(req: NextRequest) {
   // Load tenant KB + settings
   const { data: cfg } = await admin
     .from("tenant_config")
-    .select("knowledge_base, agent_settings, vapi_assistant_id, vapi_phone_number_id, vapi_phone_number")
+    .select("knowledge_base, phone_agent_knowledge_base, agent_settings, vapi_assistant_id, vapi_phone_number_id, vapi_phone_number")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
-  let kb: Record<string, any> = {};
+  let rawKb: Record<string, any> = {};
+  let rawPhoneKb: Record<string, any> = {};
   let agentSettings: Record<string, any> = {};
   try {
     if ((cfg as any)?.knowledge_base) {
       const raw = (cfg as any).knowledge_base;
-      kb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
+      rawKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
+    }
+    if ((cfg as any)?.phone_agent_knowledge_base) {
+      const raw = (cfg as any).phone_agent_knowledge_base;
+      rawPhoneKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
     }
     if ((cfg as any)?.agent_settings) {
       const raw = (cfg as any).agent_settings;
       agentSettings = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
     }
   } catch { /* ignore parse errors */ }
+  const kb = mergeKnowledgeBases(rawKb, rawPhoneKb);
 
   const agentName = (agentSettings.agentName as string | undefined) || "Vela";
   const language  = (agentSettings.language as string | undefined) || "";

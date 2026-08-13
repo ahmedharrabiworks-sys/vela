@@ -38,7 +38,7 @@ export type Database = {
           name: string;
           phone: string | null;
           email: string | null;
-          channel: "instagram" | "whatsapp" | "website";
+          channel: "instagram" | "whatsapp" | "website" | "phone";
           status: "new" | "contacted" | "qualified" | "booked" | "client";
           created_at: string;
         };

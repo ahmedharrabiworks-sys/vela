@@ -559,7 +559,7 @@
       "training": "Training",
       "voice": "Stimme",
       "phone": "Telefonnummer",
-      "calls": "Anrufe & Termine",
+      "calls": "Anrufe",
       "settings": "Einstellungen",
       "soon": "Demnächst"
     },
@@ -642,7 +642,7 @@
       "techTitle": "Technische Details"
     },
     "calls": {
-      "pageTitle": "Anrufe & Termine",
+      "pageTitle": "Anrufe",
       "noCallsYet": "Noch keine Anrufe",
       "refresh": "Aktualisieren",
       "dbRequired": "Datenbankeinrichtung erforderlich",

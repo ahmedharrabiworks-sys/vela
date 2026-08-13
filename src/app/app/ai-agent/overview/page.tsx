@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
@@ -18,6 +17,7 @@ import {
   requestMicrophoneAccess,
   DEFAULT_SPEED,
 } from "@/lib/vapi-agent-config";
+import { fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
@@ -110,7 +110,17 @@ interface LiveContext {
   agentSettings: { tone?: string; language?: string };
 }
 
-interface CallRecord { id: string; created_at: string; duration_seconds?: number; outcome?: string; call_type?: string }
+interface CallRecord {
+  id: string;
+  created_at: string;
+  duration_seconds?: number;
+  outcome?: string;
+  call_type?: string;
+  caller_number?: string;
+  summary?: string;
+  transcript?: Array<{ role: string; text: string }>;
+  language?: string;
+}
 
 // Overview's stats (Answer Rate, Calls Handled, Avg Duration, Voice Minutes, Call
 // Activity, Recent Calls) must reflect only real inbound customer calls to the
@@ -143,10 +153,10 @@ export default function OverviewPage() {
 
   /* Call stats from agent_calls */
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
+  const [openCall, setOpenCall] = useState<CallRecord | null>(null);
   const [loadingCalls, setLoadingCalls] = useState(true);
 
   /* Appointments from Supabase */
-  const [apptCount, setApptCount] = useState(0);
 
   /* Vapi state */
   const [callStatus, setCallStatus]     = useState<CallStatus>("idle");
@@ -203,21 +213,8 @@ export default function OverviewPage() {
     loadCalls();
   }, []);
 
-  /* Load appointments + voice */
+  /* Load voice settings */
   useEffect(() => {
-    async function loadMisc() {
-      try {
-        const db = getSupabase() as any;
-        const { data: { user } } = await db.auth.getUser();
-        if (!user) return;
-        const { data: tenant } = await db.from("tenants").select("id").eq("owner_id", user.id).single();
-        if (!tenant) return;
-        const { count } = await db.from("appointments")
-          .select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id);
-        setApptCount((count as number) ?? 0);
-      } catch { /* ignore */ }
-    }
-    loadMisc();
     fetch("/api/ai-agent/assistant-settings")
       .then(r => r.json())
       .then((d: { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string }) => {
@@ -584,56 +581,60 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               </div>
             </div>
 
-            {/* Appointments + Recent calls */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <rect x="2" y="2" width="10" height="10" rx="1.5" stroke="white" strokeWidth="1.3"/>
-                      <path d="M9 1v2M5 1v2M2 5h10" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                      <path d="M5 7.5h.01M7 7.5h.01M9 7.5h.01M5 9.5h.01" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.appointments")}</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.overview.appointmentsSub")}</p>
-                  </div>
+            {/* Recent calls — larger, richer list; each row opens the full transcript */}
+            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)" }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.33c0 .4-.27.67-.67.67C4.4 12 2 6.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" fill="#FF3366"/>
+                  </svg>
                 </div>
-                <p className="text-2xl font-bold" style={{ color: textPrimary }}>{apptCount}</p>
-                <p className="text-[10px] mt-1" style={{ color: textMuted }}>
-                  {apptCount === 0 ? "None booked yet" : `${apptCount} appointment${apptCount!==1?"s":""}`}
-                </p>
+                <div>
+                  <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.recentCalls")}</p>
+                  <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.overview.recentCallsSub")}</p>
+                </div>
               </div>
-
-              <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)" }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.33c0 .4-.27.67-.67.67C4.4 12 2 6.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" fill="#FF3366"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.recentCalls")}</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>{t("aiAgent.overview.recentCallsSub")}</p>
-                  </div>
-                </div>
-                {totalCalls === 0
-                  ? <p className="text-xs" style={{ color: textMuted }}>No calls yet</p>
-                  : <div className="space-y-1">
-                      {callRecords.slice(0,3).map((c, i) => (
-                        <div key={i} className="flex items-center justify-between">
-                          <span className="text-[10px]" style={{ color: textSub }}>
-                            {new Date(c.created_at).toLocaleDateString(undefined, { month:"short", day:"numeric" })}
-                          </span>
-                          <span className="text-[10px] font-medium" style={{ color: "#FF3366" }}>
-                            {fmtDuration(c.duration_seconds ?? 0)}
-                          </span>
+              {totalCalls === 0
+                ? <p className="text-xs py-2" style={{ color: textMuted }}>No calls yet</p>
+                : <div className="space-y-1.5">
+                    {callRecords.slice(0, 6).map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setOpenCall(c)}
+                        className="w-full text-left flex items-start gap-3 p-2.5 rounded-xl transition-colors"
+                        style={{ background: "transparent" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isDark ? "rgba(255,255,255,0.03)" : "#F9FAFB"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: "#FF3366" }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.33c0 .4-.27.67-.67.67C4.4 12 2 6.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" fill="currentColor"/>
+                          </svg>
                         </div>
-                      ))}
-                    </div>
-                }
-              </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xs font-semibold truncate" style={{ color: textPrimary }}>
+                                {c.caller_number || "Unknown caller"}
+                              </span>
+                              <OutcomeBadge outcome={c.outcome} isDark={isDark} />
+                            </div>
+                            <span className="text-[10px] font-mono font-semibold shrink-0" style={{ color: textPrimary }}>
+                              {fmtCallDuration(c.duration_seconds)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <p className="text-[11px] truncate flex-1" style={{ color: textMuted }}>{callHeadline(c)}</p>
+                            <span className="text-[10px] shrink-0" style={{ color: textMuted }}>{fmtTimeAgo(c.created_at)}</span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+              }
             </div>
           </div>
 
@@ -903,6 +904,10 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
         )}
 
       </div>
+
+      {openCall && (
+        <CallTranscriptModal call={openCall} isDark={isDark} onClose={() => setOpenCall(null)} />
+      )}
     </div>
   );
 }

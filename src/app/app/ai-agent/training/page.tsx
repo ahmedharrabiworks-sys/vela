@@ -957,7 +957,22 @@ export default function TrainingPage() {
                 style={{ background: isDark ? "var(--dm-bg)" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
               />
               {materialFile && (
-                <p className="text-[10px] mt-1 truncate" style={{ color: "#FF6B35" }}>{materialFile.name}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <p className="text-[10px] truncate flex-1 min-w-0" style={{ color: "#FF6B35" }}>{materialFile.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setMaterialFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    disabled={analyzing}
+                    aria-label="Remove file"
+                    title="Remove file"
+                    className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"
+                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textMuted }}
+                  >
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                      <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
               )}
             </div>
             <div>

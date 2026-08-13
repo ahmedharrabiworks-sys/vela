@@ -3,69 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
+import { fmtDuration, fmtDate, LangFlag, OutcomeBadge, CallTranscriptContent, type CallRecord as SharedCallRecord } from "@/components/dashboard/CallTranscript";
 
-interface CallRecord {
-  id: string;
+interface CallRecord extends SharedCallRecord {
   call_type: "training" | "live" | "overview" | string;
-  created_at: string;
-  ended_at?: string;
-  duration_seconds?: number;
-  language?: string;
-  caller_number?: string;
-  transcript?: Array<{ role: string; text: string }>;
-  summary?: string;
-  outcome?: string;
   kb_extracted?: Record<string, unknown>;
   appointment_booked?: Record<string, unknown> | null;
-}
-
-function fmtDuration(secs?: number) {
-  if (!secs) return "—";
-  if (secs < 60) return `${secs}s`;
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day:   "numeric",
-    hour:  "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function LangFlag({ lang }: { lang?: string }) {
-  const map: Record<string, string> = { ar: "🇸🇦", en: "🇺🇸", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
-  const label: Record<string, string> = { ar: "AR", en: "EN", fr: "FR", de: "DE", es: "ES" };
-  if (!lang) return <span className="text-xs text-gray-400">—</span>;
-  return (
-    <span className="flex items-center gap-1 text-xs">
-      {map[lang] ?? ""} {label[lang] ?? lang.toUpperCase()}
-    </span>
-  );
-}
-
-function OutcomeBadge({ outcome, isDark }: { outcome?: string; isDark: boolean }) {
-  if (!outcome || outcome === "—") return <span className="text-xs" style={{ color: isDark ? "var(--dm-muted)" : "#9CA3AF" }}>—</span>;
-  const isBooked = /book|appointment|schedule/i.test(outcome);
-  const isComp   = outcome === "completed";
-  return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
-      style={{
-        background: isBooked
-          ? "rgba(34,197,94,0.12)"
-          : isComp
-          ? (isDark ? "rgba(255,107,53,0.1)" : "#FFF5F0")
-          : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
-        color: isBooked ? "#22C55E" : isComp ? "#FF6B35" : (isDark ? "var(--dm-muted)" : "#9CA3AF"),
-      }}
-    >
-      {isBooked ? "Booked" : isComp ? "Complete" : outcome}
-    </span>
-  );
 }
 
 export default function CallsPage() {
@@ -212,7 +155,6 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
                   <th className={thClass} style={thStyle}>Lang</th>
                   <th className={thClass} style={{ ...thStyle, minWidth: 180 }}>Summary</th>
                   <th className={thClass} style={thStyle}>Outcome</th>
-                  <th className={thClass} style={thStyle}>Appt</th>
                   <th className={thClass} style={{ ...thStyle, width: 32 }} />
                 </tr>
               </thead>
@@ -221,7 +163,6 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
                   const isOpen = expanded === call.id;
                   const isLive = call.call_type === "live";
                   const lines  = call.transcript ?? [];
-                  const hasAppt = !!call.appointment_booked;
 
                   return (
                     <>
@@ -288,21 +229,6 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
                           <OutcomeBadge outcome={call.outcome} isDark={isDark} />
                         </td>
 
-                        {/* Appointment */}
-                        <td className={tdClass}>
-                          {hasAppt ? (
-                            <span className="flex items-center gap-1 text-[10px] font-semibold text-green-400">
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                <rect x="1" y="1" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1"/>
-                                <path d="M3 4.5l1.5 1.5 2.5-2.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                              Yes
-                            </span>
-                          ) : (
-                            <span style={{ color: textMuted }}>—</span>
-                          )}
-                        </td>
-
                         {/* Expand chevron */}
                         <td className={tdClass} style={{ paddingRight: 16 }}>
                           <svg
@@ -318,76 +244,8 @@ CREATE INDEX IF NOT EXISTS agent_calls_tenant_idx
                       {/* Expanded transcript row */}
                       {isOpen && (
                         <tr key={call.id + "-exp"} style={{ background: rowExpanded, borderBottom: `1px solid ${border}` }}>
-                          <td colSpan={8} className="px-6 py-5">
-                            <div className="grid md:grid-cols-2 gap-5">
-                              {/* Summary block */}
-                              {call.summary && (
-                                <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>AI Summary</p>
-                                  <p className="text-xs leading-relaxed" style={{ color: textSub }}>{call.summary}</p>
-                                  {call.appointment_booked && (
-                                    <div className="mt-3 rounded-xl border p-3" style={{ background: isDark ? "rgba(34,197,94,0.05)" : "#F0FDF4", borderColor: "rgba(34,197,94,0.2)" }}>
-                                      <p className="text-[10px] font-bold text-green-500 mb-1">Appointment detected</p>
-                                      <p className="text-[11px]" style={{ color: textSub }}>
-                                        {(call.appointment_booked as { summary?: string }).summary ?? "Booking detected in call summary"}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Transcript */}
-                              {lines.length > 0 && (
-                                <div className={call.summary ? "" : "md:col-span-2"}>
-                                  <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>
-                                    Transcript ({lines.length} messages)
-                                  </p>
-                                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                                    {lines.map((line, i) => (
-                                      <div key={i} className={`flex gap-2 ${line.role === "user" ? "flex-row-reverse" : ""}`}>
-                                        <div
-                                          className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold"
-                                          style={{
-                                            background: line.role === "assistant"
-                                              ? "linear-gradient(135deg,#FF3366,#FF6B35)"
-                                              : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
-                                            color: line.role === "assistant" ? "white" : textMuted,
-                                          }}
-                                        >
-                                          {line.role === "assistant" ? "V" : "C"}
-                                        </div>
-                                        <div
-                                          className="max-w-[85%] rounded-xl px-3 py-1.5 text-xs leading-relaxed"
-                                          style={{
-                                            background: line.role === "assistant"
-                                              ? (isDark ? "rgba(255,51,102,0.07)" : "#FFF0F5")
-                                              : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
-                                            color: textSub,
-                                          }}
-                                        >
-                                          {line.text}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* KB extracted (training only) */}
-                              {call.kb_extracted && Object.keys(call.kb_extracted).length > 0 && (
-                                <div className="md:col-span-2">
-                                  <p className="text-[10px] font-bold uppercase tracking-wide mb-2 text-green-500">Knowledge Captured</p>
-                                  <pre className="text-[10px] leading-relaxed whitespace-pre-wrap break-words p-3 rounded-xl" style={{ background: isDark ? "rgba(34,197,94,0.05)" : "#F0FDF4", color: textSub }}>
-                                    {JSON.stringify(call.kb_extracted, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
-
-                              {/* Empty expanded state */}
-                              {!call.summary && lines.length === 0 && (
-                                <p className="text-xs md:col-span-2" style={{ color: textMuted }}>No transcript available for this call.</p>
-                              )}
-                            </div>
+                          <td colSpan={7} className="px-6 py-5">
+                            <CallTranscriptContent call={call} isDark={isDark} />
                           </td>
                         </tr>
                       )}
