@@ -303,6 +303,7 @@ export default function OverviewPage() {
       brief:    "Be maximally brief. Every word must earn its place. Compress to the minimum required for clarity and accuracy.",
     };
     const ctx  = liveContextRef.current;
+    const businessName = ctx?.business?.name?.trim() || "your business";
     const lang = prefLangRef.current;
     const LANG_NAMES: Record<string, string> = {
       ar: "Arabic (العربية)", fr: "French", de: "German", es: "Spanish", en: "English",
@@ -318,7 +319,7 @@ You have read-only access to the owner's live account data. Help them understand
 Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
 
 ## OPENING
-Open the conversation immediately. Greet the owner warmly and briefly, then wait for their question. You speak first. Keep it to one sentence. Vary your exact wording every session. Never open with "مرحبا" or any other fixed phrase two sessions in a row.
+Your first sentence MUST name the business: "${businessName}". Example: "Hi, I'm Vela, your business advisor for ${businessName} — what can I help with?" Open immediately, one sentence, then wait for their question. You speak first. Vary your exact wording every session. Never open with "مرحبا" or any other fixed phrase two sessions in a row.
 
 ## LANGUAGE
 ${langInstruction}

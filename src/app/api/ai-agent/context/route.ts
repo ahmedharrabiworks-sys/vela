@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let tenant: { id: string };
+  let tenant: { id: string; business_name: string };
   try {
     tenant = await ensureTenant(user.id, user.email, user.user_metadata);
   } catch {
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     business: {
-      name:     (kb.businessName as string | undefined) ?? "your business",
+      name:     tenant.business_name || "your business",
       services: (kb.services as unknown[] | undefined) ?? [],
       hours:    (kb.hours as string | undefined) ?? null,
       address:  (kb.address as string | undefined) ?? null,

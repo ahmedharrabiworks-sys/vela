@@ -28,9 +28,8 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   // Parse existing KB into topic summaries for skip/confirm logic
-  type KbService = { name: string; price?: string };
-  type KbBusiness = { hours?: string; address?: string; bookingPolicy?: string };
-  type Kb = { services?: KbService[]; business?: KbBusiness; extra?: string };
+  type KbBusiness = { hours?: string; address?: string };
+  type Kb = { business?: KbBusiness; extra?: string };
   let kb: Kb = {};
   try {
     if (cfg?.knowledge_base) {
@@ -42,31 +41,16 @@ export async function GET(req: NextRequest) {
 
   const existingKb: NonNullable<TrainingContext["existingKb"]> = {};
 
-  if ((kb.services ?? []).length > 0) {
-    existingKb.services = (kb.services ?? [])
-      .slice(0, 4)
-      .map(s => `${s.name}${s.price ? ` ${s.price}` : ""}`)
-      .join(", ");
-  }
-  if (kb.business?.hours)        existingKb.hours    = kb.business.hours;
-  if (kb.business?.address)      existingKb.location = kb.business.address;
-  if (kb.business?.bookingPolicy) existingKb.booking = kb.business.bookingPolicy;
+  if (kb.business?.hours)   existingKb.availability = kb.business.hours;
+  if (kb.business?.address) existingKb.locationArea = kb.business.address;
   if (kb.extra?.trim()) {
-    // Extract businessType and special stored by save-call with their markers
-    const btMatch = kb.extra.match(/^Business type:\s*(.+)$/m);
-    const spMatch = kb.extra.match(/^Unique selling point:\s*(.+)$/m);
-    if (btMatch) existingKb.businessType = btMatch[1].trim().slice(0, 150);
-    if (spMatch) existingKb.special      = spMatch[1].trim().slice(0, 150);
-
-    // Strip markers to get clean FAQ/notes text for the faqs slot
-    const faqText = kb.extra
-      .replace(/^Business type:.*$/m, "")
-      .replace(/^Unique selling point:.*$/m, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-    if (faqText) {
-      existingKb.faqs = faqText.slice(0, 200) + (faqText.length > 200 ? "…" : "");
-    }
+    // Extract topics stored by save-call with their markers (see save-call/route.ts)
+    const bcMatch = kb.extra.match(/^Business & customers:\s*(.+)$/m);
+    const reMatch = kb.extra.match(/^Rules & escalation:\s*(.+)$/m);
+    const bvMatch = kb.extra.match(/^Brand voice & style:\s*(.+)$/m);
+    if (bcMatch) existingKb.businessAndCustomers = bcMatch[1].trim().slice(0, 150);
+    if (reMatch) existingKb.rulesEscalation      = reMatch[1].trim().slice(0, 150);
+    if (bvMatch) existingKb.brandVoice           = bvMatch[1].trim().slice(0, 150);
   }
 
   const ctx: TrainingContext = {

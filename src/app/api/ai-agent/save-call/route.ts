@@ -23,13 +23,13 @@ Return ONLY valid JSON in this exact shape — no markdown, no explanation:
 }
 
 Rules:
-- services: extract each service/product mentioned with its price. If TOOL-CALL DATA above includes a services field, parse that into the array (it is cleaner than the transcript). Leave price/duration empty if not mentioned.
+- services: extract each service/product mentioned with its price, if any were mentioned. Leave price/duration empty if not mentioned.
 - faqs: always return [] (FAQ extraction not needed from a call).
-- business.hours: working hours if mentioned, else "".
-- business.address: address or location if mentioned, else "".
+- business.hours: working hours / availability if mentioned, else "".
+- business.address: address, location, or service area if mentioned, else "".
 - business.bookingPolicy: cancellation/booking policy if mentioned, else "".
 - business.tone: infer from the owner's language style — "professional", "friendly", or "luxury".
-- extra: put any other important details (common customer questions, special offers, important notes) as plain text. Keep it concise.
+- extra: put any other important details (business overview, rules/escalation instructions, brand voice notes) as plain text. Keep it concise.
 - If information is not in the transcript, use empty strings. Never invent data.`;
 
 export async function POST(req: NextRequest) {
@@ -102,15 +102,16 @@ export async function POST(req: NextRequest) {
   };
   const typedKb = newKb as TypedKb;
   if (!typedKb.business) typedKb.business = {};
-  if (toolCallKb.hours)    typedKb.business.hours         = toolCallKb.hours;
-  if (toolCallKb.location) typedKb.business.address       = toolCallKb.location;
-  if (toolCallKb.booking)  typedKb.business.bookingPolicy = toolCallKb.booking;
+  if (toolCallKb.availability) typedKb.business.hours   = toolCallKb.availability;
+  if (toolCallKb.locationArea) typedKb.business.address = toolCallKb.locationArea;
 
-  // businessType and special have no dedicated KB slot — store in extra with markers.
-  // training-context reads them back to populate skip/confirm on repeat interviews.
+  // businessAndCustomers, rulesEscalation, and brandVoice have no dedicated KB slot —
+  // store in extra with markers. training-context reads them back to populate
+  // skip/confirm on repeat interviews.
   const extraParts: string[] = [];
-  if (toolCallKb.businessType?.trim()) extraParts.push(`Business type: ${toolCallKb.businessType.trim()}`);
-  if (toolCallKb.special?.trim())      extraParts.push(`Unique selling point: ${toolCallKb.special.trim()}`);
+  if (toolCallKb.businessAndCustomers?.trim()) extraParts.push(`Business & customers: ${toolCallKb.businessAndCustomers.trim()}`);
+  if (toolCallKb.rulesEscalation?.trim())      extraParts.push(`Rules & escalation: ${toolCallKb.rulesEscalation.trim()}`);
+  if (toolCallKb.brandVoice?.trim())           extraParts.push(`Brand voice & style: ${toolCallKb.brandVoice.trim()}`);
   if (extraParts.length > 0) {
     const currentExtra = (typedKb.extra ?? "").trim();
     typedKb.extra = [...(currentExtra ? [currentExtra] : []), ...extraParts].join("\n\n");

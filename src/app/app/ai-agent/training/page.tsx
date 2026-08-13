@@ -42,48 +42,35 @@ function KbIcon({ field, filled, current }: { field: string; filled: boolean; cu
   const { isDark } = useAgentTheme();
   const color = filled ? "white" : current ? "#FF6B35" : (isDark ? "var(--dm-faint)" : "#64748B");
   const icons: Record<string, JSX.Element> = {
-    businessType: (
+    businessAndCustomers: (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <rect x="1" y="4" width="10" height="7" rx="1" stroke={color} strokeWidth="1.2"/>
         <path d="M4 4V3a2 2 0 0 1 4 0v1" stroke={color} strokeWidth="1.2"/>
-        <path d="M1 7h10" stroke={color} strokeWidth="1.2"/>
+        <circle cx="6" cy="7" r="1.1" stroke={color} strokeWidth="1"/>
       </svg>
     ),
-    services: (
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <rect x="1" y="3" width="10" height="7" rx="1" stroke={color} strokeWidth="1.2"/>
-        <path d="M4 3V2.5a2 1.5 0 0 1 4 0V3" stroke={color} strokeWidth="1.2"/>
-        <path d="M4 6h4M4 8h2" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
-      </svg>
-    ),
-    hours: (
+    availability: (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="4.5" stroke={color} strokeWidth="1.2"/>
         <path d="M6 3.5V6l2 1.5" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    location: (
+    locationArea: (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path d="M6 1C4.07 1 2.5 2.57 2.5 4.5c0 2.63 3.5 6.5 3.5 6.5s3.5-3.87 3.5-6.5C9.5 2.57 7.93 1 6 1z" stroke={color} strokeWidth="1.2"/>
         <circle cx="6" cy="4.5" r="1.2" stroke={color} strokeWidth="1.1"/>
       </svg>
     ),
-    booking: (
+    rulesEscalation: (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <rect x="1.5" y="2.5" width="9" height="8" rx="1" stroke={color} strokeWidth="1.2"/>
-        <path d="M4 1.5v2M8 1.5v2M1.5 5.5h9" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
-        <path d="M4 7.5h1M7 7.5h1" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+        <path d="M6 1.5L10 3v3c0 2.5-1.7 4.2-4 4.5-2.3-.3-4-2-4-4.5V3l4-1.5z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+        <path d="M4.3 6l1.2 1.2 2.2-2.4" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
-    faqs: (
+    brandVoice: (
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M2 2h8a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H7l-2 2V9H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke={color} strokeWidth="1.2"/>
-        <path d="M4.5 5h3M4.5 7h2" stroke={color} strokeWidth="1.1" strokeLinecap="round"/>
-      </svg>
-    ),
-    special: (
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M6 1.5l1.3 2.7 2.9.4-2.1 2 .5 2.9L6 8.1l-2.6 1.4.5-2.9-2.1-2 2.9-.4L6 1.5z" stroke={color} strokeWidth="1.2" strokeLinejoin="round"/>
+        <path d="M2 3h8a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H6l-2.2 1.8v-1.8H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke={color} strokeWidth="1.2"/>
+        <path d="M3.5 5.2h5M3.5 6.8h3" stroke={color} strokeWidth="1" strokeLinecap="round"/>
       </svg>
     ),
   };
@@ -91,13 +78,11 @@ function KbIcon({ field, filled, current }: { field: string; filled: boolean; cu
 }
 
 const KB_FIELDS = [
-  { key: "businessType", label: "Business Type",          desc: "What you do and who your customers are",           q: 1 },
-  { key: "services",     label: "Services & Prices",      desc: "What you offer and what it costs",                 q: 2 },
-  { key: "hours",        label: "Working Hours",          desc: "When customers can reach you",                     q: 3 },
-  { key: "location",     label: "Location / Area",        desc: "Where you are, or where you go",                   q: 4 },
-  { key: "booking",      label: "How to Book",            desc: "How customers get in touch or make a booking",     q: 5 },
-  { key: "faqs",         label: "Common Questions",       desc: "What callers ask most often",                      q: 6 },
-  { key: "special",      label: "What Makes You Special", desc: "Your edge over similar businesses nearby",         q: 7 },
+  { key: "businessAndCustomers", label: "Business & Customers",        desc: "What you do, who you serve, and what the agent should know",  q: 1 },
+  { key: "availability",         label: "Availability & Schedule",     desc: "Hours, appointments, holidays, and unavailable times",         q: 2 },
+  { key: "locationArea",         label: "Location & Service Area",     desc: "Where you are, and where or how you serve customers",          q: 3 },
+  { key: "rulesEscalation",      label: "Rules, Escalation & Handoff", desc: "What to avoid, and when to transfer or escalate",              q: 4 },
+  { key: "brandVoice",           label: "Brand Voice & Style",         desc: "Tone, personality, language, and communication style",         q: 5 },
 ];
 
 export default function TrainingPage() {
@@ -117,6 +102,15 @@ export default function TrainingPage() {
   const [callStart, setCallStart] = useState<number>(0);
   const [callDuration, setCallDuration] = useState(0);
   const [noMicSignal, setNoMicSignal] = useState(false);
+
+  /* ── Additional Information (optional Magic Import-style analysis) ── */
+  const [materialFile, setMaterialFile]   = useState<File | null>(null);
+  const [websiteUrl, setWebsiteUrl]       = useState("");
+  const [socialUrl, setSocialUrl]         = useState("");
+  const [analyzing, setAnalyzing]         = useState(false);
+  const [materialResults, setMaterialResults] = useState<Array<{ label: string; ok: boolean; message: string }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const voiceIdRef           = useRef(DEFAULT_VOICE_ID);
   const speedRef             = useRef(DEFAULT_SPEED);
   const agentLanguageRef     = useRef<string | undefined>(undefined);
@@ -177,9 +171,9 @@ export default function TrainingPage() {
 
   /* ── Live KB: populated by GPT tool-call events, not positional transcript slicing ── */
   const filledCount     = Object.keys(liveKb).length;
-  const progressPct     = Math.round((filledCount / 7) * 100);
+  const progressPct     = Math.round((filledCount / 5) * 100);
   const velaCount       = transcript.filter(l => l.role === "assistant").length;
-  const currentQuestion = Math.min(velaCount, 7);
+  const currentQuestion = Math.min(velaCount, 5);
 
   /* ── After call: extract + save ── */
   const extractKb = useCallback(async (
@@ -222,6 +216,82 @@ export default function TrainingPage() {
     }
     setExtracting(false);
   }, []);
+
+  /* ── Additional Information: reuses the existing AI Training "Magic Import"
+     routes (/api/ai-training/upload + /api/ai-training/import) to extract
+     business knowledge from an uploaded file, a website URL, or a social
+     profile link, then merges the result into the same knowledge_base the
+     5 interview questions feed into (never overwrites — see /api/ai-training
+     ?merge=true). Fully optional; nothing here blocks completing training. ── */
+  const EMPTY_KB = {
+    services: [] as Array<{ name: string; price: string; duration: string; description: string }>,
+    faqs: [] as Array<{ q: string; a: string }>,
+    business: { hours: "", address: "", bookingPolicy: "", tone: "professional" as const },
+    extra: "",
+  };
+
+  const mergeIntoKb = useCallback(async (kb: typeof EMPTY_KB) => {
+    const res = await fetch("/api/ai-training?merge=true", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(kb),
+    });
+    return res.ok;
+  }, []);
+
+  const analyzeMaterials = useCallback(async () => {
+    if (!materialFile && !websiteUrl.trim() && !socialUrl.trim()) return;
+    setAnalyzing(true);
+    const results: Array<{ label: string; ok: boolean; message: string }> = [];
+
+    if (materialFile) {
+      try {
+        const fd = new FormData();
+        fd.append("file", materialFile);
+        const res = await fetch("/api/ai-training/upload", { method: "POST", body: fd });
+        const data = await res.json() as { text?: string; error?: string };
+        if (res.ok && data.text) {
+          const saved = await mergeIntoKb({ ...EMPTY_KB, extra: data.text });
+          results.push({ label: materialFile.name, ok: saved, message: saved ? "Analyzed and added to knowledge base" : "Extracted, but saving failed" });
+        } else {
+          results.push({ label: materialFile.name, ok: false, message: data.error ?? "Couldn't analyze this file" });
+        }
+      } catch {
+        results.push({ label: materialFile.name, ok: false, message: "Upload failed" });
+      }
+    }
+
+    const importUrl = async (label: string, url: string) => {
+      try {
+        const res = await fetch("/api/ai-training/import", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ input: url }),
+        });
+        const data = await res.json() as { kb?: typeof EMPTY_KB; instagram?: boolean; error?: string };
+        if (data.instagram) {
+          results.push({ label, ok: false, message: "Social profile analysis isn't supported yet — add key details via the questions above" });
+        } else if (res.ok && data.kb) {
+          const saved = await mergeIntoKb(data.kb);
+          results.push({ label, ok: saved, message: saved ? "Analyzed and added to knowledge base" : "Extracted, but saving failed" });
+        } else {
+          results.push({ label, ok: false, message: data.error ?? "Couldn't analyze this link" });
+        }
+      } catch {
+        results.push({ label, ok: false, message: "Couldn't reach that link" });
+      }
+    };
+
+    if (websiteUrl.trim()) await importUrl(websiteUrl.trim(), websiteUrl.trim());
+    if (socialUrl.trim())  await importUrl(socialUrl.trim(), socialUrl.trim());
+
+    setMaterialResults(results);
+    setMaterialFile(null);
+    setWebsiteUrl("");
+    setSocialUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setAnalyzing(false);
+  }, [materialFile, websiteUrl, socialUrl, mergeIntoKb]);
 
   const startCall = useCallback(async () => {
     if (status !== "idle") return;
@@ -722,10 +792,10 @@ export default function TrainingPage() {
                         transition: "color 0.4s",
                       }}
                     >
-                      {filledCount}<span style={{ fontSize: "1.5rem", opacity: 0.55 }}>/7</span>
+                      {filledCount}<span style={{ fontSize: "1.5rem", opacity: 0.55 }}>/5</span>
                     </p>
                     <p className="text-[9px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: textMuted }}>
-                      {filledCount === 7 ? "complete" : "filled"}
+                      {filledCount === 5 ? "complete" : "filled"}
                     </p>
                   </div>
                 </div>
@@ -865,6 +935,84 @@ export default function TrainingPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Additional Information — optional Magic Import-style upload */}
+        <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+          <p className="text-sm font-semibold" style={{ color: textPrimary }}>Additional Information</p>
+          <p className="text-xs mt-1 mb-4 leading-relaxed" style={{ color: textMuted }}>
+            Have a website, documents, images, menus, brochures, price lists, or any other files? Upload them or provide your website link. Vela will analyze and extract the relevant information automatically to help train your Phone Agent.
+          </p>
+
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[10px] font-semibold block mb-1.5" style={{ color: textMuted }}>File (image or PDF)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={e => setMaterialFile(e.target.files?.[0] ?? null)}
+                disabled={analyzing}
+                className="w-full text-[11px] rounded-lg px-2.5 py-2 disabled:opacity-50"
+                style={{ background: isDark ? "var(--dm-bg)" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
+              />
+              {materialFile && (
+                <p className="text-[10px] mt-1 truncate" style={{ color: "#FF6B35" }}>{materialFile.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold block mb-1.5" style={{ color: textMuted }}>Website link</label>
+              <input
+                type="text"
+                value={websiteUrl}
+                onChange={e => setWebsiteUrl(e.target.value)}
+                placeholder="yourbusiness.com"
+                disabled={analyzing}
+                className="w-full text-xs rounded-lg px-2.5 py-2 outline-none disabled:opacity-50"
+                style={{ background: isDark ? "var(--dm-bg)" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold block mb-1.5" style={{ color: textMuted }}>Social profile link</label>
+              <input
+                type="text"
+                value={socialUrl}
+                onChange={e => setSocialUrl(e.target.value)}
+                placeholder="instagram.com/yourbusiness"
+                disabled={analyzing}
+                className="w-full text-xs rounded-lg px-2.5 py-2 outline-none disabled:opacity-50"
+                style={{ background: isDark ? "var(--dm-bg)" : "#F9FAFB", border: `1px solid ${border}`, color: textPrimary }}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={analyzeMaterials}
+            disabled={analyzing || (!materialFile && !websiteUrl.trim() && !socialUrl.trim())}
+            className="mt-4 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 transition-all"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+          >
+            {analyzing ? (
+              <>
+                <div className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
+                Analyzing…
+              </>
+            ) : "Analyze & Save"}
+          </button>
+          <p className="text-[10px] mt-2" style={{ color: textMuted }}>Optional — you can complete training without this.</p>
+
+          {materialResults.length > 0 && (
+            <div className="mt-4 space-y-1.5">
+              {materialResults.map((r, i) => (
+                <div key={i} className="flex items-start gap-2 text-[11px]">
+                  <span style={{ color: r.ok ? "#22C55E" : "#EF4444" }}>{r.ok ? "✓" : "✕"}</span>
+                  <span className="flex-1 min-w-0" style={{ color: textSub }}>
+                    <span className="font-semibold truncate" style={{ color: r.ok ? "#22C55E" : "#EF4444" }}>{r.label}:</span> {r.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

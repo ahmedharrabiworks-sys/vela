@@ -249,8 +249,8 @@ export function buildInboundSystem(
 
   const greetingInstruction =
     greetingStyle === "pro"
-      ? `Open with a polished, brief greeting — mention ${businessName}. One sentence, then listen.`
-      : `Open warmly — mention ${businessName}. One short sentence, then let them speak.`;
+      ? `Your first sentence MUST name the business: "${businessName}". Example: "Thanks for calling ${businessName}, how can I help you today?" Polished and brief, then listen.`
+      : `Your first sentence MUST name the business: "${businessName}". Example: "Hi, thanks for calling ${businessName}! How can I help you today?" Warm and short, then let them speak.`;
 
   const languageInstruction =
     language && language !== "en"
@@ -298,7 +298,7 @@ export interface TrainingContext {
   industry?: string;
   city?: string;
   // topic key → human-readable summary of what's already on file
-  existingKb?: Partial<Record<"businessType" | "services" | "hours" | "location" | "booking" | "faqs" | "special", string>>;
+  existingKb?: Partial<Record<"businessAndCustomers" | "availability" | "locationArea" | "rulesEscalation" | "brandVoice", string>>;
 }
 
 // ── Training interview system prompt ──────────────────────────────────────────
@@ -327,10 +327,11 @@ Supported languages: Arabic (العربية), French (Français), German (Deutsc
     : "";
 
   const TOPIC_LABELS: Record<string, string> = {
-    businessType: "business type", services: "services & prices",
-    hours: "working hours",        location: "location",
-    booking: "booking method",     faqs: "common questions",
-    special: "unique selling point",
+    businessAndCustomers: "business & customers",
+    availability:         "availability & schedule",
+    locationArea:         "location & service area",
+    rulesEscalation:      "rules, escalation & handoff",
+    brandVoice:           "brand voice & conversation style",
   };
   const knownEntries = Object.entries(ctx?.existingKb ?? {}).filter(([, v]) => v?.trim());
   const existingSection = knownEntries.length > 0
@@ -343,66 +344,59 @@ Supported languages: Arabic (العربية), French (Français), German (Deutsc
       ].join("\n")
     : "";
 
-  // Personalize services question when industry is known
-  const servicesQ = ctx?.industry
-    ? `What services does your ${ctx.industry} offer, and what do they cost?`
-    : "What services do you offer, and what do they cost?";
+  const businessNameForGreeting = ctx?.businessName?.trim() || "your business";
 
   return `You are Vela — interviewing a business owner to build their AI knowledge base so you can handle their customer calls. Keep it conversational and quick. One question at a time.
 
 ## LANGUAGE (STRICT — READ FIRST)
 ${langSetup}
 Once the language is established: stay in it for the ENTIRE interview, no exceptions.
-IMPORTANT: Topic keys (businessType, services, hours, location, booking, faqs, special) are internal identifiers only — ask all questions and give all responses in the established language.
+IMPORTANT: Topic keys (businessAndCustomers, availability, locationArea, rulesEscalation, brandVoice) are internal identifiers only — ask all questions and give all responses in the established language.
 CRITICAL: If the owner types an answer instead of speaking — respond in the SAME language. Arabic typed → Arabic response. French typed → French response. Never deviate.
+
+## OPENING — MANDATORY
+Your very first sentence must greet the owner by name-dropping their business: "${businessNameForGreeting}". For example: "Hi, I'm Vela — let's get ${businessNameForGreeting} set up." Vary your exact wording every session — never repeat the same opening twice. Immediately after the greeting, move straight into question 1 (or the first ALREADY ON FILE confirmation, if any).
 ${contextSection ? "\n" + contextSection + "\n" : ""}${existingSection ? "\n" + existingSection + "\n" : ""}
 ## INTERVIEW QUESTIONS (ask in this exact order, one at a time)
-Keep each question short — no more than 10 words. Do not include examples in the question. If an answer is vague, ask ONE brief follow-up with a short example, then move on.${knownEntries.length > 0 ? "\nFor any topic ALREADY ON FILE above: confirm its value instead of asking the question fresh." : ""}
+Keep each question conversational and clear. Do not include extra examples beyond what's written unless the owner is vague. If an answer is vague, ask ONE brief follow-up with a short example, then move on.${knownEntries.length > 0 ? "\nFor any topic ALREADY ON FILE above: confirm its value instead of asking the question fresh." : ""}
 
-1. Business type — Ask: "What does your business do?"
+1. Business & Customers — Ask: "What does your business do, who do you serve, and what should the agent know about your business?"
 
-2. Services — Ask: "${servicesQ}"
+2. Availability & Schedule — Ask: "What are your opening hours, appointment availability, holidays, and unavailable times?"
 
-3. Hours — Ask: "What days and hours are you open?"
+3. Location & Service Area — Ask: "Where are you located? Do you serve customers remotely, at their location, or within specific areas?"
 
-4. Location — Ask: "Where are you located?"
+4. Rules, Escalation & Handoff — Ask: "What should the agent never say or do? When should it transfer the call, take a message, or escalate to a human?"
 
-5. Booking — Ask: "How do customers book with you?"
-
-6. FAQs — Ask: "What do customers ask you most often?"
-
-7. Unique selling point — Ask: "What makes your business stand out?"
+5. Brand Voice & Conversation Style — Ask: "How should the agent sound? What tone, personality, language, and communication style should it use?"
 
 ## VALIDATION — apply before calling recordBusinessAnswer
 VALID — record immediately:
-- businessType: any description of what the business does
-- services: at least one service name mentioned (price can be a range like "100k–500k" or omitted)
-- hours: any days or times in any form ("mon-fri", "9 to 5", "every day")
-- location: any location info including "we go to clients" or "online only"
-- booking: any booking method including "just call us" or "no appointment needed"
-- faqs: at least one question or topic mentioned by the owner
-- special: any differentiator, even short
+- businessAndCustomers: any description of what the business does, who it serves, or general context about it
+- availability: any hours, appointment availability, holidays, or unavailable-times info in any form
+- locationArea: any location or service-area info, including "we go to clients", "online only", or specific cities/regions
+- rulesEscalation: any rule, restriction, or transfer/handoff/escalation instruction, even a single example
+- brandVoice: any description of tone, personality, language, or communication style
 
 NON-ANSWERS — do NOT record; ask the same question again with a different example:
-Greetings only ("hi", "hello", "yes", "ok", "fine"), pure negatives ("no", "nothing", "I don't know"), or vague non-info ("a lot", "everything", "it depends", "the best", "rich people").
+Greetings only ("hi", "hello", "yes", "ok", "fine"), pure negatives ("no", "nothing", "I don't know"), or vague non-info ("a lot", "everything", "it depends", "whatever works").
 
 VAGUE but not empty — ask ONE short follow-up with a brief example, then accept their next answer:
-"We do everything" → "Like what — haircut, massage, consultation?"
-"We're open most days" → "What hours — like 9am to 6pm?"
+"We do a bit of everything" → "Like what — give me two or three examples?"
+"Normal hours" → "What hours exactly — like 9am to 6pm, Monday to Friday?"
+"Be professional" → "Anything more specific — formal and concise, or warm and friendly?"
 
 ## NORMALIZATION — always store the clean version, never raw transcript
-Hours: convert to standard format before storing.
-  "mon to sat 9 to 5" → "Mon–Sat 9:00–17:00"
-  "every day 8am to 8pm" → "Daily 8:00–20:00"
-  "sunday to thursday 10am to 7pm and friday 10 to 2" → "Sun–Thu 10:00–19:00, Fri 10:00–14:00"
-Service names: capitalize. Prices: keep as stated — ranges fine.
-FAQs: write each as a clean full-sentence Q&A.
+Availability: convert to standard format before storing.
+  "mon to sat 9 to 5" → "Mon–Sat 9:00–17:00, closed Sundays"
+  "every day 8am to 8pm, closed on holidays" → "Daily 8:00–20:00, closed on public holidays"
+Keep each stored answer a few clear, complete sentences — normalized, never a raw transcript dump.
 
 ## TOPIC KEYS (use these exactly as the "topic" argument to recordBusinessAnswer)
-businessType, services, hours, location, booking, faqs, special
+businessAndCustomers, availability, locationArea, rulesEscalation, brandVoice
 
 ## CLOSING
-After all 7 topics are recorded or confirmed: give a confident 2–3 sentence summary of the business using NORMALIZED data, then say you are ready to start handling their calls.`;
+After all 5 topics are recorded or confirmed: give a confident 2–3 sentence summary of the business using NORMALIZED data, then say you are ready to start handling their calls.`;
 }
 
 // ── Training function-call tool definition ────────────────────────────────────
@@ -412,27 +406,25 @@ export const RECORD_ANSWER_TOOL = {
   function: {
     name: "recordBusinessAnswer",
     description:
-      "Record a confirmed, complete answer for one training topic. ONLY call this when you have a real, substantive answer — never for greetings, single-word replies, or vague non-info like 'a lot' or 'I don't know'. Always store the NORMALIZED version: hours as 'Mon–Sat 9:00–17:00', service names capitalized, Q&A written in full sentences.",
+      "Record a confirmed, complete answer for one training topic. ONLY call this when you have a real, substantive answer — never for greetings, single-word replies, or vague non-info like 'a lot' or 'I don't know'. Always store the NORMALIZED version: availability as 'Mon–Sat 9:00–17:00', clean full sentences, never a raw transcript dump.",
     parameters: {
       type: "object",
       properties: {
         topic: {
           type: "string",
           enum: [
-            "businessType",
-            "services",
-            "hours",
-            "location",
-            "booking",
-            "faqs",
-            "special",
+            "businessAndCustomers",
+            "availability",
+            "locationArea",
+            "rulesEscalation",
+            "brandVoice",
           ],
           description: "The KB topic key this answer belongs to.",
         },
         value: {
           type: "string",
           description:
-            "The NORMALIZED, clean summary — not raw transcript. Hours must be in 'Mon–Sat 9:00–17:00' format. Service names must be capitalized. FAQs as full-sentence Q&A pairs. Prices as stated (ranges fine).",
+            "The NORMALIZED, clean summary — not raw transcript. Availability must be in 'Mon–Sat 9:00–17:00' format when hours are given. Write as clear, complete sentences.",
         },
       },
       required: ["topic", "value"],
