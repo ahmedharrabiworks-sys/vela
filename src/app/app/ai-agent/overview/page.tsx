@@ -403,6 +403,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
       <style>{`
         @keyframes pulse2 { 0%,100%{opacity:.4;transform:scale(.85)} 50%{opacity:1;transform:scale(1)} }
         @keyframes spin { to{transform:rotate(360deg)} }
+        @keyframes callring { 0%{opacity:.5;transform:scale(1)} 100%{opacity:0;transform:scale(1.5)} }
         @media(min-width:768px) { .ov-pad { padding: 20px 24px 32px; margin: -20px -24px -32px; } }
       `}</style>
 
@@ -612,7 +613,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               </div>
             </div>
 
-            {/* Vela Voice card */}
+            {/* Talk to Vela — entry card (Call or Chat, same assistant either way) */}
             <div
               className="rounded-2xl border overflow-hidden"
               style={{
@@ -622,157 +623,43 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               }}
             >
               <div className="px-4 pt-4 pb-4">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Talk to Vela</p>
-                    <p className="text-[9px]" style={{ color: textMuted }}>
-                      {isActive
-                        ? (muted ? "Muted" : "Listening…")
-                        : isConnecting ? "Connecting…"
-                        : callStatus === "ended" ? (wasEjected ? (ejectedEarly ? "Couldn't connect" : "Connection lost") : "Call ended")
-                        : "Your business advisor"}
-                    </p>
-                  </div>
-                  <div className="w-2 h-2 rounded-full" style={{
-                    background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : callStatus === "ended" ? "#6B7280" : "#FF6B35",
-                    boxShadow: isActive ? "0 0 6px #22C55E" : "none",
-                  }}/>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Talk to Vela</p>
+                  <div className="w-2 h-2 rounded-full" style={{ background: "#FF6B35" }}/>
                 </div>
-
-                {/* Waveform bars — 5 bars, volume-driven when active */}
-                <div className="flex items-end justify-center gap-[5px] mb-3" style={{ height: 32 }}>
-                  {BAR_BASES.map((b, i) => (
-                    <div key={i} ref={el => { barRefs.current[i] = el; }}
-                      style={{
-                        width: 5,
-                        height: b * 6,
-                        borderRadius: 3,
-                        alignSelf: "flex-end",
-                        background: isActive
-                          ? "linear-gradient(to top,#FF6B35,#FF3366)"
-                          : isConnecting ? "#FF6B35" : isDark ? "var(--dm-card2)" : "#E9EBF0",
-                        transition: "background 0.3s, height 0.05s",
-                        animation: isConnecting ? `pulse2 ${0.7 + i * 0.12}s ease-in-out infinite` : "none",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Controls */}
-                {callStatus === "idle" && (
-                  <div className="flex flex-col items-center gap-2">
-                    <button onClick={startCall}
-                      disabled={!settingsReady}
-                      className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.4)" }}
-                    >
-                      {!settingsReady
-                        ? <div className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
-                        : <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                            <path d="M5 3.5l5 3-5 3V3.5z" fill="white"/>
-                          </svg>
-                      }
-                    </button>
-                    <span className="text-[10px] font-medium" style={{ color: textMuted }}>
-                      {!settingsReady ? "Loading…" : t("aiAgent.overview.talkToVela")}
-                    </span>
-                  </div>
-                )}
-
-                {isConnecting && (
-                  <div className="flex flex-col items-center gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <div style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}/>
-                      <span className="text-[10px]" style={{ color: textMuted }}>Connecting…</span>
-                    </div>
-                    <button onClick={endCall}
-                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
-                      style={{ background: "#EF4444", boxShadow: "0 3px 10px rgba(239,68,68,0.4)" }}
-                      title="Cancel"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {isActive && (
-                  <div className="flex items-center justify-center gap-4">
-                    {/* Mute */}
-                    <button onClick={toggleMute}
-                      className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95"
-                      style={{
-                        background: muted ? "linear-gradient(135deg,#FF6B35,#FF3366)" : isDark ? "var(--dm-card2)" : "#F3F4F6",
-                        boxShadow: muted ? "0 2px 8px rgba(255,107,53,0.35)" : "none",
-                        border: muted ? "none" : `1.5px solid ${border}`,
-                      }}
-                      title={muted ? "Unmute" : "Mute"}
-                    >
-                      {muted ? (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill="white"/>
-                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                          <path d="M2 2l10 10" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill={textMuted}/>
-                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke={textMuted} strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      )}
-                    </button>
-
-                    {/* Live timer */}
-                    <span className="text-sm font-mono font-bold tabular-nums min-w-[44px] text-center" style={{ color: textPrimary }}>
-                      {fmtTimer(callDuration)}
-                    </span>
-
-                    {/* End */}
-                    <button onClick={endCall}
-                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
-                      style={{ background: "#EF4444", boxShadow: "0 3px 12px rgba(239,68,68,0.4)" }}
-                      title="End call"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10 2l4 4M14 2l-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {callStatus === "ended" && wasEjected && (
-                  <div className="space-y-2">
-                    <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      {ejectedEarly
-                        ? "The call disconnected right after connecting. This usually points to a voice service configuration issue rather than your connection."
-                        : "Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted."}
-                    </p>
-                    <button onClick={startCall}
-                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.35)" }}
-                    >
-                      Reconnect
-                    </button>
-                    <button onClick={resetCall} className="w-full text-[9px] text-center hover:underline" style={{ color: textMuted }}>
-                      Dismiss
-                    </button>
-                  </div>
-                )}
-
-                {callStatus === "ended" && !wasEjected && (
-                  <button onClick={resetCall}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-medium transition-all"
-                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}
+                <p className="text-[10px] mb-3.5" style={{ color: textMuted }}>
+                  Ask about your leads, calls, and performance — by voice or by text.
+                </p>
+                <div className="flex items-center gap-2.5">
+                  <button onClick={startCall}
+                    disabled={!settingsReady}
+                    className="flex-1 flex flex-col items-center gap-1.5 py-3.5 rounded-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60"
+                    style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.4)" }}
                   >
-                    {t("aiAgent.overview.newCall")}
+                    {!settingsReady
+                      ? <div className="w-4 h-4 rounded-full border-[1.5px] border-white border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
+                      : <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+                          <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" fill="white"/>
+                        </svg>
+                    }
+                    <span className="text-[11px] font-bold text-white">
+                      {!settingsReady ? "Loading…" : "Call"}
+                    </span>
                   </button>
-                )}
+                  <button onClick={() => window.dispatchEvent(new CustomEvent("vela-open-chat"))}
+                    className="flex-1 flex flex-col items-center gap-1.5 py-3.5 rounded-xl transition-all hover:scale-[1.02] active:scale-95"
+                    style={{ background: isDark ? "var(--dm-card2)" : "#FFFFFF", border: `1.5px solid ${border}` }}
+                  >
+                    <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
+                      <path d="M14 8.5a5.5 5.5 0 01-8.1 4.85L2 14l.65-3.9A5.5 5.5 0 1114 8.5z" stroke={textSub} strokeWidth="1.3" strokeLinejoin="round"/>
+                      <path d="M5.5 8h5M5.5 5.8h3.5" stroke={textSub} strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                    <span className="text-[11px] font-bold" style={{ color: textSub }}>Chat</span>
+                  </button>
+                </div>
 
                 {callError && (
-                  <div className="mt-2 rounded-xl p-2.5" style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#FFF5F5", border: "1px solid rgba(239,68,68,0.2)" }}>
+                  <div className="mt-3 rounded-xl p-2.5" style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#FFF5F5", border: "1px solid rgba(239,68,68,0.2)" }}>
                     <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed</p>
                     <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
                     <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
@@ -780,6 +667,157 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                 )}
               </div>
             </div>
+
+            {/* In-call overlay — full phone-call-style screen, shown for connecting/active/ended */}
+            {callStatus !== "idle" && (
+              <div className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+                style={{ background: "rgba(10,12,20,0.6)", backdropFilter: "blur(6px)" }}
+              >
+                <div className="w-full max-w-[340px] rounded-3xl p-7 flex flex-col items-center"
+                  style={{ background: cardBg, border: `1px solid ${border}`, boxShadow: "0 24px 70px rgba(0,0,0,0.4)" }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: "#FF6B35" }}>Talk to Vela</p>
+                  <p className="text-xs mb-5" style={{ color: textMuted }}>
+                    {isActive
+                      ? (muted ? "Muted" : "Listening…")
+                      : isConnecting ? "Calling…"
+                      : callStatus === "ended" ? (wasEjected ? (ejectedEarly ? "Couldn't connect" : "Connection lost") : "Call ended")
+                      : ""}
+                  </p>
+
+                  {/* Pulsing orb avatar */}
+                  <div className="relative flex items-center justify-center mb-5" style={{ width: 96, height: 96 }}>
+                    {(isConnecting || isActive) && (
+                      <>
+                        <span className="absolute rounded-full" style={{ width: 96, height: 96, border: "1.5px solid #FF6B35", animation: "callring 1.8s ease-out infinite" }}/>
+                        <span className="absolute rounded-full" style={{ width: 96, height: 96, border: "1.5px solid #FF6B35", animation: "callring 1.8s ease-out infinite", animationDelay: "0.6s" }}/>
+                      </>
+                    )}
+                    <div className="rounded-full flex items-center justify-center" style={{
+                      width: 72, height: 72,
+                      background: "linear-gradient(135deg,#FF6B35,#FF3366)",
+                      boxShadow: "0 6px 24px rgba(255,107,53,0.45)",
+                    }}>
+                      <svg width="30" height="30" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 3L7 11L12 3" stroke="white" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Waveform — volume-driven while active */}
+                  <div className="flex items-end justify-center gap-[6px] mb-5" style={{ height: 40 }}>
+                    {BAR_BASES.map((b, i) => (
+                      <div key={i} ref={el => { barRefs.current[i] = el; }}
+                        style={{
+                          width: 6,
+                          height: b * 7,
+                          borderRadius: 3,
+                          alignSelf: "flex-end",
+                          background: isActive
+                            ? "linear-gradient(to top,#FF6B35,#FF3366)"
+                            : isConnecting ? "#FF6B35" : isDark ? "var(--dm-card2)" : "#E9EBF0",
+                          transition: "background 0.3s, height 0.05s",
+                          animation: isConnecting ? `pulse2 ${0.7 + i * 0.12}s ease-in-out infinite` : "none",
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Live timer */}
+                  {isActive && (
+                    <p className="text-2xl font-mono font-bold tabular-nums mb-5" style={{ color: textPrimary }}>
+                      {fmtTimer(callDuration)}
+                    </p>
+                  )}
+
+                  {/* Controls */}
+                  {isConnecting && (
+                    <button onClick={endCall}
+                      className="flex items-center justify-center w-14 h-14 rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                      style={{ background: "#EF4444", boxShadow: "0 4px 16px rgba(239,68,68,0.45)" }}
+                      title="Cancel"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  )}
+
+                  {isActive && (
+                    <div className="flex items-center justify-center gap-5">
+                      {/* Mute */}
+                      <button onClick={toggleMute}
+                        className="flex items-center justify-center w-12 h-12 rounded-full transition-all hover:scale-105 active:scale-95"
+                        style={{
+                          background: muted ? "linear-gradient(135deg,#FF6B35,#FF3366)" : isDark ? "var(--dm-card2)" : "#F3F4F6",
+                          boxShadow: muted ? "0 2px 8px rgba(255,107,53,0.35)" : "none",
+                          border: muted ? "none" : `1.5px solid ${border}`,
+                        }}
+                        title={muted ? "Unmute" : "Mute"}
+                      >
+                        {muted ? (
+                          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+                            <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill="white"/>
+                            <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                            <path d="M2 2l10 10" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+                            <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill={textMuted}/>
+                            <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke={textMuted} strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* End — large red hang-up */}
+                      <button onClick={endCall}
+                        className="flex items-center justify-center w-16 h-16 rounded-full text-white transition-all hover:scale-105 active:scale-95"
+                        style={{ background: "#EF4444", boxShadow: "0 4px 18px rgba(239,68,68,0.45)" }}
+                        title="End call"
+                      >
+                        <svg width="22" height="22" viewBox="0 0 16 16" fill="none">
+                          <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M10 2l4 4M14 2l-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  {callStatus === "ended" && wasEjected && (
+                    <div className="w-full space-y-2.5">
+                      <p className="text-[11px] text-center leading-relaxed" style={{ color: textMuted }}>
+                        {ejectedEarly
+                          ? "The call disconnected right after connecting. This usually points to a voice service configuration issue rather than your connection."
+                          : "Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted."}
+                      </p>
+                      <button onClick={startCall}
+                        className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                        style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.35)" }}
+                      >
+                        Reconnect
+                      </button>
+                      <button onClick={resetCall} className="w-full text-[11px] text-center py-1 hover:underline" style={{ color: textMuted }}>
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+
+                  {callStatus === "ended" && !wasEjected && (
+                    <div className="w-full space-y-2.5">
+                      <p className="text-[11px] text-center" style={{ color: textMuted }}>
+                        Duration: {fmtTimer(callDuration)}
+                      </p>
+                      <button onClick={resetCall}
+                        className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold transition-all"
+                        style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}
+                      >
+                        {t("aiAgent.overview.newCall")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Quick actions */}
             <div className="rounded-2xl border p-4" style={{ background: cardBg, borderColor: border }}>
