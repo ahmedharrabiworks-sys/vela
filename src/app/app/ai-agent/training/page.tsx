@@ -15,6 +15,7 @@ import {
   CALL_LIMITS,
   isVapiEjection,
   vapiErrorText,
+  requestMicrophoneAccess,
   type TrainingContext,
 } from "@/lib/vapi-agent-config";
 
@@ -114,6 +115,7 @@ export default function TrainingPage() {
   const [extracting, setExtracting] = useState(false);
   const [callStart, setCallStart] = useState<number>(0);
   const [callDuration, setCallDuration] = useState(0);
+  const [noMicSignal, setNoMicSignal] = useState(false);
   const voiceIdRef           = useRef(DEFAULT_VOICE_ID);
   const speedRef             = useRef(0.85);
   const agentLanguageRef     = useRef<string | undefined>(undefined);
@@ -127,6 +129,11 @@ export default function TrainingPage() {
   // Set on call-start, read inside the error handler to tell a genuine mid-call
   // drop apart from an immediate voice/transcription provider failure.
   const activeSinceRef = useRef<number | null>(null);
+  // Tracks whether any real signal has come from the mic since the call went
+  // active -- the SDK's local-volume-level event is the documented way to
+  // detect "the mic isn't picking up audio" (wrong device, OS mute, etc.).
+  const heardLocalAudioRef = useRef(false);
+  const micCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function fmtTimer(s: number) {
     return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -218,6 +225,7 @@ export default function TrainingPage() {
   const startCall = useCallback(async () => {
     if (status !== "idle") return;
     if (timerRef.current) clearInterval(timerRef.current);
+    if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
     setStatus("connecting");
     setTranscript([]);
     setLearnedKb(null);
@@ -230,6 +238,19 @@ export default function TrainingPage() {
     setCallError(null);
     setWasEjected(false);
     setEjectedEarly(false);
+    setNoMicSignal(false);
+    heardLocalAudioRef.current = false;
+
+    // Request the mic ourselves first -- if it's denied, blocked, or missing,
+    // this surfaces a specific error immediately instead of a call that
+    // connects fine but the assistant never receives any audio.
+    const micCheck = await requestMicrophoneAccess();
+    if (!micCheck.ok) {
+      setCallError(micCheck.message);
+      setStatus("idle");
+      return;
+    }
+
     try {
       const { default: Vapi } = await import("@vapi-ai/web");
       const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
@@ -240,9 +261,15 @@ export default function TrainingPage() {
         setCallDuration(0);
         activeSinceRef.current = Date.now();
         timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
+        // Give the mic a few seconds to register real signal before warning --
+        // avoids a false positive during the brief silence right after connecting.
+        micCheckTimeoutRef.current = setTimeout(() => {
+          if (!heardLocalAudioRef.current) setNoMicSignal(true);
+        }, 6000);
       });
       vapi.on("call-end",   () => {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
         activeSinceRef.current = null;
         setStatus("ended");
         resetBars();
@@ -258,6 +285,7 @@ export default function TrainingPage() {
       vapi.on("error", (e: any) => {
         console.error("[vapi error]", e);
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
         if (isVapiEjection(e)) {
           // A drop within seconds of connecting is essentially never caused by the
           // tab being backgrounded -- it means the call never properly established,
@@ -276,6 +304,16 @@ export default function TrainingPage() {
 
       vapi.on("volume-level", (vol: number) => {
         BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${Math.max(4, b * (8 + vol * 22))}px`; });
+      });
+
+      // The SDK's documented mechanism for detecting "the mic isn't picking up
+      // audio" (wrong input device, OS-level mute, etc.) -- see getLocalAudioLevel
+      // in @vapi-ai/web. Any real signal clears the warning immediately.
+      vapi.on("local-volume-level", (vol: number) => {
+        if (vol > 0.02) {
+          heardLocalAudioRef.current = true;
+          setNoMicSignal(false);
+        }
       });
 
       vapi.on("message", (msg: any) => {
@@ -334,7 +372,8 @@ export default function TrainingPage() {
   }, [muted]);
   const reset = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    setStatus("idle"); setCallError(null); setWasEjected(false); setEjectedEarly(false); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); setCallDuration(0); vapiRef.current = null;
+    if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
+    setStatus("idle"); setCallError(null); setWasEjected(false); setEjectedEarly(false); setTranscript([]); setTypedAnswer(""); setLearnedKb(null); setLiveKb({}); setMuted(false); setCallDuration(0); setNoMicSignal(false); vapiRef.current = null;
     resetBars();
   }, []);
 
@@ -468,8 +507,8 @@ export default function TrainingPage() {
                       style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.4)" }}>
                       {!settingsReady
                         ? <div className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
-                        : <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                            <path d="M5 3.5l5 3-5 3V3.5z" fill="white"/>
+                        : <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                            <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" fill="white"/>
                           </svg>
                       }
                     </button>
@@ -537,6 +576,12 @@ export default function TrainingPage() {
                       </svg>
                     </button>
                   </div>
+                )}
+
+                {isActive && noMicSignal && (
+                  <p className="text-[9px] text-center mt-2" style={{ color: "#F59E0B" }}>
+                    Can't hear you — check your microphone input
+                  </p>
                 )}
 
                 {status === "ended" && wasEjected && (

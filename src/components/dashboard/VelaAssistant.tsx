@@ -171,14 +171,6 @@ export function VelaAssistant() {
     return () => window.removeEventListener("vela-start-interview", handler);
   }, []);
 
-  // Event listener for the "Chat instead" fallback on the Overview "Talk to Vela" card —
-  // opens this same assistant panel for text-based use, no interview mode.
-  useEffect(() => {
-    const handler = () => setOpen(true);
-    window.addEventListener("vela-open-chat", handler);
-    return () => window.removeEventListener("vela-open-chat", handler);
-  }, []);
-
   const send = useCallback(async (text: string, startInterview = false) => {
     if ((!text.trim() && attachedImages.length === 0) || loading) return;
     const isInterview = startInterview || interviewMode;

@@ -163,6 +163,32 @@ export function vapiErrorText(e: unknown): string {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+// ── Microphone pre-flight check ────────────────────────────────────────────
+// The Vapi Web SDK creates its Daily.co call with audioSource:true by default,
+// but if the browser's getUserMedia request is denied, blocked at the OS level,
+// or resolves to a device with no real input, nothing about the call session
+// itself fails -- the WebRTC connection stays healthy and Vapi never ejects, so
+// the call looks fully "active" while the assistant receives zero audio and can
+// never respond to anything said. Requesting the mic ourselves before starting
+// the call surfaces a specific, actionable error immediately instead of a
+// silent one-way call. Used by both the Overview and Training call flows.
+export async function requestMicrophoneAccess(): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    return { ok: true };
+  } catch (err: unknown) {
+    const name = (err as { name?: string } | undefined)?.name;
+    if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+      return { ok: false, message: "Microphone access is blocked. Allow microphone access for this site in your browser settings, then try again." };
+    }
+    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      return { ok: false, message: "No microphone found. Connect a microphone and try again." };
+    }
+    return { ok: false, message: "Couldn't access your microphone. Check your browser's microphone permissions and try again." };
+  }
+}
+
 // ── Shared voice config builder ───────────────────────────────────────────────
 // voiceId is always used as-is — the language-aware default is applied BEFORE
 // calling this function (via getDefaultVoiceId). Owner's explicit choice wins.
