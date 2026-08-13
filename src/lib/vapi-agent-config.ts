@@ -263,12 +263,10 @@ export function buildInboundSystem(
 
   // The AI speaks first, before it has heard the caller -- so the opening line's
   // language cannot come from auto-detecting the caller's speech. greetingLanguage
-  // lets the owner fix it explicitly; falling back to the Identity language field
-  // (the tenant's own primary language, if set) as "match business language".
-  const effectiveGreetingLang = greetingLanguage || language;
-  const greetingLanguageLine = effectiveGreetingLang
-    ? `Speak your OPENING GREETING specifically in ${LANG_NAMES[effectiveGreetingLang] ?? effectiveGreetingLang} — this is fixed regardless of what language the rest of the call ends up in. Immediately after the greeting, follow the LANGUAGE rule above for the remainder of the call.`
-    : `You have not heard the caller speak yet, so default your OPENING GREETING to English, then switch immediately once you hear the caller's language, per the LANGUAGE rule above.`;
+  // lets the owner fix it explicitly; tenants with no saved value default to
+  // English (not a "match business language" fallback).
+  const effectiveGreetingLang = greetingLanguage || "en";
+  const greetingLanguageLine = `Speak your OPENING GREETING specifically in ${LANG_NAMES[effectiveGreetingLang] ?? effectiveGreetingLang} — this is fixed regardless of what language the rest of the call ends up in. Immediately after the greeting, follow the LANGUAGE rule above for the remainder of the call.`;
 
   const languageInstruction =
     language && language !== "en"

@@ -28,7 +28,6 @@ const LANGUAGES = [
 ];
 
 const GREETING_LANGUAGES = [
-  { value: "",   label: "Match business language" },
   { value: "en", label: "English" },
   { value: "fr", label: "French (Français)" },
   { value: "ar", label: "Arabic (العربية)" },
@@ -72,7 +71,7 @@ export default function SettingsPage() {
     greetingStyle:      "warm",
     customGreeting:     "",
     language:           "",
-    greetingLanguage:   "",
+    greetingLanguage:   "en",
   });
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
@@ -382,7 +381,7 @@ export default function SettingsPage() {
               <div>
                 <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Greeting Language</label>
                 <select
-                  value={settings.greetingLanguage ?? ""}
+                  value={settings.greetingLanguage || "en"}
                   onChange={(e) => set("greetingLanguage", e.target.value)}
                   className={inputClass}
                   style={inputStyle}
