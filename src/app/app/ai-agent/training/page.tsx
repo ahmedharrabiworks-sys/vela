@@ -270,7 +270,7 @@ export default function TrainingPage() {
         });
         const data = await res.json() as { kb?: typeof EMPTY_KB; instagram?: boolean; error?: string };
         if (data.instagram) {
-          results.push({ label, ok: false, message: "Social profile analysis isn't supported yet — add key details via the questions above" });
+          results.push({ label, ok: false, message: "Social profile analysis isn't supported yet. Add key details via the questions above" });
         } else if (res.ok && data.kb) {
           const saved = await mergeIntoKb(data.kb);
           results.push({ label, ok: saved, message: saved ? "Analyzed and added to knowledge base" : "Extracted, but saving failed" });
@@ -651,7 +651,7 @@ export default function TrainingPage() {
 
                 {isActive && noMicSignal && (
                   <p className="text-[9px] text-center mt-2" style={{ color: "#F59E0B" }}>
-                    Can't hear you — check your microphone input
+                    Can't hear you. Check your microphone input
                   </p>
                 )}
 
@@ -1014,7 +1014,7 @@ export default function TrainingPage() {
               </>
             ) : "Analyze & Save"}
           </button>
-          <p className="text-[10px] mt-2" style={{ color: textMuted }}>Optional — you can complete training without this.</p>
+          <p className="text-[10px] mt-2" style={{ color: textMuted }}>Optional. You can complete training without this.</p>
 
           {materialResults.length > 0 && (
             <div className="mt-4 space-y-1.5">

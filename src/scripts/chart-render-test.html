@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: sans-serif; padding: 40px; background: #fff; }
+  #tooltip {
+    position: absolute; padding: 4px 8px; border-radius: 8px; font-size: 10px; font-weight: 600;
+    pointer-events: none; white-space: nowrap; background: #111; color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none;
+  }
+  svg { width: 640px; overflow: visible; }
+</style>
+</head>
+<body>
+<div id="chart-wrap" style="position:relative;">
+  <svg id="chart" viewBox="0 0 320 112"></svg>
+  <div id="tooltip"></div>
+</div>
+<script>
+// Exact port of LineChart's SVG-building logic from overview/page.tsx, fed with sample data.
+const data = [2, 5, 3, 8, 4, 6, 1];
+const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const today = new Date().getDay();
+const labels = Array.from({ length: 7 }, (_, i) => DAY_LABELS[(today - 6 + i + 7) % 7]);
+const maxVal = Math.max(...data, 1);
+const hasData = data.some(v => v > 0);
+const W = 320, H = 90, PAD_TOP = 10;
+const gridColor = "#F1F5F9", axisColor = "#E5E7EB", labelColor = "#9CA3AF";
+const n = data.length;
+const stepX = W / (n - 1);
+const points = data.map((v, i) => ({ x: i * stepX, y: PAD_TOP + (H - PAD_TOP) * (1 - v / maxVal), v }));
+
+function smoothPath(pts) {
+  if (pts.length < 2) return "";
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i === 0 ? 0 : i - 1];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
+const linePath = smoothPath(points);
+const areaPath = `${linePath} L ${points[n-1].x} ${H} L ${points[0].x} ${H} Z`;
+
+const svg = document.getElementById("chart");
+svg.setAttribute("viewBox", `0 0 ${W} ${H+22}`);
+let html = `
+<defs>
+  <linearGradient id="line-fill-ov" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#FF6B35" stop-opacity="0.32"/>
+    <stop offset="100%" stop-color="#FF6B35" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="line-stroke-ov" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#FF6B35"/>
+    <stop offset="100%" stop-color="#FF3366"/>
+  </linearGradient>
+</defs>`;
+[0,.25,.5,.75,1].forEach(f => {
+  html += `<line x1="0" y1="${PAD_TOP+(H-PAD_TOP)*(1-f)}" x2="${W}" y2="${PAD_TOP+(H-PAD_TOP)*(1-f)}" stroke="${gridColor}" stroke-width="1"/>`;
+});
+html += `<line x1="0" y1="${H}" x2="${W}" y2="${H}" stroke="${axisColor}" stroke-width="1.5"/>`;
+if (hasData) {
+  html += `<path d="${areaPath}" fill="url(#line-fill-ov)"/>`;
+  html += `<path d="${linePath}" fill="none" stroke="url(#line-stroke-ov)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+html += `<line id="hoverline" x1="0" y1="${PAD_TOP}" x2="0" y2="${H}" stroke="${axisColor}" stroke-width="1" stroke-dasharray="2,2" style="display:none"/>`;
+points.forEach((p, i) => {
+  html += `<circle class="pt" data-i="${i}" cx="${p.x}" cy="${p.y}" r="2.5" fill="#FF6B35" stroke="#FF6B35" stroke-width="2" style="transition:r .12s"/>`;
+  html += `<text x="${p.x}" y="${H+17}" text-anchor="middle" font-size="9" fill="${labelColor}">${labels[i]}</text>`;
+});
+svg.innerHTML = html;
+
+const tooltip = document.getElementById("tooltip");
+svg.addEventListener("mousemove", (e) => {
+  const rect = svg.getBoundingClientRect();
+  const relX = ((e.clientX - rect.left) / rect.width) * W;
+  const idx = Math.max(0, Math.min(n - 1, Math.round(relX / stepX)));
+  const p = points[idx];
+  document.querySelectorAll(".pt").forEach((c, i) => c.setAttribute("r", i === idx ? "4" : "2.5"));
+  document.querySelectorAll(".pt")[idx].setAttribute("fill", "#fff");
+  document.querySelectorAll(".pt").forEach((c,i) => { if (i!==idx) c.setAttribute("fill","#FF6B35"); });
+  const hoverline = document.getElementById("hoverline");
+  hoverline.setAttribute("x1", p.x); hoverline.setAttribute("x2", p.x);
+  hoverline.style.display = "block";
+  const pctX = (p.x / W) * rect.width;
+  const pctY = (p.y / (H+22)) * rect.height;
+  tooltip.style.left = pctX + "px";
+  tooltip.style.top = (pctY - 30) + "px";
+  tooltip.style.transform = "translate(-50%, -100%)";
+  tooltip.textContent = `${p.v} call${p.v !== 1 ? "s" : ""}`;
+  tooltip.style.display = "block";
+});
+</script>
+</body>
+</html>

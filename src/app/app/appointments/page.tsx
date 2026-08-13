@@ -501,7 +501,7 @@ export default function AppointmentsPage() {
                         }`}>
                         <td className="pl-5 pr-3 py-3.5"><span className="text-xs text-[#9CA3AF] font-mono">{i + 1}</span></td>
                         <td className="py-3.5 pr-4"><p className="text-sm font-semibold text-[#111827] whitespace-nowrap">{apt.name}</p></td>
-                        <td className="py-3.5 pr-4"><span className="text-sm text-[#6B7280] whitespace-nowrap">{apt.phone || "—"}</span></td>
+                        <td className="py-3.5 pr-4"><span className="text-sm text-[#6B7280] whitespace-nowrap">{apt.phone || "No phone"}</span></td>
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#111827]">{apt.service}</span></td>
                         <td className="py-3.5 pr-4">
                           <span className="text-sm font-semibold text-[#111827]">{apt.dateLabel}</span>

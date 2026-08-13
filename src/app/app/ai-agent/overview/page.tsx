@@ -49,49 +49,116 @@ function CircleRing({ value, size = 64, isDark }: { value: number; size?: number
       )}
       <text x={size/2} y={size/2+5} textAnchor="middle"
         fontSize={size < 56 ? 10 : 13} fontWeight="700" fill={txt}>
-        {value > 0 ? `${value}%` : "—"}
+        {value > 0 ? `${value}%` : "N/A"}
       </text>
     </svg>
   );
 }
 
-/* Bar chart */
-function BarChart({ data, isDark }: { data: number[]; isDark: boolean }) {
+/* Smooth line/area chart with hover tooltip — hand-rolled SVG (no charting
+   library is installed in this project; matches this file's existing
+   hand-rolled CircleRing pattern rather than adding a new dependency). */
+function LineChart({ data, isDark }: { data: number[]; isDark: boolean }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const today  = new Date().getDay();
   const labels = Array.from({ length: 7 }, (_, i) => DAY_LABELS[(today - 6 + i + 7) % 7]);
   const maxVal = Math.max(...data, 1);
   const hasData = data.some(v => v > 0);
-  const W = 320; const H = 90; const barW = 28;
-  const gap = (W - 7 * barW) / 8;
-  const gridColor = isDark ? "var(--dm-border2)" : "#F1F5F9";
-  const axisColor = isDark ? "var(--dm-border)" : "#E5E7EB";
+  const W = 320, H = 90, PAD_TOP = 10;
+  const gridColor  = isDark ? "var(--dm-border2)" : "#F1F5F9";
+  const axisColor  = isDark ? "var(--dm-border)" : "#E5E7EB";
   const labelColor = isDark ? "var(--dm-faint)" : "#9CA3AF";
+
+  const n = data.length;
+  const stepX = W / (n - 1);
+  const points = data.map((v, i) => ({
+    x: i * stepX,
+    y: PAD_TOP + (H - PAD_TOP) * (1 - v / maxVal),
+    v,
+  }));
+
+  // Catmull-Rom -> cubic-bezier smoothing through each point, for a curved
+  // (not straight-segment) line.
+  function smoothPath(pts: { x: number; y: number }[]): string {
+    if (pts.length < 2) return "";
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i === 0 ? 0 : i - 1];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }
+
+  const linePath = smoothPath(points);
+  const areaPath = `${linePath} L ${points[n - 1].x} ${H} L ${points[0].x} ${H} Z`;
+  const hover = hoverIdx !== null ? points[hoverIdx] : null;
+  const tooltipLeftPct = hover ? Math.min(92, Math.max(8, (hover.x / W) * 100)) : 0;
+
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H + 28}`} className="w-full overflow-visible">
+      <svg
+        viewBox={`0 0 ${W} ${H + 22}`}
+        className="w-full overflow-visible"
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const relX = ((e.clientX - rect.left) / rect.width) * W;
+          setHoverIdx(Math.max(0, Math.min(n - 1, Math.round(relX / stepX))));
+        }}
+        onMouseLeave={() => setHoverIdx(null)}
+      >
         <defs>
-          <linearGradient id="bar-ov" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.9"/>
-            <stop offset="100%" stopColor="#FF3366" stopOpacity="0.5"/>
+          <linearGradient id="line-fill-ov" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.32"/>
+            <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
+          </linearGradient>
+          <linearGradient id="line-stroke-ov" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#FF6B35"/>
+            <stop offset="100%" stopColor="#FF3366"/>
           </linearGradient>
         </defs>
         {[0,.25,.5,.75,1].map(f => (
-          <line key={f} x1="0" y1={H - f*H} x2={W} y2={H - f*H} stroke={gridColor} strokeWidth="1"/>
+          <line key={f} x1="0" y1={PAD_TOP + (H-PAD_TOP)*(1-f)} x2={W} y2={PAD_TOP + (H-PAD_TOP)*(1-f)} stroke={gridColor} strokeWidth="1"/>
         ))}
         <line x1="0" y1={H} x2={W} y2={H} stroke={axisColor} strokeWidth="1.5"/>
-        {data.map((val, i) => {
-          const barH = hasData ? Math.max((val/maxVal)*H, val>0?4:0) : 0;
-          const x = gap + i*(barW+gap);
-          return (
-            <g key={i}>
-              <rect x={x} y={H-2} width={barW} height={2} rx="1" fill={isDark?"var(--dm-card2)":"#E9EBF0"}/>
-              {val > 0 && <rect x={x} y={H-barH} width={barW} height={barH} rx="4" fill="url(#bar-ov)"/>}
-              <text x={x+barW/2} y={H+18} textAnchor="middle" fontSize="9" fill={labelColor}>{labels[i]}</text>
-            </g>
-          );
-        })}
+        {hasData && <path d={areaPath} fill="url(#line-fill-ov)"/>}
+        {hasData && <path d={linePath} fill="none" stroke="url(#line-stroke-ov)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>}
+        {hasData && hover && (
+          <line x1={hover.x} y1={PAD_TOP} x2={hover.x} y2={H} stroke={axisColor} strokeWidth="1" strokeDasharray="2,2"/>
+        )}
+        {points.map((p, i) => (
+          <g key={i}>
+            {hasData && (
+              <circle cx={p.x} cy={p.y} r={hoverIdx === i ? 4 : 2.5}
+                fill={hoverIdx === i ? "#fff" : "#FF6B35"} stroke="#FF6B35" strokeWidth="2"
+                style={{ transition: "r .12s" }}/>
+            )}
+            <text x={p.x} y={H + 17} textAnchor="middle" fontSize="9" fill={labelColor}>{labels[i]}</text>
+          </g>
+        ))}
       </svg>
+      {hasData && hover && (
+        <div
+          className="absolute px-2 py-1 rounded-lg text-[10px] font-semibold pointer-events-none whitespace-nowrap"
+          style={{
+            left: `${tooltipLeftPct}%`,
+            top: `${(hover.y / (H + 22)) * 100}%`,
+            transform: "translate(-50%, -135%)",
+            background: isDark ? "#0B0D14" : "#111111",
+            color: "white",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+          }}
+        >
+          {hover.v} call{hover.v !== 1 ? "s" : ""}
+        </div>
+      )}
       {!hasData && (
         <div className="absolute inset-0 flex items-center justify-center pb-4 pointer-events-none">
           <p className="text-xs" style={{ color: isDark?"var(--dm-faint)":"#9CA3AF" }}>No calls yet. Activity will appear here</p>
@@ -244,7 +311,7 @@ export default function OverviewPage() {
   const voiceMins  = Math.round(totalSecs / 60);
 
   function fmtDuration(s: number) {
-    if (!s) return "—";
+    if (!s) return "0s";
     return s < 60 ? `${s}s` : `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
   }
 
@@ -455,7 +522,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
         @media(min-width:768px) { .ov-pad { padding: 20px 24px 32px; margin: -20px -24px -32px; } }
       `}</style>
 
-      <div className="max-w-5xl mx-auto space-y-5">
+      <div className="max-w-5xl mx-auto space-y-4">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -479,7 +546,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
           {/* Answer Rate ring */}
           <div className="rounded-2xl border p-4 flex flex-col" style={{ background: cardBg, borderColor: border }}>
@@ -514,7 +581,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{totalCalls}</p>
             }
-            <p className="text-[10px]" style={{ color: textMuted }}>Training + live calls</p>
+            <p className="text-[10px]" style={{ color: textMuted }}>Real customer calls</p>
           </div>
 
           {/* Avg Duration */}
@@ -555,14 +622,14 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
         </div>
 
         {/* Main row */}
-        <div className="grid lg:grid-cols-3 gap-5">
+        <div className="grid lg:grid-cols-3 gap-4">
 
           {/* Chart + appointments */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3">
 
             {/* Call activity chart */}
             <div className="rounded-2xl border" style={{ background: cardBg, borderColor: border }}>
-              <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: border }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
                 <div>
                   <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.callActivity")}</h2>
                   <p className="text-[10px] mt-0.5" style={{ color: textMuted }}>{t("aiAgent.overview.callActivitySub")}</p>
@@ -573,17 +640,17 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                   Calls
                 </div>
               </div>
-              <div className="px-5 py-5">
+              <div className="px-4 py-4">
                 {loadingCalls
                   ? <div className="h-28 rounded-xl animate-pulse" style={{ background: isDark?"#161927":"#F9FAFB" }}/>
-                  : <BarChart data={weeklyData} isDark={isDark}/>
+                  : <LineChart data={weeklyData} isDark={isDark}/>
                 }
               </div>
             </div>
 
             {/* Recent calls — larger, richer list; each row opens the full transcript */}
-            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-              <div className="flex items-center gap-2 mb-3">
+            <div className="rounded-2xl border p-4" style={{ background: cardBg, borderColor: border }}>
+              <div className="flex items-center gap-2 mb-2.5">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)" }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.33c0 .4-.27.67-.67.67C4.4 12 2 6.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" fill="#FF3366"/>
@@ -639,11 +706,11 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
           </div>
 
           {/* Right sidebar */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
 
             {/* Phone status */}
             <div className="rounded-2xl border" style={{ background: cardBg, borderColor: border }}>
-              <div className="flex items-center justify-between px-4 py-3.5 border-b" style={{ borderColor: border }}>
+              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
                 <h2 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.channelStatus")}</h2>
                 <Link href="/app/ai-agent/phone" className="text-[10px] font-semibold hover:underline" style={{ color: "#FF6B35" }}>
                   {t("aiAgent.overview.setUp")}
@@ -798,7 +865,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
 
                 {isActive && noMicSignal && (
                   <p className="text-[9px] text-center mt-2" style={{ color: "#F59E0B" }}>
-                    Can't hear you — check your microphone input
+                    Can't hear you. Check your microphone input
                   </p>
                 )}
 
@@ -847,7 +914,6 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                 {[
                   { label: t("aiAgent.overview.trainAgent"),   href: "/app/ai-agent/training", sub: t("aiAgent.overview.trainAgentSub"),  color: "#FF3366" },
                   { label: t("aiAgent.overview.setupPhone"),   href: "/app/ai-agent/phone",    sub: t("aiAgent.overview.setupPhoneSub"),  color: "#FF6B35" },
-                  { label: t("aiAgent.overview.viewCalls"),    href: "/app/ai-agent/calls",    sub: t("aiAgent.overview.viewCallsSub"),   color: "#FF6B35" },
                 ].map((link) => (
                   <Link key={link.href} href={link.href}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"

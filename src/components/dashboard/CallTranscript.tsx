@@ -19,7 +19,7 @@ export interface CallRecord {
 }
 
 export function fmtDuration(secs?: number) {
-  if (!secs) return "—";
+  if (!secs) return "0s";
   if (secs < 60) return `${secs}s`;
   const m = Math.floor(secs / 60);
   const s = secs % 60;
@@ -49,7 +49,7 @@ export function fmtTimeAgo(iso: string): string {
 export function LangFlag({ lang }: { lang?: string }) {
   const map: Record<string, string> = { ar: "🇸🇦", en: "🇺🇸", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
   const label: Record<string, string> = { ar: "AR", en: "EN", fr: "FR", de: "DE", es: "ES" };
-  if (!lang) return <span className="text-xs text-gray-400">—</span>;
+  if (!lang) return <span className="text-xs text-gray-400">N/A</span>;
   return (
     <span className="flex items-center gap-1 text-xs">
       {map[lang] ?? ""} {label[lang] ?? lang.toUpperCase()}
@@ -58,7 +58,7 @@ export function LangFlag({ lang }: { lang?: string }) {
 }
 
 export function OutcomeBadge({ outcome, isDark }: { outcome?: string; isDark: boolean }) {
-  if (!outcome || outcome === "—") return <span className="text-xs" style={{ color: isDark ? "var(--dm-muted)" : "#9CA3AF" }}>—</span>;
+  if (!outcome || outcome === "N/A") return <span className="text-xs" style={{ color: isDark ? "var(--dm-muted)" : "#9CA3AF" }}>N/A</span>;
   const isBooked = /book|appointment|schedule/i.test(outcome);
   const isComp   = outcome === "completed";
   return (

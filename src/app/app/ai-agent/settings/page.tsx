@@ -508,7 +508,7 @@ export default function SettingsPage() {
         <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
           <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>Phone Agent Knowledge Base</h2>
           <p className="text-xs mb-4" style={{ color: textMuted }}>
-            What your real Phone Agent knows when answering customer calls. Separate from the Training interview — edit it here directly. Automatically combined with anything learned via Training or file/link analysis.
+            What your real Phone Agent knows when answering customer calls. Separate from the Training interview: edit it here directly. Automatically combined with anything learned via Training or file/link analysis.
           </p>
 
           <div className="grid sm:grid-cols-3 gap-3 mb-4">

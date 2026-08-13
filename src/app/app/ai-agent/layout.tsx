@@ -16,7 +16,6 @@ const ASSISTANT_HREFS = ["/app/ai-agent/overview", "/app/ai-agent/assistant-sett
 const PHONE_HREFS = [
   "/app/ai-agent/training",
   "/app/ai-agent/phone",
-  "/app/ai-agent/calls",
   "/app/ai-agent/settings",
 ];
 
@@ -43,7 +42,6 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
   const PHONE_TABS: Tab[] = [
     { label: t("aiAgent.tabs.training"), href: "/app/ai-agent/training" },
     { label: t("aiAgent.tabs.phone"),    href: "/app/ai-agent/phone", badge: t("aiAgent.tabs.soon") },
-    { label: t("aiAgent.tabs.calls"),    href: "/app/ai-agent/calls" },
     { label: t("aiAgent.tabs.settings"), href: "/app/ai-agent/settings" },
   ];
 

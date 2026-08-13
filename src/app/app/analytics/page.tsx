@@ -182,12 +182,12 @@ export default function AnalyticsPage() {
   const priorConvRate  = priorConvs > 0 ? Math.round((priorAppts / priorConvs) * 100) : 0;
   const convRateChange = analytics ? computeChange(convRate, priorConvRate) : null;
 
-  // Values: always real (when analytics loaded) or "—" (no data). NEVER hardcoded fake numbers.
+  // Values: always real (when analytics loaded) or "No data yet". NEVER hardcoded fake numbers.
   const kpiItems = [
-    { label: t("analytics.totalLeads"),     value: analytics ? String(totalLeads)    : "—", change: leadsChange,    note: "From AI agent channels"   },
-    { label: t("analytics.appointments"),   value: analytics ? String(totalAppts)    : "—", change: apptsChange,    note: "AI-booked appointments"    },
-    { label: t("analytics.conversations"),  value: analytics ? String(totalConvs)    : "—", change: convsChange,    note: "WhatsApp / Instagram / Web" },
-    { label: "Website Visits",              value: analytics ? String(websiteVisits) : "—", change: null,           note: "Unique published site views" },
+    { label: t("analytics.totalLeads"),     value: analytics ? String(totalLeads)    : "No data yet", change: leadsChange,    note: "From AI agent channels"   },
+    { label: t("analytics.appointments"),   value: analytics ? String(totalAppts)    : "No data yet", change: apptsChange,    note: "AI-booked appointments"    },
+    { label: t("analytics.conversations"),  value: analytics ? String(totalConvs)    : "No data yet", change: convsChange,    note: "WhatsApp / Instagram / Web" },
+    { label: "Website Visits",              value: analytics ? String(websiteVisits) : "No data yet", change: null,           note: "Unique published site views" },
   ];
 
   const hasChannelData = channelTable.some((r) => r.conversations > 0);
@@ -318,7 +318,7 @@ export default function AnalyticsPage() {
                       <td className="px-6 py-4"><span className="text-sm font-semibold text-[#111111]">{row.channel}</span></td>
                       <td className="px-6 py-4 text-sm text-[#374151]">{row.conversations}</td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-bold text-[#FF6B35]">{row.conversations > 0 ? row.conversations : "—"}</span>
+                        <span className="text-sm font-bold text-[#FF6B35]">{row.conversations}</span>
                       </td>
                     </tr>
                   ))}
@@ -332,8 +332,8 @@ export default function AnalyticsPage() {
             <p className="text-sm font-bold text-[#111111] mb-5">{t("analytics.aiPerformance")}</p>
             <div className="grid grid-cols-2 gap-0 divide-x divide-[#E5E7EB]">
               {[
-                { label: t("analytics.messagesHandled"), value: analytics ? String(totalConvs) : "—" },
-                { label: t("analytics.bookingsByAI"),    value: analytics ? String(totalAppts) : "—" },
+                { label: t("analytics.messagesHandled"), value: analytics ? String(totalConvs) : "No data yet" },
+                { label: t("analytics.bookingsByAI"),    value: analytics ? String(totalAppts) : "No data yet" },
               ].map((s) => (
                 <div key={s.label} className="px-6 first:pl-0 last:pr-0">
                   <p className="text-2xl font-bold text-[#FF6B35] mb-1">{s.value}</p>
