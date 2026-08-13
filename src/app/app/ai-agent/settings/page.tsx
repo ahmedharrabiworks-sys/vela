@@ -245,7 +245,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Two-column row */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
           {/* Identity — 3/5 */}
           <div className="lg:col-span-3 rounded-2xl border p-5 space-y-4" style={{ background: cardBg, borderColor: border }}>
@@ -349,7 +349,7 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.voice.pageTitle")}</h2>
           <p className="text-xs mb-4" style={{ color: textMuted }}>{t("aiAgent.voice.subtitle")}</p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
 
             {/* Voice list — 3/5 */}
             <div className="lg:col-span-3">

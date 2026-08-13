@@ -581,7 +581,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{totalCalls}</p>
             }
-            <p className="text-[10px]" style={{ color: textMuted }}>Real customer calls</p>
+            <p className="text-[10px]" style={{ color: textMuted }}>Customer calls handled by Vela</p>
           </div>
 
           {/* Avg Duration */}

@@ -52,8 +52,8 @@ const BASE = "https://vela-g8h4.vercel.app";
   // FIX 5: Calls Handled subtitle + value
   const callsHandledCard = await page.locator('text=Calls Handled').first();
   check("Calls Handled label present", await callsHandledCard.count() > 0);
-  const subtitleText = await page.locator('text=Real customer calls').count();
-  check('Calls Handled subtitle is "Real customer calls"', subtitleText > 0);
+  const subtitleText = await page.locator('text=Customer calls handled by Vela').count();
+  check('Calls Handled subtitle is "Customer calls handled by Vela"', subtitleText > 0);
   const oldSubtitle = await page.locator('text=Training + live calls').count();
   check("Old subtitle text gone", oldSubtitle === 0);
 
