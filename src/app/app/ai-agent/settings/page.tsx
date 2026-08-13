@@ -244,11 +244,14 @@ export default function SettingsPage() {
           <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.settings.subtitle")}</p>
         </div>
 
-        {/* Two-column row */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+        {/* Identity / Personality & Tone / Greeting Style — stacked, each card
+            sized to its own content. Was a height-matched 2-column grid; that
+            left a dead zone under Identity since its content is much shorter
+            than Personality + Greeting combined. */}
+        <div className="space-y-5">
 
-          {/* Identity — 3/5 */}
-          <div className="lg:col-span-3 rounded-2xl border p-5 space-y-4" style={{ background: cardBg, borderColor: border }}>
+          {/* Identity */}
+          <div className="rounded-2xl border p-5 space-y-4" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.settings.identity")}</h2>
 
             <div>
@@ -279,67 +282,63 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Right column — 2/5 */}
-          <div className="lg:col-span-2 flex flex-col gap-5">
-
-            {/* Personality */}
-            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.personality")}</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {PERSONALITIES.map((p) => {
-                  const active = settings.personality === p.value;
-                  return (
-                    <button
-                      key={p.value}
-                      onClick={() => set("personality", p.value)}
-                      className="flex flex-col gap-1 p-3 rounded-xl border text-left transition-all"
-                      style={{
-                        background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
-                        borderColor: active ? "#FF6B35" : border,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
-                          style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
-                        />
-                        <span className="text-xs font-semibold" style={{ color: textPrimary }}>{p.label}</span>
-                      </div>
-                      <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{p.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Greeting */}
-            <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.greeting")}</h2>
-              <div className="space-y-2">
-                {GREETING_STYLES.map((g) => {
-                  const active = settings.greetingStyle === g.value;
-                  return (
-                    <button
-                      key={g.value}
-                      onClick={() => set("greetingStyle", g.value)}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all"
-                      style={{
-                        background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
-                        borderColor: active ? "#FF6B35" : border,
-                      }}
-                    >
+          {/* Personality */}
+          <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+            <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.personality")}</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {PERSONALITIES.map((p) => {
+                const active = settings.personality === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => set("personality", p.value)}
+                    className="flex flex-col gap-1 p-3 rounded-xl border text-left transition-all"
+                    style={{
+                      background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
+                      borderColor: active ? "#FF6B35" : border,
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded-full border-2 shrink-0"
+                        className="w-2.5 h-2.5 rounded-full border-2 shrink-0"
                         style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
                       />
-                      <div>
-                        <p className="text-xs font-semibold" style={{ color: textPrimary }}>{g.label}</p>
-                        <p className="text-[10px]" style={{ color: textMuted }}>{g.description}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      <span className="text-xs font-semibold" style={{ color: textPrimary }}>{p.label}</span>
+                    </div>
+                    <p className="text-[10px] leading-relaxed pl-[18px]" style={{ color: textMuted }}>{p.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Greeting */}
+          <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
+            <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.greeting")}</h2>
+            <div className="space-y-2">
+              {GREETING_STYLES.map((g) => {
+                const active = settings.greetingStyle === g.value;
+                return (
+                  <button
+                    key={g.value}
+                    onClick={() => set("greetingStyle", g.value)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all"
+                    style={{
+                      background:  active ? (isDark ? "rgba(255,107,53,0.08)" : "#FFF5F0") : inputBg,
+                      borderColor: active ? "#FF6B35" : border,
+                    }}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full border-2 shrink-0"
+                      style={{ borderColor: "#FF6B35", background: active ? "#FF6B35" : "transparent" }}
+                    />
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: textPrimary }}>{g.label}</p>
+                      <p className="text-[10px]" style={{ color: textMuted }}>{g.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -349,11 +348,74 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.voice.pageTitle")}</h2>
           <p className="text-xs mb-4" style={{ color: textMuted }}>{t("aiAgent.voice.subtitle")}</p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+          {/* Speaking Speed panel now sits above the voice list, full width and
+              sized to its own content -- was a narrow column height-matched
+              against the ~10-item voice list beside it, leaving a large void
+              below the Preview speed button. */}
+          <div className="rounded-xl border p-4 mb-5" style={{ background: inputBg, borderColor: border }}>
+            <div className="max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.voice.speakingSpeed")}</h3>
+                <span
+                  className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0", color: "#FF6B35" }}
+                >
+                  {speed.toFixed(2)}×
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.7}
+                max={1.2}
+                step={0.05}
+                value={speed}
+                onChange={(e) => set("speed", parseFloat(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{ background: `linear-gradient(to right, #FF6B35 ${speedPct}%, ${isDark ? "var(--dm-border)" : "#E5E7EB"} ${speedPct}%)` }}
+              />
+              <div className="flex justify-between mt-1.5">
+                <span className="text-[9px]" style={{ color: textMuted }}>0.7× Slower</span>
+                <span className="text-[9px]" style={{ color: textMuted }}>1.0× Default</span>
+                <span className="text-[9px]" style={{ color: textMuted }}>1.2× Faster</span>
+              </div>
+              <p className="text-xs mt-3" style={{ color: textMuted }}>{speedLabel}</p>
+              <button
+                onClick={() => playPreview(settings.voiceId ?? DEFAULT_VOICE_ID)}
+                className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all"
+                style={{
+                  background: isDark ? "var(--dm-card2)" : "#F3F4F6",
+                  border: `1px solid ${generating === settings.voiceId || playing === settings.voiceId ? "#FF6B35" : border}`,
+                  color: generating === settings.voiceId || playing === settings.voiceId ? "#FF6B35" : textMuted,
+                }}
+              >
+                {generating === settings.voiceId ? (
+                  <>
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                    Generating…
+                  </>
+                ) : playing === settings.voiceId ? (
+                  <>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <rect x="2" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
+                      <rect x="5.5" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
+                    </svg>
+                    {t("aiAgent.voice.stop")}
+                  </>
+                ) : (
+                  <>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M3 2l5 3-5 3V2z" fill="currentColor"/>
+                    </svg>
+                    {t("aiAgent.voice.previewSpeed")}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
 
-            {/* Voice list — 3/5 */}
-            <div className="lg:col-span-3">
-              <h3 className="text-xs font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.voice.selectVoice")}</h3>
+          {/* Voice list — full width */}
+          <div>
+            <h3 className="text-xs font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.voice.selectVoice")}</h3>
               {(["male", "female"] as const).map((gender) => (
                 <div key={gender} className={gender === "female" ? "mt-4" : ""}>
                   <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: textMuted }}>
@@ -438,67 +500,6 @@ export default function SettingsPage() {
                 <p className="text-xs mt-3 px-1" style={{ color: textMuted }}>&#x2139; {previewNote}</p>
               )}
             </div>
-
-            {/* Speed — 2/5 */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.voice.speakingSpeed")}</h3>
-                <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ background: isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0", color: "#FF6B35" }}
-                >
-                  {speed.toFixed(2)}×
-                </span>
-              </div>
-              <input
-                type="range"
-                min={0.7}
-                max={1.2}
-                step={0.05}
-                value={speed}
-                onChange={(e) => set("speed", parseFloat(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                style={{ background: `linear-gradient(to right, #FF6B35 ${speedPct}%, ${isDark ? "var(--dm-border)" : "#E5E7EB"} ${speedPct}%)` }}
-              />
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[9px]" style={{ color: textMuted }}>0.7× Slower</span>
-                <span className="text-[9px]" style={{ color: textMuted }}>1.0× Default</span>
-                <span className="text-[9px]" style={{ color: textMuted }}>1.2× Faster</span>
-              </div>
-              <p className="text-xs mt-3" style={{ color: textMuted }}>{speedLabel}</p>
-              <button
-                onClick={() => playPreview(settings.voiceId ?? DEFAULT_VOICE_ID)}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all"
-                style={{
-                  background: isDark ? "var(--dm-card2)" : "#F3F4F6",
-                  border: `1px solid ${generating === settings.voiceId || playing === settings.voiceId ? "#FF6B35" : border}`,
-                  color: generating === settings.voiceId || playing === settings.voiceId ? "#FF6B35" : textMuted,
-                }}
-              >
-                {generating === settings.voiceId ? (
-                  <>
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                    Generating…
-                  </>
-                ) : playing === settings.voiceId ? (
-                  <>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <rect x="2" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
-                      <rect x="5.5" y="2" width="2.5" height="6" rx="0.5" fill="currentColor"/>
-                    </svg>
-                    {t("aiAgent.voice.stop")}
-                  </>
-                ) : (
-                  <>
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M3 2l5 3-5 3V2z" fill="currentColor"/>
-                    </svg>
-                    {t("aiAgent.voice.previewSpeed")}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Phone Agent Knowledge Base — full-width, editable directly, separate from
