@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { DEFAULT_VOICE_ID, clampSpeed } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, DEFAULT_SPEED, clampSpeed } from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as { voiceId?: string; speed?: number; text?: string };
   const voiceId = body.voiceId ?? DEFAULT_VOICE_ID;
-  const speed   = clampSpeed(body.speed ?? 0.85);
+  const speed   = clampSpeed(body.speed ?? DEFAULT_SPEED);
   const text    = body.text ?? SAMPLE_TEXT;
 
   // eleven_turbo_v2_5: faster generation than eleven_multilingual_v2, still multilingual

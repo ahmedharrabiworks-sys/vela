@@ -16,6 +16,7 @@ import {
   isVapiEjection,
   vapiErrorText,
   requestMicrophoneAccess,
+  DEFAULT_SPEED,
   type TrainingContext,
 } from "@/lib/vapi-agent-config";
 
@@ -117,7 +118,7 @@ export default function TrainingPage() {
   const [callDuration, setCallDuration] = useState(0);
   const [noMicSignal, setNoMicSignal] = useState(false);
   const voiceIdRef           = useRef(DEFAULT_VOICE_ID);
-  const speedRef             = useRef(0.85);
+  const speedRef             = useRef(DEFAULT_SPEED);
   const agentLanguageRef     = useRef<string | undefined>(undefined);
   const trainingContextRef   = useRef<TrainingContext>({});
   const linesRef             = useRef<TLine[]>([]);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import { getDefaultVoiceId, getVoiceConfig, clampSpeed } from "@/lib/vapi-agent-config";
+import { getDefaultVoiceId, getVoiceConfig, clampSpeed, DEFAULT_SPEED } from "@/lib/vapi-agent-config";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
   if (assistantId && vapiKey) {
     const lang    = (settings.language as string | undefined) || "";
     const voiceId = (settings.voiceId  as string | undefined) || getDefaultVoiceId(lang);
-    const speed   = typeof settings.speed === "number" ? settings.speed : 0.85;
+    const speed   = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
     fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${vapiKey}`, "Content-Type": "application/json" },

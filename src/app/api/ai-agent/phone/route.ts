@@ -3,6 +3,7 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { ensureTenant } from "@/lib/ensure-tenant";
 import {
   DEFAULT_VOICE_ID,
+  DEFAULT_SPEED,
   getDefaultVoiceId,
   getTranscriberConfig,
   getSpeakingPlanConfig,
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
   const language  = (agentSettings.language as string | undefined) || "";
   // Owner's explicit choice wins; smart Arabic default only when nothing is saved
   const voiceId   = (agentSettings.voiceId as string | undefined) || getDefaultVoiceId(language);
-  const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : 0.85;
+  const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : DEFAULT_SPEED;
 
   // App URL for webhook serverUrl
   const appUrl = process.env.NEXT_PUBLIC_APP_URL

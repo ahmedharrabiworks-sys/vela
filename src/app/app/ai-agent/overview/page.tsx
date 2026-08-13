@@ -16,6 +16,7 @@ import {
   isVapiEjection,
   vapiErrorText,
   requestMicrophoneAccess,
+  DEFAULT_SPEED,
 } from "@/lib/vapi-agent-config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -109,7 +110,18 @@ interface LiveContext {
   agentSettings: { tone?: string; language?: string };
 }
 
-interface CallRecord { id: string; created_at: string; duration_seconds?: number; outcome?: string }
+interface CallRecord { id: string; created_at: string; duration_seconds?: number; outcome?: string; call_type?: string }
+
+// Overview's stats (Answer Rate, Calls Handled, Avg Duration, Voice Minutes, Call
+// Activity, Recent Calls) must reflect only real inbound customer calls to the
+// business's phone number -- never internal Training interviews or "Talk to Vela"
+// business-advisor sessions. Real customer calls are tagged call_type:"live" by
+// the Vapi end-of-call webhook (call-webhook/route.ts); Training tags its own
+// call_type:"training" explicitly (training/page.tsx). Any call_type other than
+// "live" is internal/testing and is excluded here.
+function isCustomerCall(c: CallRecord): boolean {
+  return c.call_type === "live";
+}
 
 function buildContextString(ctx: LiveContext): string {
   const lines = [
@@ -146,7 +158,7 @@ export default function OverviewPage() {
   const [settingsReady, setSettingsReady] = useState(false);
   const [noMicSignal, setNoMicSignal]   = useState(false);
   const voiceIdRef     = useRef(DEFAULT_VOICE_ID);
-  const speedRef       = useRef(0.85);
+  const speedRef       = useRef(DEFAULT_SPEED);
   const convStyleRef   = useRef("warm");
   const liveContextRef = useRef<LiveContext | null>(null);
   const prefLangRef    = useRef<string | undefined>(undefined);
@@ -183,7 +195,7 @@ export default function OverviewPage() {
         const res = await fetch("/api/ai-agent/calls");
         if (res.ok) {
           const data = await res.json() as { calls: CallRecord[] };
-          setCallRecords(data.calls ?? []);
+          setCallRecords((data.calls ?? []).filter(isCustomerCall));
         }
       } catch { /* table may not exist yet */ }
       setLoadingCalls(false);

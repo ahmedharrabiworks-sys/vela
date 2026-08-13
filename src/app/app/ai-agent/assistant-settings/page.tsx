@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
-import { DEFAULT_VOICE_ID, VOICES, getDefaultVoiceId, clampSpeed } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, DEFAULT_SPEED, VOICES, getDefaultVoiceId, clampSpeed } from "@/lib/vapi-agent-config";
 
 const CONV_STYLES = [
   { value: "direct",   label: "Direct",   description: "Straight to the answer. No filler." },
@@ -23,7 +23,7 @@ const LANGUAGES = [
 export default function AssistantSettingsPage() {
   const { isDark } = useAgentTheme();
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE_ID);
-  const [speed, setSpeed]           = useState(0.85);
+  const [speed, setSpeed]           = useState(DEFAULT_SPEED);
   const [convStyle, setConvStyle]   = useState("warm");
   const [language, setLanguage]     = useState("");
   const [saving, setSaving]         = useState(false);

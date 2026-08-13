@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_VOICE_ID, VOICES, getDefaultVoiceId } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, DEFAULT_SPEED, VOICES, getDefaultVoiceId } from "@/lib/vapi-agent-config";
 
 export default function VoicePage() {
   const { isDark } = useAgentTheme();
   const { t } = useI18n();
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE_ID);
-  const [speed, setSpeed]         = useState(0.85);
+  const [speed, setSpeed]         = useState(DEFAULT_SPEED);
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
   const [loading, setLoading]     = useState(true);

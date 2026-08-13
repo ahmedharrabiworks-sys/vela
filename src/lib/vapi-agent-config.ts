@@ -13,8 +13,8 @@ export interface VoiceEntry {
 
 export const VOICES: VoiceEntry[] = [
   // Male
-  { id: "Qrl71rx6Yg8RvyPYRGCQ", name: "Théo",      description: "Warm and expressive, natural ease",          gender: "male" },
   { id: "HKFOb9iktHA85uKXydRT", name: "Mateo",     description: "Smooth and confident, clear delivery",       gender: "male" },
+  { id: "Qrl71rx6Yg8RvyPYRGCQ", name: "Théo",      description: "Warm and expressive, natural ease",          gender: "male" },
   { id: "Czw3Dn181ypdrCOnPfif", name: "Felix",     description: "Crisp and measured, calm authority",         gender: "male" },
   { id: "TUKJhQmz3RPYBNAgC5A1", name: "Miles",     description: "Natural and grounded, easy to trust",        gender: "male" },
   { id: "DANw8bnAVbjDEHwZIoYa", name: "Sami",      description: "Deep and resonant, commanding presence",     gender: "male" },
@@ -26,8 +26,11 @@ export const VOICES: VoiceEntry[] = [
   { id: "u0TsaWvt0v8migutHM3M", name: "Nour",      description: "Smooth and expressive, balanced tone",       gender: "female" },
 ];
 
-// ── Default ElevenLabs voice ID (Miles — English male) ────────────────────────
-export const DEFAULT_VOICE_ID = "TUKJhQmz3RPYBNAgC5A1";
+// ── Default ElevenLabs voice ID (Mateo — English male) ─────────────────────────
+export const DEFAULT_VOICE_ID = "HKFOb9iktHA85uKXydRT";
+
+// ── Default speaking speed ──────────────────────────────────────────────────────
+export const DEFAULT_SPEED = 1.1;
 
 // ── Language-aware default — only used when NO voice is explicitly saved ──────
 // Owner's explicit choice always wins. This only applies when voiceId is absent.

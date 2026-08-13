@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_VOICE_ID, VOICES } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, DEFAULT_SPEED, VOICES } from "@/lib/vapi-agent-config";
 
 const PERSONALITIES = [
   { value: "friendly",     label: "Friendly",     description: "Warm, approachable, builds rapport quickly" },
@@ -19,6 +19,7 @@ const GREETING_STYLES = [
 ];
 
 const LANGUAGES = [
+  { value: "",   label: "Auto-detect" },
   { value: "en", label: "English" },
   { value: "ar", label: "Arabic (العربية)" },
   { value: "fr", label: "French (Français)" },
@@ -42,11 +43,11 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     agentName:          "Vela",
     voiceId:            DEFAULT_VOICE_ID,
-    speed:              0.85,
+    speed:              DEFAULT_SPEED,
     personality:        "professional",
     customInstructions: "",
     greetingStyle:      "warm",
-    language:           "en",
+    language:           "",
   });
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
@@ -101,7 +102,7 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
-  const speed    = settings.speed ?? 0.85;
+  const speed    = settings.speed ?? DEFAULT_SPEED;
   const speedPct = ((speed - 0.7) / 0.5) * 100;
 
   const inputClass = "w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 transition-all";
@@ -171,7 +172,7 @@ export default function SettingsPage() {
               <div>
                 <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>{t("aiAgent.settings.language")}</label>
                 <select
-                  value={settings.language ?? "en"}
+                  value={settings.language ?? ""}
                   onChange={(e) => set("language", e.target.value)}
                   className={inputClass}
                   style={inputStyle}

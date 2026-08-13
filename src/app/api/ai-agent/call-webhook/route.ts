@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import {
   DEFAULT_VOICE_ID,
+  DEFAULT_SPEED,
   getDefaultVoiceId,
   getTranscriberConfig,
   getSpeakingPlanConfig,
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
     const language     = (settings.language as string | undefined) || "";
     // Owner's explicit choice wins; smart Arabic default only when nothing is saved
     const voiceId      = (settings.voiceId as string | undefined) || getDefaultVoiceId(language);
-    const speed        = typeof settings.speed === "number" ? settings.speed : 0.85;
+    const speed        = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
     const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings);
