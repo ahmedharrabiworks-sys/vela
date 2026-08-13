@@ -7,6 +7,29 @@ import { usePlan } from "@/lib/plans";
 import { PLAN_CONFIG } from "@/lib/plan-config";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import {
+  PhoneInput,
+  PHONE_COUNTRIES,
+  DEFAULT_PHONE_COUNTRY,
+  findPhoneCountryByName,
+  type PhoneCountry,
+} from "@/components/ui/PhoneInput";
+
+// Existing tenants may have a phone number saved before this field had real
+// validation (raw digits, missing country code, etc). Parse it if possible so
+// the country selector starts on the right country; otherwise show the raw
+// value as-is in the national-number field so the owner can see and fix it,
+// rather than silently discarding or guessing at their original input.
+function initPhoneFromRaw(raw: string, fallbackCountry: PhoneCountry): { country: PhoneCountry; national: string } {
+  if (!raw.trim()) return { country: fallbackCountry, national: "" };
+  const parsed = parsePhoneNumberFromString(raw, raw.trim().startsWith("+") ? undefined : fallbackCountry.iso2);
+  if (parsed?.isValid()) {
+    const match = PHONE_COUNTRIES.find((c) => c.iso2 === parsed.country);
+    return { country: match ?? fallbackCountry, national: parsed.formatNational() };
+  }
+  return { country: fallbackCountry, national: raw };
+}
 
 type Section = "business" | "ai" | "notifications" | "billing";
 
@@ -141,6 +164,10 @@ export default function SettingsPage() {
   const [businessName, setBusinessName] = useState("");
   const [industry, setIndustry]         = useState("");
   const [phone, setPhone]               = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(DEFAULT_PHONE_COUNTRY);
+  const [phoneValid, setPhoneValid]     = useState(true);
+  const [phoneE164, setPhoneE164]       = useState<string | null>(null);
+  const [phoneSubmitAttempted, setPhoneSubmitAttempted] = useState(false);
   const [city, setCity]                 = useState("");
   const [website, setWebsite]           = useState("");
   const [services, setServices]         = useState("");
@@ -239,6 +266,20 @@ export default function SettingsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Once the raw phone value has settled from load(), parse it once so the
+  // country selector starts on the right country. If it doesn't parse (e.g.
+  // a pre-existing malformed value), fall back to the business's country and
+  // leave the raw value visible in the field for the owner to fix, rather
+  // than silently discarding or guessing at it.
+  useEffect(() => {
+    if (loading) return;
+    const fallback = findPhoneCountryByName(getProfile()?.country ?? "") ?? DEFAULT_PHONE_COUNTRY;
+    const { country: c, national } = initPhoneFromRaw(phone, fallback);
+    setPhoneCountry(c);
+    setPhone(national);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   // Fetch usage when billing tab opens (lazy — only runs once per mount)
   useEffect(() => {
     if (section !== "billing" || usage !== null || usageLoading) return;
@@ -265,15 +306,20 @@ export default function SettingsPage() {
   }
 
   const handleSaveBusiness = async () => {
+    if (phone.trim() && !phoneValid) {
+      setPhoneSubmitAttempted(true);
+      return;
+    }
     setSavingSection("business");
-    saveProfile({ businessName, businessType: industry, phone, city });
+    const phoneToSave = phone.trim() ? (phoneE164 ?? "") : "";
+    saveProfile({ businessName, businessType: industry, phone: phoneToSave, city });
     try {
       if (userId) {
         const supabase = getSupabase();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
           .from("tenants")
-          .upsert({ owner_id: userId, business_name: businessName, industry, city, phone, website, plan: getProfile()?.plan ?? "starter" }, { onConflict: "owner_id" });
+          .upsert({ owner_id: userId, business_name: businessName, industry, city, phone: phoneToSave, website, plan: getProfile()?.plan ?? "starter" }, { onConflict: "owner_id" });
         setToast(t("settings.billing.toastSaved"));
       }
     } catch {
@@ -476,9 +522,15 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-[#6B7280] block mb-1.5">{t("settings.businessInfo.phone")}</label>
-                  <input type="text" value={phone} onChange={biz(setPhone)}
-                    placeholder="+971 50 000 0000"
-                    className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
+                  <PhoneInput
+                    country={phoneCountry}
+                    onCountryChange={(c) => { setPhoneCountry(c); setBusinessDirty(true); }}
+                    value={phone}
+                    onChange={(v) => { setPhone(v); setBusinessDirty(true); }}
+                    onValidityChange={(valid, e164) => { setPhoneValid(valid); setPhoneE164(e164); }}
+                    forceShowError={phoneSubmitAttempted}
+                    required={false}
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-[#6B7280] block mb-1.5">{t("settings.businessInfo.email")}</label>

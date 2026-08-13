@@ -17,6 +17,7 @@
     "@vapi-ai/web": "^2.6.1",
     "framer-motion": "^12.42.0",
     "gsap": "^3.15.0",
+    "libphonenumber-js": "^1.13.10",
     "next": "14.2.35",
     "openai": "^6.45.0",
     "otplib": "^13.4.1",

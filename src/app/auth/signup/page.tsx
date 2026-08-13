@@ -8,6 +8,12 @@ import { saveProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { PLANS } from "@/lib/pricing";
 import { TAGLINES, INHERIT_LINE, CARD_INDICES } from "@/components/landing/Pricing";
+import {
+  PhoneInput,
+  DEFAULT_PHONE_COUNTRY,
+  findPhoneCountryByName,
+  type PhoneCountry,
+} from "@/components/ui/PhoneInput";
 
 /* ── All countries with dial codes ── */
 const COUNTRIES = [
@@ -290,10 +296,24 @@ function SignupPageContent() {
   const [country, setCountry] = useState(DEFAULT_COUNTRY);
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(DEFAULT_PHONE_COUNTRY);
+  const [phoneCountryTouched, setPhoneCountryTouched] = useState(false);
+  const [phoneValid, setPhoneValid] = useState(false);
+  const [phoneE164, setPhoneE164] = useState<string | null>(null);
+  const [phoneSubmitAttempted, setPhoneSubmitAttempted] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [detectedType, setDetectedType] = useState("");
   const [aiDetecting, setAiDetecting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Default the phone country to whatever business country was picked above,
+  // reducing friction since most owners' phone numbers match their business
+  // country. Stops once the owner explicitly picks a different phone country.
+  useEffect(() => {
+    if (phoneCountryTouched) return;
+    const match = findPhoneCountryByName(country.name);
+    if (match) setPhoneCountry(match);
+  }, [country, phoneCountryTouched]);
 
   /* Step 3 */
   const [plan, setPlan] = useState("pro");
@@ -302,6 +322,10 @@ function SignupPageContent() {
 
   const handleStep2 = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phoneValid) {
+      setPhoneSubmitAttempted(true);
+      return;
+    }
     setDetecting(true);
     setTimeout(() => {
       const detected = detectBusinessType(businessDesc);
@@ -328,7 +352,7 @@ function SignupPageContent() {
             detectedType,
             country: country.name,
             city,
-            phone: country.dial + " " + phone,
+            phone: phoneE164 ?? "",
             plan,
           }),
         });
@@ -346,7 +370,7 @@ function SignupPageContent() {
           businessType: detectedType,
           country: country.name,
           city,
-          phone: country.dial + " " + phone,
+          phone: phoneE164 ?? "",
           plan,
         });
         if (detectedType) localStorage.setItem("vela_business_type", detectedType);
@@ -371,7 +395,7 @@ function SignupPageContent() {
           detectedType,
           country: country.name,
           city,
-          phone: country.dial + " " + phone,
+          phone: phoneE164 ?? "",
           plan,
         }),
       });
@@ -404,7 +428,7 @@ function SignupPageContent() {
         businessType: detectedType,
         country: country.name,
         city,
-        phone: country.dial + " " + phone,
+        phone: phoneE164 ?? "",
         plan,
       });
       if (detectedType) localStorage.setItem("vela_business_type", detectedType);
@@ -583,20 +607,22 @@ function SignupPageContent() {
                 <CountrySelect value={country} onChange={(c) => setCountry(c)} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>City</label>
-                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Dubai" required className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Phone Number</label>
-                  <div className="flex gap-2">
-                    <div className="flex items-center justify-center bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3 text-[#6B7280] text-xs font-mono whitespace-nowrap shrink-0">
-                      {country.dial}
-                    </div>
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="50 000 0000" required className={inputCls} />
-                  </div>
-                </div>
+              <div>
+                <label className={labelCls}>City</label>
+                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Dubai" required className={inputCls} />
+              </div>
+
+              <div>
+                <label className={labelCls}>Phone Number</label>
+                <PhoneInput
+                  country={phoneCountry}
+                  onCountryChange={(c) => { setPhoneCountry(c); setPhoneCountryTouched(true); }}
+                  value={phone}
+                  onChange={setPhone}
+                  onValidityChange={(valid, e164) => { setPhoneValid(valid); setPhoneE164(e164); }}
+                  forceShowError={phoneSubmitAttempted}
+                  required
+                />
               </div>
 
               <div className="flex gap-3 pt-1">
