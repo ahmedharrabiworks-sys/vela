@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { createSupabaseAdmin } from "@/lib/supabase-server";
 
 export async function GET(
   req: NextRequest,
@@ -13,6 +14,31 @@ export async function GET(
   // embed) -- passed through to the widget so conversations are tagged
   // with the correct channel.
   const source = req.nextUrl.searchParams.get("source") === "site" ? "site" : "";
+
+  // Round 5 FIX 7: the floating button was a fixed Vela-brand gradient
+  // regardless of the site it's embedded on -- same fix as the widget
+  // iframe's own chat UI (chat-client.tsx), applied here too since this is
+  // the actual bubble a visitor sees first, before opening the chat.
+  let accentColor: string | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = createSupabaseAdmin() as any;
+    const { data: site } = await admin
+      .from("websites")
+      .select("published_spec")
+      .eq("tenant_id", tenantId)
+      .eq("is_published", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const spec = site?.published_spec as { designDNA?: { palette?: { accent?: string } } } | null;
+    const accent = spec?.designDNA?.palette?.accent;
+    if (typeof accent === "string" && /^#[0-9a-f]{6}$/i.test(accent)) accentColor = accent;
+  } catch { /* fall back to brand gradient below */ }
+  const btnGradient = accentColor
+    ? `linear-gradient(135deg,${accentColor},${accentColor})`
+    : "linear-gradient(135deg,#FF6B35,#FF3366)";
+  const btnShadowColor = accentColor ? `${accentColor}73` : "rgba(255,107,53,0.45)"; // 45% alpha hex suffix
 
   const js = `
 (function () {
@@ -29,9 +55,9 @@ export async function GET(
   btn.style.cssText = [
     'position:fixed', 'bottom:24px', 'right:24px',
     'width:56px', 'height:56px', 'border-radius:50%',
-    'background:linear-gradient(135deg,#FF6B35,#FF3366)',
+    'background:${btnGradient}',
     'border:none', 'cursor:pointer', 'z-index:9998',
-    'box-shadow:0 4px 20px rgba(255,107,53,0.45)',
+    'box-shadow:0 4px 20px ${btnShadowColor}',
     'display:flex', 'align-items:center', 'justify-content:center',
     'transition:transform 0.2s'
   ].join(';');

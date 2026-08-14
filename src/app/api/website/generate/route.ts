@@ -438,23 +438,46 @@ const CATEGORY_TO_LABEL: Record<string, string> = {
 // signal than either category vocabulary, so it is now checked FIRST for
 // every business, regardless of category -- the category dicts remain only
 // as a last-resort fallback when no pattern matches.
+// Round 5 FIX 5: order matters -- .find() returns the FIRST match, and a
+// second confirmed collision was found beyond the boutique/hotel one below:
+// "spa" is a bare alternative in the salon/spa pattern, but hotel
+// descriptions routinely mention "spa services" as an AMENITY, not as the
+// business itself -- a hotel description matched "salon styling chair..."
+// before ever reaching the hotel pattern. Same risk exists for "bar" and
+// "gym" (also common hotel amenities). Fix: primary-establishment patterns
+// that commonly bundle amenities in their own description (hotel, real
+// estate, restaurant) are now checked BEFORE the single-amenity-word
+// patterns (bar, salon/spa, gym) that are frequently mentioned as a feature
+// of a different business, not the business itself.
 const DESCRIPTION_HERO_QUERY_PATTERNS: { pattern: RegExp; query: string }[] = [
   { pattern: /\b(coffee\s*shop|caf[eé]|espresso\s*bar|coffee\s*house|coffee\s*roaster)\b/i, query: "latte art coffee cup close-up warm natural light editorial" },
   { pattern: /\b(bakery|patisserie|pastry\s*shop)\b/i, query: "artisan bakery pastry display warm natural light editorial" },
   { pattern: /\b(florist|flower\s*shop)\b/i, query: "florist flower arrangement close-up natural light editorial" },
   { pattern: /\b(interior\s*design(er)?|interior\s*studio)\b/i, query: "modern living room styled interior natural light editorial" },
-  { pattern: /\b(boutique|clothing\s*store|fashion\s*store)\b/i, query: "boutique retail interior clean minimal light product display" },
+  // Round 5 FIX 5: bare "boutique" is not retail-specific -- "boutique hotel"
+  // is a standard hospitality term, so a hotel description matched this
+  // pattern before ever reaching the real hotel pattern below (.find()
+  // returns the first match), returning a clothing-rack retail interior
+  // query for a hotel's hero. Confirmed root cause. Now requires an actual
+  // retail noun alongside "boutique" so it can't fire on "boutique hotel",
+  // "boutique law firm", "boutique real estate agency", etc.
+  { pattern: /\b(boutique\s*(store|shop)|clothing\s*(store|boutique)|fashion\s*(store|boutique))\b/i, query: "boutique retail interior clean minimal light product display" },
   { pattern: /\b(book\s*shop|bookstore)\b/i, query: "cozy bookstore interior warm natural light editorial" },
   { pattern: /\b(barber\s*shop|barbershop)\b/i, query: "barbershop interior styling chair warm light editorial" },
   { pattern: /\b(photography\s*studio|photo\s*studio)\b/i, query: "photography studio interior natural light editorial minimal" },
-  { pattern: /\b(bar|pub|cocktail\s*lounge)\b/i, query: "cocktail bar interior warm ambient lighting editorial" },
   { pattern: /\b(dental|dentist|orthodont)/i, query: "bright dental clinic reception modern clean professional photography" },
   { pattern: /\b(clinic|medical practice|physio|dermatolog|health\s*cent(er|re)|vet(erinary)?)\b/i, query: "modern medical clinic reception bright white clean minimal" },
+  { pattern: /\b(real\s*estate|realtor|property|villa|apartment for sale)\b/i, query: "luxury villa exterior architecture daylight clean modern editorial" },
+  // hotel checked before restaurant: a hotel description mentioning its own
+  // on-site restaurant as an amenity should still resolve to the hotel query.
+  { pattern: /\b(hotel|resort|boutique hotel|guesthouse)\b/i, query: "luxury hotel exterior pool architecture golden hour editorial" },
+  { pattern: /\b(restaurant|bistro|dining|eatery)\b/i, query: "elegant restaurant dining room warm ambiance editorial" },
+  // Single-amenity-word patterns -- checked LAST, after every primary-
+  // establishment pattern above, since these words are commonly mentioned
+  // as a FEATURE of a hotel/restaurant/gym rather than the business itself.
   { pattern: /\bgym|crossfit|fitness\s*(studio|center|centre)|martial arts|personal training\b/i, query: "premium gym training floor equipment high energy bright editorial" },
   { pattern: /\b(hair\s*salon|salon|spa|hairdress|barber)\b/i, query: "salon styling chair interior warm light elegant minimal" },
-  { pattern: /\b(real\s*estate|realtor|property|villa|apartment for sale)\b/i, query: "luxury villa exterior architecture daylight clean modern editorial" },
-  { pattern: /\b(restaurant|bistro|dining|eatery)\b/i, query: "elegant restaurant dining room warm ambiance editorial" },
-  { pattern: /\b(hotel|resort|boutique hotel|guesthouse)\b/i, query: "luxury hotel exterior pool architecture golden hour editorial" },
+  { pattern: /\b(bar|pub|cocktail\s*lounge)\b/i, query: "cocktail bar interior warm ambient lighting editorial" },
   { pattern: /\b(law\s*firm|attorney|lawyer|legal\s*(services|practice))\b/i, query: "law firm office dark wood bookshelf professional editorial" },
   { pattern: /\b(saas|software|tech\s*startup|app\s*(platform|company))\b/i, query: "modern tech office open workspace bright airy minimal architecture" },
   { pattern: /\b(agency|creative\s*studio|marketing\s*firm|design\s*agency)\b/i, query: "creative studio workspace industrial bright open modern editorial" },
@@ -2310,9 +2333,18 @@ function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string 
   // concept of "no photos, no stock" at all, so it silently regenerated real
   // Unsplash queries for any photo section even on a site the owner had
   // explicitly asked to keep photo-free.
+  // Round 5 FIX 2: this instruction previously said "regenerate imageQuery
+  // values... same rules as original generation" with no scope limit --
+  // confirmed live: a text-only edit request ("remove X, make Y longer")
+  // caused an unrelated section's photo to silently change. GPT was reading
+  // "regenerate" as license to touch any image, not just the one relevant
+  // to the requested edit. Now explicit: existing imageQuery/imageQueries
+  // are copied through unchanged by default; only touched for a section
+  // the request specifically names/concerns, or one whose entire content is
+  // being rewritten as part of the requested change.
   const imageInstruction = noPhotoMode
     ? `IMAGES: This site has NO photography and the owner did not ask for stock photos. Do NOT add imageQuery or imageQueries to any section. Do NOT add gallery-grid or any section that depends on photography. If the existing spec has imageQuery/imageQueries fields, remove them. Use typography, color, and icons instead.`
-    : `IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.${noPhotoNote}`;
+    : `IMAGE QUERIES — DO NOT CHANGE UNLESS ASKED: Copy every section's existing imageQuery/imageQueries through UNCHANGED by default. Only write a new imageQuery/imageQueries value for a section if EITHER (a) the change request specifically concerns images/photos (e.g. "change the photo", "add more images", "use a different hero picture"), OR (b) you are rewriting that section's entire content as the requested change (e.g. the request replaces what that section is about, not just a wording tweak) and the old image query no longer matches the new content. A section the owner did not mention, and whose content you are not rewriting, MUST keep its exact existing imageQuery/imageQueries value — do not "refresh" or "improve" it as a side effect.${noPhotoNote}`;
   return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.

@@ -9,12 +9,20 @@ export default function WidgetChat({
   businessName,
   greeting,
   channel,
+  accentColor,
 }: {
   tenantId: string;
   businessName: string;
   greeting: string;
   channel: string;
+  accentColor?: string | null;
 }) {
+  // Round 5 FIX 7: was a fixed Vela-brand gradient regardless of the site
+  // it's embedded on. Falls back to the Vela brand gradient only when no
+  // site accent color was found (e.g. an externally pasted embed).
+  const gradient = accentColor
+    ? `linear-gradient(135deg,${accentColor},${accentColor})`
+    : "linear-gradient(135deg,#FF6B35,#FF3366)";
   const [messages, setMessages] = useState<Msg[]>([
     { id: "welcome", role: "assistant", content: greeting },
   ]);
@@ -102,7 +110,7 @@ export default function WidgetChat({
 
       {/* Header */}
       <div className="px-4 py-3.5 flex items-center gap-3 border-b border-[#F3F4F6] shrink-0"
-        style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+        style={{ background: gradient }}>
         <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm shrink-0">
           {businessName[0]?.toUpperCase() ?? "V"}
         </div>
@@ -121,7 +129,7 @@ export default function WidgetChat({
           <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mr-2 mt-0.5"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+                style={{ background: gradient }}>
                 AI
               </div>
             )}
@@ -131,7 +139,7 @@ export default function WidgetChat({
                   ? "text-white rounded-br-sm"
                   : "text-[#111111] bg-white border border-[#E5E7EB] rounded-bl-sm shadow-sm"
               }`}
-              style={msg.role === "user" ? { background: "linear-gradient(135deg,#FF6B35,#FF3366)" } : {}}
+              style={msg.role === "user" ? { background: gradient } : {}}
             >
               {msg.content}
             </div>
@@ -142,7 +150,7 @@ export default function WidgetChat({
         {loading && (
           <div className="flex justify-start">
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mr-2 mt-0.5"
-              style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>
+              style={{ background: gradient }}>
               AI
             </div>
             <div className="bg-white border border-[#E5E7EB] rounded-2xl rounded-bl-sm px-3.5 py-3 shadow-sm">
@@ -175,7 +183,7 @@ export default function WidgetChat({
             onClick={send}
             disabled={!input.trim() || loading}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 hover:opacity-90 disabled:opacity-40 transition-opacity"
-            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+            style={{ background: gradient }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M14 8L2 2l3 6-3 6 12-6z" fill="currentColor"/>

@@ -742,17 +742,27 @@ ${serviceCardOverrides}
 }
 
 /* ── stats-band ──────────────────────────────────────────────────────────── */
-.ws-stats{padding:80px 0;}
+/* Round 5 FIX 3: background was t.heroBg -- a value inherited from the old
+   6-preset system (always dark, e.g. #0A2540) with no relation to the
+   site's actual palette. Now uses the same --footer-bg dark accent the
+   footer already uses (the one sanctioned dark band per round 3's FIX 3),
+   so this section is consistently dark rather than independently, jarringly
+   dark. Label color updated to match (was --color-muted, a DARK gray in
+   bright modes -- nearly invisible on the now-dark background; footer's own
+   link treatment is the reference). Stat number size reduced from a
+   hero-headline-scale clamp(2.5rem,5vw,4rem) to the existing --fs-h2 token
+   -- prominent but proportionate to the rest of the type scale. */
+.ws-stats{padding:80px 0;background:var(--footer-bg);}
 .ws-stats-inner{
   display:flex;flex-wrap:wrap;gap:var(--sp-xl);
   justify-content:space-around;align-items:center;
 }
 .ws-stat{text-align:center;}
 .ws-stat-value{
-  font-family:var(--font-heading);font-size:clamp(2.5rem,5vw,4rem);
+  font-family:var(--font-heading);font-size:var(--fs-h2);
   font-weight:700;line-height:1;margin-bottom:8px;
 }
-.ws-stat-label{font-size:var(--fs-small);color:var(--color-muted);font-weight:500;letter-spacing:.06em;text-transform:uppercase;}
+.ws-stat-label{font-size:var(--fs-small);color:rgba(255,255,255,.55);font-weight:500;letter-spacing:.06em;text-transform:uppercase;}
 
 /* ── process-steps ───────────────────────────────────────────────────────── */
 .ws-steps{
@@ -893,7 +903,6 @@ ${serviceCardOverrides}
   .ws-svc-item{flex-direction:column;gap:8px;}
   .ws-listing-grid{grid-template-columns:1fr;}
   .ws-stats-inner{gap:32px;}
-  .ws-stat-value{font-size:clamp(2rem,8vw,3rem);}
   .ws-steps{grid-template-columns:1fr;gap:32px;}
   .ws-step{padding:0;}
   .ws-step-line{display:none;}
@@ -1419,12 +1428,12 @@ ${serviceCardOverrides}
 }
 
 /* ── Phase 2d — content pool ──────────────────────────────────────────── */
-/* FIX 4: placeholder-style stat/testimonial content is now allowed when no
-   real data exists (previously omitted entirely) -- this tag makes clear to
-   any real site visitor that the numbers/quotes are examples for the owner
-   to replace, not verified claims. Small, subtle, dashed border (distinct
-   from real content styling), centered above the section it labels. */
-.ws-example-tag{display:block;width:fit-content;font-size:0.72rem;font-weight:600;letter-spacing:.04em;color:var(--color-muted);background:var(--bg-alt);border:1px dashed var(--border);border-radius:100px;padding:5px 14px;margin:0 auto 24px;text-align:center;}
+/* Round 5 FIX 1: the visible "Example — edit with..." tag (added round 3)
+   was removed per owner feedback -- reads as unnecessary/unprofessional on
+   a live site; business owners already understand placeholder content
+   needs editing. The underlying content.example boolean flag is untouched
+   (still set by GPT/verifyContentComponents, still available if any future
+   internal logic needs it) -- only the rendered tag markup was removed. */
 .ws-tsq{max-width:760px;margin:0 auto;text-align:center;}
 .ws-tsq-mark{font-family:var(--font-heading);font-size:6rem;line-height:.6;color:var(--accent);opacity:.3;margin-bottom:24px;user-select:none;}
 .ws-tsq-quote{font-family:var(--font-heading);font-size:clamp(1.25rem,2.5vw,2rem);font-weight:400;font-style:italic;color:var(--color-heading);line-height:1.5;margin-bottom:32px;}

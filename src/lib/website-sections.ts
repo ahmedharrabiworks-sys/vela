@@ -223,7 +223,13 @@ function renderHeroEditorialOffset(
   c: { eyebrow?: string; headline?: string; subheadline?: string; ctaPrimary?: string; ctaSecondary?: string },
   imageUrl?: string
 ): string {
-  return `<section class="ws-hero ws-hero--editorial" id="hero" style="background:${t.heroBg};">
+  // Round 5 FIX 4: this variant's headline uses t.heading (dark in bright
+  // modes, see below) -- t.heroBg is a leftover dark value from the old
+  // 6-preset system with no relation to the site's actual palette; using it
+  // here rendered a solid black section on bright/cream sites. t.bg (the
+  // site's own background) is correct since this layout isn't a full-bleed
+  // photo hero -- the image only covers part of the section.
+  return `<section class="ws-hero ws-hero--editorial" id="hero" style="background:${t.bg};">
   <div class="ws-container" style="position:relative;z-index:1;padding-top:clamp(80px,14vw,160px);padding-bottom:clamp(80px,14vw,160px);">
     <div class="ws-hero-editorial-inner">
       <div class="ws-hero-editorial-text">
@@ -691,7 +697,12 @@ export function renderHeroSplitSection(t: DesignTokens, c: HeroContent, imageUrl
 
 // 3. hero-minimal — no image; gradient radial glow; SaaS / tech / agency
 export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
-  return `<section class="ws-hero ws-hero--minimal" id="hero" style="background:${t.heroBg};">
+  // Round 5 FIX 4: headline/subheadline below use t.heading/t.muted (dark
+  // text in bright modes) -- t.heroBg is dark, which made this the most
+  // severe case of the bug (near-illegible dark-on-dark). This is also the
+  // hero every explicit no-photo site is forced into (round 3 FIX 2), so
+  // the bug hit every photo-free site. t.bg matches what the text expects.
+  return `<section class="ws-hero ws-hero--minimal" id="hero" style="background:${t.bg};">
   <div class="ws-hero-glow-min" style="background:radial-gradient(ellipse 80% 60% at 50% 50%,${t.accentAlpha.replace("0.10","0.28")} 0%,transparent 70%);"></div>
   <div class="ws-hero-content ws-hero-content--min">
     ${c.eyebrow ? `<p class="ws-hero-chip">${esc(c.eyebrow)}</p>` : ""}
@@ -952,7 +963,11 @@ function renderHeroMembershipFocused(t: DesignTokens, c: HeroContent, imageUrl?:
         <p class="ws-hero-mf-tier-price">${esc(tier.price)}${tier.period ? `<span class="ws-hero-mf-tier-period">/${esc(tier.period)}</span>` : ""}</p>
       </a>`).join("")}
     </div>` : "";
-  return `<section class="ws-hero--mf" id="hero" style="background:${t.heroBg};">
+  // Round 5 FIX 4: ws-hero-mf-h uses var(--color-heading) (dark text in
+  // bright modes) -- t.heroBg is a leftover always-dark value. The optional
+  // background image renders at only 25% opacity, so the section's base
+  // color (now t.bg) dominates visually regardless of whether a photo loads.
+  return `<section class="ws-hero--mf" id="hero" style="background:${t.bg};">
   ${imgBg}
   <div class="ws-hero-mf-glow" style="background:radial-gradient(ellipse 70% 50% at 50% 50%,${t.accentAlpha.replace("0.10", "0.25")} 0%,transparent 70%);"></div>
   <div class="ws-hero-mf-inner">
@@ -968,9 +983,12 @@ function renderHeroMembershipFocused(t: DesignTokens, c: HeroContent, imageUrl?:
 </section>`;
 }
 
-// Gym-11: energy-driven — bold text left, angled-clip image right, dark bg
+// Gym-11: energy-driven — bold text left, angled-clip image right
 function renderHeroEnergyDriven(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
-  return `<section class="ws-hero--ed" id="hero" style="background:${t.heroBg};">
+  // Round 5 FIX 4: ws-hero-ed-h uses var(--color-heading) (dark text in
+  // bright modes) -- t.heroBg is a leftover always-dark value with no
+  // relation to the site's actual palette.
+  return `<section class="ws-hero--ed" id="hero" style="background:${t.bg};">
   <div class="ws-hero-ed-text">
     ${c.eyebrow     ? `<p class="ws-hero-ed-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     <h1 class="ws-hero-ed-h">${esc(c.headline || "")}</h1>
@@ -1536,9 +1554,8 @@ export function renderStatsBand(
 ): string {
   const items = (c.items ?? []).filter((i) => i.value && i.label).slice(0, 5);
   if (!items.length) return "";
-  return `<section class="ws-stats" style="background:${t.heroBg};">
+  return `<section class="ws-stats">
   <div class="ws-container">
-    ${c.example ? `<p class="ws-example-tag">Example numbers — edit with your real stats</p>` : ""}
     <div class="ws-stats-inner">
       ${items.map((item) => `
       <div class="ws-stat">
@@ -1619,7 +1636,6 @@ export function renderTestimonialSingleQuote(
   return `<section class="ws-section" id="testimonial">
   <div class="ws-container">
     <div class="ws-tsq">
-      ${c.example ? `<p class="ws-example-tag">Example review — edit with a real customer quote</p>` : ""}
       <p class="ws-tsq-mark" aria-hidden="true">“</p>
       <blockquote class="ws-tsq-quote">${esc(c.quote)}</blockquote>
       <footer class="ws-tsq-foot">
@@ -1644,7 +1660,6 @@ export function renderTestimonialGrid(
   <div class="ws-container">
     ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
-    ${c.example ? `<p class="ws-example-tag">Example reviews — edit with your real customer quotes</p>` : ""}
     <div class="ws-tgrid">
       ${items.map((item) => `
       <div class="ws-tgrid-card">
