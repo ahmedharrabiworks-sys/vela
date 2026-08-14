@@ -612,7 +612,7 @@ const MOOD_DEFAULT_DNA: Record<string, Partial<DesignDNA>> = {
   "dark-premium":     { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#080808",  text: "#F5F3EE", accent: "#B8860B", muted: "#857D72" }, isDark: true  },
 };
 // Approved accent set — mirrors Part 5 of buildFillSystem. GPT must pick from this list;
-// any other hex (including user-requested "hot pink" etc.) falls back to the mood default.
+// any other hex (including user-requested "hot pink" etc.) falls back to a mood variant.
 const APPROVED_ACCENTS = new Set([
   "#8B6347","#A0522D","#C4793D","#9C6E3F",  // earthy/warm
   "#C4A882","#B8860B","#8D7047","#7C5C3D",  // luxury
@@ -622,13 +622,38 @@ const APPROVED_ACCENTS = new Set([
   "#0070C9","#0EA5E9","#0891B2","#0284C7",  // clinical
   "#16A34A","#059669","#0D9488","#15803D",  // wellness
 ]);
-function coerceDesignDNA(raw: unknown): DesignDNA {
+// FIX 4: each mood previously fell back to ONE single hardcoded accent whenever
+// GPT didn't supply an approved color -- e.g. every "clinical-bright" (medical/
+// dental) site landed on the same blue (#0284C7) by default, producing an
+// identical, templated look across unrelated businesses. Each mood now has a
+// small set of considered, on-brand variants; the one actually used is picked
+// deterministically per business (see accentSeed below), so the same business
+// looks the same across regenerations but different businesses get real
+// variation instead of the single most stereotypical industry color.
+const MOOD_ACCENT_VARIANTS: Record<string, string[]> = {
+  "editorial-luxury": ["#C4A882", "#B8860B", "#8D7047", "#7C5C3D"],
+  "clinical-bright":  ["#0D9488", "#7C3AED", "#8D6E3F", "#0284C7", "#0891B2"],
+  "bold-energetic":   ["#E8390E", "#C41E3A", "#FF4F1F", "#D4380D"],
+  "warm-minimal":     ["#8B6347", "#A0522D", "#9C6E3F", "#C4793D"],
+  "tech-sharp":       ["#7C3AED", "#9333EA", "#6366F1", "#4F46E5"],
+  "dark-premium":     ["#B8860B", "#8D6E3F", "#C4793D", "#8D7047"],
+};
+// Small deterministic string hash (djb2) -- same seed always yields the same
+// index, so re-generating the same business's site keeps its accent stable.
+function hashSeed(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+function coerceDesignDNA(raw: unknown, accentSeed = ""): DesignDNA {
   const d = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
   const mood = (VALID_MOODS.has(String(d.mood)) ? String(d.mood) : "editorial-luxury") as DesignDNA["mood"];
   const defaults = MOOD_DEFAULT_DNA[mood]!;
   const hexOk = (h: unknown): h is string => typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h);
   const rawPal = (typeof d.palette === "object" && d.palette !== null ? d.palette : {}) as Record<string, unknown>;
   const defPal = defaults.palette!;
+  const variants = MOOD_ACCENT_VARIANTS[mood] ?? [defPal.accent as string];
+  const variantAccent = variants[hashSeed(accentSeed || mood) % variants.length] ?? defPal.accent;
   return {
     mood,
     headingFont: (typeof d.headingFont === "string" && APPROVED_FONTS[d.headingFont] ? d.headingFont : defaults.headingFont) ?? "Inter",
@@ -638,9 +663,9 @@ function coerceDesignDNA(raw: unknown): DesignDNA {
       text:   defPal.text,
       muted:  defPal.muted,
       accent: (() => {
-        if (!hexOk(rawPal.accent)) return defPal.accent;
+        if (!hexOk(rawPal.accent)) return variantAccent;
         const u = (rawPal.accent as string).toUpperCase();
-        return APPROVED_ACCENTS.has(u) ? u : defPal.accent;
+        return APPROVED_ACCENTS.has(u) ? u : variantAccent;
       })(),
     },
     isDark: typeof d.isDark === "boolean" ? d.isDark : (defaults.isDark ?? false),
@@ -1345,6 +1370,7 @@ function buildFillSystem(
   trustComponents?: string[] | null,
   showcaseComponents?: string[] | null,
   contentComponents?: string[] | null,
+  noPhotoMode = false,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
@@ -1481,7 +1507,7 @@ OPTIONAL SECTIONS — include ONLY if the owner provided real data:
   listings-grid → only if owner described real rooms, dishes, properties, or products
   product-grid → only if owner described real products with names
   pricing-tiers → only if owner provided real prices or tier names
-  gallery-grid → always include; stock imagery will be supplied automatically
+  gallery-grid → ${noPhotoMode ? "DO NOT include. No photography is being used on this site." : "always include; stock imagery will be supplied automatically"}
 
 SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT nested inside it):
 { "type": string, "variant": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
@@ -1490,12 +1516,20 @@ SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT 
 PART 7 — IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
+${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner has no photos and did not ask for stock photography.
+Do NOT write an imageQuery or imageQueries field on ANY section, ever.
+Choose hero variant "minimal-stacked" (no image). Never choose gallery-grid, listings-grid with photos, product-grid, or feature-showcase if it depends on photography.
+Build the design instead around strong typography, the site's color palette, and icons (see the icon list in PART 8). This is a real, polished design choice — not a fallback. Use stats-band, feature-grid, logo-strip, and text-led sections to carry visual interest instead of photos.` : `imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
 imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3–6), product-grid (4–8), feature-showcase (3–4).
 
 ${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, not where the business is:
 imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 NEVER include city names, country names, or region names in any image query.
+
+CRITICAL — use the OWNER'S SPECIFIC business type from their own description, never just the broad category:
+  BAD  (too generic): "medical clinic" / "gallery" / "hero image"
+  GOOD (specific):     "modern dental clinic reception interior" / "pediatric dental waiting room bright colorful"
+If the owner said what kind of dental clinic, gym, restaurant, or salon this is (cosmetic, pediatric, CrossFit, Italian, bridal, etc.), that specific word belongs in the query — not just the generic bucket.
 
 VISUAL SUBJECT = the specific physical thing in the photo:
 • dental/clinic → "dental treatment room" / "clinic reception bright" / "orthodontic equipment"
@@ -1518,7 +1552,7 @@ gallery/listings/products: vary subject, angle, detail — each query must be di
 ` : `BUILD FROM OWNER'S SPECIFICS:
 Extract visual details from description. Build 4–6 word queries: specific subject + detail + quality.
 NEVER include city/country/region names.`}
-QUALITY SUFFIX: hero/about-story → "bright natural light" or "editorial minimal". gallery/listings → "editorial" or "close-up detail".
+QUALITY SUFFIX: hero/about-story → "bright natural light" or "editorial minimal". gallery/listings → "editorial" or "close-up detail".`}
 
 ═══════════════════════════════════════════════════════
 PART 8 — CONTENT SCHEMAS PER SECTION TYPE
@@ -2089,7 +2123,7 @@ REQUIRED FIELDS — collect in this exact order, one question per turn:
    Exception: if user explicitly says "skip", "no", or "I'll add it later" for either part, that satisfies this field.
 
 5. PHOTOS (optional — ask only ONCE, after fields 1–4 are satisfied):
-   Ask exactly: "Do you have any photos you'd like to use — a logo, team photo, or storefront? Or I can use professional stock photography."
+   Ask exactly: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I will design a clean photo-free site. I can also search for professional stock photos instead, if you would like that."
    Skip if: context says "IMAGE ALREADY ATTACHED", OR photos were already discussed or offered in the conversation.
    After this question is asked once (even if unanswered), OR if user says "no" / "skip" / "just build it" / "use stock" → respond { "action": "generate" }.
 
@@ -2249,6 +2283,24 @@ function extractContactFromText(text: string): string {
   return lines.join("\n");
 }
 
+// ── Stock photography is opt-in, never a silent default ───────────────────────
+// Historically, no owner-photo meant Unsplash stock was always searched and
+// inserted, producing mismatched photos (a locked storefront, random villa or
+// bathroom interiors on a dental clinic site, in one reported case). Default
+// is now NO stock photography -- only an explicit, affirmative answer to the
+// photo question turns it on. "no" / "skip" / silence means a photo-free
+// design, not a silent switch to stock.
+function extractStockPhotoPreference(fullText: string): boolean {
+  const t = fullText.toLowerCase();
+  const stockOptIn = [
+    /\byes\b[^.!?\n]{0,30}\bstock\b/,
+    /\bstock\b[^.!?\n]{0,20}\b(yes|please|sure|ok|okay|sounds good|go ahead)\b/,
+    /\b(use|search for|find|add|show me|pick)\b[^.!?\n]{0,25}\bstock\s+photo/,
+    /\bstock\s+photo(s|graphy)?\b[^.!?\n]{0,15}\b(is fine|works|are fine|would be great)\b/,
+  ];
+  return stockOptIn.some((re) => re.test(t));
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
@@ -2354,6 +2406,9 @@ export async function POST(req: NextRequest) {
     // Phase 2e — nav/footer variants (default to standard; overridden in initial-generate path)
     let selectedNavVariant = "";
     let selectedFooterVariant = "";
+    // FIX 2: stock photography is opt-in only — default to a photo-free design.
+    // Set below once the full conversation text is available.
+    let noPhotoMode = false;
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -2383,7 +2438,7 @@ export async function POST(req: NextRequest) {
         });
         const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
         spec = {
-          ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA) } : {}),
+          ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) } : {}),
           ...(parsed.category  ? { category:  parsed.category  } : {}),
           stylePreset: coercePreset(parsed.stylePreset), accentColor: parsed.accentColor, businessName: parsed.businessName ?? businessName, sections: parsed.sections ?? [],
         };
@@ -2400,7 +2455,7 @@ export async function POST(req: NextRequest) {
           temperature: 0.3,
         });
         const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
-        const incomingDNA = parsed.designDNA ? coerceDesignDNA(parsed.designDNA) : undefined;
+        const incomingDNA = parsed.designDNA ? coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) : undefined;
         spec = {
           ...existing, ...parsed,
           ...(incomingDNA ? { designDNA: incomingDNA } : existing.designDNA ? { designDNA: existing.designDNA } : {}),
@@ -2444,6 +2499,12 @@ export async function POST(req: NextRequest) {
       // ── Ready to generate — concatenate ALL user answers from every turn ───
       const fullDescription = buildAccumulatedDescription(priorChat, msgText);
       fullContextText = fullDescription; // use for image query city extraction
+
+      // FIX 2: stock photography is opt-in only. Default to a photo-free design
+      // unless the owner attached a real photo this session, or explicitly
+      // asked for stock photos somewhere in the conversation -- never a silent
+      // fallback just because no photo was uploaded.
+      noPhotoMode = !heroUpload && !extractStockPhotoPreference(fullDescription);
 
       // If the user stated language verbally (e.g. replied "Arabic" to the intake
       // question) instead of clicking the UI chip, detect it from the conversation.
@@ -2575,7 +2636,7 @@ export async function POST(req: NextRequest) {
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null, selectedShowcase ? [selectedShowcase] : null, selectedTestimonialType ? [selectedTestimonialType] : null) },
+          { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null, selectedShowcase ? [selectedShowcase] : null, selectedTestimonialType ? [selectedTestimonialType] : null, noPhotoMode) },
           { role: "user", content: userContent },
         ],
         response_format: { type: "json_object" },
@@ -2584,7 +2645,7 @@ export async function POST(req: NextRequest) {
       });
       const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
       spec = {
-        ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA) } : {}),
+        ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) } : {}),
         category: templateCategory,
         stylePreset: coercePreset(parsed.stylePreset),
         accentColor: parsed.accentColor,
@@ -2689,10 +2750,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Server-side fallback: inject imageQuery for any visual section GPT missed.
-    // Pass fullContextText (all conversation turns for initial generate) so city
-    // and business-type hints are available even when tenant profile fields are empty.
-    ensureImageQueries(spec, industry, city, fullContextText, !!heroUpload);
+    // FIX 2: stock photography is opt-in only. In no-photo mode, skip the
+    // server-side image-query fallback entirely and strip any imageQuery /
+    // imageQueries GPT may have added anyway despite the prompt instructions
+    // -- this guarantees zero Unsplash calls and a genuinely photo-free
+    // design, regardless of prompt compliance.
+    if (noPhotoMode) {
+      for (const s of spec.sections) {
+        delete (s as { imageQuery?: string }).imageQuery;
+        delete (s as { imageQueries?: string[] }).imageQueries;
+        if (s.content) {
+          delete (s.content as Record<string, unknown>).imageQuery;
+          delete (s.content as Record<string, unknown>).imageQueries;
+        }
+      }
+    } else {
+      // Server-side fallback: inject imageQuery for any visual section GPT missed.
+      // Pass fullContextText (all conversation turns for initial generate) so city
+      // and business-type hints are available even when tenant profile fields are empty.
+      ensureImageQueries(spec, industry, city, fullContextText, !!heroUpload);
+    }
 
     let uploadSlot: "hero" | "about" | "team" | "gallery" = "hero";
     if (heroUpload && validImages[0]) {
@@ -2801,7 +2878,12 @@ export async function POST(req: NextRequest) {
     const html = renderWebsite(spec, imageMap, tenant?.id as string | undefined, effectiveLanguage);
 
     if (tenant?.id && websiteId) {
-      // Save draft (not published yet)
+      // Save draft (not published yet). This is the row Publish reads from --
+      // a failure here must NEVER be swallowed. It previously was (just
+      // console.error'd), which let the site appear to render successfully
+      // in the chat preview while draft_html silently stayed empty in the
+      // websites table, causing Publish to fail with a confusing "No website
+      // draft found" error with no visible connection to this step.
       const { error: draftErr } = await admin
         .from("websites")
         .update({
@@ -2813,7 +2895,13 @@ export async function POST(req: NextRequest) {
           ...(typeof body.embedAiAssistant === "boolean" ? { embed_ai_assistant: body.embedAiAssistant } : {}),
         })
         .eq("id", websiteId);
-      if (draftErr) console.error("[website/generate] draft save error:", draftErr.message);
+      if (draftErr) {
+        console.error("[website/generate] draft save FAILED — aborting request:", draftErr.code, draftErr.message);
+        return NextResponse.json(
+          { error: "Failed to save your website. Please try again." },
+          { status: 500 }
+        );
+      }
 
       // Single upsert: html + slug + chat + intake (versions only on initial generate)
       const tcUpsert: Record<string, unknown> = {
