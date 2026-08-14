@@ -6,12 +6,14 @@ type Msg = { role: "user" | "assistant"; content: string; id: string };
 
 export default function WidgetChat({
   tenantId,
+  websiteId,
   businessName,
   greeting,
   channel,
   accentColor,
 }: {
   tenantId: string;
+  websiteId?: string;
   businessName: string;
   greeting: string;
   channel: string;
@@ -59,6 +61,7 @@ export default function WidgetChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantId,
+          websiteId,
           conversationId,
           message: text,
           channel,

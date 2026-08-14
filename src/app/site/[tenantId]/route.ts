@@ -15,7 +15,7 @@ function buildTrackScript(websiteId: string): string {
   return `<script>(function(){if(window.self!==window.top)return;try{fetch('/api/site/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({websiteId:${wid},path:window.location.pathname,referrer:document.referrer}),keepalive:true});}catch(e){}})();</script>`;
 }
 
-function buildWidgetScript(tenantId: string): string {
+function buildWidgetScript(tenantId: string, websiteId?: string): string {
   // The same embeddable chat widget a business can paste into an external
   // site (see /api/embed/[tenantId] + /widget/[tenantId]) -- auto-injected
   // here so a published Vela-built site has the AI assistant live with zero
@@ -23,8 +23,20 @@ function buildWidgetScript(tenantId: string): string {
   // way the tracking script does, so the bubble never appears in the editor.
   // source=site distinguishes this auto-injected case from an externally
   // pasted embed so conversations can be tagged with the correct channel.
+  //
+  // CRITICAL FIX: websiteId identifies exactly which of this tenant's
+  // (possibly several) websites the widget is embedded on. tenantId alone
+  // was never wrong, but a tenant's own business_name/knowledge base is
+  // account-level, not per-website -- a tenant who owns multiple websites
+  // (Premium/Custom plans allow 2-unlimited) had the assistant on EVERY one
+  // of their sites identify itself using the TENANT's own business_name,
+  // regardless of which specific website it was embedded on. Confirmed live:
+  // a tenant whose account business_name is "Vela dental clinning" published
+  // a website named "Azure Bay Hotel" -- the widget on that hotel site
+  // answered as "Vela dental clinning". Passing websiteId lets the widget
+  // resolve and identify as the specific site it's actually on.
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") || "https://app.vela.ai";
-  const src = `${appUrl}/api/embed/${encodeURIComponent(tenantId)}?source=site`;
+  const src = `${appUrl}/api/embed/${encodeURIComponent(tenantId)}?source=site${websiteId ? `&websiteId=${encodeURIComponent(websiteId)}` : ""}`;
   return `<script>if(window.self===window.top){var s=document.createElement('script');s.src=${JSON.stringify(src)};s.async=true;document.body.appendChild(s);}</script>`;
 }
 
@@ -50,7 +62,7 @@ function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClie
   let finalHtml = html;
   const injections = [
     websiteIdForTracking ? buildTrackScript(websiteIdForTracking) : "",
-    tenantIdForCount && embedAssistant ? buildWidgetScript(tenantIdForCount) : "",
+    tenantIdForCount && embedAssistant ? buildWidgetScript(tenantIdForCount, websiteIdForTracking) : "",
   ].join("");
   if (injections) {
     finalHtml = html.includes("</body>")

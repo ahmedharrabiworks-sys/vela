@@ -14,23 +14,28 @@ export async function GET(
   // embed) -- passed through to the widget so conversations are tagged
   // with the correct channel.
   const source = req.nextUrl.searchParams.get("source") === "site" ? "site" : "";
+  // CRITICAL FIX: identifies exactly which of this tenant's websites the
+  // widget is embedded on -- see the comment in site/[tenantId]/route.ts's
+  // buildWidgetScript for the full root-cause explanation (a tenant's own
+  // business_name is account-level, not per-website).
+  const websiteId = req.nextUrl.searchParams.get("websiteId") || "";
 
   // Round 5 FIX 7: the floating button was a fixed Vela-brand gradient
   // regardless of the site it's embedded on -- same fix as the widget
   // iframe's own chat UI (chat-client.tsx), applied here too since this is
-  // the actual bubble a visitor sees first, before opening the chat.
+  // the actual bubble a visitor sees first, before opening the chat. Looks
+  // up the exact website when websiteId is known (precise); falls back to
+  // the tenant's most-recently-updated published site otherwise (the old
+  // approximation, still used for externally-pasted embeds with no
+  // websiteId context).
   let accentColor: string | null = null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = createSupabaseAdmin() as any;
-    const { data: site } = await admin
-      .from("websites")
-      .select("published_spec")
-      .eq("tenant_id", tenantId)
-      .eq("is_published", true)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const query = admin.from("websites").select("published_spec").eq("is_published", true);
+    const { data: site } = websiteId
+      ? await query.eq("id", websiteId).eq("tenant_id", tenantId).maybeSingle()
+      : await query.eq("tenant_id", tenantId).order("updated_at", { ascending: false }).limit(1).maybeSingle();
     const spec = site?.published_spec as { designDNA?: { palette?: { accent?: string } } } | null;
     const accent = spec?.designDNA?.palette?.accent;
     if (typeof accent === "string" && /^#[0-9a-f]{6}$/i.test(accent)) accentColor = accent;
@@ -44,9 +49,10 @@ export async function GET(
 (function () {
   if (document.getElementById('__vela_widget')) return;
 
-  var tenantId = ${JSON.stringify(tenantId)};
-  var base     = ${JSON.stringify(base)};
-  var source   = ${JSON.stringify(source)};
+  var tenantId  = ${JSON.stringify(tenantId)};
+  var base      = ${JSON.stringify(base)};
+  var source    = ${JSON.stringify(source)};
+  var websiteId = ${JSON.stringify(websiteId)};
 
   /* Floating button */
   var btn = document.createElement('button');
@@ -65,7 +71,10 @@ export async function GET(
   /* iframe */
   var frame = document.createElement('iframe');
   frame.id    = '__vela_widget';
-  frame.src   = base + '/widget/' + tenantId + (source ? '?source=' + source : '');
+  var qs = [];
+  if (source)    qs.push('source=' + source);
+  if (websiteId) qs.push('websiteId=' + encodeURIComponent(websiteId));
+  frame.src   = base + '/widget/' + tenantId + (qs.length ? '?' + qs.join('&') : '');
   frame.title = 'Chat with us';
   frame.style.cssText = [
     'position:fixed', 'bottom:96px', 'right:24px',

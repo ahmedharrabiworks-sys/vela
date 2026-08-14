@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const {
     tenantId,
+    websiteId,
     conversationId,
     message,
     channel = "website",
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     isTest = false,
   } = body as {
     tenantId?: string;
+    websiteId?: string;
     conversationId?: string;
     message?: string;
     channel?: string;
@@ -95,6 +97,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // CRITICAL FIX: a tenant's own business_name is account-level, but a
+  // tenant can own multiple websites (Premium/Custom plans) with different
+  // names -- the assistant on EVERY one of a tenant's sites previously
+  // identified itself using the TENANT's business_name regardless of which
+  // specific site it was embedded on. Confirmed live: a tenant whose
+  // account business_name is "Vela dental clinning" published a site named
+  // "Azure Bay Hotel" -- the widget on that site answered as the dental
+  // business. websiteId (scoped to this tenant -- never trust a websiteId
+  // belonging to someone else) resolves the specific site's own name, which
+  // takes priority for the assistant's self-identification below. The
+  // underlying knowledge base (services/FAQs) remains tenant-level -- a
+  // separate, larger limitation for a tenant whose multiple sites represent
+  // genuinely different businesses, not fixed here.
+  let siteName: string | null = null;
+  if (websiteId && typeof websiteId === "string") {
+    const { data: site } = await admin
+      .from("websites")
+      .select("name")
+      .eq("id", websiteId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (site?.name) siteName = site.name as string;
+  }
+
   const { data: config } = await admin
     .from("tenant_config")
     .select("services_json, faq_json, tone, language, booking_rules, knowledge_base")
@@ -123,6 +149,29 @@ export async function POST(req: NextRequest) {
   /* ── 3. Get or create conversation + lead ── */
   let convId = conversationId ?? null;
   let leadId: string | null = null;
+
+  // Hardening found during this investigation: this lookup previously had
+  // no tenant_id filter -- a client-supplied conversationId belonging to a
+  // DIFFERENT tenant would silently succeed, attaching this reply to (and
+  // later pulling message history from) someone else's conversation. Not
+  // the mechanism behind the "wrong business identity" bug fixed above
+  // (that was a business_name/website mismatch), but a real, independent
+  // cross-tenant data-isolation gap. A conversationId that doesn't belong
+  // to this tenant is now treated as not found -- the visitor transparently
+  // gets a fresh conversation instead of an error.
+  if (convId) {
+    const { data: conv } = await admin
+      .from("conversations")
+      .select("id, lead_id")
+      .eq("id", convId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (conv) {
+      leadId = (conv as { lead_id: string | null }).lead_id ?? null;
+    } else {
+      convId = null;
+    }
+  }
 
   if (!convId) {
     const { data: lead } = await admin
@@ -155,13 +204,6 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     convId = (conv as { id: string } | null)?.id ?? null;
-  } else {
-    const { data: conv } = await admin
-      .from("conversations")
-      .select("lead_id")
-      .eq("id", convId)
-      .maybeSingle();
-    leadId = (conv as { lead_id: string | null } | null)?.lead_id ?? null;
   }
 
   if (!convId) {
@@ -172,10 +214,15 @@ export async function POST(req: NextRequest) {
   }
 
   /* ── 4. Load last 10 messages for context (exclude test messages) ── */
+  // convId is guaranteed tenant-scoped by this point (validated or freshly
+  // created above); tenant_id is included here too as defense-in-depth,
+  // consistent with the hardening above -- never rely on a single filter
+  // for tenant isolation when a second one is cheap and available.
   const { data: history } = await admin
     .from("messages")
     .select("role, content")
     .eq("conversation_id", convId)
+    .eq("tenant_id", tenantId)
     .eq("is_test", false)
     .order("created_at", { ascending: true })
     .limit(10);
@@ -282,12 +329,18 @@ export async function POST(req: NextRequest) {
       ? "Detect the customer's language from their message and ALWAYS reply in the same language (Arabic if they write Arabic, French if French, English otherwise)."
       : `Always reply in ${language}.`;
 
-  const systemPrompt = `You are the AI assistant for ${t.business_name}, a ${t.industry || "business"} in ${t.city || "the UAE"}.
+  // CRITICAL FIX: use this specific website's own name when known (see the
+  // siteName lookup above); tenant.business_name is only a fallback for
+  // when no websiteId was provided (an externally-pasted embed, or a widget
+  // URL predating this fix).
+  const displayName = siteName || t.business_name;
+
+  const systemPrompt = `You are the AI assistant for ${displayName}, a ${t.industry || "business"} in ${t.city || "the UAE"}.
 
 Your job: help customers, answer questions about services and prices, and book appointments.
 
 Business details:
-• Name: ${t.business_name}
+• Name: ${displayName}
 • Industry: ${t.industry || "not specified"}
 • Location: ${t.city || "UAE"}${addressText ? `\n• ${addressText}` : ""}${t.phone ? `\n• Phone: ${t.phone}` : ""}${t.website ? `\n• Website: ${t.website}` : ""}
 • ${workingHoursText}${bookingPolicyText}
