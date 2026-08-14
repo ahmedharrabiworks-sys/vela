@@ -755,7 +755,10 @@ function renderHeroFullImage(t: DesignTokens, c: HeroContent, imageUrl?: string)
     ${c.eyebrow     ? `<p class="ws-hero-fi-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     <h1 class="ws-hero-fi-h">${esc(c.headline || "")}</h1>
     ${c.subheadline ? `<p class="ws-hero-fi-sub">${esc(c.subheadline)}</p>` : ""}
-    ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+    ${(c.ctaPrimary || c.ctaSecondary) ? `<div class="ws-hero-ctas" style="justify-content:center;">
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>` : ""}
   </div>
 </section>`;
 }
@@ -930,7 +933,10 @@ function renderHeroCinematicDark(t: DesignTokens, c: HeroContent, imageUrl?: str
     ${c.eyebrow     ? `<p class="ws-hero-cind-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     <h1 class="ws-hero-cind-h">${esc(c.headline || "")}</h1>
     ${c.subheadline ? `<p class="ws-hero-cind-sub">${esc(c.subheadline)}</p>` : ""}
-    ${c.ctaPrimary  ? `<a href="#booking" class="ws-btn ws-btn-accent ws-hero-cind-cta">${esc(c.ctaPrimary)}</a>` : ""}
+    ${(c.ctaPrimary || c.ctaSecondary) ? `<div class="ws-hero-ctas" style="justify-content:center;">
+      ${c.ctaPrimary   ? `<a href="#booking" class="ws-btn ws-btn-accent ws-hero-cind-cta">${esc(c.ctaPrimary)}</a>` : ""}
+      ${c.ctaSecondary ? `<a href="#about"   class="ws-btn ws-btn-ghost">${esc(c.ctaSecondary)}</a>` : ""}
+    </div>` : ""}
   </div>
 </section>`;
 }

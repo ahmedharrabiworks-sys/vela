@@ -465,6 +465,28 @@ function resolveDescriptionHeroQuery(fullText: string): string | null {
   return match ? match.query : null;
 }
 
+// FIX 2 (round 4): per-item image queries (product-grid, listings-grid,
+// feature-showcase) previously fell back to a shared PRESET_GALLERY_QUERIES
+// pool with zero relation to the specific item -- confirmed live: a coffee
+// shop's "Coffee Subscription" and "Cupping & Tasting Sessions" menu items
+// (category "hospitality" -> preset "hotel", see CATEGORY_TO_PRESET) pulled
+// "premium bed linen soft light detail" and "spa treatment room candle
+// water stone" straight from HOTEL's gallery pool -- bedsheets and a spa
+// photo on a coffee menu. Every per-item query is now built from the item's
+// OWN title text, never a shared pool, so it can never drift to an
+// unrelated item within the same business, let alone a different industry.
+function buildItemImageQuery(itemTitle: string | undefined, businessType: string): string {
+  const title = String(itemTitle ?? "").trim();
+  if (!title) return `${businessType} product detail close-up editorial minimal`.replace(/\s+/g, " ").trim();
+  // Strip price/currency artifacts a title field might carry
+  // ("Coffee Subscription — from $25") and parenthetical asides.
+  const cleanTitle = title
+    .replace(/[-–—]\s*(from\s*)?[$€£]\s*\d+.*$/i, "")
+    .replace(/\(.*?\)/g, "")
+    .trim();
+  return `${cleanTitle} ${businessType} close-up editorial natural light`.replace(/\s+/g, " ").trim();
+}
+
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
 function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, fullText: string, hasOwnerPhoto: boolean): void {
   // Resolve preset key: v2 uses category, v1 uses stylePreset
@@ -561,56 +583,42 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Listings grid: ensure imageQueries count matches items count (min 3)
+    // Listings grid: ensure imageQueries count matches items count (min 3).
+    // Each missing query is built from that specific item's own title, never
+    // a shared pool (see buildItemImageQuery comment for the confirmed bug).
     if (MULTI_LISTING_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
-      const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
+      const items = Array.isArray(s.content?.items) ? (s.content.items as { title?: string }[]) : [];
       const targetCount = Math.max(items.length || 3, 3);
       if (qs.length < targetCount) {
-        const listingPool = PRESET_GALLERY_QUERIES[preset] ?? [
-          "professional service detail close-up editorial",
-          "service interior clean bright minimal editorial",
-          "detail texture close-up natural light editorial",
-        ];
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? (listingPool[j % listingPool.length] ?? "professional service detail editorial")
+          qs[j] ?? buildItemImageQuery(items[j]?.title, businessType)
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
 
-    // Product grid: ensure imageQueries
+    // Product grid: ensure imageQueries — same per-item-title rule as above.
     if (MULTI_PRODUCT_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
-      const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
+      const items = Array.isArray(s.content?.items) ? (s.content.items as { title?: string }[]) : [];
       const targetCount = Math.max(items.length || 4, 4);
       if (qs.length < targetCount) {
-        const productPool = PRESET_GALLERY_QUERIES[preset] ?? [
-          "product detail minimal clean white background editorial",
-          "product close-up texture natural light editorial",
-          "product flat lay clean minimal aesthetic",
-          "product lifestyle detail warm editorial",
-        ];
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? (productPool[j % productPool.length] ?? "product detail minimal clean editorial")
+          qs[j] ?? buildItemImageQuery(items[j]?.title, businessType)
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
     }
 
-    // Feature showcase: ensure imageQueries
+    // Feature showcase: ensure imageQueries — same per-item-title rule as above.
     if (MULTI_SHOWCASE_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
-      const items = Array.isArray(s.content?.items) ? (s.content.items as unknown[]) : [];
+      const items = Array.isArray(s.content?.items) ? (s.content.items as { title?: string }[]) : [];
       const targetCount = Math.max(items.length || 3, 3);
       if (qs.length < targetCount) {
-        const showcasePool = PRESET_GALLERY_QUERIES[preset] ?? [
-          "professional service feature detail editorial",
-          "service interior clean bright minimal",
-          "service detail close-up natural light minimal",
-        ];
         const filled = Array.from({ length: targetCount }, (_, j) =>
-          qs[j] ?? (showcasePool[j % showcasePool.length] ?? "professional service feature detail editorial")
+          qs[j] ?? buildItemImageQuery(items[j]?.title, businessType)
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }
@@ -629,13 +637,15 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Phase 2c: treatment-gallery — 1 imageQuery per service (no index numbers)
+    // Phase 2c: treatment-gallery — 1 imageQuery per service, built from that
+    // service's own real name (e.g. "Teeth Whitening") first; the dedicated
+    // TREATMENT_QUERIES pool is only used when a service has no usable title.
     if (s.type === "treatment-gallery") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
-      const services = Array.isArray(s.content?.services) ? (s.content.services as unknown[]) : [];
+      const services = Array.isArray(s.content?.services) ? (s.content.services as { title?: string }[]) : [];
       if (!qs.length && services.length > 0) {
-        const filled = services.map((_: unknown, j: number) =>
-          TREATMENT_QUERIES[j % TREATMENT_QUERIES.length] ?? "dental clinic treatment professional clean minimal"
+        const filled = services.map((svc, j) =>
+          svc?.title ? buildItemImageQuery(svc.title, "dental") : (TREATMENT_QUERIES[j % TREATMENT_QUERIES.length] ?? "dental clinic treatment professional clean minimal")
         );
         (s as { imageQueries?: string[] }).imageQueries = filled;
       }

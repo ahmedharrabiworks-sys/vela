@@ -92,7 +92,12 @@ export async function POST(
   const phone     = sanitize(body.phone,     MAX_FIELD_LEN);
   const email     = sanitize(body.email,     MAX_FIELD_LEN);
   const service   = sanitize(body.service,   MAX_FIELD_LEN);
-  const datetime  = sanitize(body.datetime,  MAX_FIELD_LEN);
+  // FIX 6: renderAppointmentForm's real date input is named "preferredDate"
+  // (an HTML <input type="date">) -- this route previously only read
+  // "datetime", a field no form on the site actually sends, so a real
+  // customer-provided date was silently discarded and no Appointment record
+  // was ever created, even from the dedicated appointment-booking form.
+  const datetime  = sanitize(body.preferredDate || body.datetime, MAX_FIELD_LEN);
   const message   = sanitize(body.message,   MAX_MSG_LEN);
 
   if (!firstName && !lastName) {
@@ -111,20 +116,20 @@ export async function POST(
   const name = [firstName, lastName].filter(Boolean).join(" ");
 
   // ── Save to leads table (same schema as other channels) ───────────────────
-  const { error: insertErr } = await admin.from("leads").insert({
+  const { data: insertedLead, error: insertErr } = await admin.from("leads").insert({
     tenant_id: tenant.id,
     name,
     phone:    phone    || null,
     email:    email    || null,
     channel:  "website",
-    status:   "new",
+    status:   datetime ? "booked" : "new",
     ip_hash:  ipHash,
     form_data: {
       service:            service  || null,
       preferred_datetime: datetime || null,
       message:            message  || null,
     },
-  });
+  }).select("id").single();
 
   if (insertErr) {
     console.error("[submit-form] insert error:", insertErr.message);
@@ -138,6 +143,39 @@ export async function POST(
     body: name || null,
     link: "/app/leads",
   });
+
+  // FIX 6: a booking form submission previously only ever created a Lead --
+  // no Appointment record was ever created, even when a real customer date
+  // was provided (renderAppointmentForm's "preferredDate" field was read
+  // under the wrong name -- see the datetime parsing above). Only creates an
+  // Appointment when the customer actually gave a parseable date; a plain
+  // contact-form submission (no date field at all) correctly stays lead-only,
+  // matching the same "only book when a real date exists" rule already used
+  // by the AI chat/phone channels (see ai/reply/route.ts).
+  const leadId = (insertedLead as { id?: string } | null)?.id;
+  if (leadId && datetime) {
+    const parsedDate = new Date(datetime);
+    if (!isNaN(parsedDate.getTime())) {
+      const { error: apptErr } = await admin.from("appointments").insert({
+        tenant_id:    tenant.id,
+        lead_id:      leadId,
+        service_name: service || "",
+        datetime:     parsedDate.toISOString(),
+        status:       "pending",
+      });
+      if (apptErr) {
+        console.error("[submit-form] appointment insert error:", apptErr.message);
+      } else {
+        await createNotification(admin, {
+          tenantId: tenant.id as string,
+          type: "appointment",
+          title: "New appointment requested",
+          body: service || null,
+          link: "/app/appointments",
+        });
+      }
+    }
+  }
 
   // ── Email notification via Resend (activates when RESEND_API_KEY is set) ──
   if (process.env.RESEND_API_KEY) {

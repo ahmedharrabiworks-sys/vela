@@ -386,5 +386,15 @@ export function resolveDesignDNA(dna: DesignDNA): DesignTokens {
     radiusLg,
     sectionPad:       MOOD_SECTION_PAD[dna.mood] ?? base.sectionPad,
     heroHeadlineSize: "clamp(2.5rem,5vw,4rem)",
+    // FIX (round 4): base.heroOverlay is inherited from the old 6-preset
+    // system, where "medical" and "beauty" are "none" because those presets
+    // never use a full-bleed photo hero (split-right layout instead). The
+    // v3 pool hero renderers (renderHeroBleedCenter/BleedBottom) hardcode
+    // white hero text regardless of mood -- when a "clinical-bright" or
+    // "warm-minimal" site (both inherit heroOverlay:"none") uses one of
+    // those photo-background hero variants, white text renders directly on
+    // an un-scrimmed photo with zero contrast protection. Every mood now
+    // gets a real overlay; "none" is never a valid resolved value.
+    heroOverlay: base.heroOverlay && base.heroOverlay !== "none" ? base.heroOverlay : "rgba(0,0,0,0.35)",
   };
 }

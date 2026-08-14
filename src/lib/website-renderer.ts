@@ -391,9 +391,9 @@ ${navDarkOverride}
   transition:transform .25s,opacity .25s;
   border-radius:1px;
 }
-/* Transparent nav: burger inherits white color from parent rule */
-.ws-nav--transparent .ws-nav-burger{color:rgba(255,255,255,.9);}
-.ws-nav--transparent.ws-nav--scrolled .ws-nav-burger{color:var(--color-heading);}
+/* FIX 1 (round 4): transparent nav is solid now (see "Nav variants" below) --
+   burger uses the same dark heading color as every other nav variant. */
+.ws-nav--transparent .ws-nav-burger{color:var(--color-heading);}
 /* Burger → X when open */
 .ws-nav--open .ws-nav-burger-line:nth-child(1){transform:translateY(7px) rotate(45deg);}
 .ws-nav--open .ws-nav-burger-line:nth-child(2){opacity:0;}
@@ -590,13 +590,23 @@ ${serviceCardOverrides}
 .ws-footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:24px;font-size:0.8rem;text-align:center;}
 
 /* ── Nav variants (Phase 2e) ─────────────────────────────────────────────── */
-.ws-nav--transparent{background:transparent;border-bottom-color:transparent;transition:background .35s,border-color .35s;}
-.ws-nav--transparent .ws-nav-logo,.ws-nav--transparent .ws-nav-link{color:rgba(255,255,255,.9);transition:color .35s;}
-.ws-nav--transparent .ws-btn-accent{background:rgba(255,255,255,.15);color:white;border-color:rgba(255,255,255,.4);backdrop-filter:blur(4px);}
-.ws-nav--transparent.ws-nav--scrolled{background:var(--bg);border-bottom-color:var(--border);}
-.ws-nav--transparent.ws-nav--scrolled .ws-nav-logo{color:var(--color-heading);}
-.ws-nav--transparent.ws-nav--scrolled .ws-nav-link{color:var(--color-muted);}
-.ws-nav--transparent.ws-nav--scrolled .ws-btn-accent{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);}
+/* FIX 1 (round 4): a transparent nav with white text was designed for the
+   dark-by-default palette that existed before round 3's bright-palette fix.
+   Since sites now default to a bright/warm bg, a transparent nav either
+   blends into the page bg at the top of the page (before the hero even
+   starts, since .ws-nav is position:sticky and occupies its own row, not an
+   overlay) or reads low-contrast over lighter regions of a hero photo --
+   confirmed live: white nav text over a bright site was washed out and hard
+   to read. The nav is now solid at all times, on every hero variant --
+   identical treatment to the standard nav. The .ws-nav--transparent class
+   name and the scroll-listener JS are left in place (harmless, no visual
+   effect now) rather than removed, to avoid a wider refactor across every
+   call site that passes navVariant="transparent".
+*/
+.ws-nav--transparent{background:var(--bg);border-bottom:1px solid var(--border);}
+.ws-nav--transparent .ws-nav-logo,.ws-nav--transparent .ws-nav-link{color:var(--color-muted);}
+.ws-nav--transparent .ws-nav-logo{color:var(--color-heading);}
+.ws-nav--transparent .ws-btn-accent{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);}
 
 /* ── Footer variants (Phase 2e) ──────────────────────────────────────────── */
 .ws-footer-ed-inner{display:flex;gap:80px;align-items:flex-start;margin-bottom:var(--sp-2xl);}
@@ -792,16 +802,10 @@ ${serviceCardOverrides}
     color:var(--color-heading);
   }
   .ws-nav-link:last-child{border-bottom:none;}
-  /* Transparent nav dropdown: always solid dark background so white links are readable */
-  .ws-nav--transparent .ws-nav-links{
-    background:var(--footer-bg,#0D1526);
-    border-bottom-color:rgba(255,255,255,.08);
-    box-shadow:0 8px 24px rgba(0,0,0,.4);
-  }
-  .ws-nav--transparent .ws-nav-links .ws-nav-link{
-    color:rgba(255,255,255,.85);
-    border-bottom-color:rgba(255,255,255,.08);
-  }
+  /* FIX 1 (round 4): transparent nav is solid now (see "Nav variants" rule
+     block) -- its mobile dropdown uses the same solid bg + dark text as
+     every other nav variant's dropdown (base .ws-nav-links rule above), no
+     variant-specific override needed. */
   /* Minimal nav: no links to show, keep CTA visible */
   .ws-nav--minimal .ws-nav-cta{display:inline-flex;}
   .ws-nav-inner{padding:0 16px;}
