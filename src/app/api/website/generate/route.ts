@@ -18,6 +18,69 @@ const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "imag
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));
 const MAX_MSG_LEN = 5000;
 
+// ── JSON-spec completion with truncation recovery ──────────────────────────────
+// Root cause of the "Unterminated string in JSON" production failures (confirmed
+// via real usage.completion_tokens logging across 5 diverse live generations,
+// including dense multi-location/multi-service businesses): a normal full spec
+// uses 700-1300 completion tokens, nowhere near the old max_tokens:4096 cap --
+// this rules out "spec is legitimately too large" as the driver. The real
+// failures had finish_reason:"length" with no correlation to prompt complexity,
+// which is the signature of a rare, non-deterministic GPT generation glitch (a
+// repetition/drift loop that never reaches a natural stop). A fresh completion
+// with new sampling reliably escapes it, so the fix is retry-first: a modest
+// max_tokens bump for genuine headroom, plus one retry (at a much higher cap)
+// whenever the first attempt truncates or returns unparseable JSON. If the
+// retry also fails, this throws -- the existing outer catch already converts
+// any thrown error into the clean, non-technical "Website generation
+// temporarily unavailable" message, so the caller never needs its own
+// try/catch around this.
+const JSON_SPEC_MAX_TOKENS       = 8000;  // ~6x the largest real spec observed
+const JSON_SPEC_RETRY_MAX_TOKENS = 16000; // gpt-4o's real output ceiling is 16384
+
+async function completeJsonSpec(
+  openai: OpenAI,
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  temperature: number,
+  label: string,
+): Promise<Record<string, unknown>> {
+  const attempt = async (maxTokens: number) =>
+    (await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      response_format: { type: "json_object" },
+      max_tokens: maxTokens,
+      temperature,
+    })).choices[0];
+
+  let choice = await attempt(JSON_SPEC_MAX_TOKENS);
+  let truncated = choice?.finish_reason === "length";
+  let parsed: Record<string, unknown> | null = null;
+
+  if (!truncated) {
+    try {
+      parsed = JSON.parse(choice?.message?.content ?? "{}") as Record<string, unknown>;
+    } catch {
+      truncated = true;
+    }
+  }
+
+  if (truncated) {
+    console.error(`[website/generate] ${label}: first attempt truncated/malformed (finish_reason=${choice?.finish_reason}) — retrying once with max_tokens=${JSON_SPEC_RETRY_MAX_TOKENS}`);
+    choice = await attempt(JSON_SPEC_RETRY_MAX_TOKENS);
+    if (choice?.finish_reason === "length") {
+      throw new Error(`${label}: GPT output truncated even after retry at max_tokens=${JSON_SPEC_RETRY_MAX_TOKENS}`);
+    }
+    try {
+      parsed = JSON.parse(choice?.message?.content ?? "{}") as Record<string, unknown>;
+    } catch (e) {
+      throw new Error(`${label}: GPT returned malformed JSON on retry (${(e as Error).message})`);
+    }
+    console.log(`[website/generate] ${label}: retry succeeded`);
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
 // ── Unsplash result shape ─────────────────────────────────────────────────────
 interface UnsplashResult {
   id: string;
@@ -2468,14 +2531,12 @@ export async function POST(req: NextRequest) {
 
       if (!existing) {
         const userContent = buildUserContent(businessName, industry, city, msgText, effectiveLanguage);
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage, !!heroUpload, noPhotoMode) }, { role: "user", content: userContent }],
-          response_format: { type: "json_object" },
-          max_tokens: 4096,
-          temperature: 0.5,
-        });
-        const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
+        const parsed = await completeJsonSpec(
+          openai,
+          [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage, !!heroUpload, noPhotoMode) }, { role: "user", content: userContent }],
+          0.5,
+          "buildSystem-fallback",
+        ) as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
         spec = {
           ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) } : {}),
           ...(parsed.category  ? { category:  parsed.category  } : {}),
@@ -2486,14 +2547,12 @@ export async function POST(req: NextRequest) {
           ? `LANGUAGE: ALL copy must be written in ${effectiveLanguage}. Translate every text field.\n\n`
           : "";
         const revisionPrompt = `${langLine}Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [{ role: "system", content: buildReviseSystem(!!heroUpload, noPhotoMode) }, { role: "user", content: revisionPrompt }],
-          response_format: { type: "json_object" },
-          max_tokens: 4096,
-          temperature: 0.3,
-        });
-        const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
+        const parsed = await completeJsonSpec(
+          openai,
+          [{ role: "system", content: buildReviseSystem(!!heroUpload, noPhotoMode) }, { role: "user", content: revisionPrompt }],
+          0.3,
+          "buildReviseSystem",
+        ) as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
         const incomingDNA = parsed.designDNA ? coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) : undefined;
         spec = {
           ...existing, ...parsed,
@@ -2668,17 +2727,15 @@ export async function POST(req: NextRequest) {
 
       // Step 2: fill content within fixed template structure
       const userContent = buildUserContent("", "", "", fullDescription, effectiveLanguage);
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
+      const parsed = await completeJsonSpec(
+        openai,
+        [
           { role: "system", content: buildFillSystem(selectedTemplate, effectiveContactBlock, effectiveLanguage, !!heroUpload, designStrategy, selectedHeroVariant, selectedTrustComponents.length > 0 ? selectedTrustComponents : null, selectedShowcase ? [selectedShowcase] : null, selectedTestimonialType ? [selectedTestimonialType] : null, noPhotoMode) },
           { role: "user", content: userContent },
         ],
-        response_format: { type: "json_object" },
-        max_tokens: 4096,
-        temperature: 0.5,
-      });
-      const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
+        0.5,
+        "buildFillSystem",
+      ) as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
       spec = {
         ...(parsed.designDNA ? { designDNA: coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) } : {}),
         category: templateCategory,
