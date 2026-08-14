@@ -228,13 +228,27 @@ export async function POST(req: NextRequest) {
     .limit(10);
 
   /* ── 5. Save customer message ── */
-  await admin.from("messages").insert({
+  // CRITICAL FIX: this insert's result was never captured or checked --
+  // confirmed live and via direct diagnostic query: migration_v21.sql (adds
+  // messages.is_test) was never run in production, so EVERY insert here has
+  // been failing with PGRST204 "Could not find the 'is_test' column" since
+  // is_test was added to this payload -- completely silently, since the
+  // error was never read. Real conversations had correct metadata
+  // (last_message_at, lead, AI reply) but zero message rows ever saved,
+  // system-wide, for every website-widget conversation. Logged loudly now
+  // (matching conversations/[id]/reply/route.ts's existing pattern) but
+  // deliberately non-fatal -- the customer must still get their AI reply
+  // even if saving to history fails for some other reason in the future.
+  const { error: userMsgErr } = await admin.from("messages").insert({
     conversation_id: convId,
     tenant_id: tenantId,
     role: "user",
     content: message,
     is_test: isTest === true,
   });
+  if (userMsgErr) {
+    console.error("[ai/reply] FAILED to save customer message:", userMsgErr.code, userMsgErr.message);
+  }
 
   /* ── 6. Load already-booked slots for double-booking prevention ── */
   const { data: bookedSlots } = await admin
@@ -410,13 +424,17 @@ Rules:
   }
 
   /* ── 10. Save AI reply ── */
-  await admin.from("messages").insert({
+  // Same silent-failure fix as the customer-message insert above.
+  const { error: aiMsgErr } = await admin.from("messages").insert({
     conversation_id: convId,
     tenant_id: tenantId,
     role: "assistant",
     content: aiReply,
     is_test: isTest === true,
   });
+  if (aiMsgErr) {
+    console.error("[ai/reply] FAILED to save AI reply message:", aiMsgErr.code, aiMsgErr.message);
+  }
 
   /* ── 11. Update conversation ── */
   const convUpdate: Record<string, unknown> = { last_message_at: new Date().toISOString() };
