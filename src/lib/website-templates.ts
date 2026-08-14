@@ -17,6 +17,14 @@ export type SiteTemplate = {
 
 // ── 10 templates, 2 per category ──────────────────────────────────────────────
 
+// FIX 4: every template now includes a stats-band (required:true, positioned
+// right after the hero) and an about-story section -- reference examples
+// reviewed for this round (coffee shop, interior design studio, real estate,
+// dental clinic) all had a trust-signal stat bar near the top and a proper
+// About/philosophy section with real body copy. stats-band content is real
+// when the owner has stated real numbers, or clearly-labeled example content
+// otherwise (see MOOD_DEFAULT_DNA/TESTIMONIAL_COMPONENT_SCHEMAS comments in
+// generate/route.ts for the same real-vs-example convention applied here).
 export const TEMPLATES: SiteTemplate[] = [
 
   // ── medical ─────────────────────────────────────────────────────────────────
@@ -27,9 +35,10 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Medical Clinical",
     sections: [
       { type: "hero",          variant: "split-left",     imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",               imageSlots: 0, required: true  },
+      { type: "about-story",   variant: "",               imageSlots: 1, required: true  },
       { type: "service-list",  variant: "two-column",     imageSlots: 0, required: true  },
       { type: "team-grid",     variant: "",               imageSlots: 0, required: false },
-      { type: "stats-band",    variant: "",               imageSlots: 0, required: false },
       { type: "faq-accordion", variant: "",               imageSlots: 0, required: true  },
       { type: "contact-block", variant: "split-form",     imageSlots: 0, required: true  },
     ],
@@ -41,6 +50,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Medical Warm",
     sections: [
       { type: "hero",          variant: "split-right",    imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",               imageSlots: 0, required: true  },
       { type: "about-story",   variant: "",               imageSlots: 1, required: true  },
       { type: "service-list",  variant: "bordered-cards", imageSlots: 0, required: true  },
       { type: "gallery-grid",  variant: "uniform",        imageSlots: 4, required: false },
@@ -57,6 +67,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Hospitality Editorial",
     sections: [
       { type: "hero",          variant: "centered-overlay", imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",                 imageSlots: 0, required: true  },
       { type: "about-story",   variant: "",                 imageSlots: 1, required: true  },
       { type: "listings-grid", variant: "wide-rows",        imageSlots: 3, required: false },
       { type: "gallery-grid",  variant: "masonry",          imageSlots: 6, required: false },
@@ -70,6 +81,8 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Hospitality Modern",
     sections: [
       { type: "hero",          variant: "editorial-offset", imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",                 imageSlots: 0, required: true  },
+      { type: "about-story",   variant: "",                 imageSlots: 1, required: true  },
       { type: "feature-grid",  variant: "three-cards",      imageSlots: 0, required: true  },
       { type: "listings-grid", variant: "uniform-grid",     imageSlots: 4, required: false },
       { type: "gallery-grid",  variant: "uniform",          imageSlots: 4, required: false },
@@ -86,6 +99,8 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Retail Catalog",
     sections: [
       { type: "hero",          variant: "split-left",    imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",              imageSlots: 0, required: true  },
+      { type: "about-story",   variant: "",              imageSlots: 1, required: true  },
       { type: "product-grid",  variant: "",              imageSlots: 6, required: true  },
       { type: "feature-grid",  variant: "three-cards",   imageSlots: 0, required: true  },
       { type: "gallery-grid",  variant: "uniform",       imageSlots: 4, required: false },
@@ -100,6 +115,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Retail Editorial",
     sections: [
       { type: "hero",          variant: "centered-overlay", imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",                 imageSlots: 0, required: true  },
       { type: "about-story",   variant: "",                 imageSlots: 1, required: true  },
       { type: "product-grid",  variant: "",                 imageSlots: 6, required: true  },
       { type: "gallery-grid",  variant: "masonry",          imageSlots: 6, required: false },
@@ -115,6 +131,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "SaaS Product",
     sections: [
       { type: "hero",             variant: "split-left",       imageSlots: 1, required: true  },
+      { type: "stats-band",       variant: "",                 imageSlots: 0, required: true  },
       { type: "logo-strip",       variant: "",                 imageSlots: 0, required: false },
       { type: "feature-showcase", variant: "",                 imageSlots: 3, required: true  },
       { type: "feature-grid",     variant: "asymmetric-bento", imageSlots: 0, required: true  },
@@ -131,7 +148,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "SaaS Minimal",
     sections: [
       { type: "hero",             variant: "minimal-stacked",  imageSlots: 0, required: true  },
-      { type: "stats-band",       variant: "",                 imageSlots: 0, required: false },
+      { type: "stats-band",       variant: "",                 imageSlots: 0, required: true  },
       { type: "feature-grid",     variant: "numbered-list",    imageSlots: 0, required: true  },
       { type: "feature-showcase", variant: "",                 imageSlots: 3, required: true  },
       { type: "pricing-tiers",    variant: "comparison-table", imageSlots: 0, required: false },
@@ -148,6 +165,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Professional Authority",
     sections: [
       { type: "hero",          variant: "split-left",     imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",               imageSlots: 0, required: true  },
       { type: "about-story",   variant: "",               imageSlots: 1, required: true  },
       { type: "service-list",  variant: "editorial-rows", imageSlots: 0, required: true  },
       { type: "process-steps", variant: "",               imageSlots: 0, required: true  },
@@ -162,6 +180,7 @@ export const TEMPLATES: SiteTemplate[] = [
     label: "Professional Portfolio",
     sections: [
       { type: "hero",          variant: "editorial-offset", imageSlots: 1, required: true  },
+      { type: "stats-band",    variant: "",                 imageSlots: 0, required: true  },
       { type: "listings-grid", variant: "masonry",          imageSlots: 6, required: false },
       { type: "about-story",   variant: "",                 imageSlots: 1, required: true  },
       { type: "process-steps", variant: "",                 imageSlots: 0, required: true  },

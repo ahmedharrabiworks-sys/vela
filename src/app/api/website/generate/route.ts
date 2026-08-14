@@ -390,10 +390,17 @@ const TREATMENT_QUERIES = [
 ];
 
 // ── Map v2 category → gallery query preset key ────────────────────────────────
+// FIX 2: "hospitality"/"retail"/"professional" are templateCategory values
+// (from classifyWithDesignStrategy — see DESCRIPTION_HERO_QUERY_PATTERNS
+// comment above for the full root-cause explanation) that were previously
+// absent from this dict entirely, silently falling through to stylePreset's
+// "realestate" default regardless of the actual business.
 const CATEGORY_TO_PRESET: Record<string, string> = {
   hotel: "hotel", clinic: "medical", gym: "fitness", salon: "beauty",
   realestate: "realestate", restaurant: "restaurant", legal: "realestate",
   saas: "fitness", agency: "fitness", ecommerce: "beauty", education: "fitness", other: "realestate",
+  // templateCategory vocabulary (website-templates.ts's 5 categories)
+  hospitality: "hotel", retail: "beauty", professional: "realestate", medical: "medical",
 };
 
 // ── Human-readable business label per category (used in image queries) ───────
@@ -410,7 +417,53 @@ const CATEGORY_TO_LABEL: Record<string, string> = {
   education:  "school campus education",
   legal:      "law firm office",
   other:      "professional business",
+  // templateCategory vocabulary
+  hospitality: "hospitality business",
+  retail:      "retail business",
+  professional: "professional services business",
+  medical:      "medical clinic",
 };
+
+// FIX 2: root cause of the villa/mismatch bug -- spec.category is set from
+// classifyWithDesignStrategy's templateCategory (only 5 values: medical,
+// hospitality, retail, saas, professional), but HERO_PHOTO_QUERY /
+// CATEGORY_TO_PRESET / CATEGORY_TO_LABEL below are all keyed by a totally
+// DIFFERENT, older vocabulary (hotel, clinic, gym, salon, realestate,
+// restaurant, legal, saas, agency, ecommerce, education, other). Every
+// lookup for "hospitality", "retail", or "professional" silently misses in
+// all three dicts and falls through to spec.stylePreset, which defaults to
+// "realestate" -- producing a real-estate hero query (e.g. "luxury villa
+// exterior...") for completely unrelated businesses (a coffee shop, in one
+// confirmed production case). Description text is a far more reliable
+// signal than either category vocabulary, so it is now checked FIRST for
+// every business, regardless of category -- the category dicts remain only
+// as a last-resort fallback when no pattern matches.
+const DESCRIPTION_HERO_QUERY_PATTERNS: { pattern: RegExp; query: string }[] = [
+  { pattern: /\b(coffee\s*shop|caf[eé]|espresso\s*bar|coffee\s*house|coffee\s*roaster)\b/i, query: "latte art coffee cup close-up warm natural light editorial" },
+  { pattern: /\b(bakery|patisserie|pastry\s*shop)\b/i, query: "artisan bakery pastry display warm natural light editorial" },
+  { pattern: /\b(florist|flower\s*shop)\b/i, query: "florist flower arrangement close-up natural light editorial" },
+  { pattern: /\b(interior\s*design(er)?|interior\s*studio)\b/i, query: "modern living room styled interior natural light editorial" },
+  { pattern: /\b(boutique|clothing\s*store|fashion\s*store)\b/i, query: "boutique retail interior clean minimal light product display" },
+  { pattern: /\b(book\s*shop|bookstore)\b/i, query: "cozy bookstore interior warm natural light editorial" },
+  { pattern: /\b(barber\s*shop|barbershop)\b/i, query: "barbershop interior styling chair warm light editorial" },
+  { pattern: /\b(photography\s*studio|photo\s*studio)\b/i, query: "photography studio interior natural light editorial minimal" },
+  { pattern: /\b(bar|pub|cocktail\s*lounge)\b/i, query: "cocktail bar interior warm ambient lighting editorial" },
+  { pattern: /\b(dental|dentist|orthodont)/i, query: "bright dental clinic reception modern clean professional photography" },
+  { pattern: /\b(clinic|medical practice|physio|dermatolog|health\s*cent(er|re)|vet(erinary)?)\b/i, query: "modern medical clinic reception bright white clean minimal" },
+  { pattern: /\bgym|crossfit|fitness\s*(studio|center|centre)|martial arts|personal training\b/i, query: "premium gym training floor equipment high energy bright editorial" },
+  { pattern: /\b(hair\s*salon|salon|spa|hairdress|barber)\b/i, query: "salon styling chair interior warm light elegant minimal" },
+  { pattern: /\b(real\s*estate|realtor|property|villa|apartment for sale)\b/i, query: "luxury villa exterior architecture daylight clean modern editorial" },
+  { pattern: /\b(restaurant|bistro|dining|eatery)\b/i, query: "elegant restaurant dining room warm ambiance editorial" },
+  { pattern: /\b(hotel|resort|boutique hotel|guesthouse)\b/i, query: "luxury hotel exterior pool architecture golden hour editorial" },
+  { pattern: /\b(law\s*firm|attorney|lawyer|legal\s*(services|practice))\b/i, query: "law firm office dark wood bookshelf professional editorial" },
+  { pattern: /\b(saas|software|tech\s*startup|app\s*(platform|company))\b/i, query: "modern tech office open workspace bright airy minimal architecture" },
+  { pattern: /\b(agency|creative\s*studio|marketing\s*firm|design\s*agency)\b/i, query: "creative studio workspace industrial bright open modern editorial" },
+  { pattern: /\b(school|academy|tutoring|education\s*cent(er|re))\b/i, query: "modern classroom bright open learning space natural light" },
+];
+function resolveDescriptionHeroQuery(fullText: string): string | null {
+  const match = DESCRIPTION_HERO_QUERY_PATTERNS.find((e) => e.pattern.test(fullText));
+  return match ? match.query : null;
+}
 
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
 function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, fullText: string, hasOwnerPhoto: boolean): void {
@@ -468,9 +521,16 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
 
-    // Hero: ALWAYS override — subject-first query, zero city/businessType prefix
+    // Hero: ALWAYS override — subject-first query, zero city/businessType prefix.
+    // Description-pattern match checked FIRST (see comment above
+    // DESCRIPTION_HERO_QUERY_PATTERNS) -- it is category-vocabulary-agnostic,
+    // so it works correctly even when rawCategory doesn't exist in either
+    // dict below (the actual root cause of the villa-on-coffee-shop bug).
     if (HERO_TYPES.has(s.type)) {
-      const heroPhotoQuery = HERO_PHOTO_QUERY[rawCategory] ?? HERO_PHOTO_QUERY[preset] ?? "professional business interior clean bright modern minimal";
+      const heroPhotoQuery = resolveDescriptionHeroQuery(fullText)
+        ?? HERO_PHOTO_QUERY[rawCategory]
+        ?? HERO_PHOTO_QUERY[preset]
+        ?? "professional business interior clean bright modern minimal";
       (s as { imageQuery?: string }).imageQuery = hasOwnerPhoto
         ? heroPhotoQuery.replace(/\beditorial\b/gi, "").replace(/\s+/g, " ").trim() + " portrait natural light"
         : heroPhotoQuery;
@@ -671,13 +731,24 @@ function extractSpec(html: string): WebsiteSpec | null {
 
 // ── Coerce and sanitize v2 designDNA from GPT response ───────────────────────
 const VALID_MOODS = new Set(["editorial-luxury","clinical-bright","bold-energetic","warm-minimal","tech-sharp","dark-premium"]);
+// FIX 3 (bright/warm default palette): every mood now defaults to a bright,
+// warm/neutral primary background -- isDark:true (and its near-black bg) is
+// no longer a default outcome for ANY mood. Dark still appears on every site,
+// but only as the existing --footer-bg accent band (buildCss forces the
+// footer to a fixed dark navy #0D1526 whenever isDark is false -- see
+// buildCss below), never as the hero/page background. bold-energetic,
+// tech-sharp, and dark-premium keep their distinct accent color + font
+// personality; only their bg/text/muted moved from black-on-white to
+// warm/cool near-white-on-dark-text, matching the reference examples
+// (coffee shop, interior design, real estate, dental -- all bright, warm,
+// photo-rich) reviewed for this round.
 const MOOD_DEFAULT_DNA: Record<string, Partial<DesignDNA>> = {
   "editorial-luxury": { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#FAF8F5", text: "#1A1A1A", accent: "#C4A882", muted: "#857D72" }, isDark: false },
   "clinical-bright":  { headingFont: "Inter",            bodyFont: "Inter", palette: { bg: "#FFFFFF",  text: "#0A2540", accent: "#0284C7", muted: "#64748B" }, isDark: false },
-  "bold-energetic":   { headingFont: "Archivo",          bodyFont: "Inter", palette: { bg: "#0B0B0B",  text: "#FFFFFF", accent: "#E8390E", muted: "#6B7280" }, isDark: true  },
+  "bold-energetic":   { headingFont: "Archivo",          bodyFont: "Inter", palette: { bg: "#FAF9F5",  text: "#161513", accent: "#E8390E", muted: "#6B6862" }, isDark: false },
   "warm-minimal":     { headingFont: "Cormorant Garamond", bodyFont: "DM Sans", palette: { bg: "#F7F5F0", text: "#3A3730", accent: "#8B6347", muted: "#6B705C" }, isDark: false },
-  "tech-sharp":       { headingFont: "Space Grotesk",    bodyFont: "Inter", palette: { bg: "#0A0A0F",  text: "#F1F5F9", accent: "#7C3AED", muted: "#6B7280" }, isDark: true  },
-  "dark-premium":     { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#080808",  text: "#F5F3EE", accent: "#B8860B", muted: "#857D72" }, isDark: true  },
+  "tech-sharp":       { headingFont: "Space Grotesk",    bodyFont: "Inter", palette: { bg: "#F6F7FB",  text: "#15161C", accent: "#7C3AED", muted: "#64748B" }, isDark: false },
+  "dark-premium":     { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#F5EFE3",  text: "#1C1710", accent: "#B8860B", muted: "#857D72" }, isDark: false },
 };
 // Approved accent set — mirrors Part 5 of buildFillSystem. GPT must pick from this list;
 // any other hex (including user-requested "hot pink" etc.) falls back to a mood variant.
@@ -736,7 +807,12 @@ function coerceDesignDNA(raw: unknown, accentSeed = ""): DesignDNA {
         return APPROVED_ACCENTS.has(u) ? u : variantAccent;
       })(),
     },
-    isDark: typeof d.isDark === "boolean" ? d.isDark : (defaults.isDark ?? false),
+    // FIX 3: isDark is no longer trusted from GPT's raw output -- same
+    // server-enforcement treatment as bg/text/muted above, so a dark primary
+    // background can never be selected, by GPT or otherwise. Always the
+    // mood's own registered default (every mood defaults false; see
+    // MOOD_DEFAULT_DNA).
+    isDark: defaults.isDark ?? false,
   };
 }
 
@@ -1338,15 +1414,21 @@ function selectGalleryVariant(strategy: DesignStrategy | null): string {
   return "uniform";
 }
 
+// FIX 4: a testimonials section is now always included by default (reference
+// examples reviewed for this round all had one) -- when no real customer
+// quote exists in the conversation, GPT writes clearly-labeled example
+// content instead (see TESTIMONIAL_COMPONENT_SCHEMAS + the "example" flag
+// enforced in verifyContentComponents below), rather than the section being
+// omitted outright as it was before.
 function selectTestimonialComponent(
   strategy: DesignStrategy | null,
-  data: ContentAvailableData,
-): string | null {
-  if (!data.hasRealTestimonialQuote) return null;
+): string {
+  // Variant choice is purely a brand-personality/layout decision, independent
+  // of whether real or example content will fill it (see ContentAvailableData
+  // usage at the call site for the real-vs-example decision).
   if (!strategy) return "testimonial-single-quote";
-  const { brand_personality: bp, positioning } = strategy;
-  if (bp === "minimal_luxury" || bp === "elegant") return "testimonial-single-quote";
-  return "testimonial-grid";
+  const { brand_personality: bp } = strategy;
+  return (bp === "minimal_luxury" || bp === "elegant") ? "testimonial-single-quote" : "testimonial-grid";
 }
 
 function selectFaqVariant(strategy: DesignStrategy | null): string {
@@ -1382,45 +1464,72 @@ function selectFooterVariant(strategy: DesignStrategy | null): string {
   return "";
 }
 
+// FIX 4: two modes. REAL mode (a genuine quote was detected in the
+// conversation) works exactly as before — verbatim quote + sourceEvidence,
+// server-verified. EXAMPLE mode (no real quote available) is new: GPT writes
+// clearly generic, template-style placeholder content and sets "example":
+// true, which the renderer uses to show a visible "Example — edit with a
+// real review" tag. This is the same convention real template marketplaces
+// use for demo content — never presented as a verified claim.
 const TESTIMONIAL_COMPONENT_SCHEMAS: Record<string, string> = {
   "testimonial-single-quote":
-`"testimonial-single-quote" section content: { "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }
-FABRICATION RULE — ABSOLUTE: This is the single highest-risk component in this build. A fabricated customer quote attributes words to a real person who never said them.
-"quote": the EXACT verbatim text of the quote from the owner's description — never paraphrase or improve it.
-"sourceEvidence": a 10–40 character substring copied verbatim from the description that proves the quote is real. Server-side: if sourceEvidence is not found in the description, this entire section is removed.
-"name": customer name ONLY if explicitly stated alongside the quote. Omit if no name.
-"role": descriptor ONLY if stated (e.g. "Verified patient", "Google Review"). Omit if not stated.
-If you cannot find a real quoted customer statement: output quote: "" — section will be suppressed server-side.`,
+`"testimonial-single-quote" section content: { "quote": string, "name"?: string, "role"?: string, "sourceEvidence"?: string, "example"?: boolean }
+IF A REAL CUSTOMER QUOTE EXISTS IN THE DESCRIPTION:
+  "quote": the EXACT verbatim text from the owner's description — never paraphrase or improve it.
+  "sourceEvidence": a 10–40 character substring copied verbatim from the description that proves the quote is real. Server-side: if sourceEvidence is not found in the description, this section falls back to example mode.
+  "name"/"role": ONLY if explicitly stated alongside the quote. Omit if not stated. Do NOT set "example".
+IF NO REAL CUSTOMER QUOTE EXISTS (the common case):
+  Set "example": true. Write ONE short, generic, obviously-template-style quote (1 sentence, positive but non-specific — no invented specific numbers, dates, or outcomes), e.g. "Working with [business name] was a great experience from start to finish."
+  "name": omit, or use a generic placeholder like "Happy Customer" — never invent a specific-sounding real name.
+  Do NOT include "sourceEvidence" in example mode.`,
 
   "testimonial-grid":
-`"testimonial-grid" section content: { "eyebrow"?: string, "headline"?: string, "items": [{ "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }] }
-FABRICATION RULE — ABSOLUTE: Every item in items[] must correspond to a real quoted statement in the owner's description. Same rules as testimonial-single-quote apply to each item.
-Each item: "quote" = exact verbatim text. "sourceEvidence" = 10–40 char verbatim substring from description.
-"name"/"role": only if explicitly stated. Never invent reviewer names.
-If fewer than 2 real quotes exist: output items: [] — section will be suppressed server-side. Max 3 items.`,
+`"testimonial-grid" section content: { "eyebrow"?: string, "headline"?: string, "items": [{ "quote": string, "name"?: string, "role"?: string, "sourceEvidence"?: string }], "example"?: boolean }
+IF REAL CUSTOMER QUOTES EXIST IN THE DESCRIPTION: each item needs "quote" = exact verbatim text, "sourceEvidence" = 10–40 char verbatim substring from description. "name"/"role" only if explicitly stated. Do NOT set "example".
+IF NO REAL CUSTOMER QUOTES EXIST (the common case): set "example": true at the section level. Write 2–3 short, generic, obviously-template-style quotes (positive but non-specific — no invented numbers, dates, or outcomes). "name": omit, or use varied generic placeholders like "Happy Customer" — never invent specific-sounding real names. Do NOT include "sourceEvidence" on any item in example mode.`,
 };
 
 function verifyContentComponents(spec: WebsiteSpec, description: string): void {
   const descLower = description.toLowerCase();
   spec.sections = spec.sections.filter((s) => {
     if (s.type === "testimonial-single-quote") {
-      const c = s.content as { quote?: string; sourceEvidence?: string };
+      const c = s.content as { quote?: string; sourceEvidence?: string; example?: boolean };
+      if (!c.quote || String(c.quote).trim() === "") {
+        console.warn(`[website/generate] verifyContentComponents: removing testimonial-single-quote — empty quote`);
+        return false;
+      }
       const evidence = String(c.sourceEvidence ?? "").trim();
-      const valid = !!c.quote && String(c.quote).trim() !== "" && evidence.length >= 8 && descLower.includes(evidence.toLowerCase());
-      if (!valid) console.warn(`[website/generate] verifyContentComponents: removing testimonial-single-quote — quote empty or sourceEvidence "${evidence}" not found`);
-      return valid;
+      const claimsReal = !c.example;
+      // A claimed-real quote must actually verify; if it doesn't, downgrade to
+      // example mode rather than discarding a perfectly fine placeholder quote.
+      if (claimsReal && !(evidence.length >= 8 && descLower.includes(evidence.toLowerCase()))) {
+        console.warn(`[website/generate] verifyContentComponents: testimonial-single-quote sourceEvidence "${evidence}" not found — downgrading to example mode`);
+        c.example = true;
+        delete c.sourceEvidence;
+      }
+      return true;
     }
     if (s.type === "testimonial-grid") {
-      const c = s.content as { items?: { quote?: string; sourceEvidence?: string }[] };
-      const items = (c.items ?? []).filter((item) => {
-        const evidence = String(item.sourceEvidence ?? "").trim();
-        return !!item.quote && String(item.quote).trim() !== "" && evidence.length >= 8 && descLower.includes(evidence.toLowerCase());
+      const c = s.content as { items?: { quote?: string; sourceEvidence?: string }[]; example?: boolean };
+      const items = (c.items ?? []).filter((item) => !!item.quote && String(item.quote).trim() !== "");
+      if (c.example) {
+        // Example mode: no sourceEvidence verification needed, just non-empty quotes.
+        if (items.length === 0) {
+          console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid — no example items`);
+          return false;
+        }
+        c.items = items.map((item) => { const it = item as { sourceEvidence?: string }; delete it.sourceEvidence; return item; });
+        return true;
+      }
+      const verified = items.filter((item) => {
+        const evidence = String((item as { sourceEvidence?: string }).sourceEvidence ?? "").trim();
+        return evidence.length >= 8 && descLower.includes(evidence.toLowerCase());
       });
-      if (items.length === 0) {
+      if (verified.length === 0) {
         console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid — no verified items`);
         return false;
       }
-      c.items = items;
+      c.items = verified;
       return true;
     }
     return true;
@@ -1505,23 +1614,29 @@ PART 2 — JSON ROOT SHAPE
 PART 3 — DESIGN MOODS (choose ONE for designDNA.mood)
 ═══════════════════════════════════════════════════════
 
+Every mood below is BRIGHT — a warm or neutral near-white background is the
+site's primary look. There is no dark/black default: the only dark element
+any site ever gets is the footer, which the renderer already handles on its
+own. Never set isDark: true and never propose a black/near-black bg — always
+copy the exact bg/text/muted hex values below for the mood you pick.
+
 "editorial-luxury" — Serif headings, off-white body, gold/champagne accent, cinematic. USE: boutique hotel, luxury salon, fine dining, real estate.
   Palette: bg #FAF8F5 · text #1A1A1A · muted #857D72 · isDark: false
 
 "clinical-bright" — All-sans heavy headings, pure white, clinical blue accent, trust-first. USE: dental clinic, medical practice, physio.
   Palette: bg #FFFFFF · text #0A2540 · muted #64748B · isDark: false
 
-"bold-energetic" — Heavy compressed headings (uppercase), near-black bg, vivid accent. USE: gym, sports brand, nightlife, automotive.
-  Palette: bg #0B0B0B · text #FFFFFF · muted #6B7280 · isDark: true
+"bold-energetic" — Heavy compressed headings (uppercase), warm off-white bg, vivid punchy accent for contrast. USE: gym, sports brand, nightlife, automotive.
+  Palette: bg #FAF9F5 · text #161513 · muted #6B6862 · isDark: false
 
 "warm-minimal" — Light-weight serif heading, warm off-white, muted earth accent, extreme whitespace. USE: spa, yoga, organic café, salon.
   Palette: bg #F7F5F0 · text #3A3730 · muted #6B705C · isDark: false
 
-"tech-sharp" — Geometric sans heading (600-700w), very dark bg, bold violet/indigo accent. USE: SaaS, tech startup, digital agency.
-  Palette: bg #0A0A0F · text #F1F5F9 · muted #6B7280 · isDark: true
+"tech-sharp" — Geometric sans heading (600-700w), cool near-white bg, bold violet/indigo accent for contrast. USE: SaaS, tech startup, digital agency.
+  Palette: bg #F6F7FB · text #15161C · muted #64748B · isDark: false
 
-"dark-premium" — Delicate serif headings (400w), ultra-dark near-black, warm gold accent. USE: premium hotel, high fashion, exclusive membership.
-  Palette: bg #080808 · text #F5F3EE · muted #857D72 · isDark: true
+"dark-premium" — Delicate serif headings (400w), warm ivory bg, warm gold accent. USE: premium hotel, high fashion, exclusive membership.
+  Palette: bg #F5EFE3 · text #1C1710 · muted #857D72 · isDark: false
 
 ═══════════════════════════════════════════════════════
 PART 4 — FONTS (ONLY these names are valid)
@@ -1584,37 +1699,44 @@ SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT 
 PART 7 — IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner has no photos and did not ask for stock photography.
+${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner explicitly asked for a photo-free, typography-only design.
 Do NOT write an imageQuery or imageQueries field on ANY section, ever.
 Choose hero variant "minimal-stacked" (no image). Never choose gallery-grid, listings-grid with photos, product-grid, or feature-showcase if it depends on photography.
-Build the design instead around strong typography, the site's color palette, and icons (see the icon list in PART 8). This is a real, polished design choice — not a fallback. Use stats-band, feature-grid, logo-strip, and text-led sections to carry visual interest instead of photos.` : `imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
+Build the design instead around strong typography, the site's color palette, and icons (see the icon list in PART 8). This is a real, polished design choice the owner asked for — not a fallback. Use stats-band, feature-grid, logo-strip, and text-led sections to carry visual interest instead of photos.` : `imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
 imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3–6), product-grid (4–8), feature-showcase (3–4).
+DEFAULT BEHAVIOR: this owner has no photos of their own, which means every section needs a real, working imageQuery/imageQueries — do not skip or leave any required field empty just because there's no upload.
 
 ${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, not where the business is:
 imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 NEVER include city names, country names, or region names in any image query.
 
-CRITICAL — use the OWNER'S SPECIFIC business type from their own description, never just the broad category:
+CRITICAL — use the OWNER'S SPECIFIC business type from their own description, never just the broad category, and NEVER a mismatched subject from a different industry:
   BAD  (too generic): "medical clinic" / "gallery" / "hero image"
-  GOOD (specific):     "modern dental clinic reception interior" / "pediatric dental waiting room bright colorful"
-If the owner said what kind of dental clinic, gym, restaurant, or salon this is (cosmetic, pediatric, CrossFit, Italian, bridal, etc.), that specific word belongs in the query — not just the generic bucket.
+  BAD  (mismatched — real bug seen in production): a villa exterior or a random bathroom/living-room interior on a DENTAL clinic site; a locked/closed storefront on any site
+  GOOD (specific and accurate):     "modern dental clinic reception interior" / "pediatric dental waiting room bright colorful"
+If the owner said what kind of dental clinic, gym, restaurant, café, or salon this is (cosmetic, pediatric, CrossFit, Italian, specialty coffee, bridal, etc.), that specific word belongs in the query — not just the generic bucket. Every query must describe a subject that could genuinely belong to THIS business, never to an unrelated industry.
 
 VISUAL SUBJECT = the specific physical thing in the photo:
-• dental/clinic → "dental treatment room" / "clinic reception bright" / "orthodontic equipment"
+• dental/clinic → "bright dental clinic reception" / "dental treatment room clean modern" / "smiling patient dental checkup" / "orthodontic equipment close-up"
+• coffee shop/café → "latte art close-up coffee cup" / "barista pouring espresso shot" / "coffee beans roasted close-up" / "cozy café interior warm light"
 • gym → "weight training floor equipment" / "group fitness studio" / "functional training area"
 • real estate → "luxury villa exterior pool" / "apartment living room natural light" / "kitchen marble"
 • restaurant → "dining room table setting" / "chef kitchen cooking" / "food plating close-up"
-• salon/beauty → "salon styling station" / "spa treatment room minimal" / "manicure station warm"
+• salon/beauty/hair salon → "salon styling chair interior" / "hair styling station mirror" / "spa treatment room minimal" / "manicure station warm"
+• interior design → "modern living room styled interior" / "designer furniture close-up detail" / "architectural interior natural light"
 • hotel → "hotel lobby warm interior" / "suite editorial light" / "pool terrace daylight"
 • legal → "law firm boardroom dark wood" / "attorney office bookshelf professional"
 • saas/agency → "modern office open workspace bright" / "team collaboration studio natural light"
 
 EXAMPLES (no city or country):
-  Dental hero    → "dental treatment room bright white clean minimal professional photography"
+  Dental hero    → "bright dental clinic reception modern clean professional photography"
+  Coffee shop hero → "latte art coffee cup close-up warm natural light editorial"
   Gym hero       → "premium gym training floor equipment cinematic dramatic lighting editorial"
   Real estate hero → "luxury villa exterior pool architecture daylight editorial"
+  Interior design hero → "modern living room styled interior natural light editorial"
   Restaurant about → "chef open kitchen fire cooking editorial warm dramatic"
   Gallery item (dental) → "teeth whitening treatment close-up clinical bright editorial"
+  Gallery item (coffee shop) → "coffee beans roasted close-up warm editorial"
   Property listing → "apartment living room natural light minimal architectural"
 gallery/listings/products: vary subject, angle, detail — each query must be distinct.
 ` : `BUILD FROM OWNER'S SPECIFICS:
@@ -1711,16 +1833,16 @@ PART 11 — SHOWCASE SECTION SCHEMA
 The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data — fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays — the section will be suppressed server-side.
 ${showcaseComponents.map((type) => SHOWCASE_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}${contentComponents && contentComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 12 — TESTIMONIAL SECTION SCHEMA (HIGHEST FABRICATION RISK)
+PART 12 — TESTIMONIAL SECTION SCHEMA
 ═══════════════════════════════════════════════════════
-This section was server-selected because real quoted customer speech was detected in the description. Fill it ONLY with verbatim real quotes. Never improve, paraphrase, or invent any part of a quote.
+A testimonials section is included by default. Check the owner's description for a real quoted customer statement FIRST — if one exists, use real mode (verbatim quote + sourceEvidence). If none exists (the common case), use example mode (clearly generic placeholder content, "example": true) — see the per-mode rules below. Never blend the two: a section is either fully real (every quote verified) or fully example.
 ${contentComponents.map((type) => TESTIMONIAL_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
 ABSOLUTE RULES — NEVER VIOLATE
 ═══════════════════════════════════════════════════════
 1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
-2. NEVER freely add testimonials, reviews, or star ratings — they are server-controlled. When a testimonial section appears in the template (Part 12), fill it only following Part 12 rules.
-3. NEVER include stats-band with invented numbers.
+2. Testimonials follow Part 12 exactly — real mode requires a genuine quote + verifiable sourceEvidence; anything else MUST be marked "example": true with generic, non-specific placeholder content. Never present invented content as if it were a real, verified review.
+3. stats-band: real numbers when the owner stated them. When no real statistics exist, still include the section with clearly plausible example numbers for this business type and set "example": true — never present them as verified.
 4. NEVER invent team member names.
 5. NEVER paraphrase the owner's input as copy — extract intent and write fresh.
 6. NEVER use generic headings: "Our Services", "About Us", "Why Choose Us", "Contact Us".
@@ -1798,23 +1920,29 @@ PART 2 — JSON ROOT SHAPE
 PART 3 — DESIGN MOODS (choose ONE for designDNA.mood)
 ═══════════════════════════════════════════════════════
 
+Every mood below is BRIGHT — a warm or neutral near-white background is the
+site's primary look. There is no dark/black default: the only dark element
+any site ever gets is the footer, which the renderer already handles on its
+own. Never set isDark: true and never propose a black/near-black bg — always
+copy the exact bg/text/muted hex values below for the mood you pick.
+
 "editorial-luxury" — Serif headings, off-white/warm body, gold/champagne accent, zero radius, generous whitespace. Cinematic, unhurried. USE FOR: boutique hotel, luxury salon, fine dining, jewellery, fashion boutique, real estate, interior design, legal firm.
   Palette guide: bg #FAF8F5 · text #1A1A1A · muted #857D72 · isDark: false
 
 "clinical-bright" — All-sans heavy headings, pure white, clinical blue accent, rounded corners (10px+), icon circles. Trust-first, airy. USE FOR: dental clinic, medical practice, physio, dermatology, health centre, vet.
   Palette guide: bg #FFFFFF · text #0A2540 · muted #64748B · isDark: false
 
-"bold-energetic" — Heavy compressed headings (uppercase), near-black bg, vivid/acid accent, dark throughout. High energy. USE FOR: gym, CrossFit, martial arts, sports brand, nightlife, automotive, streetwear.
-  Palette guide: bg #0B0B0B · text #FFFFFF · muted #6B7280 · isDark: true
+"bold-energetic" — Heavy compressed headings (uppercase), warm off-white bg, vivid/acid accent for contrast. High energy. USE FOR: gym, CrossFit, martial arts, sports brand, nightlife, automotive, streetwear.
+  Palette guide: bg #FAF9F5 · text #161513 · muted #6B6862 · isDark: false
 
 "warm-minimal" — Light-weight serif or optical-variable heading, warm off-white, muted earth accent, extreme whitespace, no radius. Tactile, quiet luxury. USE FOR: spa, yoga studio, organic café, bakery, florist, holistic wellness, artisan food, hair salon (soft/organic).
   Palette guide: bg #F7F5F0 · text #3A3730 · muted #6B705C · isDark: false
 
-"tech-sharp" — Geometric sans heading (600-700w), very dark or pure black bg, bold violet/indigo accent, subtle glows, tight spacing. Precise, forward-looking. USE FOR: SaaS, tech startup, digital agency, co-working, ed-tech, modern ecommerce.
-  Palette guide: bg #0A0A0F · text #F1F5F9 · muted #6B7280 · isDark: true
+"tech-sharp" — Geometric sans heading (600-700w), cool near-white bg, bold violet/indigo accent for contrast, subtle glows, tight spacing. Precise, forward-looking. USE FOR: SaaS, tech startup, digital agency, co-working, ed-tech, modern ecommerce.
+  Palette guide: bg #F6F7FB · text #15161C · muted #64748B · isDark: false
 
-"dark-premium" — Delicate serif headings (400w), ultra-dark near-black, warm gold accent, maximum negative space. Cinematic, nighttime luxury. USE FOR: premium hotel, fine dining (evening), high fashion, exclusive membership.
-  Palette guide: bg #080808 · text #F5F3EE · muted #857D72 · isDark: true
+"dark-premium" — Delicate serif headings (400w), warm ivory bg, warm gold accent, maximum negative space. Cinematic, refined luxury. USE FOR: premium hotel, fine dining (evening), high fashion, exclusive membership.
+  Palette guide: bg #F5EFE3 · text #1C1710 · muted #857D72 · isDark: false
 
 ═══════════════════════════════════════════════════════
 PART 4 — FONTS (ONLY these names are valid)
@@ -1964,40 +2092,49 @@ SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT 
 PART 7 — IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner has no photos and did not ask for stock photography.
+${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner explicitly asked for a photo-free, typography-only design.
 Do NOT write an imageQuery or imageQueries field on ANY section, ever.
 Do NOT include gallery-grid, or any section whose entire value depends on photography.
-Build the design around strong typography, the site's color palette, and icons instead. This is a real, polished design choice, not a fallback.` : `imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
+Build the design around strong typography, the site's color palette, and icons instead. This is a real, polished design choice the owner asked for, not a fallback.` : `imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
+DEFAULT BEHAVIOR: this owner has no photos of their own, which means every section needs a real, working imageQuery/imageQueries — do not skip or leave any required field empty just because there's no upload.
 
 ${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, NOT where the business is located:
 
 imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 
 ABSOLUTE RULE: NEVER include city names, country names, or region names in any image query.
-The query describes what appears in the photo, not where the business operates.
+The query describes what appears in the photo, not where the business operates. NEVER a
+mismatched subject from a different industry — no villa exterior or random bathroom/living-room
+interior on a dental clinic site, no locked/closed storefront on any site.
 
 VISUAL SUBJECT = the specific physical thing the photo shows:
-• dental/clinic → "dental treatment room" / "modern clinic reception area" / "orthodontic equipment clean"
+• dental/clinic → "bright dental clinic reception" / "dental treatment room clean modern" / "smiling patient dental checkup" / "orthodontic equipment clean"
+• coffee shop/café → "latte art close-up coffee cup" / "barista pouring espresso shot" / "coffee beans roasted close-up" / "cozy café interior warm light"
 • gym → "weight training floor equipment" / "group fitness class studio" / "functional training area"
 • real estate → "luxury villa exterior pool" / "apartment living room natural light" / "kitchen marble countertop"
 • restaurant → "elegant dining room table setting" / "open kitchen chef cooking" / "dessert plating close-up"
-• salon/beauty → "salon styling station interior" / "spa treatment room minimal" / "manicure station warm light"
+• salon/beauty/hair salon → "salon styling chair interior" / "hair styling station mirror" / "spa treatment room minimal" / "manicure station warm light"
+• interior design → "modern living room styled interior" / "designer furniture close-up detail" / "architectural interior natural light"
 • hotel → "luxury hotel lobby interior warm" / "hotel suite editorial light" / "pool terrace daylight minimal"
 • legal → "law firm boardroom dark wood bookshelf" / "attorney office professional editorial"
 • saas/agency → "modern office open workspace bright airy" / "team collaboration studio natural light"
 
-AESTHETIC/MOOD (match to the site mood):
-  editorial-luxury / warm-minimal → "warm editorial" / "natural light" / "minimal clean"
-  bold-energetic / dark-premium → "dramatic lighting" / "cinematic dark" / "high contrast"
+AESTHETIC/MOOD (match to the site mood — all moods are bright; never "dark"/"moody" as the dominant look):
+  editorial-luxury / warm-minimal / dark-premium → "warm editorial" / "natural light" / "minimal clean"
+  bold-energetic → "high energy" / "dynamic" / "bright contrast"
+  tech-sharp → "clean modern" / "bright minimal" / "precise"
   clinical-bright → "bright white" / "clean minimal" / "professional"
 
 EXAMPLES (zero city/country in any query):
-• Dental hero      → "dental treatment room bright white clean minimal professional photography"
+• Dental hero      → "bright dental clinic reception modern clean professional photography"
+• Coffee shop hero → "latte art coffee cup close-up warm natural light editorial"
 • Real estate hero  → "luxury villa exterior pool architecture daylight editorial"
-• Gym hero          → "premium gym training floor equipment cinematic dramatic lighting editorial"
+• Interior design hero → "modern living room styled interior natural light editorial"
+• Gym hero          → "premium gym training floor equipment high energy bright editorial"
 • Restaurant about  → "chef open kitchen fire cooking editorial warm dramatic"
 • Real estate about → "real estate agent modern office interior bright professional"
 • Dental gallery item → "teeth whitening treatment close-up clinical bright editorial"
+• Coffee shop gallery item → "coffee beans roasted close-up warm editorial"
 • Property listing  → "contemporary apartment living room natural light minimal architectural"
 • Gym listing       → "gym equipment dumbbell rack weight training detail editorial"
 
@@ -2203,7 +2340,7 @@ REQUIRED FIELDS — collect in this exact order, one question per turn:
    Exception: if user explicitly says "skip", "no", or "I'll add it later" for either part, that satisfies this field.
 
 5. PHOTOS (optional — ask only ONCE, after fields 1–4 are satisfied):
-   Ask exactly: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I will design a clean photo-free site. I can also search for professional stock photos instead, if you would like that."
+   Ask exactly: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I'll use professional stock photography that matches your business — just let me know if you'd rather have a clean, photo-free design instead."
    Skip if: context says "IMAGE ALREADY ATTACHED", OR photos were already discussed or offered in the conversation.
    After this question is asked once (even if unanswered), OR if user says "no" / "skip" / "just build it" / "use stock" → respond { "action": "generate" }.
 
@@ -2364,21 +2501,31 @@ function extractContactFromText(text: string): string {
 }
 
 // ── Stock photography is opt-in, never a silent default ───────────────────────
-// Historically, no owner-photo meant Unsplash stock was always searched and
-// inserted, producing mismatched photos (a locked storefront, random villa or
-// bathroom interiors on a dental clinic site, in one reported case). Default
-// is now NO stock photography -- only an explicit, affirmative answer to the
-// photo question turns it on. "no" / "skip" / silence means a photo-free
-// design, not a silent switch to stock.
-function extractStockPhotoPreference(fullText: string): boolean {
+// FIX 2 (reverses the previous round's default): a prior round made "no
+// uploaded photo" default to a photo-free, typography-only design, on the
+// theory that stock photography was producing mismatched images (a locked
+// storefront, a random villa or bathroom interior on a dental clinic site).
+// That was the wrong fix for a real problem -- the mismatch was a QUERY
+// SPECIFICITY bug (Part 7 below), not a reason to drop photography entirely.
+// Reviewed reference examples (coffee shop, interior design studio, real
+// estate, dental clinic -- all bright, warm, photo-rich) confirm the correct
+// default is industry-generic but visually accurate stock photography. A
+// photo-free design is now something the owner has to explicitly ask for,
+// not something that happens silently just because they have no photos of
+// their own to upload.
+function extractNoPhotoOptOut(fullText: string): boolean {
   const t = fullText.toLowerCase();
-  const stockOptIn = [
-    /\byes\b[^.!?\n]{0,30}\bstock\b/,
-    /\bstock\b[^.!?\n]{0,20}\b(yes|please|sure|ok|okay|sounds good|go ahead)\b/,
-    /\b(use|search for|find|add|show me|pick)\b[^.!?\n]{0,25}\bstock\s+photo/,
-    /\bstock\s+photo(s|graphy)?\b[^.!?\n]{0,15}\b(is fine|works|are fine|would be great)\b/,
+  const noPhotoOptOut = [
+    /\bno\b[^.!?\n]{0,20}\b(photos?|images?|pictures?|stock\s+photo)/,
+    /\bwithout\b[^.!?\n]{0,15}\b(photos?|images?|pictures?)/,
+    /\bskip\b[^.!?\n]{0,15}\b(photos?|images?|the\s+photos?)/,
+    /\b(don'?t|do\s+not)\s+(use|want|need|include)\b[^.!?\n]{0,20}\b(photos?|images?|pictures?|stock)/,
+    /\btypography[- ]only\b/,
+    /\bphoto[- ]?free\b/,
+    /\btext[- ]only\b/,
+    /\bno\s+stock\b/,
   ];
-  return stockOptIn.some((re) => re.test(t));
+  return noPhotoOptOut.some((re) => re.test(t));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2468,19 +2615,19 @@ export async function POST(req: NextRequest) {
   // consistent across every turn, in both the fresh-generation and revision
   // paths.
   // Only the owner's own messages are scanned -- the assistant's own photo
-  // question necessarily mentions "stock photos" to offer it as a choice
-  // (e.g. "I can also search for professional stock photos instead"), and
-  // including assistant/ai-role messages here caused that offer itself to be
-  // misread as the owner accepting it, turning stock photography back on for
-  // every site regardless of the actual answer (caught live: 7 stock images
-  // still appeared after explicitly declining photos, before this fix).
+  // question mentions photography/stock terms to offer the choice, and
+  // including assistant/ai-role messages here would risk that offer itself
+  // being misread as the owner's answer (the same class of bug that broke
+  // detection in the opposite direction last round).
   const allChatText = [
     ...(Array.isArray(body.chat)
       ? body.chat.filter((m) => m.role === "user").map((m) => m.content)
       : []),
     message ?? "",
   ].join(" ");
-  const noPhotoMode = !heroUpload && !extractStockPhotoPreference(allChatText);
+  // FIX 2: default is real stock photography; noPhotoMode only activates on
+  // an explicit opt-out (see extractNoPhotoOptOut above).
+  const noPhotoMode = !heroUpload && extractNoPhotoOptOut(allChatText);
 
   const admin = createSupabaseAdmin() as AdminClient;
   const { data: tenant } = await admin

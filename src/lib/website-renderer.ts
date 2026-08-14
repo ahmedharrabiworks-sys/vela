@@ -1062,13 +1062,13 @@ ${serviceCardOverrides}
 .ws-integration-name{font-size:0.8rem;font-weight:600;color:var(--color-muted);}
 
 /* ── Hero v3: full-image ─────────────────────────────────────────────────── */
-.ws-hero--fi{position:relative;min-height:94vh;display:flex;align-items:flex-end;overflow:hidden;}
+.ws-hero--fi{position:relative;min-height:94vh;display:flex;align-items:flex-end;justify-content:center;text-align:center;overflow:hidden;}
 .ws-hero-fi-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
 .ws-hero-fi-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.36) 48%,rgba(0,0,0,.08) 100%);}
 .ws-hero-fi-inner{position:relative;z-index:1;padding:0 max(24px,5vw) clamp(64px,10vh,120px);max-width:860px;}
 .ws-hero-fi-eyebrow{font-size:0.78rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:20px;}
 .ws-hero-fi-h{font-family:var(--font-heading);font-size:clamp(2.75rem,6vw,5.5rem);font-weight:var(--heading-weight);letter-spacing:var(--heading-tracking);text-transform:var(--heading-transform);color:#fff;line-height:1.0;margin-bottom:20px;}
-.ws-hero-fi-sub{font-size:1.1rem;color:rgba(255,255,255,.76);max-width:520px;line-height:1.7;margin-bottom:44px;}
+.ws-hero-fi-sub{font-size:1.1rem;color:rgba(255,255,255,.76);max-width:520px;line-height:1.7;margin:0 auto 44px;}
 
 /* ── Hero v3: re-split ───────────────────────────────────────────────────── */
 .ws-hero--res{display:grid;grid-template-columns:1fr 1fr;min-height:85vh;}
@@ -1142,13 +1142,13 @@ ${serviceCardOverrides}
 .ws-hero-cprem-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--radius-lg);display:block;box-shadow:0 24px 64px rgba(0,0,0,.12);}
 
 /* ── Hero v3: cinematic-dark ─────────────────────────────────────────────── */
-.ws-hero--cind{position:relative;min-height:94vh;display:flex;align-items:flex-end;overflow:hidden;}
+.ws-hero--cind{position:relative;min-height:94vh;display:flex;align-items:flex-end;justify-content:center;text-align:center;overflow:hidden;}
 .ws-hero-cind-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
 .ws-hero-cind-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.92) 0%,rgba(0,0,0,.52) 50%,rgba(0,0,0,.2) 100%);}
 .ws-hero-cind-inner{position:relative;z-index:1;padding:0 max(24px,6vw) clamp(64px,10vh,120px);}
 .ws-hero-cind-eyebrow{font-size:0.72rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:24px;}
-.ws-hero-cind-h{font-family:var(--font-heading);font-size:clamp(3rem,10vw,8rem);font-weight:900;letter-spacing:-.01em;text-transform:uppercase;color:#fff;line-height:.95;margin-bottom:24px;max-width:14ch;}
-.ws-hero-cind-sub{font-size:1.05rem;color:rgba(255,255,255,.58);max-width:480px;line-height:1.65;margin-bottom:48px;}
+.ws-hero-cind-h{font-family:var(--font-heading);font-size:clamp(3rem,10vw,8rem);font-weight:900;letter-spacing:-.01em;text-transform:uppercase;color:#fff;line-height:.95;margin:0 auto 24px;max-width:14ch;}
+.ws-hero-cind-sub{font-size:1.05rem;color:rgba(255,255,255,.58);max-width:480px;line-height:1.65;margin:0 auto 48px;}
 .ws-hero-cind-cta{font-size:1rem;padding:14px 36px;}
 
 /* ── Hero v3: membership-focused ─────────────────────────────────────────── */
@@ -1415,6 +1415,12 @@ ${serviceCardOverrides}
 }
 
 /* ── Phase 2d — content pool ──────────────────────────────────────────── */
+/* FIX 4: placeholder-style stat/testimonial content is now allowed when no
+   real data exists (previously omitted entirely) -- this tag makes clear to
+   any real site visitor that the numbers/quotes are examples for the owner
+   to replace, not verified claims. Small, subtle, dashed border (distinct
+   from real content styling), centered above the section it labels. */
+.ws-example-tag{display:block;width:fit-content;font-size:0.72rem;font-weight:600;letter-spacing:.04em;color:var(--color-muted);background:var(--bg-alt);border:1px dashed var(--border);border-radius:100px;padding:5px 14px;margin:0 auto 24px;text-align:center;}
 .ws-tsq{max-width:760px;margin:0 auto;text-align:center;}
 .ws-tsq-mark{font-family:var(--font-heading);font-size:6rem;line-height:.6;color:var(--accent);opacity:.3;margin-bottom:24px;user-select:none;}
 .ws-tsq-quote{font-family:var(--font-heading);font-size:clamp(1.25rem,2.5vw,2rem);font-weight:400;font-style:italic;color:var(--color-heading);line-height:1.5;margin-bottom:32px;}

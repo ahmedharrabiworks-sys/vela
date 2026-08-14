@@ -733,7 +733,11 @@ export function renderHeroVariant(
     case "energy-driven":     return renderHeroEnergyDriven(t, c, imageUrl);
     case "portfolio-first":   return renderHeroPortfolioFirst(t, c, multiImageUrls);
     case "luxury-showcase":   return renderHeroLuxuryShowcase(t, c, imageUrl);
-    default:                  return renderHeroFullbleed(t, c, imageUrl); // centered-overlay
+    // "centered-overlay" is website-templates.ts's declared hero variant for
+    // hospitality-editorial/retail-editorial -- explicit case rather than
+    // relying on the default fallback landing on the same function by chance.
+    case "centered-overlay":  return renderHeroFullbleed(t, c, imageUrl);
+    default:                  return renderHeroFullbleed(t, c, imageUrl);
   }
 }
 
@@ -1522,12 +1526,13 @@ export function renderTestimonialsSection(
 // 12. stats-band — dark band with large numbers
 export function renderStatsBand(
   t: DesignTokens,
-  c: { items?: { value?: string; label?: string }[] }
+  c: { items?: { value?: string; label?: string }[]; example?: boolean }
 ): string {
   const items = (c.items ?? []).filter((i) => i.value && i.label).slice(0, 5);
   if (!items.length) return "";
   return `<section class="ws-stats" style="background:${t.heroBg};">
   <div class="ws-container">
+    ${c.example ? `<p class="ws-example-tag">Example numbers — edit with your real stats</p>` : ""}
     <div class="ws-stats-inner">
       ${items.map((item) => `
       <div class="ws-stat">
@@ -1602,12 +1607,13 @@ export function renderFaqAccordion(
 // CD-1: testimonial-single-quote — centered large quote for one real customer statement
 export function renderTestimonialSingleQuote(
   _t: DesignTokens,
-  c: { quote?: string; name?: string; role?: string; sourceEvidence?: string }
+  c: { quote?: string; name?: string; role?: string; sourceEvidence?: string; example?: boolean }
 ): string {
   if (!c.quote) return "";
   return `<section class="ws-section" id="testimonial">
   <div class="ws-container">
     <div class="ws-tsq">
+      ${c.example ? `<p class="ws-example-tag">Example review — edit with a real customer quote</p>` : ""}
       <p class="ws-tsq-mark" aria-hidden="true">“</p>
       <blockquote class="ws-tsq-quote">${esc(c.quote)}</blockquote>
       <footer class="ws-tsq-foot">
@@ -1624,7 +1630,7 @@ type TestimonialItem = { quote?: string; name?: string; role?: string; sourceEvi
 
 export function renderTestimonialGrid(
   _t: DesignTokens,
-  c: { eyebrow?: string; headline?: string; items?: TestimonialItem[] }
+  c: { eyebrow?: string; headline?: string; items?: TestimonialItem[]; example?: boolean }
 ): string {
   const items = (c.items ?? []).filter((item) => item.quote).slice(0, 3);
   if (!items.length) return "";
@@ -1632,6 +1638,7 @@ export function renderTestimonialGrid(
   <div class="ws-container">
     ${c.eyebrow  ? `<p class="ws-eyebrow">${esc(c.eyebrow)}</p>` : ""}
     ${c.headline ? `<h2 class="ws-heading">${esc(c.headline)}</h2>` : ""}
+    ${c.example ? `<p class="ws-example-tag">Example reviews — edit with your real customer quotes</p>` : ""}
     <div class="ws-tgrid">
       ${items.map((item) => `
       <div class="ws-tgrid-card">
