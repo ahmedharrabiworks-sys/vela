@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
+import { createNotification, channelLabel } from "@/lib/notifications";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -130,6 +131,16 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     leadId = (lead as { id: string } | null)?.id ?? null;
+
+    if (leadId && !isTest) {
+      await createNotification(admin, {
+        tenantId,
+        type: "lead",
+        title: `New lead from ${channelLabel(channel)}`,
+        body: customerName && customerName !== "Customer" ? customerName : null,
+        link: "/app/leads",
+      });
+    }
 
     const { data: conv } = await admin
       .from("conversations")
@@ -417,6 +428,16 @@ Rules:
 
     if (leadId) {
       await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
+    }
+
+    if (!isTest) {
+      await createNotification(admin, {
+        tenantId,
+        type: "appointment",
+        title: "New appointment booked",
+        body: booking.service ? booking.service : null,
+        link: "/app/appointments",
+      });
     }
   }
 

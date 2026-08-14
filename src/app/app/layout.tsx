@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { VelaAssistant } from "@/components/dashboard/VelaAssistant";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { I18nProvider } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 
@@ -217,12 +218,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-2 md:gap-3">
             <ThemeToggle />
-            <button className="relative w-9 h-9 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M9 1.5A5.25 5.25 0 003.75 6.75c0 3.375-1.5 4.5-1.5 4.5h13.5s-1.5-1.125-1.5-4.5A5.25 5.25 0 009 1.5zM10.299 15a1.5 1.5 0 01-2.598 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#FF3366]" />
-            </button>
+            <NotificationBell />
             {/* Mobile search trigger */}
             <button onClick={() => setPaletteOpen(true)}
               className="sm:hidden w-9 h-9 rounded-xl bg-[#F3F4F6] flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all">

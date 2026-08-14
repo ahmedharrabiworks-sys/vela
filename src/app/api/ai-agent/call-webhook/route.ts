@@ -11,6 +11,7 @@ import {
   CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
+import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -209,6 +210,20 @@ export async function POST(req: NextRequest) {
       console.error("[call-webhook] insert error:", err?.message ?? err);
     }
 
+    // A call that never connected/completed -- no talk time and no transcript
+    // at all, regardless of the exact endedReason string Vapi reports (those
+    // vary by failure type: no answer, busy, voicemail, provider error, etc).
+    const wasMissed = durationSecs <= 0 && transcript.length === 0;
+    if (wasMissed) {
+      await createNotification(admin, {
+        tenantId: resolvedTenantId,
+        type: "missed_call",
+        title: "Missed call",
+        body: callerNumber ?? null,
+        link: "/app/ai-agent/overview",
+      });
+    }
+
     // If appointment was booked, route it into the same appointments table
     // Instagram/WhatsApp/Website use -- appointments always hang off a lead
     // (lead_id is NOT NULL), so find-or-create the caller as a "phone" lead
@@ -224,6 +239,7 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         let leadId = (existingLead as { id?: string } | null)?.id;
+        let isNewLead = false;
         if (leadId) {
           await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
         } else {
@@ -239,6 +255,7 @@ export async function POST(req: NextRequest) {
             .select("id")
             .single();
           leadId = (newLead as { id?: string } | null)?.id;
+          isNewLead = true;
         }
 
         if (leadId) {
@@ -251,6 +268,24 @@ export async function POST(req: NextRequest) {
             datetime:     new Date(Date.now() + 86400000).toISOString(),
             status:       "pending",
             notes:        summary?.slice(0, 500) ?? null,
+          });
+
+          if (isNewLead) {
+            await createNotification(admin, {
+              tenantId: resolvedTenantId,
+              type: "lead",
+              title: "New lead from Phone",
+              body: callerNumber,
+              link: "/app/leads",
+            });
+          }
+
+          await createNotification(admin, {
+            tenantId: resolvedTenantId,
+            type: "appointment",
+            title: "New appointment booked",
+            body: callerNumber,
+            link: "/app/appointments",
           });
         }
       } catch (err) {

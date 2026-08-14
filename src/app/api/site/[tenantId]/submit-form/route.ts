@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { createHash } from "crypto";
+import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -129,6 +130,14 @@ export async function POST(
     console.error("[submit-form] insert error:", insertErr.message);
     return NextResponse.json({ error: "Failed to save. Please try again." }, { status: 500 });
   }
+
+  await createNotification(admin, {
+    tenantId: tenant.id as string,
+    type: "lead",
+    title: "New lead from Website",
+    body: name || null,
+    link: "/app/leads",
+  });
 
   // ── Email notification via Resend (activates when RESEND_API_KEY is set) ──
   if (process.env.RESEND_API_KEY) {
