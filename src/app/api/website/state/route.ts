@@ -23,11 +23,11 @@ export async function GET(_req: NextRequest) {
   const requestedWebsiteId = new URL(_req.url).searchParams.get("websiteId");
 
   // Fetch the target website (specific or most-recently-updated)
-  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_at: string | null; domain: string | null; domain_status: string | null } | null = null;
+  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_html: string | null; chat: unknown; published_at: string | null; domain: string | null; domain_status: string | null } | null = null;
   if (requestedWebsiteId) {
     const { data } = await admin
       .from("websites")
-      .select("id, name, slug, is_published, draft_html, published_at, domain, domain_status")
+      .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status")
       .eq("tenant_id", tenant.id)
       .eq("id", requestedWebsiteId)
       .maybeSingle();
@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest) {
   } else {
     const { data } = await admin
       .from("websites")
-      .select("id, name, slug, is_published, draft_html, published_at, domain, domain_status")
+      .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status")
       .eq("tenant_id", tenant.id)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -69,11 +69,25 @@ export async function GET(_req: NextRequest) {
   // When fetching a specific site by ID (project switch), never fall back to the global
   // tenant_config.website_html — that field belongs to whatever site was last generated
   // and would show another site's HTML in the preview.
+  // FIX 4: fall back to published_html if draft_html is empty. A site can be
+  // genuinely published (is_published true, real slug, real published_html)
+  // while draft_html is empty -- e.g. from the embed_ai_assistant draft-save
+  // bug fixed in migration_v25.sql, or simply a site with no revisions since
+  // publish -- and reopening it showed a blank "Your website preview" even
+  // though the URL bar (driven by is_published/slug, not draft_html) correctly
+  // showed a real live URL.
   const html = requestedWebsiteId
-    ? (site?.draft_html as string | null) ?? null
-    : (site?.draft_html as string | null) || (tc?.website_html as string | null) || null;
+    ? (site?.draft_html as string | null) || (site?.published_html as string | null) || null
+    : (site?.draft_html as string | null) || (site?.published_html as string | null) || (tc?.website_html as string | null) || null;
   const slug    = (site?.slug as string | null) ?? null;
   const name    = (site?.name as string | null) ?? null;
+  // FIX 4: chat is per-site (websites.chat); fall back to the shared
+  // tenant_config column when this site has never saved its own -- e.g.
+  // sites created before this field was wired up, which have an empty array
+  // rather than null here, so an empty-array check (not just null) is needed
+  // for the fallback to actually trigger.
+  const siteChat = Array.isArray(site?.chat) ? (site.chat as unknown[]) : [];
+  const chat = siteChat.length > 0 ? siteChat : (tc?.website_chat ?? null);
 
   // Fetch versions from website_versions TABLE for the active site (per-site, not global).
   // Falls back to the legacy tenant_config JSON column if the TABLE has no entries yet.
@@ -110,7 +124,7 @@ export async function GET(_req: NextRequest) {
       ? (slug ? `/site/${slug}` : `/site/${tenant.id}`)
       : null,
     projects,
-    chat:          tc?.website_chat ?? null,
+    chat,
     intake:        tc?.website_intake ?? null,
     versions,
     customDomain:  site?.domain ?? null,
@@ -125,8 +139,9 @@ export async function GET(_req: NextRequest) {
 // Called fire-and-forget from the client after each generate/settings update.
 export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
-    chat?:   unknown[];
-    intake?: Record<string, string>;
+    chat?:      unknown[];
+    intake?:    Record<string, string>;
+    websiteId?: string;
   };
 
   const supabase = createSupabaseServerClient();
@@ -144,6 +159,21 @@ export async function PATCH(req: NextRequest) {
   if (body.intake != null)       updates.website_intake = body.intake;
 
   await admin.from("tenant_config").upsert(updates, { onConflict: "tenant_id" });
+
+  // FIX 4: also persist chat to the per-site websites.chat column -- this is the
+  // column /api/website/state's GET actually reads first when a specific site is
+  // requested (e.g. clicking a site in the sidebar). Without this, a message
+  // appended client-side AFTER the generate response (like the closing "Got it.
+  // Your website is ready!" text) reached tenant_config here but never reached
+  // the per-site column, so reopening that exact site showed history missing its
+  // own last message even though the shared/legacy column had it.
+  if (Array.isArray(body.chat) && body.websiteId) {
+    await admin
+      .from("websites")
+      .update({ chat: body.chat })
+      .eq("id", body.websiteId)
+      .eq("tenant_id", tenant.id);
+  }
 
   return NextResponse.json({ ok: true });
 }

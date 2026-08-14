@@ -51,10 +51,17 @@ const NAV_BURGER = `<button class="ws-nav-burger" aria-label="Toggle navigation"
     <span class="ws-nav-burger-line"></span>
   </button>`;
 
+// FIX 3: an uploaded logo renders small in the header, next to (not instead
+// of) the business name -- never as a large standalone image.
+function navLogo(businessName: string, logoUrl?: string): string {
+  return `<a href="#" class="ws-nav-logo">${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(businessName)}" class="ws-nav-logo-img" onerror="this.style.display='none'">` : ""}${esc(businessName)}</a>`;
+}
+
 function renderNavStandard(
   businessName: string,
   ctaText: string,
-  navLinks?: Array<{ label: string; href: string }>
+  navLinks?: Array<{ label: string; href: string }>,
+  logoUrl?: string
 ): string {
   const links = navLinks ?? [
     { label: "Services", href: "#services" },
@@ -63,7 +70,7 @@ function renderNavStandard(
   ];
   return `<nav class="ws-nav">
   <div class="ws-nav-inner">
-    <a href="#" class="ws-nav-logo">${esc(businessName)}</a>
+    ${navLogo(businessName, logoUrl)}
     <div class="ws-nav-links">
       ${links.map((l) => `<a href="${esc(l.href)}" class="ws-nav-link">${esc(l.label)}</a>`).join("")}
     </div>
@@ -76,7 +83,8 @@ function renderNavStandard(
 function renderNavTransparent(
   businessName: string,
   ctaText: string,
-  navLinks?: Array<{ label: string; href: string }>
+  navLinks?: Array<{ label: string; href: string }>,
+  logoUrl?: string
 ): string {
   const links = navLinks ?? [
     { label: "Services", href: "#services" },
@@ -85,7 +93,7 @@ function renderNavTransparent(
   ];
   return `<nav class="ws-nav ws-nav--transparent">
   <div class="ws-nav-inner">
-    <a href="#" class="ws-nav-logo">${esc(businessName)}</a>
+    ${navLogo(businessName, logoUrl)}
     <div class="ws-nav-links">
       ${links.map((l) => `<a href="${esc(l.href)}" class="ws-nav-link">${esc(l.label)}</a>`).join("")}
     </div>
@@ -95,10 +103,10 @@ function renderNavTransparent(
 </nav>`;
 }
 
-function renderNavMinimal(businessName: string, ctaText: string): string {
+function renderNavMinimal(businessName: string, ctaText: string, logoUrl?: string): string {
   return `<nav class="ws-nav ws-nav--minimal">
   <div class="ws-nav-inner">
-    <a href="#" class="ws-nav-logo">${esc(businessName)}</a>
+    ${navLogo(businessName, logoUrl)}
     <a href="#booking" class="ws-btn ws-btn-accent" style="padding:12px 28px;font-size:0.875rem;">${esc(ctaText || "Get Started")}</a>
   </div>
 </nav>`;
@@ -108,11 +116,12 @@ export function renderNav(
   businessName: string,
   ctaText: string,
   navLinks?: Array<{ label: string; href: string }>,
-  variant?: string
+  variant?: string,
+  logoUrl?: string
 ): string {
-  if (variant === "transparent") return renderNavTransparent(businessName, ctaText, navLinks);
-  if (variant === "minimal") return renderNavMinimal(businessName, ctaText);
-  return renderNavStandard(businessName, ctaText, navLinks);
+  if (variant === "transparent") return renderNavTransparent(businessName, ctaText, navLinks, logoUrl);
+  if (variant === "minimal") return renderNavMinimal(businessName, ctaText, logoUrl);
+  return renderNavStandard(businessName, ctaText, navLinks, logoUrl);
 }
 
 // ── Hero — legacy layout variants (v1 backward compat) ────────────────────────

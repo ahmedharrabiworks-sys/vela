@@ -57,6 +57,9 @@ export interface WebsiteSpec {
   businessName: string;
   category?: string;
   designDNA?: DesignDNA;
+  // FIX 3: an uploaded logo (classified separately from hero/about/team/
+  // gallery photos) renders small in the nav header, never as a hero image.
+  logoUrl?: string;
   sections: SectionSpec[];
   _textStyles?: Record<string, Record<string, string>>;
   _sectionSpacing?: Record<string, { paddingTop?: string; paddingBottom?: string; marginTop?: string; marginBottom?: string }>;
@@ -353,10 +356,12 @@ button,input,select,textarea{font-family:inherit;}
   height:72px;max-width:1200px;margin:0 auto;padding:0 24px;
 }
 .ws-nav-logo{
+  display:flex;align-items:center;gap:10px;
   font-family:var(--font-heading);font-size:1.15rem;font-weight:700;
   color:var(--color-heading);letter-spacing:-0.02em;
   text-transform:var(--heading-transform);
 }
+.ws-nav-logo-img{height:32px;max-height:32px;width:auto;max-width:140px;object-fit:contain;display:block;}
 .ws-nav-links{display:flex;gap:40px;}
 .ws-nav-link{font-size:0.875rem;font-weight:500;color:var(--color-muted);transition:color .2s;}
 .ws-nav-link:hover{color:var(--accent);}
@@ -1707,7 +1712,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
   const navLinks = buildNavLinks(spec);
 
   const bodyParts: string[] = [];
-  bodyParts.push(renderNav(name, navCta, navLinks, spec.navVariant));
+  bodyParts.push(renderNav(name, navCta, navLinks, spec.navVariant, spec.logoUrl));
 
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];

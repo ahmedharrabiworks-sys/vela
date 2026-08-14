@@ -183,7 +183,12 @@ async function classifyUploadedImage(
   openai: OpenAI,
   imageBase64: string,
   mimeType: string,
-): Promise<"hero" | "about" | "team" | "gallery"> {
+): Promise<"hero" | "about" | "team" | "gallery" | "logo"> {
+  // FIX 3: "logo" was previously not a classification option at all, so any
+  // uploaded logo (a small standalone brand mark/wordmark) fell through to
+  // "hero" -- both the explicit default below and the catch-block fallback --
+  // and was then rendered full-bleed/stretched as the hero's background or
+  // split image instead of appearing in the header at a small size.
   try {
     const res = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -192,7 +197,7 @@ async function classifyUploadedImage(
         content: [
           {
             type: "text",
-            text: 'Reply with ONE word — the website section this image suits best:\n"hero" = building, storefront, product, abstract scene\n"about" = single person (owner/professional portrait)\n"team" = group of people or staff\n"gallery" = food, dishes, products, work samples\nOne word only.',
+            text: 'Reply with ONE word — the website section this image suits best:\n"logo" = a standalone brand mark, wordmark, or icon logo, usually simple graphics or text on a plain or transparent background, not a photograph\n"hero" = a real photograph of a building, storefront, product, or scene\n"about" = single person (owner/professional portrait)\n"team" = group of people or staff\n"gallery" = food, dishes, products, work samples\nOne word only.',
           },
           { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
         ],
@@ -201,7 +206,7 @@ async function classifyUploadedImage(
       temperature: 0,
     });
     const word = (res.choices[0]?.message?.content ?? "").trim().toLowerCase();
-    if (word === "about" || word === "team" || word === "gallery") return word;
+    if (word === "about" || word === "team" || word === "gallery" || word === "logo") return word;
   } catch { /* default to hero */ }
   return "hero";
 }
@@ -1662,7 +1667,7 @@ ABSOLUTE RULES — NEVER VIOLATE
 }
 
 // ── System prompt (v2: section-based composition with designDNA) ──────────────
-function buildSystem(contactBlock: string, language = "English", hasOwnerPhoto = true): string {
+function buildSystem(contactBlock: string, language = "English", hasOwnerPhoto = true, noPhotoMode = false): string {
   const langLine = language && language.toLowerCase() !== "english"
     ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
     : "";
@@ -1896,7 +1901,10 @@ SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT 
 PART 7 — IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
+${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner has no photos and did not ask for stock photography.
+Do NOT write an imageQuery or imageQueries field on ANY section, ever.
+Do NOT include gallery-grid, or any section whose entire value depends on photography.
+Build the design around strong typography, the site's color palette, and icons instead. This is a real, polished design choice, not a fallback.` : `imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
 
 ${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, NOT where the business is located:
 
@@ -1946,7 +1954,7 @@ gallery-grid / listings-grid imageQueries: all queries MUST be distinct — vary
 
 QUALITY SUFFIX: append one of these to every imageQuery:
   hero/about-story → "bright natural light" or "professional photography" or "editorial minimal"
-  gallery/listings → "editorial" or "close-up detail" or "product shot clean background"
+  gallery/listings → "editorial" or "close-up detail" or "product shot clean background"`}
 
 ═══════════════════════════════════════════════════════
 PART 8 — CONTENT SCHEMAS PER SECTION TYPE
@@ -2083,14 +2091,23 @@ Respond ONLY with valid JSON.`;
   return null;
 }
 
-function buildReviseSystem(hasOwnerPhoto: boolean): string {
+function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string {
   const noPhotoNote = hasOwnerPhoto ? "" :
     "\nNO OWNER PHOTOS: When regenerating imageQuery values, use atmospheric/abstract queries — never identifiable business-specific shots (no specific interiors, storefronts, or team-at-location). Use the same atmospheric-query rule as original generation.";
+  // FIX 1 (round 2): this revision path was the actual source of the reported
+  // Gallery bug -- any change requested after the first successful generation
+  // (e.g. "add a gallery") comes through here, and it previously had no
+  // concept of "no photos, no stock" at all, so it silently regenerated real
+  // Unsplash queries for any photo section even on a site the owner had
+  // explicitly asked to keep photo-free.
+  const imageInstruction = noPhotoMode
+    ? `IMAGES: This site has NO photography and the owner did not ask for stock photos. Do NOT add imageQuery or imageQueries to any section. Do NOT add gallery-grid or any section that depends on photography. If the existing spec has imageQuery/imageQueries fields, remove them. Use typography, color, and icons instead.`
+    : `IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.${noPhotoNote}`;
   return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
 CONTENT RULES: Never invent commercial terms the owner did not state — no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided.
-IMAGE QUERIES: When updating sections, regenerate imageQuery values to be specific to the revised content — same rules as original generation.${noPhotoNote}`;
+${imageInstruction}`;
 }
 
 // ── Conversational intake: DECISION only (ask vs generate) ───────────────────
@@ -2377,6 +2394,31 @@ export async function POST(req: NextRequest) {
     ? `data:${validImages[0].mimeType};base64,${validImages[0].data}`
     : undefined;
 
+  // FIX 1 (round 2): stock photography is opt-in only, and must apply to EVERY
+  // request for this site, not just the very first generate call. Previously
+  // this was only computed inside the fresh-generation branch (currentHtml
+  // falsy) -- any later message on an already-built site (currentHtml truthy,
+  // e.g. "add a gallery") took a completely separate revision path that never
+  // set or checked it, so sections added or regenerated after the first build
+  // (the reported Gallery bug) silently fell back to stock photography.
+  // Computed once here from the full available conversation so it is
+  // consistent across every turn, in both the fresh-generation and revision
+  // paths.
+  // Only the owner's own messages are scanned -- the assistant's own photo
+  // question necessarily mentions "stock photos" to offer it as a choice
+  // (e.g. "I can also search for professional stock photos instead"), and
+  // including assistant/ai-role messages here caused that offer itself to be
+  // misread as the owner accepting it, turning stock photography back on for
+  // every site regardless of the actual answer (caught live: 7 stock images
+  // still appeared after explicitly declining photos, before this fix).
+  const allChatText = [
+    ...(Array.isArray(body.chat)
+      ? body.chat.filter((m) => m.role === "user").map((m) => m.content)
+      : []),
+    message ?? "",
+  ].join(" ");
+  const noPhotoMode = !heroUpload && !extractStockPhotoPreference(allChatText);
+
   const admin = createSupabaseAdmin() as AdminClient;
   const { data: tenant } = await admin
     .from("tenants")
@@ -2406,9 +2448,6 @@ export async function POST(req: NextRequest) {
     // Phase 2e — nav/footer variants (default to standard; overridden in initial-generate path)
     let selectedNavVariant = "";
     let selectedFooterVariant = "";
-    // FIX 2: stock photography is opt-in only — default to a photo-free design.
-    // Set below once the full conversation text is available.
-    let noPhotoMode = false;
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -2431,7 +2470,7 @@ export async function POST(req: NextRequest) {
         const userContent = buildUserContent(businessName, industry, city, msgText, effectiveLanguage);
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage, !!heroUpload) }, { role: "user", content: userContent }],
+          messages: [{ role: "system", content: buildSystem(contactBlock, effectiveLanguage, !!heroUpload, noPhotoMode) }, { role: "user", content: userContent }],
           response_format: { type: "json_object" },
           max_tokens: 4096,
           temperature: 0.5,
@@ -2449,7 +2488,7 @@ export async function POST(req: NextRequest) {
         const revisionPrompt = `${langLine}Current spec:\n${JSON.stringify(existing, null, 2)}\n\nChange requested: ${msgText || "incorporate uploaded image as hero"}`;
         const completion = await openai.chat.completions.create({
           model: "gpt-4o",
-          messages: [{ role: "system", content: buildReviseSystem(!!heroUpload) }, { role: "user", content: revisionPrompt }],
+          messages: [{ role: "system", content: buildReviseSystem(!!heroUpload, noPhotoMode) }, { role: "user", content: revisionPrompt }],
           response_format: { type: "json_object" },
           max_tokens: 4096,
           temperature: 0.3,
@@ -2499,12 +2538,8 @@ export async function POST(req: NextRequest) {
       // ── Ready to generate — concatenate ALL user answers from every turn ───
       const fullDescription = buildAccumulatedDescription(priorChat, msgText);
       fullContextText = fullDescription; // use for image query city extraction
-
-      // FIX 2: stock photography is opt-in only. Default to a photo-free design
-      // unless the owner attached a real photo this session, or explicitly
-      // asked for stock photos somewhere in the conversation -- never a silent
-      // fallback just because no photo was uploaded.
-      noPhotoMode = !heroUpload && !extractStockPhotoPreference(fullDescription);
+      // noPhotoMode is computed once, up front, from the full request (see top
+      // of POST) so it is consistent across fresh generation and revisions.
 
       // If the user stated language verbally (e.g. replied "Arabic" to the intake
       // question) instead of clicking the UI chip, detect it from the conversation.
@@ -2764,6 +2799,21 @@ export async function POST(req: NextRequest) {
           delete (s.content as Record<string, unknown>).imageQueries;
         }
       }
+      // FIX 2: several hero layouts (hero-split and the "split-left"/"split-right"/
+      // etc variants of type "hero") fill half the section with a solid diagonal
+      // gradient block (background color to accent color) when there is no image
+      // -- at full hero height, in a vivid accent color, this reads as a large
+      // abstract decorative graphic dominating the section, not a clean empty
+      // state. Force the one hero layout that is genuinely typography-led with
+      // no large fill element (renderHeroMinimal), regardless of what GPT or the
+      // pool-selection logic chose, so this can never depend on prompt compliance.
+      const heroSection = spec.sections.find((s) =>
+        ["hero", "hero-fullbleed", "hero-split", "hero-minimal"].includes(s.type)
+      ) as { type: string; variant?: string } | undefined;
+      if (heroSection) {
+        heroSection.type = "hero";
+        heroSection.variant = "minimal-stacked";
+      }
     } else {
       // Server-side fallback: inject imageQuery for any visual section GPT missed.
       // Pass fullContextText (all conversation turns for initial generate) so city
@@ -2771,9 +2821,18 @@ export async function POST(req: NextRequest) {
       ensureImageQueries(spec, industry, city, fullContextText, !!heroUpload);
     }
 
-    let uploadSlot: "hero" | "about" | "team" | "gallery" = "hero";
+    let uploadSlot: "hero" | "about" | "team" | "gallery" | "logo" = "hero";
     if (heroUpload && validImages[0]) {
       uploadSlot = await classifyUploadedImage(openai, validImages[0].data, validImages[0].mimeType);
+    }
+
+    // FIX 3: a logo goes straight onto the spec for the nav header, never
+    // through the hero/about/team/gallery image-matching pipeline below --
+    // that pipeline is for section photos and was previously the only path
+    // any upload could take, which is why a logo ended up stretched full-bleed
+    // as the hero image instead of appearing small in the header.
+    if (uploadSlot === "logo" && heroUpload) {
+      spec.logoUrl = heroUpload;
     }
 
     // FIX 3: seed usedUrls from tenant_config.website_used_images for cross-site dedup
@@ -2789,7 +2848,12 @@ export async function POST(req: NextRequest) {
         : [];
       existing.forEach((u) => usedUrls.add(u));
     }
-    const imageMap = await fetchSpecImages(spec, heroUpload, uploadSlot, usedUrls);
+    const imageMap = await fetchSpecImages(
+      spec,
+      uploadSlot === "logo" ? undefined : heroUpload,
+      uploadSlot === "logo" ? "hero" : uploadSlot,
+      usedUrls
+    );
 
     // ── Resolve / create the websites record ─────────────────────────────────
     let websiteId: string | null = null;
@@ -2893,6 +2957,11 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
           ...(designStrategy ? { design_strategy: designStrategy as unknown as Record<string, unknown> } : {}),
           ...(typeof body.embedAiAssistant === "boolean" ? { embed_ai_assistant: body.embedAiAssistant } : {}),
+          // FIX 4: chat history saved per-site, not just on the shared tenant_config
+          // column, so switching to a different site restores that site's own
+          // conversation instead of showing another site's chat or resetting to
+          // the initial prompt.
+          ...(Array.isArray(body.chat) ? { chat: body.chat } : {}),
         })
         .eq("id", websiteId);
       if (draftErr) {

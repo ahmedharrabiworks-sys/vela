@@ -1355,6 +1355,12 @@ export default function WebsitePage() {
   }, []);
 
   // ── Persist chat + intake ─────────────────────────────────────────────────────
+  // FIX 4: must include websiteId so this write lands on the per-site websites.chat
+  // column -- without it, the client-side-only closing message (e.g. "Got it. Your
+  // website is ready!") that gets appended AFTER the generate response never made
+  // it into what /api/website/generate's own draft-save persisted (that save uses
+  // only the request's chat, sent before this reply exists), and reopening the
+  // site from the sidebar showed history missing its own final message.
   const persistChat = useCallback((finalMsgs: Msg[], intake: ContactInfo) => {
     const chatToSave = finalMsgs
       .filter(m => !m.isBuilding && m.role !== "version" && !m.isSeparator)
@@ -1362,7 +1368,7 @@ export default function WebsitePage() {
     fetch("/api/website/state", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat: chatToSave, intake }),
+      body: JSON.stringify({ chat: chatToSave, intake, websiteId: websiteIdRef.current ?? undefined }),
     }).catch(() => {});
   }, []);
 
@@ -1532,7 +1538,7 @@ export default function WebsitePage() {
           html?: string | null; versions?: VersionRecord[];
           name?: string | null; slug?: string | null;
           isPublished?: boolean; publishedUrl?: string | null;
-          intake?: ContactInfo | null;
+          intake?: ContactInfo | null; chat?: Msg[] | null;
         };
         if (websiteIdRef.current !== switchTarget) return;
         if (data.html) {
@@ -1546,6 +1552,13 @@ export default function WebsitePage() {
         if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
         if (data.publishedUrl != null) setPublishedUrl(data.publishedUrl);
         if (data.intake) setContactInfo(data.intake);
+        // FIX 4: restore this site's own chat history instead of leaving the
+        // reset-to-initial-prompt state set above -- same pattern already used
+        // on first page load.
+        if (Array.isArray(data.chat) && data.chat.length > 1) {
+          const cleanChat = data.chat.filter((m) => !m.isBuilding);
+          setMsgs(cleanChat);
+        }
       }
     } catch { /* ignore */ }
   }, [btype, siteLanguage]);
@@ -2191,6 +2204,22 @@ export default function WebsitePage() {
             <button onClick={handleNewWebsite}
               className="md:hidden text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors">
               New Website
+            </button>
+          )}
+
+          {/* Edit site — reopens the chat editor against this site's current
+              live content. Most useful once published: the chat panel is
+              always available on desktop, but this makes the path back into
+              it explicit rather than relying on the owner noticing the chat
+              box is still there. */}
+          {built && isPublished && (
+            <button
+              onClick={() => setActiveTab("chat")}
+              className="text-xs font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors flex items-center gap-1.5">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path d="M9.5 1.5l3 3-8 8-3.5.5.5-3.5 8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Edit site
             </button>
           )}
 
@@ -2930,7 +2959,7 @@ export default function WebsitePage() {
             <button
               onClick={() => { setMenuOpenId(null); setMenuPos(null); handleSwitchProject(mp); }}
               className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
-              Open
+              Edit site
             </button>
             <button
               onClick={() => { setMenuPos(null); handleStartRename(mp); }}
