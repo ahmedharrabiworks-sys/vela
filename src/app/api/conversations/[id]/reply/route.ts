@@ -64,7 +64,17 @@ export async function POST(
   const channel = conv.channel as string;
 
   // Save to DB first — DB is source of truth regardless of channel delivery outcome
-  const { error: insertErr } = await admin
+  // is_owner_reply distinguishes this from a real AI-generated reply (both
+  // use role="assistant") -- see migration_v27.sql. Without it, the inbox
+  // labeled the owner's own message "Vela AI".
+  //
+  // Fallback: if migration_v27.sql hasn't been run yet in this environment,
+  // is_owner_reply doesn't exist and PostgREST rejects the WHOLE row
+  // (PGRST204) -- not just that field. Retrying without it means a pending
+  // migration degrades the owner-reply LABEL (falls back to pre-fix
+  // behavior), not actual message delivery. Real customer communication
+  // must never be blocked by a missing optional column.
+  let insertErr = (await admin
     .from("messages")
     .insert({
       conversation_id: params.id,
@@ -72,7 +82,21 @@ export async function POST(
       role: "assistant",
       content: text.trim(),
       is_test: false,
-    });
+      is_owner_reply: true,
+    })).error;
+
+  if (insertErr?.code === "PGRST204") {
+    console.warn("[conversations/reply] is_owner_reply column missing — run migration_v27.sql. Falling back to insert without it.");
+    insertErr = (await admin
+      .from("messages")
+      .insert({
+        conversation_id: params.id,
+        tenant_id: tenantId,
+        role: "assistant",
+        content: text.trim(),
+        is_test: false,
+      })).error;
+  }
 
   if (insertErr) {
     console.error("[conversations/reply] insert failed:", insertErr.message);
@@ -87,12 +111,13 @@ export async function POST(
   // ── Channel delivery ──────────────────────────────────────────────────────
 
   if (channel === "website") {
-    // Widget is stateless — no polling or push mechanism. Message is visible to the owner
-    // in the thread and becomes part of AI context, but the customer won't see it live.
-    return NextResponse.json({
-      ok: true,
-      channelNote: "Website visitors don't receive live replies — your message is saved to the conversation history.",
-    });
+    // FIX 3: the widget now polls for new messages while open (see
+    // chat-client.tsx), so this IS delivered to a visitor with the widget
+    // currently open, within the poll interval -- not instant push, but a
+    // real delivery, not silently history-only as before. A visitor who has
+    // since closed the widget will see it the next time they reopen it
+    // (full history restore, FIX 4), same as any other channel.
+    return NextResponse.json({ ok: true });
   }
 
   if (channel === "whatsapp") {

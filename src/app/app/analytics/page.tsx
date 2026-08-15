@@ -60,13 +60,21 @@ function buildLabels(days: number): string[] {
   });
 }
 
-function LineChart({ data, labels }: { data: number[]; labels: string[] }) {
+// FIX 6: real interactive hover tooltip. No charting library is actually a
+// project dependency (checked package.json -- this SVG chart is 100%
+// hand-rolled), so the tooltip is added directly to it rather than pulling
+// in a new library for one feature. viewBox uses preserveAspectRatio="none"
+// (chart scales non-uniformly to fill its container), so cursor position
+// must be converted from screen pixels to the 800x140 viewBox coordinate
+// space via the actual rendered bounding rect, not assumed 1:1.
+function LineChart({ data, labels, days }: { data: number[]; labels: string[]; days: number }) {
   const W = 800, H = 140, padX = 8, padTop = 12, padBottom = 24;
   const chartH = H - padTop - padBottom;
   const max = Math.max(...data, 1);
   const min = Math.min(...data);
   const range = max - min || 1;
   const n = data.length;
+  const [hover, setHover] = useState<{ i: number; clientX: number; clientY: number } | null>(null);
 
   const pts = data.map((v, i) => ({
     x: padX + (i / Math.max(n - 1, 1)) * (W - padX * 2),
@@ -84,36 +92,71 @@ function LineChart({ data, labels }: { data: number[]; labels: string[] }) {
   const labelStep = Math.max(1, Math.floor(n / 7));
   const hasData = data.some((v) => v > 0);
 
+  // Full date for point i, independent of the sparse displayed axis labels
+  // (buildLabels only fills in every Nth label to avoid overlap on screen).
+  const dateForIndex = (i: number): string => {
+    const dt = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000);
+    return dt.toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" });
+  };
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!hasData || n === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round(((relX - padX) / (W - padX * 2)) * Math.max(n - 1, 1))));
+    setHover({ i, clientX: e.clientX, clientY: e.clientY });
+  };
+
+  const hp = hover ? pts[hover.i] : null;
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 160 }} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.15"/>
-          <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-        const y = padTop + t * chartH;
-        return <line key={t} x1={padX} x2={W - padX} y1={y} y2={y} stroke="#F3F4F6" strokeWidth="1"/>;
-      })}
-      {hasData && (
-        <>
-          <path d={areaD} fill="url(#lineGrad)"/>
-          <path d={d} fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          {pts.filter((_, i) => i % labelStep === 0 || i === n - 1).map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r="3" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
-          ))}
-        </>
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 160 }} preserveAspectRatio="none"
+        onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
+        <defs>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.15"/>
+            <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+          const y = padTop + t * chartH;
+          return <line key={t} x1={padX} x2={W - padX} y1={y} y2={y} stroke="#F3F4F6" strokeWidth="1"/>;
+        })}
+        {hasData && (
+          <>
+            <path d={areaD} fill="url(#lineGrad)"/>
+            <path d={d} fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            {pts.filter((_, i) => i % labelStep === 0 || i === n - 1).map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r="3" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
+            ))}
+            {hp && (
+              <>
+                <line x1={hp.x} x2={hp.x} y1={padTop} y2={H - padBottom} stroke="#FF6B35" strokeWidth="1" strokeDasharray="3,3" opacity="0.4"/>
+                <circle cx={hp.x} cy={hp.y} r="5" fill="#FF6B35" stroke="white" strokeWidth="2"/>
+              </>
+            )}
+          </>
+        )}
+        {!hasData && (
+          <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill="#9CA3AF">
+            Connect a channel to start seeing data here
+          </text>
+        )}
+        {labels.map((lbl, i) => lbl ? (
+          <text key={i} x={padX + (i / Math.max(n - 1, 1)) * (W - padX * 2)} y={H - 4} textAnchor="middle" fontSize="9" fill="#9CA3AF">{lbl}</text>
+        ) : null)}
+      </svg>
+      {hover && hasData && (
+        <div
+          className="fixed z-50 pointer-events-none bg-[#111111] text-white text-xs rounded-lg px-3 py-2 shadow-lg"
+          style={{ left: hover.clientX + 14, top: hover.clientY - 44 }}
+        >
+          <p className="font-semibold whitespace-nowrap">{dateForIndex(hover.i)}</p>
+          <p className="text-[#FF6B35] font-bold">{data[hover.i]} lead{data[hover.i] === 1 ? "" : "s"}</p>
+        </div>
       )}
-      {!hasData && (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill="#9CA3AF">
-          Connect a channel to start seeing data here
-        </text>
-      )}
-      {labels.map((lbl, i) => lbl ? (
-        <text key={i} x={padX + (i / Math.max(n - 1, 1)) * (W - padX * 2)} y={H - 4} textAnchor="middle" fontSize="9" fill="#9CA3AF">{lbl}</text>
-      ) : null)}
-    </svg>
+    </div>
   );
 }
 
@@ -286,7 +329,7 @@ export default function AnalyticsPage() {
             {loading ? (
               <div className="h-40 bg-[#F9FAFB] rounded-xl animate-pulse" />
             ) : (
-              <LineChart data={chartData} labels={chartLabels} />
+              <LineChart data={chartData} labels={chartLabels} days={days} />
             )}
           </div>
 

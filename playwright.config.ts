@@ -64,5 +64,16 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
     },
+    // ── 4. Round 8 — Conversations/Analytics polish, desktop 1280px ─────────
+    {
+      name: "round8",
+      dependencies: ["setup"],
+      testMatch: /round8-.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 800 },
+        storageState: "e2e/.auth/user.json",
+      },
+    },
   ],
 });

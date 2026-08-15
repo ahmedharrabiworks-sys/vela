@@ -10,7 +10,7 @@ type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   isNew?: boolean;
   needs_human?: boolean;
 };
-type Message = Database["public"]["Tables"]["messages"]["Row"] & { is_test?: boolean };
+type Message = Database["public"]["Tables"]["messages"]["Row"] & { is_test?: boolean; is_owner_reply?: boolean };
 
 function ChannelIcon({ channel }: { channel: string }) {
   if (channel === "instagram")
@@ -81,6 +81,12 @@ export default function ConversationsPage() {
   const [error, setError]                   = useState<string | null>(null);
   const [resolving, setResolving]           = useState<string | null>(null);
   const [replyError, setReplyError]         = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId]         = useState<string | null>(null);
+  const [menuPos, setMenuPos]               = useState<{ top: number; left: number } | null>(null);
+  const [renamingId, setRenamingId]         = useState<string | null>(null);
+  const [renameValue, setRenameValue]       = useState("");
+  const [deleteTarget, setDeleteTarget]     = useState<Conversation | null>(null);
+  const [deleting, setDeleting]             = useState(false);
   const bottomRef   = useRef<HTMLDivElement>(null);
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
@@ -234,6 +240,55 @@ export default function ConversationsPage() {
     );
   };
 
+  /* ── Rename ── */
+  const handleStartRename = (conv: Conversation) => {
+    setMenuOpenId(null);
+    setMenuPos(null);
+    setRenamingId(conv.id);
+    setRenameValue(conv.customer_name ?? "");
+  };
+
+  const handleSaveRename = async (convId: string, name: string) => {
+    const trimmed = name.trim();
+    setRenamingId(null);
+    if (!trimmed) return;
+    setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, customer_name: trimmed } : c));
+    if (selected?.id === convId) setSelected((s) => s ? { ...s, customer_name: trimmed } : s);
+    try {
+      const res = await fetch(`/api/conversations/${convId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok && tenantId) fetchConversations(tenantId); // resync if it failed server-side
+    } catch {
+      if (tenantId) fetchConversations(tenantId);
+    }
+  };
+
+  /* ── Delete ── */
+  const handleConfirmDelete = async () => {
+    const conv = deleteTarget;
+    if (!conv || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/conversations/${conv.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      if (selected?.id === conv.id) {
+        setSelected(null);
+        setMessages([]);
+        setShowThread(false);
+      }
+      setDeleteTarget(null);
+    } catch {
+      setReplyError("Failed to delete conversation. Please try again");
+      setTimeout(() => setReplyError(null), 5000);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   /* ── Send message ── */
   const handleSend = async () => {
     if (!reply.trim() || !selected || !tenantId || sending) return;
@@ -293,6 +348,7 @@ export default function ConversationsPage() {
         content: text,
         created_at: new Date().toISOString(),
         is_test: false,
+        is_owner_reply: true,
       };
       setMessages((prev) => [...prev, tempMsg]);
 
@@ -384,9 +440,10 @@ export default function ConversationsPage() {
 
           {filtered.map((conv) => {
             const isActive = selected?.id === conv.id;
+            const isRenaming = renamingId === conv.id;
             return (
-              <button key={conv.id} onClick={() => selectConv(conv)}
-                className={`w-full flex items-start gap-3 px-4 py-3.5 text-left transition-all ${
+              <div key={conv.id}
+                className={`group relative w-full flex items-start gap-3 pl-4 pr-1 py-3.5 transition-all ${
                   isActive ? "bg-[#FFF8F5] border-l-2 border-[#FF6B35]" : "hover:bg-[#F9FAFB] border-l-2 border-transparent"
                 }`}>
                 <div className="relative shrink-0 mt-0.5">
@@ -397,29 +454,68 @@ export default function ConversationsPage() {
                     <ChannelIcon channel={conv.channel} />
                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-xs font-semibold text-[#111111] truncate">{conv.customer_name}</span>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {conv.needs_human && (
-                        <>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleResolve(conv.id); }}
-                            disabled={resolving === conv.id}
-                            aria-label="Mark resolved"
-                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors whitespace-nowrap min-h-[20px]">
-                            {resolving === conv.id ? "…" : "Resolved"}
-                          </button>
-                        </>
-                      )}
-                      {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
-                      <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at, t)}</span>
-                    </div>
+
+                {isRenaming ? (
+                  <div className="flex-1 min-w-0 py-0.5">
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveRename(conv.id, renameValue);
+                        if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      onBlur={() => handleSaveRename(conv.id, renameValue)}
+                      placeholder={t("conversations.renamePlaceholder")}
+                      className="w-full text-xs font-semibold px-2 py-1 border border-[#FF6B35] rounded-lg outline-none text-[#111111]"
+                    />
                   </div>
-                  <p className="text-[11px] text-[#6B7280] truncate">{conv.preview || t("conversations.noMessages")}</p>
-                </div>
-              </button>
+                ) : (
+                  <button onClick={() => selectConv(conv)} className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-semibold text-[#111111] truncate">{conv.customer_name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {conv.needs_human && (
+                          <>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleResolve(conv.id); }}
+                              disabled={resolving === conv.id}
+                              aria-label="Mark resolved"
+                              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors whitespace-nowrap min-h-[20px]">
+                              {resolving === conv.id ? "…" : "Resolved"}
+                            </button>
+                          </>
+                        )}
+                        {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
+                        <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at, t)}</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[#6B7280] truncate">{conv.preview || t("conversations.noMessages")}</p>
+                  </button>
+                )}
+
+                {!isRenaming && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (menuOpenId === conv.id) {
+                        setMenuOpenId(null); setMenuPos(null);
+                      } else {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
+                        setMenuOpenId(conv.id);
+                      }
+                    }}
+                    aria-label="Conversation options"
+                    className="shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-md hover:bg-[#E5E7EB] transition-all text-[#9CA3AF] hover:text-[#374151]">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                      <circle cx="6" cy="2" r="1.2" /><circle cx="6" cy="6" r="1.2" /><circle cx="6" cy="10" r="1.2" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -450,7 +546,22 @@ export default function ConversationsPage() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-[#111111] text-sm leading-tight">{selected.customer_name}</p>
+                {renamingId === selected.id ? (
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveRename(selected.id, renameValue);
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    onBlur={() => handleSaveRename(selected.id, renameValue)}
+                    placeholder={t("conversations.renamePlaceholder")}
+                    className="w-full text-sm font-bold px-2 py-1 -ml-2 border border-[#FF6B35] rounded-lg outline-none text-[#111111]"
+                  />
+                ) : (
+                  <p className="font-bold text-[#111111] text-sm leading-tight">{selected.customer_name}</p>
+                )}
                 <p className="text-[10px] text-[#6B7280] mt-0.5">{t("conversations.via")} {channelLabel(selected.channel)}</p>
               </div>
 
@@ -475,6 +586,22 @@ export default function ConversationsPage() {
                   className="hidden md:block text-xs font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all">
                   {t("conversations.takeover")}
                 </button>
+                <button
+                  onClick={(e) => {
+                    if (menuOpenId === selected.id) {
+                      setMenuOpenId(null); setMenuPos(null);
+                    } else {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
+                      setMenuOpenId(selected.id);
+                    }
+                  }}
+                  aria-label="Conversation options"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] hover:text-[#374151] transition-all">
+                  <svg width="14" height="14" viewBox="0 0 12 12" fill="currentColor">
+                    <circle cx="6" cy="2" r="1.2" /><circle cx="6" cy="6" r="1.2" /><circle cx="6" cy="10" r="1.2" />
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -493,6 +620,7 @@ export default function ConversationsPage() {
 
               {!msgLoading && messages.map((msg) => {
                 const isTestMsg = msg.is_test === true;
+                const isOwnerReply = msg.is_owner_reply === true;
                 return (
                   <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
                     <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
@@ -510,7 +638,9 @@ export default function ConversationsPage() {
                       )}
                       <p>{msg.content}</p>
                       <p className="text-[10px] mt-1.5 opacity-50">
-                        {msg.role === "assistant" && !isTestMsg ? t("conversations.velaAiPrefix") : ""}
+                        {msg.role === "assistant" && !isTestMsg
+                          ? (isOwnerReply ? t("conversations.ownerReplyPrefix") : t("conversations.velaAiPrefix"))
+                          : ""}
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
@@ -586,6 +716,58 @@ export default function ConversationsPage() {
           </div>
         )}
       </div>
+
+      {/* Backdrop — clicking outside the ⋯ dropdown closes it */}
+      {menuOpenId !== null && (
+        <div className="fixed inset-0" style={{ zIndex: 199 }}
+          onClick={() => { setMenuOpenId(null); setMenuPos(null); }} />
+      )}
+
+      {/* ⋯ conversation context menu — fixed position so it escapes list overflow:hidden */}
+      {menuOpenId !== null && menuPos !== null && (() => {
+        const mc = conversations.find((c) => c.id === menuOpenId);
+        if (!mc) return null;
+        return (
+          <div
+            style={{ position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 200 }}
+            className="bg-white border border-[#E5E7EB] rounded-lg shadow-xl py-1 w-28">
+            <button
+              onClick={() => handleStartRename(mc)}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB]">
+              {t("conversations.renameConversation")}
+            </button>
+            <button
+              onClick={() => { setMenuOpenId(null); setMenuPos(null); setDeleteTarget(mc); }}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 hover:bg-red-50">
+              {t("conversations.deleteConversation")}
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Delete Conversation Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111]">{t("conversations.deleteConfirmTitle")}</h2>
+            <p className="text-sm text-[#6B7280] leading-relaxed">{t("conversations.deleteConfirmBody")}</p>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-50 transition-colors">
+                {t("conversations.cancel")}
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
+                {deleting ? "…" : t("conversations.confirmDelete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

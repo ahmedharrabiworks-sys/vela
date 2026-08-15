@@ -34,12 +34,101 @@ export default function WidgetChat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
-  /* Restore conversationId from sessionStorage */
+  // FIX 4: was sessionStorage, which is cleared the moment the tab/window
+  // closes -- every single reopen of the widget (or the site) started a
+  // brand new conversation, fragmenting one real visitor into many
+  // disconnected threads. localStorage persists across browser restarts;
+  // a stored {id, expiresAt} pair with a 48h SLIDING window (refreshed on
+  // every message, not just at creation) gives "resume within a
+  // reasonable session" without persisting forever.
+  const STORAGE_KEY = `vela_conv_${tenantId}`;
+  const SESSION_MS = 48 * 60 * 60 * 1000;
+
+  function readStoredConversation(): string | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { id?: string; expiresAt?: number };
+      if (!parsed.id || !parsed.expiresAt || Date.now() > parsed.expiresAt) {
+        localStorage.removeItem(STORAGE_KEY);
+        return null;
+      }
+      return parsed.id;
+    } catch {
+      return null;
+    }
+  }
+
+  function persistConversation(id: string) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ id, expiresAt: Date.now() + SESSION_MS }));
+    } catch { /* localStorage unavailable (private mode, quota) -- conversation just won't persist */ }
+  }
+
+  /* Restore conversationId + real message history on mount */
   useEffect(() => {
-    const stored = sessionStorage.getItem(`vela_conv_${tenantId}`);
-    if (stored) setConversationId(stored);
+    const stored = readStoredConversation();
+    if (stored) {
+      setConversationId(stored);
+      persistConversation(stored); // touch expiry -- reopening counts as activity
+      (async () => {
+        try {
+          const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(stored)}`);
+          const data = await res.json() as { messages?: { role: string; content: string }[] };
+          if (data.messages && data.messages.length > 0) {
+            setMessages([
+              { id: "welcome", role: "assistant", content: greeting },
+              ...data.messages.map((m, i) => ({ id: `h-${i}`, role: m.role as "user" | "assistant", content: m.content })),
+            ]);
+          }
+        } catch { /* history fetch failed -- conversation still continues, just without visible prior messages */ }
+      })();
+    }
     inputRef.current?.focus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
+
+  // FIX 3: the widget is otherwise stateless (no websocket/push channel),
+  // so a real Takeover reply from the owner (api/conversations/[id]/reply)
+  // never reached an already-open widget -- the customer would only see it
+  // on their NEXT reopen (full history restore, FIX 4), not while actively
+  // chatting. Polling gives real, if not instant, delivery: once a
+  // conversation exists, check for new messages every few seconds and
+  // append any not already shown. Matches on (role, content) since the
+  // history endpoint returns no message id -- a reasonable tradeoff for a
+  // lightweight polling mechanism, not a strict dedupe guarantee.
+  //
+  // messagesRef mirrors `messages` state so the interval callback always
+  // dedupes against the CURRENT list, not a snapshot frozen when the effect
+  // was set up -- a plain `messages`-derived Set captured once would go
+  // stale the moment the visitor sent another message via send() (which
+  // doesn't touch this effect), causing the next poll to treat the
+  // visitor's own just-sent message and its AI reply as "new" and
+  // duplicate them into the thread.
+  const messagesRef = useRef<Msg[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(conversationId)}`);
+        const data = await res.json() as { messages?: { role: string; content: string }[] };
+        if (!data.messages) return;
+        const seen = new Set(messagesRef.current.map((m) => `${m.role}:${m.content}`));
+        const fresh = data.messages.filter((m) => !seen.has(`${m.role}:${m.content}`));
+        if (fresh.length === 0) return;
+        setMessages((prev) => [
+          ...prev,
+          ...fresh.map((m, i) => ({ id: `poll-${Date.now()}-${i}`, role: m.role as "user" | "assistant", content: m.content })),
+        ]);
+      } catch { /* next poll will retry */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, tenantId]);
 
   /* Scroll to bottom on new message */
   useEffect(() => {
@@ -80,7 +169,7 @@ export default function WidgetChat({
 
       if (data.conversationId) {
         setConversationId(data.conversationId);
-        sessionStorage.setItem(`vela_conv_${tenantId}`, data.conversationId);
+        persistConversation(data.conversationId); // every real message refreshes the 48h expiry
       }
 
       const aiMsg: Msg = {

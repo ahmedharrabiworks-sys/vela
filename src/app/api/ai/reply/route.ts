@@ -174,28 +174,23 @@ export async function POST(req: NextRequest) {
   }
 
   if (!convId) {
-    const { data: lead } = await admin
-      .from("leads")
-      .insert({ tenant_id: tenantId, name: customerName, channel, status: "new" })
-      .select("id")
-      .single();
-    leadId = (lead as { id: string } | null)?.id ?? null;
-
-    if (leadId && !isTest) {
-      await createNotification(admin, {
-        tenantId,
-        type: "lead",
-        title: `New lead from ${channelLabel(channel)}`,
-        body: customerName && customerName !== "Customer" ? customerName : null,
-        link: "/app/leads",
-      });
-    }
-
+    // CRITICAL FIX: a Lead was previously created for EVERY new conversation
+    // unconditionally, the moment the first message arrived -- regardless of
+    // whether the visitor ever gave real contact info. Confirmed live via
+    // direct query: 3 of 4 "leads" for a real test tenant had name="Website
+    // Visitor" (the widget's hardcoded default) with phone AND email both
+    // null -- not a real lead by how the term is used everywhere else in the
+    // product (e.g. the website booking form at api/site/[tenantId]/
+    // submit-form/route.ts requires phone or email before it will create
+    // one). conversations.lead_id has been nullable since migration_v2.sql
+    // (confirmed live), so a conversation can exist without a lead. No lead
+    // is created here anymore -- see ensureLeadFromContact below, called
+    // once real phone/email is actually detected in the conversation.
     const { data: conv } = await admin
       .from("conversations")
       .insert({
         tenant_id: tenantId,
-        lead_id: leadId,
+        lead_id: null,
         channel,
         customer_name: customerName,
         ai_enabled: true,
@@ -415,12 +410,66 @@ Rules:
     }
   }
 
-  /* ── 9. Extract customer info (name/phone) from message ── */
+  /* ── 9. Extract customer info (name/phone/email) from message ── */
+  // CRITICAL FIX: creates the Lead HERE, the first time real contact info is
+  // actually seen, instead of unconditionally at conversation start (see the
+  // comment on the conversation-creation block above for the full
+  // root-cause). Called from both detection points in this route (this
+  // regex scan, and the GPT structured-extraction block below) since either
+  // can be the first real signal in a given conversation. Never overwrites
+  // an already-known value with a blank one.
+  async function ensureLeadFromContact(phone?: string | null, email?: string | null, name?: string | null) {
+    if (!phone && !email) return; // matches submit-form/route.ts's own rule: a lead needs a real way to reach them
+    if (leadId) {
+      const updates: Record<string, string> = {};
+      if (phone) updates.phone = phone;
+      if (email) updates.email = email;
+      if (name && name !== "Customer" && name !== "Website Visitor") updates.name = name;
+      if (Object.keys(updates).length > 0) {
+        // Only fill fields that are currently empty -- never clobber a real value.
+        for (const [field, value] of Object.entries(updates)) {
+          await admin.from("leads").update({ [field]: value }).eq("id", leadId).is(field, null);
+        }
+      }
+      return;
+    }
+    const { data: lead, error: leadErr } = await admin
+      .from("leads")
+      .insert({
+        tenant_id: tenantId,
+        name: (name && name !== "Customer" && name !== "Website Visitor") ? name : customerName,
+        phone: phone || null,
+        email: email || null,
+        channel,
+        status: "new",
+      })
+      .select("id")
+      .single();
+    if (leadErr || !lead) {
+      console.error("[ai/reply] FAILED to create lead from detected contact info:", leadErr?.message);
+      return;
+    }
+    leadId = (lead as { id: string }).id;
+    await admin.from("conversations").update({ lead_id: leadId }).eq("id", convId);
+    if (!isTest) {
+      await createNotification(admin, {
+        tenantId,
+        type: "lead",
+        title: `New lead from ${channelLabel(channel)}`,
+        body: (name && name !== "Customer" && name !== "Website Visitor") ? name : (customerName !== "Customer" ? customerName : null),
+        link: "/app/leads",
+      });
+    }
+  }
+
   const phonePattern = /(\+?\d[\d\s\-]{7,14}\d)/g;
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
   const phoneMatches = message.match(phonePattern);
-  if (phoneMatches && leadId) {
-    const detectedPhone = phoneMatches[0].replace(/\s/g, "");
-    await admin.from("leads").update({ phone: detectedPhone }).eq("id", leadId).eq("phone", null);
+  const emailMatch = message.match(emailPattern);
+  if (phoneMatches || emailMatch) {
+    const detectedPhone = phoneMatches ? phoneMatches[0].replace(/\s/g, "") : null;
+    const detectedEmail = emailMatch ? emailMatch[0] : null;
+    await ensureLeadFromContact(detectedPhone, detectedEmail, null);
   }
 
   /* ── 10. Save AI reply ── */
@@ -477,12 +526,13 @@ Rules:
       booked = parsed.booked === true;
       if (booked) booking = { datetime: parsed.datetime ?? null, service: parsed.service ?? null };
 
-      // Update lead with extracted name/phone
-      if (leadId && (parsed.customerName || parsed.customerPhone)) {
-        const updates: Record<string, string> = {};
-        if (parsed.customerName) updates.name = parsed.customerName;
-        if (parsed.customerPhone) updates.phone = parsed.customerPhone;
-        await admin.from("leads").update(updates).eq("id", leadId);
+      // CRITICAL FIX: routed through the same ensureLeadFromContact helper
+      // as the regex scan above -- creates the lead here too if this GPT
+      // extraction is the first real contact signal in the conversation,
+      // rather than only ever updating a lead that (with the old
+      // unconditional-creation code) always already existed.
+      if (parsed.customerPhone || parsed.customerName) {
+        await ensureLeadFromContact(parsed.customerPhone ?? null, null, parsed.customerName ?? null);
       }
     } catch { /* best-effort */ }
   }
