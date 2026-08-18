@@ -166,7 +166,17 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute z-[100] top-[calc(100%+8px)] right-0 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[#E5E7EB] shadow-card-hover bg-white overflow-hidden">
+        // FIX (RTL): `right-0` is a physical offset -- under Arabic (dir="rtl")
+        // the header's flex row visually mirrors (this button ends up on the
+        // LEFT of the header), so a panel still pinned to "right:0" of its own
+        // narrow anchor extended 320px further left off the edge of an
+        // already-near-left-edge button, clipping off-screen. `end-0` is
+        // Tailwind's logical-property utility (inset-inline-end) -- it
+        // resolves to `right` under LTR and `left` under RTL automatically,
+        // following the inherited `dir` attribute on <html>, so the panel
+        // always opens toward the same side the button visually sits on in
+        // both directions.
+        <div className="absolute z-[100] top-[calc(100%+8px)] end-0 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[#E5E7EB] shadow-card-hover bg-white overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#F3F4F6]">
             <p className="text-sm font-semibold text-[#111111]">Notifications</p>
             {unreadCount > 0 && (

@@ -19,10 +19,27 @@ export interface DashboardStats {
   // for the exact definition). null when there's no real data yet (honest
   // zero-state, never a fabricated 0% or 100%).
   aiResolutionRate: number | null;
+  // Today-vs-yesterday percent change for each Today KPI. undefined (key
+  // omitted from the object) when yesterday has zero of that metric --
+  // never fabricated as a misleading "100%" or "0%" against an empty prior
+  // period. See pctChangeOrUndefined below.
+  leadsTodayChange?: number;
+  appointmentsTodayChange?: number;
+  messagesTodayChange?: number;
+  callsTodayChange?: number;
 }
 
 function pctChange(curr: number, prev: number): number {
   if (prev === 0) return curr > 0 ? 100 : 0;
+  return Math.round(((curr - prev) / prev) * 100);
+}
+
+// Unlike pctChange above (used for the existing weekly fields), this never
+// fabricates a change percentage when there's no real prior-period data to
+// compare against -- returns undefined so the caller can omit the badge
+// entirely rather than showing a misleading "up 100%" against zero.
+function pctChangeOrUndefined(curr: number, prev: number): number | undefined {
+  if (prev === 0) return undefined;
   return Math.round(((curr - prev) / prev) * 100);
 }
 
@@ -59,6 +76,7 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
 
   const [
     totalLeadsRes,
@@ -73,6 +91,10 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     apptsTodayRes,
     messagesTodayRes,
     callsTodayRes,
+    leadsYesterdayRes,
+    apptsYesterdayRes,
+    messagesYesterdayRes,
+    callsYesterdayRes,
     aiResolutionRate,
   ] = await Promise.all([
     admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
@@ -87,7 +109,19 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", todayStart.toISOString()),
     admin.from("messages").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("is_test", false).gte("created_at", todayStart.toISOString()),
     admin.from("agent_calls").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", todayStart.toISOString()),
-    computeAiResolutionRate(admin, tenantId),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
+    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
+    admin.from("messages").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("is_test", false).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
+    admin.from("agent_calls").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
+    // CRITICAL FIX: this previously computed over ALL-TIME conversations
+    // (no sinceISO), while every other figure in this "Today" command-center
+    // is scoped to today -- confirmed live, a tenant with old resolved
+    // conversations but zero activity today showed a misleading "100%" next
+    // to four genuine zeros. Scoped to today so a day with no conversations
+    // correctly returns null ("No data yet"), consistent with the rest of
+    // this KPI strip and with how Analytics scopes its own version to its
+    // selected window rather than all time.
+    computeAiResolutionRate(admin, tenantId, todayStart.toISOString()),
   ]);
 
   const totalLeads = totalLeadsRes.count ?? 0;
@@ -99,6 +133,15 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
   const prevConvs = prevConvsRes.count ?? 0;
   const needsHuman = needsHumanRes.count ?? 0;
 
+  const leadsToday = leadsTodayRes.count ?? 0;
+  const appointmentsToday = apptsTodayRes.count ?? 0;
+  const messagesToday = messagesTodayRes.count ?? 0;
+  const callsToday = callsTodayRes?.count ?? 0;
+  const leadsYesterday = leadsYesterdayRes.count ?? 0;
+  const appointmentsYesterday = apptsYesterdayRes.count ?? 0;
+  const messagesYesterday = messagesYesterdayRes.count ?? 0;
+  const callsYesterday = callsYesterdayRes?.count ?? 0;
+
   return {
     totalLeads,
     newLeadsThisWeek: newLeads,
@@ -108,13 +151,17 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     conversationsThisWeek: convs,
     conversationsChange: pctChange(convs, prevConvs),
     needsHumanCount: needsHuman,
-    leadsToday: leadsTodayRes.count ?? 0,
-    appointmentsToday: apptsTodayRes.count ?? 0,
-    messagesToday: messagesTodayRes.count ?? 0,
+    leadsToday,
+    appointmentsToday,
+    messagesToday,
     // agent_calls may not exist for tenants who never enabled the phone
     // agent's underlying table access path -- treat a query error as 0,
     // never let it break the rest of the dashboard.
-    callsToday: callsTodayRes?.count ?? 0,
+    callsToday,
     aiResolutionRate,
+    leadsTodayChange: pctChangeOrUndefined(leadsToday, leadsYesterday),
+    appointmentsTodayChange: pctChangeOrUndefined(appointmentsToday, appointmentsYesterday),
+    messagesTodayChange: pctChangeOrUndefined(messagesToday, messagesYesterday),
+    callsTodayChange: pctChangeOrUndefined(callsToday, callsYesterday),
   };
 }

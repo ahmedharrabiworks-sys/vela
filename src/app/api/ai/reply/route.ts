@@ -210,19 +210,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  /* ── 4. Load last 10 messages for context (exclude test messages) ── */
+  /* ── 4. Load last 20 messages for context (exclude test messages) ── */
   // convId is guaranteed tenant-scoped by this point (validated or freshly
   // created above); tenant_id is included here too as defense-in-depth,
   // consistent with the hardening above -- never rely on a single filter
   // for tenant isolation when a second one is cheap and available.
-  const { data: history } = await admin
+  //
+  // CRITICAL FIX: this previously ordered ascending + limit(10), which in
+  // Postgres/PostgREST means "the OLDEST 10 rows", not "the most recent 10"
+  // despite the comment's stated intent. For any conversation past its 10th
+  // message, the model was fed a permanently frozen window of the earliest
+  // turns and never saw anything the customer said afterward -- confirmed
+  // live via a reproduced transcript: a customer's name/phone/service given
+  // in later turns fell outside this frozen window, so the AI re-asked for
+  // it, and on a later identical prompt it regenerated the exact same reply
+  // verbatim because it could not see that it had already sent it. Fixed by
+  // querying the most recent rows (descending) then reversing back to
+  // chronological order before building the OpenAI messages array below.
+  const { data: recentHistoryDesc } = await admin
     .from("messages")
     .select("role, content")
     .eq("conversation_id", convId)
     .eq("tenant_id", tenantId)
     .eq("is_test", false)
-    .order("created_at", { ascending: true })
-    .limit(10);
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const history = ((recentHistoryDesc as Array<{ role: string; content: string }> | null) ?? []).slice().reverse();
 
   /* ── 5. Save customer message ── */
   // CRITICAL FIX: this insert's result was never captured or checked --
@@ -407,11 +420,14 @@ Rules:
 • Tone: ${tone} and warm — be like a helpful employee, not a robot
 • Language: ${languageInstruction}
 • Be concise — maximum 3 sentences per reply
+• Do NOT list your full services or price menu unprompted — not at the start of a conversation, not in response to a generic greeting or vague question. Only discuss a specific service once the customer names it or clearly asks what you offer.
+• Do NOT state a price unless the customer explicitly asks about cost/price for that specific service.
 • To book: ask for preferred day/time if not given. The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm it and move to finalize (get any missing name/phone/service, then confirm with "Booked ✓"). If not, say so and offer the real alternatives given.
 • NEVER double-book a slot already listed above
 • NEVER book outside working hours
 • "Let me check that for you — can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on) — never for checking a schedule, which you already have.
 • Never invent prices, services, or times not listed above
+• MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) say something like "That's not something we currently offer, let me check with the team and get back to you" rather than a flat decline, (3) include the exact literal text [NEEDS_HUMAN] somewhere in your reply so the team is actually notified. This token is required every single time rule (1) applies, with zero exceptions — do not skip it just because you already declined the request.
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation
 • Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in your reply. Use a period, comma, or a plain hyphen instead`;

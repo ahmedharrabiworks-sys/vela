@@ -105,12 +105,13 @@ export default function DashboardPage() {
       .then((stats: {
         leadsToday?: number; appointmentsToday?: number; messagesToday?: number; callsToday?: number;
         aiResolutionRate?: number | null;
+        leadsTodayChange?: number; appointmentsTodayChange?: number; messagesTodayChange?: number; callsTodayChange?: number;
       }) => {
         setKpis([
-          { label: "kpiLeadsToday",        value: String(stats.leadsToday ?? 0) },
-          { label: "kpiAppointmentsToday", value: String(stats.appointmentsToday ?? apptCountFast) },
-          { label: "kpiMessagesToday",     value: String(stats.messagesToday ?? 0) },
-          { label: "kpiCallsToday",        value: String(stats.callsToday ?? 0) },
+          { label: "kpiLeadsToday",        value: String(stats.leadsToday ?? 0),        change: stats.leadsTodayChange },
+          { label: "kpiAppointmentsToday", value: String(stats.appointmentsToday ?? apptCountFast), change: stats.appointmentsTodayChange },
+          { label: "kpiMessagesToday",     value: String(stats.messagesToday ?? 0),      change: stats.messagesTodayChange },
+          { label: "kpiCallsToday",        value: String(stats.callsToday ?? 0),         change: stats.callsTodayChange },
         ]);
         setAiResolutionRate(stats.aiResolutionRate ?? null);
       })

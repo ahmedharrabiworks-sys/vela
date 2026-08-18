@@ -10,7 +10,7 @@ import CircularProgress from "@/components/ui/CircularProgress";
 import { useTheme } from "@/lib/theme";
 
 type Range = "7d" | "30d" | "90d";
-type Series = "conversations" | "appointments" | "visits";
+type Series = "leads" | "conversations" | "appointments" | "visits";
 
 type ChannelRow = { channel: string; conversations: number; leads: number; share: number };
 
@@ -52,14 +52,19 @@ function computeChange(current: number, prior: number): number | null {
   return Math.round(((current - prior) / prior) * 100);
 }
 
-function TrendBadge({ change, label }: { change: number | null; label: string }) {
+// FIX 10 (pixel match): reference puts the pill top-right of the card next
+// to the label, showing only the delta ("↑23%") -- the "vs last Nd" text
+// lives as its own small caption line below the value instead of being
+// baked into the pill. Split out of what used to be a single combined
+// string so both cards and this component stay reusable.
+function TrendBadge({ change }: { change: number | null }) {
   if (change === null) {
     return <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF]">New</span>;
   }
   const up = change >= 0;
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"}`}>
-      {up ? "↑" : "↓"} {Math.abs(change)}% {label}
+      {up ? "↑" : "↓"}{Math.abs(change)}%
     </span>
   );
 }
@@ -136,10 +141,15 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
             <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
           </linearGradient>
         </defs>
-        {/* FIX: no gridline clutter -- a single faint baseline is enough
-            context; the reference chart style has none of the previous
-            5-line grid at all. */}
-        <line x1={padX} x2={W - padX} y1={H - padBottom} y2={H - padBottom} stroke={gridColor} strokeWidth="1"/>
+        {/* FIX 10 (pixel match): reference shows a light 4-line horizontal
+            grid, not zero lines -- restored to that exact count (was
+            reduced to a single baseline in an earlier pass, which undershot
+            the reference rather than matching it). Kept thin and faint so
+            it reads as subtle context, not clutter. */}
+        {[0, 1, 2, 3].map((i) => {
+          const y = padTop + (i / 3) * chartH;
+          return <line key={i} x1={padX} x2={W - padX} y1={y} y2={y} stroke={gridColor} strokeWidth="1"/>;
+        })}
         {hasData && (
           <>
             <path d={areaD} fill="url(#lineGrad)"/>
@@ -191,7 +201,7 @@ type DetailMetric = { key: Series | "aiRate"; label: string; total: number; dail
 
 export default function AnalyticsPage() {
   const [range, setRange] = useState<Range>("30d");
-  const [series, setSeries] = useState<Series>("conversations");
+  const [series, setSeries] = useState<Series>("leads");
   const { isPro } = usePlan();
   const { t } = useI18n();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -229,6 +239,7 @@ export default function AnalyticsPage() {
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
 
   const dailyBySeries: Record<Series, Record<string, number>> = useMemo(() => ({
+    leads: analytics?.dailyCounts ?? {},
     conversations: analytics?.dailyConvCounts ?? {},
     appointments: analytics?.dailyApptCounts ?? {},
     visits: analytics?.dailyVisitCounts ?? {},
@@ -247,7 +258,14 @@ export default function AnalyticsPage() {
   const convsChange = analytics ? computeChange(periodSum(analytics.dailyConvCounts, days), periodSum(analytics.dailyConvCounts, days, days)) : null;
   const visitsChange = analytics ? computeChange(periodSum(analytics.dailyVisitCounts, days), periodSum(analytics.dailyVisitCounts, days, days)) : null;
 
+  // FIX 10 (pixel match): reference orders the chart series tabs Leads
+  // first (and defaults to it) -- Leads wasn't a switchable chart series at
+  // all before, even though its daily counts were already being fetched
+  // for the top KPI card. Visits is kept as a 4th tab rather than dropped;
+  // the reference's 3-tab example is a style reference, not an instruction
+  // to remove existing chart functionality.
   const seriesToggles: { key: Series; label: string }[] = [
+    { key: "leads", label: t("analytics.leadsShort") },
     { key: "conversations", label: t("analytics.convsShort") },
     { key: "appointments", label: t("analytics.apptsShort") },
     { key: "visits", label: t("analytics.visitsShort") },
@@ -360,36 +378,50 @@ export default function AnalyticsPage() {
               {/* FIX: KPI cards are pure display now -- no onClick, no modal
                   trigger, no hover styling implying they're clickable. The
                   chart's own Convs/Appts/Visits toggle (below) is the only
-                  way to switch the chart series. */}
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-                <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.conversations")}</p>
-                <p className="text-3xl font-bold text-[#111111] leading-none mb-2"><CountUp value={totalConvs} /></p>
-                <TrendBadge change={convsChange} label={t("analytics.vsPriorPeriod")} />
+                  way to switch the chart series.
+                  FIX 10 (pixel match): tighter padding, smaller value type,
+                  and the trend pill moved up next to the label (top-right)
+                  with the "vs last Nd" text as its own small caption below
+                  the value -- matches the reference's card proportions
+                  instead of the taller, looser layout this had before. */}
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-[11px] text-[#6B7280]">{t("analytics.conversations")}</p>
+                  <TrendBadge change={convsChange} />
+                </div>
+                <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalConvs} /></p>
+                <p className="text-[10px] text-[#9CA3AF] mt-1">{t("analytics.vsPriorPeriod")}</p>
               </div>
 
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-                <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.appointments")}</p>
-                <p className="text-3xl font-bold text-[#111111] leading-none mb-2"><CountUp value={totalAppts} /></p>
-                <TrendBadge change={apptsChange} label={t("analytics.vsPriorPeriod")} />
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-[11px] text-[#6B7280]">{t("analytics.appointments")}</p>
+                  <TrendBadge change={apptsChange} />
+                </div>
+                <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalAppts} /></p>
+                <p className="text-[10px] text-[#9CA3AF] mt-1">{t("analytics.vsPriorPeriod")}</p>
               </div>
 
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-                <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.websiteVisits")}</p>
-                <p className="text-3xl font-bold text-[#111111] leading-none mb-2"><CountUp value={websiteVisits} /></p>
-                <TrendBadge change={visitsChange} label={t("analytics.vsPriorPeriod")} />
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-[11px] text-[#6B7280]">{t("analytics.websiteVisits")}</p>
+                  <TrendBadge change={visitsChange} />
+                </div>
+                <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={websiteVisits} /></p>
+                <p className="text-[10px] text-[#9CA3AF] mt-1">{t("analytics.vsPriorPeriod")}</p>
               </div>
 
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 flex items-center gap-3">
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.aiResolutionRate")}</p>
+                  <p className="text-[11px] text-[#6B7280] mb-2">{t("analytics.aiResolutionRate")}</p>
                   {aiResolutionRate === null ? (
                     <p className="text-sm text-[#9CA3AF]">{t("analytics.noDataYet")}</p>
                   ) : (
-                    <p className="text-3xl font-bold text-[#111111] leading-none"><CountUp value={aiResolutionRate} suffix="%" /></p>
+                    <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={aiResolutionRate} suffix="%" /></p>
                   )}
                 </div>
                 {aiResolutionRate !== null && (
-                  <CircularProgress value={aiResolutionRate} size={44} strokeWidth={4} color="#16A34A" />
+                  <CircularProgress value={aiResolutionRate} size={40} strokeWidth={4} color="#16A34A" />
                 )}
               </div>
             </div>

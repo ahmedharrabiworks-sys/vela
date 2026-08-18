@@ -816,13 +816,16 @@ function ChannelsPageContent() {
                     )}
                   </div>
 
-                  {/* Real stat pairs -- connected channels only */}
+                  {/* Real stat pairs -- connected channels only. Compact
+                      single-row style with an underline divider (was two
+                      separate boxed/bordered cards, which read as far taller
+                      than this needs to be). */}
                   {isConnected && (
-                    <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="flex items-center gap-8 mt-4 pt-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
                       {stats.map((s) => (
-                        <div key={s.label} className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
-                          <p className="text-lg font-bold text-[#111111] dark:text-white">{s.value.toLocaleString()}</p>
-                          <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">{s.label}</p>
+                        <div key={s.label}>
+                          <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">{s.value.toLocaleString()}</p>
+                          <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">{s.label}</p>
                         </div>
                       ))}
                     </div>
@@ -868,14 +871,24 @@ function ChannelsPageContent() {
 
           {website.published && (
             <div className="mt-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
-                  <p className="text-lg font-bold text-[#111111] dark:text-white">{website.visits.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">Website visits</p>
+              {/* Compact single-row stats, same style as the social channels
+                  above. Chat conversion % is real: conversations started as
+                  a share of real tracked visits -- honest 0% when there are
+                  no visits yet, never fabricated. */}
+              <div className="flex items-center gap-8 pt-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                <div>
+                  <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">{website.visits.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">Website visits</p>
                 </div>
-                <div className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
-                  <p className="text-lg font-bold text-[#111111] dark:text-white">{website.conversations.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">Chat conversations</p>
+                <div>
+                  <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">{website.conversations.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">Chat conversations</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">
+                    {website.visits > 0 ? `${Math.round((website.conversations / website.visits) * 1000) / 10}%` : "0%"}
+                  </p>
+                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">Chat conversions</p>
                 </div>
               </div>
               {website.siteUrl && (

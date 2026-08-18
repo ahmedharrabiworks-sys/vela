@@ -2315,29 +2315,14 @@ export default function WebsitePage() {
             </button>
           )}
 
-          {/* Edit site — reopens the chat editor against this site's current
-              live content. FIX: on desktop this only ever called
-              setActiveTab("chat"), but the chat panel already has md:flex
-              (always visible on desktop regardless of activeTab, see below)
-              -- so the click was a real no-op there with zero visible
-              effect, which read as "not clickable" even though the handler
-              fired correctly. Now also scrolls the chat panel into view and
-              focuses the input on every viewport size, so the click always
-              produces a real, visible result. */}
-          {built && isPublished && (
-            <button
-              onClick={() => {
-                setActiveTab("chat");
-                chatPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                setTimeout(() => chatInputRef.current?.focus(), 150);
-              }}
-              className="text-xs font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors flex items-center gap-1.5">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <path d="M9.5 1.5l3 3-8 8-3.5.5.5-3.5 8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Edit site
-            </button>
-          )}
+          {/* FIX 3: the standalone "Edit site" pill was a duplicate
+              affordance -- the toolbar already has the site-name dropdown
+              right next to it, and the chat panel (this button's only
+              effect) is always visible on desktop anyway. Removed to match
+              the reference: title+badge on the left, one site dropdown +
+              one Publish button on the right, nothing else. On mobile,
+              reaching the chat panel is still one tap away via the
+              chat/preview tab toggle below. */}
 
           {/* Publish button + panel */}
           <div className="relative" ref={publishBtnRef}>

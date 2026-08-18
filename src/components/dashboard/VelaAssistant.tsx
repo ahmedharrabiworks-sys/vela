@@ -111,20 +111,43 @@ export function VelaAssistant() {
   const MAX_ATTACH   = 4;
   const MAX_IMG_SIZE = 5 * 1024 * 1024; // 5 MB
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    const remaining = MAX_ATTACH - attachedImages.length;
-    files.slice(0, remaining).forEach((file) => {
+  const attachFiles = useCallback((files: File[]) => {
+    files.forEach((file) => {
       if (!file.type.startsWith("image/") || file.size > MAX_IMG_SIZE) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
         const base64 = dataUrl.split(",")[1] ?? "";
-        setAttachedImages((prev) => [...prev, { preview: dataUrl, base64, mimeType: file.type }]);
+        // Functional update reads the latest state at write time, so the
+        // MAX_ATTACH cap holds even across several async FileReader loads
+        // firing back to back (e.g. a multi-file paste).
+        setAttachedImages((prev) => (prev.length >= MAX_ATTACH ? prev : [...prev, { preview: dataUrl, base64, mimeType: file.type }]));
       };
       reader.readAsDataURL(file);
     });
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    attachFiles(files);
+  };
+
+  // FIX: a user pasting a screenshot (Ctrl+V) directly into the chat input --
+  // the natural way to share a price list or menu photo -- silently did
+  // nothing, since only the paperclip file picker was ever wired up. The
+  // assistant's "I can't read the image" reply was technically accurate: no
+  // image data ever reached it, because none was ever attached. Reuses the
+  // exact same base64 attach path as the file picker.
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items ?? []);
+    const imageFiles = items
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (imageFiles.length === 0) return;
+    e.preventDefault();
+    attachFiles(imageFiles);
   };
 
   const QUICK_ACTIONS = QUICK_ACTION_KEYS.map((qa) => ({
@@ -317,9 +340,17 @@ export function VelaAssistant() {
           below): a business owner on mobile is checking analytics/
           appointments, not casually chatting, so it gets a real nav slot
           rather than a floating bubble sitting on top of other UI. */}
+      {/* FIX (RTL): was hardcoded to sm:right-6 -- pinned to the physical
+          right edge regardless of language. Under Arabic (dir="rtl") a
+          floating action button belongs on the opposite (start) side, per
+          standard RTL convention. `end-6` is Tailwind's logical-property
+          utility (inset-inline-end): it resolves to `right` under LTR and
+          `left` under RTL, following the inherited `dir` attribute set on
+          <html> by setLocale() -- unlike an inline style, it stays gated to
+          the sm: breakpoint exactly like the class it replaces. */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`hidden sm:flex fixed sm:left-auto sm:right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl items-center justify-center hover:scale-105 active:scale-95 transition-[transform,opacity] duration-200${
+        className={`hidden sm:flex fixed sm:start-auto sm:end-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl items-center justify-center hover:scale-105 active:scale-95 transition-[transform,opacity] duration-200${
           isBottomSheetOpen && !open ? " opacity-0 pointer-events-none sm:opacity-100 sm:pointer-events-auto" : ""
         }`}
         style={{ background: "var(--vela-gradient)", bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}
@@ -342,10 +373,12 @@ export function VelaAssistant() {
           {/* Mobile backdrop */}
           <div className="fixed inset-0 z-[141] bg-black/40 sm:hidden" onClick={() => setOpen(false)} />
 
-          {/* Panel */}
+          {/* Panel — same end-6 logical-property logic as the launcher
+              button above, so the panel opens from the same side the button
+              visually sits on in both LTR and RTL. */}
           <div
             ref={panelRef}
-            className="fixed z-[142] inset-0 sm:inset-auto sm:right-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
+            className="fixed z-[142] inset-0 sm:inset-auto sm:end-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
             style={{ maxHeight: "calc(100vh - 120px)", minHeight: "400px" }}
           >
             {/* Header — white background so logo and text have proper contrast */}
@@ -548,6 +581,7 @@ export function VelaAssistant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   placeholder={t("velaAssistant.inputPlaceholder")}
                   rows={1}
                   disabled={loading}

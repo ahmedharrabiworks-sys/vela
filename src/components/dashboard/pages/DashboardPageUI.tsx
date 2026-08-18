@@ -146,7 +146,7 @@ export default function DashboardPageUI({
                         k.change > 0 ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : k.change < 0 ? "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400" : "bg-[#F3F4F6] text-[#9CA3AF]"
                       }`}>
                         {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
-                        {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsLastWeek")}` : t("dashboard.sameAsLastWeek")}
+                        {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsYesterday")}` : t("dashboard.sameAsYesterday")}
                       </span>
                     )}
                   </div>

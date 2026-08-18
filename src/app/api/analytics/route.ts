@@ -39,7 +39,7 @@ export async function GET() {
 
   const [leadsRes, convsRes, apptsRes, configRes, visitsRes, aiResolutionRate] = await Promise.all([
     admin.from("leads").select("channel, created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
-    admin.from("conversations").select("channel, created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("conversations").select("channel, created_at, lead_id").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
     admin.from("appointments").select("created_at, status").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
     admin.from("tenant_config").select("website_visit_count").eq("tenant_id", tenantId).maybeSingle(),
     websiteIds.length > 0
@@ -55,7 +55,7 @@ export async function GET() {
   const websiteVisits = ((configRes.data as Record<string, unknown> | null)?.website_visit_count as number | null) ?? 0;
 
   const leads: { channel: string | null; created_at: string }[] = leadsRes.data ?? [];
-  const conversations: { channel: string; created_at: string }[] = convsRes.data ?? [];
+  const conversations: { channel: string; created_at: string; lead_id: string | null }[] = convsRes.data ?? [];
   const appointments: { created_at: string; status: string }[] = apptsRes.data ?? [];
   const visits: { created_at: string }[] = visitsRes.data ?? [];
   console.log("[analytics] data counts:", { leads: leads.length, conversations: conversations.length, appointments: appointments.length, visits: visits.length });
@@ -85,9 +85,21 @@ export async function GET() {
 
   // Channel breakdown (last 90 days) — leads AND conversations per channel,
   // matching the reference design's two-column breakdown table.
+  //
+  // CRITICAL FIX: "Leads" per channel previously came from an independent
+  // leads.channel query, with no trace back to a real conversation on that
+  // channel -- confirmed live, this let Leads exceed Conversations for the
+  // same channel (e.g. leads created directly by the website booking form,
+  // or manually in Leads/CRM, carry a channel value but were never part of
+  // any conversation). Fixed by deriving Leads per channel from the real FK
+  // instead: conversations.lead_id, counted as DISTINCT lead ids per
+  // channel. This makes Leads <= Conversations for a channel a mathematical
+  // guarantee (every counted lead requires at least one conversation on
+  // that channel to have referenced it) rather than a display-side clamp --
+  // no independent leads-table channel count is used for this table anymore.
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const convChannelMap: Record<string, number> = {};
-  const leadChannelMap: Record<string, number> = {};
+  const leadChannelSets: Record<string, Set<string>> = {};
   const normalizeChannel = (raw: string | null | undefined) => {
     const ch = (raw || "website").toLowerCase();
     return ch === "whatsapp" ? "WhatsApp" : ch === "instagram" ? "Instagram" : "Website";
@@ -97,21 +109,21 @@ export async function GET() {
     .forEach((c) => {
       const label = normalizeChannel(c.channel);
       convChannelMap[label] = (convChannelMap[label] ?? 0) + 1;
-    });
-  leads
-    .filter((l) => l.created_at >= ninetyDaysAgo)
-    .forEach((l) => {
-      const label = normalizeChannel(l.channel);
-      leadChannelMap[label] = (leadChannelMap[label] ?? 0) + 1;
+      if (c.lead_id) {
+        (leadChannelSets[label] ??= new Set()).add(c.lead_id);
+      }
     });
 
   const knownChannels = ["WhatsApp", "Instagram", "Website"];
-  const totalChannelLeads = knownChannels.reduce((sum, ch) => sum + (leadChannelMap[ch] ?? 0), 0);
+  const leadChannelMap: Record<string, number> = Object.fromEntries(
+    knownChannels.map((ch) => [ch, leadChannelSets[ch]?.size ?? 0])
+  );
+  const totalChannelLeads = knownChannels.reduce((sum, ch) => sum + leadChannelMap[ch], 0);
   const channelBreakdown = knownChannels.map((ch) => ({
     channel: ch,
     conversations: convChannelMap[ch] ?? 0,
-    leads: leadChannelMap[ch] ?? 0,
-    share: totalChannelLeads > 0 ? Math.round(((leadChannelMap[ch] ?? 0) / totalChannelLeads) * 100) : 0,
+    leads: leadChannelMap[ch],
+    share: totalChannelLeads > 0 ? Math.round((leadChannelMap[ch] / totalChannelLeads) * 100) : 0,
   }));
 
   // Count totals for last 90 days
