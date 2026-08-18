@@ -98,18 +98,20 @@ export default function WidgetChat({
   // history endpoint returns no message id -- a reasonable tradeoff for a
   // lightweight polling mechanism, not a strict dedupe guarantee.
   //
-  // messagesRef mirrors `messages` state so the interval callback always
-  // dedupes against the CURRENT list, not a snapshot frozen when the effect
-  // was set up -- a plain `messages`-derived Set captured once would go
-  // stale the moment the visitor sent another message via send() (which
-  // doesn't touch this effect), causing the next poll to treat the
-  // visitor's own just-sent message and its AI reply as "new" and
-  // duplicate them into the thread.
-  const messagesRef = useRef<Msg[]>(messages);
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-
+  // CRITICAL FIX (duplicate messages): the dedupe set used to be computed
+  // from a ref snapshotted when the poll's fetch STARTED, then applied in a
+  // separate setMessages call after the fetch resolved. If send()'s own
+  // POST to /api/ai/reply was still in flight when a poll tick started, the
+  // snapshot didn't include the reply yet -- and if the poll's lightweight
+  // GET happened to resolve before send()'s heavier POST made it back to
+  // the browser (a real, reproducible race, not hypothetical: confirmed
+  // live -- a booking confirmation appeared twice, identical text, back to
+  // back), BOTH paths independently appended the same message. Fixed by
+  // computing the dedupe set from `prev` INSIDE the functional setMessages
+  // updater on both paths (here and in send() below) -- `prev` is always
+  // the true latest state at the moment each update actually commits, so
+  // whichever path loses the race sees the other's result already applied
+  // and skips the append. No ref/snapshot needed anymore.
   useEffect(() => {
     if (!conversationId) return;
     const interval = setInterval(async () => {
@@ -117,13 +119,13 @@ export default function WidgetChat({
         const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(conversationId)}`);
         const data = await res.json() as { messages?: { role: string; content: string }[] };
         if (!data.messages) return;
-        const seen = new Set(messagesRef.current.map((m) => `${m.role}:${m.content}`));
-        const fresh = data.messages.filter((m) => !seen.has(`${m.role}:${m.content}`));
-        if (fresh.length === 0) return;
-        setMessages((prev) => [
-          ...prev,
-          ...fresh.map((m, i) => ({ id: `poll-${Date.now()}-${i}`, role: m.role as "user" | "assistant", content: m.content })),
-        ]);
+        const fetched = data.messages;
+        setMessages((prev) => {
+          const seen = new Set(prev.map((m) => `${m.role}:${m.content}`));
+          const fresh = fetched.filter((m) => !seen.has(`${m.role}:${m.content}`));
+          if (fresh.length === 0) return prev;
+          return [...prev, ...fresh.map((m, i) => ({ id: `poll-${Date.now()}-${i}`, role: m.role as "user" | "assistant", content: m.content }))];
+        });
       } catch { /* next poll will retry */ }
     }, 5000);
     return () => clearInterval(interval);
@@ -172,12 +174,14 @@ export default function WidgetChat({
         persistConversation(data.conversationId); // every real message refreshes the 48h expiry
       }
 
-      const aiMsg: Msg = {
-        id: `a-${Date.now()}`,
-        role: "assistant",
-        content: data.reply ?? "I'll get back to you shortly!",
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      const aiContent = data.reply ?? "I'll get back to you shortly!";
+      // Dedupe against `prev` (not an outer snapshot) -- see the polling
+      // effect's comment above for the race this closes.
+      setMessages((prev) =>
+        prev.some((m) => m.role === "assistant" && m.content === aiContent)
+          ? prev
+          : [...prev, { id: `a-${Date.now()}`, role: "assistant", content: aiContent }]
+      );
     } catch (err) {
       console.error("[vela-widget] network error:", err);
       setMessages((prev) => [

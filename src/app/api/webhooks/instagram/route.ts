@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { sendInstagramMessage } from "@/lib/instagram-send";
+import { isDuplicateWebhookMessage } from "@/lib/webhook-idempotency";
 
 // GET: Meta webhook verification challenge
 export async function GET(req: NextRequest) {
@@ -86,12 +87,21 @@ export async function POST(req: NextRequest) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 
     for (const entry of entries) {
-      for (const msg of ((entry.messaging ?? []) as { sender?: { id?: string }; message?: { text?: string } }[])) {
+      for (const msg of ((entry.messaging ?? []) as { sender?: { id?: string }; message?: { mid?: string; text?: string } }[])) {
         const senderId = msg?.sender?.id;
         const msgText  = msg?.message?.text ?? "";
+        const msgId    = msg?.message?.mid;
 
         if (!senderId || !msgText) continue;
         if (msgText.length > 2000) continue; // input cap — Hard Rule 2
+
+        // CRITICAL FIX (duplicate messages): same root cause and fix as
+        // webhooks/whatsapp — see webhook-idempotency.ts. mid is Meta's
+        // own unique message id for this DM.
+        if (msgId && isDuplicateWebhookMessage(`ig:${msgId}`)) {
+          console.warn("[webhook/instagram] Skipping duplicate delivery of message:", msgId);
+          continue;
+        }
 
         let aiReply = "";
         try {

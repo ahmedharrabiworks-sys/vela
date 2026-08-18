@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import { computeAiResolutionRate } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +36,14 @@ export async function GET() {
   const { data: websiteRows } = await admin.from("websites").select("id").eq("tenant_id", tenantId);
   const websiteIds = ((websiteRows as { id: string }[] | null) ?? []).map((w) => w.id);
 
-  const [leadsRes, convsRes, apptsRes, configRes, visitsRes, aiResolutionRate] = await Promise.all([
+  const [leadsRes, convsRes, apptsRes, configRes, visitsRes] = await Promise.all([
     admin.from("leads").select("channel, created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
-    admin.from("conversations").select("channel, created_at, lead_id").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
-    admin.from("appointments").select("created_at, status").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("conversations").select("channel, created_at, lead_id, needs_human, needs_human_resolved_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("appointments").select("created_at, status, conversation_id").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
     admin.from("tenant_config").select("website_visit_count").eq("tenant_id", tenantId).maybeSingle(),
     websiteIds.length > 0
       ? admin.from("site_visits").select("created_at").in("website_id", websiteIds).gte("created_at", oneEightyDaysAgo)
       : Promise.resolve({ data: [], error: null }),
-    computeAiResolutionRate(admin, tenantId, oneEightyDaysAgo),
   ]);
 
   if (leadsRes.error) console.error("[analytics] leads query error:", leadsRes.error.message, leadsRes.error.code);
@@ -55,8 +53,8 @@ export async function GET() {
   const websiteVisits = ((configRes.data as Record<string, unknown> | null)?.website_visit_count as number | null) ?? 0;
 
   const leads: { channel: string | null; created_at: string }[] = leadsRes.data ?? [];
-  const conversations: { channel: string; created_at: string; lead_id: string | null }[] = convsRes.data ?? [];
-  const appointments: { created_at: string; status: string }[] = apptsRes.data ?? [];
+  const conversations: { channel: string; created_at: string; lead_id: string | null; needs_human: boolean; needs_human_resolved_at: string | null }[] = convsRes.data ?? [];
+  const appointments: { created_at: string; status: string; conversation_id: string | null }[] = apptsRes.data ?? [];
   const visits: { created_at: string }[] = visitsRes.data ?? [];
   console.log("[analytics] data counts:", { leads: leads.length, conversations: conversations.length, appointments: appointments.length, visits: visits.length });
 
@@ -65,6 +63,20 @@ export async function GET() {
   const dailyConvCounts: Record<string, number> = {};
   const dailyApptCounts: Record<string, number> = {};
   const dailyVisitCounts: Record<string, number> = {};
+  // Real day-by-day AI-resolution buckets, so the AI Resolution Rate KPI
+  // card can respect the same 7d/30d/90d range selector as every other
+  // card (previously fixed to a single 180-day window regardless of the
+  // selected range) and get a real period-over-period trend badge, the
+  // same way the other 3 cards already do. Definition matches
+  // computeAiResolutionRate in lib/stats.ts: never escalated to a human.
+  const dailyConvAiHandled: Record<string, number> = {};
+  // Real AI-attributed appointment count, day by day -- an appointment is
+  // AI-booked when it carries a conversation_id (only ai/reply's booking
+  // flow sets this; manually-added appointments from the Appointments page
+  // never do). Used for the honest "Booked by Vela AI" subtitle -- omitted
+  // entirely when this is 0 rather than ever implying AI booked something
+  // a human added by hand.
+  const dailyApptAiBooked: Record<string, number> = {};
 
   leads.forEach((l) => {
     const date = l.created_at.slice(0, 10);
@@ -73,10 +85,16 @@ export async function GET() {
   conversations.forEach((c) => {
     const date = c.created_at.slice(0, 10);
     dailyConvCounts[date] = (dailyConvCounts[date] ?? 0) + 1;
+    if (c.needs_human === false && c.needs_human_resolved_at === null) {
+      dailyConvAiHandled[date] = (dailyConvAiHandled[date] ?? 0) + 1;
+    }
   });
   appointments.forEach((a) => {
     const date = a.created_at.slice(0, 10);
     dailyApptCounts[date] = (dailyApptCounts[date] ?? 0) + 1;
+    if (a.conversation_id) {
+      dailyApptAiBooked[date] = (dailyApptAiBooked[date] ?? 0) + 1;
+    }
   });
   visits.forEach((v) => {
     const date = v.created_at.slice(0, 10);
@@ -142,8 +160,9 @@ export async function GET() {
     dailyConvCounts,
     dailyApptCounts,
     dailyVisitCounts,
+    dailyConvAiHandled,
+    dailyApptAiBooked,
     channelBreakdown,
     websiteVisits,
-    aiResolutionRate,
   });
 }

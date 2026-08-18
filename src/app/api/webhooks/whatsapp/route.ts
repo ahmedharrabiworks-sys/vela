@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { sendWhatsAppMessage } from "@/lib/whatsapp-send";
+import { isDuplicateWebhookMessage } from "@/lib/webhook-idempotency";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +140,17 @@ export async function POST(req: NextRequest) {
         const messageText = msg.text.body;
 
         if (!from || !messageText) continue;
+
+        // CRITICAL FIX (duplicate messages): Meta retries webhook delivery
+        // when the handler is slow to ack, and the AI reply below can take
+        // several seconds (2-3 sequential OpenAI calls). Without this, a
+        // retried delivery reprocesses the same inbound message end to end
+        // -- second AI generation, second send, identical text delivered
+        // twice. msg.id is WhatsApp's own unique message id.
+        if (msg.id && isDuplicateWebhookMessage(`wa:${msg.id}`)) {
+          console.warn("[webhooks/whatsapp] Skipping duplicate delivery of message:", msg.id);
+          continue;
+        }
 
         // Resolve customer name from contacts block (populated by Meta)
         const contact      = value.contacts?.find((c) => c.wa_id === from);

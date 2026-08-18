@@ -158,6 +158,7 @@
     "channelBreakdown": "Channel Breakdown",
     "share": "Share",
     "vsPriorPeriod": "vs prior period",
+    "vsLast": "vs last",
     "noDataYet": "No data yet",
     "noHistoryYet": "No history yet",
     "leadsShort": "Leads",
@@ -165,7 +166,12 @@
     "apptsShort": "Appts",
     "visitsShort": "Visits",
     "fullHistory": "Full history (last 180 days)",
-    "clickForDetails": "Click any card for full history"
+    "clickForDetails": "Click any card for full history",
+    "chartTitleLeads": "New Leads over time",
+    "chartTitleConversations": "Conversations over time",
+    "chartTitleAppointments": "Appointments over time",
+    "handledByVela": "Handled by Vela",
+    "bookedByVela": "Booked by Vela AI"
   },
   "marketing": {
     "title": "Marketing",

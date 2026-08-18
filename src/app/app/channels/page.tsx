@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
@@ -392,6 +392,7 @@ type WebsiteState = {
   siteUrl: string | null;
   visits: number;
   conversations: number;
+  leads: number;
   websiteId: string | null;
   embedAssistant: boolean;
 };
@@ -406,9 +407,10 @@ function ChannelsPageContent() {
     whatsapp:  { connected: false, phone: "", conversations: 0, bookings: 0 },
   });
   const [showConnectMenu, setShowConnectMenu] = useState(false);
-  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, websiteId: null, embedAssistant: true });
+  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0, websiteId: null, embedAssistant: true });
   const [savingAssistant, setSavingAssistant] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
+  const embedSectionRef             = useRef<HTMLDivElement>(null);
   const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
   const [copied, setCopied]         = useState(false);
@@ -490,22 +492,34 @@ function ChannelsPageContent() {
 
       if (siteRow) {
         const slug = (siteRow.slug as string | null) || (tenant.id as string);
-        const { count: websiteConvCount } = await s
-          .from("conversations")
-          .select("id", { count: "exact", head: true })
-          .eq("tenant_id", tenant.id)
-          .eq("channel", "website");
+        // CRITICAL FIX: "Chat conversions %" was conversations / website_visit_count
+        // -- but website_visit_count only tracks pageviews on the Vela-built
+        // site itself, not chat activity from an externally embedded widget,
+        // so it routinely undercounts relative to real conversations
+        // (confirmed live: 2 visits vs 4 real conversations = a nonsensical
+        // 200%). Real conversion is now leads produced from website chat
+        // (the same FK-traced, always <= conversations count already fixed
+        // for Analytics' Channel Breakdown) over website conversations --
+        // both reliable, both always keep the ratio <= 100%.
+        const [{ count: websiteConvCount }, { data: websiteConvRows }] = await Promise.all([
+          s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "website"),
+          s.from("conversations").select("lead_id").eq("tenant_id", tenant.id).eq("channel", "website"),
+        ]);
+        const websiteLeadCount = new Set(
+          ((websiteConvRows ?? []) as { lead_id: string | null }[]).map((r) => r.lead_id).filter((id): id is string => !!id)
+        ).size;
 
         setWebsite({
           published: true,
           siteUrl: `${appUrl}/site/${slug}`,
           visits: (cfg?.website_visit_count as number) ?? 0,
           conversations: websiteConvCount ?? 0,
+          leads: websiteLeadCount,
           websiteId: siteRow.id as string,
           embedAssistant: siteRow.embed_ai_assistant !== false,
         });
       } else {
-        setWebsite({ published: false, siteUrl: null, visits: 0, conversations: 0, websiteId: null, embedAssistant: true });
+        setWebsite({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0, websiteId: null, embedAssistant: true });
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -606,38 +620,35 @@ function ChannelsPageContent() {
     setSavingAssistant(false);
   };
 
+  // FIX 7 (round D): real brand glyphs on a solid colored square, larger
+  // (48px) container -- same icon source as /demo/channels (already the
+  // approved reference, confirmed identical path data) and the landing
+  // page fix from the previous round, instead of the small outlined
+  // gradient-stroke icons this page had.
   const CHANNELS = [
     {
       key: "instagram" as const,
       name: t("channels.instagram.name"),
-      desc: "Auto-reply to DMs while you focus on your business",
+      desc: "Respond to DMs and comments automatically via your AI agent",
       connectedDesc: channels.instagram.username ? `@${channels.instagram.username}` : "Connected",
+      iconBg: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#833AB4]",
       icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <defs>
-            <linearGradient id="ig-g" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FCAF45"/>
-              <stop offset="40%" stopColor="#E1306C"/>
-              <stop offset="100%" stopColor="#833AB4"/>
-            </linearGradient>
-          </defs>
-          <rect x="2" y="2" width="16" height="16" rx="4.5" stroke="url(#ig-g)" strokeWidth="1.6"/>
-          <circle cx="10" cy="10" r="3.5" stroke="url(#ig-g)" strokeWidth="1.6"/>
-          <circle cx="14.5" cy="5.5" r="1.1" fill="url(#ig-g)"/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
         </svg>
       ),
     },
     {
       key: "whatsapp" as const,
       name: t("channels.whatsapp.name"),
-      desc: "Let Vela handle WhatsApp enquiries around the clock",
+      desc: "Handle WhatsApp messages 24/7 and book appointments automatically",
       connectedDesc: channels.whatsapp.displayName
         ? `${channels.whatsapp.displayName}${channels.whatsapp.phone ? ` · ${channels.whatsapp.phone}` : ""}`
         : channels.whatsapp.phone || "Connected",
+      iconBg: "bg-[#25D366]",
       icon: (
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M10 2a8 8 0 0 1 6.928 12L18 18l-4.133-1.069A8 8 0 1 1 10 2z" stroke="#25D366" strokeWidth="1.6" strokeLinejoin="round"/>
-          <path d="M7.5 8.5c.2.8 1.2 2.4 2 3.2.8.8 2.1 1.7 2.9 1.8.5.1.8-.1 1-.4l.3-.5c.1-.2 0-.4-.1-.5l-1-.5c-.2-.1-.4 0-.5.1l-.3.4c-.5-.2-1.4-.9-1.9-1.9l.3-.3c.1-.1.2-.3.1-.5l-.5-1c-.1-.2-.3-.2-.5-.1l-.5.3c-.3.3-.5.6-.4 1z" stroke="#25D366" strokeWidth="1.2" strokeLinejoin="round"/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
         </svg>
       ),
     },
@@ -745,11 +756,11 @@ function ChannelsPageContent() {
 
           return (
             <div key={ch.key}
-              className={`p-4 rounded-xl bg-white dark:bg-[#17171C] border transition-colors ${isLocked ? "border-[#E5E7EB] dark:border-[#2A2A32] opacity-70" : "border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#D1D5DB] dark:hover:border-[#3A3A44]"}`}
+              className={`p-5 rounded-xl bg-white dark:bg-[#17171C] border transition-colors ${isLocked ? "border-[#E5E7EB] dark:border-[#2A2A32] opacity-70" : "border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#D1D5DB] dark:hover:border-[#3A3A44]"}`}
             >
               {loading ? (
                 <div className="flex items-center gap-4 w-full animate-pulse">
-                  <div className="w-10 h-10 rounded-xl bg-[#F3F4F6]" />
+                  <div className="w-12 h-12 rounded-xl bg-[#F3F4F6]" />
                   <div className="flex-1 space-y-2">
                     <div className="h-2.5 bg-[#F3F4F6] rounded w-28" />
                     <div className="h-2 bg-[#F3F4F6] rounded w-40" />
@@ -758,46 +769,50 @@ function ChannelsPageContent() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] flex items-center justify-center shrink-0">
-                        {ch.icon}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-[#111111] dark:text-white">{ch.name}</p>
-                          {isLocked ? (
-                            <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
-                                <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
-                              </svg>
-                              Pro only
-                            </span>
-                          ) : (
-                            <span className={`flex items-center gap-1 text-[10px] font-semibold ${isConnected ? "text-green-600 dark:text-green-400" : "text-[#9CA3AF]"}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
-                              {isConnected ? t("channels.connected") : t("channels.notConnected")}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#6B7280] mt-0.5">
-                          {isConnected ? ch.connectedDesc : ch.desc}
-                        </p>
-                      </div>
+                  <div className="flex items-start gap-4 flex-wrap">
+                    <div className={`w-12 h-12 rounded-xl ${ch.iconBg} flex items-center justify-center shrink-0`}>
+                      {ch.icon}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-base font-bold text-[#111111] dark:text-white">{ch.name}</p>
+                        {isLocked ? (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
+                              <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
+                            </svg>
+                            Pro only
+                          </span>
+                        ) : isConnected ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+                            {t("channels.connected")}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#D1D5DB]" />
+                            {t("channels.notConnected")}
+                          </span>
+                        )}
+                      </div>
+                      {isConnected && <p className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B7280] mt-0.5">{ch.connectedDesc}</p>}
+                      <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">{ch.desc}</p>
+                    </div>
+                    {/* Actions -- stacked vertically to match the reference,
+                        not side by side. */}
                     {isConnected ? (
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-col gap-2 shrink-0">
                         <button
                           onClick={() => handleConnectClick(ch.key)}
-                          className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
                         >
                           Manage
                         </button>
                         <button
                           onClick={() => disconnect(ch.key)}
                           disabled={isDisc}
-                          className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:border-red-200 dark:hover:border-red-900/50 hover:text-red-500 dark:hover:text-red-400 transition-all disabled:opacity-50"
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] dark:border-red-900/50 text-[#DC2626] dark:text-red-400 hover:bg-[#FEF2F2] dark:hover:bg-red-950/30 transition-colors whitespace-nowrap disabled:opacity-50"
                         >
                           {isDisc ? "…" : t("common.disconnect")}
                         </button>
@@ -816,16 +831,13 @@ function ChannelsPageContent() {
                     )}
                   </div>
 
-                  {/* Real stat pairs -- connected channels only. Compact
-                      single-row style with an underline divider (was two
-                      separate boxed/bordered cards, which read as far taller
-                      than this needs to be). */}
+                  {/* Real stat pairs -- connected channels only. */}
                   {isConnected && (
-                    <div className="flex items-center gap-8 mt-4 pt-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex-wrap">
                       {stats.map((s) => (
                         <div key={s.label}>
-                          <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">{s.value.toLocaleString()}</p>
-                          <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">{s.label}</p>
+                          <p className="text-base font-bold text-[#111111] dark:text-white leading-none">{s.value.toLocaleString()}</p>
+                          <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">{s.label}</p>
                         </div>
                       ))}
                     </div>
@@ -837,58 +849,77 @@ function ChannelsPageContent() {
         })}
 
         {/* Website channel — tied to Website Builder, fully optional */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] flex items-center justify-center shrink-0">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="10" r="7.5" stroke="#ed5426" strokeWidth="1.5"/>
-                  <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#ed5426" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#111111] dark:text-white">{t("channels.website.name")}</p>
-                  <span className={`flex items-center gap-1 text-[10px] font-semibold ${website.published ? "text-green-600 dark:text-green-400" : "text-[#9CA3AF]"}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${website.published ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
-                    {website.published ? t("channels.connected") : t("channels.notConnected")}
-                  </span>
-                </div>
-                <p className="text-xs text-[#6B7280] mt-0.5">
-                  {website.published
-                    ? "Your AI assistant is live on your published Vela website. No setup needed."
-                    : "Don't have a website? Build one and it's automatically connected to Vela."}
-                </p>
-              </div>
+        <div className="p-5 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="w-12 h-12 rounded-xl bg-[#6366F1] flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
+                <path d="M21 10.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
-            <Link
-              href="/app/website"
-              className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
-            >
-              {website.published ? "Manage" : "Build a website"}
-            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-base font-bold text-[#111111] dark:text-white">{t("channels.website.name")}</p>
+                {website.published ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+                    {t("channels.connected")}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D1D5DB]" />
+                    {t("channels.notConnected")}
+                  </span>
+                )}
+              </div>
+              {/* FIX 7 (round D): copy updated to match the reference exactly. */}
+              <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">
+                Chat widget on your website. Live AI conversations with visitors
+              </p>
+            </div>
+            {/* FIX 7 (round D): "Manage" was a Link to Website Builder, which
+                is for editing site content, not managing this channel --
+                every real channel-level setting (stats, AI assistant
+                toggle, view link, embed snippet) is already inline on this
+                same card below, so Manage now reveals that instead of
+                navigating away. */}
+            {website.published ? (
+              <button
+                onClick={() => { setShowEmbed(true); embedSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap shrink-0"
+              >
+                Manage
+              </button>
+            ) : (
+              <Link
+                href="/app/website"
+                className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
+              >
+                Build a website
+              </Link>
+            )}
           </div>
 
           {website.published && (
             <div className="mt-4 space-y-3">
-              {/* Compact single-row stats, same style as the social channels
-                  above. Chat conversion % is real: conversations started as
-                  a share of real tracked visits -- honest 0% when there are
-                  no visits yet, never fabricated. */}
-              <div className="flex items-center gap-8 pt-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+              {/* Real stat pair, same style as the social channels above.
+                  CRITICAL FIX: "Chat conversions %" used to be conversations
+                  / website_visit_count, which under-counts real visits from
+                  an externally embedded widget and produced nonsensical
+                  numbers over 100% -- confirmed live (2 visits vs 4 real
+                  conversations). Now leads / conversations, both reliably
+                  traced via the real conversations.lead_id FK, so the ratio
+                  can never exceed 100%. "Chat conversations" count removed
+                  -- redundant with the conversion % right next to it. */}
+              <div className="flex items-center gap-6 pt-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex-wrap">
                 <div>
-                  <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">{website.visits.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">Website visits</p>
+                  <p className="text-base font-bold text-[#111111] dark:text-white leading-none">{website.visits.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">Website visitors</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">{website.conversations.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">Chat conversations</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-[#111111] dark:text-white leading-none">
-                    {website.visits > 0 ? `${Math.round((website.conversations / website.visits) * 1000) / 10}%` : "0%"}
+                  <p className="text-base font-bold text-[#111111] dark:text-white leading-none">
+                    {website.conversations > 0 ? `${Math.round((website.leads / website.conversations) * 1000) / 10}%` : "0%"}
                   </p>
-                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">Chat conversions</p>
+                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">Chat conversions</p>
                 </div>
               </div>
               {website.siteUrl && (
@@ -916,8 +947,9 @@ function ChannelsPageContent() {
             </div>
           )}
 
-          {/* Connect an existing external website — separate, optional, collapsed by default */}
-          <div className="mt-4 pt-4 border-t border-[#F3F4F6]">
+          {/* Connect an existing external website — separate, optional, collapsed by default.
+              Also the real target of the "Manage" button above. */}
+          <div ref={embedSectionRef} className="mt-4 pt-4 border-t border-[#F3F4F6]">
             <button
               onClick={() => setShowEmbed((v) => !v)}
               className="flex items-center justify-between w-full text-left"

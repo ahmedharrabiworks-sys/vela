@@ -270,6 +270,25 @@ export async function POST(req: NextRequest) {
     .order("datetime", { ascending: true })
     .limit(20);
 
+  /* ── 6b. Pending appointment awaiting this customer's confirmation ──────── */
+  // Real reschedule flow (Appointments page "Reschedule"): the owner
+  // proposes a new time, the appointment is set to status="pending" with
+  // the new datetime, and a real message is sent asking the customer to
+  // confirm. This is also true for any fresh booking still awaiting
+  // confirmation. If one exists for THIS conversation, the very next
+  // customer reply needs to be interpreted as answering that specific
+  // question -- not treated as a generic message.
+  const { data: pendingAppt } = await admin
+    .from("appointments")
+    .select("id, datetime, service_name")
+    .eq("tenant_id", tenantId)
+    .eq("conversation_id", convId)
+    .eq("status", "pending")
+    .gte("datetime", new Date().toISOString())
+    .order("datetime", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
   /* ── 7. Build system prompt ── */
   type ServiceRow   = { name: string; price?: string; description?: string };
   type FaqRow       = { question: string; answer: string };
@@ -338,6 +357,15 @@ export async function POST(req: NextRequest) {
   const extraText = kbExtra.trim() ? `\n\nAdditional business knowledge:\n${kbExtra}` : "";
 
   const bookedSlotsText = formatBookedSlotsText(bookedSlots as BookingRow[] | null);
+
+  // Real pending-confirmation directive -- see section 6b above. Only ever
+  // set when a genuine pending appointment row exists for this exact
+  // conversation; never fabricated.
+  type PendingApptRow = { id: string; datetime: string; service_name?: string | null };
+  const pending = pendingAppt as PendingApptRow | null;
+  const pendingApptDirective = pending
+    ? `\n\nPENDING CONFIRMATION (this OVERRIDES anything discussed earlier in this conversation): This customer's appointment (${pending.service_name || "appointment"}) was just RESCHEDULED by the business to a NEW time: ${new Date(pending.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}. Any earlier date/time mentioned previously in this conversation is now OUT OF DATE -- ignore it. THIS new time above is what the customer's next message is actually responding to, and it needs THEIR confirmation. If their message clearly confirms/accepts it (e.g. "yes", "that works", "sounds good", "confirmed"), respond confirming THIS new time specifically and include the exact token [CONFIRM_APPOINTMENT:${pending.id}] somewhere in your reply. If they decline or ask for a different time instead, acknowledge that and include the exact token [NEEDS_HUMAN] so the team follows up -- do NOT confirm a different time yourself, and do NOT use [CONFIRM_APPOINTMENT:${pending.id}] unless they clearly accepted the exact new time above.`
+    : "";
 
   const languageInstruction =
     language === "Auto-detect"
@@ -414,7 +442,7 @@ Current date & time: ${todayFull}, ${currentTime}
 Services:
 ${servicesText}
 ${faqsText}
-${bookedSlotsText}${extraText}${availabilityDirective}
+${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}
 
 Rules:
 • Tone: ${tone} and warm — be like a helpful employee, not a robot
@@ -454,7 +482,30 @@ Rules:
         temperature: 0.65,
       });
 
-      const rawReply = completion.choices[0]?.message?.content?.trim() ?? aiReply;
+      let rawReply = completion.choices[0]?.message?.content?.trim() ?? aiReply;
+
+      // Real reschedule/pending-confirmation handling (see section 6b +
+      // pendingApptDirective above): only ever acts on an appointment that
+      // is genuinely pending for THIS conversation -- confirmedApptId is
+      // matched against the specific id injected into the prompt, never
+      // trusted blindly from model output, so the model can't confirm an
+      // appointment it wasn't told about.
+      const confirmMatch = rawReply.match(/\[CONFIRM_APPOINTMENT:([a-f0-9-]+)\]/i);
+      if (confirmMatch && pending && confirmMatch[1] === pending.id) {
+        rawReply = rawReply.replace(confirmMatch[0], "").replace(/\s{2,}/g, " ").trim();
+        const { error: confirmErr } = await admin
+          .from("appointments")
+          .update({ status: "confirmed" })
+          .eq("id", pending.id)
+          .eq("tenant_id", tenantId);
+        if (confirmErr) {
+          console.error("[ai/reply] FAILED to confirm pending appointment:", confirmErr.message);
+        }
+      } else if (confirmMatch) {
+        // Model hallucinated a token for an id that doesn't match the real
+        // pending appointment (or none exists) -- strip it, never act on it.
+        rawReply = rawReply.replace(confirmMatch[0], "").replace(/\s{2,}/g, " ").trim();
+      }
 
       // Extract [NEEDS_HUMAN] signal and strip it from visible reply
       if (rawReply.includes("[NEEDS_HUMAN]")) {
@@ -479,20 +530,34 @@ Rules:
   // can be the first real signal in a given conversation. Never overwrites
   // an already-known value with a blank one.
   async function ensureLeadFromContact(phone?: string | null, email?: string | null, name?: string | null) {
-    if (!phone && !email) return; // matches submit-form/route.ts's own rule: a lead needs a real way to reach them
+    // CRITICAL FIX: this early return used to run BEFORE the leadId-exists
+    // check below, so a real name stated in a later turn (e.g. "I'm Ahmed")
+    // with no phone/email repeated in that SAME message was silently
+    // discarded -- the lead (and later the appointment, which reads its
+    // name via the leads join) stayed on the "Website Visitor" placeholder
+    // forever. Reproduced live: a booking conversation where the customer
+    // gave a phone number, then stated their real name two turns later,
+    // still showed "Website Visitor" on the resulting Appointments row.
+    // The "needs a real way to reach them" rule only makes sense for
+    // CREATING a brand-new lead record -- it has nothing to do with
+    // updating a lead that already exists, so that check now only guards
+    // the create path below, not the update path.
     if (leadId) {
-      const updates: Record<string, string> = {};
-      if (phone) updates.phone = phone;
-      if (email) updates.email = email;
-      if (name && name !== "Customer" && name !== "Website Visitor") updates.name = name;
-      if (Object.keys(updates).length > 0) {
-        // Only fill fields that are currently empty -- never clobber a real value.
-        for (const [field, value] of Object.entries(updates)) {
-          await admin.from("leads").update({ [field]: value }).eq("id", leadId).is(field, null);
-        }
+      // Never clobber a real value -- phone/email only fill when currently
+      // null. name is different: it's never actually null after creation
+      // (it defaults to the placeholder customerName, e.g. "Website
+      // Visitor"), so a plain `.is("name", null)` check could never match
+      // and a real name would never overwrite the placeholder. Matches the
+      // placeholder values explicitly instead.
+      if (phone) await admin.from("leads").update({ phone }).eq("id", leadId).is("phone", null);
+      if (email) await admin.from("leads").update({ email }).eq("id", leadId).is("email", null);
+      if (name && name !== "Customer" && name !== "Website Visitor") {
+        await admin.from("leads").update({ name }).eq("id", leadId)
+          .or('name.is.null,name.eq."Website Visitor",name.eq.Customer');
       }
       return;
     }
+    if (!phone && !email) return; // creating a brand-new lead still needs a real way to reach them
     const { data: lead, error: leadErr } = await admin
       .from("leads")
       .insert({

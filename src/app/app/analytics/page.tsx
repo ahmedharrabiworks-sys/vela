@@ -10,7 +10,7 @@ import CircularProgress from "@/components/ui/CircularProgress";
 import { useTheme } from "@/lib/theme";
 
 type Range = "7d" | "30d" | "90d";
-type Series = "leads" | "conversations" | "appointments" | "visits";
+type Series = "leads" | "conversations" | "appointments";
 
 type ChannelRow = { channel: string; conversations: number; leads: number; share: number };
 
@@ -24,9 +24,10 @@ type AnalyticsData = {
   dailyConvCounts: Record<string, number>;
   dailyApptCounts: Record<string, number>;
   dailyVisitCounts: Record<string, number>;
+  dailyConvAiHandled: Record<string, number>;
+  dailyApptAiBooked: Record<string, number>;
   channelBreakdown: ChannelRow[];
   websiteVisits: number;
-  aiResolutionRate: number | null;
 };
 
 const CHANNEL_DOT: Record<string, string> = { WhatsApp: "#25D366", Instagram: "#E1306C", Website: "#9CA3AF" };
@@ -113,7 +114,6 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
   }
 
   const areaD = pts.length > 0 ? d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z` : "";
-  const labelStep = Math.max(1, Math.floor(n / 7));
   const hasData = data.some((v) => v > 0);
 
   const dateForIndex = (i: number): string => {
@@ -154,9 +154,13 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
           <>
             <path d={areaD} fill="url(#lineGrad)"/>
             <path d={d} fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            {pts.filter((_, i) => i % labelStep === 0 || i === n - 1).map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r="3" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
-            ))}
+            {/* FIX 3 (round D): reference shows exactly one dot marker, at
+                the most recent data point -- not one every few days. The
+                periodic dots read as chart-junk next to the reference's
+                clean single endpoint marker. */}
+            {pts.length > 0 && (
+              <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
+            )}
             {hp && (
               <>
                 <line x1={hp.x} x2={hp.x} y1={padTop} y2={H - padBottom} stroke="#FF6B35" strokeWidth="1" strokeDasharray="3,3" opacity="0.4"/>
@@ -197,8 +201,6 @@ function SkeletonKPI() {
   );
 }
 
-type DetailMetric = { key: Series | "aiRate"; label: string; total: number; daily?: Record<string, number> };
-
 export default function AnalyticsPage() {
   const [range, setRange] = useState<Range>("30d");
   const [series, setSeries] = useState<Series>("leads");
@@ -207,7 +209,6 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<"5xx" | null>(null);
-  const [detail, setDetail] = useState<DetailMetric | null>(null);
 
   const doFetch = useCallback(() => {
     setLoading(true);
@@ -242,41 +243,58 @@ export default function AnalyticsPage() {
     leads: analytics?.dailyCounts ?? {},
     conversations: analytics?.dailyConvCounts ?? {},
     appointments: analytics?.dailyApptCounts ?? {},
-    visits: analytics?.dailyVisitCounts ?? {},
   }), [analytics]);
 
   const chartData = buildDayArray(dailyBySeries[series], days);
   const chartLabels = buildLabels(days);
 
-  const totalConvs = analytics?.totalConversations ?? 0;
-  const totalAppts = analytics?.totalAppointments ?? 0;
+  const totalLeads = analytics ? periodSum(analytics.dailyCounts, days) : 0;
+  const totalConvs = analytics ? periodSum(analytics.dailyConvCounts, days) : 0;
+  const totalAppts = analytics ? periodSum(analytics.dailyApptCounts, days) : 0;
   const websiteVisits = analytics?.websiteVisits ?? 0;
-  const aiResolutionRate = analytics?.aiResolutionRate ?? null;
   const channelTable = analytics?.channelBreakdown ?? [];
 
+  const leadsChange = analytics ? computeChange(periodSum(analytics.dailyCounts, days), periodSum(analytics.dailyCounts, days, days)) : null;
   const apptsChange = analytics ? computeChange(periodSum(analytics.dailyApptCounts, days), periodSum(analytics.dailyApptCounts, days, days)) : null;
   const convsChange = analytics ? computeChange(periodSum(analytics.dailyConvCounts, days), periodSum(analytics.dailyConvCounts, days, days)) : null;
-  const visitsChange = analytics ? computeChange(periodSum(analytics.dailyVisitCounts, days), periodSum(analytics.dailyVisitCounts, days, days)) : null;
 
-  // FIX 10 (pixel match): reference orders the chart series tabs Leads
-  // first (and defaults to it) -- Leads wasn't a switchable chart series at
-  // all before, even though its daily counts were already being fetched
-  // for the top KPI card. Visits is kept as a 4th tab rather than dropped;
-  // the reference's 3-tab example is a style reference, not an instruction
-  // to remove existing chart functionality.
+  // AI Resolution Rate -- FIX: previously computed once server-side over a
+  // fixed 180-day window regardless of the 7d/30d/90d selector, so it never
+  // actually moved when the range changed and had no real trend to compare
+  // against. Now derived client-side from the same daily-bucketed data as
+  // every other card (dailyConvAiHandled / dailyConvCounts, summed over the
+  // selected range), so it respects the range selector and gets a real
+  // period-over-period badge exactly like Leads/Conversations/Appointments.
+  const aiHandledForRange = analytics ? periodSum(analytics.dailyConvAiHandled, days) : 0;
+  const aiResolutionRate = totalConvs > 0 ? Math.round((aiHandledForRange / totalConvs) * 100) : null;
+  const priorConvTotal = analytics ? periodSum(analytics.dailyConvCounts, days, days) : 0;
+  const priorAiHandled = analytics ? periodSum(analytics.dailyConvAiHandled, days, days) : 0;
+  const priorAiRate = priorConvTotal > 0 ? Math.round((priorAiHandled / priorConvTotal) * 100) : null;
+  const aiRateChange = aiResolutionRate !== null && priorAiRate !== null ? computeChange(aiResolutionRate, priorAiRate) : null;
+
+  // Honest "Booked by Vela AI" subtitle -- real count of appointments that
+  // carry a conversation_id (only ai/reply's own booking flow sets this;
+  // manually-added appointments never do). Omitted entirely when 0 rather
+  // than implying the AI booked something a human added by hand.
+  const aiBookedAppts = analytics ? periodSum(analytics.dailyApptAiBooked, days) : 0;
+
+  const CHART_TITLES: Record<Series, string> = {
+    leads: t("analytics.chartTitleLeads"),
+    conversations: t("analytics.chartTitleConversations"),
+    appointments: t("analytics.chartTitleAppointments"),
+  };
+
+  // FIX 1 (round D): Visits dropped from the switchable series -- 3 tabs
+  // only, matching the reference exactly (Leads / Convs / Appts).
   const seriesToggles: { key: Series; label: string }[] = [
     { key: "leads", label: t("analytics.leadsShort") },
     { key: "conversations", label: t("analytics.convsShort") },
     { key: "appointments", label: t("analytics.apptsShort") },
-    { key: "visits", label: t("analytics.visitsShort") },
   ];
 
   const hasChannelData = channelTable.some((r) => r.conversations > 0 || r.leads > 0);
 
-  const openDetail = (metric: DetailMetric) => {
-    track("analytics_card_expanded", { metric: metric.key });
-    setDetail(metric);
-  };
+  const periodLabel = `${t("analytics.vsLast")} ${range}`;
 
   // FIX 7: real client-side CSV export of the currently-loaded data -- no
   // new backend endpoint needed (analytics is already fully loaded into
@@ -287,10 +305,11 @@ export default function AnalyticsPage() {
     track("analytics_export", { format: "csv" });
     const lines: string[] = [];
     lines.push("Metric,Value");
+    lines.push(`Leads (${range}),${totalLeads}`);
     lines.push(`Conversations (${range}),${totalConvs}`);
     lines.push(`Appointments (${range}),${totalAppts}`);
     lines.push(`Website Visits (${range}),${websiteVisits}`);
-    lines.push(`AI Resolution Rate,${aiResolutionRate === null ? "N/A" : `${aiResolutionRate}%`}`);
+    lines.push(`AI Resolution Rate (${range}),${aiResolutionRate === null ? "N/A" : `${aiResolutionRate}%`}`);
     lines.push("");
     lines.push("Channel,Leads,Conversations,Share");
     channelTable.forEach((row) => lines.push(`${row.channel},${row.leads},${row.conversations},${row.share}%`));
@@ -305,9 +324,6 @@ export default function AnalyticsPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  const detailFullData = detail?.daily ? buildDayArray(detail.daily, 180) : [];
-  const detailHasData = detailFullData.some((v) => v > 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-20">
@@ -375,49 +391,62 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* FIX: KPI cards are pure display now -- no onClick, no modal
-                  trigger, no hover styling implying they're clickable. The
-                  chart's own Convs/Appts/Visits toggle (below) is the only
-                  way to switch the chart series.
-                  FIX 10 (pixel match): tighter padding, smaller value type,
-                  and the trend pill moved up next to the label (top-right)
-                  with the "vs last Nd" text as its own small caption below
-                  the value -- matches the reference's card proportions
-                  instead of the taller, looser layout this had before. */}
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+              {/* FIX 2 (round D): the top 3 cards are two-way synced with
+                  the chart's series tabs below -- clicking a card selects
+                  its series (active border + orange ring), and the matching
+                  tab lights up the matching card. AI Resolution Rate has no
+                  matching chart series, so it stays non-interactive.
+                  FIX 4 (round D): "vs prior period" replaced with the real
+                  selected range ("vs last 7d/30d/90d"); AI Resolution Rate
+                  now gets the same real trend badge as the others (derived
+                  from real daily-bucketed data, see aiRateChange above). */}
+              <button onClick={() => setSeries("leads")}
+                className={`text-left bg-white border rounded-xl p-4 transition-colors ${series === "leads" ? "border-[#FF6B35] ring-1 ring-[#FF6B35]/30" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-[11px] text-[#6B7280]">{t("analytics.totalLeads")}</p>
+                  <TrendBadge change={leadsChange} />
+                </div>
+                <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalLeads} /></p>
+                <p className="text-[10px] text-[#9CA3AF] mt-1">{periodLabel}</p>
+              </button>
+
+              <button onClick={() => setSeries("conversations")}
+                className={`text-left bg-white border rounded-xl p-4 transition-colors ${series === "conversations" ? "border-[#FF6B35] ring-1 ring-[#FF6B35]/30" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <p className="text-[11px] text-[#6B7280]">{t("analytics.conversations")}</p>
                   <TrendBadge change={convsChange} />
                 </div>
                 <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalConvs} /></p>
-                <p className="text-[10px] text-[#9CA3AF] mt-1">{t("analytics.vsPriorPeriod")}</p>
-              </div>
+                <p className="text-[10px] text-[#9CA3AF] mt-1">
+                  {totalConvs > 0 ? `${t("analytics.handledByVela")} · ` : ""}{periodLabel}
+                </p>
+              </button>
 
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+              <button onClick={() => setSeries("appointments")}
+                className={`text-left bg-white border rounded-xl p-4 transition-colors ${series === "appointments" ? "border-[#FF6B35] ring-1 ring-[#FF6B35]/30" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <p className="text-[11px] text-[#6B7280]">{t("analytics.appointments")}</p>
                   <TrendBadge change={apptsChange} />
                 </div>
                 <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalAppts} /></p>
-                <p className="text-[10px] text-[#9CA3AF] mt-1">{t("analytics.vsPriorPeriod")}</p>
-              </div>
-
-              <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="text-[11px] text-[#6B7280]">{t("analytics.websiteVisits")}</p>
-                  <TrendBadge change={visitsChange} />
-                </div>
-                <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={websiteVisits} /></p>
-                <p className="text-[10px] text-[#9CA3AF] mt-1">{t("analytics.vsPriorPeriod")}</p>
-              </div>
+                <p className="text-[10px] text-[#9CA3AF] mt-1">
+                  {aiBookedAppts > 0 ? `${t("analytics.bookedByVela")} · ` : ""}{periodLabel}
+                </p>
+              </button>
 
               <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-[#6B7280] mb-2">{t("analytics.aiResolutionRate")}</p>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-[11px] text-[#6B7280]">{t("analytics.aiResolutionRate")}</p>
+                    {aiResolutionRate !== null && <TrendBadge change={aiRateChange} />}
+                  </div>
                   {aiResolutionRate === null ? (
                     <p className="text-sm text-[#9CA3AF]">{t("analytics.noDataYet")}</p>
                   ) : (
-                    <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={aiResolutionRate} suffix="%" /></p>
+                    <>
+                      <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={aiResolutionRate} suffix="%" /></p>
+                      <p className="text-[10px] text-[#9CA3AF] mt-1">{periodLabel}</p>
+                    </>
                   )}
                 </div>
                 {aiResolutionRate !== null && (
@@ -437,7 +466,9 @@ export default function AnalyticsPage() {
           {/* Line chart */}
           <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <p className="text-sm font-bold text-[#111111]">{t("analytics.activityOverTime")}</p>
+              {/* FIX 2 (round D): dynamic title -- reflects whichever
+                  series tab is active, synced with the KPI cards above. */}
+              <p className="text-sm font-bold text-[#111111]">{CHART_TITLES[series]}</p>
               <div className="flex items-center gap-1 bg-[#F3F4F6] rounded-lg p-1">
                 {seriesToggles.map((s) => (
                   <button key={s.key} onClick={() => setSeries(s.key)}
@@ -515,24 +546,6 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          {/* AI Performance */}
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-6">
-            <p className="text-sm font-bold text-[#111111] mb-5">{t("analytics.aiPerformance")}</p>
-            <div className="grid grid-cols-2 gap-0 divide-x divide-[#E5E7EB]">
-              <button onClick={() => openDetail({ key: "conversations", label: t("analytics.messagesHandled"), total: totalConvs, daily: analytics?.dailyConvCounts })}
-                className="px-6 first:pl-0 last:pr-0 text-left hover:opacity-80 transition-opacity">
-                <p className="text-2xl font-bold text-[#FF6B35] mb-1"><CountUp value={totalConvs} /></p>
-                <p className="text-xs text-[#6B7280]">{t("analytics.messagesHandled")}</p>
-              </button>
-              <button onClick={() => openDetail({ key: "appointments", label: t("analytics.bookingsByAI"), total: totalAppts, daily: analytics?.dailyApptCounts })}
-                className="px-6 first:pl-0 last:pr-0 text-left hover:opacity-80 transition-opacity">
-                <p className="text-2xl font-bold text-[#FF6B35] mb-1"><CountUp value={totalAppts} /></p>
-                <p className="text-xs text-[#6B7280]">{t("analytics.bookingsByAI")}</p>
-              </button>
-            </div>
-          </div>
-
-          <p className="text-center text-[11px] text-[#9CA3AF]">{t("analytics.clickForDetails")}</p>
         </div>
 
         {/* Upgrade overlay */}
@@ -555,53 +568,6 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
-      )}
-
-      {/* Metric detail modal — real full history, honest zero-state */}
-      {detail && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6] sticky top-0 bg-white">
-              <div>
-                <p className="text-sm font-bold text-[#111111]">{detail.label}</p>
-                {detail.key !== "aiRate" && <p className="text-[11px] text-[#9CA3AF] mt-0.5">{t("analytics.fullHistory")}</p>}
-              </div>
-              <button onClick={() => setDetail(null)} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] hover:text-[#111111] transition-colors">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              {detail.key === "aiRate" ? (
-                aiResolutionRate === null ? (
-                  <div className="text-center py-10">
-                    <p className="text-sm font-semibold text-[#374151] mb-1">{t("analytics.noHistoryYet")}</p>
-                    <p className="text-xs text-[#9CA3AF]">Connect a channel and start real conversations to see this here.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center py-6">
-                    <CircularProgress value={aiResolutionRate} size={140} strokeWidth={12} color="#16A34A" />
-                    <p className="text-sm text-[#6B7280] mt-6 text-center max-w-xs">
-                      Of all real conversations recorded, this is the share the AI resolved fully on its own, with no human handoff needed.
-                    </p>
-                  </div>
-                )
-              ) : !detailHasData ? (
-                <div className="text-center py-10">
-                  <p className="text-sm font-semibold text-[#374151] mb-1">
-                    {t("analytics.noHistoryYet")}
-                  </p>
-                  <p className="text-xs text-[#9CA3AF]">No real activity has been recorded for this yet.</p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold text-[#111111] mb-4"><CountUp value={detail.total} /></p>
-                  <LineChart data={detailFullData} labels={buildLabels(180)} days={180} unitLabel={detail.label.toLowerCase()} />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

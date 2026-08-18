@@ -21,6 +21,7 @@ interface Appointment {
   rawDatetime: string;
   status: string;
   channel: string;
+  conversationId: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -69,9 +70,20 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
   );
 }
 
-function MessageModal({ apt, onClose }: { apt: Appointment; onClose: () => void }) {
-  const [text, setText]     = useState("");
-  const [copied, setCopied] = useState(false);
+// FIX 6: "Copy Message" only ever put text on the owner's own clipboard --
+// nothing was actually delivered to the customer. Replaced with a real Send
+// that reuses the exact same delivery path already built and live for the
+// AI's own replies and for owner Takeover (POST /api/conversations/[id]/
+// reply): saves to the real conversation history and sends via the real
+// channel (WhatsApp/Instagram Graph API, or the website widget's poll).
+// Requires the appointment to be linked to a real conversation
+// (conversation_id) -- appointments created before that link existed, or
+// added manually, have none, and Send is honestly disabled rather than
+// faking a delivery with nowhere real to go.
+function SendModal({ apt, onClose }: { apt: Appointment; onClose: () => void }) {
+  const [text, setText]       = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult]   = useState<{ ok: boolean; note?: string } | null>(null);
   const ta = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { ta.current?.focus(); }, []);
 
@@ -81,17 +93,27 @@ function MessageModal({ apt, onClose }: { apt: Appointment; onClose: () => void 
     `Hi ${apt.name.split(" ")[0]}, please arrive 5 minutes early for your ${apt.service}.`,
   ];
 
-  const handleCopy = () => {
-    if (!text.trim()) return;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleSend = async () => {
+    if (!text.trim() || !apt.conversationId || sending) return;
+    setSending(true);
+    setResult(null);
+    try {
+      const res = await fetch(`/api/conversations/${apt.conversationId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; channelError?: string; channelNote?: string; error?: string };
+      if (!res.ok || !data.ok) {
+        setResult({ ok: false, note: data.error ?? "Failed to send." });
+      } else {
+        setResult({ ok: true, note: data.channelError ?? data.channelNote });
+      }
+    } catch {
+      setResult({ ok: false, note: "Network error. Please try again." });
+    }
+    setSending(false);
   };
-
-  const whatsappHref =
-    apt.channel === "whatsapp" && apt.phone
-      ? `https://wa.me/${apt.phone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(text)}`
-      : null;
 
   return (
     <Modal onClose={onClose}>
@@ -99,12 +121,26 @@ function MessageModal({ apt, onClose }: { apt: Appointment; onClose: () => void 
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="font-bold text-[#111111]">Message {apt.name}</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">via {apt.channel} · {apt.phone}</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">via {apt.channel} · {apt.phone || "no phone on file"}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6]">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
+
+        {!apt.conversationId && (
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 mb-4">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#D97706" strokeWidth="1.3"/><path d="M7 4.5v3M7 9.5h.01" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/></svg>
+            <p className="text-xs text-amber-800">This appointment isn&apos;t linked to a real conversation, so there&apos;s no channel to deliver a message through.</p>
+          </div>
+        )}
+
+        {result && (
+          <div className={`p-3 rounded-xl mb-4 text-xs ${result.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}>
+            {result.ok ? (result.note ? result.note : "Sent.") : result.note}
+          </div>
+        )}
+
         <div className="space-y-2 mb-3">
           {SUGGESTIONS.map((s, i) => (
             <button key={i} onClick={() => setText(s)}
@@ -114,26 +150,16 @@ function MessageModal({ apt, onClose }: { apt: Appointment; onClose: () => void 
           ))}
         </div>
         <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)}
-          placeholder="Or write a custom message…" rows={4}
-          className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none mb-4" />
+          placeholder="Or write a custom message…" rows={4} disabled={!apt.conversationId}
+          className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none mb-4 disabled:opacity-50" />
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
-          {whatsappHref && text.trim() && (
-            <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90"
-              style={{ background: "#25D366" }}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <path d="M6.5 1a5.5 5.5 0 014.76 8.28L12 12l-2.77-.74A5.5 5.5 0 116.5 1z" stroke="white" strokeWidth="1.2" strokeLinejoin="round"/>
-              </svg>
-              WhatsApp
-            </a>
-          )}
-          <button onClick={handleCopy} disabled={!text.trim()}
-            className={`flex-[2] py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40 ${
-              copied ? "bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]" : "text-white hover:opacity-90"
-            }`}
-            style={!copied ? { background: "var(--vp-color)" } : {}}>
-            {copied ? "Copied!" : "Copy Message"}
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">
+            {result?.ok ? "Done" : "Cancel"}
+          </button>
+          <button onClick={handleSend} disabled={!text.trim() || !apt.conversationId || sending}
+            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
+            style={{ background: "var(--vp-color)" }}>
+            {sending ? "Sending…" : "Send"}
           </button>
         </div>
       </div>
@@ -234,11 +260,11 @@ export default function AppointmentsPage() {
     const db = getSupabase() as any;
     const { data } = await db
       .from("appointments")
-      .select("id, service_name, datetime, status, leads(name, phone, channel)")
+      .select("id, service_name, datetime, status, conversation_id, leads(name, phone, channel)")
       .eq("tenant_id", tId)
       .order("datetime", { ascending: true });
 
-    type Raw = { id: string; service_name: string | null; datetime: string; status: string; leads?: { name: string | null; phone: string | null; channel: string | null } | null };
+    type Raw = { id: string; service_name: string | null; datetime: string; status: string; conversation_id: string | null; leads?: { name: string | null; phone: string | null; channel: string | null } | null };
     const rows: Appointment[] = ((data ?? []) as Raw[]).map((a) => {
       const dt = new Date(a.datetime);
       return {
@@ -252,6 +278,7 @@ export default function AppointmentsPage() {
         rawDatetime: a.datetime,
         status: a.status,
         channel: a.leads?.channel ?? "website",
+        conversationId: a.conversation_id,
       };
     });
     setAppointments(rows);
@@ -300,20 +327,54 @@ export default function AppointmentsPage() {
     URL.revokeObjectURL(url);
   };
 
+  // FIX 6: rescheduling now does two real things instead of one -- moves
+  // the appointment AND actually tells the customer, instead of silently
+  // changing a time they were never informed of. Status goes back to
+  // "pending" (not "confirmed") because the NEW time hasn't actually been
+  // agreed by the customer yet -- it only becomes real once they reply, and
+  // ai/reply/route.ts's pending-confirmation handling (section 6b) is what
+  // turns their "yes" into a real confirmed status, or flags the owner if
+  // they decline/ask for another time. Reuses the exact same delivery path
+  // as the Send button above (POST /api/conversations/[id]/reply) -- no new
+  // send mechanism, just a different message.
   const handleReschedule = async (date: string, time: string) => {
     if (!modal || !tenantId) return;
     const id = modal.id;
+    const apt = appointments.find((a) => a.id === id);
     setModal(null);
     const newDatetime = new Date(`${date}T${time}`).toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabase() as any).from("appointments").update({ datetime: newDatetime }).eq("id", id);
+    await (getSupabase() as any).from("appointments").update({ datetime: newDatetime, status: "pending" }).eq("id", id);
     setAppointments((prev) =>
       prev.map((a) => {
         if (a.id !== id) return a;
         const dt = new Date(newDatetime);
-        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), rawDatetime: newDatetime };
+        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), rawDatetime: newDatetime, status: "pending" };
       })
     );
+    flashRow(id);
+
+    if (apt?.conversationId) {
+      const dt = new Date(newDatetime);
+      const dateLabel = formatDateLabel(dt);
+      const timeLabel = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      const proposal = `Hi ${apt.name.split(" ")[0]}, we'd like to move your ${apt.service} to ${dateLabel} at ${timeLabel}. Does that work for you? Reply to confirm or let us know if another time is better.`;
+      try {
+        await fetch(`/api/conversations/${apt.conversationId}/reply`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: proposal }),
+        });
+      } catch (err) {
+        console.error("[appointments] failed to send reschedule proposal:", err);
+      }
+    }
+  };
+
+  const handleConfirm = async (id: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getSupabase() as any).from("appointments").update({ status: "confirmed" }).eq("id", id);
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "confirmed" } : a)));
     flashRow(id);
   };
 
@@ -368,7 +429,7 @@ export default function AppointmentsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-20">
-      {modal?.type === "message"    && modalApt && <MessageModal    apt={modalApt} onClose={() => setModal(null)} />}
+      {modal?.type === "message"    && modalApt && <SendModal       apt={modalApt} onClose={() => setModal(null)} />}
       {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
       {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
 
@@ -518,6 +579,12 @@ export default function AppointmentsPage() {
                         </td>
                         <td className="py-3.5 pr-5">
                           <div className="flex items-center gap-1">
+                            {apt.status === "pending" && (
+                              <button onClick={() => handleConfirm(apt.id)}
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 transition-all whitespace-nowrap min-h-[30px]">
+                                Confirm
+                              </button>
+                            )}
                             {apt.status !== "cancelled" && (
                               <>
                                 <button onClick={() => setModal({ type: "reschedule", id: apt.id })}
