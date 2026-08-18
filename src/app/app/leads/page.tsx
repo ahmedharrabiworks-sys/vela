@@ -12,7 +12,7 @@ type Lead = {
   status: string;
   phone: string | null;
   last_message?: string;
-  updated_at: string | null;
+  created_at: string | null;
 };
 
 const PIPELINE_STAGES = ["new", "contacted", "qualified", "booked", "client"] as const;
@@ -86,12 +86,20 @@ export default function LeadsPage() {
       .single();
     if (!tenant) { setLoading(false); return; }
 
-    const { data } = await db
+    // CRITICAL FIX: this query selected and sorted by leads.updated_at,
+    // a column that has never existed on the leads table (confirmed live
+    // via a direct query -- PostgREST returns error 42703, "column does
+    // not exist"). The destructured `{ data }` never checked for an error,
+    // so `data` stayed undefined and the page silently rendered as if
+    // there were zero leads -- for every tenant, always, regardless of how
+    // many real leads existed. Switched to created_at, a real column.
+    const { data, error } = await db
       .from("leads")
-      .select("id, name, channel, status, phone, updated_at")
+      .select("id, name, channel, status, phone, created_at")
       .eq("tenant_id", tenant.id)
-      .order("updated_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
+    if (error) console.error("[leads] query failed:", error.code, error.message);
     setLeads((data ?? []) as Lead[]);
     setLoading(false);
   }
@@ -222,7 +230,7 @@ export default function LeadsPage() {
                             <p className="text-[10px] text-[#6B7280] mb-2 font-mono">{lead.phone}</p>
                           )}
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.updated_at, t)}</span>
+                            <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.created_at, t)}</span>
                           </div>
                         </div>
                       ))}

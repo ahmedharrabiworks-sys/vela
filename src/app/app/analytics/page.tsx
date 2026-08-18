@@ -106,11 +106,13 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
     y: padTop + ((max - v) / range) * chartH,
   }));
 
+  // FIX 5 (round E): straight-segment joins between points -- a sharp,
+  // angular "stock chart" line, not a smoothed curve. Was a per-segment
+  // cubic bezier (control points at each side's own y, midpoint x), which
+  // rounds every join; a plain line-to per point is the entire fix.
   let d = pts.length > 0 ? `M ${pts[0].x} ${pts[0].y}` : "";
   for (let i = 1; i < pts.length; i++) {
-    const p0 = pts[i - 1], p1 = pts[i];
-    const cpX = (p0.x + p1.x) / 2;
-    d += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+    d += ` L ${pts[i].x} ${pts[i].y}`;
   }
 
   const areaD = pts.length > 0 ? d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z` : "";

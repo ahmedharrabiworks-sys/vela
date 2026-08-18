@@ -176,6 +176,18 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   // yet / no real tenant (badge hidden); demo mode shows a fixed fixture
   // number since Hard Rule 3 allows fake data only in /demo.
   const [needsAttentionCount, setNeedsAttentionCount] = useState<number | null>(demoProfile ? 3 : null);
+  // FIX 8: real unseen-activity dots on Dashboard/Appointments/Analytics/
+  // Leads -- reuses the exact same notifications table already powering the
+  // bell (see NotificationBell.tsx), never a second tracking system. Leads
+  // and Appointments have their own dedicated notification type + link, so
+  // their dot clears by marking those specific notifications read (the same
+  // action the bell itself performs on click). Dashboard and Analytics are
+  // aggregate views with no dedicated notification type -- their dot clears
+  // via a local "last seen" timestamp instead of mutating the underlying
+  // read state that Leads/Appointments independently depend on, so visiting
+  // one page's dot never silently clears another's.
+  type NotificationRow = { id: string; link: string | null; read: boolean; created_at: string };
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const dropRef = useRef<HTMLDivElement>(null);
   const agentCollapseRef = useRef<{ wasCollapsed: boolean } | null>(null); // unused; kept for ref stability
 
@@ -241,6 +253,73 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     loadAuth();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // FIX 8: load real notifications for the nav dots. Same endpoint the bell
+  // already polls -- a second, independent fetch here (not shared state)
+  // keeps this component decoupled, matching how needs_human above is also
+  // fetched independently rather than threaded through from elsewhere.
+  useEffect(() => {
+    if (demoProfile) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/notifications");
+        if (!res.ok) return;
+        const data = await res.json() as { notifications?: NotificationRow[] };
+        if (!cancelled) setNotifications(data.notifications ?? []);
+      } catch { /* dots just stay off */ }
+    };
+    load();
+    const interval = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [demoProfile]);
+
+  const LAST_SEEN_KEY = (page: string) => `vela_nav_seen_${page}`;
+  const [dashboardLastSeen, setDashboardLastSeen] = useState(0);
+  const [analyticsLastSeen, setAnalyticsLastSeen] = useState(0);
+  useEffect(() => {
+    if (demoProfile) return;
+    setDashboardLastSeen(Number(localStorage.getItem(LAST_SEEN_KEY("dashboard")) || 0));
+    setAnalyticsLastSeen(Number(localStorage.getItem(LAST_SEEN_KEY("analytics")) || 0));
+  }, [demoProfile]);
+
+  const leadsUnread = notifications.some((n) => !n.read && n.link === "/app/leads");
+  const apptsUnread = notifications.some((n) => !n.read && n.link === "/app/appointments");
+  const dashboardUnread = notifications.some((n) => new Date(n.created_at).getTime() > dashboardLastSeen);
+  const analyticsUnread = notifications.some((n) => new Date(n.created_at).getTime() > analyticsLastSeen);
+
+  // Clear dots for whichever page the owner is currently on.
+  useEffect(() => {
+    if (demoProfile) return;
+    const onDashboard = pathname === pathPrefix;
+    const onLeads = pathname.startsWith(lk("/app/leads"));
+    const onAppts = pathname.startsWith(lk("/app/appointments"));
+    const onAnalytics = pathname.startsWith(lk("/app/analytics"));
+
+    if (onDashboard) {
+      localStorage.setItem(LAST_SEEN_KEY("dashboard"), String(Date.now()));
+      setDashboardLastSeen(Date.now());
+    }
+    if (onAnalytics) {
+      localStorage.setItem(LAST_SEEN_KEY("analytics"), String(Date.now()));
+      setAnalyticsLastSeen(Date.now());
+    }
+    if (onLeads || onAppts) {
+      const link = onLeads ? "/app/leads" : "/app/appointments";
+      const toClear = notifications.filter((n) => !n.read && n.link === link);
+      if (toClear.length > 0) {
+        setNotifications((prev) => prev.map((n) => (n.link === link ? { ...n, read: true } : n)));
+        toClear.forEach((n) => {
+          fetch("/api/notifications/mark-read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: n.id }),
+          }).catch(() => { /* next poll reconciles */ });
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, demoProfile]);
 
   // agentCollapseRef kept for potential future use
 
@@ -331,6 +410,16 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
           const isCount = isConversationsItem || typeof badge === "number";
           const isVelaAssistantEntry = item.href === "#vela-assistant";
           const isMobileOnly = "mobileOnly" in item && item.mobileOnly;
+          // FIX 8: real unseen-activity dot -- see the notifications effects
+          // above for how each of these is derived and cleared. Distinct
+          // from `badge` (which is a count or a static "NEW" label): this is
+          // always a plain dot, and only ever appears on the icon itself so
+          // it's visible in both collapsed and expanded sidebar states.
+          const showActivityDot =
+            (item.href === "/app" && dashboardUnread) ||
+            (item.href === "/app/appointments" && apptsUnread) ||
+            (item.href === "/app/analytics" && analyticsUnread) ||
+            (item.href === "/app/leads" && leadsUnread);
           return (
             <Link
               key={item.href}
@@ -349,7 +438,12 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               }`}
               style={{ paddingLeft: active ? "10px" : "12px", paddingRight: "12px" }}
             >
-              <span className="shrink-0">{item.icon}</span>
+              <span className="shrink-0 relative">
+                {item.icon}
+                {showActivityDot && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#FF3366] border border-white" aria-hidden="true" />
+                )}
+              </span>
               {!collapsed && (
                 <>
                   <span className="flex-1">{t(item.labelKey)}</span>

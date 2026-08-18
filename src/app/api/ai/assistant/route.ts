@@ -5,7 +5,12 @@ import { stripAiTells } from "@/lib/text-clean";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+// Must match the client's ALLOWED_IMG_TYPES in VelaAssistant.tsx -- a type
+// accepted client-side but rejected here is a silent-drop bug: the
+// thumbnail shows, the send looks like it worked, and the model gets zero
+// image data with no explanation (this was the real root cause the last
+// "fix" didn't catch, since every reproduction attempt used a plain PNG).
+const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/bmp"]);
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3)); // 5 MB in base64 chars
 
 export async function POST(req: NextRequest) {
@@ -37,6 +42,14 @@ export async function POST(req: NextRequest) {
       ALLOWED_IMG_TYPES.has(img.mimeType) &&
       img.data.length <= MAX_IMG_B64
     );
+  // The client already surfaces a real rejection error to the user now, but
+  // if one somehow still reaches here (an older cached client, or a type
+  // this update doesn't cover), don't let the model guess -- tell it
+  // exactly what happened so it explains rather than issuing a generic
+  // "I can't view images" that reads as a broken feature.
+  const rejectedImageNote = images.length > 0 && validImages.length === 0
+    ? "\n\nNOTE: The user attempted to attach an image, but it could not be processed (unsupported format or too large). Tell them plainly that the image didn't come through and ask them to try a PNG or JPG screenshot instead -- do not say you're generally unable to view images."
+    : "";
 
   if (!message?.trim() && validImages.length === 0) {
     return NextResponse.json({ error: "Message required" }, { status: 400 });
@@ -246,7 +259,7 @@ FAQs: write each as "Q: … A: …" in full sentences.
 After all topics are collected or confirmed: thank them briefly, show 2–3 bullets of what you collected (normalized), then emit this token on its own line:
 [save_kb:{"services":[{"name":"","price":"","duration":"","description":""}],"faqs":[],"business":{"hours":"","address":"","bookingPolicy":"","tone":"professional"},"extra":""}]
 
-Token rules: services from step 2; business.hours = normalized string from step 3; business.address from step 4; business.bookingPolicy from step 5; tone = professional/friendly/luxury from their writing style; extra = join non-empty sections with \n\n: "Business type: {step 1 answer}" then Q&A pairs from step 6 as "Q: ...\nA: ..." then "Unique selling point: {step 7 answer}" (omit any section where the answer was not collected); faqs always []. For confirmed topics (owner said yes / no changes), carry the stored value from ALREADY ON FILE into the token. Valid JSON only. Emit [save_kb:...] ONLY after all topics are done.` : ""}`;
+Token rules: services from step 2; business.hours = normalized string from step 3; business.address from step 4; business.bookingPolicy from step 5; tone = professional/friendly/luxury from their writing style; extra = join non-empty sections with \n\n: "Business type: {step 1 answer}" then Q&A pairs from step 6 as "Q: ...\nA: ..." then "Unique selling point: {step 7 answer}" (omit any section where the answer was not collected); faqs always []. For confirmed topics (owner said yes / no changes), carry the stored value from ALREADY ON FILE into the token. Valid JSON only. Emit [save_kb:...] ONLY after all topics are done.` : ""}${rejectedImageNote}`;
 
 
   // Build the user content: text-only or multi-part (text + vision images)

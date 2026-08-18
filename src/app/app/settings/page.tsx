@@ -258,9 +258,20 @@ export default function SettingsPage() {
         if (notifCfg) {
           try { setNotifState((prev) => ({ ...prev, ...(JSON.parse(notifCfg) as Partial<NotifState>) })); } catch { /* ignore */ }
         }
-        if (localStorage.getItem("vela_white_label") === "true") setWhiteLabelEnabled(true);
       }
       setLoading(false);
+
+      // FIX 6: real per-tenant setting now (tenant_config.hide_powered_by
+      // via /api/settings/branding), not localStorage -- the previous
+      // version could never reach the public widget, which is served to
+      // anonymous visitors on a different device than the owner's browser.
+      try {
+        const res = await fetch("/api/settings/branding");
+        if (res.ok) {
+          const data = await res.json() as { hidePoweredBy?: boolean };
+          setWhiteLabelEnabled(data.hidePoweredBy === true);
+        }
+      } catch { /* leave default (shown) */ }
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -832,11 +843,21 @@ export default function SettingsPage() {
                   {isPro ? (
                     <Toggle
                       checked={whiteLabelEnabled}
-                      onChange={() => {
+                      onChange={async () => {
                         const next = !whiteLabelEnabled;
-                        setWhiteLabelEnabled(next);
-                        localStorage.setItem("vela_white_label", String(next));
-                        setToast(next ? t("settings.billing.toastHidden") : t("settings.billing.toastRestored"));
+                        setWhiteLabelEnabled(next); // optimistic
+                        try {
+                          const res = await fetch("/api/settings/branding", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ hidePoweredBy: next }),
+                          });
+                          if (!res.ok) throw new Error("save failed");
+                          setToast(next ? t("settings.billing.toastHidden") : t("settings.billing.toastRestored"));
+                        } catch {
+                          setWhiteLabelEnabled(!next); // revert
+                          setToast("Could not save. Please try again.");
+                        }
                       }}
                     />
                   ) : (

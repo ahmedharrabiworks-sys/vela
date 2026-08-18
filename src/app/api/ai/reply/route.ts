@@ -450,7 +450,9 @@ Rules:
 • Be concise — maximum 3 sentences per reply
 • Do NOT list your full services or price menu unprompted — not at the start of a conversation, not in response to a generic greeting or vague question. Only discuss a specific service once the customer names it or clearly asks what you offer.
 • Do NOT state a price unless the customer explicitly asks about cost/price for that specific service.
-• To book: ask for preferred day/time if not given. The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm it and move to finalize (get any missing name/phone/service, then confirm with "Booked ✓"). If not, say so and offer the real alternatives given.
+• MANDATORY: ask ONE question at a time, never more. If you still need two or more pieces of information (e.g. which service/unit, a day/time, their name, their phone), ask for only the SINGLE most important missing one in this reply and stop there — wait for their answer before asking the next. Never bundle multiple questions into one message (e.g. never ask "which service, what date/time, and your name and number?" all together). This applies to booking just as much as anything else.
+• To book: ask for preferred day/time if not given (and nothing else in that same message). The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm it and move to finalize -- ask for any missing name/phone/service ONE AT A TIME, not together, then confirm with "Booked ✓" once you have what you need. If not, say so and offer the real alternatives given.
+• If the customer explicitly declines to name a specific service (e.g. "no particular service, just want to come talk," "not sure yet, just visiting"), do not leave it blank or keep pushing -- accept a real fallback description of the visit itself (e.g. "General Consultation," "In-person meeting") as the service and move on to the next missing detail.
 • NEVER double-book a slot already listed above
 • NEVER book outside working hours
 • "Let me check that for you — can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on) — never for checking a schedule, which you already have.
@@ -463,6 +465,11 @@ Rules:
   /* ── 8. Call OpenAI ── */
   let aiReply = "Thank you for your message! I'll get back to you shortly.";
   let needsHuman = false;
+  // Set true when this exact turn's [CONFIRM_APPOINTMENT:id] already
+  // updated the real pending row below -- guards section 12 from ALSO
+  // inserting a brand-new duplicate appointment for the same confirmation
+  // (see the guard on that block for the full explanation).
+  let pendingApptConfirmedThisTurn = false;
 
   if (apiKey) {
     try {
@@ -500,6 +507,8 @@ Rules:
           .eq("tenant_id", tenantId);
         if (confirmErr) {
           console.error("[ai/reply] FAILED to confirm pending appointment:", confirmErr.message);
+        } else {
+          pendingApptConfirmedThisTurn = true;
         }
       } else if (confirmMatch) {
         // Model hallucinated a token for an id that doesn't match the real
@@ -628,7 +637,7 @@ Rules:
         messages: [
           {
             role: "system",
-            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Extract booking info from the conversation turn below. Reply ONLY valid JSON: {"booked": true|false, "datetime": "ISO 8601 or null", "service": "service name or null", "customerName": "extracted name or null", "customerPhone": "extracted phone or null"}`,
+            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Extract booking info from the conversation turn below. Reply ONLY valid JSON: {"booked": true|false, "datetime": "ISO 8601 or null", "service": "service name or null", "customerName": "extracted name or null", "customerPhone": "extracted phone or null"}. If the customer explicitly declined to name a specific service/unit/reason (e.g. "no particular service, just want to talk in person", "not sure yet"), do not return null for service -- return a real short fallback description of the visit itself, such as "General Consultation" or "In-person meeting".`,
           },
           {
             role: "user",
@@ -662,29 +671,99 @@ Rules:
     } catch { /* best-effort */ }
   }
 
-  if (booked && booking?.datetime) {
-    await admin.from("appointments").insert({
-      tenant_id: tenantId,
-      lead_id: leadId,
-      conversation_id: convId,
-      service_name: booking.service ?? "",
-      datetime: booking.datetime,
-      status: "pending",
-    });
+  // CRITICAL FIX (duplicate appointment rows): this used to unconditionally
+  // INSERT whenever the structured-extraction call above saw booked:true --
+  // which fires on EVERY turn, not just the first. A reschedule
+  // confirmation (already handled correctly above via
+  // pendingApptConfirmedThisTurn) or simply a customer re-confirming a slot
+  // already booked in an earlier turn ("yes Wednesday works" said twice)
+  // both re-triggered this block, creating a second appointment row for the
+  // same booking -- confirmed live, reproduced via the reschedule flow.
+  // Fixed by checking for a real existing non-cancelled appointment on this
+  // conversation first: no existing row -> genuinely new booking, insert +
+  // notify. An existing row with a DIFFERENT datetime -> a real reschedule,
+  // UPDATE that same row in place (never insert a second one) + mark it
+  // rescheduled + notify. An existing row with the SAME datetime -> just a
+  // redundant re-confirmation, do nothing (never touch status, never
+  // duplicate).
+  if (booked && !pendingApptConfirmedThisTurn && booking?.datetime) {
+    // FIX 10: never save a blank service -- the detection prompt above now
+    // asks the model for a real fallback description when the customer
+    // explicitly declined to name one, but this is a hard backstop in case
+    // that still comes back empty.
+    const serviceName = booking.service?.trim() || "General Consultation";
 
-    if (leadId) {
-      await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
-    }
+    const { data: existingAppt } = await admin
+      .from("appointments")
+      .select("id, datetime")
+      .eq("tenant_id", tenantId)
+      .eq("conversation_id", convId)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (!isTest) {
-      await createNotification(admin, {
-        tenantId,
-        type: "appointment",
-        title: "New appointment booked",
-        body: booking.service ? booking.service : null,
-        link: "/app/appointments",
+    const existing = existingAppt as { id: string; datetime: string } | null;
+    // Same slot to the minute -- a redundant re-confirmation, not a change.
+    const isSameSlot = existing && new Date(existing.datetime).getTime() === new Date(booking.datetime).getTime();
+
+    if (existing && !isSameSlot) {
+      // Real reschedule detected via conversation (not the Appointments
+      // page button, but the same real change) -- update in place.
+      // Fallback: if migration_v29.sql (adds appointments.rescheduled)
+      // hasn't run yet, PostgREST rejects the WHOLE update over one unknown
+      // column (PGRST204) -- retry without it so the real datetime/status
+      // change still lands; only the visible "Rescheduled" badge is
+      // affected, never the actual reschedule.
+      const { error: updErr } = await admin.from("appointments").update({
+        service_name: serviceName,
+        datetime: booking.datetime,
+        status: "pending",
+        rescheduled: true,
+      }).eq("id", existing.id).eq("tenant_id", tenantId);
+      if (updErr?.code === "PGRST204") {
+        console.warn("[ai/reply] appointments.rescheduled column missing — run migration_v29.sql. Retrying without it.");
+        await admin.from("appointments").update({
+          service_name: serviceName,
+          datetime: booking.datetime,
+          status: "pending",
+        }).eq("id", existing.id).eq("tenant_id", tenantId);
+      }
+
+      if (!isTest) {
+        await createNotification(admin, {
+          tenantId,
+          type: "appointment",
+          title: "Appointment rescheduled",
+          body: serviceName,
+          link: "/app/appointments",
+        });
+      }
+    } else if (!existing) {
+      await admin.from("appointments").insert({
+        tenant_id: tenantId,
+        lead_id: leadId,
+        conversation_id: convId,
+        service_name: serviceName,
+        datetime: booking.datetime,
+        status: "pending",
       });
+
+      if (leadId) {
+        await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
+      }
+
+      if (!isTest) {
+        await createNotification(admin, {
+          tenantId,
+          type: "appointment",
+          title: "New appointment booked",
+          body: serviceName,
+          link: "/app/appointments",
+        });
+      }
     }
+    // isSameSlot && existing: redundant re-confirmation, intentionally a no-op.
   }
 
   return NextResponse.json(

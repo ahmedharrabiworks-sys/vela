@@ -22,6 +22,7 @@ interface Appointment {
   status: string;
   channel: string;
   conversationId: string | null;
+  rescheduled: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -258,13 +259,25 @@ export default function AppointmentsPage() {
   const loadData = useCallback(async (tId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
-    const { data } = await db
+    // Fallback: if migration_v29.sql (adds appointments.rescheduled) hasn't
+    // run yet, PostgREST rejects the whole query over one unknown column --
+    // retry without it rather than showing an empty page for something
+    // unrelated to real appointment data.
+    let { data, error } = await db
       .from("appointments")
-      .select("id, service_name, datetime, status, conversation_id, leads(name, phone, channel)")
+      .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
       .eq("tenant_id", tId)
       .order("datetime", { ascending: true });
+    if (error?.code === "PGRST204" || error?.code === "42703") {
+      console.warn("[appointments] rescheduled column missing — run migration_v29.sql. Retrying without it.");
+      ({ data } = await db
+        .from("appointments")
+        .select("id, service_name, datetime, status, conversation_id, leads(name, phone, channel)")
+        .eq("tenant_id", tId)
+        .order("datetime", { ascending: true }));
+    }
 
-    type Raw = { id: string; service_name: string | null; datetime: string; status: string; conversation_id: string | null; leads?: { name: string | null; phone: string | null; channel: string | null } | null };
+    type Raw = { id: string; service_name: string | null; datetime: string; status: string; conversation_id: string | null; rescheduled?: boolean; leads?: { name: string | null; phone: string | null; channel: string | null } | null };
     const rows: Appointment[] = ((data ?? []) as Raw[]).map((a) => {
       const dt = new Date(a.datetime);
       return {
@@ -279,6 +292,7 @@ export default function AppointmentsPage() {
         status: a.status,
         channel: a.leads?.channel ?? "website",
         conversationId: a.conversation_id,
+        rescheduled: a.rescheduled === true,
       };
     });
     setAppointments(rows);
@@ -344,12 +358,19 @@ export default function AppointmentsPage() {
     setModal(null);
     const newDatetime = new Date(`${date}T${time}`).toISOString();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabase() as any).from("appointments").update({ datetime: newDatetime, status: "pending" }).eq("id", id);
+    const db = getSupabase() as any;
+    const { error } = await db.from("appointments").update({ datetime: newDatetime, status: "pending", rescheduled: true }).eq("id", id);
+    let rescheduledFlagSaved = !error;
+    if (error?.code === "PGRST204" || error?.code === "42703") {
+      console.warn("[appointments] rescheduled column missing — run migration_v29.sql. Retrying without it.");
+      await db.from("appointments").update({ datetime: newDatetime, status: "pending" }).eq("id", id);
+      rescheduledFlagSaved = false;
+    }
     setAppointments((prev) =>
       prev.map((a) => {
         if (a.id !== id) return a;
         const dt = new Date(newDatetime);
-        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), rawDatetime: newDatetime, status: "pending" };
+        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), rawDatetime: newDatetime, status: "pending", rescheduled: rescheduledFlagSaved || a.rescheduled };
       })
     );
     flashRow(id);
@@ -565,8 +586,13 @@ export default function AppointmentsPage() {
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#6B7280] whitespace-nowrap">{apt.phone || "No phone"}</span></td>
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#111827]">{apt.service}</span></td>
                         <td className="py-3.5 pr-4">
-                          <span className="text-sm font-semibold text-[#111827]">{apt.dateLabel}</span>
-                          <span className="text-sm text-[#6B7280]"> · {apt.time}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-semibold text-[#111827]">{apt.dateLabel}</span>
+                            <span className="text-sm text-[#6B7280]">· {apt.time}</span>
+                            {apt.rescheduled && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 whitespace-nowrap">Rescheduled</span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3.5 pr-4">
                           <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F3F4F6] text-[#374151] whitespace-nowrap capitalize">{apt.channel}</span>

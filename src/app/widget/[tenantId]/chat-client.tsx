@@ -11,6 +11,7 @@ export default function WidgetChat({
   greeting,
   channel,
   accentColor,
+  hidePoweredBy,
 }: {
   tenantId: string;
   websiteId?: string;
@@ -18,6 +19,7 @@ export default function WidgetChat({
   greeting: string;
   channel: string;
   accentColor?: string | null;
+  hidePoweredBy?: boolean;
 }) {
   // Round 5 FIX 7: was a fixed Vela-brand gradient regardless of the site
   // it's embedded on. Falls back to the Vela brand gradient only when no
@@ -301,12 +303,17 @@ export default function WidgetChat({
         </div>
       </div>
 
-      {/* Powered by Vela */}
-      <div className="py-2 flex items-center justify-center gap-1.5 bg-white border-t border-[#F9FAFB]">
-        <span className="w-3 h-3 rounded-sm flex items-center justify-center text-white text-[8px] font-black"
-          style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>V</span>
-        <span className="text-[10px] text-[#9CA3AF]">Powered by <span className="font-semibold text-[#6B7280]">Vela AI</span></span>
-      </div>
+      {/* Powered by Vela -- FIX 6: now reads the real per-tenant setting
+          (tenant_config.hide_powered_by), fetched server-side in page.tsx.
+          Was previously always shown regardless of Settings, since that
+          toggle only ever wrote to the owner's own browser localStorage. */}
+      {!hidePoweredBy && (
+        <div className="py-2 flex items-center justify-center gap-1.5 bg-white border-t border-[#F9FAFB]">
+          <span className="w-3 h-3 rounded-sm flex items-center justify-center text-white text-[8px] font-black"
+            style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}>V</span>
+          <span className="text-[10px] text-[#9CA3AF]">Powered by <span className="font-semibold text-[#6B7280]">Vela AI</span></span>
+        </div>
+      )}
     </div>
   );
 }

@@ -101,6 +101,7 @@ export function VelaAssistant() {
   const [firstName, setFirstName] = useState("");
   const [interviewMode, setInterviewMode] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [convLocale, setConvLocale] = useState(locale);
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
@@ -110,10 +111,34 @@ export function VelaAssistant() {
 
   const MAX_ATTACH   = 4;
   const MAX_IMG_SIZE = 5 * 1024 * 1024; // 5 MB
+  // Must match ALLOWED_IMG_TYPES in src/app/api/ai/assistant/route.ts --
+  // a type accepted here but rejected there is exactly the silent-drop bug
+  // below: the thumbnail shows, the send looks like it worked, and the
+  // model gets zero image data with no explanation.
+  const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/bmp"]);
 
+  // CRITICAL FIX (real root cause, found after the previous "fix" kept
+  // reproducing fine with a synthetic PNG paste every time): a rejected
+  // file -- wrong type (a real OS clipboard paste can hand the browser
+  // image/bmp, or something outside the allowed set entirely) or over the
+  // 5MB size cap -- was silently dropped with ZERO feedback. No thumbnail,
+  // no error, nothing. The customer/owner sees their paste appear to do
+  // nothing (or, if they'd already typed text mentioning the image, sends
+  // that text anyway) and the AI correctly says it received no image --
+  // which reads exactly like "the paste feature is broken" even though the
+  // vision pipeline itself was never at fault. Now surfaces a real,
+  // specific inline error instead of failing silently.
   const attachFiles = useCallback((files: File[]) => {
+    setAttachError(null);
     files.forEach((file) => {
-      if (!file.type.startsWith("image/") || file.size > MAX_IMG_SIZE) return;
+      if (!ALLOWED_IMG_TYPES.has(file.type)) {
+        setAttachError(`"${file.name || "That file"}" is a ${file.type || "format"} the assistant can't read yet. Try a PNG, JPG, or WEBP.`);
+        return;
+      }
+      if (file.size > MAX_IMG_SIZE) {
+        setAttachError(`"${file.name || "That image"}" is too large (max 5MB). Try a smaller screenshot.`);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
@@ -123,8 +148,10 @@ export function VelaAssistant() {
         // firing back to back (e.g. a multi-file paste).
         setAttachedImages((prev) => (prev.length >= MAX_ATTACH ? prev : [...prev, { preview: dataUrl, base64, mimeType: file.type }]));
       };
+      reader.onerror = () => setAttachError("Couldn't read that image. Please try again.");
       reader.readAsDataURL(file);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,6 +276,7 @@ export function VelaAssistant() {
     const imagesToSend = attachedImages.map(({ base64, mimeType }) => ({ data: base64, mimeType }));
     const imagePreviews = attachedImages.map((img) => img.preview);
     setAttachedImages([]);
+    setAttachError(null);
     setMessages((prev) => [...prev, {
       role: "user",
       content: text,
@@ -532,11 +560,23 @@ export function VelaAssistant() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/bmp"
                 multiple
                 className="hidden"
                 onChange={handleFileSelect}
               />
+
+              {/* Real, specific error when a pasted/attached image is
+                  rejected (wrong format or too large) -- was previously a
+                  silent no-op that read exactly like "images don't work". */}
+              {attachError && (
+                <div className="flex items-start gap-2 mb-2 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+                  <p className="text-[11px] text-[#991B1B] flex-1">{attachError}</p>
+                  <button onClick={() => setAttachError(null)} className="text-[#991B1B] hover:opacity-70 shrink-0" aria-label="Dismiss">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </button>
+                </div>
+              )}
 
               {/* Thumbnail preview strip */}
               {attachedImages.length > 0 && (

@@ -350,6 +350,96 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
   );
 }
 
+/* ── Channel settings modal (real per-channel config, not the connect
+   wizard and not the external-embed instructions) ──
+   FIX 3: "Manage" previously reopened the connect wizard (Instagram/
+   WhatsApp) or revealed the external-embed-code section (Website) --
+   neither is actual channel settings. This surfaces the real, already-
+   computed state for that specific channel: connection identity, real
+   stats, and for Website the one real toggle that exists
+   (embedAssistant) -- moved here from the card body, not duplicated.
+   Disconnect lives here too instead of only as a separate card button. */
+function ChannelSettingsModal({
+  channel, identity, stats, onClose, onDisconnect, disconnecting,
+  websiteExtra,
+}: {
+  channel: "instagram" | "whatsapp" | "website";
+  identity: string;
+  stats: { label: string; value: string }[];
+  onClose: () => void;
+  onDisconnect?: () => void;
+  disconnecting?: boolean;
+  websiteExtra?: {
+    siteUrl: string | null;
+    embedAssistant: boolean;
+    savingAssistant: boolean;
+    onToggleAssistant: () => void;
+  };
+}) {
+  const TITLES: Record<typeof channel, string> = {
+    instagram: "Instagram Settings",
+    whatsapp: "WhatsApp Settings",
+    website: "Website Chat Settings",
+  };
+  return (
+    <Modal onClose={onClose}>
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h3 className="font-bold text-[#111111]">{TITLES[channel]}</h3>
+            <p className="text-xs text-[#6B7280] mt-0.5 font-mono">{identity}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6]">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {stats.map((s) => (
+            <div key={s.label} className="p-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA]">
+              <p className="text-lg font-bold text-[#111111]">{s.value}</p>
+              <p className="text-[11px] text-[#6B7280] mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {websiteExtra && (
+          <div className="space-y-3 mb-5">
+            {websiteExtra.siteUrl && (
+              <a href={websiteExtra.siteUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] text-xs font-semibold text-[#374151] hover:border-[#FF6B35]/40 transition-colors">
+                View your site
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 8l5-5M3.5 3h4.5v4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </a>
+            )}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA]">
+              <p className="text-xs font-semibold text-[#374151]">AI assistant on this site</p>
+              <button
+                onClick={websiteExtra.onToggleAssistant}
+                disabled={websiteExtra.savingAssistant}
+                aria-label="Toggle AI assistant on this site"
+                className={`w-9 h-5 rounded-full transition-all duration-200 relative shrink-0 disabled:opacity-50 ${websiteExtra.embedAssistant ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${websiteExtra.embedAssistant ? "left-4" : "left-0.5"}`} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Close</button>
+          {onDisconnect && (
+            <button onClick={onDisconnect} disabled={disconnecting}
+              className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-50 transition-colors">
+              {disconnecting ? "…" : "Disconnect"}
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 /* ── Upgrade modal ── */
 function UpgradeModal({ onClose }: { onClose: () => void }) {
   return (
@@ -411,7 +501,7 @@ function ChannelsPageContent() {
   const [savingAssistant, setSavingAssistant] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
   const embedSectionRef             = useRef<HTMLDivElement>(null);
-  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | null>(null);
+  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | "website-settings" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
   const [copied, setCopied]         = useState(false);
   const [tenantId, setTenantId]     = useState("YOUR_TENANT_ID");
@@ -677,6 +767,49 @@ function ChannelsPageContent() {
       {modal === "instagram" && <InstagramModal onClose={() => setModal(null)} />}
       {modal === "whatsapp"  && <WhatsAppModal  onClose={() => setModal(null)} onConnect={connectWhatsApp} />}
       {modal === "upgrade"   && <UpgradeModal   onClose={() => setModal(null)} />}
+      {modal === "instagram-settings" && (
+        <ChannelSettingsModal
+          channel="instagram"
+          identity={channels.instagram.username ? `@${channels.instagram.username}` : "Connected"}
+          stats={[
+            { label: "Conversations", value: String(channels.instagram.conversations) },
+            { label: "Leads", value: String(channels.instagram.leads) },
+          ]}
+          onClose={() => setModal(null)}
+          onDisconnect={() => { setModal(null); disconnect("instagram"); }}
+          disconnecting={disconnecting === "instagram"}
+        />
+      )}
+      {modal === "whatsapp-settings" && (
+        <ChannelSettingsModal
+          channel="whatsapp"
+          identity={channels.whatsapp.displayName ? `${channels.whatsapp.displayName} · ${channels.whatsapp.phone}` : channels.whatsapp.phone}
+          stats={[
+            { label: "Conversations", value: String(channels.whatsapp.conversations) },
+            { label: "Bookings", value: String(channels.whatsapp.bookings) },
+          ]}
+          onClose={() => setModal(null)}
+          onDisconnect={() => { setModal(null); disconnect("whatsapp"); }}
+          disconnecting={disconnecting === "whatsapp"}
+        />
+      )}
+      {modal === "website-settings" && (
+        <ChannelSettingsModal
+          channel="website"
+          identity={website.siteUrl ?? "Not published"}
+          stats={[
+            { label: "Website visitors", value: website.visits.toLocaleString() },
+            { label: "Chat conversions", value: website.conversations > 0 ? `${Math.round((website.leads / website.conversations) * 1000) / 10}%` : "0%" },
+          ]}
+          onClose={() => setModal(null)}
+          websiteExtra={{
+            siteUrl: website.siteUrl,
+            embedAssistant: website.embedAssistant,
+            savingAssistant,
+            onToggleAssistant: toggleEmbedAssistant,
+          }}
+        />
+      )}
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -804,7 +937,7 @@ function ChannelsPageContent() {
                     {isConnected ? (
                       <div className="flex flex-col gap-2 shrink-0">
                         <button
-                          onClick={() => handleConnectClick(ch.key)}
+                          onClick={() => setModal(ch.key === "instagram" ? "instagram-settings" : "whatsapp-settings")}
                           className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
                         >
                           Manage
@@ -876,15 +1009,16 @@ function ChannelsPageContent() {
                 Chat widget on your website. Live AI conversations with visitors
               </p>
             </div>
-            {/* FIX 7 (round D): "Manage" was a Link to Website Builder, which
-                is for editing site content, not managing this channel --
-                every real channel-level setting (stats, AI assistant
-                toggle, view link, embed snippet) is already inline on this
-                same card below, so Manage now reveals that instead of
-                navigating away. */}
+            {/* FIX 3 (round E): "Manage" previously revealed the external-
+                embed-code section -- real, but unrelated to managing THIS
+                channel (that section is for connecting a DIFFERENT, external
+                site). Now opens a real settings view: connection identity,
+                real stats, and the one real toggle that exists
+                (embedAssistant). The embed-code section for external sites
+                remains available below, just no longer what "Manage" means. */}
             {website.published ? (
               <button
-                onClick={() => { setShowEmbed(true); embedSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                onClick={() => setModal("website-settings")}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap shrink-0"
               >
                 Manage

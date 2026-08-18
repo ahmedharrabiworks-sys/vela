@@ -61,6 +61,12 @@ export default async function WidgetPage({
   let accentColor: string | null = null;
   let siteName: string | null = null;
   let language: string | null = null;
+  // FIX 6: real per-tenant setting (Settings -> Billing -> "Hide 'Powered
+  // by Vela' branding"), read here the same way language already is --
+  // was localStorage-only before, which this server-rendered page (served
+  // to anonymous visitors on a different device than the owner's own
+  // browser) could never see.
+  let hidePoweredBy = false;
 
   try {
     const adminClient = createSupabaseAdmin();
@@ -80,10 +86,11 @@ export default async function WidgetPage({
 
     const { data: cfg } = await admin
       .from("tenant_config")
-      .select("language")
+      .select("language, hide_powered_by")
       .eq("tenant_id", tenantId)
       .maybeSingle();
     language = (cfg as { language?: string } | null)?.language ?? null;
+    hidePoweredBy = (cfg as { hide_powered_by?: boolean } | null)?.hide_powered_by === true;
 
     const query = admin.from("websites").select("name, published_spec").eq("is_published", true);
     const { data: site } = websiteId
@@ -115,6 +122,7 @@ export default async function WidgetPage({
       greeting={greeting}
       channel={channel}
       accentColor={accentColor}
+      hidePoweredBy={hidePoweredBy}
     />
   );
 }
