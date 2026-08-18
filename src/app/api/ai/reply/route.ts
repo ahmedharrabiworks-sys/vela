@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
+import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText } from "@/lib/availability";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -322,16 +323,7 @@ export async function POST(req: NextRequest) {
   const bookingPolicyText = kbBusiness.bookingPolicy ? `\nBooking policy: ${kbBusiness.bookingPolicy}` : "";
   const extraText = kbExtra.trim() ? `\n\nAdditional business knowledge:\n${kbExtra}` : "";
 
-  const bookedSlotsText =
-    (bookedSlots as BookingRow[] | null)?.length
-      ? "\nAlready booked slots (DO NOT double-book these):\n" +
-        (bookedSlots as BookingRow[])
-          .map((b) => {
-            const dt = new Date(b.datetime);
-            return `• ${dt.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}${b.service_name ? ` (${b.service_name})` : ""}`;
-          })
-          .join("\n")
-      : "";
+  const bookedSlotsText = formatBookedSlotsText(bookedSlots as BookingRow[] | null);
 
   const languageInstruction =
     language === "Auto-detect"
@@ -343,6 +335,55 @@ export async function POST(req: NextRequest) {
   // when no websiteId was provided (an externally-pasted embed, or a widget
   // URL predating this fix).
   const displayName = siteName || t.business_name;
+
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  /* ── 7b. Real-time availability pre-check ──────────────────────────────── */
+  // FIX: the AI would say "let me check the availability... and get back to
+  // you shortly" and then never actually check anything or follow up -- a
+  // permanent stall for something the system can check instantly. This runs
+  // BEFORE the main reply so a real, DB-backed answer is injected into the
+  // SAME turn, not deferred. Cheap gpt-4o-mini call (same cost class as the
+  // existing post-hoc booking detection in section 12 below) extracts a
+  // concrete candidate date/time IF the customer just stated or confirmed
+  // one; a targeted appointments query (checkAvailability) then decides
+  // conflict/no-conflict against the real schedule and computes real
+  // alternative slots when it's taken. Channel-agnostic: Website, WhatsApp,
+  // and Instagram all reach this same code path (see the webhook routes,
+  // which POST here rather than duplicating booking logic per channel).
+  let availabilityDirective = "";
+  if (apiKey) {
+    try {
+      const openai = new OpenAI({ apiKey });
+      const recentContext = (history as Array<{ role: string; content: string }> ?? [])
+        .slice(-4)
+        .map((m) => `${m.role === "user" ? "Customer" : "AI"}: ${m.content}`)
+        .join("\n");
+      const extract = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Look at the customer's latest message, with recent conversation context, and determine if they are stating or confirming ONE concrete, fully-resolved date AND time they want to book (this includes confirming a time the AI itself just offered, e.g. "yes that works"). Resolve relative dates ("tomorrow", "next Tuesday", "the 15th at 3pm") using the current datetime above. Reply ONLY valid JSON: {"candidateDateTime": "ISO 8601 or null"}. Return null if no concrete date+time is being stated or confirmed right now.`,
+          },
+          { role: "user", content: `${recentContext ? recentContext + "\n" : ""}Customer: "${message}"` },
+        ],
+        max_tokens: 60,
+        temperature: 0,
+        response_format: { type: "json_object" },
+      });
+      const parsed = JSON.parse(extract.choices[0]?.message?.content ?? "{}") as { candidateDateTime?: string | null };
+      if (parsed.candidateDateTime) {
+        const result = await checkAvailability(admin, tenantId, parsed.candidateDateTime);
+        if (result) availabilityDirective = formatAvailabilityDirective(result);
+      }
+    } catch (err) {
+      // Best-effort -- a failed pre-check just means no directive is injected;
+      // the model falls back to its general instructions rather than the
+      // reply being blocked.
+      console.error("[ai/reply] availability pre-check failed:", err);
+    }
+  }
 
   const systemPrompt = `You are the AI assistant for ${displayName}, a ${t.industry || "business"} in ${t.city || "the UAE"}.
 
@@ -359,22 +400,21 @@ Current date & time: ${todayFull}, ${currentTime}
 Services:
 ${servicesText}
 ${faqsText}
-${bookedSlotsText}${extraText}
+${bookedSlotsText}${extraText}${availabilityDirective}
 
 Rules:
 • Tone: ${tone} and warm — be like a helpful employee, not a robot
 • Language: ${languageInstruction}
 • Be concise — maximum 3 sentences per reply
-• To book: ask for preferred day/time if not given, confirm availability against booked slots above, then confirm with "Booked ✓"
+• To book: ask for preferred day/time if not given. The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm it and move to finalize (get any missing name/phone/service, then confirm with "Booked ✓"). If not, say so and offer the real alternatives given.
 • NEVER double-book a slot already listed above
 • NEVER book outside working hours
-• If you don't know something, say "Let me check that for you — can I get your contact number?"
+• "Let me check that for you — can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on) — never for checking a schedule, which you already have.
 • Never invent prices, services, or times not listed above
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation`;
 
   /* ── 8. Call OpenAI ── */
-  const apiKey = process.env.OPENAI_API_KEY;
   let aiReply = "Thank you for your message! I'll get back to you shortly.";
   let needsHuman = false;
 

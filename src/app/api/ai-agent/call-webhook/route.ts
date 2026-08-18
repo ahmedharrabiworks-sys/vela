@@ -12,6 +12,7 @@ import {
 } from "@/lib/vapi-agent-config";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
+import { formatBookedSlotsText } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +109,32 @@ export async function POST(req: NextRequest) {
     const speed        = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
-    const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings);
+    // Real, freshly-queried schedule for THIS call -- fetched dynamically on
+    // every inbound call (assistant-request fires per-call, unlike the
+    // static provisioning prompt in api/ai-agent/phone/route.ts), so the
+    // phone agent gets the same real availability awareness Website/
+    // WhatsApp/Instagram get, current as of when the call starts. A live
+    // call is turn-by-turn inside Vapi's own model loop, not round-tripped
+    // through this server per message, so this is a call-start snapshot
+    // rather than the per-message deterministic re-check api/ai/reply does —
+    // still real, current data, just refreshed once per call instead of
+    // once per turn.
+    let bookedSlotsText = "";
+    try {
+      const { data: bookedSlots } = await admin
+        .from("appointments")
+        .select("datetime, service_name")
+        .eq("tenant_id", tenantRow.tenant_id)
+        .neq("status", "cancelled")
+        .gte("datetime", new Date().toISOString())
+        .order("datetime", { ascending: true })
+        .limit(20);
+      bookedSlotsText = formatBookedSlotsText(bookedSlots as { datetime: string; service_name?: string }[] | null);
+    } catch (err) {
+      console.error("[call-webhook] failed to fetch booked slots for assistant-request:", err);
+    }
+
+    const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings, bookedSlotsText);
     const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
 
     return NextResponse.json({

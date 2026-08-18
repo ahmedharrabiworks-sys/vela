@@ -75,5 +75,11 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
     },
+    // ── 5. Public widget tests — no auth needed (real visitors have no session) ─
+    {
+      name: "widget-public",
+      testMatch: /availability-fix-verify\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 });

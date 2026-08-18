@@ -218,11 +218,19 @@ const LANG_NAMES: Record<string, string> = {
 };
 
 // ── Inbound phone agent system prompt ─────────────────────────────────────────
+// bookedSlotsText: real, freshly-queried appointments text (same format as
+// api/ai/reply's — see src/lib/availability.ts's formatBookedSlotsText),
+// fetched fresh by call-webhook/route.ts's assistant-request handler on
+// every real inbound call. Optional and defaults to "" for the static
+// provisioning call site (api/ai-agent/phone/route.ts), which builds a
+// fallback prompt at provisioning time, not per-call, so a real-time
+// schedule snapshot there would just go stale between provisions.
 export function buildInboundSystem(
   agentName: string,
   businessName: string,
   kb: Record<string, unknown>,
-  settings: Record<string, unknown>
+  settings: Record<string, unknown>,
+  bookedSlotsText: string = "",
 ): string {
   const services =
     (kb.services as Array<{ name: string; price?: string }> | undefined) ?? [];
@@ -292,12 +300,13 @@ ${biz.hours ? `Hours: ${biz.hours}` : ""}
 ${biz.address ? `Location: ${biz.address}` : ""}
 ${biz.bookingPolicy ? `Booking policy: ${biz.bookingPolicy}` : ""}
 ${extra ? `Additional info: ${extra}` : ""}
+${bookedSlotsText}
 
 ## CALL FLOW
 1. Brief greeting (see OPENING above) — you speak first
 2. Listen — understand what the caller needs
 3. Answer using your business knowledge; never invent information
-4. If they want to book: get their name, preferred time, and service; confirm every detail back before ending
+4. If they want to book: ask for their preferred day/time if not given, then immediately check it against the schedule and hours above and tell them right away whether it works in that same turn — never tell a caller you'll "check and call back," you already have the real schedule above. If it's taken, offer real alternative times from gaps in that schedule. Once a time is confirmed, get their name and phone number, then confirm every detail back before ending.
 5. Warm close — tell them what happens next
 
 ## PERSONALITY
