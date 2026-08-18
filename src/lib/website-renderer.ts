@@ -72,6 +72,20 @@ export interface WebsiteSpec {
 
 export type ImageMap = Record<string, string>;
 
+// Mixes a hex color toward black by `amount` (0 = unchanged, 1 = full black).
+// Used to derive dark accent bands (footer, stats/amenities band) from the
+// site's OWN accent color, instead of a fixed hardcoded navy that clashed
+// with warm/cream palettes -- see --footer-bg below.
+function darkenHex(hex: string, amount: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const num = parseInt(m[1], 16);
+  const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  const scale = 1 - amount;
+  const toHex = (v: number) => Math.round(v * scale).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
 // ── CSS generator ─────────────────────────────────────────────────────────────
 function buildCss(t: DesignTokens): string {
   const isDark = t.dark;
@@ -284,7 +298,16 @@ button,input,select,textarea{font-family:inherit;}
   --radius:${t.radius};
   --radius-lg:${t.radiusLg};
   --section-pad:${t.sectionPad};
-  --footer-bg:${isDark ? t.bg : '#0D1526'};
+  // FIX: this used to be a fixed hardcoded navy (#0D1526) for every
+  // non-dark site regardless of its own palette -- confirmed live, a
+  // cream/white dental site's footer AND stats/amenities band (both use
+  // this token, see .ws-footer / .ws-stats below) rendered a jarring fixed
+  // blue that had nothing to do with the site's real accent color. Now
+  // derived FROM the site's own accent (darkened toward black), so a warm
+  // orange-accented site gets a deep warm brown-black band, a teal site
+  // gets a deep teal-black band, etc. -- always a real shade of that site's
+  // own palette, never an independent color.
+  --footer-bg:${isDark ? t.bg : darkenHex(t.accent, 0.82)};
   --fs-display:clamp(3rem,10vw,8rem);
   --fs-hero-xl:clamp(2.5rem,5vw,4rem);
   --fs-h2:clamp(1.75rem,3vw,2.5rem);

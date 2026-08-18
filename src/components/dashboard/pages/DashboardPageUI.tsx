@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import CountUp from "@/components/ui/CountUp";
+import CircularProgress from "@/components/ui/CircularProgress";
 
 const CHANNEL_COLORS: Record<string, string> = { instagram: "#E1306C", whatsapp: "#25D366", website: "#FF6B35" };
 
@@ -27,6 +29,10 @@ interface Props {
   showKbBanner?: boolean;
   kbScore?: number;
   onDismissKbBanner?: () => void;
+  // AI Resolution Rate — real percentage (0-100) of conversations the AI
+  // handled without ever needing a human handoff. null = no real data yet
+  // (honest empty state, never a fabricated 0%/100%).
+  aiResolutionRate?: number | null;
 }
 
 export default function DashboardPageUI({
@@ -34,6 +40,7 @@ export default function DashboardPageUI({
   basePath = "/app",
   showBanner = false, onDismissBanner,
   showKbBanner = false, kbScore = 0, onDismissKbBanner,
+  aiResolutionRate = null,
 }: Props) {
   const { t } = useI18n();
 
@@ -112,29 +119,52 @@ export default function DashboardPageUI({
         <p className="text-sm text-[#6B7280] mt-0.5">{bName ? `${bName} · ` : ""}{today}</p>
       </div>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {loading
-          ? [1, 2, 3].map((i) => (
-              <div key={i} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5 animate-pulse">
-                <div className="h-2.5 bg-[#F3F4F6] rounded w-2/3 mb-3" />
-                <div className="h-7 bg-[#F3F4F6] rounded w-1/3 mb-2" />
-              </div>
-            ))
-          : kpis.map((k) => (
-              <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5">
-                <p className="text-[11px] text-[#6B7280] mb-3">{t(`dashboard.${k.label}`)}</p>
-                <p className="text-2xl font-bold text-[#111111] leading-none mb-2">{k.value}</p>
-                {k.change !== undefined && (
-                  <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                    k.change > 0 ? "bg-green-50 text-green-600" : k.change < 0 ? "bg-red-50 text-red-500" : "bg-[#F3F4F6] text-[#9CA3AF]"
-                  }`}>
-                    {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
-                    {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsLastWeek")}` : t("dashboard.sameAsLastWeek")}
-                  </span>
+      {/* KPI strip — soft gradient wash behind it, matching Analytics' visual language */}
+      <div className="rounded-2xl p-5 -mx-1 -my-1" style={{ background: "linear-gradient(135deg, rgba(255,107,53,0.06), rgba(255,51,102,0.03) 60%, transparent)" }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {loading
+            ? [1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5 animate-pulse">
+                  <div className="h-2.5 bg-[#F3F4F6] rounded w-2/3 mb-3" />
+                  <div className="h-7 bg-[#F3F4F6] rounded w-1/3 mb-2" />
+                </div>
+              ))
+            : kpis.map((k) => {
+                const numeric = Number(k.value);
+                const isNumeric = Number.isFinite(numeric) && String(numeric) === k.value.trim();
+                return (
+                  <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5">
+                    <p className="text-[11px] text-[#6B7280] mb-3">{t(`dashboard.${k.label}`)}</p>
+                    <p className="text-2xl font-bold text-[#111111] leading-none mb-2">
+                      {isNumeric ? <CountUp value={numeric} /> : k.value}
+                    </p>
+                    {k.change !== undefined && (
+                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                        k.change > 0 ? "bg-green-50 text-green-600" : k.change < 0 ? "bg-red-50 text-red-500" : "bg-[#F3F4F6] text-[#9CA3AF]"
+                      }`}>
+                        {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
+                        {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsLastWeek")}` : t("dashboard.sameAsLastWeek")}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+
+          {/* AI Resolution Rate — real circular indicator, honest zero-state */}
+          {!loading && (
+            <div className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-[#6B7280] mb-3">{t("dashboard.aiResolutionRate")}</p>
+                {aiResolutionRate === null ? (
+                  <p className="text-xs text-[#9CA3AF]">{t("dashboard.noDataYet")}</p>
+                ) : (
+                  <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={aiResolutionRate} suffix="%" /></p>
                 )}
               </div>
-            ))}
+              {aiResolutionRate !== null && <CircularProgress value={aiResolutionRate} size={40} strokeWidth={4} color="#16A34A" />}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main grid */}

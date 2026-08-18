@@ -727,7 +727,6 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                     <p className="text-xs font-semibold" style={{ color: textPrimary }}>Phone Number</p>
                     <p className="text-[10px]" style={{ color: textMuted }}>AI answers your calls 24/7</p>
                   </div>
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: isDark?"var(--dm-card2)":"#F3F4F6", color: textMuted }}>Soon</span>
                 </div>
               </div>
             </div>

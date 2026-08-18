@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [kbScore, setKbScore]       = useState(100); // default high → no flash before load
   const [kbBannerDismissed, setKbBannerDismissed] = useState(false);
+  const [aiResolutionRate, setAiResolutionRate] = useState<number | null>(null);
 
   useEffect(() => {
     setBannerDismissed(localStorage.getItem("vela_onboarding_banner_dismissed") === "true");
@@ -61,9 +62,10 @@ export default function DashboardPage() {
 
     const tenantId = tenant.id as string;
 
-    // Load data in parallel
-    const [leadsRes, apptRes, convRes, configRes] = await Promise.all([
-      db.from("leads").select("id, status").eq("tenant_id", tenantId),
+    // Load data in parallel — leads are no longer queried directly here;
+    // KPI counts (including leadsToday) come from /api/stats below, which
+    // is also the source of truth used by Analytics for consistency.
+    const [apptRes, convRes, configRes] = await Promise.all([
       db.from("appointments")
         .select("id, service_name, datetime, status, leads(name)")
         .eq("tenant_id", tenantId)
@@ -83,29 +85,36 @@ export default function DashboardPage() {
         .maybeSingle(),
     ]);
 
-    // KPIs
-    const leads = (leadsRes.data ?? []) as Array<{ id: string; status: string }>;
-    const totalLeads = leads.length;
-    const newLeads = leads.filter((l) => l.status === "new").length;
-    const apptCount = (apptRes.data ?? []).length;
+    // KPIs — real "today" command-center view (leads/appointments/messages/
+    // calls today + AI Resolution Rate), sourced from /api/stats (server-side,
+    // real queries against leads/appointments/messages/agent_calls/conversations).
+    // apptRes above is already scoped to today (used for the appointments list
+    // below); its length is shown immediately while /api/stats loads in the
+    // background so the count isn't blank, then reconciled with the
+    // authoritative server value once it arrives.
+    const apptCountFast = (apptRes.data ?? []).length;
+    setKpis([
+      { label: "kpiLeadsToday",        value: "0" },
+      { label: "kpiAppointmentsToday", value: String(apptCountFast) },
+      { label: "kpiMessagesToday",     value: "0" },
+      { label: "kpiCallsToday",        value: "0" },
+    ]);
 
-    // Fetch week-over-week stats in background
     fetch("/api/stats")
       .then((r) => r.json())
-      .then((stats: { newLeadsChange?: number; appointmentsChange?: number; conversationsChange?: number }) => {
+      .then((stats: {
+        leadsToday?: number; appointmentsToday?: number; messagesToday?: number; callsToday?: number;
+        aiResolutionRate?: number | null;
+      }) => {
         setKpis([
-          { label: "kpiTotalLeads",        value: String(totalLeads),  change: stats.newLeadsChange },
-          { label: "kpiNewLeads",          value: String(newLeads),    change: stats.newLeadsChange },
-          { label: "kpiAppointmentsToday", value: String(apptCount),   change: stats.appointmentsChange },
+          { label: "kpiLeadsToday",        value: String(stats.leadsToday ?? 0) },
+          { label: "kpiAppointmentsToday", value: String(stats.appointmentsToday ?? apptCountFast) },
+          { label: "kpiMessagesToday",     value: String(stats.messagesToday ?? 0) },
+          { label: "kpiCallsToday",        value: String(stats.callsToday ?? 0) },
         ]);
+        setAiResolutionRate(stats.aiResolutionRate ?? null);
       })
-      .catch(() => null);
-
-    setKpis([
-      { label: "kpiTotalLeads",        value: String(totalLeads) },
-      { label: "kpiNewLeads",          value: String(newLeads)   },
-      { label: "kpiAppointmentsToday", value: String(apptCount) },
-    ]);
+      .catch((err) => console.error("[dashboard] /api/stats fetch failed:", err));
 
     // Conversations
     const rawConvs = (convRes.data ?? []) as Array<{
@@ -207,6 +216,7 @@ export default function DashboardPage() {
         showKbBanner={showKbBanner}
         kbScore={kbScore}
         onDismissKbBanner={dismissKbBanner}
+        aiResolutionRate={aiResolutionRate}
       />
     </>
   );

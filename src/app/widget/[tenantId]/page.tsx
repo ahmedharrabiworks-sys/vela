@@ -3,6 +3,33 @@ import WidgetChat from "./chat-client";
 
 export const dynamic = "force-dynamic";
 
+// FIX: this greeting was hardcoded English always, regardless of the
+// tenant's configured language (tenant_config.language, the same field
+// ai/reply/route.ts already reads to decide the AI's reply language). A
+// visitor on an Arabic-configured business's site saw an English opener
+// before ever sending a message.
+//
+// Live-verified the real stored values before wiring this up (Settings →
+// AI Configuration → Language only ever writes one of these three exact
+// strings -- see src/app/app/settings/page.tsx's language button row):
+// "English", "Arabic", "Auto-detect". An initial version of this fix keyed
+// on ISO codes ("en"/"ar"/etc.), which would have silently never matched
+// any real tenant's stored value and always fallen back to English.
+// "Auto-detect" has no message to detect from yet at greeting time, so it
+// defaults to English -- same convention already used by the phone agent's
+// greeting-language fallback (tenants with no saved choice default to
+// English, not a "guess from business language" heuristic).
+const GREETING_BY_LANG: Record<string, string> = {
+  english: "Hi there! 👋 Welcome to {name}. How can I help you today?",
+  arabic: "مرحبًا! 👋 أهلاً بك في {name}. كيف يمكنني مساعدتك اليوم؟",
+};
+
+function buildGreeting(displayName: string, language?: string | null): string {
+  const key = (language || "").trim().toLowerCase();
+  const template = GREETING_BY_LANG[key] ?? GREETING_BY_LANG.english;
+  return template.replace("{name}", displayName);
+}
+
 export default async function WidgetPage({
   params,
   searchParams,
@@ -33,6 +60,7 @@ export default async function WidgetPage({
   // with no websiteId context (or a widget URL predating this fix).
   let accentColor: string | null = null;
   let siteName: string | null = null;
+  let language: string | null = null;
 
   try {
     const adminClient = createSupabaseAdmin();
@@ -49,6 +77,13 @@ export default async function WidgetPage({
       businessName = t.business_name || "Business";
       industry = t.industry || "business";
     }
+
+    const { data: cfg } = await admin
+      .from("tenant_config")
+      .select("language")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    language = (cfg as { language?: string } | null)?.language ?? null;
 
     const query = admin.from("websites").select("name, published_spec").eq("is_published", true);
     const { data: site } = websiteId
@@ -70,7 +105,7 @@ export default async function WidgetPage({
   // sees and what the assistant identifies as -- falls back to the
   // tenant's business_name only when no website name was found.
   const displayName = siteName || businessName;
-  const greeting = `Hi there! 👋 Welcome to ${displayName}. How can I help you today?`;
+  const greeting = buildGreeting(displayName, language);
 
   return (
     <WidgetChat

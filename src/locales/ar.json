@@ -9,7 +9,8 @@
     "website": "منشئ المواقع",
     "analytics": "التحليلات",
     "marketing": "التسويق",
-    "aiAgent": "وكيل الذكاء الاصطناعي"
+    "aiAgent": "وكيل الذكاء الاصطناعي",
+    "velaAssistant": "مساعد Vela"
   },
   "common": {
     "save": "حفظ التغييرات",
@@ -150,7 +151,21 @@
     "satisfaction": "الرضا",
     "upgradeCta": "ترقية إلى Pro لفتح التحليلات",
     "upgradeDesc": "احصل على رؤى تفصيلية حول عملائك وحجوزاتك وإيراداتك.",
-    "conversations": "المحادثات"
+    "conversations": "المحادثات",
+    "subtitle": "نظرة عامة على الأداء لـ",
+    "websiteVisits": "زيارات الموقع",
+    "aiResolutionRate": "معدل حل الذكاء الاصطناعي",
+    "activityOverTime": "النشاط عبر الوقت",
+    "channelBreakdown": "تفصيل القنوات",
+    "share": "الحصة",
+    "vsPriorPeriod": "مقارنة بالفترة السابقة",
+    "noDataYet": "لا توجد بيانات بعد",
+    "noHistoryYet": "لا يوجد سجل بعد",
+    "convsShort": "محادثات",
+    "apptsShort": "مواعيد",
+    "visitsShort": "زيارات",
+    "fullHistory": "السجل الكامل (آخر 180 يومًا)",
+    "clickForDetails": "انقر على أي بطاقة لعرض السجل الكامل"
   },
   "marketing": {
     "title": "التسويق",
@@ -212,6 +227,11 @@
     "kpiTotalLeads": "إجمالي العملاء",
     "kpiNewLeads": "عملاء جدد",
     "kpiAppointmentsToday": "مواعيد اليوم",
+    "kpiLeadsToday": "عملاء اليوم",
+    "kpiMessagesToday": "رسائل اليوم",
+    "kpiCallsToday": "مكالمات اليوم",
+    "aiResolutionRate": "معدل حل الذكاء الاصطناعي",
+    "noDataYet": "لا توجد بيانات بعد",
     "vsLastWeek": "مقارنةً بالأسبوع الماضي",
     "sameAsLastWeek": "مستقر",
     "recentMessages": "الرسائل الأخيرة",
@@ -312,7 +332,7 @@
     "uploadPriceList": "ارفع قائمة الأسعار",
     "answerQuestions": "أجب على 5 أسئلة سريعة",
     "or": "أو",
-    "instagramSoon": "استيراد إنستغرام قريباً. الصق رابط موقعك أو ارفع ملف PDF بدلاً من ذلك.",
+    "instagramSoon": "استيراد ملف إنستغرام غير متاح هنا. الصق رابط موقعك أو ارفع ملف PDF بدلاً من ذلك.",
     "reviewTitle": "مستخرج من موقعك. راجع قبل الحفظ",
     "reviewServices": "الخدمات",
     "reviewExtraInfo": "معلومات إضافية",

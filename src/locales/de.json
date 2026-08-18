@@ -9,7 +9,8 @@
     "website": "Website-Builder",
     "analytics": "Analysen",
     "marketing": "Marketing",
-    "aiAgent": "KI-Agent"
+    "aiAgent": "KI-Agent",
+    "velaAssistant": "Vela-Assistent"
   },
   "common": {
     "save": "Speichern",
@@ -150,7 +151,21 @@
     "satisfaction": "Zufriedenheit",
     "upgradeCta": "Auf Pro upgraden für Analysen",
     "upgradeDesc": "Erhalten Sie detaillierte Einblicke in Ihre Leads, Buchungen und Umsätze.",
-    "conversations": "Gespräche"
+    "conversations": "Gespräche",
+    "subtitle": "Leistungsübersicht für",
+    "websiteVisits": "Website-Besuche",
+    "aiResolutionRate": "KI-Lösungsrate",
+    "activityOverTime": "Aktivität im Zeitverlauf",
+    "channelBreakdown": "Kanalaufschlüsselung",
+    "share": "Anteil",
+    "vsPriorPeriod": "vs. vorherigem Zeitraum",
+    "noDataYet": "Noch keine Daten",
+    "noHistoryYet": "Noch kein Verlauf",
+    "convsShort": "Gespräche",
+    "apptsShort": "Termine",
+    "visitsShort": "Besuche",
+    "fullHistory": "Vollständiger Verlauf (letzte 180 Tage)",
+    "clickForDetails": "Klicken Sie auf eine Karte für den vollständigen Verlauf"
   },
   "marketing": {
     "title": "Marketing",
@@ -212,6 +227,11 @@
     "kpiTotalLeads": "Leads gesamt",
     "kpiNewLeads": "Neue Leads",
     "kpiAppointmentsToday": "Termine heute",
+    "kpiLeadsToday": "Leads heute",
+    "kpiMessagesToday": "Nachrichten heute",
+    "kpiCallsToday": "Anrufe heute",
+    "aiResolutionRate": "KI-Lösungsrate",
+    "noDataYet": "Noch keine Daten",
     "vsLastWeek": "vs. letzte Woche",
     "sameAsLastWeek": "Unverändert",
     "recentMessages": "Aktuelle Nachrichten",
@@ -312,7 +332,7 @@
     "uploadPriceList": "Preisliste hochladen",
     "answerQuestions": "5 kurze Fragen beantworten",
     "or": "oder",
-    "instagramSoon": "Instagram-Import kommt bald. Fügen Sie stattdessen Ihre Website-URL ein oder laden Sie ein PDF hoch.",
+    "instagramSoon": "Instagram-Profilimport ist hier nicht verfügbar. Fügen Sie stattdessen Ihre Website-URL ein oder laden Sie ein PDF hoch.",
     "reviewTitle": "Auszug von Ihrer Website. Bitte vor dem Speichern prüfen",
     "reviewServices": "Leistungen",
     "reviewExtraInfo": "Zusätzliche Informationen",

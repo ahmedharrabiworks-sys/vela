@@ -541,6 +541,7 @@ function PublishPanel({
   const [urlCopied, setUrlCopied] = useState(false);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
   const [showDomain, setShowDomain] = useState(false);
+  const [showDomainGuide, setShowDomainGuide] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const isDirty = siteSlug !== savedSlug;
@@ -687,6 +688,15 @@ function PublishPanel({
       </button>
 
       {showDomain && (
+        <div className="flex justify-end">
+          <button onClick={() => setShowDomainGuide(true)}
+            className="text-[10px] font-semibold text-[#FF6B35] hover:underline">
+            How to connect your domain?
+          </button>
+        </div>
+      )}
+
+      {showDomain && (
         customDomain ? (
           <div className="space-y-3">
             {/* Status row */}
@@ -770,6 +780,51 @@ function PublishPanel({
             {domainError && <p className="text-[11px] text-red-500">{domainError}</p>}
           </div>
         )
+      )}
+
+      {/* How to connect your domain — step-by-step guide. Vela does NOT
+          register or provide a domain; the owner buys/owns it themselves at
+          any registrar and points it here. */}
+      {showDomainGuide && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDomainGuide(false)}>
+          <div className="bg-white dark:bg-[#17171C] rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6] dark:border-[#2A2A32] sticky top-0 bg-white dark:bg-[#17171C]">
+              <h2 className="text-base font-bold text-[#111111] dark:text-white">How to connect your domain</h2>
+              <button onClick={() => setShowDomainGuide(false)} aria-label="Close"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+                Vela doesn&apos;t sell or include a domain. You buy and own your own domain from any registrar, then point it at your Vela site with the steps below.
+              </p>
+              {[
+                { n: 1, title: "Buy a domain", body: "If you don't already own one, register it at any provider you like — GoDaddy, Namecheap, Google Domains, etc." },
+                { n: 2, title: "Enter it above", body: "Type your domain into the field above and click Save." },
+                { n: 3, title: "Add two DNS records", body: "In your registrar's DNS settings, add the A record and CNAME record shown above — copy buttons included." },
+                { n: 4, title: "Wait for DNS to propagate", body: "This can take up to 48 hours, though it's often much faster." },
+                { n: 5, title: "Check status", body: "Come back here and click Check Status. Once it says Connected, your domain is live." },
+              ].map((step) => (
+                <div key={step.n} className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                    style={{ background: "var(--vp-color)" }}>
+                    {step.n}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#111111] dark:text-white">{step.title}</p>
+                    <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-0.5 leading-relaxed">{step.body}</p>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setShowDomainGuide(false)}
+                className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+                style={{ background: "var(--vp-color)" }}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1009,8 +1064,8 @@ function VersionCard({
   restoring: boolean; previewing: boolean;
 }) {
   return (
-    <div className="ml-8 mr-2 bg-white border border-[#E5E7EB] rounded-xl p-3 flex items-start gap-3">
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${version.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
+    <div className="ml-8 mr-2 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3 flex items-start gap-3">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${version.type === "publish" ? "bg-green-100 dark:bg-green-950/40" : "bg-[#F3F4F6] dark:bg-[#17171C]"}`}>
         {version.type === "publish" ? (
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
         ) : (
@@ -1019,8 +1074,8 @@ function VersionCard({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-[11px] font-semibold text-[#111111] truncate">{version.label}</p>
-          {version.type === "publish" && <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">Published</span>}
+          <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">{version.label}</p>
+          {version.type === "publish" && <span className="text-[9px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 py-0.5 rounded-full shrink-0">Published</span>}
         </div>
         <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(version.created_at)}</p>
       </div>
@@ -1029,7 +1084,7 @@ function VersionCard({
       ) : (
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={() => onPreview(version)} disabled={previewing}
-            className="text-[10px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40 transition-colors">
+            className="text-[10px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white disabled:opacity-40 transition-colors">
             Preview
           </button>
           <button onClick={() => onRestore(version)} disabled={restoring}
@@ -1197,6 +1252,8 @@ export default function WebsitePage() {
   const htmlRef      = useRef<string>("");
   const websiteIdRef = useRef<string | null>(null);
   const publishBtnRef = useRef<HTMLDivElement>(null);
+  const chatPanelRef  = useRef<HTMLDivElement>(null);
+  const chatInputRef  = useRef<HTMLTextAreaElement>(null);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -2199,22 +2256,33 @@ export default function WebsitePage() {
             ))}
           </div>
 
-          {/* New Website button — visible on mobile only; desktop uses the sidebar */}
+          {/* New Website button — visible on mobile only; desktop uses the sidebar.
+              FIX: had no dark: variants at all -- the hover state
+              (hover:text-[#374151], a dark slate meant for light
+              backgrounds) went nearly invisible against a dark background. */}
           {built && (
             <button onClick={handleNewWebsite}
-              className="md:hidden text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors">
+              className="md:hidden text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white hover:border-[#374151] dark:hover:border-[#4B5563] transition-colors">
               New Website
             </button>
           )}
 
           {/* Edit site — reopens the chat editor against this site's current
-              live content. Most useful once published: the chat panel is
-              always available on desktop, but this makes the path back into
-              it explicit rather than relying on the owner noticing the chat
-              box is still there. */}
+              live content. FIX: on desktop this only ever called
+              setActiveTab("chat"), but the chat panel already has md:flex
+              (always visible on desktop regardless of activeTab, see below)
+              -- so the click was a real no-op there with zero visible
+              effect, which read as "not clickable" even though the handler
+              fired correctly. Now also scrolls the chat panel into view and
+              focuses the input on every viewport size, so the click always
+              produces a real, visible result. */}
           {built && isPublished && (
             <button
-              onClick={() => setActiveTab("chat")}
+              onClick={() => {
+                setActiveTab("chat");
+                chatPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                setTimeout(() => chatInputRef.current?.focus(), 150);
+              }}
               className="text-xs font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors flex items-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                 <path d="M9.5 1.5l3 3-8 8-3.5.5.5-3.5 8-8z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2375,6 +2443,7 @@ export default function WebsitePage() {
 
         {/* LEFT: Chat */}
         <div
+          ref={chatPanelRef}
           className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0 relative`}
           style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
         >
@@ -2604,7 +2673,7 @@ export default function WebsitePage() {
                 </svg>
               </button>
               <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" multiple className="hidden" onChange={handleFileSelect} />
-              <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+              <textarea ref={chatInputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
                 placeholder={built ? "What would you like to change?" : "Tell me about your business…"}
                 rows={1} disabled={building}
                 className="flex-1 bg-transparent text-xs text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"

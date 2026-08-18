@@ -9,7 +9,8 @@
     "website": "Website Builder",
     "analytics": "Analytics",
     "marketing": "Marketing",
-    "aiAgent": "AI Agent"
+    "aiAgent": "AI Agent",
+    "velaAssistant": "Vela Assistant"
   },
   "common": {
     "save": "Save Changes",
@@ -149,7 +150,21 @@
     "satisfaction": "Satisfaction",
     "upgradeCta": "Upgrade to Pro to unlock Analytics",
     "upgradeDesc": "Get detailed insights into your leads, bookings, and revenue.",
-    "conversations": "Conversations"
+    "conversations": "Conversations",
+    "subtitle": "Performance overview for",
+    "websiteVisits": "Website Visits",
+    "aiResolutionRate": "AI Resolution Rate",
+    "activityOverTime": "Activity Over Time",
+    "channelBreakdown": "Channel Breakdown",
+    "share": "Share",
+    "vsPriorPeriod": "vs prior period",
+    "noDataYet": "No data yet",
+    "noHistoryYet": "No history yet",
+    "convsShort": "Convs",
+    "apptsShort": "Appts",
+    "visitsShort": "Visits",
+    "fullHistory": "Full history (last 180 days)",
+    "clickForDetails": "Click any card for full history"
   },
   "marketing": {
     "title": "Marketing",
@@ -211,6 +226,11 @@
     "kpiTotalLeads": "Total Leads",
     "kpiNewLeads": "New Leads",
     "kpiAppointmentsToday": "Appointments Today",
+    "kpiLeadsToday": "Leads Today",
+    "kpiMessagesToday": "Messages Today",
+    "kpiCallsToday": "Calls Today",
+    "aiResolutionRate": "AI Resolution Rate",
+    "noDataYet": "No data yet",
     "vsLastWeek": "vs last week",
     "sameAsLastWeek": "Same as last week",
     "recentMessages": "Recent Messages",
@@ -311,7 +331,7 @@
     "uploadPriceList": "upload a price list",
     "answerQuestions": "answer 5 quick questions",
     "or": "or",
-    "instagramSoon": "Instagram import is coming soon. Paste your website URL or upload a price list PDF instead.",
+    "instagramSoon": "Instagram profile import isn't available here. Paste your website URL or upload a price list PDF instead.",
     "reviewTitle": "Extracted from your website. Review before saving",
     "reviewServices": "Services",
     "reviewExtraInfo": "Extra Info",

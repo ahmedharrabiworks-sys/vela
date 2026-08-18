@@ -9,7 +9,8 @@
     "website": "Créateur de site",
     "analytics": "Analytiques",
     "marketing": "Marketing",
-    "aiAgent": "Agent IA"
+    "aiAgent": "Agent IA",
+    "velaAssistant": "Assistant Vela"
   },
   "common": {
     "save": "Enregistrer",
@@ -150,7 +151,21 @@
     "satisfaction": "Satisfaction",
     "upgradeCta": "Passez à Pro pour débloquer les analytiques",
     "upgradeDesc": "Obtenez des informations détaillées sur vos prospects, réservations et revenus.",
-    "conversations": "Conversations"
+    "conversations": "Conversations",
+    "subtitle": "Aperçu des performances pour",
+    "websiteVisits": "Visites du site",
+    "aiResolutionRate": "Taux de résolution IA",
+    "activityOverTime": "Activité dans le temps",
+    "channelBreakdown": "Répartition par canal",
+    "share": "Part",
+    "vsPriorPeriod": "vs période précédente",
+    "noDataYet": "Aucune donnée pour le moment",
+    "noHistoryYet": "Aucun historique pour le moment",
+    "convsShort": "Convs",
+    "apptsShort": "RDV",
+    "visitsShort": "Visites",
+    "fullHistory": "Historique complet (180 derniers jours)",
+    "clickForDetails": "Cliquez sur une carte pour l'historique complet"
   },
   "marketing": {
     "title": "Marketing",
@@ -212,6 +227,11 @@
     "kpiTotalLeads": "Total prospects",
     "kpiNewLeads": "Nouveaux prospects",
     "kpiAppointmentsToday": "Rendez-vous aujourd'hui",
+    "kpiLeadsToday": "Prospects aujourd'hui",
+    "kpiMessagesToday": "Messages aujourd'hui",
+    "kpiCallsToday": "Appels aujourd'hui",
+    "aiResolutionRate": "Taux de résolution IA",
+    "noDataYet": "Aucune donnée pour le moment",
     "vsLastWeek": "vs semaine dernière",
     "sameAsLastWeek": "Stable",
     "recentMessages": "Messages récents",
@@ -312,7 +332,7 @@
     "uploadPriceList": "télécharger une liste de prix",
     "answerQuestions": "répondre à 5 questions rapides",
     "or": "ou",
-    "instagramSoon": "L'importation Instagram arrive bientôt. Collez l'URL de votre site ou téléchargez un PDF à la place.",
+    "instagramSoon": "L'importation de profil Instagram n'est pas disponible ici. Collez l'URL de votre site ou téléchargez un PDF à la place.",
     "reviewTitle": "Extrait de votre site. Vérifiez avant d'enregistrer",
     "reviewServices": "Services",
     "reviewExtraInfo": "Informations supplémentaires",

@@ -69,7 +69,12 @@ export async function POST(req: NextRequest) {
 
   if (!site) return NextResponse.json({ ok: false }, { status: 404 });
 
-  await admin.from("site_visits").insert({
+  // CRITICAL FIX: this insert's result was never captured/checked -- confirmed
+  // live that the site_visits table didn't exist in production, so every
+  // visit insert has failed silently since this route was written (see
+  // migration_v28.sql). Logged now but still non-fatal: the beacon always
+  // returns ok so it never surfaces an error to a real site visitor.
+  const { error: insertErr } = await admin.from("site_visits").insert({
     website_id:   websiteId,
     path:         String(path).slice(0, 500),
     referrer:     String(referrer).slice(0, 500),
@@ -77,6 +82,9 @@ export async function POST(req: NextRequest) {
     device,
     visitor_hash: visitorHash,
   });
+  if (insertErr) {
+    console.error("[site/track] FAILED to insert site_visits row:", insertErr.code, insertErr.message);
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -393,7 +393,7 @@ export default function AITrainingPage() {
               {badge > 0 && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none ${
                   activeTab === tab ? "bg-[#FF6B35]/10 text-[#FF6B35]" : "bg-[#E5E7EB] text-[#9CA3AF]"
-                }`}>{badge}</span>
+                }`}>{badge > 99 ? "99+" : badge}</span>
               )}
             </button>
           );

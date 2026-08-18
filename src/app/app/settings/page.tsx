@@ -685,13 +685,6 @@ export default function SettingsPage() {
                   >
                     {t("settings.billing.upgradePlan")}
                   </Link>
-                  <button
-                    disabled
-                    title="Billing portal coming soon"
-                    className="text-xs font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#D1D5DB] cursor-not-allowed"
-                  >
-                    {t("settings.billing.manageBilling")}
-                  </button>
                 </div>
               </div>
 
@@ -855,21 +848,6 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {/* Payment method */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-[#6B7280]">{t("settings.billing.paymentMethod")}</p>
-                <div className="flex items-center gap-3 p-4 rounded-xl border border-[#E5E7EB]">
-                  <div className="w-10 h-7 bg-[#111111] rounded flex items-center justify-center text-white text-xs font-bold">VISA</div>
-                  <span className="text-sm text-[#6B7280]">{t("settings.billing.noCard")}</span>
-                </div>
-                <button
-                  disabled
-                  title="Payment method management coming soon"
-                  className="text-xs font-medium text-[#D1D5DB] cursor-not-allowed"
-                >
-                  {t("settings.billing.addPayment")}
-                </button>
-              </div>
             </>
           )}
         </div>

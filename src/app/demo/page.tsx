@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardPageUI from "@/components/dashboard/pages/DashboardPageUI";
-import { DEMO_KPIS, DEMO_CONVS, DEMO_APPTS, DEMO_PROFILE } from "@/lib/demo-data";
+import { DEMO_KPIS, DEMO_CONVS, DEMO_APPTS, DEMO_PROFILE, DEMO_AI_RESOLUTION_RATE } from "@/lib/demo-data";
 
 export default function DemoDashboard() {
   return (
@@ -13,6 +13,7 @@ export default function DemoDashboard() {
       convs={DEMO_CONVS}
       appts={DEMO_APPTS}
       basePath="/demo"
+      aiResolutionRate={DEMO_AI_RESOLUTION_RATE}
     />
   );
 }

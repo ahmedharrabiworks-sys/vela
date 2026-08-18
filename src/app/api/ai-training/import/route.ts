@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   const input = body.input?.trim() ?? "";
   if (!input) return NextResponse.json({ error: "input required" }, { status: 400 });
 
-  // Instagram handle → coming soon
+  // Instagram profile scraping isn't built -- redirect to a working alternative
   if (isInstagramInput(input) && !input.startsWith("http")) {
     return NextResponse.json({ instagram: true });
   }

@@ -5,6 +5,7 @@ import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
 import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText } from "@/lib/availability";
+import { stripAiTells } from "@/lib/text-clean";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -412,7 +413,8 @@ Rules:
 • "Let me check that for you — can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on) — never for checking a schedule, which you already have.
 • Never invent prices, services, or times not listed above
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
-• If the customer mentions their name or phone number, remember it for the conversation`;
+• If the customer mentions their name or phone number, remember it for the conversation
+• Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in your reply. Use a period, comma, or a plain hyphen instead`;
 
   /* ── 8. Call OpenAI ── */
   let aiReply = "Thank you for your message! I'll get back to you shortly.";
@@ -445,6 +447,8 @@ Rules:
       } else {
         aiReply = rawReply;
       }
+      // Deterministic backstop for the no-em-dash rule above -- see stripAiTells.
+      aiReply = stripAiTells(aiReply);
     } catch (err) {
       console.error("[ai/reply] OpenAI error:", err);
     }

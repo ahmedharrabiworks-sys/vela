@@ -213,6 +213,19 @@ export default function WidgetChat({
             <span className="text-white/75 text-[10px] font-medium">AI Online · Replies instantly</span>
           </div>
         </div>
+        {/* FIX: the panel previously had no close control of its own -- the
+            only way to close was clicking the floating bubble again, outside
+            this iframe. Posts to the parent page (embed/[tenantId]/route.ts
+            listens for this), which owns the actual open/closed toggle. */}
+        <button
+          onClick={() => window.parent.postMessage({ type: "vela-widget-close" }, "*")}
+          aria-label="Close chat"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/15 transition-colors shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>
 
       {/* Messages */}

@@ -13,10 +13,13 @@ export type DemoConv = { id: string; customer_name: string; channel: string; pre
 export type DemoAppt = { id: string; time: string; name: string; service: string; status: string; phone: string | null; channel: string };
 
 export const DEMO_KPIS: DemoKPI[] = [
-  { label: "kpiTotalLeads",        value: "184", change: 23 },
-  { label: "kpiNewLeads",          value: "47",  change: 12 },
-  { label: "kpiAppointmentsToday", value: "10",  change: 5  },
+  { label: "kpiLeadsToday",        value: "12", change: 23 },
+  { label: "kpiAppointmentsToday", value: "10", change: 5  },
+  { label: "kpiMessagesToday",     value: "38", change: 18 },
+  { label: "kpiCallsToday",        value: "6",  change: 9  },
 ];
+
+export const DEMO_AI_RESOLUTION_RATE = 94;
 
 export const DEMO_CONVS: DemoConv[] = [
   { id: "c1", customer_name: "Sara Khalid",     channel: "whatsapp",  preview: "Is Tuesday 11 AM still available?",    time: "1m",  isNew: true  },

@@ -9,6 +9,7 @@ import {
   type SiteTemplate, type TemplateSection,
 } from "@/lib/website-templates";
 import { PLAN_CONFIG } from "@/lib/plan-config";
+import { stripAiTells } from "@/lib/text-clean";
 
 export const dynamic = "force-dynamic";
 // 300s: two sequential GPT-4o calls + Unsplash fetches can exceed 60s on cold starts
@@ -1881,7 +1882,8 @@ ABSOLUTE RULES — NEVER VIOLATE
 6. NEVER use generic headings: "Our Services", "About Us", "Why Choose Us", "Contact Us".
 7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.
 8. NEVER invent commercial promises unless the owner explicitly stated them.
-9. Footer tagline MUST be specific to this business — never a placeholder phrase.`;
+9. Footer tagline MUST be specific to this business — never a placeholder phrase.
+10. NEVER use an em dash (—), en dash (–), or double-hyphen (--) anywhere in generated copy. Use a period, comma, or a plain hyphen instead.`;
 }
 
 // ── System prompt (v2: section-based composition with designDNA) ──────────────
@@ -2277,7 +2279,8 @@ ABSOLUTE RULES — NEVER VIOLATE
 6. NEVER use generic section headings: "Our Services", "About Us", "Why Choose Us", "Contact Us", "Get in Touch".
 7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.
 8. NEVER invent commercial promises: no "free trial", "money-back guarantee", "risk-free", "no commitment", "cancel anytime", "discount", "% off", "limited time offer", or delivery/shipping promises unless the owner explicitly stated them.
-9. Footer tagline MUST be specific to this business and its actual offerings. NEVER write generic phrases like "professional services in your city", "[category name] services", "serving [city]", or any placeholder. Write a real one-line brand summary.`;
+9. Footer tagline MUST be specific to this business and its actual offerings. NEVER write generic phrases like "professional services in your city", "[category name] services", "serving [city]", or any placeholder. Write a real one-line brand summary.
+10. NEVER use an em dash (—), en dash (–), or double-hyphen (--) anywhere in generated copy. Use a period, comma, or a plain hyphen instead.`;
 }
 
 // ── Classify message: revision command vs. conversational question ─────────────
@@ -2294,7 +2297,7 @@ Decide:
 - If the user wants to CHANGE something on the site (redesign, update copy, change colors/fonts, add/remove sections, make it darker/lighter/more modern, etc.) → respond: { "action": "revise" }
 - If the user is asking a QUESTION or having a CONVERSATION (why a color was chosen, what font was used, design suggestions, how the builder works, small talk, etc.) → respond: { "action": "chat", "reply": "YOUR REPLY" }
 
-For "chat" replies: be warm and helpful. Reference specific aspects of the site from the spec. Keep it concise (2–4 sentences). If relevant, suggest a specific edit they could try.
+For "chat" replies: be warm and helpful. Reference specific aspects of the site from the spec. Keep it concise (2–4 sentences). If relevant, suggest a specific edit they could try. Never use an em dash (—), en dash (–), or double-hyphen (--) in the reply — use a period, comma, or plain hyphen instead.
 
 Respond ONLY with valid JSON.`;
 
@@ -2319,7 +2322,7 @@ Respond ONLY with valid JSON.`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as any;
   if (parsed.action === "chat" && typeof parsed.reply === "string" && parsed.reply.trim()) {
-    return parsed.reply.trim();
+    return stripAiTells(parsed.reply.trim());
   }
   return null;
 }
@@ -2348,7 +2351,7 @@ function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string 
   return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
-CONTENT RULES: Never invent commercial terms the owner did not state — no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided.
+CONTENT RULES: Never invent commercial terms the owner did not state — no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided. Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in copy — use a period, comma, or plain hyphen instead.
 ${imageInstruction}`;
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -16,6 +17,7 @@ const item = {
 
 export default function Hero() {
   const { t } = useI18n();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <section
@@ -65,8 +67,53 @@ export default function Hero() {
           <Link href="/auth/signup" className="hidden sm:inline-flex btn-primary text-sm px-6 py-2.5 justify-center">
             {t("landing.nav.getStarted")}
           </Link>
+
+          {/* FIX: on mobile, both Log in and Get Started were "hidden" with
+              no alternative at all -- a mobile visitor had no way to log in
+              or sign up from the header. Hamburger opens both options. */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+            className="sm:hidden w-10 h-10 flex items-center justify-center rounded-lg text-white hover:bg-white/10 transition-colors"
+          >
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-0 right-0 bottom-0 w-[78vw] max-w-xs bg-[#1A0800] border-l border-white/10 flex flex-col px-6 pt-8 pb-10 gap-2">
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close menu"
+              className="self-end w-10 h-10 flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors mb-6"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </button>
+            <Link
+              href="/auth/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-base font-semibold text-white px-4 py-3.5 rounded-xl hover:bg-white/10 transition-colors"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/auth/signup"
+              onClick={() => setMobileMenuOpen(false)}
+              className="btn-primary text-sm px-6 py-3.5 justify-center mt-2"
+            >
+              {t("landing.nav.getStarted")}
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 py-16 flex-1 flex items-center">

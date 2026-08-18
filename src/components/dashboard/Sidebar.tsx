@@ -36,6 +36,23 @@ const NAV = [
     ),
   },
   {
+    // Mobile-only dedicated entry point for the owner-facing Vela Assistant
+    // (helps the owner manage their account -- distinct from the embedded
+    // customer-facing site widget). On mobile, a business owner is checking
+    // analytics/appointments, not casually chatting, so it gets a real nav
+    // slot instead of only a floating bubble that can sit on top of other
+    // UI. Desktop keeps the floating bubble only -- no nav entry there.
+    labelKey: "nav.velaAssistant",
+    href: "#vela-assistant",
+    mobileOnly: true,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M6 7.5L9 12.5L12 7.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     labelKey: "nav.conversations",
     href: "/app/conversations",
     icon: (
@@ -43,7 +60,7 @@ const NAV = [
         <path d="M15 10.5a1.5 1.5 0 01-1.5 1.5H5.25L2.25 15V4.5A1.5 1.5 0 013.75 3h9.75A1.5 1.5 0 0115 4.5v6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
       </svg>
     ),
-    badge: 3,
+    // badge is real (needs-attention conversations count), set dynamically below — never a static placeholder
   },
   {
     labelKey: "nav.leads",
@@ -154,6 +171,11 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   const [initials, setInitials] = useState("V");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  // Real needs-attention conversations count for the Conversations nav badge
+  // (was a hardcoded "3" that never reflected real data). null = not loaded
+  // yet / no real tenant (badge hidden); demo mode shows a fixed fixture
+  // number since Hard Rule 3 allows fake data only in /demo.
+  const [needsAttentionCount, setNeedsAttentionCount] = useState<number | null>(demoProfile ? 3 : null);
   const dropRef = useRef<HTMLDivElement>(null);
   const agentCollapseRef = useRef<{ wasCollapsed: boolean } | null>(null); // unused; kept for ref stability
 
@@ -199,10 +221,20 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
         if (user) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: tenant } = await (supabase as any)
-            .from("tenants").select("plan, business_name").eq("owner_id", user.id).single();
+            .from("tenants").select("id, plan, business_name").eq("owner_id", user.id).single();
           if (tenant?.plan) setDisplayPlan((tenant.plan as string).toLowerCase());
           // Prefer business_name over personal name; falls back to personal name already set above
           if (tenant?.business_name) setDisplayName(tenant.business_name as string);
+
+          if (tenant?.id) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { count } = await (supabase as any)
+              .from("conversations")
+              .select("id", { count: "exact", head: true })
+              .eq("tenant_id", tenant.id)
+              .eq("needs_human", true);
+            setNeedsAttentionCount(count ?? 0);
+          }
         }
       } catch { /* no auth session */ }
     }
@@ -287,12 +319,30 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
         {NAV.map((item) => {
           const effectiveHref = lk(item.href);
           const active = effectiveHref === pathPrefix ? pathname === pathPrefix : pathname.startsWith(effectiveHref);
+          // Real count badge for Conversations (needs-attention), capped at
+          // "99+" per standing convention (see NotificationBell). Every other
+          // item's badge (e.g. the static "NEW" label) is unaffected. isCount
+          // decides render style explicitly -- "99+" is a string but must
+          // still render as a count pill, not the text-label pill.
+          const isConversationsItem = item.href === "/app/conversations";
+          const badge: string | number | undefined = isConversationsItem
+            ? (needsAttentionCount && needsAttentionCount > 0 ? (needsAttentionCount > 99 ? "99+" : needsAttentionCount) : undefined)
+            : ("badge" in item ? item.badge : undefined);
+          const isCount = isConversationsItem || typeof badge === "number";
+          const isVelaAssistantEntry = item.href === "#vela-assistant";
+          const isMobileOnly = "mobileOnly" in item && item.mobileOnly;
           return (
             <Link
               key={item.href}
               href={effectiveHref}
-              onClick={onClose}
-              className={`flex items-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${
+              onClick={(e) => {
+                if (isVelaAssistantEntry) {
+                  e.preventDefault();
+                  window.dispatchEvent(new Event("vela-open-assistant"));
+                }
+                onClose();
+              }}
+              className={`flex items-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative ${isMobileOnly ? "md:hidden" : ""} ${
                 active
                   ? "bg-[#FFF5F0] text-[#FF6B35] border-l-2 border-[#FF6B35]"
                   : "text-[#374151] hover:text-[#111111] hover:bg-[#F9FAFB]"
@@ -303,14 +353,14 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               {!collapsed && (
                 <>
                   <span className="flex-1">{t(item.labelKey)}</span>
-                  {"badge" in item && item.badge && (
-                    typeof item.badge === "string" ? (
-                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#FF6B35] text-white uppercase tracking-wide leading-none">
-                        {item.badge}
+                  {badge && (
+                    isCount ? (
+                      <span className="min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
+                        {badge}
                       </span>
                     ) : (
-                      <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
-                        {item.badge}
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#FF6B35] text-white uppercase tracking-wide leading-none">
+                        {badge}
                       </span>
                     )
                   )}
@@ -319,15 +369,15 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               {collapsed && (
                 <>
                   <span className="flex-1 md:hidden">{t(item.labelKey)}</span>
-                  {"badge" in item && item.badge && (
+                  {badge && (
                     <>
-                      {typeof item.badge === "string" ? (
-                        <span className="md:hidden text-[8px] font-black px-1.5 py-0.5 rounded bg-[#FF6B35] text-white uppercase tracking-wide leading-none">
-                          {item.badge}
+                      {isCount ? (
+                        <span className="md:hidden min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
+                          {badge}
                         </span>
                       ) : (
-                        <span className="md:hidden w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
-                          {item.badge}
+                        <span className="md:hidden text-[8px] font-black px-1.5 py-0.5 rounded bg-[#FF6B35] text-white uppercase tracking-wide leading-none">
+                          {badge}
                         </span>
                       )}
                       <span className="hidden md:block absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FF6B35]" />
@@ -405,7 +455,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
                     <button
                       key={lang}
                       onClick={() => selectLanguage(lang)}
-                      className="w-full flex items-center justify-between pl-11 pr-4 py-2.5 text-sm text-[#374151] hover:bg-[#F3F4F6] transition-colors"
+                      className="w-full flex items-center justify-between ps-11 pe-4 py-2.5 text-sm text-[#374151] hover:bg-[#F3F4F6] transition-colors"
                     >
                       {lang}
                       {langName === lang && (

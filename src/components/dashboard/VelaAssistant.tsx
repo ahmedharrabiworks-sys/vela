@@ -171,6 +171,14 @@ export function VelaAssistant() {
     return () => window.removeEventListener("vela-start-interview", handler);
   }, []);
 
+  // Mobile dedicated nav entry point (Sidebar's "Vela Assistant" item) --
+  // opens this same panel instead of a floating bubble on small screens.
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("vela-open-assistant", handler);
+    return () => window.removeEventListener("vela-open-assistant", handler);
+  }, []);
+
   const send = useCallback(async (text: string, startInterview = false) => {
     if ((!text.trim() && attachedImages.length === 0) || loading) return;
     const isInterview = startInterview || interviewMode;
@@ -275,10 +283,15 @@ export function VelaAssistant() {
 
   return (
     <>
-      {/* Floating button — hidden on mobile when a bottom sheet is open (avoids overlap) */}
+      {/* Floating button — desktop only. On mobile the owner reaches this
+          panel via the dedicated "Vela Assistant" nav entry instead (see
+          Sidebar.tsx's mobileOnly item + the vela-open-assistant event
+          below): a business owner on mobile is checking analytics/
+          appointments, not casually chatting, so it gets a real nav slot
+          rather than a floating bubble sitting on top of other UI. */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`fixed left-6 sm:left-auto sm:right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-[transform,opacity] duration-200${
+        className={`hidden sm:flex fixed sm:left-auto sm:right-6 z-[140] w-14 h-14 rounded-full text-white shadow-2xl items-center justify-center hover:scale-105 active:scale-95 transition-[transform,opacity] duration-200${
           isBottomSheetOpen && !open ? " opacity-0 pointer-events-none sm:opacity-100 sm:pointer-events-auto" : ""
         }`}
         style={{ background: "var(--vela-gradient)", bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}
