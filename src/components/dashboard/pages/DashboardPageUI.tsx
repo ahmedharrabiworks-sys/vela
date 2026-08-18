@@ -54,9 +54,9 @@ export default function DashboardPageUI({
 
       {/* KB low-score banner */}
       {showKbBanner && (
-        <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 bg-amber-50">
+        <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 2a3 3 0 0 1 3 3c0 .9-.4 1.7-1 2.3L10.5 12h-7L5 7.3A3 3 0 0 1 4 5a3 3 0 0 1 3-3z" stroke="#D97706" strokeWidth="1.3" strokeLinejoin="round"/>
                 <path d="M5.5 12h3" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/>
@@ -119,8 +119,11 @@ export default function DashboardPageUI({
         <p className="text-sm text-[#6B7280] mt-0.5">{bName ? `${bName} · ` : ""}{today}</p>
       </div>
 
-      {/* KPI strip — soft gradient wash behind it, matching Analytics' visual language */}
-      <div className="rounded-2xl p-5 -mx-1 -my-1" style={{ background: "linear-gradient(135deg, rgba(255,107,53,0.06), rgba(255,51,102,0.03) 60%, transparent)" }}>
+      {/* KPI strip — FIX: removed the hardcoded orange/pink gradient wash
+          (didn't match any other dashboard page, and an inline style isn't
+          touched by the dark-mode class-override system, so it showed
+          through even more strongly over the near-black dark background). */}
+      <div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {loading
             ? [1, 2, 3, 4, 5].map((i) => (
@@ -140,7 +143,7 @@ export default function DashboardPageUI({
                     </p>
                     {k.change !== undefined && (
                       <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        k.change > 0 ? "bg-green-50 text-green-600" : k.change < 0 ? "bg-red-50 text-red-500" : "bg-[#F3F4F6] text-[#9CA3AF]"
+                        k.change > 0 ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : k.change < 0 ? "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400" : "bg-[#F3F4F6] text-[#9CA3AF]"
                       }`}>
                         {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
                         {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsLastWeek")}` : t("dashboard.sameAsLastWeek")}

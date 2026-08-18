@@ -150,6 +150,34 @@ export function VelaAssistant() {
     }
   }, [open, messages.length, firstName, t]);
 
+  // FIX: the greeting above is computed once into state on first open and
+  // was never re-evaluated afterward -- switching the dashboard's language
+  // after the widget had already greeted once (in ANY earlier open this
+  // session, since this component is mounted once in the root layout and
+  // never unmounted) left it permanently stuck in whatever language it
+  // first greeted in, even though everything computed fresh on every
+  // render (quick-action chips, input placeholder) updated correctly. This
+  // was never a real desktop-vs-mobile code path difference -- both reuse
+  // this exact single component and the same useI18n() context (confirmed:
+  // VelaAssistant and Sidebar sit inside the same <I18nProvider> in
+  // app/layout.tsx). It only ever "looked" desktop-specific because the
+  // floating bubble is more likely to have already been opened once before
+  // a later language switch in a long-lived desktop session, while a
+  // mobile test tends to open it fresh after the language is already set.
+  // Only regenerates the greeting while the conversation hasn't progressed
+  // past it -- never overwrites real chat history.
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].role === "assistant") {
+        const hi = firstName ? `${t("velaAssistant.greeting")} ${firstName}! ` : `${t("velaAssistant.greeting")}! `;
+        const fresh = `${hi}${t("velaAssistant.greetingMessage")}`;
+        if (prev[0].content !== fresh) return [{ role: "assistant", content: fresh }];
+      }
+      return prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);

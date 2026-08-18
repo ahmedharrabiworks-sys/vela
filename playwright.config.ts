@@ -81,5 +81,18 @@ export default defineConfig({
       testMatch: /availability-fix-verify\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
+    // ── 6. Round 9 — Analytics/Dashboard/Channels/AI Trainer/Website Builder
+    // polish, desktop 1280px. No "setup" dependency -- reuses the stored
+    // session directly (established pattern: the stored file remains valid
+    // even when the login flow itself needs re-bootstrapping separately).
+    {
+      name: "round9",
+      testMatch: /round9-.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 900 },
+        storageState: "e2e/.auth/user.json",
+      },
+    },
   ],
 });

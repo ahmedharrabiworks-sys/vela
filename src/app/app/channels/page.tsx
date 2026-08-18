@@ -383,8 +383,8 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
    MAIN PAGE
 ══════════════════════════════════════ */
 type ChannelStatus = {
-  instagram: { connected: boolean; username: string };
-  whatsapp:  { connected: boolean; phone: string; displayName?: string };
+  instagram: { connected: boolean; username: string; conversations: number; leads: number };
+  whatsapp:  { connected: boolean; phone: string; displayName?: string; conversations: number; bookings: number };
 };
 
 type WebsiteState = {
@@ -401,7 +401,11 @@ function ChannelsPageContent() {
   const { isStarter, config } = usePlan();
   const searchParams          = useSearchParams();
 
-  const [channels, setChannels]     = useState<ChannelStatus>({ instagram: { connected: false, username: "" }, whatsapp: { connected: false, phone: "" } });
+  const [channels, setChannels]     = useState<ChannelStatus>({
+    instagram: { connected: false, username: "", conversations: 0, leads: 0 },
+    whatsapp:  { connected: false, phone: "", conversations: 0, bookings: 0 },
+  });
+  const [showConnectMenu, setShowConnectMenu] = useState(false);
   const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, websiteId: null, embedAssistant: true });
   const [savingAssistant, setSavingAssistant] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
@@ -439,9 +443,37 @@ function ChannelsPageContent() {
         .maybeSingle();
 
       if (cfg) {
+        const igConnected = !!cfg.instagram_connected;
+        const waConnected = !!cfg.whatsapp_connected;
+
+        // Real per-channel stats -- same query pattern already used for the
+        // Website channel's "chat conversations" count below (conversations
+        // scoped by channel). Only queried when actually connected, matching
+        // the rule that a stat pair only ever shows once real data exists.
+        const [igConvRes, igLeadRes, waConvRes, waBookedRes] = await Promise.all([
+          igConnected
+            ? s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "instagram")
+            : Promise.resolve({ count: 0 }),
+          igConnected
+            ? s.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "instagram")
+            : Promise.resolve({ count: 0 }),
+          waConnected
+            ? s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "whatsapp")
+            : Promise.resolve({ count: 0 }),
+          waConnected
+            ? s.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "whatsapp").eq("status", "booked")
+            : Promise.resolve({ count: 0 }),
+        ]);
+
         setChannels({
-          instagram: { connected: !!cfg.instagram_connected, username: cfg.instagram_username ?? "" },
-          whatsapp:  { connected: !!cfg.whatsapp_connected,  phone: cfg.whatsapp_phone ?? "" },
+          instagram: {
+            connected: igConnected, username: cfg.instagram_username ?? "",
+            conversations: igConvRes.count ?? 0, leads: igLeadRes.count ?? 0,
+          },
+          whatsapp: {
+            connected: waConnected, phone: cfg.whatsapp_phone ?? "",
+            conversations: waConvRes.count ?? 0, bookings: waBookedRes.count ?? 0,
+          },
         });
       }
 
@@ -492,7 +524,7 @@ function ChannelsPageContent() {
     const ig = searchParams.get("instagram");
     const username = searchParams.get("username");
     if (ig === "connected") {
-      setChannels((prev) => ({ ...prev, instagram: { connected: true, username: username ?? "" } }));
+      setChannels((prev) => ({ ...prev, instagram: { ...prev.instagram, connected: true, username: username ?? "" } }));
       setToast({ msg: `Instagram connected${username ? ` as @${username}` : ""}`, type: "success" });
       window.history.replaceState({}, "", "/app/channels");
     } else if (ig === "error") {
@@ -520,7 +552,7 @@ function ChannelsPageContent() {
   };
 
   const connectWhatsApp = (phone: string, displayName?: string) => {
-    setChannels((prev) => ({ ...prev, whatsapp: { connected: true, phone, displayName } }));
+    setChannels((prev) => ({ ...prev, whatsapp: { ...prev.whatsapp, connected: true, phone, displayName } }));
     setModal(null);
     setToast({ msg: "WhatsApp Business connected", type: "success" });
     track("channel_connected", { channel: "whatsapp" });
@@ -536,7 +568,9 @@ function ChannelsPageContent() {
       });
       setChannels((prev) => ({
         ...prev,
-        [ch]: { connected: false, username: "", phone: "" },
+        [ch]: ch === "instagram"
+          ? { ...prev.instagram, connected: false, username: "", conversations: 0, leads: 0 }
+          : { ...prev.whatsapp, connected: false, phone: "", conversations: 0, bookings: 0 },
       }));
       setToast({ msg: `${ch === "instagram" ? "Instagram" : "WhatsApp"} disconnected`, type: "info" });
     } catch {
@@ -609,6 +643,23 @@ function ChannelsPageContent() {
     },
   ];
 
+  // FIX 4: real connected-channel list + banner, computed from actual state
+  // -- never hardcoded. "All connected" only when every channel Vela
+  // supports (Instagram, WhatsApp, Website) is genuinely connected; a
+  // partial connection (e.g. 1 of 3) simply doesn't show the banner rather
+  // than showing a misleading "All N connected" for a subset.
+  const connectedChannelNames = [
+    channels.instagram.connected ? "Instagram" : null,
+    channels.whatsapp.connected ? "WhatsApp" : null,
+    website.published ? "your website" : null,
+  ].filter((n): n is string => n !== null);
+  const allChannelsConnected = connectedChannelNames.length === 3;
+
+  const unconnectedChannels: { key: "instagram" | "whatsapp"; label: string }[] = [
+    ...(!channels.instagram.connected ? [{ key: "instagram" as const, label: t("channels.instagram.name") }] : []),
+    ...(!channels.whatsapp.connected  ? [{ key: "whatsapp"  as const, label: t("channels.whatsapp.name")  }] : []),
+  ];
+
   return (
     <div className="max-w-3xl mx-auto space-y-5 pb-20">
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
@@ -616,10 +667,47 @@ function ChannelsPageContent() {
       {modal === "whatsapp"  && <WhatsAppModal  onClose={() => setModal(null)} onConnect={connectWhatsApp} />}
       {modal === "upgrade"   && <UpgradeModal   onClose={() => setModal(null)} />}
 
-      <div>
-        <h1 className="text-2xl font-bold text-[#111111]">{t("channels.title")}</h1>
-        <p className="text-sm text-[#6B7280] mt-1">{t("channels.subtitle")}</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-[#111111]">{t("channels.title")}</h1>
+          <p className="text-sm text-[#6B7280] mt-1">{t("channels.subtitle")}</p>
+        </div>
+        {unconnectedChannels.length > 0 && (
+          <div className="relative">
+            <button onClick={() => setShowConnectMenu((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+              style={{ background: "var(--vela-gradient)" }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+              Connect Channel
+            </button>
+            {showConnectMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowConnectMenu(false)} />
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl shadow-xl py-1 w-44">
+                  {unconnectedChannels.map((c) => (
+                    <button key={c.key} onClick={() => { setShowConnectMenu(false); handleConnectClick(c.key); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Real success banner -- only when every channel is actually connected */}
+      {allChannelsConnected && (
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-950/30">
+          <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-950/50 flex items-center justify-center shrink-0">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="#16A34A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <p className="text-sm font-semibold text-green-800 dark:text-green-400">
+            All 3 channels connected. Your AI agent is live across {connectedChannelNames.join(", ")}.
+          </p>
+        </div>
+      )}
 
       {/* Plan indicator */}
       {isStarter && (
@@ -649,10 +737,15 @@ function ChannelsPageContent() {
           const isConnected = ch.key === "instagram" ? channels.instagram.connected : channels.whatsapp.connected;
           const isLocked = isStarter && !isConnected && connectedSocialCount >= config.channels;
           const isDisc = disconnecting === ch.key;
+          // Real stat pairs -- only ever shown once the channel is
+          // connected (never fabricated for a disconnected channel).
+          const stats = ch.key === "instagram"
+            ? [{ label: "Conversations", value: channels.instagram.conversations }, { label: "Leads", value: channels.instagram.leads }]
+            : [{ label: "Conversations", value: channels.whatsapp.conversations }, { label: "Bookings", value: channels.whatsapp.bookings }];
 
           return (
             <div key={ch.key}
-              className={`flex items-center justify-between p-4 rounded-xl bg-white border transition-colors ${isLocked ? "border-[#E5E7EB] opacity-70" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}
+              className={`p-4 rounded-xl bg-white dark:bg-[#17171C] border transition-colors ${isLocked ? "border-[#E5E7EB] dark:border-[#2A2A32] opacity-70" : "border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#D1D5DB] dark:hover:border-[#3A3A44]"}`}
             >
               {loading ? (
                 <div className="flex items-center gap-4 w-full animate-pulse">
@@ -665,52 +758,74 @@ function ChannelsPageContent() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
-                      {ch.icon}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-[#111111]">{ch.name}</p>
-                        {isLocked ? (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                              <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
-                              <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
-                            </svg>
-                            Pro only
-                          </span>
-                        ) : (
-                          <span className={`flex items-center gap-1 text-[10px] font-semibold ${isConnected ? "text-green-600" : "text-[#9CA3AF]"}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
-                            {isConnected ? t("channels.connected") : t("channels.notConnected")}
-                          </span>
-                        )}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] flex items-center justify-center shrink-0">
+                        {ch.icon}
                       </div>
-                      <p className="text-xs text-[#6B7280] mt-0.5">
-                        {isConnected ? ch.connectedDesc : ch.desc}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-[#111111] dark:text-white">{ch.name}</p>
+                          {isLocked ? (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
+                                <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
+                              </svg>
+                              Pro only
+                            </span>
+                          ) : (
+                            <span className={`flex items-center gap-1 text-[10px] font-semibold ${isConnected ? "text-green-600 dark:text-green-400" : "text-[#9CA3AF]"}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
+                              {isConnected ? t("channels.connected") : t("channels.notConnected")}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#6B7280] mt-0.5">
+                          {isConnected ? ch.connectedDesc : ch.desc}
+                        </p>
+                      </div>
                     </div>
+                    {isConnected ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleConnectClick(ch.key)}
+                          className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+                        >
+                          Manage
+                        </button>
+                        <button
+                          onClick={() => disconnect(ch.key)}
+                          disabled={isDisc}
+                          className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:border-red-200 dark:hover:border-red-900/50 hover:text-red-500 dark:hover:text-red-400 transition-all disabled:opacity-50"
+                        >
+                          {isDisc ? "…" : t("common.disconnect")}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleConnectClick(ch.key)}
+                        className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all ${
+                          isLocked
+                            ? "border-[#E5E7EB] dark:border-[#2A2A32] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                            : "border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                        }`}
+                      >
+                        {isLocked ? "Upgrade" : t("common.connect")}
+                      </button>
+                    )}
                   </div>
-                  {isConnected ? (
-                    <button
-                      onClick={() => disconnect(ch.key)}
-                      disabled={isDisc}
-                      className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-red-200 hover:text-red-500 transition-all shrink-0 disabled:opacity-50"
-                    >
-                      {isDisc ? "…" : t("common.disconnect")}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleConnectClick(ch.key)}
-                      className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all ${
-                        isLocked
-                          ? "border-[#E5E7EB] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                          : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                      }`}
-                    >
-                      {isLocked ? "Upgrade" : t("common.connect")}
-                    </button>
+
+                  {/* Real stat pairs -- connected channels only */}
+                  {isConnected && (
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      {stats.map((s) => (
+                        <div key={s.label} className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
+                          <p className="text-lg font-bold text-[#111111] dark:text-white">{s.value.toLocaleString()}</p>
+                          <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </>
               )}
@@ -719,10 +834,10 @@ function ChannelsPageContent() {
         })}
 
         {/* Website channel — tied to Website Builder, fully optional */}
-        <div className="p-4 rounded-xl bg-white border border-[#E5E7EB]">
-          <div className="flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] flex items-center justify-center shrink-0">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <circle cx="10" cy="10" r="7.5" stroke="#ed5426" strokeWidth="1.5"/>
                   <path d="M10 2.5c-2 2.5-2 12.5 0 15M2.5 10h15M3.5 6.5h13M3.5 13.5h13" stroke="#ed5426" strokeWidth="1.3" strokeLinecap="round"/>
@@ -730,8 +845,8 @@ function ChannelsPageContent() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#111111]">{t("channels.website.name")}</p>
-                  <span className={`flex items-center gap-1 text-[10px] font-semibold ${website.published ? "text-green-600" : "text-[#9CA3AF]"}`}>
+                  <p className="text-sm font-semibold text-[#111111] dark:text-white">{t("channels.website.name")}</p>
+                  <span className={`flex items-center gap-1 text-[10px] font-semibold ${website.published ? "text-green-600 dark:text-green-400" : "text-[#9CA3AF]"}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${website.published ? "bg-green-500" : "bg-[#D1D5DB]"}`} />
                     {website.published ? t("channels.connected") : t("channels.notConnected")}
                   </span>
@@ -743,26 +858,24 @@ function ChannelsPageContent() {
                 </p>
               </div>
             </div>
-            {!website.published && (
-              <Link
-                href="/app/website"
-                className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
-              >
-                Build a website
-              </Link>
-            )}
+            <Link
+              href="/app/website"
+              className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
+            >
+              {website.published ? "Manage" : "Build a website"}
+            </Link>
           </div>
 
           {website.published && (
             <div className="mt-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
-                  <p className="text-lg font-bold text-[#111111]">{website.visits.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#6B7280]">Website visits</p>
+                <div className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
+                  <p className="text-lg font-bold text-[#111111] dark:text-white">{website.visits.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">Website visits</p>
                 </div>
-                <div className="p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
-                  <p className="text-lg font-bold text-[#111111]">{website.conversations.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#6B7280]">Chat conversations</p>
+                <div className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
+                  <p className="text-lg font-bold text-[#111111] dark:text-white">{website.conversations.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">Chat conversations</p>
                 </div>
               </div>
               {website.siteUrl && (
@@ -770,14 +883,14 @@ function ChannelsPageContent() {
                   href={website.siteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#374151] dark:text-[#E5E7EB] hover:text-[#FF6B35] transition-colors"
                 >
                   View your site
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 8l5-5M3.5 3h4.5v4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </a>
               )}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
-                <p className="text-xs font-semibold text-[#374151]">AI assistant on this site</p>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
+                <p className="text-xs font-semibold text-[#374151] dark:text-[#E5E7EB]">AI assistant on this site</p>
                 <button
                   onClick={toggleEmbedAssistant}
                   disabled={savingAssistant}

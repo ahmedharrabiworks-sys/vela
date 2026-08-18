@@ -7,6 +7,7 @@ import { track } from "@/lib/track";
 import { useI18n } from "@/lib/i18n";
 import CountUp from "@/components/ui/CountUp";
 import CircularProgress from "@/components/ui/CircularProgress";
+import { useTheme } from "@/lib/theme";
 
 type Range = "7d" | "30d" | "90d";
 type Series = "conversations" | "appointments" | "visits";
@@ -57,7 +58,7 @@ function TrendBadge({ change, label }: { change: number | null; label: string })
   }
   const up = change >= 0;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"}`}>
       {up ? "↑" : "↓"} {Math.abs(change)}% {label}
     </span>
   );
@@ -79,6 +80,13 @@ function buildLabels(days: number): string[] {
 // container), so cursor position is converted from screen pixels to the
 // 800x140 viewBox coordinate space via the actual rendered bounding rect.
 function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: string[]; days: number; unitLabel: string }) {
+  const { theme } = useTheme();
+  // SVG stroke/fill are presentation attributes, invisible to the app's
+  // class-based dark-mode system -- gridlines specifically need a real dark
+  // value, since the light-mode near-white (#F3F4F6) reads as unsubtly
+  // BRIGHT against a dark card instead of the intended barely-there effect.
+  const gridColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
+  const axisTextColor = theme === "dark" ? "#6E6E76" : "#9CA3AF";
   const W = 800, H = 140, padX = 8, padTop = 12, padBottom = 24;
   const chartH = H - padTop - padBottom;
   const max = Math.max(...data, 1);
@@ -128,10 +136,10 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
             <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
           </linearGradient>
         </defs>
-        {[0, 0.25, 0.5, 0.75, 1].map((tt) => {
-          const y = padTop + tt * chartH;
-          return <line key={tt} x1={padX} x2={W - padX} y1={y} y2={y} stroke="#F3F4F6" strokeWidth="1"/>;
-        })}
+        {/* FIX: no gridline clutter -- a single faint baseline is enough
+            context; the reference chart style has none of the previous
+            5-line grid at all. */}
+        <line x1={padX} x2={W - padX} y1={H - padBottom} y2={H - padBottom} stroke={gridColor} strokeWidth="1"/>
         {hasData && (
           <>
             <path d={areaD} fill="url(#lineGrad)"/>
@@ -148,12 +156,12 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
           </>
         )}
         {!hasData && (
-          <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill="#9CA3AF">
+          <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill={axisTextColor}>
             No data yet
           </text>
         )}
         {labels.map((lbl, i) => lbl ? (
-          <text key={i} x={padX + (i / Math.max(n - 1, 1)) * (W - padX * 2)} y={H - 4} textAnchor="middle" fontSize="9" fill="#9CA3AF">{lbl}</text>
+          <text key={i} x={padX + (i / Math.max(n - 1, 1)) * (W - padX * 2)} y={H - 4} textAnchor="middle" fontSize="9" fill={axisTextColor}>{lbl}</text>
         ) : null)}
       </svg>
       {hover && hasData && (
@@ -252,13 +260,45 @@ export default function AnalyticsPage() {
     setDetail(metric);
   };
 
+  // FIX 7: real client-side CSV export of the currently-loaded data -- no
+  // new backend endpoint needed (analytics is already fully loaded into
+  // this page's state), so this stays a straightforward client-side export
+  // rather than guessing at a PDF-generation route that doesn't exist.
+  const exportReport = () => {
+    if (!analytics) return;
+    track("analytics_export", { format: "csv" });
+    const lines: string[] = [];
+    lines.push("Metric,Value");
+    lines.push(`Conversations (${range}),${totalConvs}`);
+    lines.push(`Appointments (${range}),${totalAppts}`);
+    lines.push(`Website Visits (${range}),${websiteVisits}`);
+    lines.push(`AI Resolution Rate,${aiResolutionRate === null ? "N/A" : `${aiResolutionRate}%`}`);
+    lines.push("");
+    lines.push("Channel,Leads,Conversations,Share");
+    channelTable.forEach((row) => lines.push(`${row.channel},${row.leads},${row.conversations},${row.share}%`));
+    const csv = lines.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vela-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const detailFullData = detail?.daily ? buildDayArray(detail.daily, 180) : [];
   const detailHasData = detailFullData.some((v) => v > 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-20">
-      {/* Header — soft gradient wash behind title + KPI row, matching reference */}
-      <div className="rounded-2xl p-5 -mx-1" style={{ background: "linear-gradient(135deg, rgba(255,107,53,0.06), rgba(255,51,102,0.03) 60%, transparent)" }}>
+      {/* Header — FIX: no special background here anymore, same as every
+          other dashboard page (was a hardcoded orange/pink gradient that
+          didn't match Conversations/Leads/Channels and looked worse in
+          dark mode, since an inline style isn't touched by the dark-mode
+          class-override system in globals.css). */}
+      <div>
         <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-[#111111]">{t("analytics.title")}</h1>
@@ -278,13 +318,13 @@ export default function AnalyticsPage() {
 
         {/* 5xx error */}
         {isPro && fetchError === "5xx" && !loading && (
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 bg-red-50 mb-5">
+          <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 mb-5">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
               <circle cx="8" cy="8" r="7" stroke="#DC2626" strokeWidth="1.3"/>
               <path d="M8 5v3.5M8 10.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <p className="text-sm text-red-700 flex-1">We couldn&apos;t load your analytics right now. Tap retry.</p>
-            <button onClick={doFetch} className="text-xs font-bold text-red-700 hover:text-red-900 shrink-0 px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-100 transition-colors">
+            <p className="text-sm text-red-700 dark:text-red-400 flex-1">We couldn&apos;t load your analytics right now. Tap retry.</p>
+            <button onClick={doFetch} className="text-xs font-bold text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 shrink-0 px-3 py-1.5 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors">
               Retry
             </button>
           </div>
@@ -317,30 +357,29 @@ export default function AnalyticsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button onClick={() => setSeries("conversations")}
-                className={`text-left bg-white border rounded-xl p-5 transition-colors ${series === "conversations" ? "border-[#FF6B35]" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}>
+              {/* FIX: KPI cards are pure display now -- no onClick, no modal
+                  trigger, no hover styling implying they're clickable. The
+                  chart's own Convs/Appts/Visits toggle (below) is the only
+                  way to switch the chart series. */}
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
                 <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.conversations")}</p>
                 <p className="text-3xl font-bold text-[#111111] leading-none mb-2"><CountUp value={totalConvs} /></p>
                 <TrendBadge change={convsChange} label={t("analytics.vsPriorPeriod")} />
-              </button>
+              </div>
 
-              <button onClick={() => setSeries("appointments")}
-                className={`text-left bg-white border rounded-xl p-5 transition-colors ${series === "appointments" ? "border-[#FF6B35]" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}>
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
                 <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.appointments")}</p>
                 <p className="text-3xl font-bold text-[#111111] leading-none mb-2"><CountUp value={totalAppts} /></p>
                 <TrendBadge change={apptsChange} label={t("analytics.vsPriorPeriod")} />
-              </button>
+              </div>
 
-              <button onClick={() => setSeries("visits")}
-                className={`text-left bg-white border rounded-xl p-5 transition-colors ${series === "visits" ? "border-[#FF6B35]" : "border-[#E5E7EB] hover:border-[#D1D5DB]"}`}>
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
                 <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.websiteVisits")}</p>
                 <p className="text-3xl font-bold text-[#111111] leading-none mb-2"><CountUp value={websiteVisits} /></p>
                 <TrendBadge change={visitsChange} label={t("analytics.vsPriorPeriod")} />
-              </button>
+              </div>
 
-              <button
-                onClick={() => openDetail({ key: "aiRate", label: t("analytics.aiResolutionRate"), total: aiResolutionRate ?? 0 })}
-                className="text-left bg-white border border-[#E5E7EB] rounded-xl p-5 hover:border-[#D1D5DB] transition-colors flex items-center gap-3">
+              <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-[#6B7280] mb-3">{t("analytics.aiResolutionRate")}</p>
                   {aiResolutionRate === null ? (
@@ -352,7 +391,7 @@ export default function AnalyticsPage() {
                 {aiResolutionRate !== null && (
                   <CircularProgress value={aiResolutionRate} size={44} strokeWidth={4} color="#16A34A" />
                 )}
-              </button>
+              </div>
             </div>
           )}
         </div>
@@ -429,6 +468,17 @@ export default function AnalyticsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {hasChannelData && (
+              <div className="px-6 py-4 border-t border-[#F3F4F6] flex justify-end">
+                <button onClick={exportReport}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 1.5v6M3.5 5.5L6 8l2.5-2.5M2 9.5v1a1 1 0 001 1h6a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Export Report
+                </button>
               </div>
             )}
           </div>

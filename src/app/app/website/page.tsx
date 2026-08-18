@@ -706,8 +706,8 @@ function PublishPanel({
                 domainStatus === "failed"   ? "bg-red-400"   : "bg-yellow-400"}`} />
               <span className="text-xs font-semibold text-[#111111] dark:text-white truncate max-w-[140px]">{customDomain}</span>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                domainStatus === "verified" ? "bg-green-50 text-green-700" :
-                domainStatus === "failed"   ? "bg-red-50 text-red-700"     : "bg-yellow-50 text-yellow-700"}`}>
+                domainStatus === "verified" ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" :
+                domainStatus === "failed"   ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400"     : "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400"}`}>
                 {domainStatus === "verified" ? "Connected" :
                  domainStatus === "failed"   ? "Failed. Records not found yet" : "Pending. Add DNS records"}
               </span>
@@ -1254,6 +1254,7 @@ export default function WebsitePage() {
   const publishBtnRef = useRef<HTMLDivElement>(null);
   const chatPanelRef  = useRef<HTMLDivElement>(null);
   const chatInputRef  = useRef<HTMLTextAreaElement>(null);
+  const [showToolbarSiteMenu, setShowToolbarSiteMenu] = useState(false);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -2231,15 +2232,62 @@ export default function WebsitePage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
 
-      {/* Header */}
+      {/* Header — FIX 6: title is always "Website Builder" (was showing the
+          active site's own name instead, which meant the page's identity
+          changed depending on which site was selected). A real status
+          badge sits next to it instead. */}
       <div className="flex items-center justify-between pb-4 shrink-0 flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-[#111111] dark:text-white">
-            {siteName || t("website.title")}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[#111111] dark:text-white">
+              {t("website.title")}
+            </h1>
+            {built && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide ${
+                isPublished
+                  ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400"
+                  : "bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#6B7280] dark:text-[#9CA3AF]"
+              }`}>
+                {isPublished ? "PUBLISHED" : "DRAFT"}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[#6B7280] mt-0.5">{t("website.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Site name + dropdown (only a real dropdown when there's more
+              than one site to switch between) -- reuses the same
+              handleSwitchProject the sidebar already uses, not a
+              duplicate switching implementation. */}
+          {built && projects.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => projects.length > 1 && setShowToolbarSiteMenu((v) => !v)}
+                className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] bg-white dark:bg-[#17171C] transition-colors ${projects.length > 1 ? "hover:border-[#D1D5DB] dark:hover:border-[#3A3A44] cursor-pointer" : "cursor-default"}`}
+              >
+                <span className="max-w-[140px] truncate">{siteName || "Untitled"}</span>
+                {projects.length > 1 && (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`shrink-0 transition-transform ${showToolbarSiteMenu ? "rotate-180" : ""}`}>
+                    <path d="M2.5 4l2.5 2.5L7.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+              {showToolbarSiteMenu && projects.length > 1 && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowToolbarSiteMenu(false)} />
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-48 max-h-64 overflow-y-auto">
+                    {projects.map((p) => (
+                      <button key={p.id}
+                        onClick={() => { setShowToolbarSiteMenu(false); handleSwitchProject(p); }}
+                        className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${p.id === websiteId ? "text-[#FF6B35] font-semibold" : "text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]"}`}>
+                        {p.name || "Untitled"}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {projects.length > 0 && (
             <span className="hidden md:block text-[13px] text-[#9CA3AF] font-medium">
               {projects.length}/{websiteLimit} site{websiteLimit !== 1 ? "s" : ""}
@@ -2447,6 +2495,16 @@ export default function WebsitePage() {
           className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0 relative`}
           style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
         >
+
+          {/* FIX 6: "Build with AI" subheading -- confirmed missing
+              entirely from the real page (only ever existed in the
+              reference/demo), added once here above the chat panel. */}
+          {!showVersionsPanel && !showAnalyticsPanel && (
+            <div className="px-4 pt-3.5 pb-1 shrink-0">
+              <p className="text-sm font-bold text-[#111111] dark:text-white">Build with AI</p>
+              <p className="text-[11px] text-[#9CA3AF] mt-0.5">Chat to customize your site</p>
+            </div>
+          )}
 
           {/* Panel tab toggles — Chat / Versions / Analytics */}
           {built && (
