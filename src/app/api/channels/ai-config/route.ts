@@ -2,19 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 
 /**
- * Per-channel AI-behavior config (tone + language) for Instagram and
- * WhatsApp -- FIX 2, round F. Reuses the exact tone/language vocabulary
- * already wired into ai/reply/route.ts's global tenant_config.tone/language
- * (Settings -> AI Configuration), just scoped per channel via the new
+ * Per-channel AI-behavior config (tone + language) for Instagram, WhatsApp,
+ * and Website -- FIX 2 round F (Instagram/WhatsApp), widened FIX 3 round H
+ * (Website, surfaced from the Website Builder Analytics panel instead of a
+ * separate modal). Reuses the exact tone/language vocabulary already wired
+ * into ai/reply/route.ts's global tenant_config.tone/language (Settings ->
+ * AI Configuration), just scoped per channel via the
  * tenant_config.channel_ai_config JSONB column. A channel with no override
  * saved here falls back to the tenant's global tone/language -- never a
  * hardcoded default that could silently diverge from what Settings shows.
  *
- * GET  ?channel=instagram|whatsapp -> { tone, language, isOverride }
- * PUT  { channel, tone, language }  -> saves an override for that channel
+ * GET  ?channel=instagram|whatsapp|website -> { tone, language, isOverride }
+ * PUT  { channel, tone, language }          -> saves an override for that channel
  */
 
-const VALID_CHANNELS = ["instagram", "whatsapp"] as const;
+const VALID_CHANNELS = ["instagram", "whatsapp", "website"] as const;
 type Channel = typeof VALID_CHANNELS[number];
 
 async function getTenantId(): Promise<string | null> {
@@ -30,7 +32,7 @@ async function getTenantId(): Promise<string | null> {
 export async function GET(req: NextRequest) {
   const channel = req.nextUrl.searchParams.get("channel") as Channel | null;
   if (!channel || !VALID_CHANNELS.includes(channel)) {
-    return NextResponse.json({ error: "channel must be instagram or whatsapp" }, { status: 400 });
+    return NextResponse.json({ error: "channel must be instagram, whatsapp, or website" }, { status: 400 });
   }
 
   const tenantId = await getTenantId();
@@ -62,7 +64,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as { channel?: string; tone?: string; language?: string };
   const { channel, tone, language } = body;
   if (!channel || !VALID_CHANNELS.includes(channel as Channel)) {
-    return NextResponse.json({ error: "channel must be instagram or whatsapp" }, { status: 400 });
+    return NextResponse.json({ error: "channel must be instagram, whatsapp, or website" }, { status: 400 });
   }
   if (!tone || !language) {
     return NextResponse.json({ error: "tone and language are required" }, { status: 400 });

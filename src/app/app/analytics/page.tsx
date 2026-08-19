@@ -209,7 +209,16 @@ function SkeletonKPI() {
 }
 
 export default function AnalyticsPage() {
-  const [range, setRange] = useState<Range>("30d");
+  // FIX 1 (round H): default changed 30d -> 7d. The badge/chart code was
+  // never broken (confirmed live on the 7d tab in the prior round -- real
+  // green/red % badges render correctly whenever a comparable prior period
+  // has any data). The real problem was the DEFAULT tab: 30d-vs-previous-30d
+  // needs 60 days of account history before a badge can ever appear, so
+  // every newer or lower-volume tenant lands on a view that looks
+  // permanently broken even though nothing is. 7d-vs-previous-7d only needs
+  // 14 days, and is the standard "at a glance" default for this kind of
+  // dashboard anyway.
+  const [range, setRange] = useState<Range>("7d");
   const [series, setSeries] = useState<Series>("leads");
   const { isPro } = usePlan();
   const { t } = useI18n();

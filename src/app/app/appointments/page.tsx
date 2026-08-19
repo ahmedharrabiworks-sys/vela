@@ -641,16 +641,18 @@ export default function AppointmentsPage() {
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#6B7280] whitespace-nowrap">{apt.phone || "No phone"}</span></td>
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#111827]">{apt.service}</span></td>
                         <td className="py-3.5 pr-4">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-semibold text-[#111827] dark:text-white">
-                              {apt.dateLabel}
-                              {/* FIX 4 (round G): was a separate blue pill -- now an
-                                  inline suffix in the same weight/color as the date
-                                  itself, per explicit request. */}
-                              {apt.rescheduled && " (Rescheduled)"}
-                            </span>
-                            <span className="text-sm text-[#6B7280] dark:text-[#9CA3AF]">· {apt.time}</span>
-                          </div>
+                          {/* FIX 2 (round H): was two separate flex-wrap
+                              children (date+"(Rescheduled)" first, "· time"
+                              second) -- flex-wrap could reorder/break them
+                              across lines, and rescheduled rendered BEFORE
+                              time instead of after. Now one single
+                              whitespace-nowrap line, strict date -> time ->
+                              "(Rescheduled)" order, no separate accent color. */}
+                          <span className="text-sm whitespace-nowrap">
+                            <span className="font-semibold text-[#111827] dark:text-white">{apt.dateLabel}</span>
+                            <span className="text-[#6B7280] dark:text-[#9CA3AF]"> · {apt.time}</span>
+                            {apt.rescheduled && <span className="text-[#6B7280] dark:text-[#9CA3AF]"> (Rescheduled)</span>}
+                          </span>
                         </td>
                         <td className="py-3.5 pr-4">
                           <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F3F4F6] text-[#374151] whitespace-nowrap capitalize">{apt.channel}</span>

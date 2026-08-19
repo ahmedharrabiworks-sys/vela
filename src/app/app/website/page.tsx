@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useTheme } from "@/lib/theme";
-import CircularProgress from "@/components/ui/CircularProgress";
+import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
 import type { WebsiteSpec } from "@/lib/website-renderer";
 
 // FIX 2 (round G): real smoothed-curve chart for the Analytics panel's daily
@@ -13,11 +13,11 @@ import type { WebsiteSpec } from "@/lib/website-renderer";
 // endpoint dot, grid lines, "No data yet" honest state when every day is
 // zero) -- self-contained here rather than importing that page's local
 // function, so this panel can't regress if Analytics' own chart changes.
-function WebsiteVisitsChart({ data }: { data: { date: string; count: number }[] }) {
+function WebsiteVisitsChart({ data, height = 140 }: { data: { date: string; count: number }[]; height?: number }) {
   const { theme } = useTheme();
   const gridColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
   const axisTextColor = theme === "dark" ? "#6E6E76" : "#9CA3AF";
-  const W = 800, H = 140, padX = 8, padTop = 12, padBottom = 20;
+  const W = 800, H = height, padX = 8, padTop = 12, padBottom = 20;
   const chartH = H - padTop - padBottom;
   const counts = data.map((d) => d.count);
   const max = Math.max(...counts, 1);
@@ -48,7 +48,7 @@ function WebsiteVisitsChart({ data }: { data: { date: string; count: number }[] 
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }} preserveAspectRatio="none"
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }} preserveAspectRatio="none"
         onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
         <defs>
           <linearGradient id="wbVisitsGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1327,6 +1327,15 @@ export default function WebsitePage() {
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(false);
   const [analyticsData, setAnalyticsData]           = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading]     = useState(false);
+  // FIX 3 (round H): real Website-channel AI-behavior config, surfaced here
+  // now that Channels' Website "Manage" lands on this panel instead of a
+  // separate modal -- same tenant_config.channel_ai_config mechanism, same
+  // ChannelAiConfigFields component already used for Instagram/WhatsApp.
+  const [websiteAiCfgLoading, setWebsiteAiCfgLoading] = useState(false);
+  const [websiteAiCfgSaving, setWebsiteAiCfgSaving]   = useState(false);
+  const [websiteAiCfgSaved, setWebsiteAiCfgSaved]     = useState(false);
+  const [websiteAiTone, setWebsiteAiTone]             = useState("professional");
+  const [websiteAiLanguage, setWebsiteAiLanguage]     = useState("Auto-detect");
   const [deleteTarget, setDeleteTarget]           = useState<WebsiteProject | null>(null);
   const [restoreConfirmTarget, setRestoreConfirmTarget] = useState<VersionRecord | null>(null);
   const [imgEditTarget, setImgEditTarget]         = useState<{ vs: string; imgIdx: number; src: string; websiteId: string } | null>(null);
@@ -1373,6 +1382,36 @@ export default function WebsitePage() {
     } catch { /* non-critical */ }
     finally { setAnalyticsLoading(false); }
   }, []);
+
+  const loadWebsiteAiConfig = useCallback(async () => {
+    setWebsiteAiCfgLoading(true);
+    setWebsiteAiCfgSaved(false);
+    try {
+      const res = await fetch("/api/channels/ai-config?channel=website");
+      if (res.ok) {
+        const data = await res.json() as { tone?: string; language?: string };
+        setWebsiteAiTone(data.tone ?? "professional");
+        setWebsiteAiLanguage(data.language ?? "Auto-detect");
+      }
+    } catch { /* non-critical */ }
+    finally { setWebsiteAiCfgLoading(false); }
+  }, []);
+
+  const saveWebsiteAiConfig = useCallback(async () => {
+    setWebsiteAiCfgSaving(true);
+    try {
+      const res = await fetch("/api/channels/ai-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "website", tone: websiteAiTone, language: websiteAiLanguage }),
+      });
+      if (res.ok) {
+        setWebsiteAiCfgSaved(true);
+        setTimeout(() => setWebsiteAiCfgSaved(false), 2000);
+      }
+    } catch { /* non-critical */ }
+    finally { setWebsiteAiCfgSaving(false); }
+  }, [websiteAiTone, websiteAiLanguage]);
 
   const handleOpenInNewTab = useCallback(() => {
     const content = previewVersionHtml ?? htmlRef.current;
@@ -1459,6 +1498,7 @@ export default function WebsitePage() {
           setShowVersionsPanel(false);
           setActiveTab("preview");
           void loadAnalytics();
+          void loadWebsiteAiConfig();
         }
         if (requestedSite || requestedTab) window.history.replaceState({}, "", "/app/website");
 
@@ -1842,25 +1882,33 @@ export default function WebsitePage() {
   // rejection is visible instead of looking like "paste doesn't work".
   const attachFilesToChat = useCallback((files: File[]) => {
     setAttachError(null);
+    console.log(`[WebsiteBuilder paste-pipeline] step 2/5 file(s) detected: ${files.length}`, files.map((f) => ({ name: f.name, type: f.type, size: f.size })));
     files.slice(0, MAX_ATTACH - attachedImages.length).forEach((file) => {
       if (!file.type.startsWith("image/")) {
+        console.error(`[WebsiteBuilder paste-pipeline] REJECTED at validation -- unsupported type "${file.type}" for "${file.name}"`);
         setAttachError(`"${file.name || "That file"}" is a ${file.type || "format"} this chat can't read yet. Try a PNG, JPG, or WEBP.`);
         return;
       }
       if (file.size > MAX_IMG_SIZE) {
+        console.error(`[WebsiteBuilder paste-pipeline] REJECTED at validation -- "${file.name}" is ${file.size} bytes, over the ${MAX_IMG_SIZE} byte cap`);
         setAttachError(`"${file.name || "That image"}" is too large (max 5MB). Try a smaller screenshot.`);
         return;
       }
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
+        const base64 = dataUrl.split(",")[1] ?? "";
+        console.log(`[WebsiteBuilder paste-pipeline] step 3/5 file read OK -- "${file.name}", base64 length ${base64.length}`);
         setAttachedImages((prev) =>
           prev.length < MAX_ATTACH
-            ? [...prev, { preview: dataUrl, base64: dataUrl.split(",")[1] ?? "", mimeType: file.type }]
+            ? [...prev, { preview: dataUrl, base64, mimeType: file.type }]
             : prev,
         );
       };
-      reader.onerror = () => setAttachError("Couldn't read that image. Please try again.");
+      reader.onerror = () => {
+        console.error(`[WebsiteBuilder paste-pipeline] REJECTED at file read -- FileReader.onerror fired for "${file.name}"`, reader.error);
+        setAttachError("Couldn't read that image. Please try again.");
+      };
       reader.readAsDataURL(file);
     });
   }, [attachedImages.length]);
@@ -1878,12 +1926,25 @@ export default function WebsitePage() {
   // pasting a screenshot here did nothing, silently, on every browser --
   // not a MIME/permissions/race-condition issue, just a missing wire.
   const handleChatPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = Array.from(e.clipboardData?.items ?? []);
-    const imageFiles = items
-      .filter((item) => item.type.startsWith("image/"))
-      .map((item) => item.getAsFile())
-      .filter((f): f is File => f !== null);
-    if (imageFiles.length === 0) return;
+    console.log("[WebsiteBuilder paste-pipeline] step 1/5 paste event received");
+    if (!e.clipboardData) {
+      console.warn("[WebsiteBuilder paste-pipeline] REJECTED at step 1 -- paste event fired with no clipboardData (browser did not expose clipboard contents)");
+      return;
+    }
+    const items = Array.from(e.clipboardData.items);
+    console.log(`[WebsiteBuilder paste-pipeline] clipboard has ${items.length} item(s):`, items.map((i) => i.type));
+    const imageItems = items.filter((item) => item.type.startsWith("image/"));
+    const imageFiles = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
+    if (imageItems.length > 0 && imageFiles.length === 0) {
+      console.error("[WebsiteBuilder paste-pipeline] REJECTED at step 2 -- image clipboard item(s) present but getAsFile() returned null for all of them:", imageItems.map((i) => i.type));
+      setAttachError("Couldn't read the pasted image from your clipboard. Try the attach (paperclip) button instead.");
+      e.preventDefault();
+      return;
+    }
+    if (imageFiles.length === 0) {
+      console.log("[WebsiteBuilder paste-pipeline] no image items in this paste (plain text paste) -- no-op, correct behavior");
+      return;
+    }
     e.preventDefault();
     attachFilesToChat(imageFiles);
   }, [attachFilesToChat]);
@@ -1929,6 +1990,10 @@ export default function WebsitePage() {
       if (contactInfo.hours)   intakePayload.hours   = contactInfo.hours;
       if (siteLanguage)        intakePayload.language = siteLanguage;
 
+      if (capturedImages.length > 0) {
+        console.log(`[WebsiteBuilder paste-pipeline] step 4/5 sending ${capturedImages.length} image(s) to /api/website/generate`, capturedImages.map((i) => ({ mimeType: i.mimeType, base64Length: i.base64.length })));
+      }
+
       const res = await fetch("/api/website/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1951,6 +2016,9 @@ export default function WebsitePage() {
         websiteId?: string; slug?: string; name?: string; isPublished?: boolean;
         intake?: { phone?: string; email?: string };
       };
+      if (capturedImages.length > 0) {
+        console.log(`[WebsiteBuilder paste-pipeline] step 5/5 API response received -- status ${res.status}, ok=${res.ok}`, data.error ? { error: data.error } : { hasHtml: !!data.html });
+      }
 
       // Conversational intake: GPT is asking a follow-up question
       if (res.ok && data.question && !data.html) {
@@ -2044,7 +2112,10 @@ export default function WebsitePage() {
       persistChat(finalMsgs, updatedContactInfo);
       void refreshProjects();
 
-    } catch {
+    } catch (err) {
+      if (capturedImages.length > 0) {
+        console.error("[WebsiteBuilder paste-pipeline] REJECTED at step 4/5 -- network/fetch error sending images to /api/website/generate:", err);
+      }
       setMsgs([...msgs, userMsg, { role: "ai", content: "Connection error. Check your internet and try again.", isError: true }]);
     }
     setBuilding(false);
@@ -2658,7 +2729,7 @@ export default function WebsitePage() {
                   </button>
                   {isPublished && websiteId && (
                     <button
-                      onClick={() => { setShowAnalyticsPanel(true); setShowVersionsPanel(false); setActiveTab("preview"); loadAnalytics(); }}
+                      onClick={() => { setShowAnalyticsPanel(true); setShowVersionsPanel(false); setActiveTab("preview"); loadAnalytics(); loadWebsiteAiConfig(); }}
                       className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -3060,14 +3131,17 @@ export default function WebsitePage() {
               </div>
 
             ) : showAnalyticsPanel ? (
-              /* ── Analytics — FIX 2 (round F) redesign: full-width now that
-                 the chat panel is hidden while this is open, cleaner card
-                 hierarchy matching the rest of the app (white bordered
-                 cards, not flat grey fill), real "← Back to editor" action
-                 that restores chat + preview exactly (nothing unmounts --
-                 this only flips visibility). ──────────────────────────── */
+              /* ── Analytics — FIX 3 (round H) full rebuild: no side padding
+                 wells (full-width, responsive), bigger stat numbers, chart
+                 uses the panel's full width/height (no more squeezed next to
+                 a ring), all 4 rings removed (recent-share ring + 3 device
+                 rings), "of last 30 days..." text and the entire Top Sources
+                 block removed. Freed space now holds real Website-channel AI
+                 config (tone/language) -- this is also where Channels'
+                 Website "Manage" lands, same as Instagram/WhatsApp's Manage
+                 surfaces their own AI config. ─────────────────────────── */
               <div className="flex-1 overflow-y-auto bg-[#F9FAFB] dark:bg-[#101014]">
-                <div className="max-w-3xl mx-auto p-6 space-y-5">
+                <div className="w-full p-4 sm:p-6 space-y-5">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <button
                       onClick={() => { setShowAnalyticsPanel(false); setActiveTab("chat"); }}
@@ -3099,92 +3173,84 @@ export default function WebsitePage() {
                     </div>
                   ) : !analyticsData ? (
                     <p className="text-sm text-[#9CA3AF] text-center py-16 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">Could not load analytics.</p>
-                  ) : analyticsData.totalVisits === 0 ? (
-                    <div className="text-center py-16 space-y-2 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                      <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
-                      <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
-                    </div>
                   ) : (() => {
-                    // FIX 2 (round G): real "mission control" redesign -- a
-                    // radial ring for the one genuinely meaningful percentage
-                    // this data supports (how much of the last 30 days'
-                    // traffic landed in the last 7 -- a real, honest ratio,
-                    // never fabricated), a real smoothed-curve chart instead
-                    // of a bar strip that read as an empty box on sparse
-                    // data, and device split as rings instead of bars with
-                    // an honest empty state instead of a blank label when
-                    // there's no device data yet.
-                    const recentSharePct = analyticsData.last30Days > 0
-                      ? Math.round((analyticsData.last7Days / analyticsData.last30Days) * 100)
-                      : 0;
                     const hasDeviceData = (["desktop", "mobile", "tablet"] as const).some((dev) => analyticsData.deviceSplit[dev] > 0);
                     return (
                       <>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {analyticsData.totalVisits === 0 && (
+                          <div className="text-center py-10 space-y-1.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
+                            <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
+                            <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic. The numbers below will fill in as visits come in.</p>
+                          </div>
+                        )}
+
+                        {/* FIX 3: bigger, cleaner stat display -- no rings, just larger numbers with more room to breathe. */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                           {([
                             { label: "Total visits",    value: analyticsData.totalVisits    },
                             { label: "Unique visitors", value: analyticsData.uniqueVisitors },
                             { label: "Last 7 days",     value: analyticsData.last7Days      },
                             { label: "Last 30 days",    value: analyticsData.last30Days     },
                           ] as { label: string; value: number }[]).map(({ label, value }) => (
-                            <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                              <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
-                              <p className="text-xs text-[#9CA3AF] mt-1">{label}</p>
+                            <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 sm:p-6">
+                              <p className="text-3xl sm:text-4xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
+                              <p className="text-xs sm:text-sm text-[#9CA3AF] mt-1.5">{label}</p>
                             </div>
                           ))}
                         </div>
 
-                        <div className="grid sm:grid-cols-[1fr,auto] gap-3 items-stretch">
-                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 min-w-0">
-                            <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-4">Daily visits · last 30 days</p>
-                            <WebsiteVisitsChart data={analyticsData.dailyVisits} />
-                            <div className="flex justify-between mt-1 pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
-                              <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
-                              <span className="text-[10px] text-[#9CA3AF]">Today</span>
-                            </div>
-                          </div>
-                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 flex flex-col items-center justify-center gap-3 sm:w-[180px]">
-                            <CircularProgress value={recentSharePct} size={88} strokeWidth={7} color="#FF6B35" />
-                            <p className="text-xs text-center text-[#6B7280] dark:text-[#9CA3AF] leading-snug">
-                              of last 30 days&apos; visits<br/>came in the last 7
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          {analyticsData.topReferrers.length > 0 && (
-                            <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
-                              <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Top sources</p>
-                              <div className="space-y-2.5">
-                                {analyticsData.topReferrers.map(({ referrer, count }) => (
-                                  <div key={referrer} className="flex items-center gap-2">
-                                    <span className="flex-1 text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate min-w-0">{referrer}</span>
-                                    <span className="text-xs font-semibold text-[#111111] dark:text-white shrink-0 tabular-nums">{count}</span>
-                                  </div>
+                        {/* FIX 3: full-width chart, no ring beside it, more height. */}
+                        <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 sm:p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <p className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB]">Daily visits · last 30 days</p>
+                            {hasDeviceData && (
+                              <div className="hidden sm:flex items-center gap-4">
+                                {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
+                                  <span key={dev} className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">
+                                    {dev} <span className="font-semibold text-[#111111] dark:text-white">{analyticsData.deviceSplit[dev]}%</span>
+                                  </span>
                                 ))}
                               </div>
-                            </div>
-                          )}
-                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
-                            <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Devices</p>
-                            {hasDeviceData ? (
-                              <div className="flex items-center justify-around">
-                                {(["desktop", "mobile", "tablet"] as const).map((dev) => (
-                                  <div key={dev} className="flex flex-col items-center gap-1.5">
-                                    <CircularProgress value={analyticsData.deviceSplit[dev]} size={48} strokeWidth={4} color="#FF6B35" />
-                                    <span className="text-[10px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">{dev}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-[#9CA3AF] text-center py-4">No device data yet</p>
                             )}
                           </div>
+                          <WebsiteVisitsChart data={analyticsData.dailyVisits} height={240} />
+                          <div className="flex justify-between mt-1 pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                            <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
+                            <span className="text-[10px] text-[#9CA3AF]">Today</span>
+                          </div>
+                          {hasDeviceData && (
+                            <div className="flex sm:hidden items-center gap-4 mt-3 pt-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                              {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
+                                <span key={dev} className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">
+                                  {dev} <span className="font-semibold text-[#111111] dark:text-white">{analyticsData.deviceSplit[dev]}%</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </>
                     );
                   })()}
+
+                  {/* FIX 3: real Website-channel AI config -- exact same
+                      component/mechanism as Instagram/WhatsApp's Manage
+                      modal, scoped to channel="website" here instead. */}
+                  {isPublished && (
+                    <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 sm:p-6">
+                      <p className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB] mb-1">Website chat AI settings</p>
+                      <p className="text-xs text-[#9CA3AF] mb-4">Controls how Vela AI responds to visitors chatting on this site.</p>
+                      <ChannelAiConfigFields
+                        loading={websiteAiCfgLoading}
+                        tone={websiteAiTone}
+                        language={websiteAiLanguage}
+                        saving={websiteAiCfgSaving}
+                        saved={websiteAiCfgSaved}
+                        onToneChange={setWebsiteAiTone}
+                        onLanguageChange={setWebsiteAiLanguage}
+                        onSave={saveWebsiteAiConfig}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

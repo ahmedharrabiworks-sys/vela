@@ -128,14 +128,20 @@ export function VelaAssistant() {
   // which reads exactly like "the paste feature is broken" even though the
   // vision pipeline itself was never at fault. Now surfaces a real,
   // specific inline error instead of failing silently.
+  // FIX 5 (round H): step-by-step console logging through the whole attach
+  // pipeline (file detected -> validated -> read -> attached) so a real
+  // failure has a real, findable log line instead of just "it didn't work."
   const attachFiles = useCallback((files: File[]) => {
     setAttachError(null);
+    console.log(`[VelaAssistant paste-pipeline] step 2/5 file(s) detected: ${files.length}`, files.map((f) => ({ name: f.name, type: f.type, size: f.size })));
     files.forEach((file) => {
       if (!ALLOWED_IMG_TYPES.has(file.type)) {
+        console.error(`[VelaAssistant paste-pipeline] REJECTED at validation -- unsupported type "${file.type}" for "${file.name}"`);
         setAttachError(`"${file.name || "That file"}" is a ${file.type || "format"} the assistant can't read yet. Try a PNG, JPG, or WEBP.`);
         return;
       }
       if (file.size > MAX_IMG_SIZE) {
+        console.error(`[VelaAssistant paste-pipeline] REJECTED at validation -- "${file.name}" is ${file.size} bytes, over the ${MAX_IMG_SIZE} byte cap`);
         setAttachError(`"${file.name || "That image"}" is too large (max 5MB). Try a smaller screenshot.`);
         return;
       }
@@ -143,12 +149,16 @@ export function VelaAssistant() {
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
         const base64 = dataUrl.split(",")[1] ?? "";
+        console.log(`[VelaAssistant paste-pipeline] step 3/5 file read OK -- "${file.name}", base64 length ${base64.length}`);
         // Functional update reads the latest state at write time, so the
         // MAX_ATTACH cap holds even across several async FileReader loads
         // firing back to back (e.g. a multi-file paste).
         setAttachedImages((prev) => (prev.length >= MAX_ATTACH ? prev : [...prev, { preview: dataUrl, base64, mimeType: file.type }]));
       };
-      reader.onerror = () => setAttachError("Couldn't read that image. Please try again.");
+      reader.onerror = () => {
+        console.error(`[VelaAssistant paste-pipeline] REJECTED at file read -- FileReader.onerror fired for "${file.name}"`, reader.error);
+        setAttachError("Couldn't read that image. Please try again.");
+      };
       reader.readAsDataURL(file);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,20 +188,25 @@ export function VelaAssistant() {
   // feedback, indistinguishable from "user pasted plain text" (correct to
   // no-op). Now only the genuine plain-text case still no-ops.
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    console.log("[VelaAssistant paste-pipeline] step 1/5 paste event received");
     if (!e.clipboardData) {
-      console.warn("[VelaAssistant] paste event fired with no clipboardData -- browser did not expose clipboard contents");
+      console.warn("[VelaAssistant paste-pipeline] REJECTED at step 1 -- paste event fired with no clipboardData (browser did not expose clipboard contents)");
       return;
     }
     const items = Array.from(e.clipboardData.items);
+    console.log(`[VelaAssistant paste-pipeline] clipboard has ${items.length} item(s):`, items.map((i) => i.type));
     const imageItems = items.filter((item) => item.type.startsWith("image/"));
     const imageFiles = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
     if (imageItems.length > 0 && imageFiles.length === 0) {
-      console.error("[VelaAssistant] paste reported image clipboard item(s) but getAsFile() returned null for all of them:", imageItems.map((i) => i.type));
+      console.error("[VelaAssistant paste-pipeline] REJECTED at step 2 -- image clipboard item(s) present but getAsFile() returned null for all of them:", imageItems.map((i) => i.type));
       setAttachError("Couldn't read the pasted image from your clipboard. Try the attach (paperclip) button instead.");
       e.preventDefault();
       return;
     }
-    if (imageFiles.length === 0) return;
+    if (imageFiles.length === 0) {
+      console.log("[VelaAssistant paste-pipeline] no image items in this paste (plain text paste) -- no-op, correct behavior");
+      return;
+    }
     e.preventDefault();
     attachFiles(imageFiles);
   };
@@ -294,6 +309,9 @@ export function VelaAssistant() {
 
     const imagesToSend = attachedImages.map(({ base64, mimeType }) => ({ data: base64, mimeType }));
     const imagePreviews = attachedImages.map((img) => img.preview);
+    if (imagesToSend.length > 0) {
+      console.log(`[VelaAssistant paste-pipeline] step 4/5 sending ${imagesToSend.length} image(s) to /api/ai/assistant`, imagesToSend.map((i) => ({ mimeType: i.mimeType, base64Length: i.data.length })));
+    }
     setAttachedImages([]);
     setAttachError(null);
     setMessages((prev) => [...prev, {
@@ -317,6 +335,9 @@ export function VelaAssistant() {
         }),
       });
       const data = await res.json() as { reply?: string; error?: string };
+      if (imagesToSend.length > 0) {
+        console.log(`[VelaAssistant paste-pipeline] step 5/5 API response received -- status ${res.status}, ok=${res.ok}`, data.error ? { error: data.error } : { replyPreview: (data.reply ?? "").slice(0, 120) });
+      }
 
       if (!res.ok) {
         const errText =
@@ -361,7 +382,10 @@ export function VelaAssistant() {
       }
 
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch {
+    } catch (err) {
+      if (imagesToSend.length > 0) {
+        console.error("[VelaAssistant paste-pipeline] REJECTED at step 4/5 -- network/fetch error sending images to /api/ai/assistant:", err);
+      }
       setMessages((prev) => [...prev, {
         role: "assistant",
         content: t("velaAssistant.errorConnection"),

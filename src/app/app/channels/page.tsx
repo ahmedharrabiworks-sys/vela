@@ -7,6 +7,7 @@ import { usePlan } from "@/lib/plans";
 import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
+import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
 
 /* ── Toast ── */
 function Toast({ msg, type = "success", onDone }: { msg: string; type?: "success" | "error" | "info"; onDone: () => void }) {
@@ -359,9 +360,6 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
    stats, and for Website the one real toggle that exists
    (embedAssistant) -- moved here from the card body, not duplicated.
    Disconnect lives here too instead of only as a separate card button. */
-const CHANNEL_AI_TONES = ["professional", "friendly", "formal", "casual"];
-const CHANNEL_AI_LANGUAGES = ["English", "Arabic", "Auto-detect"];
-
 function ChannelSettingsModal({
   channel, identity, stats, onClose, onDisconnect, disconnecting,
   websiteExtra, aiConfig,
@@ -420,47 +418,8 @@ function ChannelSettingsModal({
         </div>
 
         {aiConfig && (
-          <div className="space-y-4 mb-5">
-            {aiConfig.loading ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="w-5 h-5 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-              </div>
-            ) : (
-              <>
-                <div>
-                  <p className="text-xs font-semibold text-[#374151] mb-2">AI response tone for this channel</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CHANNEL_AI_TONES.map((v) => (
-                      <button key={v} type="button" onClick={() => aiConfig.onToneChange(v)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${aiConfig.tone === v ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
-                        style={aiConfig.tone === v ? { background: "var(--vela-gradient)" } : {}}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-[#374151] mb-2">Reply language for this channel</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CHANNEL_AI_LANGUAGES.map((v) => (
-                      <button key={v} type="button" onClick={() => aiConfig.onLanguageChange(v)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${aiConfig.language === v ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
-                        style={aiConfig.language === v ? { background: "var(--vela-gradient)" } : {}}>
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-3">
-                  {aiConfig.saved && <span className="text-xs text-green-600 font-medium">Saved</span>}
-                  <button onClick={aiConfig.onSave} disabled={aiConfig.saving}
-                    className="text-xs font-bold px-4 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-                    style={{ background: "var(--vela-gradient)" }}>
-                    {aiConfig.saving ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              </>
-            )}
+          <div className="mb-5">
+            <ChannelAiConfigFields {...aiConfig} />
           </div>
         )}
 
