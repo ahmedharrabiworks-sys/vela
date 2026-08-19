@@ -78,13 +78,22 @@ function LineChart({ data, isDark }: { data: number[]; isDark: boolean }) {
     v,
   }));
 
-  // FIX 5 (round E): sharp, angular "stock chart" line -- was Catmull-Rom
-  // cubic-bezier smoothing through each point. Straight segments only.
+  // FIX 4 (round F): reverted back to Catmull-Rom -> cubic-bezier smoothing
+  // per explicit request -- the sharp/angular straight-segment style from
+  // the previous round is undone.
   function smoothPath(pts: { x: number; y: number }[]): string {
     if (pts.length < 2) return "";
     let d = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) {
-      d += ` L ${pts[i].x} ${pts[i].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i === 0 ? 0 : i - 1];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
     }
     return d;
   }

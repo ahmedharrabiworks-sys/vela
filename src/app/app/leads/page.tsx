@@ -11,6 +11,8 @@ type Lead = {
   channel: string | null;
   status: string;
   phone: string | null;
+  email?: string | null;
+  form_data?: { message?: string; service?: string; preferred_datetime?: string | null } | null;
   last_message?: string;
   created_at: string | null;
 };
@@ -55,6 +57,116 @@ function ChannelIcon({ channel }: { channel: string | null }) {
   );
 }
 
+// FIX 6 (round F): real Lead Detail Modal -- opens on card click, shows the
+// actual captured lead data (no fields invented), and a working status
+// dropdown to move the lead between pipeline stages. Chosen over native
+// HTML5 drag-and-drop because that API doesn't work on touch devices without
+// substantial extra polyfill work, which would violate the standing mobile
+// 375px requirement -- click-to-open + dropdown works identically on desktop
+// and mobile.
+function LeadDetailModal({
+  lead, saving, onStatusChange, onDelete, onClose,
+}: {
+  lead: Lead;
+  saving: boolean;
+  onStatusChange: (status: Stage) => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 border-b border-[#F3F4F6] flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-[#F3F4F6] flex items-center justify-center text-sm font-bold text-[#374151] shrink-0">
+              {(lead.name ?? "?")[0].toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</h3>
+              <span className="flex items-center gap-1 text-[10px] font-medium text-[#6B7280] capitalize">
+                <ChannelIcon channel={lead.channel} />
+                {lead.channel ?? "web"} · {timeAgo(lead.created_at, t)}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151] shrink-0 p-1">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {lead.phone && (
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.phone")}</p>
+              <p className="text-sm text-[#111111] font-mono">{lead.phone}</p>
+            </div>
+          )}
+          {lead.email && (
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.email")}</p>
+              <p className="text-sm text-[#111111] break-all">{lead.email}</p>
+            </div>
+          )}
+          {lead.form_data?.service && (
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.service")}</p>
+              <p className="text-sm text-[#111111]">{lead.form_data.service}</p>
+            </div>
+          )}
+          {lead.form_data?.message && (
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.message")}</p>
+              <p className="text-sm text-[#374151] whitespace-pre-wrap">{lead.form_data.message}</p>
+            </div>
+          )}
+          {!lead.phone && !lead.email && !lead.form_data?.service && !lead.form_data?.message && (
+            <p className="text-xs text-[#9CA3AF]">{t("leads.detail.noDetails")}</p>
+          )}
+        </div>
+
+        <div className="p-5 border-t border-[#F3F4F6]">
+          <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-1.5">{t("leads.detail.stage")}</p>
+          <select
+            value={lead.status}
+            disabled={saving}
+            onChange={(e) => onStatusChange(e.target.value as Stage)}
+            className="w-full text-sm font-semibold text-[#111111] bg-white border border-[#E5E7EB] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#FF6B35]/50 disabled:opacity-50 transition-colors"
+          >
+            {PIPELINE_STAGES.map((s) => (
+              <option key={s} value={s}>{t(STAGE_LABEL_KEYS[s])}</option>
+            ))}
+          </select>
+
+          {confirmDelete ? (
+            <div className="mt-3 flex items-center gap-2">
+              <button onClick={onDelete}
+                className="flex-1 text-xs font-bold px-3 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors">
+                {t("leads.detail.confirmDelete")}
+              </button>
+              <button onClick={() => setConfirmDelete(false)}
+                className="flex-1 text-xs font-bold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6] transition-colors">
+                {t("leads.detail.cancelDelete")}
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDelete(true)}
+              className="mt-3 w-full text-xs font-bold px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 transition-colors">
+              {t("leads.detail.delete")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
@@ -69,6 +181,8 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -93,15 +207,55 @@ export default function LeadsPage() {
     // so `data` stayed undefined and the page silently rendered as if
     // there were zero leads -- for every tenant, always, regardless of how
     // many real leads existed. Switched to created_at, a real column.
-    const { data, error } = await db
+    // FIX 8: exclude soft-deleted leads (Recycle Bin). Fallback: if
+    // migration_v30.sql (adds leads.deleted_at) hasn't run yet, PostgREST
+    // rejects the whole query over one unknown column -- retry without the
+    // filter rather than showing an empty page.
+    let { data, error } = await db
       .from("leads")
-      .select("id, name, channel, status, phone, created_at")
+      .select("id, name, channel, status, phone, email, form_data, created_at")
       .eq("tenant_id", tenant.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
+    if (error?.code === "PGRST204" || error?.code === "42703") {
+      console.warn("[leads] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
+      ({ data, error } = await db
+        .from("leads")
+        .select("id, name, channel, status, phone, email, form_data, created_at")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: false }));
+    }
 
     if (error) console.error("[leads] query failed:", error.code, error.message);
     setLeads((data ?? []) as Lead[]);
     setLoading(false);
+  }
+
+  async function handleStatusChange(id: string, status: Stage) {
+    setSavingStatus(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("leads").update({ status }).eq("id", id);
+    if (error) {
+      console.error("[leads] status update failed:", error.code, error.message);
+    } else {
+      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+    }
+    setSavingStatus(false);
+  }
+
+  // FIX 8: soft delete -- moves the lead to the Recycle Bin (Settings) rather
+  // than discarding it. Only ever sets deleted_at; never removes the row.
+  async function handleDeleteLead(id: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("leads").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    if (error) {
+      console.error("[leads] soft delete failed:", error.code, error.message);
+      return false;
+    }
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+    return true;
   }
 
   const filtered = leads.filter((l) => {
@@ -212,8 +366,8 @@ export default function LeadsPage() {
                     {/* Cards */}
                     <div className="flex flex-col gap-2">
                       {stageLeads.map((lead) => (
-                        <div key={lead.id}
-                          className="bg-white rounded-xl border border-[#E5E7EB] p-4 hover:border-[#FF6B35]/30 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all duration-150">
+                        <button key={lead.id} type="button" onClick={() => setSelectedId(lead.id)}
+                          className="text-left bg-white rounded-xl border border-[#E5E7EB] p-4 hover:border-[#FF6B35]/30 hover:shadow-sm transition-all duration-150 w-full">
                           <div className="flex items-start justify-between gap-2 mb-2.5">
                             <div className="flex items-center gap-2 min-w-0">
                               <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
@@ -232,7 +386,7 @@ export default function LeadsPage() {
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.created_at, t)}</span>
                           </div>
-                        </div>
+                        </button>
                       ))}
 
                       {stageLeads.length === 0 && (
@@ -248,6 +402,23 @@ export default function LeadsPage() {
           )}
         </>
       )}
+
+      {selectedId && (() => {
+        const selectedLead = leads.find((l) => l.id === selectedId);
+        if (!selectedLead) return null;
+        return (
+          <LeadDetailModal
+            lead={selectedLead}
+            saving={savingStatus}
+            onStatusChange={(status) => handleStatusChange(selectedLead.id, status)}
+            onDelete={async () => {
+              const ok = await handleDeleteLead(selectedLead.id);
+              if (ok) setSelectedId(null);
+            }}
+            onClose={() => setSelectedId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -1301,10 +1301,17 @@ export default function WebsitePage() {
   }, [previewVersionHtml, publishedUrl]);
 
   // ── Mount: load persisted state ──────────────────────────────────────────────
+  // FIX 2 (round F): Channels page's Website "Manage" now deep-links here via
+  // ?site={websiteId}&tab=analytics instead of opening its own modal. Read
+  // via window.location.search (not useSearchParams) so this large,
+  // statically-prerendered client page never needs a Suspense boundary.
   useEffect(() => {
     (async () => {
       try {
-        const res  = await fetch("/api/website/state");
+        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const requestedSite = params?.get("site");
+        const requestedTab  = params?.get("tab");
+        const res  = await fetch(requestedSite ? `/api/website/state?websiteId=${encodeURIComponent(requestedSite)}` : "/api/website/state");
         const data = await res.json() as {
           websiteId?:    string | null;
           html?:         string | null;
@@ -1358,6 +1365,14 @@ export default function WebsitePage() {
         if (Array.isArray(data.projects)) setProjects(data.projects as WebsiteProject[]);
         if (data.customDomain) { setCustomDomain(data.customDomain); setDomainInput(data.customDomain); }
         if (data.domainStatus) setDomainStatus(data.domainStatus as "pending" | "verified" | "failed");
+
+        if (requestedTab === "analytics" && data.websiteId && data.isPublished) {
+          setShowAnalyticsPanel(true);
+          setShowVersionsPanel(false);
+          setActiveTab("preview");
+          void loadAnalytics();
+        }
+        if (requestedSite || requestedTab) window.history.replaceState({}, "", "/app/website");
 
       } catch { /* ignore. Show empty state */ }
       setLoading(false);
@@ -2474,11 +2489,16 @@ export default function WebsitePage() {
           </div>
         </div>
 
-        {/* LEFT: Chat */}
+        {/* LEFT: Chat -- FIX 2 (round F): hidden entirely (all breakpoints,
+            not just mobile) while Analytics is open, so the Analytics tab
+            actually goes full-width instead of sharing the row with a
+            still-visible chat panel on desktop. Only a className toggle --
+            no chat state is ever torn down, so "← Chat" restores chat +
+            preview exactly as they were. */}
         <div
           ref={chatPanelRef}
-          className={`${activeTab === "preview" ? "hidden" : "flex"} md:flex w-full flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0 relative`}
-          style={typeof window !== "undefined" && window.innerWidth >= 768 ? { width: chatWidth } : undefined}
+          className={`${showAnalyticsPanel ? "hidden" : `${activeTab === "preview" ? "hidden" : "flex"} md:flex`} w-full flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0 relative`}
+          style={typeof window !== "undefined" && window.innerWidth >= 768 && !showAnalyticsPanel ? { width: chatWidth } : undefined}
         >
 
           {/* FIX 6: "Build with AI" subheading -- confirmed missing
@@ -2905,103 +2925,120 @@ export default function WebsitePage() {
               </div>
 
             ) : showAnalyticsPanel ? (
-              /* ── Analytics — full-width in preview pane ──────────────────── */
-              <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                <div className="flex items-center justify-between">
+              /* ── Analytics — FIX 2 (round F) redesign: full-width now that
+                 the chat panel is hidden while this is open, cleaner card
+                 hierarchy matching the rest of the app (white bordered
+                 cards, not flat grey fill), real "← Back to editor" action
+                 that restores chat + preview exactly (nothing unmounts --
+                 this only flips visibility). ──────────────────────────── */
+              <div className="flex-1 overflow-y-auto bg-[#F9FAFB] dark:bg-[#101014]">
+                <div className="max-w-3xl mx-auto p-6 space-y-5">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <button
+                      onClick={() => { setShowAnalyticsPanel(false); setActiveTab("chat"); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white transition-colors px-2.5 py-1.5 -ml-2.5 rounded-lg hover:bg-white dark:hover:bg-[#1E1E24]"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2.5L3 6l4.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      Back to editor
+                    </button>
+                    <button onClick={loadAnalytics} disabled={analyticsLoading}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] text-[#6B7280] dark:text-[#9CA3AF] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] disabled:opacity-40 transition-colors">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={analyticsLoading ? "animate-spin" : ""}><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                      {analyticsLoading ? "Refreshing…" : "Refresh"}
+                    </button>
+                  </div>
+
                   <div>
-                    <h2 className="text-base font-bold text-[#111111] dark:text-white">Analytics</h2>
+                    <h2 className="text-lg font-bold text-[#111111] dark:text-white">Analytics</h2>
                     <p className="text-xs text-[#9CA3AF] mt-0.5">{siteName || "Your site"}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button onClick={loadAnalytics} disabled={analyticsLoading}
-                      className="text-[11px] text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] disabled:opacity-40 transition-colors">
-                      {analyticsLoading ? "…" : "↻ Refresh"}
-                    </button>
-                    <button onClick={() => setShowAnalyticsPanel(false)}
-                      className="text-[11px] text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors">
-                      ✕ Close
-                    </button>
-                  </div>
-                </div>
-                {!isPublished ? (
-                  <div className="text-center py-8 space-y-2">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                    <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Publish your site to start collecting analytics</p>
-                  </div>
-                ) : analyticsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                  </div>
-                ) : !analyticsData ? (
-                  <p className="text-sm text-[#9CA3AF] text-center py-8">Could not load analytics.</p>
-                ) : analyticsData.totalVisits === 0 ? (
-                  <div className="text-center py-8 space-y-2">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                    <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
-                    <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-4 gap-3">
-                      {([
-                        { label: "Total visits",    value: analyticsData.totalVisits    },
-                        { label: "Unique visitors", value: analyticsData.uniqueVisitors },
-                        { label: "Last 7 days",     value: analyticsData.last7Days      },
-                        { label: "Last 30 days",    value: analyticsData.last30Days     },
-                      ] as { label: string; value: number }[]).map(({ label, value }) => (
-                        <div key={label} className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                          <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
-                          <p className="text-xs text-[#9CA3AF] mt-1">{label}</p>
-                        </div>
-                      ))}
+
+                  {!isPublished ? (
+                    <div className="text-center py-16 space-y-2 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                      <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Publish your site to start collecting analytics</p>
                     </div>
-                    <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                      <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide mb-3">Daily visits: last 30 days</p>
-                      {(() => {
-                        const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
-                        return (
-                          <div className="flex items-end gap-px h-20">
-                            {analyticsData.dailyVisits.map((d, i) => (
-                              <div key={i} title={`${d.date}: ${d.count}`}
-                                className="flex-1 rounded-t-sm"
-                                style={{ height: d.count > 0 ? `${Math.max((d.count / maxVal) * 100, 4)}%` : "2px", background: d.count > 0 ? "var(--vp-color)" : "#E5E7EB", opacity: d.count > 0 ? 1 : 0.3 }}
-                              />
-                            ))}
-                          </div>
-                        );
-                      })()}
-                      <div className="flex justify-between mt-2">
-                        <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
-                        <span className="text-[10px] text-[#9CA3AF]">Today</span>
-                      </div>
+                  ) : analyticsLoading ? (
+                    <div className="flex items-center justify-center py-16 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
+                      <div className="w-8 h-8 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      {analyticsData.topReferrers.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">Top sources</p>
-                          {analyticsData.topReferrers.map(({ referrer, count }) => (
-                            <div key={referrer} className="flex items-center gap-2">
-                              <span className="flex-1 text-xs text-[#374151] dark:text-[#E5E7EB] truncate min-w-0">{referrer}</span>
-                              <span className="text-xs font-semibold text-[#6B7280] shrink-0 tabular-nums">{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">Devices</p>
-                        {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
-                          <div key={dev} className="flex items-center gap-2">
-                            <span className="text-xs text-[#374151] dark:text-[#E5E7EB] w-14 shrink-0 capitalize">{dev}</span>
-                            <div className="flex-1 h-1.5 bg-[#E5E7EB] dark:bg-[#2A2A32] rounded-full overflow-hidden">
-                              <div className="h-full rounded-full transition-all" style={{ width: `${analyticsData.deviceSplit[dev]}%`, background: "var(--vp-color)" }} />
-                            </div>
-                            <span className="text-xs font-semibold text-[#6B7280] w-8 text-right shrink-0 tabular-nums">{analyticsData.deviceSplit[dev]}%</span>
+                  ) : !analyticsData ? (
+                    <p className="text-sm text-[#9CA3AF] text-center py-16 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">Could not load analytics.</p>
+                  ) : analyticsData.totalVisits === 0 ? (
+                    <div className="text-center py-16 space-y-2 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                      <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
+                      <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {([
+                          { label: "Total visits",    value: analyticsData.totalVisits    },
+                          { label: "Unique visitors", value: analyticsData.uniqueVisitors },
+                          { label: "Last 7 days",     value: analyticsData.last7Days      },
+                          { label: "Last 30 days",    value: analyticsData.last30Days     },
+                        ] as { label: string; value: number }[]).map(({ label, value }) => (
+                          <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                            <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
+                            <p className="text-xs text-[#9CA3AF] mt-1">{label}</p>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  </>
-                )}
+
+                      <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
+                        <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-4">Daily visits · last 30 days</p>
+                        {(() => {
+                          const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
+                          return (
+                            <div className="flex items-end gap-px h-24">
+                              {analyticsData.dailyVisits.map((d, i) => (
+                                <div key={i} title={`${d.date}: ${d.count}`}
+                                  className="flex-1 rounded-t-sm"
+                                  style={{ height: d.count > 0 ? `${Math.max((d.count / maxVal) * 100, 4)}%` : "2px", background: d.count > 0 ? "var(--vp-color)" : "#E5E7EB", opacity: d.count > 0 ? 1 : 0.3 }}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })()}
+                        <div className="flex justify-between mt-2.5 pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                          <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
+                          <span className="text-[10px] text-[#9CA3AF]">Today</span>
+                        </div>
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {analyticsData.topReferrers.length > 0 && (
+                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
+                            <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Top sources</p>
+                            <div className="space-y-2.5">
+                              {analyticsData.topReferrers.map(({ referrer, count }) => (
+                                <div key={referrer} className="flex items-center gap-2">
+                                  <span className="flex-1 text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate min-w-0">{referrer}</span>
+                                  <span className="text-xs font-semibold text-[#111111] dark:text-white shrink-0 tabular-nums">{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
+                          <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Devices</p>
+                          <div className="space-y-2.5">
+                            {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
+                              <div key={dev} className="flex items-center gap-2">
+                                <span className="text-xs text-[#6B7280] dark:text-[#9CA3AF] w-14 shrink-0 capitalize">{dev}</span>
+                                <div className="flex-1 h-1.5 bg-[#F3F4F6] dark:bg-[#2A2A32] rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full transition-all" style={{ width: `${analyticsData.deviceSplit[dev]}%`, background: "var(--vp-color)" }} />
+                                </div>
+                                <span className="text-xs font-semibold text-[#111111] dark:text-white w-8 text-right shrink-0 tabular-nums">{analyticsData.deviceSplit[dev]}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
             ) : device === "desktop" ? (

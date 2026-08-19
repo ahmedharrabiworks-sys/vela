@@ -56,7 +56,20 @@
       "aiConfig": "KI-Konfiguration",
       "notifications": "Benachrichtigungen",
       "billing": "Abrechnung",
-      "appearance": "Erscheinungsbild"
+      "appearance": "Erscheinungsbild",
+      "recycleBin": "Papierkorb"
+    },
+    "recycleBin": {
+      "title": "Papierkorb",
+      "subtitle": "Gelöschte Leads, Unterhaltungen und Termine bleiben hier, bis Sie sie wiederherstellen oder endgültig löschen.",
+      "migrationPending": "Die Einrichtung des Papierkorbs ist auf dem Server noch nicht abgeschlossen — gelöschte Elemente erscheinen möglicherweise noch nicht.",
+      "empty": "Papierkorb ist leer",
+      "emptyHint": "Alles, was Sie aus Leads, Unterhaltungen oder Terminen löschen, erscheint zuerst hier.",
+      "leads": "Leads",
+      "conversations": "Unterhaltungen",
+      "appointments": "Termine",
+      "restore": "Wiederherstellen",
+      "deleteForever": "Endgültig löschen"
     },
     "businessInfo": {
       "title": "Unternehmensinformationen",
@@ -315,7 +328,18 @@
     "noLeadsGlobal": "Noch keine Leads",
     "leadsHint": "Leads werden automatisch erstellt, wenn Kunden über Ihre verbundenen Kanäle Kontakt aufnehmen.",
     "connectChannel": "Kanal verbinden",
-    "emptyColumn": "Keine Leads"
+    "emptyColumn": "Keine Leads",
+    "detail": {
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "service": "Angefragte Leistung",
+      "message": "Nachricht",
+      "noDetails": "Keine weiteren Details für diesen Lead erfasst.",
+      "stage": "Pipeline-Phase",
+      "delete": "Lead löschen",
+      "confirmDelete": "Löschen bestätigen",
+      "cancelDelete": "Abbrechen"
+    }
   },
   "website": {
     "title": "Website-Builder",

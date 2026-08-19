@@ -235,6 +235,33 @@ function CancelModal({ apt, onConfirm, onClose }: { apt: Appointment; onConfirm:
   );
 }
 
+// FIX 8 (round F): confirmation for the real soft delete -- same visual
+// pattern as CancelModal, different copy since this removes the row from
+// the normal view entirely (recoverable from Settings -> Recycle Bin),
+// unlike Cancel which just marks status and keeps it visible.
+function DeleteModal({ apt, onConfirm, onClose }: { apt: Appointment; onConfirm: () => void; onClose: () => void }) {
+  return (
+    <Modal onClose={onClose}>
+      <div className="p-6">
+        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-4">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 7v4M9 13h.01M3 15h12a1.5 1.5 0 001.3-2.25L10.3 3.75a1.5 1.5 0 00-2.6 0L1.7 12.75A1.5 1.5 0 003 15z" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <h3 className="font-bold text-[#111111] mb-2">Delete appointment?</h3>
+        <p className="text-sm text-[#6B7280] leading-relaxed mb-6">
+          <span className="font-semibold text-[#111111]">{apt.name}&apos;s</span> {apt.service} on{" "}
+          <span className="font-semibold text-[#111111]">{apt.dateLabel} at {apt.time}</span> will be removed from this list. You can restore it from Settings → Recycle Bin.
+        </p>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[#374151] border border-[#E5E7EB]">Keep it</button>
+          <button onClick={onConfirm} className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 bg-red-500">
+            Yes, Delete
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function SortIcon({ dir, active }: { dir: SortDir; active: boolean }) {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-colors ${active ? "text-[#FF6B35]" : "text-[#ddd]"}`}>
@@ -251,7 +278,7 @@ export default function AppointmentsPage() {
   const [filter, setFilter]           = useState<FilterKey>("all");
   const [sortKey, setSortKey]         = useState<SortKey>("date");
   const [sortDir, setSortDir]         = useState<SortDir>("asc");
-  const [modal, setModal]             = useState<{ type: "message" | "reschedule" | "cancel"; id: string } | null>(null);
+  const [modal, setModal]             = useState<{ type: "message" | "reschedule" | "cancel" | "delete"; id: string } | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const { isStarter, config }         = usePlan();
   const { t }                         = useI18n();
@@ -259,15 +286,24 @@ export default function AppointmentsPage() {
   const loadData = useCallback(async (tId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
-    // Fallback: if migration_v29.sql (adds appointments.rescheduled) hasn't
-    // run yet, PostgREST rejects the whole query over one unknown column --
-    // retry without it rather than showing an empty page for something
-    // unrelated to real appointment data.
+    // Tiered fallback: migration_v29.sql (rescheduled) and/or migration_v30.sql
+    // (deleted_at, FIX 8 round F) may not have run yet in production.
+    // PostgREST rejects the WHOLE query over one unknown column/filter --
+    // degrade tier by tier rather than showing an empty page.
     let { data, error } = await db
       .from("appointments")
       .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
       .eq("tenant_id", tId)
+      .is("deleted_at", null)
       .order("datetime", { ascending: true });
+    if (error?.code === "PGRST204" || error?.code === "42703") {
+      console.warn("[appointments] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
+      ({ data, error } = await db
+        .from("appointments")
+        .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
+        .eq("tenant_id", tId)
+        .order("datetime", { ascending: true }));
+    }
     if (error?.code === "PGRST204" || error?.code === "42703") {
       console.warn("[appointments] rescheduled column missing — run migration_v29.sql. Retrying without it.");
       ({ data } = await db
@@ -409,6 +445,19 @@ export default function AppointmentsPage() {
     flashRow(id);
   };
 
+  // FIX 8 (round F): soft delete -- moves the appointment to the Recycle
+  // Bin (Settings) instead of just marking it "Cancelled" (which stayed
+  // visible in the normal list). Only ever sets deleted_at; never removes
+  // the row itself.
+  const handleDelete = async () => {
+    if (!modal) return;
+    const id = modal.id;
+    setModal(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getSupabase() as any).from("appointments").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+  };
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("asc"); }
@@ -453,6 +502,7 @@ export default function AppointmentsPage() {
       {modal?.type === "message"    && modalApt && <SendModal       apt={modalApt} onClose={() => setModal(null)} />}
       {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
       {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
+      {modal?.type === "delete"     && modalApt && <DeleteModal     apt={modalApt} onConfirm={handleDelete}    onClose={() => setModal(null)} />}
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -627,6 +677,13 @@ export default function AppointmentsPage() {
                               className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white hover:opacity-90 whitespace-nowrap min-h-[30px]"
                               style={{ background: "var(--vela-gradient)" }}>
                               Message
+                            </button>
+                            <button onClick={() => setModal({ type: "delete", id: apt.id })}
+                              title="Delete"
+                              className="shrink-0 w-[30px] h-[30px] flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-red-50 hover:text-red-500 transition-all">
+                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                                <path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
                             </button>
                           </div>
                         </td>

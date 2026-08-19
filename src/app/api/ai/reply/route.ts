@@ -123,11 +123,22 @@ export async function POST(req: NextRequest) {
     if (site?.name) siteName = site.name as string;
   }
 
-  const { data: config } = await admin
+  // FIX 2 (round F): channel_ai_config may not exist yet (migration_v30.sql
+  // pending) -- same tiered-fallback pattern used elsewhere in this codebase
+  // for not-yet-migrated columns, so a missing column never breaks the
+  // tenant_config read this whole route depends on.
+  let { data: config, error: configErr } = await admin
     .from("tenant_config")
-    .select("services_json, faq_json, tone, language, booking_rules, knowledge_base")
+    .select("services_json, faq_json, tone, language, booking_rules, knowledge_base, channel_ai_config")
     .eq("tenant_id", tenantId)
     .maybeSingle();
+  if (configErr?.code === "PGRST204" || configErr?.code === "42703") {
+    ({ data: config } = await admin
+      .from("tenant_config")
+      .select("services_json, faq_json, tone, language, booking_rules, knowledge_base")
+      .eq("tenant_id", tenantId)
+      .maybeSingle());
+  }
 
   /* ── 2. Plan-level message cap (Starter only — Pro/Premium/Custom = Infinity) ── */
   const planId = ((tenant.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
@@ -297,7 +308,7 @@ export async function POST(req: NextRequest) {
   type KbBusiness   = { hours?: string; address?: string; bookingPolicy?: string; tone?: string };
   type KnowledgeBase = { services?: KbService[]; faqs?: KbFaq[]; business?: KbBusiness; extra?: string };
   type TenantRow    = { business_name: string; industry?: string; city?: string; phone?: string; website?: string };
-  type ConfigRow    = { services_json?: ServiceRow[]; faq_json?: FaqRow[]; tone?: string; language?: string; booking_rules?: Record<string, unknown>; knowledge_base?: string };
+  type ConfigRow    = { services_json?: ServiceRow[]; faq_json?: FaqRow[]; tone?: string; language?: string; booking_rules?: Record<string, unknown>; knowledge_base?: string; channel_ai_config?: Record<string, { tone?: string; language?: string }> };
   type BookingRow   = { datetime: string; service_name?: string };
 
   const t = tenant as TenantRow;
@@ -316,8 +327,13 @@ export async function POST(req: NextRequest) {
 
   const legacyServices: ServiceRow[] = cfg.services_json ?? [];
   const legacyFaqs: FaqRow[]         = cfg.faq_json ?? [];
-  const tone     = kbBusiness.tone ?? cfg.tone ?? "professional";
-  const language = cfg.language ?? "Auto-detect";
+  // FIX 2 (round F): a per-channel override (set from Channels -> Manage,
+  // Instagram/WhatsApp only) takes priority over the tenant's global
+  // tone/language, which in turn still beats the KB's own tone default.
+  // Website channel has no override surface, so it always uses the global.
+  const channelOverride = cfg.channel_ai_config?.[channel];
+  const tone     = channelOverride?.tone ?? kbBusiness.tone ?? cfg.tone ?? "professional";
+  const language = channelOverride?.language ?? cfg.language ?? "Auto-detect";
   const bookingRules = cfg.booking_rules as { workingHours?: { start: string; end: string; days: string[] } } | undefined;
 
   // Services: prefer KB, fall back to legacy

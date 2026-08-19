@@ -56,7 +56,20 @@
       "aiConfig": "AI Configuration",
       "notifications": "Notifications",
       "billing": "Billing",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "recycleBin": "Recycle Bin"
+    },
+    "recycleBin": {
+      "title": "Recycle Bin",
+      "subtitle": "Deleted leads, conversations, and appointments live here until you restore or permanently delete them.",
+      "migrationPending": "Recycle Bin setup is still finishing on the server — deleted items may not appear yet.",
+      "empty": "Recycle Bin is empty",
+      "emptyHint": "Anything you delete from Leads, Conversations, or Appointments shows up here first.",
+      "leads": "Leads",
+      "conversations": "Conversations",
+      "appointments": "Appointments",
+      "restore": "Restore",
+      "deleteForever": "Delete forever"
     },
     "businessInfo": {
       "title": "Business Information",
@@ -314,7 +327,18 @@
     "noLeadsGlobal": "No leads yet",
     "leadsHint": "Leads are created automatically when customers message through your connected channels.",
     "connectChannel": "Connect a channel",
-    "emptyColumn": "No leads"
+    "emptyColumn": "No leads",
+    "detail": {
+      "phone": "Phone",
+      "email": "Email",
+      "service": "Service requested",
+      "message": "Message",
+      "noDetails": "No additional details captured for this lead.",
+      "stage": "Pipeline stage",
+      "delete": "Delete lead",
+      "confirmDelete": "Confirm delete",
+      "cancelDelete": "Cancel"
+    }
   },
   "website": {
     "title": "Website Builder",

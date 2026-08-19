@@ -56,7 +56,20 @@
       "aiConfig": "Configuration IA",
       "notifications": "Notifications",
       "billing": "Facturation",
-      "appearance": "Apparence"
+      "appearance": "Apparence",
+      "recycleBin": "Corbeille"
+    },
+    "recycleBin": {
+      "title": "Corbeille",
+      "subtitle": "Les prospects, conversations et rendez-vous supprimés restent ici jusqu'à ce que vous les restauriez ou les supprimiez définitivement.",
+      "migrationPending": "La configuration de la corbeille est encore en cours côté serveur — les éléments supprimés peuvent ne pas encore apparaître.",
+      "empty": "La corbeille est vide",
+      "emptyHint": "Tout ce que vous supprimez depuis Prospects, Conversations ou Rendez-vous apparaît d'abord ici.",
+      "leads": "Prospects",
+      "conversations": "Conversations",
+      "appointments": "Rendez-vous",
+      "restore": "Restaurer",
+      "deleteForever": "Supprimer définitivement"
     },
     "businessInfo": {
       "title": "Informations sur l'entreprise",
@@ -315,7 +328,18 @@
     "noLeadsGlobal": "Aucun prospect pour l'instant",
     "leadsHint": "Les prospects sont créés automatiquement quand des clients vous contactent via vos canaux connectés.",
     "connectChannel": "Connecter un canal",
-    "emptyColumn": "Aucun prospect"
+    "emptyColumn": "Aucun prospect",
+    "detail": {
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "service": "Service demandé",
+      "message": "Message",
+      "noDetails": "Aucun détail supplémentaire pour ce prospect.",
+      "stage": "Étape du pipeline",
+      "delete": "Supprimer le prospect",
+      "confirmDelete": "Confirmer la suppression",
+      "cancelDelete": "Annuler"
+    }
   },
   "website": {
     "title": "Créateur de site web",

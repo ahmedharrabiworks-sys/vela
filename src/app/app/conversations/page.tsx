@@ -123,11 +123,24 @@ export default function ConversationsPage() {
   const fetchConversations = useCallback(async (tId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
-    const { data, error: err } = await db
+    // FIX 8: exclude soft-deleted conversations (Recycle Bin). Fallback: if
+    // migration_v30.sql (adds conversations.deleted_at) hasn't run yet,
+    // PostgREST rejects the whole query over one unknown column -- retry
+    // without the filter rather than showing an empty inbox.
+    let { data, error: err } = await db
       .from("conversations")
       .select("*, needs_human")
       .eq("tenant_id", tId)
+      .is("deleted_at", null)
       .order("last_message_at", { ascending: false });
+    if (err?.code === "PGRST204" || err?.code === "42703") {
+      console.warn("[conversations] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
+      ({ data, error: err } = await db
+        .from("conversations")
+        .select("*, needs_human")
+        .eq("tenant_id", tId)
+        .order("last_message_at", { ascending: false }));
+    }
 
     if (err) {
       setError(t("conversations.errorLoadFailed"));

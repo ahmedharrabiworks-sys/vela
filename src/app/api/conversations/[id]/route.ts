@@ -6,10 +6,11 @@ export const dynamic = "force-dynamic";
 /**
  * PATCH /api/conversations/[id]
  * Renames a conversation's display name (customer_name — the same field
- * rendered in the conversation list and thread header).
+ * rendered in the conversation list and thread header), OR restores a
+ * soft-deleted conversation out of the Recycle Bin (FIX 8, round F).
  * Auth-gated: the conversation's tenant must be owned by the calling user.
  *
- * Body: { name: string }
+ * Body: { name: string } | { restore: true }
  */
 export async function PATCH(
   req: NextRequest,
@@ -20,11 +21,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { name } = body as { name?: string };
-  const trimmed = name?.trim();
-  if (!trimmed) {
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
-  }
+  const { name, restore } = body as { name?: string; restore?: boolean };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
@@ -43,6 +40,23 @@ export async function PATCH(
   const ownerId = (conv.tenants as any)?.owner_id;
   if (ownerId !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (restore === true) {
+    const { error: restoreErr } = await admin
+      .from("conversations")
+      .update({ deleted_at: null })
+      .eq("id", params.id);
+    if (restoreErr) {
+      console.error("[conversations/[id]] restore failed:", restoreErr.message);
+      return NextResponse.json({ error: "Restore failed" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  const trimmed = name?.trim();
+  if (!trimmed) {
+    return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
   const { error: updateErr } = await admin
@@ -60,17 +74,22 @@ export async function PATCH(
 
 /**
  * DELETE /api/conversations/[id]
- * Permanently deletes a conversation and its messages (messages.conversation_id
- * is ON DELETE CASCADE, so a single row delete is sufficient).
+ * FIX 8 (round F): soft-deletes by default (sets deleted_at — the
+ * conversation moves to Settings -> Recycle Bin, fully recoverable). Pass
+ * ?hard=true to permanently delete instead (used only by the Recycle Bin's
+ * "Delete Permanently" action) — messages.conversation_id is ON DELETE
+ * CASCADE, so a single row delete is sufficient for that path.
  * Auth-gated: the conversation's tenant must be owned by the calling user.
  */
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } },
 ) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const hard = req.nextUrl.searchParams.get("hard") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
@@ -91,13 +110,37 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { error: deleteErr } = await admin
+  if (hard) {
+    const { error: deleteErr } = await admin
+      .from("conversations")
+      .delete()
+      .eq("id", params.id);
+    if (deleteErr) {
+      console.error("[conversations/[id]] hard delete failed:", deleteErr.message);
+      return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  const { error: softDeleteErr } = await admin
     .from("conversations")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", params.id);
 
-  if (deleteErr) {
-    console.error("[conversations/[id]] delete failed:", deleteErr.message);
+  if (softDeleteErr?.code === "PGRST204" || softDeleteErr?.code === "42703") {
+    // migration_v30.sql hasn't run yet -- fall back to the old hard-delete
+    // behavior rather than making Delete silently do nothing.
+    console.warn("[conversations/[id]] deleted_at column missing — run migration_v30.sql. Falling back to hard delete.");
+    const { error: fallbackErr } = await admin.from("conversations").delete().eq("id", params.id);
+    if (fallbackErr) {
+      console.error("[conversations/[id]] fallback hard delete failed:", fallbackErr.message);
+      return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (softDeleteErr) {
+    console.error("[conversations/[id]] soft delete failed:", softDeleteErr.message);
     return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 

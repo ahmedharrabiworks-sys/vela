@@ -359,9 +359,12 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
    stats, and for Website the one real toggle that exists
    (embedAssistant) -- moved here from the card body, not duplicated.
    Disconnect lives here too instead of only as a separate card button. */
+const CHANNEL_AI_TONES = ["professional", "friendly", "formal", "casual"];
+const CHANNEL_AI_LANGUAGES = ["English", "Arabic", "Auto-detect"];
+
 function ChannelSettingsModal({
   channel, identity, stats, onClose, onDisconnect, disconnecting,
-  websiteExtra,
+  websiteExtra, aiConfig,
 }: {
   channel: "instagram" | "whatsapp" | "website";
   identity: string;
@@ -374,6 +377,19 @@ function ChannelSettingsModal({
     embedAssistant: boolean;
     savingAssistant: boolean;
     onToggleAssistant: () => void;
+  };
+  // FIX 2 (round F): real per-channel AI-behavior config -- reuses the exact
+  // tone/language vocabulary from Settings -> AI Configuration, scoped to
+  // just this channel via tenant_config.channel_ai_config.
+  aiConfig?: {
+    loading: boolean;
+    tone: string;
+    language: string;
+    saving: boolean;
+    saved: boolean;
+    onToneChange: (v: string) => void;
+    onLanguageChange: (v: string) => void;
+    onSave: () => void;
   };
 }) {
   const TITLES: Record<typeof channel, string> = {
@@ -402,6 +418,51 @@ function ChannelSettingsModal({
             </div>
           ))}
         </div>
+
+        {aiConfig && (
+          <div className="space-y-4 mb-5">
+            {aiConfig.loading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="w-5 h-5 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-xs font-semibold text-[#374151] mb-2">AI response tone for this channel</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CHANNEL_AI_TONES.map((v) => (
+                      <button key={v} type="button" onClick={() => aiConfig.onToneChange(v)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${aiConfig.tone === v ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
+                        style={aiConfig.tone === v ? { background: "var(--vela-gradient)" } : {}}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-[#374151] mb-2">Reply language for this channel</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CHANNEL_AI_LANGUAGES.map((v) => (
+                      <button key={v} type="button" onClick={() => aiConfig.onLanguageChange(v)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${aiConfig.language === v ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
+                        style={aiConfig.language === v ? { background: "var(--vela-gradient)" } : {}}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3">
+                  {aiConfig.saved && <span className="text-xs text-green-600 font-medium">Saved</span>}
+                  <button onClick={aiConfig.onSave} disabled={aiConfig.saving}
+                    className="text-xs font-bold px-4 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    style={{ background: "var(--vela-gradient)" }}>
+                    {aiConfig.saving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {websiteExtra && (
           <div className="space-y-3 mb-5">
@@ -501,12 +562,20 @@ function ChannelsPageContent() {
   const [savingAssistant, setSavingAssistant] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
   const embedSectionRef             = useRef<HTMLDivElement>(null);
-  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | "website-settings" | null>(null);
+  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
   const [copied, setCopied]         = useState(false);
   const [tenantId, setTenantId]     = useState("YOUR_TENANT_ID");
   const [loading, setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<"instagram" | "whatsapp" | null>(null);
+
+  // FIX 2 (round F): per-channel AI-behavior config, lazily fetched when
+  // the instagram/whatsapp "Manage" modal opens.
+  const [aiCfgLoading, setAiCfgLoading]   = useState(false);
+  const [aiCfgSaving, setAiCfgSaving]     = useState(false);
+  const [aiCfgSaved, setAiCfgSaved]       = useState(false);
+  const [aiCfgTone, setAiCfgTone]         = useState("professional");
+  const [aiCfgLanguage, setAiCfgLanguage] = useState("Auto-detect");
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
 
@@ -622,6 +691,40 @@ function ChannelsPageContent() {
     setBottomSheetOpen(modal !== null);
     return () => setBottomSheetOpen(false);
   }, [modal]);
+
+  // FIX 2 (round F): load this channel's real AI-behavior config whenever
+  // its settings modal opens.
+  useEffect(() => {
+    const ch = modal === "instagram-settings" ? "instagram" : modal === "whatsapp-settings" ? "whatsapp" : null;
+    if (!ch) return;
+    setAiCfgLoading(true);
+    setAiCfgSaved(false);
+    fetch(`/api/channels/ai-config?channel=${ch}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { tone?: string; language?: string } | null) => {
+        setAiCfgTone(data?.tone ?? "professional");
+        setAiCfgLanguage(data?.language ?? "Auto-detect");
+      })
+      .catch(() => {})
+      .finally(() => setAiCfgLoading(false));
+  }, [modal]);
+
+  const saveChannelAiConfig = async (ch: "instagram" | "whatsapp") => {
+    setAiCfgSaving(true);
+    try {
+      const res = await fetch("/api/channels/ai-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: ch, tone: aiCfgTone, language: aiCfgLanguage }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setAiCfgSaved(true);
+      setTimeout(() => setAiCfgSaved(false), 2000);
+    } catch {
+      setToast({ msg: "Could not save AI settings. Please try again.", type: "error" });
+    }
+    setAiCfgSaving(false);
+  };
 
   // Handle OAuth callback params from URL
   useEffect(() => {
@@ -778,6 +881,12 @@ function ChannelsPageContent() {
           onClose={() => setModal(null)}
           onDisconnect={() => { setModal(null); disconnect("instagram"); }}
           disconnecting={disconnecting === "instagram"}
+          aiConfig={{
+            loading: aiCfgLoading, tone: aiCfgTone, language: aiCfgLanguage,
+            saving: aiCfgSaving, saved: aiCfgSaved,
+            onToneChange: setAiCfgTone, onLanguageChange: setAiCfgLanguage,
+            onSave: () => saveChannelAiConfig("instagram"),
+          }}
         />
       )}
       {modal === "whatsapp-settings" && (
@@ -791,22 +900,11 @@ function ChannelsPageContent() {
           onClose={() => setModal(null)}
           onDisconnect={() => { setModal(null); disconnect("whatsapp"); }}
           disconnecting={disconnecting === "whatsapp"}
-        />
-      )}
-      {modal === "website-settings" && (
-        <ChannelSettingsModal
-          channel="website"
-          identity={website.siteUrl ?? "Not published"}
-          stats={[
-            { label: "Website visitors", value: website.visits.toLocaleString() },
-            { label: "Chat conversions", value: website.conversations > 0 ? `${Math.round((website.leads / website.conversations) * 1000) / 10}%` : "0%" },
-          ]}
-          onClose={() => setModal(null)}
-          websiteExtra={{
-            siteUrl: website.siteUrl,
-            embedAssistant: website.embedAssistant,
-            savingAssistant,
-            onToggleAssistant: toggleEmbedAssistant,
+          aiConfig={{
+            loading: aiCfgLoading, tone: aiCfgTone, language: aiCfgLanguage,
+            saving: aiCfgSaving, saved: aiCfgSaved,
+            onToneChange: setAiCfgTone, onLanguageChange: setAiCfgLanguage,
+            onSave: () => saveChannelAiConfig("whatsapp"),
           }}
         />
       )}
@@ -1009,20 +1107,19 @@ function ChannelsPageContent() {
                 Chat widget on your website. Live AI conversations with visitors
               </p>
             </div>
-            {/* FIX 3 (round E): "Manage" previously revealed the external-
-                embed-code section -- real, but unrelated to managing THIS
-                channel (that section is for connecting a DIFFERENT, external
-                site). Now opens a real settings view: connection identity,
-                real stats, and the one real toggle that exists
-                (embedAssistant). The embed-code section for external sites
-                remains available below, just no longer what "Manage" means. */}
-            {website.published ? (
-              <button
-                onClick={() => setModal("website-settings")}
+            {/* FIX 2 (round F): "Manage" now takes you straight to this
+                site's real Analytics inside Website Builder (deep-linked via
+                ?site=&tab=analytics) instead of a separate stats-only modal
+                here -- one real place for website performance, not two. The
+                embedAssistant toggle that used to live in that modal moved
+                down into this card's own body (below), so nothing was lost. */}
+            {website.published && website.websiteId ? (
+              <Link
+                href={`/app/website?site=${encodeURIComponent(website.websiteId)}&tab=analytics`}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap shrink-0"
               >
                 Manage
-              </button>
+              </Link>
             ) : (
               <Link
                 href="/app/website"

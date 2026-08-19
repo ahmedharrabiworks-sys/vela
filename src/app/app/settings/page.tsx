@@ -31,7 +31,7 @@ function initPhoneFromRaw(raw: string, fallbackCountry: PhoneCountry): { country
   return { country: fallbackCountry, national: raw };
 }
 
-type Section = "business" | "ai" | "notifications" | "billing";
+type Section = "business" | "ai" | "notifications" | "billing" | "recycleBin";
 
 type UsageData = {
   messages:     { used: number; limit: number | null };
@@ -471,6 +471,15 @@ export default function SettingsPage() {
         </svg>
       ),
     },
+    {
+      id: "recycleBin",
+      labelKey: "settings.tabs.recycleBin",
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+    },
   ];
 
   return (
@@ -871,8 +880,223 @@ export default function SettingsPage() {
 
             </>
           )}
+
+          {/* ── Recycle Bin (FIX 8, round F) ── */}
+          {section === "recycleBin" && <RecycleBinSection t={t} />}
         </div>
       </div>
     </div>
+  );
+}
+
+// FIX 8 (round F): real soft-delete recovery surface for Leads,
+// Conversations, and Appointments. Deleting one of those no longer
+// discards it -- it lands here (deleted_at IS NOT NULL) until the owner
+// restores it or permanently deletes it. Self-contained: fetches its own
+// tenant id + the three deleted lists on mount, same pattern as the
+// per-page loaders elsewhere in the app.
+type BinLead = { id: string; name: string | null; phone: string | null; deleted_at: string };
+type BinConversation = { id: string; customer_name: string | null; channel: string | null; deleted_at: string };
+type BinAppointment = { id: string; service_name: string | null; datetime: string; deleted_at: string };
+
+function RecycleBinSection({ t }: { t: (key: string) => string }) {
+  const [loading, setLoading] = useState(true);
+  const [migrationPending, setMigrationPending] = useState(false);
+  const [leads, setLeads] = useState<BinLead[]>([]);
+  const [conversations, setConversations] = useState<BinConversation[]>([]);
+  const [appointments, setAppointments] = useState<BinAppointment[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) { setLoading(false); return; }
+    const { data: tenant } = await db.from("tenants").select("id").eq("owner_id", user.id).single();
+    if (!tenant) { setLoading(false); return; }
+
+    const [leadsRes, convRes, apptRes] = await Promise.all([
+      db.from("leads").select("id, name, phone, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+      db.from("conversations").select("id, customer_name, channel, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+      db.from("appointments").select("id, service_name, datetime, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+    ]);
+
+    const missingColumn = (e: { code?: string } | null) => e?.code === "PGRST204" || e?.code === "42703";
+    if (missingColumn(leadsRes.error) || missingColumn(convRes.error) || missingColumn(apptRes.error)) {
+      console.warn("[recycle-bin] deleted_at column missing on one or more tables — run migration_v30.sql.");
+      setMigrationPending(true);
+    }
+    setLeads((leadsRes.data ?? []) as BinLead[]);
+    setConversations((convRes.data ?? []) as BinConversation[]);
+    setAppointments((apptRes.data ?? []) as BinAppointment[]);
+    setLoading(false);
+  }
+
+  async function restoreLead(id: string) {
+    setBusyId(id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("leads").update({ deleted_at: null }).eq("id", id);
+    if (!error) setLeads((prev) => prev.filter((l) => l.id !== id));
+    setBusyId(null);
+  }
+  async function deleteLeadForever(id: string) {
+    setBusyId(id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("leads").delete().eq("id", id);
+    if (!error) setLeads((prev) => prev.filter((l) => l.id !== id));
+    setBusyId(null);
+  }
+
+  async function restoreAppointment(id: string) {
+    setBusyId(id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("appointments").update({ deleted_at: null }).eq("id", id);
+    if (!error) setAppointments((prev) => prev.filter((a) => a.id !== id));
+    setBusyId(null);
+  }
+  async function deleteAppointmentForever(id: string) {
+    setBusyId(id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("appointments").delete().eq("id", id);
+    if (!error) setAppointments((prev) => prev.filter((a) => a.id !== id));
+    setBusyId(null);
+  }
+
+  async function restoreConversation(id: string) {
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/conversations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restore: true }),
+      });
+      if (res.ok) setConversations((prev) => prev.filter((c) => c.id !== id));
+    } finally {
+      setBusyId(null);
+    }
+  }
+  async function deleteConversationForever(id: string) {
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/conversations/${id}?hard=true`, { method: "DELETE" });
+      if (res.ok) setConversations((prev) => prev.filter((c) => c.id !== id));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const isEmpty = !loading && leads.length === 0 && conversations.length === 0 && appointments.length === 0;
+
+  return (
+    <>
+      <div>
+        <h2 className="font-semibold text-[#111111]">{t("settings.recycleBin.title")}</h2>
+        <p className="text-xs text-[#9CA3AF] mt-0.5">{t("settings.recycleBin.subtitle")}</p>
+      </div>
+
+      {migrationPending && (
+        <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700">
+          {t("settings.recycleBin.migrationPending")}
+        </div>
+      )}
+
+      {loading && (
+        <div className="space-y-2 animate-pulse">
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-[#F3F4F6] rounded-xl" />)}
+        </div>
+      )}
+
+      {isEmpty && (
+        <div className="flex flex-col items-center justify-center py-14 px-6 text-center bg-[#FAFAFA] rounded-2xl border border-[#E5E7EB]">
+          <p className="text-sm font-bold text-[#374151] mb-1">{t("settings.recycleBin.empty")}</p>
+          <p className="text-xs text-[#9CA3AF]">{t("settings.recycleBin.emptyHint")}</p>
+        </div>
+      )}
+
+      {!loading && leads.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">{t("settings.recycleBin.leads")}</p>
+          <div className="space-y-1.5">
+            {leads.map((l) => (
+              <div key={l.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[#E5E7EB] bg-white">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#111111] truncate">{l.name ?? t("dashboard.unknown")}</p>
+                  <p className="text-[10px] text-[#9CA3AF]">{l.phone ?? ""}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button disabled={busyId === l.id} onClick={() => restoreLead(l.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.restore")}
+                  </button>
+                  <button disabled={busyId === l.id} onClick={() => deleteLeadForever(l.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.deleteForever")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && conversations.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">{t("settings.recycleBin.conversations")}</p>
+          <div className="space-y-1.5">
+            {conversations.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[#E5E7EB] bg-white">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#111111] truncate">{c.customer_name ?? t("dashboard.unknown")}</p>
+                  <p className="text-[10px] text-[#9CA3AF] capitalize">{c.channel ?? "website"}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button disabled={busyId === c.id} onClick={() => restoreConversation(c.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.restore")}
+                  </button>
+                  <button disabled={busyId === c.id} onClick={() => deleteConversationForever(c.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.deleteForever")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && appointments.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">{t("settings.recycleBin.appointments")}</p>
+          <div className="space-y-1.5">
+            {appointments.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[#E5E7EB] bg-white">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#111111] truncate">{a.service_name || "Appointment"}</p>
+                  <p className="text-[10px] text-[#9CA3AF]">{new Date(a.datetime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button disabled={busyId === a.id} onClick={() => restoreAppointment(a.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.restore")}
+                  </button>
+                  <button disabled={busyId === a.id} onClick={() => deleteAppointmentForever(a.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.deleteForever")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

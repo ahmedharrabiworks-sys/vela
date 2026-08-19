@@ -58,10 +58,13 @@ function computeChange(current: number, prior: number): number | null {
 // lives as its own small caption line below the value instead of being
 // baked into the pill. Split out of what used to be a single combined
 // string so both cards and this component stay reusable.
+// FIX 1 (round F): was showing a "New" placeholder pill when there's no
+// prior period to compare against. Dashboard's own trend badges (see
+// DashboardPageUI.tsx) never render anything at all in that case -- the
+// badge is simply omitted. Matched here: same real green/red % badge, same
+// omit-when-null behavior, no placeholder state of any kind.
 function TrendBadge({ change }: { change: number | null }) {
-  if (change === null) {
-    return <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF]">New</span>;
-  }
+  if (change === null) return null;
   const up = change >= 0;
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"}`}>
@@ -106,13 +109,15 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
     y: padTop + ((max - v) / range) * chartH,
   }));
 
-  // FIX 5 (round E): straight-segment joins between points -- a sharp,
-  // angular "stock chart" line, not a smoothed curve. Was a per-segment
-  // cubic bezier (control points at each side's own y, midpoint x), which
-  // rounds every join; a plain line-to per point is the entire fix.
+  // FIX 4 (round F): reverted back to a smoothed curve per explicit
+  // request -- the sharp/angular straight-segment style from the previous
+  // round is undone. Per-segment cubic bezier, control points at each
+  // side's own y with the midpoint x, rounds every join.
   let d = pts.length > 0 ? `M ${pts[0].x} ${pts[0].y}` : "";
   for (let i = 1; i < pts.length; i++) {
-    d += ` L ${pts[i].x} ${pts[i].y}`;
+    const p0 = pts[i - 1], p1 = pts[i];
+    const cpX = (p0.x + p1.x) / 2;
+    d += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
   }
 
   const areaD = pts.length > 0 ? d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z` : "";
@@ -274,12 +279,6 @@ export default function AnalyticsPage() {
   const priorAiRate = priorConvTotal > 0 ? Math.round((priorAiHandled / priorConvTotal) * 100) : null;
   const aiRateChange = aiResolutionRate !== null && priorAiRate !== null ? computeChange(aiResolutionRate, priorAiRate) : null;
 
-  // Honest "Booked by Vela AI" subtitle -- real count of appointments that
-  // carry a conversation_id (only ai/reply's own booking flow sets this;
-  // manually-added appointments never do). Omitted entirely when 0 rather
-  // than implying the AI booked something a human added by hand.
-  const aiBookedAppts = analytics ? periodSum(analytics.dailyApptAiBooked, days) : 0;
-
   const CHART_TITLES: Record<Series, string> = {
     leads: t("analytics.chartTitleLeads"),
     conversations: t("analytics.chartTitleConversations"),
@@ -419,9 +418,9 @@ export default function AnalyticsPage() {
                   <TrendBadge change={convsChange} />
                 </div>
                 <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalConvs} /></p>
-                <p className="text-[10px] text-[#9CA3AF] mt-1">
-                  {totalConvs > 0 ? `${t("analytics.handledByVela")} · ` : ""}{periodLabel}
-                </p>
+                {/* FIX 1 (round F): "Handled by Vela" subtitle removed per
+                    explicit request -- periodLabel only, matching the other cards. */}
+                <p className="text-[10px] text-[#9CA3AF] mt-1">{periodLabel}</p>
               </button>
 
               <button onClick={() => setSeries("appointments")}
@@ -431,9 +430,9 @@ export default function AnalyticsPage() {
                   <TrendBadge change={apptsChange} />
                 </div>
                 <p className="text-2xl font-bold text-[#111111] leading-none"><CountUp value={totalAppts} /></p>
-                <p className="text-[10px] text-[#9CA3AF] mt-1">
-                  {aiBookedAppts > 0 ? `${t("analytics.bookedByVela")} · ` : ""}{periodLabel}
-                </p>
+                {/* FIX 1 (round F): "Booked by Vela AI" subtitle removed per
+                    explicit request -- periodLabel only, matching the other cards. */}
+                <p className="text-[10px] text-[#9CA3AF] mt-1">{periodLabel}</p>
               </button>
 
               <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 flex items-center gap-3">
