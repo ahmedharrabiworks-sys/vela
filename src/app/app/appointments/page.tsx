@@ -25,10 +25,15 @@ interface Appointment {
   rescheduled: boolean;
 }
 
+// FIX 5 (round G): Tailwind's semantic palette classes (green-50, red-50,
+// yellow-50, etc.) are NOT covered by the app-wide html.dark override layer
+// in globals.css (that layer only remaps specific custom-hex arbitrary-value
+// classes) -- every one of these needed an explicit dark: variant, same
+// pattern already used by Analytics' TrendBadge.
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  confirmed: { bg: "bg-green-50",  text: "text-green-700",  dot: "bg-green-500",  label: "Confirmed" },
-  pending:   { bg: "bg-yellow-50", text: "text-yellow-700", dot: "bg-yellow-400", label: "Pending"   },
-  cancelled: { bg: "bg-red-50",    text: "text-red-600",    dot: "bg-red-400",    label: "Cancelled" },
+  confirmed: { bg: "bg-green-50 dark:bg-green-950/40",   text: "text-green-700 dark:text-green-400",   dot: "bg-green-500",  label: "Confirmed" },
+  pending:   { bg: "bg-yellow-50 dark:bg-yellow-950/30", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-400", label: "Pending"   },
+  cancelled: { bg: "bg-red-50 dark:bg-red-950/30",       text: "text-red-600 dark:text-red-400",       dot: "bg-red-400",    label: "Cancelled" },
 };
 
 const FILTER_KEYS: FilterKey[] = ["all", "today", "week", "upcoming", "past"];
@@ -130,14 +135,14 @@ function SendModal({ apt, onClose }: { apt: Appointment; onClose: () => void }) 
         </div>
 
         {!apt.conversationId && (
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 mb-4">
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 mb-4">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#D97706" strokeWidth="1.3"/><path d="M7 4.5v3M7 9.5h.01" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/></svg>
-            <p className="text-xs text-amber-800">This appointment isn&apos;t linked to a real conversation, so there&apos;s no channel to deliver a message through.</p>
+            <p className="text-xs text-amber-800 dark:text-amber-400">This appointment isn&apos;t linked to a real conversation, so there&apos;s no channel to deliver a message through.</p>
           </div>
         )}
 
         {result && (
-          <div className={`p-3 rounded-xl mb-4 text-xs ${result.ok ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-700"}`}>
+          <div className={`p-3 rounded-xl mb-4 text-xs ${result.ok ? "bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-400" : "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400"}`}>
             {result.ok ? (result.note ? result.note : "Sent.") : result.note}
           </div>
         )}
@@ -216,7 +221,7 @@ function CancelModal({ apt, onConfirm, onClose }: { apt: Appointment; onConfirm:
   return (
     <Modal onClose={onClose}>
       <div className="p-6">
-        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-4">
+        <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center mb-4">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 7v4M9 13h.01M3 15h12a1.5 1.5 0 001.3-2.25L10.3 3.75a1.5 1.5 0 00-2.6 0L1.7 12.75A1.5 1.5 0 003 15z" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
         <h3 className="font-bold text-[#111111] mb-2">Cancel appointment?</h3>
@@ -243,7 +248,7 @@ function DeleteModal({ apt, onConfirm, onClose }: { apt: Appointment; onConfirm:
   return (
     <Modal onClose={onClose}>
       <div className="p-6">
-        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-4">
+        <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center mb-4">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 7v4M9 13h.01M3 15h12a1.5 1.5 0 001.3-2.25L10.3 3.75a1.5 1.5 0 00-2.6 0L1.7 12.75A1.5 1.5 0 003 15z" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
         <h3 className="font-bold text-[#111111] mb-2">Delete appointment?</h3>
@@ -509,13 +514,13 @@ export default function AppointmentsPage() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-[#111827]">{t("appointments.title")}</h1>
           <div className="flex items-center flex-wrap gap-3 mt-1">
-            {!loading && <span className="text-sm font-semibold text-green-600">{confirmedToday} {t("appointments.confirmedToday")}</span>}
+            {!loading && <span className="text-sm font-semibold text-green-600 dark:text-green-400">{confirmedToday} {t("appointments.confirmedToday")}</span>}
             {!loading && isStarter && (
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                 bookingsThisMonth >= config.bookingsPerMonth
-                  ? "bg-red-50 text-red-600"
+                  ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"
                   : bookingsThisMonth >= config.bookingsPerMonth * 0.8
-                  ? "bg-yellow-50 text-yellow-700"
+                  ? "bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400"
                   : "bg-[#F3F4F6] text-[#6B7280]"
               }`}>
                 {bookingsThisMonth} / {config.bookingsPerMonth} {t("appointments.bookingCounter")}
@@ -629,7 +634,7 @@ export default function AppointmentsPage() {
                     return (
                       <tr key={apt.id}
                         className={`border-b border-[#E5E7EB] last:border-none transition-colors duration-500 ${
-                          isHighlighted ? "bg-[#FFF5F0]" : i % 2 === 1 ? "bg-[#FAFAFA] hover:bg-[#F5F5F5]" : "bg-white hover:bg-[#F9FAFB]"
+                          isHighlighted ? "bg-[#FFF5F0]" : i % 2 === 1 ? "bg-[#FAFAFA] hover:bg-[#F3F4F6]" : "bg-white hover:bg-[#F9FAFB]"
                         }`}>
                         <td className="pl-5 pr-3 py-3.5"><span className="text-xs text-[#9CA3AF] font-mono">{i + 1}</span></td>
                         <td className="py-3.5 pr-4"><p className="text-sm font-semibold text-[#111827] whitespace-nowrap">{apt.name}</p></td>
@@ -637,11 +642,14 @@ export default function AppointmentsPage() {
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#111827]">{apt.service}</span></td>
                         <td className="py-3.5 pr-4">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-sm font-semibold text-[#111827]">{apt.dateLabel}</span>
-                            <span className="text-sm text-[#6B7280]">· {apt.time}</span>
-                            {apt.rescheduled && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 whitespace-nowrap">Rescheduled</span>
-                            )}
+                            <span className="text-sm font-semibold text-[#111827] dark:text-white">
+                              {apt.dateLabel}
+                              {/* FIX 4 (round G): was a separate blue pill -- now an
+                                  inline suffix in the same weight/color as the date
+                                  itself, per explicit request. */}
+                              {apt.rescheduled && " (Rescheduled)"}
+                            </span>
+                            <span className="text-sm text-[#6B7280] dark:text-[#9CA3AF]">· {apt.time}</span>
                           </div>
                         </td>
                         <td className="py-3.5 pr-4">
@@ -657,7 +665,7 @@ export default function AppointmentsPage() {
                           <div className="flex items-center gap-1">
                             {apt.status === "pending" && (
                               <button onClick={() => handleConfirm(apt.id)}
-                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 transition-all whitespace-nowrap min-h-[30px]">
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 transition-all whitespace-nowrap min-h-[30px]">
                                 Confirm
                               </button>
                             )}
@@ -668,7 +676,7 @@ export default function AppointmentsPage() {
                                   Reschedule
                                 </button>
                                 <button onClick={() => setModal({ type: "cancel", id: apt.id })}
-                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-all whitespace-nowrap min-h-[30px]">
+                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 dark:border-red-900/40 text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all whitespace-nowrap min-h-[30px]">
                                   Cancel
                                 </button>
                               </>
@@ -680,7 +688,7 @@ export default function AppointmentsPage() {
                             </button>
                             <button onClick={() => setModal({ type: "delete", id: apt.id })}
                               title="Delete"
-                              className="shrink-0 w-[30px] h-[30px] flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-red-50 hover:text-red-500 transition-all">
+                              className="shrink-0 w-[30px] h-[30px] flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all">
                               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                                 <path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>

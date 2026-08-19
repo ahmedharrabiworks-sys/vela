@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import {
+  DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor,
+  DragOverlay, type DragEndEvent, type DragStartEvent,
+} from "@dnd-kit/core";
 
 type Lead = {
   id: string;
@@ -59,11 +63,10 @@ function ChannelIcon({ channel }: { channel: string | null }) {
 
 // FIX 6 (round F): real Lead Detail Modal -- opens on card click, shows the
 // actual captured lead data (no fields invented), and a working status
-// dropdown to move the lead between pipeline stages. Chosen over native
-// HTML5 drag-and-drop because that API doesn't work on touch devices without
-// substantial extra polyfill work, which would violate the standing mobile
-// 375px requirement -- click-to-open + dropdown works identically on desktop
-// and mobile.
+// dropdown to move the lead between pipeline stages. Kept as-is in round G
+// alongside real drag-and-drop (see DraggableLeadCard/DroppableColumn below)
+// -- the dropdown remains the accessible/keyboard/no-mouse way to move a
+// lead, drag is the fast way, neither replaces the other.
 function LeadDetailModal({
   lead, saving, onStatusChange, onDelete, onClose,
 }: {
@@ -167,6 +170,54 @@ function LeadDetailModal({
   );
 }
 
+// FIX 6 (round G): real cross-column drag-and-drop, backed by @dnd-kit/core
+// (touch/pointer/mouse all handled by its PointerSensor via the unified
+// Pointer Events API -- unlike native HTML5 draggable=, which has no touch
+// equivalent at all). activationConstraint distance below lets a plain tap
+// still fire onClick to open the detail modal; only a real drag (>8px of
+// movement) engages dnd-kit.
+function DraggableLeadCard({ lead, onOpen, t }: { lead: Lead; onOpen: () => void; t: (key: string) => string }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={onOpen}
+      {...listeners}
+      {...attributes}
+      className={`text-left bg-white rounded-xl border border-[#E5E7EB] p-4 hover:border-[#FF6B35]/30 hover:shadow-sm transition-all duration-150 w-full touch-none ${isDragging ? "opacity-30" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
+            {(lead.name ?? "?")[0].toUpperCase()}
+          </div>
+          <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</p>
+        </div>
+        <span className="flex items-center gap-1 text-[9px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] shrink-0 whitespace-nowrap capitalize">
+          <ChannelIcon channel={lead.channel} />
+          {lead.channel ?? "web"}
+        </span>
+      </div>
+      {lead.phone && (
+        <p className="text-[10px] text-[#6B7280] mb-2 font-mono">{lead.phone}</p>
+      )}
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.created_at, t)}</span>
+      </div>
+    </button>
+  );
+}
+
+function DroppableColumn({ stage, children }: { stage: Stage; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage });
+  return (
+    <div ref={setNodeRef} className={`flex flex-col gap-2 rounded-xl transition-colors ${isOver ? "bg-[#FFF5F0] ring-2 ring-[#FF6B35]/40" : ""}`} style={{ minHeight: 60 }}>
+      {children}
+    </div>
+  );
+}
+
 function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
   const diff = (Date.now() - new Date(ts).getTime()) / 1000;
@@ -183,6 +234,8 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   useEffect(() => { load(); }, []);
 
@@ -242,6 +295,20 @@ export default function LeadsPage() {
       setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
     }
     setSavingStatus(false);
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setDraggingId(String(event.active.id));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggingId(null);
+    const { active, over } = event;
+    if (!over) return;
+    const newStage = over.id as Stage;
+    const lead = leads.find((l) => l.id === active.id);
+    if (!lead || lead.status === newStage || !PIPELINE_STAGES.includes(newStage)) return;
+    void handleStatusChange(lead.id, newStage);
   }
 
   // FIX 8: soft delete -- moves the lead to the Recycle Bin (Settings) rather
@@ -346,59 +413,57 @@ export default function LeadsPage() {
               </Link>
             </div>
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-6 -mx-1 px-1" style={{ scrollSnapType: "x mandatory" }}>
-              {PIPELINE_STAGES.map((stage) => {
-                const stageLeads = filtered.filter((l) => l.status === stage);
-                const colors = STAGE_COLORS[stage];
-                return (
-                  <div key={stage} className="flex-shrink-0 w-64" style={{ scrollSnapAlign: "start" }}>
-                    {/* Column header */}
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
-                        <span className="text-xs font-bold text-[#374151]">{t(STAGE_LABEL_KEYS[stage])}</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280]">
-                        {stageLeads.length}
-                      </span>
-                    </div>
-
-                    {/* Cards */}
-                    <div className="flex flex-col gap-2">
-                      {stageLeads.map((lead) => (
-                        <button key={lead.id} type="button" onClick={() => setSelectedId(lead.id)}
-                          className="text-left bg-white rounded-xl border border-[#E5E7EB] p-4 hover:border-[#FF6B35]/30 hover:shadow-sm transition-all duration-150 w-full">
-                          <div className="flex items-start justify-between gap-2 mb-2.5">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
-                                {(lead.name ?? "?")[0].toUpperCase()}
-                              </div>
-                              <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</p>
-                            </div>
-                            <span className="flex items-center gap-1 text-[9px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] shrink-0 whitespace-nowrap capitalize">
-                              <ChannelIcon channel={lead.channel} />
-                              {lead.channel ?? "web"}
-                            </span>
-                          </div>
-                          {lead.phone && (
-                            <p className="text-[10px] text-[#6B7280] mb-2 font-mono">{lead.phone}</p>
-                          )}
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.created_at, t)}</span>
-                          </div>
-                        </button>
-                      ))}
-
-                      {stageLeads.length === 0 && (
-                        <div className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-5 text-center">
-                          <p className="text-[11px] text-[#9CA3AF]">{t("leads.emptyColumn")}</p>
+            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <div className="flex gap-4 overflow-x-auto pb-6 -mx-1 px-1" style={{ scrollSnapType: "x mandatory" }}>
+                {PIPELINE_STAGES.map((stage) => {
+                  const stageLeads = filtered.filter((l) => l.status === stage);
+                  const colors = STAGE_COLORS[stage];
+                  return (
+                    <div key={stage} className="flex-shrink-0 w-64" style={{ scrollSnapAlign: "start" }}>
+                      {/* Column header */}
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
+                          <span className="text-xs font-bold text-[#374151]">{t(STAGE_LABEL_KEYS[stage])}</span>
                         </div>
-                      )}
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280]">
+                          {stageLeads.length}
+                        </span>
+                      </div>
+
+                      {/* Cards */}
+                      <DroppableColumn stage={stage}>
+                        {stageLeads.map((lead) => (
+                          <DraggableLeadCard key={lead.id} lead={lead} onOpen={() => setSelectedId(lead.id)} t={t} />
+                        ))}
+
+                        {stageLeads.length === 0 && (
+                          <div className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-5 text-center">
+                            <p className="text-[11px] text-[#9CA3AF]">{t("leads.emptyColumn")}</p>
+                          </div>
+                        )}
+                      </DroppableColumn>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              <DragOverlay>
+                {draggingId ? (() => {
+                  const lead = leads.find((l) => l.id === draggingId);
+                  if (!lead) return null;
+                  return (
+                    <div className="bg-white rounded-xl border border-[#FF6B35] shadow-xl p-4 w-64 rotate-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
+                          {(lead.name ?? "?")[0].toUpperCase()}
+                        </div>
+                        <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</p>
+                      </div>
+                    </div>
+                  );
+                })() : null}
+              </DragOverlay>
+            </DndContext>
           )}
         </>
       )}

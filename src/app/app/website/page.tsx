@@ -3,7 +3,90 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
+import { useTheme } from "@/lib/theme";
+import CircularProgress from "@/components/ui/CircularProgress";
 import type { WebsiteSpec } from "@/lib/website-renderer";
+
+// FIX 2 (round G): real smoothed-curve chart for the Analytics panel's daily
+// visits, matching the exact visual language of the main Analytics page's
+// LineChart (same cubic-bezier smoothing, gradient area fill, single
+// endpoint dot, grid lines, "No data yet" honest state when every day is
+// zero) -- self-contained here rather than importing that page's local
+// function, so this panel can't regress if Analytics' own chart changes.
+function WebsiteVisitsChart({ data }: { data: { date: string; count: number }[] }) {
+  const { theme } = useTheme();
+  const gridColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
+  const axisTextColor = theme === "dark" ? "#6E6E76" : "#9CA3AF";
+  const W = 800, H = 140, padX = 8, padTop = 12, padBottom = 20;
+  const chartH = H - padTop - padBottom;
+  const counts = data.map((d) => d.count);
+  const max = Math.max(...counts, 1);
+  const n = counts.length;
+  const hasData = counts.some((v) => v > 0);
+  const [hover, setHover] = useState<{ i: number; clientX: number; clientY: number } | null>(null);
+
+  const pts = counts.map((v, i) => ({
+    x: padX + (i / Math.max(n - 1, 1)) * (W - padX * 2),
+    y: padTop + ((max - v) / max) * chartH,
+  }));
+  let d = pts.length > 0 ? `M ${pts[0].x} ${pts[0].y}` : "";
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[i - 1], p1 = pts[i];
+    const cpX = (p0.x + p1.x) / 2;
+    d += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+  }
+  const areaD = pts.length > 0 ? d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z` : "";
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!hasData || n === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round(((relX - padX) / (W - padX * 2)) * Math.max(n - 1, 1))));
+    setHover({ i, clientX: e.clientX, clientY: e.clientY });
+  };
+  const hp = hover ? pts[hover.i] : null;
+
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }} preserveAspectRatio="none"
+        onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
+        <defs>
+          <linearGradient id="wbVisitsGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.15"/>
+            <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        {[0, 1, 2, 3].map((i) => {
+          const y = padTop + (i / 3) * chartH;
+          return <line key={i} x1={padX} x2={W - padX} y1={y} y2={y} stroke={gridColor} strokeWidth="1"/>;
+        })}
+        {hasData && (
+          <>
+            <path d={areaD} fill="url(#wbVisitsGrad)"/>
+            <path d={d} fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            {pts.length > 0 && <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>}
+            {hp && (
+              <>
+                <line x1={hp.x} x2={hp.x} y1={padTop} y2={H - padBottom} stroke="#FF6B35" strokeWidth="1" strokeDasharray="3,3" opacity="0.4"/>
+                <circle cx={hp.x} cy={hp.y} r="5" fill="#FF6B35" stroke="white" strokeWidth="2"/>
+              </>
+            )}
+          </>
+        )}
+        {!hasData && (
+          <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="11" fill={axisTextColor}>No data yet</text>
+        )}
+      </svg>
+      {hover && hasData && data[hover.i] && (
+        <div className="fixed z-50 pointer-events-none bg-[#111111] text-white text-xs rounded-lg px-3 py-2 shadow-lg"
+          style={{ left: hover.clientX + 14, top: hover.clientY - 44 }}>
+          <p className="font-semibold whitespace-nowrap">{new Date(data[hover.i].date).toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" })}</p>
+          <p className="text-[#FF6B35] font-bold">{data[hover.i].count} visits</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Spec helpers (for inline edit mode) ──────────────────────────────────────
 function extractSpec(html: string): WebsiteSpec | null {
@@ -1138,6 +1221,11 @@ export default function WebsitePage() {
   const [codeCopied, setCodeCopied]   = useState(false);
   const [activeTab, setActiveTab]     = useState<"chat" | "preview">("chat");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  // FIX 3 (round G): this chat had a paperclip attach button but no paste
+  // handler at all -- Ctrl+V here did nothing, silently, on every browser.
+  // Also surfaces real rejection reasons instead of a silent drop (matches
+  // VelaAssistant's attachError pattern).
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [contactInfo, setContactInfo]       = useState<ContactInfo>({ phone: "", email: "", address: "", hours: "" });
 
   // Per-site contact info: spec embedded in draft_html is the authoritative source;
@@ -1747,10 +1835,22 @@ export default function WebsitePage() {
   }, [deleteTarget, btype, siteLanguage, refreshProjects]);
 
   // ── File attachment ───────────────────────────────────────────────────────────
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+  // FIX 3 (round G): shared by both the paperclip picker and the new paste
+  // handler below. Previously silently `return`ed on a rejected file (wrong
+  // type or too large) with zero feedback -- now surfaces a real, specific
+  // error the same way VelaAssistant's chat already does, so a real
+  // rejection is visible instead of looking like "paste doesn't work".
+  const attachFilesToChat = useCallback((files: File[]) => {
+    setAttachError(null);
     files.slice(0, MAX_ATTACH - attachedImages.length).forEach((file) => {
-      if (!file.type.startsWith("image/") || file.size > MAX_IMG_SIZE) return;
+      if (!file.type.startsWith("image/")) {
+        setAttachError(`"${file.name || "That file"}" is a ${file.type || "format"} this chat can't read yet. Try a PNG, JPG, or WEBP.`);
+        return;
+      }
+      if (file.size > MAX_IMG_SIZE) {
+        setAttachError(`"${file.name || "That image"}" is too large (max 5MB). Try a smaller screenshot.`);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result as string;
@@ -1760,10 +1860,33 @@ export default function WebsitePage() {
             : prev,
         );
       };
+      reader.onerror = () => setAttachError("Couldn't read that image. Please try again.");
       reader.readAsDataURL(file);
     });
-    e.target.value = "";
   }, [attachedImages.length]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    attachFilesToChat(files);
+  }, [attachFilesToChat]);
+
+  // FIX 3 (round G): real root-cause -- this chat's textarea never had an
+  // onPaste handler at all (confirmed by reading every handler in this file
+  // end to end; VelaAssistant's floating widget is a completely separate
+  // component and its own paste fix never touched this surface). A user
+  // pasting a screenshot here did nothing, silently, on every browser --
+  // not a MIME/permissions/race-condition issue, just a missing wire.
+  const handleChatPaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items ?? []);
+    const imageFiles = items
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (imageFiles.length === 0) return;
+    e.preventDefault();
+    attachFilesToChat(imageFiles);
+  }, [attachFilesToChat]);
 
   const copyCode = useCallback(async () => {
     if (!html) return;
@@ -2709,6 +2832,18 @@ export default function WebsitePage() {
             </div>
           )}
 
+          {/* Real, specific error when a pasted/attached image is rejected
+              (wrong format or too large) -- FIX 3 (round G), matches
+              VelaAssistant's equivalent banner. */}
+          {attachError && (
+            <div className="mx-3 mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40">
+              <p className="text-[11px] text-[#991B1B] dark:text-red-400 flex-1">{attachError}</p>
+              <button onClick={() => setAttachError(null)} className="text-[#991B1B] dark:text-red-400 hover:opacity-70 shrink-0" aria-label="Dismiss">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+          )}
+
           {/* Attached image thumbnails */}
           {attachedImages.length > 0 && (
             <div className="px-3 pt-2 flex flex-wrap gap-2">
@@ -2736,7 +2871,7 @@ export default function WebsitePage() {
                 </svg>
               </button>
               <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" multiple className="hidden" onChange={handleFileSelect} />
-              <textarea ref={chatInputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+              <textarea ref={chatInputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} onPaste={handleChatPaste}
                 placeholder={built ? "What would you like to change?" : "Tell me about your business…"}
                 rows={1} disabled={building}
                 className="flex-1 bg-transparent text-xs text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
@@ -2970,74 +3105,86 @@ export default function WebsitePage() {
                       <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
                       <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic.</p>
                     </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {([
-                          { label: "Total visits",    value: analyticsData.totalVisits    },
-                          { label: "Unique visitors", value: analyticsData.uniqueVisitors },
-                          { label: "Last 7 days",     value: analyticsData.last7Days      },
-                          { label: "Last 30 days",    value: analyticsData.last30Days     },
-                        ] as { label: string; value: number }[]).map(({ label, value }) => (
-                          <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                            <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
-                            <p className="text-xs text-[#9CA3AF] mt-1">{label}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
-                        <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-4">Daily visits · last 30 days</p>
-                        {(() => {
-                          const maxVal = Math.max(...analyticsData.dailyVisits.map((d) => d.count), 1);
-                          return (
-                            <div className="flex items-end gap-px h-24">
-                              {analyticsData.dailyVisits.map((d, i) => (
-                                <div key={i} title={`${d.date}: ${d.count}`}
-                                  className="flex-1 rounded-t-sm"
-                                  style={{ height: d.count > 0 ? `${Math.max((d.count / maxVal) * 100, 4)}%` : "2px", background: d.count > 0 ? "var(--vp-color)" : "#E5E7EB", opacity: d.count > 0 ? 1 : 0.3 }}
-                                />
-                              ))}
+                  ) : (() => {
+                    // FIX 2 (round G): real "mission control" redesign -- a
+                    // radial ring for the one genuinely meaningful percentage
+                    // this data supports (how much of the last 30 days'
+                    // traffic landed in the last 7 -- a real, honest ratio,
+                    // never fabricated), a real smoothed-curve chart instead
+                    // of a bar strip that read as an empty box on sparse
+                    // data, and device split as rings instead of bars with
+                    // an honest empty state instead of a blank label when
+                    // there's no device data yet.
+                    const recentSharePct = analyticsData.last30Days > 0
+                      ? Math.round((analyticsData.last7Days / analyticsData.last30Days) * 100)
+                      : 0;
+                    const hasDeviceData = (["desktop", "mobile", "tablet"] as const).some((dev) => analyticsData.deviceSplit[dev] > 0);
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {([
+                            { label: "Total visits",    value: analyticsData.totalVisits    },
+                            { label: "Unique visitors", value: analyticsData.uniqueVisitors },
+                            { label: "Last 7 days",     value: analyticsData.last7Days      },
+                            { label: "Last 30 days",    value: analyticsData.last30Days     },
+                          ] as { label: string; value: number }[]).map(({ label, value }) => (
+                            <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                              <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
+                              <p className="text-xs text-[#9CA3AF] mt-1">{label}</p>
                             </div>
-                          );
-                        })()}
-                        <div className="flex justify-between mt-2.5 pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
-                          <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
-                          <span className="text-[10px] text-[#9CA3AF]">Today</span>
+                          ))}
                         </div>
-                      </div>
 
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        {analyticsData.topReferrers.length > 0 && (
-                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
-                            <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Top sources</p>
-                            <div className="space-y-2.5">
-                              {analyticsData.topReferrers.map(({ referrer, count }) => (
-                                <div key={referrer} className="flex items-center gap-2">
-                                  <span className="flex-1 text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate min-w-0">{referrer}</span>
-                                  <span className="text-xs font-semibold text-[#111111] dark:text-white shrink-0 tabular-nums">{count}</span>
-                                </div>
-                              ))}
+                        <div className="grid sm:grid-cols-[1fr,auto] gap-3 items-stretch">
+                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 min-w-0">
+                            <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-4">Daily visits · last 30 days</p>
+                            <WebsiteVisitsChart data={analyticsData.dailyVisits} />
+                            <div className="flex justify-between mt-1 pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                              <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
+                              <span className="text-[10px] text-[#9CA3AF]">Today</span>
                             </div>
                           </div>
-                        )}
-                        <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
-                          <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Devices</p>
-                          <div className="space-y-2.5">
-                            {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
-                              <div key={dev} className="flex items-center gap-2">
-                                <span className="text-xs text-[#6B7280] dark:text-[#9CA3AF] w-14 shrink-0 capitalize">{dev}</span>
-                                <div className="flex-1 h-1.5 bg-[#F3F4F6] dark:bg-[#2A2A32] rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full transition-all" style={{ width: `${analyticsData.deviceSplit[dev]}%`, background: "var(--vp-color)" }} />
-                                </div>
-                                <span className="text-xs font-semibold text-[#111111] dark:text-white w-8 text-right shrink-0 tabular-nums">{analyticsData.deviceSplit[dev]}%</span>
+                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 flex flex-col items-center justify-center gap-3 sm:w-[180px]">
+                            <CircularProgress value={recentSharePct} size={88} strokeWidth={7} color="#FF6B35" />
+                            <p className="text-xs text-center text-[#6B7280] dark:text-[#9CA3AF] leading-snug">
+                              of last 30 days&apos; visits<br/>came in the last 7
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                          {analyticsData.topReferrers.length > 0 && (
+                            <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
+                              <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Top sources</p>
+                              <div className="space-y-2.5">
+                                {analyticsData.topReferrers.map(({ referrer, count }) => (
+                                  <div key={referrer} className="flex items-center gap-2">
+                                    <span className="flex-1 text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate min-w-0">{referrer}</span>
+                                    <span className="text-xs font-semibold text-[#111111] dark:text-white shrink-0 tabular-nums">{count}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            </div>
+                          )}
+                          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5">
+                            <p className="text-xs font-bold text-[#374151] dark:text-[#D1D5DB] mb-3">Devices</p>
+                            {hasDeviceData ? (
+                              <div className="flex items-center justify-around">
+                                {(["desktop", "mobile", "tablet"] as const).map((dev) => (
+                                  <div key={dev} className="flex flex-col items-center gap-1.5">
+                                    <CircularProgress value={analyticsData.deviceSplit[dev]} size={48} strokeWidth={4} color="#FF6B35" />
+                                    <span className="text-[10px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">{dev}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-[#9CA3AF] text-center py-4">No device data yet</p>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

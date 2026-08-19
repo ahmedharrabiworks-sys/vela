@@ -28,6 +28,18 @@ export async function GET(req: NextRequest) {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const sevenDaysAgo  = new Date(Date.now() -  7 * 86_400_000).toISOString();
 
+  // FIX 2 (round G) -- REAL ROOT CAUSE FOUND: this route queried/filtered on
+  // `visited_at`, a column that has never existed on site_visits (confirmed
+  // live -- the real timestamp column is `created_at`, per direct schema
+  // inspection). PostgREST rejects an unknown column in a filter/select
+  // outright, so last30Res always silently failed and `rows` was always
+  // empty -- for every tenant, regardless of real traffic. This is why the
+  // daily chart, referrers, and device split looked permanently empty even
+  // on sites with real visits, while totalVisits/uniqueVisitors (separate
+  // queries that never referenced this column) showed correctly. Not a
+  // rendering/design issue -- the underlying query itself never returned
+  // data.
+  //
   // 3 parallel queries:
   // 1. All-time total count (head-only, no data transfer)
   // 2. All-time visitor_hash list for unique-visitor count (compact column only)
@@ -36,9 +48,9 @@ export async function GET(req: NextRequest) {
     admin.from("site_visits").select("id", { count: "exact", head: true }).eq("website_id", websiteId),
     admin.from("site_visits").select("visitor_hash").eq("website_id", websiteId).limit(100_000),
     admin.from("site_visits")
-      .select("visitor_hash, visited_at, referrer, device")
+      .select("visitor_hash, created_at, referrer, device")
       .eq("website_id", websiteId)
-      .gte("visited_at", thirtyDaysAgo)
+      .gte("created_at", thirtyDaysAgo)
       .limit(10_000),
   ]);
 
@@ -49,18 +61,18 @@ export async function GET(req: NextRequest) {
 
   const rows = (last30Res.data ?? []) as {
     visitor_hash: string;
-    visited_at:   string;
+    created_at:   string;
     referrer:     string;
     device:       string;
   }[];
 
-  const last7Days  = rows.filter((r) => r.visited_at >= sevenDaysAgo).length;
+  const last7Days  = rows.filter((r) => r.created_at >= sevenDaysAgo).length;
   const last30Days = rows.length;
 
   // Daily visit counts — fill every day of the last 30 (including zeros for empty days)
   const dailyMap: Record<string, number> = {};
   rows.forEach((r) => {
-    const d = r.visited_at.slice(0, 10);
+    const d = r.created_at.slice(0, 10);
     dailyMap[d] = (dailyMap[d] ?? 0) + 1;
   });
   const dailyVisits: { date: string; count: number }[] = [];

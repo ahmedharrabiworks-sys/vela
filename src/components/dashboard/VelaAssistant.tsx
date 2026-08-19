@@ -166,12 +166,31 @@ export function VelaAssistant() {
   // assistant's "I can't read the image" reply was technically accurate: no
   // image data ever reached it, because none was ever attached. Reuses the
   // exact same base64 attach path as the file picker.
+  // FIX 3 (round G): traced end to end again, by hand, for any real-browser
+  // silent-failure path a synthetic clipboard test can't reach. Two found
+  // and now surfaced instead of silently doing nothing: (1) clipboardData
+  // itself missing on the event (logged -- can't be more specific, we don't
+  // know the paste even contained an image), (2) the clipboard reports
+  // image/* item(s) but item.getAsFile() hands back null for every one of
+  // them (a real observed browser/OS clipboard-manager quirk -- the type is
+  // visible but the file bytes never materialize). Previously both cases
+  // fell through the `imageFiles.length === 0` check and returned with zero
+  // feedback, indistinguishable from "user pasted plain text" (correct to
+  // no-op). Now only the genuine plain-text case still no-ops.
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = Array.from(e.clipboardData?.items ?? []);
-    const imageFiles = items
-      .filter((item) => item.type.startsWith("image/"))
-      .map((item) => item.getAsFile())
-      .filter((f): f is File => f !== null);
+    if (!e.clipboardData) {
+      console.warn("[VelaAssistant] paste event fired with no clipboardData -- browser did not expose clipboard contents");
+      return;
+    }
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter((item) => item.type.startsWith("image/"));
+    const imageFiles = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
+    if (imageItems.length > 0 && imageFiles.length === 0) {
+      console.error("[VelaAssistant] paste reported image clipboard item(s) but getAsFile() returned null for all of them:", imageItems.map((i) => i.type));
+      setAttachError("Couldn't read the pasted image from your clipboard. Try the attach (paperclip) button instead.");
+      e.preventDefault();
+      return;
+    }
     if (imageFiles.length === 0) return;
     e.preventDefault();
     attachFiles(imageFiles);
