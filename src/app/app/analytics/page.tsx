@@ -58,13 +58,27 @@ function computeChange(current: number, prior: number): number | null {
 // lives as its own small caption line below the value instead of being
 // baked into the pill. Split out of what used to be a single combined
 // string so both cards and this component stay reusable.
-// FIX 1 (round F): was showing a "New" placeholder pill when there's no
-// prior period to compare against. Dashboard's own trend badges (see
-// DashboardPageUI.tsx) never render anything at all in that case -- the
-// badge is simply omitted. Matched here: same real green/red % badge, same
-// omit-when-null behavior, no placeholder state of any kind.
+// FIX 2 (round I): confirmed via live DOM inspection that the colored %
+// badge genuinely renders correctly whenever real prior-period data exists
+// -- this was never a rendering bug (6 reports of "still not showing" were
+// all real users looking at a card whose PRIOR period is genuinely zero,
+// e.g. a brand-new tenant, where computeChange correctly returns null).
+// Round F removed a "New" placeholder pill for this null case entirely,
+// matching Dashboard's own omit-when-null KPI cards -- but Dashboard's KPIs
+// compare to yesterday (rarely null) while these compare to a full prior
+// period (commonly null for weeks after signup), so "omit" reads as "this
+// card's badge feature doesn't exist" rather than "no signal yet." Now
+// renders a neutral, honest "–" chip instead of nothing -- never a
+// fabricated direction/percentage, just visual confirmation the badge slot
+// is real and simply has nothing to compare against yet.
 function TrendBadge({ change }: { change: number | null }) {
-  if (change === null) return null;
+  if (change === null) {
+    return (
+      <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#9CA3AF] dark:text-[#6E6E76]" title="No prior-period data to compare yet">
+        –
+      </span>
+    );
+  }
   const up = change >= 0;
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"}`}>

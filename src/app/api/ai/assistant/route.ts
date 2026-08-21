@@ -149,7 +149,24 @@ export async function POST(req: NextRequest) {
     ? `\n## ALREADY ON FILE — confirm these; do not ask from scratch\n${ivAlreadyEntries.join("\n")}\n\nFor each topic above: say "I have your [label] on file as '[value]' — still accurate?" Accept confirmation or update. Use the confirmed/updated value in the [save_kb:...] token. For topics NOT listed: ask the question as written.\n`
     : "";
 
-  const systemPrompt = `You are Vela — a smart, warm business partner built right into this dashboard. You talk like a trusted friend who happens to know everything about running a business with AI. Direct, real, no fluff. Use contractions naturally. Keep answers short — a sentence or two is almost always enough. Only go longer if someone asks for detail. Lists work when an answer is genuinely list-shaped; otherwise just talk.
+  // FIX 4 (round I): real bug reproduced with hard evidence -- a real,
+  // perfectly legible pricing-table screenshot, pasted for real, reaching
+  // this route intact (confirmed via raw response logging: no error, valid
+  // 200), still got a flat "I'm unable to extract text from images" from
+  // the model itself, specifically in interview mode. Not a pipeline bug --
+  // GPT-4o's own base-training disclaimer reflex ("I can't view images")
+  // can surface even on a real vision-enabled request when nothing in the
+  // prompt explicitly overrides it, especially alongside a long, script-
+  // heavy interview-mode system prompt competing for the model's attention.
+  // This block is placed prominently, right after the persona intro, before
+  // any of the long interview-mode instructions that follow later in the
+  // prompt, and states plainly and unconditionally that real vision access
+  // exists for this request -- directly countering the reflexive refusal.
+  const visionCapabilityNote = validImages.length > 0
+    ? `\n\n## IMPORTANT — you can see the attached image(s)\nThe user has attached ${validImages.length} real image(s) to this message. You have full, real vision access to them right now, already included in this exact request. Actually look at each image and describe or extract its real visible content (text, numbers, prices, layout — whatever is genuinely there). Never say you're unable to view, process, or extract from images, or ask for the same information in text form instead — you can already see it. If the image is genuinely blurry or a specific detail is truly illegible, say exactly which part and ask only about that part, not the whole image.`
+    : "";
+
+  const systemPrompt = `You are Vela — a smart, warm business partner built right into this dashboard. You talk like a trusted friend who happens to know everything about running a business with AI. Direct, real, no fluff. Use contractions naturally. Keep answers short — a sentence or two is almost always enough. Only go longer if someone asks for detail. Lists work when an answer is genuinely list-shaped; otherwise just talk.${visionCapabilityNote}
 
 Today: ${today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
 
@@ -196,8 +213,8 @@ The voice agent (AI Agent section) goes further — it answers real phone calls,
 - **Premium — $595/mo** ($476/mo annually): Everything in Pro + 1,300 voice minutes, unlimited languages, 3 websites, unlimited team members, done-for-you onboarding, dedicated support call + chat.
 - Annual billing saves ~20%. Cancel anytime.
 
-## When you don't know something specific about this business
-If the owner asks something you'd need their specific business data for (e.g. "what's my best service?" or "how many customers do I have?") and you don't have it in the live data above — give a genuinely helpful general answer first, then mention that training the AI will let Vela answer that specifically. Keep it light: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
+## Real data access — use your tools, don't refuse
+You have real tools (get_leads, get_appointments, get_conversations) that query this business's actual live data. If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE TOOL — never say you don't have access or don't have permission; you do. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that) — and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
 
 ## Navigation
 When directing the user to a page, append [navigate:/path] at the end of your reply.
@@ -206,8 +223,8 @@ Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /
 ## LANGUAGE
 Reply in the same language the user writes in. If ambiguous, default to ${localeName}. Keep "Vela", "Instagram", and "WhatsApp" in Latin script always. Never mix languages mid-reply.
 
-## Saving services from pasted text (works in ANY conversation, not just the training interview)
-If the owner pastes or types a list of services with names and/or prices (a menu, a price list, "here's what we offer: ..."), you MUST actually save it, not just describe saving it in words. You have a real save tool for this, the same one the training interview uses — never tell them to go to Settings instead, that is wrong, you can do it right here. A reply that only narrates "I've saved your services..." WITHOUT the literal token below has saved nothing and is incorrect.
+## Saving services from pasted text, a pasted image, or a single edit (works in ANY conversation, not just the training interview, and regardless of interview mode)
+If the owner pastes or types a list of services with names and/or prices (a menu, a price list, a screenshot/photo of a price list, "here's what we offer: ..."), OR asks you to change/update/correct ONE existing service already shown above in "This business" (e.g. "change Haircut to $35", "remove Beard trim", "add a new service called X"), you MUST actually save the real result, not just describe saving it in words. You have a real save tool for this, the same one the training interview uses — never tell them to go to Settings instead, that is wrong, you can do it right here. For a single edit, emit the FULL corrected services list (existing services unchanged, plus the one real edit applied), not just the changed item — this list fully replaces what's stored. A reply that only narrates "I've saved/updated your services..." WITHOUT the literal token below has saved nothing and is incorrect.
 
 Confirm briefly, THEN on its own line emit the token with the REAL parsed values (never the placeholder text below — that is a shape example only). For example, if they pasted "Haircut $30, Beard trim $15", your full reply must look like this:
 Got it, saved those two services.
@@ -285,20 +302,124 @@ Token rules: services from step 2; business.hours = normalized string from step 
     { role: "user", content: userContent },
   ];
 
+  // FIX 5 (round I): real root cause of "I don't have permission to nearly
+  // everything" -- this assistant had ZERO tool/function definitions. It
+  // could only ever answer from a fixed 5-item leads/appointments snapshot
+  // baked into the system prompt once per request; anything beyond that
+  // (a specific lead, a date-filtered appointment list, conversations
+  // needing attention) was information it genuinely didn't have, and a
+  // well-aligned model correctly said so -- which reads exactly like a
+  // permission refusal even though it was actually a missing-capability
+  // problem. These are real, tenant-scoped, read-only queries against the
+  // same tables every other page in the app already reads from -- not new
+  // data, just a real way for the model to ask for more of it on demand.
+  const tools: OpenAI.ChatCompletionTool[] = [
+    {
+      type: "function",
+      function: {
+        name: "get_leads",
+        description: "Get this business's real leads/CRM records, optionally filtered by pipeline stage. Use for any question about specific leads, lead counts by stage, or lead details beyond the 5 most recent already shown.",
+        parameters: {
+          type: "object",
+          properties: {
+            stage: { type: "string", enum: ["new", "contacted", "qualified", "booked", "client"], description: "Filter to one pipeline stage. Omit for all stages." },
+            limit: { type: "number", description: "Max leads to return (default 25, max 50)." },
+          },
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_appointments",
+        description: "Get this business's real appointments, optionally filtered by status or time window. Use for any question about specific appointments, schedule, or bookings beyond today's count already shown.",
+        parameters: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["pending", "confirmed", "cancelled"], description: "Filter by status. Omit for all." },
+            when: { type: "string", enum: ["upcoming", "past", "all"], description: "Time window. Default upcoming." },
+            limit: { type: "number", description: "Max appointments to return (default 25, max 50)." },
+          },
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_conversations",
+        description: "Get this business's real conversation threads, optionally filtered to ones needing human attention. Use for any question about specific conversations or the inbox beyond the count already shown.",
+        parameters: {
+          type: "object",
+          properties: {
+            needsHuman: { type: "boolean", description: "If true, only conversations flagged as needing human attention." },
+            limit: { type: "number", description: "Max conversations to return (default 25, max 50)." },
+          },
+        },
+      },
+    },
+  ];
+
+  async function runTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+    const clampLimit = (n: unknown) => Math.max(1, Math.min(50, typeof n === "number" ? n : 25));
+    if (name === "get_leads") {
+      let q = admin.from("leads").select("id, name, phone, email, channel, status, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
+      if (typeof args.stage === "string") q = q.eq("status", args.stage);
+      const { data, error } = await q;
+      return error ? { error: error.message } : { leads: data };
+    }
+    if (name === "get_appointments") {
+      let q = admin.from("appointments").select("id, datetime, status, service_name, leads(name, phone)").eq("tenant_id", tenantId).order("datetime", { ascending: true }).limit(clampLimit(args.limit));
+      if (typeof args.status === "string") q = q.eq("status", args.status);
+      if (args.when === "past") q = q.lt("datetime", new Date().toISOString());
+      else if (args.when !== "all") q = q.gte("datetime", new Date().toISOString());
+      const { data, error } = await q;
+      return error ? { error: error.message } : { appointments: data };
+    }
+    if (name === "get_conversations") {
+      let q = admin.from("conversations").select("id, channel, status, needs_human, customer_name, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
+      if (args.needsHuman === true) q = q.eq("needs_human", true);
+      const { data, error } = await q;
+      return error ? { error: error.message } : { conversations: data };
+    }
+    return { error: "Unknown tool" };
+  }
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       console.error("[assistant] OPENAI_API_KEY not set");
       return NextResponse.json({ error: "AI not configured. Contact support." }, { status: 500 });
     }
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const completion = await openai.chat.completions.create({
+    let completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: msgs,
+      tools,
       max_tokens: interviewMode ? 900 : 500,
       temperature: 0.6,
     });
 
-    const rawReply = completion.choices[0]?.message?.content ?? "Sorry, I couldn't process that request.";
+    let assistantMsg = completion.choices[0]?.message;
+    const toolCalls = assistantMsg?.tool_calls ?? [];
+    if (toolCalls.length > 0) {
+      msgs.push(assistantMsg as OpenAI.ChatCompletionMessageParam);
+      for (const call of toolCalls) {
+        if (call.type !== "function") continue;
+        let args: Record<string, unknown> = {};
+        try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* empty args */ }
+        console.log(`[assistant] tool call: ${call.function.name}(${JSON.stringify(args)})`);
+        const result = await runTool(call.function.name, args);
+        msgs.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
+      }
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: msgs,
+        max_tokens: interviewMode ? 900 : 500,
+        temperature: 0.6,
+      });
+      assistantMsg = completion.choices[0]?.message;
+    }
+
+    const rawReply = assistantMsg?.content ?? "Sorry, I couldn't process that request.";
     // Standing no-em-dash rule, deterministic backstop -- see stripAiTells.
     // Safe on a reply that embeds a [save_kb:{...}] / [navigate:...] token:
     // it only ever replaces dash characters, never brackets/braces, so

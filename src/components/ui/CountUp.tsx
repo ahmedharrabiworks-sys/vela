@@ -48,6 +48,19 @@ export function useCountUp(target: number, durationMs = 900): number {
     const isFirstRealReveal = !hasPlayedThisSession();
     prevTarget.current = target;
 
+    // FIX 3 (round I): real bug -- this flag was only ever marked when the
+    // full first-reveal animation reached 100% progress. If the user
+    // interacted again (switched 7d/30d/90d, navigated away) before that
+    // ~900ms finished -- an easy, completely normal thing to do -- the
+    // flag never got set. Every later value change then still saw
+    // hasPlayedThisSession()===false and replayed the FULL 0->target
+    // animation again, indefinitely, every single time: "worked once"
+    // (when tested patiently, letting it finish) "then broke again"
+    // (any real, faster interaction). Marking it here, at the moment the
+    // first reveal STARTS, guarantees it can only ever happen once per
+    // session no matter how the animation gets interrupted.
+    if (isFirstRealReveal) markPlayedThisSession();
+
     if (reduceMotion) {
       setValue(target);
       return;
@@ -64,11 +77,7 @@ export function useCountUp(target: number, durationMs = 900): number {
       const progress = Math.min(1, (ts - start) / animDuration);
       const eased = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(startVal + (target - startVal) * eased));
-      if (progress < 1) {
-        raf = requestAnimationFrame(step);
-      } else if (isFirstRealReveal) {
-        markPlayedThisSession();
-      }
+      if (progress < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);

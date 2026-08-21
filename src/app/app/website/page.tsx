@@ -3131,80 +3131,84 @@ export default function WebsitePage() {
               </div>
 
             ) : showAnalyticsPanel ? (
-              /* ── Analytics — FIX 3 (round H) full rebuild: no side padding
-                 wells (full-width, responsive), bigger stat numbers, chart
-                 uses the panel's full width/height (no more squeezed next to
-                 a ring), all 4 rings removed (recent-share ring + 3 device
-                 rings), "of last 30 days..." text and the entire Top Sources
-                 block removed. Freed space now holds real Website-channel AI
-                 config (tone/language) -- this is also where Channels'
-                 Website "Manage" lands, same as Instagram/WhatsApp's Manage
-                 surfaces their own AI config. ─────────────────────────── */
+              /* ── Analytics — FIX 7 (round I): tightened to match the main
+                 Analytics page's actual density (confirmed via live DOM
+                 inspection: rounded-xl, p-4, text-2xl values, text-[11px]
+                 labels) -- round H's pass over-corrected toward "bigger" and
+                 ended up feeling oversized/empty instead of information-
+                 dense. Same content as round H (no rings, full-width chart,
+                 Website AI config), just sized like the rest of the app
+                 instead of inflated. ─────────────────────────────────── */
               <div className="flex-1 overflow-y-auto bg-[#F9FAFB] dark:bg-[#101014]">
-                <div className="w-full p-4 sm:p-6 space-y-5">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="w-full p-4 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <button
                       onClick={() => { setShowAnalyticsPanel(false); setActiveTab("chat"); }}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white transition-colors px-2.5 py-1.5 -ml-2.5 rounded-lg hover:bg-white dark:hover:bg-[#1E1E24]"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white transition-colors px-2 py-1 -ml-2 rounded-lg hover:bg-white dark:hover:bg-[#1E1E24]"
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2.5L3 6l4.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       Back to editor
                     </button>
                     <button onClick={loadAnalytics} disabled={analyticsLoading}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] text-[#6B7280] dark:text-[#9CA3AF] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] disabled:opacity-40 transition-colors">
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] text-[#6B7280] dark:text-[#9CA3AF] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] disabled:opacity-40 transition-colors">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={analyticsLoading ? "animate-spin" : ""}><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                       {analyticsLoading ? "Refreshing…" : "Refresh"}
                     </button>
                   </div>
 
                   <div>
-                    <h2 className="text-lg font-bold text-[#111111] dark:text-white">Analytics</h2>
+                    <h2 className="text-base font-bold text-[#111111] dark:text-white">Analytics</h2>
                     <p className="text-xs text-[#9CA3AF] mt-0.5">{siteName || "Your site"}</p>
                   </div>
 
                   {!isPublished ? (
-                    <div className="text-center py-16 space-y-2 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <div className="text-center py-10 space-y-1.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
                       <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Publish your site to start collecting analytics</p>
                     </div>
                   ) : analyticsLoading ? (
-                    <div className="flex items-center justify-center py-16 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
-                      <div className="w-8 h-8 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
+                    <div className="flex items-center justify-center py-10 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">
+                      <div className="w-7 h-7 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
                     </div>
                   ) : !analyticsData ? (
-                    <p className="text-sm text-[#9CA3AF] text-center py-16 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">Could not load analytics.</p>
+                    <p className="text-sm text-[#9CA3AF] text-center py-10 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">Could not load analytics.</p>
                   ) : (() => {
                     const hasDeviceData = (["desktop", "mobile", "tablet"] as const).some((dev) => analyticsData.deviceSplit[dev] > 0);
                     return (
                       <>
                         {analyticsData.totalVisits === 0 && (
-                          <div className="text-center py-10 space-y-1.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl">
+                          <div className="text-center py-6 space-y-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">
                             <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
                             <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic. The numbers below will fill in as visits come in.</p>
                           </div>
                         )}
 
-                        {/* FIX 3: bigger, cleaner stat display -- no rings, just larger numbers with more room to breathe. */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                        {/* FIX 7: density matched to Analytics' own KPI cards
+                            exactly -- rounded-xl, p-4, text-2xl. */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {([
                             { label: "Total visits",    value: analyticsData.totalVisits    },
                             { label: "Unique visitors", value: analyticsData.uniqueVisitors },
                             { label: "Last 7 days",     value: analyticsData.last7Days      },
                             { label: "Last 30 days",    value: analyticsData.last30Days     },
                           ] as { label: string; value: number }[]).map(({ label, value }) => (
-                            <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 sm:p-6">
-                              <p className="text-3xl sm:text-4xl font-bold text-[#111111] dark:text-white tabular-nums">{value.toLocaleString()}</p>
-                              <p className="text-xs sm:text-sm text-[#9CA3AF] mt-1.5">{label}</p>
+                            <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                              <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums leading-none">{value.toLocaleString()}</p>
+                              <p className="text-[11px] text-[#9CA3AF] mt-1">{label}</p>
                             </div>
                           ))}
                         </div>
 
-                        {/* FIX 3: full-width chart, no ring beside it, more height. */}
-                        <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 sm:p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <p className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB]">Daily visits · last 30 days</p>
+                        {/* FIX 7: chart card matched to Analytics' own chart
+                            card density (p-4, text-sm header) -- still
+                            full-width and still the tallest element on the
+                            page (it's the actual content), just not padded
+                            like a hero banner. */}
+                        <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-bold text-[#111111] dark:text-white">Daily visits · last 30 days</p>
                             {hasDeviceData && (
-                              <div className="hidden sm:flex items-center gap-4">
+                              <div className="hidden sm:flex items-center gap-3">
                                 {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
                                   <span key={dev} className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">
                                     {dev} <span className="font-semibold text-[#111111] dark:text-white">{analyticsData.deviceSplit[dev]}%</span>
@@ -3213,13 +3217,13 @@ export default function WebsitePage() {
                               </div>
                             )}
                           </div>
-                          <WebsiteVisitsChart data={analyticsData.dailyVisits} height={240} />
-                          <div className="flex justify-between mt-1 pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                          <WebsiteVisitsChart data={analyticsData.dailyVisits} height={180} />
+                          <div className="flex justify-between mt-1 pt-2 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
                             <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
                             <span className="text-[10px] text-[#9CA3AF]">Today</span>
                           </div>
                           {hasDeviceData && (
-                            <div className="flex sm:hidden items-center gap-4 mt-3 pt-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                            <div className="flex sm:hidden items-center gap-3 mt-2 pt-2 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
                               {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
                                 <span key={dev} className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">
                                   {dev} <span className="font-semibold text-[#111111] dark:text-white">{analyticsData.deviceSplit[dev]}%</span>
@@ -3232,13 +3236,14 @@ export default function WebsitePage() {
                     );
                   })()}
 
-                  {/* FIX 3: real Website-channel AI config -- exact same
-                      component/mechanism as Instagram/WhatsApp's Manage
-                      modal, scoped to channel="website" here instead. */}
+                  {/* FIX 3 (round H) / FIX 7 (round I): real Website-channel
+                      AI config, same component/mechanism as Instagram/
+                      WhatsApp's Manage modal, scoped to channel="website"
+                      here -- density matched to the rest of this panel. */}
                   {isPublished && (
-                    <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 sm:p-6">
-                      <p className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB] mb-1">Website chat AI settings</p>
-                      <p className="text-xs text-[#9CA3AF] mb-4">Controls how Vela AI responds to visitors chatting on this site.</p>
+                    <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                      <p className="text-sm font-bold text-[#111111] dark:text-white mb-0.5">Website chat AI settings</p>
+                      <p className="text-[11px] text-[#9CA3AF] mb-3">Controls how Vela AI responds to visitors chatting on this site.</p>
                       <ChannelAiConfigFields
                         loading={websiteAiCfgLoading}
                         tone={websiteAiTone}

@@ -32,12 +32,23 @@ const STAGE_LABEL_KEYS: Record<Stage, string> = {
   client:    "leads.stages.client",
 };
 
-const STAGE_COLORS: Record<Stage, { dot: string }> = {
-  new:       { dot: "#9CA3AF" },
-  contacted: { dot: "#FF6B35" },
-  qualified: { dot: "#F59E0B" },
-  booked:    { dot: "#16A34A" },
-  client:    { dot: "#7C3AED" },
+// FIX 6 (round I): visual redesign -- each stage now carries a full color
+// token set (dot/text/bg/border) instead of just a header dot, so stage
+// identity is visible on the card itself (a colored left accent bar) and in
+// the column's count pill, not only in the small header dot that scrolls
+// out of view once a column has more than a couple of cards.
+const STAGE_COLORS: Record<Stage, { dot: string; text: string; bg: string; border: string }> = {
+  new:       { dot: "#9CA3AF", text: "#6B7280", bg: "#F3F4F6", border: "#D1D5DB" },
+  contacted: { dot: "#FF6B35", text: "#FF6B35", bg: "#FFF5F0", border: "#FF6B35" },
+  qualified: { dot: "#F59E0B", text: "#B45309", bg: "#FFFBEB", border: "#F59E0B" },
+  booked:    { dot: "#16A34A", text: "#15803D", bg: "#F0FDF4", border: "#16A34A" },
+  client:    { dot: "#7C3AED", text: "#6D28D9", bg: "#F5F3FF", border: "#7C3AED" },
+};
+
+const CHANNEL_BADGE: Record<string, { bg: string; iconColor: string }> = {
+  instagram: { bg: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#833AB4]", iconColor: "text-white" },
+  whatsapp:  { bg: "bg-[#25D366]", iconColor: "text-white" },
+  website:   { bg: "bg-[#6366F1]", iconColor: "text-white" },
 };
 
 function ChannelIcon({ channel }: { channel: string | null }) {
@@ -176,8 +187,10 @@ function LeadDetailModal({
 // equivalent at all). activationConstraint distance below lets a plain tap
 // still fire onClick to open the detail modal; only a real drag (>8px of
 // movement) engages dnd-kit.
-function DraggableLeadCard({ lead, onOpen, t }: { lead: Lead; onOpen: () => void; t: (key: string) => string }) {
+function DraggableLeadCard({ lead, stage, onOpen, t }: { lead: Lead; stage: Stage; onOpen: () => void; t: (key: string) => string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
+  const colors = STAGE_COLORS[stage];
+  const channelBadge = CHANNEL_BADGE[lead.channel ?? ""] ?? CHANNEL_BADGE.website;
   return (
     <button
       ref={setNodeRef}
@@ -185,25 +198,25 @@ function DraggableLeadCard({ lead, onOpen, t }: { lead: Lead; onOpen: () => void
       onClick={onOpen}
       {...listeners}
       {...attributes}
-      className={`text-left bg-white rounded-xl border border-[#E5E7EB] p-4 hover:border-[#FF6B35]/30 hover:shadow-sm transition-all duration-150 w-full touch-none ${isDragging ? "opacity-30" : ""}`}
+      style={{ borderLeftColor: colors.border }}
+      className={`text-left bg-white dark:bg-[#17171C] rounded-2xl border border-[#E5E7EB] dark:border-[#2A2A32] border-l-[3px] p-4 shadow-sm hover:shadow-md hover:border-[#D1D5DB] dark:hover:border-[#3A3A44] transition-all duration-150 w-full touch-none ${isDragging ? "opacity-30" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2 mb-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: colors.bg, color: colors.text }}>
             {(lead.name ?? "?")[0].toUpperCase()}
           </div>
-          <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</p>
+          <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{lead.name ?? t("dashboard.unknown")}</p>
         </div>
-        <span className="flex items-center gap-1 text-[9px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] shrink-0 whitespace-nowrap capitalize">
+        <span className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${channelBadge.bg} ${channelBadge.iconColor}`} title={lead.channel ?? "website"}>
           <ChannelIcon channel={lead.channel} />
-          {lead.channel ?? "web"}
         </span>
       </div>
       {lead.phone && (
-        <p className="text-[10px] text-[#6B7280] mb-2 font-mono">{lead.phone}</p>
+        <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-2.5 font-mono truncate">{lead.phone}</p>
       )}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[#9CA3AF]">{timeAgo(lead.created_at, t)}</span>
+      <div className="flex items-center justify-between pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+        <span className="text-[10px] text-[#9CA3AF] dark:text-[#6E6E76]">{timeAgo(lead.created_at, t)}</span>
       </div>
     </button>
   );
@@ -379,7 +392,7 @@ export default function LeadsPage() {
               </div>
               <div className="flex flex-col gap-2">
                 {[1, 2].map((i) => (
-                  <div key={i} className="bg-white rounded-xl border border-[#E5E7EB] p-4 animate-pulse">
+                  <div key={i} className="bg-white rounded-2xl border border-[#E5E7EB] p-4 animate-pulse">
                     <div className="h-2.5 bg-[#F3F4F6] rounded w-2/3 mb-2" />
                     <div className="h-2 bg-[#F3F4F6] rounded w-full mb-3" />
                     <div className="h-2 bg-[#F3F4F6] rounded w-1/3" />
@@ -420,13 +433,15 @@ export default function LeadsPage() {
                   const colors = STAGE_COLORS[stage];
                   return (
                     <div key={stage} className="flex-shrink-0 w-64" style={{ scrollSnapAlign: "start" }}>
-                      {/* Column header */}
+                      {/* Column header -- FIX 6 (round I): tinted count pill
+                          matching the stage color, bolder label, so stage
+                          identity reads clearly even before scanning cards. */}
                       <div className="flex items-center justify-between mb-3 px-1">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dot }} />
-                          <span className="text-xs font-bold text-[#374151]">{t(STAGE_LABEL_KEYS[stage])}</span>
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colors.dot }} />
+                          <span className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB]">{t(STAGE_LABEL_KEYS[stage])}</span>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280]">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: colors.bg, color: colors.text }}>
                           {stageLeads.length}
                         </span>
                       </div>
@@ -434,11 +449,11 @@ export default function LeadsPage() {
                       {/* Cards */}
                       <DroppableColumn stage={stage}>
                         {stageLeads.map((lead) => (
-                          <DraggableLeadCard key={lead.id} lead={lead} onOpen={() => setSelectedId(lead.id)} t={t} />
+                          <DraggableLeadCard key={lead.id} lead={lead} stage={stage} onOpen={() => setSelectedId(lead.id)} t={t} />
                         ))}
 
                         {stageLeads.length === 0 && (
-                          <div className="border-2 border-dashed border-[#E5E7EB] rounded-xl p-5 text-center">
+                          <div className="border-2 border-dashed border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 text-center">
                             <p className="text-[11px] text-[#9CA3AF]">{t("leads.emptyColumn")}</p>
                           </div>
                         )}
@@ -451,13 +466,14 @@ export default function LeadsPage() {
                 {draggingId ? (() => {
                   const lead = leads.find((l) => l.id === draggingId);
                   if (!lead) return null;
+                  const colors = STAGE_COLORS[lead.status as Stage] ?? STAGE_COLORS.new;
                   return (
-                    <div className="bg-white rounded-xl border border-[#FF6B35] shadow-xl p-4 w-64 rotate-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#374151] shrink-0">
+                    <div className="bg-white dark:bg-[#17171C] rounded-2xl border border-[#FF6B35] shadow-xl p-4 w-64 rotate-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: colors.bg, color: colors.text }}>
                           {(lead.name ?? "?")[0].toUpperCase()}
                         </div>
-                        <p className="text-xs font-semibold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</p>
+                        <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{lead.name ?? t("dashboard.unknown")}</p>
                       </div>
                     </div>
                   );

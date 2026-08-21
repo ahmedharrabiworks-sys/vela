@@ -14,6 +14,15 @@ import { useTheme } from "@/lib/theme";
  * match specific literal className strings). Falls back to a dark-mode
  * track color automatically via useTheme() when the caller doesn't
  * override trackColor explicitly.
+ *
+ * FIX 3 (round I): the fill circle previously had its own CSS
+ * `transition: stroke-dashoffset 0.08s linear` on top of useCountUp's RAF
+ * loop, which already emits a new eased value ~60 times/sec. Stacking a CSS
+ * transition on a value that's already being smoothly interpolated in JS
+ * double-eases every frame -- each RAF update kicks off its own 80ms
+ * transition that the next update immediately interrupts, which is exactly
+ * what reads as jumpy/jarring instead of smooth. Removed; the ring now
+ * tracks useCountUp's already-smooth output directly, same as the number.
  */
 export default function CircularProgress({
   value,
@@ -54,7 +63,6 @@ export default function CircularProgress({
           strokeDasharray={c}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.08s linear" }}
         />
       </svg>
       {showLabel && (
