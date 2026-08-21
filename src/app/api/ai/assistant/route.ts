@@ -13,6 +13,40 @@ export const dynamic = "force-dynamic";
 const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/bmp"]);
 const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3)); // 5 MB in base64 chars
 
+// FIX 2 (round K second follow-up): real bug traced line by line, twice
+// reported ("Dec 10" saved as Dec 11; later "10am" saved as 11am). The
+// server-side ISO assembly in reschedule_appointment below is plain string
+// concatenation with zero Date re-parsing of the numeric values -- provably
+// cannot introduce drift on its own. The drift was happening BEFORE the
+// tool ever ran: the old schema required the model to output a 24-hour
+// "HH:MM" string itself, which meant the model had to perform its own
+// AM/PM-to-24h (and, evidently, an unwanted timezone) conversion in its
+// head before calling the tool -- an LLM arithmetic step with no
+// determinism guarantee. This parser removes that step from the model
+// entirely: the model now just relays the owner's words verbatim (e.g.
+// "10am", "2:30 PM", "14:00") and this function does the ONLY conversion
+// that should ever happen (AM/PM -> 24h, a fixed lookup table, never a
+// timezone adjustment of any kind) deterministically in code.
+function parseTimeText(raw: string): { h: number; min: number } | null {
+  const s = raw.trim().toLowerCase().replace(/\s+/g, "");
+  let m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (m) {
+    const h = parseInt(m[1], 10), min = parseInt(m[2], 10);
+    if (h <= 23 && min <= 59) return { h, min };
+    return null;
+  }
+  m = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    if (h < 1 || h > 12 || min > 59) return null;
+    if (h === 12) h = 0;
+    if (m[3] === "pm") h += 12;
+    return { h, min };
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     message?: string;
@@ -217,7 +251,13 @@ The voice agent (AI Agent section) goes further — it answers real phone calls,
 You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations, get_recycle_bin (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message, delete_lead, delete_appointment, delete_conversation, restore_lead, restore_appointment, restore_conversation, toggle_conversation_ai (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL — never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation, delete or restore a lead/appointment/conversation) — CALL THE REAL TOOL for it. Never say deleting isn't supported — it is; delete_lead/delete_appointment/delete_conversation move the item to the same Recycle Bin used everywhere else in the app (Settings → Recycle Bin), so it's always recoverable, never a permanent hard delete. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence — never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. After a delete, briefly mention it's recoverable from the Recycle Bin in Settings if it feels natural, but keep it to one short sentence. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that) — and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
 
 ## Recycle Bin vs. cancelled — these are two different things, never confuse them
-A "cancelled" appointment still exists normally, just with status=cancelled (get_appointments finds these). The Recycle Bin (Settings → Recycle Bin) holds SOFT-DELETED leads/appointments/conversations -- a completely different, separate place, only visible via get_recycle_bin. If the owner says "restore", "recycle bin", "deleted", "removed", or asks to bring something back, that means the Recycle Bin -- call get_recycle_bin (never assume nothing's there just because get_appointments/get_leads/get_conversations came back empty or didn't mention it, those never include Recycle Bin items) and use restore_lead/restore_appointment/restore_conversation. When you summarize appointments for any reason, always check the returned cancelledCount and deletedCount and proactively mention both if either is above zero, in the SAME reply, even if the owner only asked a plain question like "tell me about my appointments" -- never wait for them to ask "is this all?".
+A "cancelled" appointment still exists normally, just with status=cancelled (get_appointments finds these -- including past-dated ones; asking about cancelled appointments always searches all time, not just upcoming). The Recycle Bin (Settings → Recycle Bin) holds SOFT-DELETED leads/appointments/conversations -- a completely different, separate place, only visible via get_recycle_bin. A single item can be BOTH at once (cancelled AND in the Recycle Bin) -- if asked, report each state accurately and distinctly, don't collapse them into one. If the owner says "restore", "recycle bin", "deleted", "removed", or asks to bring something back, that means the Recycle Bin -- call get_recycle_bin (never assume nothing's there just because get_appointments/get_leads/get_conversations came back empty or didn't mention it, those never include Recycle Bin items) and use restore_lead/restore_appointment/restore_conversation. get_appointments' result tells you whether to mention cancelled/Recycle Bin counts this turn (via its "instruction" field) -- it already tracks whether you mentioned this earlier in the conversation, so follow that field exactly: mention once when it says to, then stop repeating it on later unrelated replies unless the owner asks again directly.
+
+## Sending a message to a named customer
+If get_conversations doesn't show a conversation whose customer_name matches who the owner means, do NOT give up and say there's no conversation. Call get_leads (or get_appointments) to find that person by name and get their real leadId, then call send_message with that leadId instead of a conversationId -- it will resolve the right conversation thread even when the display name doesn't match yet. Only tell the owner no conversation exists if send_message itself actually returns that error after you've tried the leadId path.
+
+## Rescheduling: never compute a date or time yourself
+When calling reschedule_appointment, newDate and newTime must be a direct, uncomputed transcription of what the owner said -- never apply timezone math, never "helpfully" adjust an hour, never guess an offset. "10am" becomes newTime "10am", not "09:00" or "11:00" or anything else -- the parsing happens server-side, your only job is to relay their exact words unchanged. This has caused real, silent wrong-date/wrong-time bugs before -- treat any urge to convert or adjust as a bug in your own reasoning and don't do it.
 
 ## State facts from real data, never from memory of what you said before
 Every date, status, or value you tell the owner must come from the tool result you just received, not from what you asked the tool to do or what you said in an earlier message. After reschedule_appointment/update_appointment_status/update_lead_stage/restore_* run, read the exact value back from the tool's "saved"/"restored" result and state THAT, not the input you sent -- if they ever differ, the real saved value is what actually happened and is what you report. If the owner ever says something you told them seems wrong, do not defend or repeat your earlier claim -- call the relevant get_* tool again right now, look at the real current data, and report exactly what it shows, even if that means correcting yourself. Being wrong once is fine; insisting on a claim without checking is not.
@@ -331,7 +371,7 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       type: "function",
       function: {
         name: "get_appointments",
-        description: "Get this business's real appointments, optionally filtered by status or time window. Use for any question about specific appointments, schedule, or bookings beyond today's count already shown. When status is omitted and when='upcoming' (the default), cancelled appointments are excluded from the main list and returned separately as cancelledCount/cancelledSummary -- mention those briefly at the end if non-zero, never mixed into the main list.",
+        description: "Get this business's real appointments, optionally filtered by status or time window. Use for any question about specific appointments, schedule, or bookings beyond today's count already shown. When status is omitted, the response separately includes cancelledCount/cancelledAppointments and deletedCount (Recycle Bin) -- these are never mixed into the main list. Passing status='cancelled' always searches ALL time regardless of `when` (a cancelled appointment is commonly for a past slot -- asking about cancelled ones means all of them, not just future-dated ones).",
         parameters: {
           type: "object",
           properties: {
@@ -394,12 +434,12 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       type: "function",
       function: {
         name: "update_appointment_status",
-        description: "Confirm or cancel a real appointment. Requires the appointment's real id -- call get_appointments first if you only have a name/date.",
+        description: "Confirm, cancel, or reactivate a real appointment. Use status='pending' to reactivate/un-cancel a cancelled appointment (same as the Reactivate button on the Appointments page) -- it becomes active again awaiting confirmation, with its date/time unchanged. Requires the appointment's real id -- call get_appointments (with status='cancelled' if reactivating) first if you only have a name/date.",
         parameters: {
           type: "object",
           properties: {
             appointmentId: { type: "string" },
-            status: { type: "string", enum: ["confirmed", "cancelled"] },
+            status: { type: "string", enum: ["confirmed", "cancelled", "pending"] },
           },
           required: ["appointmentId", "status"],
         },
@@ -415,7 +455,7 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
           properties: {
             appointmentId: { type: "string" },
             newDate: { type: "string", description: "The new calendar date in YYYY-MM-DD format, exactly as the owner means it (e.g. 'Dec 10, 2026' -> '2026-12-10')." },
-            newTime: { type: "string", description: "Optional new time in 24-hour HH:MM format. Omit entirely if the owner only mentioned a date -- the appointment's existing time is kept." },
+            newTime: { type: "string", description: "Optional. The new time EXACTLY as the owner said it, unconverted, e.g. '10am', '2:30pm', or '14:00' -- do not do any math on this, do not adjust for timezone, just copy their words. Omit entirely if the owner only mentioned a date -- the appointment's existing time is kept automatically." },
           },
           required: ["appointmentId", "newDate"],
         },
@@ -556,61 +596,72 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       return error ? { error: error.message } : { leads: data };
     }
     if (name === "get_appointments") {
+      // FIX 1 (round K second follow-up): real bug traced and confirmed --
+      // the `when` time-window filter (default "upcoming" = datetime >= now)
+      // applied UNCONDITIONALLY, even when args.status === "cancelled" was
+      // explicitly requested. A cancelled appointment is very often for a
+      // slot that's already in the past (that's frequently WHY it reads as
+      // "irrelevant now" to a customer who cancels), so a plain
+      // get_appointments({status:"cancelled"}) call silently came back
+      // empty unless the caller ALSO happened to pass when:"all" -- which
+      // nothing prompted the model to do. Reproduced against real production
+      // data (tenant 1fedeaa2..., two real "villa viewing" appointments,
+      // both status=cancelled, both dated same-day-as-request but hours in
+      // the past relative to the request time). Fix: asking specifically
+      // for cancelled status now always searches ALL time, ignoring `when`
+      // entirely -- a cancelled appointment isn't meaningfully "upcoming" or
+      // "past", the owner just wants to know about cancelled ones, period.
+      const wantsCancelledOnly = args.status === "cancelled";
       let q = admin.from("appointments").select("id, datetime, status, service_name, leads(name, phone)").eq("tenant_id", tenantId).is("deleted_at", null).order("datetime", { ascending: true }).limit(clampLimit(args.limit));
       if (typeof args.status === "string") q = q.eq("status", args.status);
-      if (args.when === "past") q = q.lt("datetime", new Date().toISOString());
-      else if (args.when !== "all") q = q.gte("datetime", new Date().toISOString());
+      if (!wantsCancelledOnly) {
+        if (args.when === "past") q = q.lt("datetime", new Date().toISOString());
+        else if (args.when !== "all") q = q.gte("datetime", new Date().toISOString());
+      }
       const { data, error } = await q;
       if (error) return { error: error.message };
-      // FIX 2 (round J): when the caller didn't ask for a specific status,
-      // cancelled appointments must never appear mixed into a general/
-      // "upcoming" list -- split them out here so the model can only ever
-      // mention them separately, per the tool description above.
-      if (typeof args.status !== "string") {
-        const rows = (data ?? []) as { status: string }[];
-        const active = rows.filter((r) => r.status !== "cancelled");
-        const cancelled = rows.filter((r) => r.status === "cancelled");
-        // FIX 2/3 (round K follow-up): a real live bug -- items sitting in
-        // the Recycle Bin (deleted_at IS NOT NULL) are a genuinely different
-        // thing from a "cancelled" status, but the assistant only ever knew
-        // about cancelled ones. Asked to "restore the cancelled one" for a
-        // soft-deleted appointment, it looked at status=cancelled (found
-        // nothing) instead of deleted_at (where the item actually was) and
-        // wrongly said none existed. Now counts deleted_at IS NOT NULL here
-        // too, in the SAME query pass every appointments summary already
-        // makes, so the model is never one tool-call away from knowing they
-        // exist -- matching the round's explicit "proactively mention, don't
-        // wait to be asked" requirement.
-        const { count: deletedCount } = await admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).not("deleted_at", "is", null);
-        // FIX 3/5 (round K follow-up): a real bug caught in live testing --
-        // this instruction text used to spell out literal tool names
-        // ("use get_recycle_bin..."), and the model copied that phrasing
-        // straight into its reply. The markdown-stripper then mangled the
-        // underscores in "get_recycle_bin" (parsed as italic markers) into
-        // the garbled "getrecyclebin". Fixed at the root: the mentionText
-        // values below are the ONLY text ever meant to reach the user, kept
-        // completely free of tool/internal names; any guidance about WHICH
-        // tool to call next lives in a separate sentence the model reads for
-        // its own planning but must never quote back.
-        const hasCancelled = cancelled.length > 0;
-        const hasDeleted = (deletedCount ?? 0) > 0;
-        const mentionText = hasCancelled && hasDeleted
-          ? `You also have ${cancelled.length} cancelled appointment${cancelled.length === 1 ? "" : "s"} and ${deletedCount} in the Recycle Bin.`
-          : hasCancelled
-            ? `You also have ${cancelled.length} cancelled appointment${cancelled.length === 1 ? "" : "s"}.`
-            : hasDeleted
-              ? `You also have ${deletedCount} appointment${deletedCount === 1 ? "" : "s"} in the Recycle Bin.`
-              : "";
-        return {
-          appointments: active,
-          cancelledCount: cancelled.length,
-          deletedCount: deletedCount ?? 0,
-          instruction: mentionText
-            ? `You MUST end your reply with this exact short sentence appended, every single time, proactively, even if the owner didn't ask: "${mentionText}" Never skip this when cancelledCount or deletedCount is above 0 -- this applies to ANY appointments summary. Do not add any tool or internal names to this sentence. Separately (for your own planning only, never say this part out loud): if the owner then asks to restore one, look it up in the Recycle Bin data and restore it -- do not mention how you'll do that.`
-            : undefined,
-        };
-      }
-      return { appointments: data };
+      if (typeof args.status === "string") return { appointments: data };
+
+      // FIX 1 (round K second follow-up): the cancelled list/count for the
+      // default (no status filter) summary must ALSO never be time-windowed
+      // -- previously it was derived from the SAME `data` the "upcoming"
+      // filter had already thinned out, so a past-dated cancelled
+      // appointment was invisible here too, for the identical root-cause
+      // reason as above. Queried separately, unrestricted by time, same
+      // pattern already used for deletedCount below.
+      const active = (data ?? []).filter((r: { status: string }) => r.status !== "cancelled");
+      const { data: cancelledRows } = await admin.from("appointments").select("id, datetime, service_name, leads(name, phone)").eq("tenant_id", tenantId).eq("status", "cancelled").is("deleted_at", null).order("datetime", { ascending: false }).limit(20);
+      const cancelled = cancelledRows ?? [];
+      const { count: deletedCount } = await admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).not("deleted_at", "is", null);
+      // FIX 3 (round K second follow-up): the forced proactive mention used
+      // to fire on EVERY get_appointments call in a conversation, even
+      // several turns after it was already said once -- reads as robotic
+      // repetition ("You also have 2 appointments in the Recycle Bin" after
+      // nearly every reply). Only force it if the recent history doesn't
+      // already show the assistant having said it -- still ALWAYS return the
+      // real counts/rows below regardless, so the model can still answer
+      // directly if asked again.
+      const recentAssistantText = history.filter((h) => h.role === "assistant").slice(-6).map((h) => h.content).join(" ").toLowerCase();
+      const alreadyMentionedCancelled = /cancelled appointment/.test(recentAssistantText);
+      const alreadyMentionedBin = /recycle bin/.test(recentAssistantText);
+      const hasCancelled = cancelled.length > 0 && !alreadyMentionedCancelled;
+      const hasDeleted = (deletedCount ?? 0) > 0 && !alreadyMentionedBin;
+      const mentionText = hasCancelled && hasDeleted
+        ? `You also have ${cancelled.length} cancelled appointment${cancelled.length === 1 ? "" : "s"} and ${deletedCount} in the Recycle Bin.`
+        : hasCancelled
+          ? `You also have ${cancelled.length} cancelled appointment${cancelled.length === 1 ? "" : "s"}.`
+          : hasDeleted
+            ? `You also have ${deletedCount} appointment${deletedCount === 1 ? "" : "s"} in the Recycle Bin.`
+            : "";
+      return {
+        appointments: active,
+        cancelledAppointments: cancelled,
+        cancelledCount: cancelled.length,
+        deletedCount: deletedCount ?? 0,
+        instruction: mentionText
+          ? `End your reply with this exact short sentence appended, since you have not already told the owner this in this conversation: "${mentionText}" Do not add any tool or internal names to this sentence. Separately (for your own planning only, never say this part out loud): if the owner then asks to restore one, look it up in the Recycle Bin data and restore it -- do not mention how you'll do that.`
+          : "cancelledAppointments and deletedCount are provided above for reference if the owner asks about them directly, but do not proactively restate this again -- you already mentioned it earlier in this conversation.",
+      };
     }
     // FIX 2 (round K follow-up): mirrors EXACTLY the same three queries
     // Settings -> Recycle Bin runs (src/app/app/settings/page.tsx
@@ -729,9 +780,10 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       if (typeof args.appointmentId !== "string" || typeof args.newDate !== "string") return { error: "appointmentId and newDate are required" };
       if (!/^\d{4}-\d{2}-\d{2}$/.test(args.newDate)) return { error: "newDate must be in YYYY-MM-DD format" };
       let timePart = "12:00:00.000";
-      if (typeof args.newTime === "string" && args.newTime) {
-        if (!/^\d{2}:\d{2}$/.test(args.newTime)) return { error: "newTime must be in HH:MM 24-hour format" };
-        timePart = `${args.newTime}:00.000`;
+      if (typeof args.newTime === "string" && args.newTime.trim()) {
+        const parsedTime = parseTimeText(args.newTime);
+        if (!parsedTime) return { error: "newTime could not be understood -- ask the owner to clarify the exact time (e.g. '10am' or '14:00')" };
+        timePart = `${String(parsedTime.h).padStart(2, "0")}:${String(parsedTime.min).padStart(2, "0")}:00.000`;
       } else {
         const { data: current } = await admin.from("appointments").select("datetime").eq("id", args.appointmentId).eq("tenant_id", tenantId).maybeSingle();
         if (current?.datetime) {

@@ -440,6 +440,19 @@ export default function AppointmentsPage() {
     flashRow(id);
   };
 
+  // FIX 6 (round K second follow-up): a cancelled appointment previously had
+  // no way back to active except a full reschedule (which also changes the
+  // date/time -- not what's needed when the owner just wants to undo an
+  // accidental or premature cancellation). Reactivate sets it back to
+  // pending -- the same "needs confirmation" state a fresh or rescheduled
+  // booking starts in -- without touching the date/time at all.
+  const handleReactivate = async (id: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (getSupabase() as any).from("appointments").update({ status: "pending" }).eq("id", id);
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "pending" } : a)));
+    flashRow(id);
+  };
+
   const handleCancel = async () => {
     if (!modal) return;
     const id = modal.id;
@@ -682,6 +695,12 @@ export default function AppointmentsPage() {
                                   Cancel
                                 </button>
                               </>
+                            )}
+                            {apt.status === "cancelled" && (
+                              <button onClick={() => handleReactivate(apt.id)}
+                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 transition-all whitespace-nowrap min-h-[30px]">
+                                Reactivate
+                              </button>
                             )}
                             <button onClick={() => setModal({ type: "message", id: apt.id })}
                               className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white hover:opacity-90 whitespace-nowrap min-h-[30px]"

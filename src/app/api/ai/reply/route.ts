@@ -579,6 +579,20 @@ Rules:
       if (name && name !== "Customer" && name !== "Website Visitor") {
         await admin.from("leads").update({ name }).eq("id", leadId)
           .or('name.is.null,name.eq."Website Visitor",name.eq.Customer');
+        // FIX 5 (round K second follow-up): real architectural gap -- the
+        // lead's own name got updated correctly above, but conversations.
+        // customer_name (a separate column, set once at conversation
+        // creation to a generic placeholder) was never touched, so the
+        // Conversations list -- and the assistant's own name-matching
+        // lookups, which read customer_name -- stayed stuck on "Website
+        // Visitor" forever even after a real name was captured. Reproduced
+        // against real production data: two real leads ("Ahmed Harrabi",
+        // "jack danielle") both had their name captured correctly on the
+        // lead row, but both linked conversations still showed "Website
+        // Visitor". Same placeholder guard as the leads update above --
+        // never overwrites a real name already on the conversation.
+        await admin.from("conversations").update({ customer_name: name }).eq("id", convId)
+          .or('customer_name.is.null,customer_name.eq."Website Visitor",customer_name.eq.Customer,customer_name.eq."Website visitor"');
       }
       return;
     }
@@ -601,6 +615,14 @@ Rules:
     }
     leadId = (lead as { id: string }).id;
     await admin.from("conversations").update({ lead_id: leadId }).eq("id", convId);
+    // FIX 5 (round K second follow-up): same real-name sync as the
+    // existing-lead path above -- if a real name was captured at the exact
+    // moment this brand-new lead was created, the conversation should show
+    // it immediately, not the generic placeholder it was created with.
+    if (name && name !== "Customer" && name !== "Website Visitor") {
+      await admin.from("conversations").update({ customer_name: name }).eq("id", convId)
+        .or('customer_name.is.null,customer_name.eq."Website Visitor",customer_name.eq.Customer,customer_name.eq."Website visitor"');
+    }
     if (!isTest) {
       await createNotification(admin, {
         tenantId,

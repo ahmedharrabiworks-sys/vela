@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { Database } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
+import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   preview?: string;
@@ -11,29 +12,6 @@ type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   needs_human?: boolean;
 };
 type Message = Database["public"]["Tables"]["messages"]["Row"] & { is_test?: boolean; is_owner_reply?: boolean };
-
-function ChannelIcon({ channel }: { channel: string }) {
-  if (channel === "instagram")
-    return (
-      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-        <rect x="1" y="1" width="10" height="10" rx="3" stroke="currentColor" strokeWidth="1.3" />
-        <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.3" />
-        <circle cx="9.2" cy="2.8" r="0.7" fill="currentColor" />
-      </svg>
-    );
-  if (channel === "whatsapp")
-    return (
-      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-        <path d="M6 1a5 5 0 0 1 4.33 7.5L11 11l-2.62-.86A5 5 0 1 1 6 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-      </svg>
-    );
-  return (
-    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-      <rect x="1" y="1" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M4 11h4M6 8v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 // website = the auto-injected widget on a Vela-built site; website_embed = the
 // same widget pasted onto an external site via the Channels embed code.
@@ -463,8 +441,8 @@ export default function ConversationsPage() {
                   <div className="w-9 h-9 rounded-full bg-[#F3F4F6] flex items-center justify-center text-sm font-bold text-[#374151]">
                     {(conv.customer_name ?? "?")[0].toUpperCase()}
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#E5E7EB] border-2 border-white flex items-center justify-center text-[#6B7280]">
-                    <ChannelIcon channel={conv.channel} />
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${channelIconBg(conv.channel)}`}>
+                    <ChannelIcon channel={conv.channel} size={9} />
                   </div>
                 </div>
 
@@ -553,8 +531,8 @@ export default function ConversationsPage() {
                 <div className="w-9 h-9 rounded-full bg-[#F3F4F6] flex items-center justify-center text-sm font-bold text-[#374151]">
                   {(selected.customer_name ?? "?")[0].toUpperCase()}
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#E5E7EB] border-2 border-white flex items-center justify-center text-[#6B7280]">
-                  <ChannelIcon channel={selected.channel} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${channelIconBg(selected.channel)}`}>
+                  <ChannelIcon channel={selected.channel} size={9} />
                 </div>
               </div>
 

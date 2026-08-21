@@ -772,6 +772,32 @@ function ChannelsPageContent() {
     setSavingAssistant(false);
   };
 
+  // FIX 9b (round K second follow-up): Website has no OAuth link to revoke
+  // like Instagram/WhatsApp, so there's nothing to "disconnect" in that
+  // sense -- but the reference layout shows a Disconnect button under
+  // Manage on every connected channel card, including this one, for visual
+  // consistency. The real equivalent action that already exists is the
+  // embedAssistant toggle right below in this same card -- Disconnect is a
+  // direct shortcut to turning that off (same PUT, same real effect: the
+  // widget stops answering on the live site), not a separate new capability.
+  const disconnectWebsite = async () => {
+    if (!website.websiteId || savingAssistant || !website.embedAssistant) return;
+    setSavingAssistant(true);
+    try {
+      const res = await fetch("/api/website/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: website.websiteId, embedAiAssistant: false }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setWebsite((prev) => ({ ...prev, embedAssistant: false }));
+      setToast({ msg: "AI assistant removed from your site", type: "info" });
+    } catch {
+      setToast({ msg: "Could not update your site. Please try again.", type: "error" });
+    }
+    setSavingAssistant(false);
+  };
+
   // FIX 7 (round D): real brand glyphs on a solid colored square, larger
   // (48px) container -- same icon source as /demo/channels (already the
   // approved reference, confirmed identical path data) and the landing
@@ -1073,12 +1099,23 @@ function ChannelsPageContent() {
                 embedAssistant toggle that used to live in that modal moved
                 down into this card's own body (below), so nothing was lost. */}
             {website.published && website.websiteId ? (
-              <Link
-                href={`/app/website?site=${encodeURIComponent(website.websiteId)}&tab=analytics`}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap shrink-0"
-              >
-                Manage
-              </Link>
+              <div className="flex flex-col gap-2 shrink-0">
+                <Link
+                  href={`/app/website?site=${encodeURIComponent(website.websiteId)}&tab=analytics`}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center"
+                >
+                  Manage
+                </Link>
+                {website.embedAssistant && (
+                  <button
+                    onClick={disconnectWebsite}
+                    disabled={savingAssistant}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] dark:border-red-900/50 text-[#DC2626] dark:text-red-400 hover:bg-[#FEF2F2] dark:hover:bg-red-950/30 transition-colors whitespace-nowrap disabled:opacity-50"
+                  >
+                    {savingAssistant ? "…" : t("common.disconnect")}
+                  </button>
+                )}
+              </div>
             ) : (
               <Link
                 href="/app/website"

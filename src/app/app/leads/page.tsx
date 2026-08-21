@@ -8,6 +8,7 @@ import {
   DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor,
   DragOverlay, type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
+import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 
 type Lead = {
   id: string;
@@ -45,32 +46,6 @@ const STAGE_COLORS: Record<Stage, { dot: string; text: string; bg: string; borde
   client:    { dot: "#7C3AED", text: "#6D28D9", bg: "#F5F3FF", border: "#7C3AED" },
 };
 
-const CHANNEL_BADGE: Record<string, { bg: string; iconColor: string }> = {
-  instagram: { bg: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#833AB4]", iconColor: "text-white" },
-  whatsapp:  { bg: "bg-[#25D366]", iconColor: "text-white" },
-  website:   { bg: "bg-[#6366F1]", iconColor: "text-white" },
-};
-
-function ChannelIcon({ channel }: { channel: string | null }) {
-  if (channel === "instagram") return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <rect x="1" y="1" width="10" height="10" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-      <circle cx="6" cy="6" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-      <circle cx="9.2" cy="2.8" r="0.7" fill="currentColor"/>
-    </svg>
-  );
-  if (channel === "whatsapp") return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <path d="M6 1a5 5 0 0 1 4.33 7.5L11 11l-2.62-.86A5 5 0 1 1 6 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    </svg>
-  );
-  return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-      <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M1 6h10M6 1c-1.5 2-1.5 8 0 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
 
 // FIX 6 (round F): real Lead Detail Modal -- opens on card click, shows the
 // actual captured lead data (no fields invented), and a working status
@@ -92,23 +67,25 @@ function LeadDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-xl"
+        className="bg-white dark:bg-[#17171C] rounded-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-5 border-b border-[#F3F4F6] flex items-start justify-between gap-3">
+        <div className="p-5 border-b border-[#F3F4F6] dark:border-[#2A2A32] flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-[#F3F4F6] flex items-center justify-center text-sm font-bold text-[#374151] shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E24] flex items-center justify-center text-sm font-bold text-[#374151] dark:text-[#D1D5DB] shrink-0">
               {(lead.name ?? "?")[0].toUpperCase()}
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-[#111111] truncate">{lead.name ?? t("dashboard.unknown")}</h3>
-              <span className="flex items-center gap-1 text-[10px] font-medium text-[#6B7280] capitalize">
-                <ChannelIcon channel={lead.channel} />
+              <h3 className="font-bold text-[#111111] dark:text-white truncate">{lead.name ?? t("dashboard.unknown")}</h3>
+              <span className="flex items-center gap-1.5 text-[10px] font-medium text-[#6B7280] dark:text-[#9CA3AF] capitalize">
+                <span className={`flex items-center justify-center w-4 h-4 rounded-full shrink-0 ${channelIconBg(lead.channel)}`}>
+                  <ChannelIcon channel={lead.channel} size={9} />
+                </span>
                 {lead.channel ?? "web"} · {timeAgo(lead.created_at, t)}
               </span>
             </div>
           </div>
-          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151] shrink-0 p-1">
+          <button onClick={onClose} className="text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white shrink-0 p-1">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -118,40 +95,40 @@ function LeadDetailModal({
         <div className="p-5 space-y-3">
           {lead.phone && (
             <div>
-              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.phone")}</p>
-              <p className="text-sm text-[#111111] font-mono">{lead.phone}</p>
+              <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.phone")}</p>
+              <p className="text-sm text-[#111111] dark:text-white font-mono">{lead.phone}</p>
             </div>
           )}
           {lead.email && (
             <div>
-              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.email")}</p>
-              <p className="text-sm text-[#111111] break-all">{lead.email}</p>
+              <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.email")}</p>
+              <p className="text-sm text-[#111111] dark:text-white break-all">{lead.email}</p>
             </div>
           )}
           {lead.form_data?.service && (
             <div>
-              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.service")}</p>
-              <p className="text-sm text-[#111111]">{lead.form_data.service}</p>
+              <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.service")}</p>
+              <p className="text-sm text-[#111111] dark:text-white">{lead.form_data.service}</p>
             </div>
           )}
           {lead.form_data?.message && (
             <div>
-              <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-0.5">{t("leads.detail.message")}</p>
-              <p className="text-sm text-[#374151] whitespace-pre-wrap">{lead.form_data.message}</p>
+              <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.message")}</p>
+              <p className="text-sm text-[#374151] dark:text-[#D1D5DB] whitespace-pre-wrap">{lead.form_data.message}</p>
             </div>
           )}
           {!lead.phone && !lead.email && !lead.form_data?.service && !lead.form_data?.message && (
-            <p className="text-xs text-[#9CA3AF]">{t("leads.detail.noDetails")}</p>
+            <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76]">{t("leads.detail.noDetails")}</p>
           )}
         </div>
 
-        <div className="p-5 border-t border-[#F3F4F6]">
-          <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-1.5">{t("leads.detail.stage")}</p>
+        <div className="p-5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+          <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-1.5">{t("leads.detail.stage")}</p>
           <select
             value={lead.status}
             disabled={saving}
             onChange={(e) => onStatusChange(e.target.value as Stage)}
-            className="w-full text-sm font-semibold text-[#111111] bg-white border border-[#E5E7EB] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#FF6B35]/50 disabled:opacity-50 transition-colors"
+            className="w-full text-sm font-semibold text-[#111111] dark:text-white bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#FF6B35]/50 disabled:opacity-50 transition-colors"
           >
             {PIPELINE_STAGES.map((s) => (
               <option key={s} value={s}>{t(STAGE_LABEL_KEYS[s])}</option>
@@ -165,13 +142,13 @@ function LeadDetailModal({
                 {t("leads.detail.confirmDelete")}
               </button>
               <button onClick={() => setConfirmDelete(false)}
-                className="flex-1 text-xs font-bold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6] transition-colors">
+                className="flex-1 text-xs font-bold px-3 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors">
                 {t("leads.detail.cancelDelete")}
               </button>
             </div>
           ) : (
             <button onClick={() => setConfirmDelete(true)}
-              className="mt-3 w-full text-xs font-bold px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 transition-colors">
+              className="mt-3 w-full text-xs font-bold px-3 py-2.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
               {t("leads.detail.delete")}
             </button>
           )}
@@ -190,7 +167,6 @@ function LeadDetailModal({
 function DraggableLeadCard({ lead, stage, onOpen, t }: { lead: Lead; stage: Stage; onOpen: () => void; t: (key: string) => string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
   const colors = STAGE_COLORS[stage];
-  const channelBadge = CHANNEL_BADGE[lead.channel ?? ""] ?? CHANNEL_BADGE.website;
   return (
     <button
       ref={setNodeRef}
@@ -208,8 +184,8 @@ function DraggableLeadCard({ lead, stage, onOpen, t }: { lead: Lead; stage: Stag
           </div>
           <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{lead.name ?? t("dashboard.unknown")}</p>
         </div>
-        <span className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${channelBadge.bg} ${channelBadge.iconColor}`} title={lead.channel ?? "website"}>
-          <ChannelIcon channel={lead.channel} />
+        <span className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${channelIconBg(lead.channel)}`} title={lead.channel ?? "website"}>
+          <ChannelIcon channel={lead.channel} size={13} />
         </span>
       </div>
       {lead.phone && (
@@ -353,9 +329,9 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#111111]">{t("leads.title")}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[#111111] dark:text-white">{t("leads.title")}</h1>
           {!loading && (
-            <p className="text-sm text-[#6B7280] mt-1">
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1">
               {leads.length} {leads.length !== 1 ? t("leads.totalPlural") : t("leads.totalSingular")}
               {leads.filter((l) => l.status === "new").length > 0 && ` · ${leads.filter((l) => l.status === "new").length} ${t("leads.newCount")}`}
             </p>
@@ -374,8 +350,8 @@ export default function LeadsPage() {
       <div className="relative max-w-sm">
         <input type="text" placeholder={t("leads.searchPlaceholder")}
           value={search} onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 pr-4 py-2.5 text-sm bg-white border border-[#E5E7EB] rounded-xl w-full text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors" />
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          className="pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl w-full text-[#111111] dark:text-white placeholder:text-[#9CA3AF] dark:placeholder:text-[#6E6E76] focus:outline-none focus:border-[#FF6B35]/50 transition-colors" />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] dark:text-[#6E6E76]" width="14" height="14" viewBox="0 0 14 14" fill="none">
           <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
           <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
         </svg>
@@ -387,15 +363,15 @@ export default function LeadsPage() {
           {PIPELINE_STAGES.map((s) => (
             <div key={s} className="flex-shrink-0 w-64">
               <div className="flex items-center gap-2 mb-3 px-1 animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-[#E5E7EB]" />
-                <div className="h-2.5 bg-[#E5E7EB] rounded w-20" />
+                <div className="w-2 h-2 rounded-full bg-[#E5E7EB] dark:bg-[#2A2A32]" />
+                <div className="h-2.5 bg-[#E5E7EB] dark:bg-[#2A2A32] rounded w-20" />
               </div>
               <div className="flex flex-col gap-2">
                 {[1, 2].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-[#E5E7EB] p-4 animate-pulse">
-                    <div className="h-2.5 bg-[#F3F4F6] rounded w-2/3 mb-2" />
-                    <div className="h-2 bg-[#F3F4F6] rounded w-full mb-3" />
-                    <div className="h-2 bg-[#F3F4F6] rounded w-1/3" />
+                  <div key={i} className="bg-white dark:bg-[#17171C] rounded-2xl border border-[#E5E7EB] dark:border-[#2A2A32] p-4 animate-pulse">
+                    <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-2/3 mb-2" />
+                    <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-full mb-3" />
+                    <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-1/3" />
                   </div>
                 ))}
               </div>
@@ -408,15 +384,15 @@ export default function LeadsPage() {
       {!loading && (
         <>
           {leads.length === 0 && !search ? (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-white rounded-2xl border border-[#E5E7EB]">
-              <div className="w-12 h-12 rounded-2xl bg-[#F3F4F6] flex items-center justify-center mb-4">
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-white dark:bg-[#17171C] rounded-2xl border border-[#E5E7EB] dark:border-[#2A2A32]">
+              <div className="w-12 h-12 rounded-2xl bg-[#F3F4F6] dark:bg-[#1E1E24] flex items-center justify-center mb-4">
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                   <path d="M11 3C7 3 4 6 4 10s3 7 7 7 7-3 7-7-3-7-7-7z" stroke="#9CA3AF" strokeWidth="1.4"/>
                   <path d="M11 7v4M11 15h.01" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round"/>
                 </svg>
               </div>
-              <p className="text-sm font-bold text-[#374151] mb-1">{t("leads.noLeadsGlobal")}</p>
-              <p className="text-xs text-[#9CA3AF] mb-4 max-w-xs">
+              <p className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB] mb-1">{t("leads.noLeadsGlobal")}</p>
+              <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76] mb-4 max-w-xs">
                 {t("leads.leadsHint")}
               </p>
               <Link href="/app/channels"
@@ -454,7 +430,7 @@ export default function LeadsPage() {
 
                         {stageLeads.length === 0 && (
                           <div className="border-2 border-dashed border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl p-5 text-center">
-                            <p className="text-[11px] text-[#9CA3AF]">{t("leads.emptyColumn")}</p>
+                            <p className="text-[11px] text-[#9CA3AF] dark:text-[#6E6E76]">{t("leads.emptyColumn")}</p>
                           </div>
                         )}
                       </DroppableColumn>
