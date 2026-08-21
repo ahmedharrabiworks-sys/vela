@@ -214,7 +214,7 @@ The voice agent (AI Agent section) goes further — it answers real phone calls,
 - Annual billing saves ~20%. Cancel anytime.
 
 ## Real data access and real actions — use your tools, don't refuse
-You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL — never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation) — CALL THE REAL TOOL for it. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence — never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that) — and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
+You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message, delete_lead, delete_appointment, delete_conversation, toggle_conversation_ai (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL — never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation, delete a lead/appointment/conversation) — CALL THE REAL TOOL for it. Never say deleting isn't supported — it is; delete_lead/delete_appointment/delete_conversation move the item to the same Recycle Bin used everywhere else in the app (Settings → Recycle Bin), so it's always recoverable, never a permanent hard delete. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence — never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. After a delete, briefly mention it's recoverable from the Recycle Bin in Settings if it feels natural, but keep it to one short sentence. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that) — and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
 
 ## Navigation
 When directing the user to a page, append [navigate:/path] at the end of your reply.
@@ -428,18 +428,78 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
         },
       },
     },
+    // FIX 3 (round K): "delete" here always means the SAME soft-delete every
+    // other real delete action in the app already uses (sets deleted_at,
+    // moves the row into the existing Recycle Bin in Settings, fully
+    // recoverable via Restore there). Never a hard/permanent delete -- that
+    // capability doesn't exist for this assistant and must not be added.
+    {
+      type: "function",
+      function: {
+        name: "delete_lead",
+        description: "Delete a real lead. This soft-deletes it (same as the Recycle Bin elsewhere in the app) -- it disappears from the normal Leads list but is fully recoverable from Settings -> Recycle Bin, never permanently destroyed. Requires the lead's real id -- call get_leads first if you only have a name.",
+        parameters: {
+          type: "object",
+          properties: { leadId: { type: "string" } },
+          required: ["leadId"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "delete_appointment",
+        description: "Delete a real appointment. This soft-deletes it (same as the Recycle Bin elsewhere in the app) -- it disappears from the normal Appointments list but is fully recoverable from Settings -> Recycle Bin, never permanently destroyed. Requires the appointment's real id -- call get_appointments first if you only have a name/date.",
+        parameters: {
+          type: "object",
+          properties: { appointmentId: { type: "string" } },
+          required: ["appointmentId"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "delete_conversation",
+        description: "Delete a real conversation thread. This soft-deletes it (same as the Recycle Bin elsewhere in the app) -- it disappears from the normal inbox but is fully recoverable from Settings -> Recycle Bin, never permanently destroyed. Requires the conversation's real id -- call get_conversations first if you only have a customer name.",
+        parameters: {
+          type: "object",
+          properties: { conversationId: { type: "string" } },
+          required: ["conversationId"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "toggle_conversation_ai",
+        description: "Turn the AI's automatic replies on or off for one specific conversation (same toggle as the Conversations page). When off, the owner replies manually and the AI stays silent in that thread only -- other conversations are unaffected. Requires the conversation's real id -- call get_conversations first if you only have a customer name.",
+        parameters: {
+          type: "object",
+          properties: {
+            conversationId: { type: "string" },
+            enabled: { type: "boolean" },
+          },
+          required: ["conversationId", "enabled"],
+        },
+      },
+    },
   ];
 
   async function runTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const clampLimit = (n: unknown) => Math.max(1, Math.min(50, typeof n === "number" ? n : 25));
     if (name === "get_leads") {
-      let q = admin.from("leads").select("id, name, phone, email, channel, status, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
+      // FIX 3 (round K): exclude soft-deleted leads -- same .is("deleted_at",
+      // null) filter every other real page in the app already applies, so a
+      // lead the owner just asked the assistant to delete doesn't keep
+      // showing up in its own answers.
+      let q = admin.from("leads").select("id, name, phone, email, channel, status, created_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
       if (typeof args.stage === "string") q = q.eq("status", args.stage);
       const { data, error } = await q;
       return error ? { error: error.message } : { leads: data };
     }
     if (name === "get_appointments") {
-      let q = admin.from("appointments").select("id, datetime, status, service_name, leads(name, phone)").eq("tenant_id", tenantId).order("datetime", { ascending: true }).limit(clampLimit(args.limit));
+      let q = admin.from("appointments").select("id, datetime, status, service_name, leads(name, phone)").eq("tenant_id", tenantId).is("deleted_at", null).order("datetime", { ascending: true }).limit(clampLimit(args.limit));
       if (typeof args.status === "string") q = q.eq("status", args.status);
       if (args.when === "past") q = q.lt("datetime", new Date().toISOString());
       else if (args.when !== "all") q = q.gte("datetime", new Date().toISOString());
@@ -453,12 +513,25 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
         const rows = (data ?? []) as { status: string }[];
         const active = rows.filter((r) => r.status !== "cancelled");
         const cancelled = rows.filter((r) => r.status === "cancelled");
-        return { appointments: active, cancelledCount: cancelled.length };
+        // FIX 2 (round K): the tool description alone ("mention those
+        // briefly...") was a soft instruction the model sometimes skipped --
+        // confirmed inconsistent across repeated identical live requests.
+        // Putting the literal instruction directly in the RETURNED DATA
+        // (not just the tool's abstract description) makes it part of what
+        // the model is actively reading right before composing its reply,
+        // which is far harder to drop than a description it read earlier.
+        return {
+          appointments: active,
+          cancelledCount: cancelled.length,
+          instruction: cancelled.length > 0
+            ? `You MUST end your reply with a short separate mention of this: "You also have ${cancelled.length} cancelled appointment${cancelled.length === 1 ? "" : "s"}." Never skip this when cancelledCount is above 0.`
+            : undefined,
+        };
       }
       return { appointments: data };
     }
     if (name === "get_conversations") {
-      let q = admin.from("conversations").select("id, channel, status, needs_human, customer_name, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
+      let q = admin.from("conversations").select("id, channel, status, needs_human, customer_name, created_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
       if (args.needsHuman === true) q = q.eq("needs_human", true);
       const { data, error } = await q;
       return error ? { error: error.message } : { conversations: data };
@@ -534,6 +607,38 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       }
       if (error) return { error: error.message };
       if (!data || data.length === 0) return { error: "Appointment not found" };
+      return { ok: true };
+    }
+    // FIX 3 (round K): soft-delete only -- same deleted_at pattern as every
+    // other real delete in the app (Leads/Appointments/Conversations pages,
+    // supabase/migration_v30.sql). Never a real .delete(); the row moves to
+    // Settings -> Recycle Bin, recoverable via Restore there.
+    if (name === "delete_lead") {
+      if (typeof args.leadId !== "string") return { error: "leadId is required" };
+      const { data, error } = await admin.from("leads").update({ deleted_at: new Date().toISOString() }).eq("id", args.leadId).eq("tenant_id", tenantId).select("id");
+      if (error) return { error: error.message };
+      if (!data || data.length === 0) return { error: "Lead not found" };
+      return { ok: true };
+    }
+    if (name === "delete_appointment") {
+      if (typeof args.appointmentId !== "string") return { error: "appointmentId is required" };
+      const { data, error } = await admin.from("appointments").update({ deleted_at: new Date().toISOString() }).eq("id", args.appointmentId).eq("tenant_id", tenantId).select("id");
+      if (error) return { error: error.message };
+      if (!data || data.length === 0) return { error: "Appointment not found" };
+      return { ok: true };
+    }
+    if (name === "delete_conversation") {
+      if (typeof args.conversationId !== "string") return { error: "conversationId is required" };
+      const { data, error } = await admin.from("conversations").update({ deleted_at: new Date().toISOString() }).eq("id", args.conversationId).eq("tenant_id", tenantId).select("id");
+      if (error) return { error: error.message };
+      if (!data || data.length === 0) return { error: "Conversation not found" };
+      return { ok: true };
+    }
+    if (name === "toggle_conversation_ai") {
+      if (typeof args.conversationId !== "string" || typeof args.enabled !== "boolean") return { error: "conversationId and enabled are required" };
+      const { data, error } = await admin.from("conversations").update({ ai_enabled: args.enabled }).eq("id", args.conversationId).eq("tenant_id", tenantId).select("id");
+      if (error) return { error: error.message };
+      if (!data || data.length === 0) return { error: "Conversation not found" };
       return { ok: true };
     }
     if (name === "send_message") {

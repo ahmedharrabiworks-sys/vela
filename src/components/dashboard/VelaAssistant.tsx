@@ -212,25 +212,42 @@ export function VelaAssistant() {
   // via historyLoaded so a real history isn't briefly replaced by the
   // synthetic greeting while the fetch is still in flight.
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/assistant/messages");
-        if (res.ok) {
-          const data = await res.json() as { messages?: { role: string; content: string; images?: string[]; isError?: boolean }[] };
-          if (data.messages && data.messages.length > 0) {
-            setMessages(data.messages.map((m) => ({
-              role: m.role as "user" | "assistant",
-              content: m.content,
-              images: m.images,
-              isError: m.isError,
-            })));
-          }
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/assistant/messages");
+      if (res.ok) {
+        const data = await res.json() as { messages?: { role: string; content: string; images?: string[]; isError?: boolean }[] };
+        if (data.messages) {
+          const fetched = data.messages.map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            images: m.images,
+            isError: m.isError,
+          }));
+          // Never regress a longer local conversation with a shorter fetch --
+          // guards against a GET-on-open racing ahead of a just-sent
+          // message's fire-and-forget POST that hasn't committed yet.
+          setMessages((prev) => (fetched.length >= prev.length ? fetched : prev));
         }
-      } catch { /* non-critical -- chat still works without persisted history */ }
-      setHistoryLoaded(true);
-    })();
+      }
+    } catch { /* non-critical -- chat still works without persisted history */ }
   }, []);
+
+  useEffect(() => {
+    fetchHistory().then(() => setHistoryLoaded(true));
+  }, [fetchHistory]);
+
+  // FIX 1 (round K): the mount-only fetch above loads history once when this
+  // layout-level component first mounts, but the panel itself only unmounts/
+  // remounts its inner DOM via the `open` conditional -- the component
+  // instance (and its state) survives close/reopen, so a closed-then-
+  // reopened panel was showing whatever was already in memory, never
+  // re-syncing with what's actually persisted. Re-fetching on every open
+  // (not just the first) makes reopen behave exactly like a refresh.
+  useEffect(() => {
+    if (open && historyLoaded) fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Welcome message on first open
   useEffect(() => {
