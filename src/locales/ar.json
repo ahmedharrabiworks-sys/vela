@@ -68,6 +68,9 @@
       "leads": "العملاء",
       "conversations": "المحادثات",
       "appointments": "المواعيد",
+      "assistant": "مساعد الذكاء الاصطناعي",
+      "assistantConversation": "محادثة المساعد",
+      "messages": "رسائل",
       "restore": "استعادة",
       "deleteForever": "حذف نهائي"
     },

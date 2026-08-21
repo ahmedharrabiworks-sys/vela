@@ -68,6 +68,9 @@
       "leads": "Prospects",
       "conversations": "Conversations",
       "appointments": "Rendez-vous",
+      "assistant": "Assistant IA",
+      "assistantConversation": "Conversation de l'assistant",
+      "messages": "messages",
       "restore": "Restaurer",
       "deleteForever": "Supprimer définitivement"
     },

@@ -5,71 +5,54 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Animates a number counting up to `target`.
  *
- * FIX 4 (round H): previously re-ran the full 0->target ease on EVERY
- * target change -- switching the 7d/30d/90d filter, or simply navigating
- * back to Analytics/Dashboard (a fresh mount), made every number restart
- * from 0 and count up again. Real first-load-of-real-data animation is nice;
- * doing it on every interaction reads as heavy and janky, which is exactly
- * what was reported three times.
+ * FIX 3 (round J): round I's sessionStorage-based "play the full reveal at
+ * most once per browser tab, ever" was solving the wrong problem. It DID
+ * stop filter switches from replaying the animation, but it also silently
+ * blocked the deliberate reveal from playing again on a fresh page
+ * visit -- navigating away from Analytics/Dashboard and back (a genuine
+ * new mount) no longer animated at all, which is the opposite of what's
+ * wanted: replay on mount/navigation, stay quiet on in-page filter changes.
  *
- * Now: the full ease-in animation plays at most ONCE per browser tab
- * session (tracked via sessionStorage -- survives client-side navigations
- * within the app, resets on a real page reload/new tab), the first time any
- * value actually changes from its initial mount value. Every later value
- * change (filter switch, refetch, revisiting the page later in the same
- * session) briefly cross-fades from the currently-displayed number to the
- * new one instead of resetting through 0.
+ * Replaced with a per-mount reveal window instead of a global flag: each
+ * hook instance remembers its own mount time. Any target change that
+ * arrives within ~3s of mount (covers real fetch latency -- data rarely
+ * shows up instantly) gets the full deliberate 0->target ease; anything
+ * after that window (a filter switch, a manual refresh button, etc. later
+ * in the same page visit) briefly cross-fades from the currently-displayed
+ * number instead of resetting through 0. A real navigation away and back
+ * creates a brand new component instance with a brand new mount time, so
+ * this replays correctly with no persistence mechanism needed at all.
  */
-const SESSION_KEY = "vela_countup_played";
-
-function hasPlayedThisSession(): boolean {
-  if (typeof window === "undefined") return false;
-  try { return sessionStorage.getItem(SESSION_KEY) === "1"; } catch { return false; }
-}
-function markPlayedThisSession() {
-  if (typeof window === "undefined") return;
-  try { sessionStorage.setItem(SESSION_KEY, "1"); } catch { /* ignore */ }
-}
+const REVEAL_WINDOW_MS = 3000;
 
 export function useCountUp(target: number, durationMs = 900): number {
-  const [value, setValue] = useState(target);
-  const prevTarget = useRef(target);
-  const valueRef = useRef(target);
+  const [value, setValue] = useState(0);
+  const prevTarget = useRef<number | null>(null);
+  const valueRef = useRef(0);
+  const mountedAt = useRef(Date.now());
   valueRef.current = value;
 
   useEffect(() => {
     if (!Number.isFinite(target)) return;
-    if (target === prevTarget.current) return; // nothing real changed -- no animation needed
+    if (prevTarget.current === target) return; // nothing real changed -- no animation needed
 
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-    const isFirstRealReveal = !hasPlayedThisSession();
+    const isWithinRevealWindow = Date.now() - mountedAt.current < REVEAL_WINDOW_MS;
     prevTarget.current = target;
-
-    // FIX 3 (round I): real bug -- this flag was only ever marked when the
-    // full first-reveal animation reached 100% progress. If the user
-    // interacted again (switched 7d/30d/90d, navigated away) before that
-    // ~900ms finished -- an easy, completely normal thing to do -- the
-    // flag never got set. Every later value change then still saw
-    // hasPlayedThisSession()===false and replayed the FULL 0->target
-    // animation again, indefinitely, every single time: "worked once"
-    // (when tested patiently, letting it finish) "then broke again"
-    // (any real, faster interaction). Marking it here, at the moment the
-    // first reveal STARTS, guarantees it can only ever happen once per
-    // session no matter how the animation gets interrupted.
-    if (isFirstRealReveal) markPlayedThisSession();
 
     if (reduceMotion) {
       setValue(target);
       return;
     }
 
-    const animDuration = isFirstRealReveal ? durationMs : 300;
-    // First reveal eases in from 0 (the deliberate, once-per-session count
-    // up). Every later change cross-fades from whatever's on screen now.
-    const startVal = isFirstRealReveal ? 0 : valueRef.current;
+    const animDuration = isWithinRevealWindow ? durationMs : 300;
+    // Within the reveal window (fresh mount, real data just arrived): ease
+    // in from 0, the deliberate first-load count up. Outside it (a later
+    // in-page change): cross-fade from whatever's currently on screen.
+    const startVal = isWithinRevealWindow ? 0 : valueRef.current;
     let raf = 0;
     let start: number | null = null;
     const step = (ts: number) => {

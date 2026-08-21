@@ -15,3 +15,24 @@ export function stripAiTells(text: string): string {
     .replace(/\s{2,}/g, " ")
     .trim();
 }
+
+/**
+ * FIX 1 (round J): the internal owner-facing assistant is a chat surface,
+ * not a markdown renderer -- replies must read like a person texting, not
+ * like raw markdown source. Deliberately separate from stripAiTells (which
+ * is also used by the customer-facing widget and Website Builder's copy
+ * generation, where this transform doesn't apply) so this only ever touches
+ * the one surface it's meant for.
+ */
+export function stripMarkdownFormatting(text: string): string {
+  return text
+    .replace(/```[a-zA-Z]*\n?/g, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*\*([^*]+)\*\*\*/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/(?<!_)_([^_\n]+)_(?!_)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .trim();
+}

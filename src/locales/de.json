@@ -68,6 +68,9 @@
       "leads": "Leads",
       "conversations": "Unterhaltungen",
       "appointments": "Termine",
+      "assistant": "KI-Assistent",
+      "assistantConversation": "Assistenten-Unterhaltung",
+      "messages": "Nachrichten",
       "restore": "Wiederherstellen",
       "deleteForever": "Endgültig löschen"
     },

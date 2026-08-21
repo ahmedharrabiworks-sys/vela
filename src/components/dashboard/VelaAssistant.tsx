@@ -24,23 +24,6 @@ const QUICK_ACTION_KEYS = [
   { labelKey: "velaAssistant.quickActions.trainMe",           messageKey: "velaAssistant.quickMessages.trainMe", isInterview: true },
 ] as const;
 
-function extractSaveKbToken(text: string): { json: string; stripped: string } | null {
-  const start = text.indexOf("[save_kb:");
-  if (start === -1) return null;
-  const jsonStart = start + "[save_kb:".length;
-  let depth = 0;
-  let jsonEnd = -1;
-  for (let i = jsonStart; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    else if (text[i] === "}") { depth--; if (depth === 0) { jsonEnd = i + 1; break; } }
-  }
-  if (jsonEnd === -1 || text[jsonEnd] !== "]") return null;
-  return {
-    json: text.slice(jsonStart, jsonEnd),
-    stripped: (text.slice(0, start) + text.slice(jsonEnd + 1)).replace(/\n{3,}/g, "\n\n").trim(),
-  };
-}
-
 function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
   const icon = Math.round(size * 0.52);
   return (
@@ -222,9 +205,36 @@ export function VelaAssistant() {
     if (profile?.ownerName) setFirstName(profile.ownerName.split(" ")[0]);
   }, []);
 
+  // FIX 4 (round J): load the real, persisted conversation once on mount --
+  // previously this only ever lived in React state, wiped on every refresh.
+  // Runs regardless of `open` so history is ready the moment the panel
+  // opens, not fetched-then-flashed. Gates the welcome-message effect below
+  // via historyLoaded so a real history isn't briefly replaced by the
+  // synthetic greeting while the fetch is still in flight.
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/assistant/messages");
+        if (res.ok) {
+          const data = await res.json() as { messages?: { role: string; content: string; images?: string[]; isError?: boolean }[] };
+          if (data.messages && data.messages.length > 0) {
+            setMessages(data.messages.map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              images: m.images,
+              isError: m.isError,
+            })));
+          }
+        }
+      } catch { /* non-critical -- chat still works without persisted history */ }
+      setHistoryLoaded(true);
+    })();
+  }, []);
+
   // Welcome message on first open
   useEffect(() => {
-    if (open && messages.length === 0) {
+    if (open && historyLoaded && messages.length === 0) {
       const hi = firstName ? `${t("velaAssistant.greeting")} ${firstName}! ` : `${t("velaAssistant.greeting")}! `;
       setMessages([{
         role: "assistant",
@@ -232,7 +242,7 @@ export function VelaAssistant() {
       }]);
       setTimeout(() => inputRef.current?.focus(), 150);
     }
-  }, [open, messages.length, firstName, t]);
+  }, [open, historyLoaded, messages.length, firstName, t]);
 
   // FIX: the greeting above is computed once into state on first open and
   // was never re-evaluated afterward -- switching the dashboard's language
@@ -274,7 +284,13 @@ export function VelaAssistant() {
     const handler = () => {
       setOpen(true);
       setInterviewMode(true);
+      // FIX 4 (round J): starting a fresh interview replaces the current
+      // conversation -- soft-delete the old one into the Recycle Bin (same
+      // as the "Clear" button) instead of leaving it persisted server-side
+      // where it would otherwise resurface mixed in with the new interview
+      // on the next history load.
       setMessages([]);
+      fetch("/api/assistant/messages", { method: "DELETE" }).catch(() => { /* non-critical */ });
       setTimeout(() => {
         sendRef.current?.(t("velaAssistant.quickMessages.trainMe"), true);
       }, 500);
@@ -289,6 +305,28 @@ export function VelaAssistant() {
     const handler = () => setOpen(true);
     window.addEventListener("vela-open-assistant", handler);
     return () => window.removeEventListener("vela-open-assistant", handler);
+  }, []);
+
+  // FIX 4 (round J): fire-and-forget persistence -- never blocks the chat
+  // itself on a slow/failed save. Only real conversational turns are
+  // persisted (not transient error bubbles, which are retry UI, not
+  // history worth keeping).
+  const persistMessage = useCallback((role: "user" | "assistant", content: string, images?: string[]) => {
+    fetch("/api/assistant/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, content, images }),
+    }).catch(() => { /* non-critical */ });
+  }, []);
+
+  // FIX 4 (round J): "Clear" used to just wipe React state -- the real
+  // history was still sitting there, unreachable, and would silently
+  // reappear if the app were ever changed to reload it. Now soft-deletes
+  // the real conversation (same Recycle Bin pattern as Leads/Conversations/
+  // Appointments) so it's genuinely recoverable, not just hidden.
+  const handleClearChat = useCallback(() => {
+    setMessages([]);
+    fetch("/api/assistant/messages", { method: "DELETE" }).catch(() => { /* non-critical */ });
   }, []);
 
   const send = useCallback(async (text: string, startInterview = false) => {
@@ -319,6 +357,7 @@ export function VelaAssistant() {
       content: text,
       images: imagePreviews.length > 0 ? imagePreviews : undefined,
     }]);
+    if (text.trim()) persistMessage("user", text, imagePreviews.length > 0 ? imagePreviews : undefined);
     setInput("");
     setLoading(true);
 
@@ -334,7 +373,7 @@ export function VelaAssistant() {
           images: imagesToSend.length > 0 ? imagesToSend : undefined,
         }),
       });
-      const data = await res.json() as { reply?: string; error?: string };
+      const data = await res.json() as { reply?: string; error?: string; savedServices?: boolean };
       if (imagesToSend.length > 0) {
         console.log(`[VelaAssistant paste-pipeline] step 5/5 API response received -- status ${res.status}, ok=${res.ok}`, data.error ? { error: data.error } : { replyPreview: (data.reply ?? "").slice(0, 120) });
       }
@@ -362,26 +401,25 @@ export function VelaAssistant() {
         setTimeout(() => { router.push(navMatch[1]); setOpen(false); }, 800);
       }
 
-      // Handle [save_kb:{...}] token
-      const kbToken = extractSaveKbToken(reply);
-      if (kbToken) {
-        reply = kbToken.stripped;
-        try {
-          const kbData = JSON.parse(kbToken.json);
-          await fetch("/api/ai-training?merge=true", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(kbData),
-          });
-          setInterviewMode(false);
-          reply = (reply ? reply + "\n\n" : "") + t("velaAssistant.kbUpdated");
-        } catch {
-          reply = (reply ? reply + "\n\n" : "") + t("velaAssistant.kbSaveFailed");
-          setInterviewMode(false);
-        }
+      // FIX 1 (round J): save_kb was a text token the client had to parse
+      // out of the raw reply -- fragile brace-counting that silently failed
+      // (leaving the raw "[save_kb:{...}]" on screen, unexecuted) whenever
+      // the JSON contained anything that confused it. Services are now
+      // saved server-side via a real tool call (see /api/ai/assistant);
+      // the server just tells us directly whether it happened. No parsing.
+      if (data.savedServices) setInterviewMode(false);
+
+      // Defensive-only: the model is no longer instructed to ever emit
+      // internal bracketed syntax, but if any stray token slips through
+      // regardless, it must never be shown to the user as raw text. Never
+      // fall back to the raw, unstripped reply -- if stripping empties it
+      // out entirely, show a generic confirmation instead.
+      if (reply.includes("[save_kb:")) {
+        reply = reply.replace(/\[save_kb:[\s\S]*?\]\s*$/g, "").trim() || t("velaAssistant.kbUpdated");
       }
 
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      persistMessage("assistant", reply);
     } catch (err) {
       if (imagesToSend.length > 0) {
         console.error("[VelaAssistant paste-pipeline] REJECTED at step 4/5 -- network/fetch error sending images to /api/ai/assistant:", err);
@@ -394,7 +432,7 @@ export function VelaAssistant() {
       }]);
     }
     setLoading(false);
-  }, [loading, messages, router, interviewMode, attachedImages, convLocale, locale, t]);
+  }, [loading, messages, router, interviewMode, attachedImages, convLocale, locale, t, persistMessage]);
 
   // Update ref whenever send changes (useCallback deps may change)
   useEffect(() => { sendRef.current = send; }, [send]);
@@ -469,7 +507,7 @@ export function VelaAssistant() {
               <div className="flex items-center gap-2">
                 {messages.length > 1 && (
                   <button
-                    onClick={() => setMessages([])}
+                    onClick={handleClearChat}
                     className="text-[11px] text-[#6B7280] hover:text-[#374151] px-2 py-1 rounded-lg hover:bg-[#F3F4F6] transition-colors"
                   >
                     {t("velaAssistant.clearChat")}

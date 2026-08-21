@@ -898,6 +898,10 @@ export default function SettingsPage() {
 type BinLead = { id: string; name: string | null; phone: string | null; deleted_at: string };
 type BinConversation = { id: string; customer_name: string | null; channel: string | null; deleted_at: string };
 type BinAppointment = { id: string; service_name: string | null; datetime: string; deleted_at: string };
+// FIX 4 (round J): the internal AI assistant's cleared conversation is one
+// recoverable unit, not individual rows like leads/appointments -- grouped
+// by the single shared deleted_at timestamp every "Clear" batch writes.
+type BinAssistantBatch = { deletedAt: string; count: number };
 
 function RecycleBinSection({ t }: { t: (key: string) => string }) {
   const [loading, setLoading] = useState(true);
@@ -905,6 +909,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
   const [leads, setLeads] = useState<BinLead[]>([]);
   const [conversations, setConversations] = useState<BinConversation[]>([]);
   const [appointments, setAppointments] = useState<BinAppointment[]>([]);
+  const [assistantBatches, setAssistantBatches] = useState<BinAssistantBatch[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
@@ -918,13 +923,14 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     const { data: tenant } = await db.from("tenants").select("id").eq("owner_id", user.id).single();
     if (!tenant) { setLoading(false); return; }
 
-    const [leadsRes, convRes, apptRes] = await Promise.all([
+    const [leadsRes, convRes, apptRes, assistantRes] = await Promise.all([
       db.from("leads").select("id, name, phone, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
       db.from("conversations").select("id, customer_name, channel, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
       db.from("appointments").select("id, service_name, datetime, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+      db.from("assistant_messages").select("deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
     ]);
 
-    const missingColumn = (e: { code?: string } | null) => e?.code === "PGRST204" || e?.code === "42703";
+    const missingColumn = (e: { code?: string } | null) => e?.code === "PGRST204" || e?.code === "42703" || e?.code === "PGRST205" || e?.code === "42P01";
     if (missingColumn(leadsRes.error) || missingColumn(convRes.error) || missingColumn(apptRes.error)) {
       console.warn("[recycle-bin] deleted_at column missing on one or more tables — run migration_v30.sql.");
       setMigrationPending(true);
@@ -932,6 +938,17 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     setLeads((leadsRes.data ?? []) as BinLead[]);
     setConversations((convRes.data ?? []) as BinConversation[]);
     setAppointments((apptRes.data ?? []) as BinAppointment[]);
+
+    // FIX 4 (round J): group cleared assistant messages by their shared
+    // deleted_at timestamp into one restorable batch per "Clear" action.
+    if (!missingColumn(assistantRes.error)) {
+      const rows = (assistantRes.data ?? []) as { deleted_at: string }[];
+      const counts = new Map<string, number>();
+      rows.forEach((r) => counts.set(r.deleted_at, (counts.get(r.deleted_at) ?? 0) + 1));
+      setAssistantBatches(Array.from(counts.entries()).map(([deletedAt, count]) => ({ deletedAt, count })));
+    } else if (assistantRes.error) {
+      console.warn("[recycle-bin] assistant_messages table missing — run migration_v31.sql.");
+    }
     setLoading(false);
   }
 
@@ -992,7 +1009,24 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     }
   }
 
-  const isEmpty = !loading && leads.length === 0 && conversations.length === 0 && appointments.length === 0;
+  async function restoreAssistantBatch(deletedAt: string) {
+    setBusyId(deletedAt);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("assistant_messages").update({ deleted_at: null }).eq("deleted_at", deletedAt);
+    if (!error) setAssistantBatches((prev) => prev.filter((b) => b.deletedAt !== deletedAt));
+    setBusyId(null);
+  }
+  async function deleteAssistantBatchForever(deletedAt: string) {
+    setBusyId(deletedAt);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = getSupabase() as any;
+    const { error } = await db.from("assistant_messages").delete().eq("deleted_at", deletedAt);
+    if (!error) setAssistantBatches((prev) => prev.filter((b) => b.deletedAt !== deletedAt));
+    setBusyId(null);
+  }
+
+  const isEmpty = !loading && leads.length === 0 && conversations.length === 0 && appointments.length === 0 && assistantBatches.length === 0;
 
   return (
     <>
@@ -1062,6 +1096,32 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
                     {t("settings.recycleBin.restore")}
                   </button>
                   <button disabled={busyId === c.id} onClick={() => deleteConversationForever(c.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.deleteForever")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && assistantBatches.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">{t("settings.recycleBin.assistant")}</p>
+          <div className="space-y-1.5">
+            {assistantBatches.map((b) => (
+              <div key={b.deletedAt} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[#E5E7EB] bg-white">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#111111] truncate">{t("settings.recycleBin.assistantConversation")}</p>
+                  <p className="text-[10px] text-[#9CA3AF]">{b.count} {t("settings.recycleBin.messages")}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button disabled={busyId === b.deletedAt} onClick={() => restoreAssistantBatch(b.deletedAt)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.restore")}
+                  </button>
+                  <button disabled={busyId === b.deletedAt} onClick={() => deleteAssistantBatchForever(b.deletedAt)}
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
                     {t("settings.recycleBin.deleteForever")}
                   </button>

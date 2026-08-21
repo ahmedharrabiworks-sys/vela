@@ -68,6 +68,9 @@
       "leads": "Leads",
       "conversations": "Conversations",
       "appointments": "Appointments",
+      "assistant": "AI Assistant",
+      "assistantConversation": "Assistant conversation",
+      "messages": "messages",
       "restore": "Restore",
       "deleteForever": "Delete forever"
     },
