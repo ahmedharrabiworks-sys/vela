@@ -16,6 +16,28 @@ type Message = {
 
 type AttachedImage = { preview: string; base64: string; mimeType: string };
 
+// FIX 1 (round K follow-up): matches the exact toast pattern already used
+// on the Channels page (src/app/app/channels/page.tsx) -- bottom-center,
+// dark pill, safe-area-aware, auto-dismiss. "Clear" previously just emptied
+// the chat with no feedback beyond the chat itself going blank; this gives
+// an explicit confirmation that the conversation was moved to the Recycle
+// Bin, not just wiped. z-[200] so it's visible above the assistant panel
+// itself (z-[142]), since Clear is pressed while the panel is open.
+function ClearToast({ msg, onDone }: { msg: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3200);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl max-w-sm text-center" style={{ bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M2 7l3 3 7-7" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      {msg}
+    </div>
+  );
+}
+
 const QUICK_ACTION_KEYS = [
   { labelKey: "velaAssistant.quickActions.todayAppointments", messageKey: "velaAssistant.quickMessages.todayAppointments" },
   { labelKey: "velaAssistant.quickActions.recentLeads",       messageKey: "velaAssistant.quickMessages.recentLeads" },
@@ -86,6 +108,7 @@ export function VelaAssistant() {
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [convLocale, setConvLocale] = useState(locale);
+  const [clearToastMsg, setClearToastMsg] = useState<string | null>(null);
   const bottomRef  = useRef<HTMLDivElement>(null);
   const inputRef   = useRef<HTMLTextAreaElement>(null);
   const panelRef   = useRef<HTMLDivElement>(null);
@@ -343,8 +366,9 @@ export function VelaAssistant() {
   // Appointments) so it's genuinely recoverable, not just hidden.
   const handleClearChat = useCallback(() => {
     setMessages([]);
+    setClearToastMsg(t("velaAssistant.clearedToast"));
     fetch("/api/assistant/messages", { method: "DELETE" }).catch(() => { /* non-critical */ });
-  }, []);
+  }, [t]);
 
   const send = useCallback(async (text: string, startInterview = false) => {
     if ((!text.trim() && attachedImages.length === 0) || loading) return;
@@ -744,6 +768,8 @@ export function VelaAssistant() {
           </div>
         </>
       )}
+
+      {clearToastMsg && <ClearToast msg={clearToastMsg} onDone={() => setClearToastMsg(null)} />}
     </>
   );
 }

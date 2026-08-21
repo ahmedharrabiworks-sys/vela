@@ -432,6 +432,7 @@
     "title": "Vela AI",
     "subtitle": "Ihr Unternehmensassistent",
     "clearChat": "Löschen",
+    "clearedToast": "Unterhaltung in den Papierkorb verschoben",
     "quickQuestionsLabel": "Schnellfragen",
     "inputPlaceholder": "Fragen Sie alles über Ihr Unternehmen…",
     "retryButton": "Wiederholen",

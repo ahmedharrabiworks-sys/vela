@@ -432,6 +432,7 @@
     "title": "Vela AI",
     "subtitle": "مساعدك التجاري",
     "clearChat": "مسح",
+    "clearedToast": "تم نقل المحادثة إلى سلة المحذوفات",
     "quickQuestionsLabel": "أسئلة سريعة",
     "inputPlaceholder": "اسألني أي شيء عن عملك…",
     "retryButton": "إعادة المحاولة",

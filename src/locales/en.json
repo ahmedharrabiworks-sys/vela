@@ -431,6 +431,7 @@
     "title": "Vela AI",
     "subtitle": "Your business assistant",
     "clearChat": "Clear",
+    "clearedToast": "Conversation moved to Recycle Bin",
     "quickQuestionsLabel": "Quick questions",
     "inputPlaceholder": "Ask anything about your business…",
     "retryButton": "Retry",
