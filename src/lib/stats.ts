@@ -44,21 +44,31 @@ function pctChangeOrUndefined(curr: number, prev: number): number | undefined {
 }
 
 /**
- * AI Resolution Rate = conversations the AI fully handled without EVER
- * needing a human handoff, as a percentage of all conversations in the
- * window. Deliberately NOT "needs_human = false" alone -- that column is
- * reset to false once an owner resolves an escalation (see
- * conversations/[id]/resolve/route.ts), so a plain needs_human=false count
- * would wrongly credit the AI for conversations a human actually stepped
- * in on. needs_human_resolved_at is only ever set once an escalation
- * happened, so "never escalated" is the real signal: needs_human = false
- * AND needs_human_resolved_at IS NULL.
+ * AI Resolution Rate = conversations NOT currently needing human attention,
+ * as a percentage of all conversations in the window (needs_human = false).
+ *
+ * FIX 4 (round P): a prior round deliberately excluded any conversation
+ * that had EVER been escalated (needs_human=false AND
+ * needs_human_resolved_at IS NULL) to avoid crediting the AI for a human's
+ * work. That reasoning was sound for a narrower "AI-only, no backup"
+ * metric, but it made the number named "Resolution Rate" literally
+ * incapable of ever moving when an owner resolves an escalation --
+ * needs_human_resolved_at getting set (the actual "this got resolved"
+ * signal) permanently DISQUALIFIED that conversation from ever counting
+ * again. Confirmed live against the real numbers behind a flat 33%: 3 real
+ * conversations, 2 of which had been escalated and then genuinely resolved
+ * by the owner (needs_human=false, needs_human_resolved_at SET) -- both
+ * were being excluded from the numerator forever, so resolving them had
+ * zero effect on the displayed rate. "Resolved" now means what it says:
+ * needs_human's CURRENT value. A conversation that needed a human and got
+ * one is exactly as resolved as one the AI handled alone -- both are
+ * conversations no longer waiting on anyone.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function computeAiResolutionRate(admin: any, tenantId: string, sinceISO?: string): Promise<number | null> {
   let totalQuery = admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId);
   let aiHandledQuery = admin.from("conversations").select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId).eq("needs_human", false).is("needs_human_resolved_at", null);
+    .eq("tenant_id", tenantId).eq("needs_human", false);
   if (sinceISO) {
     totalQuery = totalQuery.gte("created_at", sinceISO);
     aiHandledQuery = aiHandledQuery.gte("created_at", sinceISO);

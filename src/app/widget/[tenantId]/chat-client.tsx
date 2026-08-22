@@ -43,7 +43,17 @@ export default function WidgetChat({
   // a stored {id, expiresAt} pair with a 48h SLIDING window (refreshed on
   // every message, not just at creation) gives "resume within a
   // reasonable session" without persisting forever.
-  const STORAGE_KEY = `vela_conv_${tenantId}`;
+  //
+  // FIX 3 (round P): keyed only by tenantId -- the widget iframe for EVERY
+  // one of a tenant's sites is served from this same shared app origin
+  // (/widget/[tenantId]), so a visitor who browsed two different published
+  // sites belonging to the same tenant (now genuinely possible since Round
+  // O's real multi-site connect/disconnect) hit the identical localStorage
+  // key on both, restoring and continuing the SAME conversation -- one
+  // site's chat history bleeding into the other. websiteId (already passed
+  // into this component, already sent on every /api/ai/reply call) now
+  // scopes the key so each site gets its own persisted conversation.
+  const STORAGE_KEY = `vela_conv_${tenantId}_${websiteId || "default"}`;
   const SESSION_MS = 48 * 60 * 60 * 1000;
 
   function readStoredConversation(): string | null {
@@ -75,7 +85,7 @@ export default function WidgetChat({
       persistConversation(stored); // touch expiry -- reopening counts as activity
       (async () => {
         try {
-          const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(stored)}`);
+          const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(stored)}${websiteId ? `&websiteId=${encodeURIComponent(websiteId)}` : ""}`);
           const data = await res.json() as { messages?: { role: string; content: string }[] };
           if (data.messages && data.messages.length > 0) {
             setMessages([
@@ -118,7 +128,7 @@ export default function WidgetChat({
     if (!conversationId) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(conversationId)}`);
+        const res = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(conversationId)}${websiteId ? `&websiteId=${encodeURIComponent(websiteId)}` : ""}`);
         const data = await res.json() as { messages?: { role: string; content: string }[] };
         if (!data.messages) return;
         const fetched = data.messages;

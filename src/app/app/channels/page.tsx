@@ -8,25 +8,9 @@ import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
 import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
-
-/* ── Toast ── */
-function Toast({ msg, type = "success", onDone }: { msg: string; type?: "success" | "error" | "info"; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3200);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  const iconColor = type === "error" ? "#DC2626" : type === "info" ? "#6B7280" : "#FF6B35";
-  return (
-    <div className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl max-w-sm text-center" style={{ bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}>
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        {type === "error"
-          ? <path d="M2 2l10 10M12 2L2 12" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round"/>
-          : <path d="M2 7l3 3 7-7" stroke={iconColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>}
-      </svg>
-      {msg}
-    </div>
-  );
-}
+// FIX 5 (round P): standardized on the single shared toast component --
+// this file's local copy is now that shared component, moved verbatim.
+import Toast from "@/components/ui/Toast";
 
 /* ── Modal shell ── */
 function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {

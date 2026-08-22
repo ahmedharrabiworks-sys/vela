@@ -5,6 +5,8 @@ import { getSupabase } from "@/lib/supabase";
 import { usePlan } from "@/lib/plans";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
+// FIX 5 (round P): shared toast used by every delete/recycle-bin action.
+import Toast from "@/components/ui/Toast";
 
 type SortKey = "name" | "phone" | "service" | "date" | "channel" | "status";
 type SortDir = "asc" | "desc";
@@ -14,6 +16,9 @@ interface Appointment {
   id: string;
   name: string;
   phone: string;
+  // FIX 6 (round P): true when the linked lead's phone was captured
+  // without a real, confirmable country code.
+  phoneUnconfirmed?: boolean;
   service: string;
   dateLabel: string;
   sortDate: number;
@@ -140,7 +145,10 @@ function SendModal({ apt, onClose }: { apt: Appointment; onClose: () => void }) 
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="font-bold text-[#111111]">Message {apt.name}</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">via {apt.channel} · {apt.phone || "no phone on file"}</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              via {apt.channel} · {apt.phone || "no phone on file"}
+              {apt.phoneUnconfirmed && <span title="No country code confirmed for this number" className="ml-1 text-amber-600 font-semibold">(unconfirmed)</span>}
+            </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6]">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -298,22 +306,33 @@ export default function AppointmentsPage() {
   const [sortDir, setSortDir]         = useState<SortDir>("asc");
   const [modal, setModal]             = useState<{ type: "message" | "reschedule" | "cancel" | "delete"; id: string } | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [toast, setToast]             = useState("");
   const { isStarter, config }         = usePlan();
   const { t }                         = useI18n();
 
   const loadData = useCallback(async (tId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
-    // Tiered fallback: migration_v29.sql (rescheduled) and/or migration_v30.sql
-    // (deleted_at, FIX 8 round F) may not have run yet in production.
-    // PostgREST rejects the WHOLE query over one unknown column/filter --
-    // degrade tier by tier rather than showing an empty page.
+    // Tiered fallback: migration_v29.sql (rescheduled), migration_v30.sql
+    // (deleted_at, FIX 8 round F), and/or migration_v33.sql
+    // (leads.phone_unconfirmed, FIX 6 round P) may not have run yet in
+    // production. PostgREST rejects the WHOLE query over one unknown
+    // column/filter -- degrade tier by tier rather than showing an empty page.
     let { data, error } = await db
       .from("appointments")
-      .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
+      .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, phone_unconfirmed, channel)")
       .eq("tenant_id", tId)
       .is("deleted_at", null)
       .order("datetime", { ascending: true });
+    if (error?.code === "PGRST204" || error?.code === "42703") {
+      console.warn("[appointments] phone_unconfirmed column missing — run migration_v33.sql. Retrying without it.");
+      ({ data, error } = await db
+        .from("appointments")
+        .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
+        .eq("tenant_id", tId)
+        .is("deleted_at", null)
+        .order("datetime", { ascending: true }));
+    }
     if (error?.code === "PGRST204" || error?.code === "42703") {
       console.warn("[appointments] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
       ({ data, error } = await db
@@ -331,13 +350,14 @@ export default function AppointmentsPage() {
         .order("datetime", { ascending: true }));
     }
 
-    type Raw = { id: string; service_name: string | null; datetime: string; status: string; conversation_id: string | null; rescheduled?: boolean; leads?: { name: string | null; phone: string | null; channel: string | null } | null };
+    type Raw = { id: string; service_name: string | null; datetime: string; status: string; conversation_id: string | null; rescheduled?: boolean; leads?: { name: string | null; phone: string | null; phone_unconfirmed?: boolean | null; channel: string | null } | null };
     const rows: Appointment[] = ((data ?? []) as Raw[]).map((a) => {
       const dt = new Date(a.datetime);
       return {
         id: a.id,
         name: a.leads?.name ?? "Unknown",
         phone: a.leads?.phone ?? "",
+        phoneUnconfirmed: a.leads?.phone_unconfirmed === true,
         service: a.service_name ?? "Appointment",
         dateLabel: formatDateLabel(dt),
         sortDate: calcSortDate(dt),
@@ -485,8 +505,10 @@ export default function AppointmentsPage() {
     const id = modal.id;
     setModal(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabase() as any).from("appointments").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await (getSupabase() as any).from("appointments").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    if (error) { setToast("Could not delete. Please try again."); return; }
     setAppointments((prev) => prev.filter((a) => a.id !== id));
+    setToast("Appointment moved to Recycle Bin");
   };
 
   const handleSort = (key: SortKey) => {
@@ -534,6 +556,7 @@ export default function AppointmentsPage() {
       {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
       {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
       {modal?.type === "delete"     && modalApt && <DeleteModal     apt={modalApt} onConfirm={handleDelete}    onClose={() => setModal(null)} />}
+      {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
 
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -664,7 +687,16 @@ export default function AppointmentsPage() {
                         }`}>
                         <td className="pl-5 pr-3 py-3.5"><span className="text-xs text-[#9CA3AF] font-mono">{i + 1}</span></td>
                         <td className="py-3.5 pr-4"><p className="text-sm font-semibold text-[#111827] whitespace-nowrap">{apt.name}</p></td>
-                        <td className="py-3.5 pr-4"><span className="text-sm text-[#6B7280] whitespace-nowrap">{apt.phone || "No phone"}</span></td>
+                        <td className="py-3.5 pr-4">
+                          <span className="text-sm text-[#6B7280] whitespace-nowrap inline-flex items-center gap-1.5">
+                            {apt.phone || "No phone"}
+                            {apt.phoneUnconfirmed && (
+                              <span title="No country code confirmed for this number" className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                Unconfirmed
+                              </span>
+                            )}
+                          </span>
+                        </td>
                         <td className="py-3.5 pr-4"><span className="text-sm text-[#111827]">{apt.service}</span></td>
                         <td className="py-3.5 pr-4">
                           {/* FIX 1 (round I): "(Rescheduled)" now sits on its

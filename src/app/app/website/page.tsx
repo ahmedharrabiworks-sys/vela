@@ -6,6 +6,8 @@ import { usePlan } from "@/lib/plans";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useTheme } from "@/lib/theme";
 import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
+// FIX 5 (round P): shared toast used by every delete/recycle-bin action.
+import Toast from "@/components/ui/Toast";
 import type { WebsiteSpec } from "@/lib/website-renderer";
 
 // FIX 2 (round G): real smoothed-curve chart for the Analytics panel's daily
@@ -1349,6 +1351,8 @@ export default function WebsitePage() {
   // at the same time, each managed from its own row.
   const [disconnectTarget, setDisconnectTarget]   = useState<WebsiteProject | null>(null);
   const [disconnectingSite, setDisconnectingSite] = useState(false);
+  // FIX 5 (round P): shared toast used by every delete/recycle-bin action app-wide.
+  const [toast, setToast] = useState("");
   const [reconnectingId, setReconnectingId]       = useState<string | null>(null);
   const [restoreConfirmTarget, setRestoreConfirmTarget] = useState<VersionRecord | null>(null);
   const [imgEditTarget, setImgEditTarget]         = useState<{ vs: string; imgIdx: number; src: string; websiteId: string } | null>(null);
@@ -1887,6 +1891,7 @@ export default function WebsitePage() {
     setDeleteTarget(null);
     const wasActive = p.id === websiteIdRef.current;
     setProjects((prev) => prev.filter((proj) => proj.id !== p.id));
+    setToast("Site deleted");
     if (wasActive) {
       setHtml(""); htmlRef.current = "";
       setBuilt(false); setDraftDiffers(false); setPreviewVersionHtml(null);
@@ -3494,6 +3499,7 @@ export default function WebsitePage() {
           </div>
         </div>
       )}
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
 
       {/* New Website Confirmation Modal */}
       {showNewWebsiteModal && (

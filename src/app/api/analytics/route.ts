@@ -67,8 +67,12 @@ export async function GET() {
   // card can respect the same 7d/30d/90d range selector as every other
   // card (previously fixed to a single 180-day window regardless of the
   // selected range) and get a real period-over-period trend badge, the
-  // same way the other 3 cards already do. Definition matches
-  // computeAiResolutionRate in lib/stats.ts: never escalated to a human.
+  // same way the other 3 cards already do. FIX 4 (round P): definition
+  // matches computeAiResolutionRate in lib/stats.ts -- CURRENT needs_human
+  // value (resolved, whether or not a human was ever involved along the
+  // way), not "never escalated" -- see that file for the full root-cause
+  // explanation of why the stricter definition made this number unable to
+  // move when an owner actually resolved something.
   const dailyConvAiHandled: Record<string, number> = {};
   // Real AI-attributed appointment count, day by day -- an appointment is
   // AI-booked when it carries a conversation_id (only ai/reply's booking
@@ -85,7 +89,7 @@ export async function GET() {
   conversations.forEach((c) => {
     const date = c.created_at.slice(0, 10);
     dailyConvCounts[date] = (dailyConvCounts[date] ?? 0) + 1;
-    if (c.needs_human === false && c.needs_human_resolved_at === null) {
+    if (c.needs_human === false) {
       dailyConvAiHandled[date] = (dailyConvAiHandled[date] ?? 0) + 1;
     }
   });

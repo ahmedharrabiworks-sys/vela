@@ -10,6 +10,8 @@ import {
   DragOverlay, type DragEndEvent, type DragStartEvent,
 } from "@dnd-kit/core";
 import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
+// FIX 5 (round P): shared toast used by every delete/recycle-bin action.
+import Toast from "@/components/ui/Toast";
 
 type Lead = {
   id: string;
@@ -17,6 +19,9 @@ type Lead = {
   channel: string | null;
   status: string;
   phone: string | null;
+  // FIX 6 (round P): true when the phone was captured without a real,
+  // confirmable country code (see src/lib/phone-validate.ts).
+  phone_unconfirmed?: boolean | null;
   email?: string | null;
   form_data?: { message?: string; service?: string; preferred_datetime?: string | null } | null;
   last_message?: string;
@@ -118,7 +123,14 @@ function LeadDetailModal({
           {lead.phone && (
             <div>
               <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.phone")}</p>
-              <p className="text-sm text-[#111111] dark:text-white font-mono">{lead.phone}</p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm text-[#111111] dark:text-white font-mono">{lead.phone}</p>
+                {lead.phone_unconfirmed && (
+                  <span title="No country code confirmed for this number" className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 whitespace-nowrap">
+                    Unconfirmed number
+                  </span>
+                )}
+              </div>
             </div>
           )}
           {lead.email && (
@@ -212,7 +224,12 @@ function DraggableLeadCard({ lead, stage, onOpen, t }: { lead: Lead; stage: Stag
         </span>
       </div>
       {lead.phone && (
-        <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-2.5 font-mono truncate">{lead.phone}</p>
+        <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-2.5 font-mono truncate flex items-center gap-1">
+          {lead.phone}
+          {lead.phone_unconfirmed && (
+            <span title="No country code confirmed for this number" className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400" />
+          )}
+        </p>
       )}
       <div className="flex items-center justify-between pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
         <span className="text-[10px] text-[#9CA3AF] dark:text-[#6E6E76]">{timeAgo(lead.created_at, t)}</span>
@@ -248,6 +265,7 @@ export default function LeadsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   useEffect(() => { load(); }, []);
@@ -277,12 +295,23 @@ export default function LeadsPage() {
     // migration_v30.sql (adds leads.deleted_at) hasn't run yet, PostgREST
     // rejects the whole query over one unknown column -- retry without the
     // filter rather than showing an empty page.
+    // FIX 6 (round P): phone_unconfirmed (migration_v33.sql) may not have
+    // run yet either -- same tiered fallback pattern, one more rung.
     let { data, error } = await db
       .from("leads")
-      .select("id, name, channel, status, phone, email, form_data, created_at")
+      .select("id, name, channel, status, phone, email, phone_unconfirmed, form_data, created_at")
       .eq("tenant_id", tenant.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
+    if (error?.code === "PGRST204" || error?.code === "42703") {
+      console.warn("[leads] phone_unconfirmed or deleted_at column missing — run migration_v30.sql / migration_v33.sql. Retrying without phone_unconfirmed.");
+      ({ data, error } = await db
+        .from("leads")
+        .select("id, name, channel, status, phone, email, form_data, created_at")
+        .eq("tenant_id", tenant.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }));
+    }
     if (error?.code === "PGRST204" || error?.code === "42703") {
       console.warn("[leads] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
       ({ data, error } = await db
@@ -332,9 +361,11 @@ export default function LeadsPage() {
     const { error } = await db.from("leads").update({ deleted_at: new Date().toISOString() }).eq("id", id);
     if (error) {
       console.error("[leads] soft delete failed:", error.code, error.message);
+      setToast("Could not delete. Please try again.");
       return false;
     }
     setLeads((prev) => prev.filter((l) => l.id !== id));
+    setToast("Lead moved to Recycle Bin");
     return true;
   }
 
@@ -500,6 +531,7 @@ export default function LeadsPage() {
           />
         );
       })()}
+      {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
     </div>
   );
 }

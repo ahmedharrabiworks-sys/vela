@@ -15,6 +15,8 @@ import {
   findPhoneCountryByName,
   type PhoneCountry,
 } from "@/components/ui/PhoneInput";
+// FIX 5 (round P): standardized on the single shared toast component.
+import Toast from "@/components/ui/Toast";
 
 // Existing tenants may have a phone number saved before this field had real
 // validation (raw digits, missing country code, etc). Parse it if possible so
@@ -91,22 +93,6 @@ function UsageCapModal({ used, limit, onClose }: { used: number; limit: number; 
         </div>
       </div>
     </ModalShell>
-  );
-}
-
-/* ── Toast ── */
-function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 2800);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  return (
-    <div className="fixed left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-[#1A0A00] text-white text-sm font-medium shadow-2xl" style={{ bottom: "max(24px, calc(env(safe-area-inset-bottom) + 16px))" }}>
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <path d="M2 7l3 3 7-7" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      {msg}
-    </div>
   );
 }
 
@@ -911,6 +897,10 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
   const [appointments, setAppointments] = useState<BinAppointment[]>([]);
   const [assistantBatches, setAssistantBatches] = useState<BinAssistantBatch[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // FIX 5 (round P): restore/permanent-delete actions here previously gave
+  // zero feedback beyond the row disappearing from the list -- same shared
+  // toast component every other delete flow in the app now uses.
+  const [toast, setToast] = useState("");
 
   useEffect(() => { load(); }, []);
 
@@ -957,7 +947,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
     const { error } = await db.from("leads").update({ deleted_at: null }).eq("id", id);
-    if (!error) setLeads((prev) => prev.filter((l) => l.id !== id));
+    if (!error) { setLeads((prev) => prev.filter((l) => l.id !== id)); setToast("Lead restored"); }
+    else setToast("Could not restore. Please try again.");
     setBusyId(null);
   }
   async function deleteLeadForever(id: string) {
@@ -965,7 +956,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
     const { error } = await db.from("leads").delete().eq("id", id);
-    if (!error) setLeads((prev) => prev.filter((l) => l.id !== id));
+    if (!error) { setLeads((prev) => prev.filter((l) => l.id !== id)); setToast("Lead permanently deleted"); }
+    else setToast("Could not delete. Please try again.");
     setBusyId(null);
   }
 
@@ -974,7 +966,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
     const { error } = await db.from("appointments").update({ deleted_at: null }).eq("id", id);
-    if (!error) setAppointments((prev) => prev.filter((a) => a.id !== id));
+    if (!error) { setAppointments((prev) => prev.filter((a) => a.id !== id)); setToast("Appointment restored"); }
+    else setToast("Could not restore. Please try again.");
     setBusyId(null);
   }
   async function deleteAppointmentForever(id: string) {
@@ -982,7 +975,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
     const { error } = await db.from("appointments").delete().eq("id", id);
-    if (!error) setAppointments((prev) => prev.filter((a) => a.id !== id));
+    if (!error) { setAppointments((prev) => prev.filter((a) => a.id !== id)); setToast("Appointment permanently deleted"); }
+    else setToast("Could not delete. Please try again.");
     setBusyId(null);
   }
 
@@ -994,7 +988,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ restore: true }),
       });
-      if (res.ok) setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (res.ok) { setConversations((prev) => prev.filter((c) => c.id !== id)); setToast("Conversation restored"); }
+      else setToast("Could not restore. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -1003,7 +998,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     setBusyId(id);
     try {
       const res = await fetch(`/api/conversations/${id}?hard=true`, { method: "DELETE" });
-      if (res.ok) setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (res.ok) { setConversations((prev) => prev.filter((c) => c.id !== id)); setToast("Conversation permanently deleted"); }
+      else setToast("Could not delete. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -1014,7 +1010,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
     const { error } = await db.from("assistant_messages").update({ deleted_at: null }).eq("deleted_at", deletedAt);
-    if (!error) setAssistantBatches((prev) => prev.filter((b) => b.deletedAt !== deletedAt));
+    if (!error) { setAssistantBatches((prev) => prev.filter((b) => b.deletedAt !== deletedAt)); setToast("Conversation history restored"); }
+    else setToast("Could not restore. Please try again.");
     setBusyId(null);
   }
   async function deleteAssistantBatchForever(deletedAt: string) {
@@ -1022,7 +1019,8 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = getSupabase() as any;
     const { error } = await db.from("assistant_messages").delete().eq("deleted_at", deletedAt);
-    if (!error) setAssistantBatches((prev) => prev.filter((b) => b.deletedAt !== deletedAt));
+    if (!error) { setAssistantBatches((prev) => prev.filter((b) => b.deletedAt !== deletedAt)); setToast("Conversation history permanently deleted"); }
+    else setToast("Could not delete. Please try again.");
     setBusyId(null);
   }
 
@@ -1157,6 +1155,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
           </div>
         </div>
       )}
+      {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
     </>
   );
 }

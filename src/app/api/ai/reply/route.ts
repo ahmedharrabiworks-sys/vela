@@ -6,6 +6,7 @@ import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
 import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
 import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
+import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,18 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-// ── Per-tenant in-memory rate limiter ──────────────────────────────────────
+// ── Rate limiting — FIX 1 (round P) ─────────────────────────────────────────
+// Diagnostic before this round's changes: yes, rate limiting was already
+// live (Security Hardening Round 1, commit afc881f) -- a per-tenant 30
+// req/min in-memory sliding window, confirmed present in this file. Three
+// real gaps against this round's ask: (1) no per-conversation cap -- a
+// single abusive visitor shares the SAME 30/min budget as every other real
+// customer of that tenant, so one bad actor could exhaust it and block
+// everyone else; (2) no daily backstop -- only a 1-minute window, so a slow-
+// drip abuse pattern under 30/min sustained for hours was never caught;
+// (3) hitting the limit returned a raw {error} JSON body with HTTP 429 --
+// exactly the "raw error" this round says a customer must never see.
+//
 // Keyed by tenantId (not IP) because the cost risk is per-tenant: a bot with any
 // valid tenantId can drain that tenant's AI budget. 30 req/min comfortably covers
 // normal heavy chat usage while capping attack cost to ~$0.12/min per tenant.
@@ -37,6 +49,54 @@ function isTenantRateLimited(tenantId: string): boolean {
   if (entry.count >= TENANT_RATE_LIMIT) return true;
   entry.count++;
   return false;
+}
+
+// New: per-conversation (or per-IP, before a conversation exists) hourly
+// cap -- catches a single visitor/session flooding messages within a
+// tenant's shared per-minute budget. 30/hour comfortably covers a real,
+// even unusually chatty, customer conversation.
+const CONV_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
+const CONV_RATE_LIMIT = 30;
+const CONV_WINDOW_MS  = 60 * 60_000;
+
+// Per-tenant daily backstop -- see the real-query check right after tenant
+// load below for why this is a DB query, not another in-memory counter.
+const TENANT_DAILY_LIMIT = 500;
+
+function isKeyRateLimited(key: string, map: Map<string, { count: number; windowStart: number }>, limit: number, windowMs: number): boolean {
+  const now   = Date.now();
+  const entry = map.get(key);
+  if (!entry || now - entry.windowStart >= windowMs) {
+    map.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+  if (entry.count >= limit) return true;
+  entry.count++;
+  return false;
+}
+
+function getClientIp(req: NextRequest): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return req.headers.get("x-real-ip") || "unknown";
+}
+
+// A graceful, in-character reply shaped exactly like a real successful
+// /api/ai/reply response -- the widget/webhook callers all just render
+// `data.reply` as a normal chat bubble, so a rate-limited request must
+// never surface as a raw {error} JSON body or a visible HTTP failure.
+function gracefulLimitReply(convId: string | null, contactPhone?: string | null): NextResponse {
+  const contact = contactPhone ? ` You can also reach us directly at ${contactPhone}.` : "";
+  return NextResponse.json(
+    {
+      reply: `Sorry, I'm getting a lot of messages right now and need a moment to catch up. Please try again shortly.${contact}`,
+      conversationId: convId,
+      booked: false,
+      booking: null,
+      needsHuman: false,
+    },
+    { headers: CORS }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -74,12 +134,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Per-tenant rate limit — checked before any OpenAI calls
+  // Per-tenant burst rate limit — checked before any DB/OpenAI calls, cheap
+  // Map lookup so a flood is rejected without ever touching the database.
   if (isTenantRateLimited(tenantId)) {
-    return NextResponse.json(
-      { error: "Too many requests. Please slow down" },
-      { status: 429, headers: CORS }
-    );
+    console.warn(`[ai/reply] RATE LIMIT HIT (per-tenant burst, ${TENANT_RATE_LIMIT}/min): tenant=${tenantId}`);
+    return gracefulLimitReply(conversationId ?? null);
+  }
+
+  // Per-conversation (or per-IP before a conversation exists yet) hourly
+  // cap -- see the block comment above CONV_RATE_MAP for why this exists
+  // alongside the tenant-wide burst limit above.
+  const clientIp = getClientIp(req);
+  const convRateKey = conversationId ? `conv:${conversationId}` : `ip:${tenantId}:${clientIp}`;
+  if (isKeyRateLimited(convRateKey, CONV_RATE_MAP, CONV_RATE_LIMIT, CONV_WINDOW_MS)) {
+    console.warn(`[ai/reply] RATE LIMIT HIT (per-conversation/IP, ${CONV_RATE_LIMIT}/hr): key=${convRateKey} tenant=${tenantId}`);
+    return gracefulLimitReply(conversationId ?? null);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -97,6 +166,29 @@ export async function POST(req: NextRequest) {
       { error: "Tenant not found" },
       { status: 404, headers: CORS }
     );
+  }
+
+  // Per-tenant DAILY backstop -- catches a sustained abuse pattern under the
+  // 30/min burst cap (e.g. one message every 3 seconds for hours), which the
+  // in-memory burst limiter alone can't see. A real query (rolling 24h,
+  // assistant replies only, matching the same counting convention as
+  // getUsageSummary's plan-cap check below) rather than another in-memory
+  // counter -- a daily cap surviving only until the next cold start would
+  // defeat its own purpose. 500/day is a generous multiple of even
+  // Starter's full monthly text allowance (500/mo) -- far past anything a
+  // real single-tenant customer volume would hit, a clear abuse signal only.
+  if (!isTest) {
+    const { count: dailyCount } = await admin
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("role", "assistant")
+      .eq("is_test", false)
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString());
+    if ((dailyCount ?? 0) >= TENANT_DAILY_LIMIT) {
+      console.warn(`[ai/reply] RATE LIMIT HIT (per-tenant daily backstop, ${TENANT_DAILY_LIMIT}/24h): tenant=${tenantId} count=${dailyCount}`);
+      return gracefulLimitReply(conversationId ?? null, (tenant as { phone?: string }).phone ?? null);
+    }
   }
 
   // CRITICAL FIX: a tenant's own business_name is account-level, but a
@@ -147,15 +239,13 @@ export async function POST(req: NextRequest) {
   if (msgLimit !== Infinity && !isTest) {
     const usage = await getUsageSummary(admin, tenantId);
     if (usage.messagesUsed >= msgLimit) {
-      return NextResponse.json(
-        {
-          error: "You've reached your plan's message limit for this month. Upgrade to Pro for unlimited messages.",
-          limitType: "messages",
-          used: usage.messagesUsed,
-          limit: msgLimit,
-        },
-        { status: 429, headers: CORS },
-      );
+      // FIX 1 (round P): this reaches the customer-facing widget the same
+      // as every other cap on this route -- was a raw {error} JSON body
+      // (visible as a broken bubble to the actual customer, not the owner),
+      // now the same graceful in-character reply. Still logged server-side
+      // for visibility.
+      console.warn(`[ai/reply] RATE LIMIT HIT (plan message cap, ${msgLimit}/mo): tenant=${tenantId} used=${usage.messagesUsed}`);
+      return gracefulLimitReply(conversationId ?? null, (tenant as { phone?: string }).phone ?? null);
     }
   }
 
@@ -172,15 +262,48 @@ export async function POST(req: NextRequest) {
   // cross-tenant data-isolation gap. A conversationId that doesn't belong
   // to this tenant is now treated as not found -- the visitor transparently
   // gets a fresh conversation instead of an error.
+  //
+  // FIX 3 (round P): same gap one level down -- a conversationId that DOES
+  // belong to this tenant but to a DIFFERENT one of the tenant's sites was
+  // still accepted, because nothing here checked which site it came from.
+  // A tenant with 2+ simultaneously published sites (real since Round O)
+  // could have one site's widget silently continue another site's
+  // conversation. When the caller sends a websiteId (a site-embedded
+  // widget), it must now also match; a mismatch is treated the same as the
+  // tenant mismatch above -- transparently start fresh, never an error.
+  const hasWebsiteId = typeof websiteId === "string" && websiteId.length > 0;
+  let websiteIdColumnMissing = false;
   if (convId) {
-    const { data: conv } = await admin
-      .from("conversations")
-      .select("id, lead_id")
-      .eq("id", convId)
-      .eq("tenant_id", tenantId)
-      .maybeSingle();
+    let conv: { id: string; lead_id: string | null } | null = null;
+    if (hasWebsiteId) {
+      const { data, error } = await admin
+        .from("conversations")
+        .select("id, lead_id")
+        .eq("id", convId)
+        .eq("tenant_id", tenantId)
+        .eq("website_id", websiteId)
+        .maybeSingle();
+      if (error?.code === "42703" || error?.code === "PGRST204") {
+        websiteIdColumnMissing = true;
+        ({ data: conv } = await admin
+          .from("conversations")
+          .select("id, lead_id")
+          .eq("id", convId)
+          .eq("tenant_id", tenantId)
+          .maybeSingle());
+      } else {
+        conv = data as { id: string; lead_id: string | null } | null;
+      }
+    } else {
+      ({ data: conv } = await admin
+        .from("conversations")
+        .select("id, lead_id")
+        .eq("id", convId)
+        .eq("tenant_id", tenantId)
+        .maybeSingle());
+    }
     if (conv) {
-      leadId = (conv as { lead_id: string | null }).lead_id ?? null;
+      leadId = conv.lead_id ?? null;
     } else {
       convId = null;
     }
@@ -199,18 +322,28 @@ export async function POST(req: NextRequest) {
     // (confirmed live), so a conversation can exist without a lead. No lead
     // is created here anymore -- see ensureLeadFromContact below, called
     // once real phone/email is actually detected in the conversation.
-    const { data: conv } = await admin
+    const insertRow: Record<string, unknown> = {
+      tenant_id: tenantId,
+      lead_id: null,
+      channel,
+      customer_name: customerName,
+      ai_enabled: true,
+      last_message_at: new Date().toISOString(),
+    };
+    if (hasWebsiteId && !websiteIdColumnMissing) insertRow.website_id = websiteId;
+    let { data: conv, error: insertErr } = await admin
       .from("conversations")
-      .insert({
-        tenant_id: tenantId,
-        lead_id: null,
-        channel,
-        customer_name: customerName,
-        ai_enabled: true,
-        last_message_at: new Date().toISOString(),
-      })
+      .insert(insertRow)
       .select("id")
       .single();
+    if (insertErr?.code === "42703" || insertErr?.code === "PGRST204") {
+      delete insertRow.website_id;
+      ({ data: conv } = await admin
+        .from("conversations")
+        .insert(insertRow)
+        .select("id")
+        .single());
+    }
     convId = (conv as { id: string } | null)?.id ?? null;
   }
 
@@ -299,6 +432,66 @@ export async function POST(req: NextRequest) {
     .order("datetime", { ascending: true })
     .limit(1)
     .maybeSingle();
+
+  /* ── 6c. Existing active booking on this conversation/phone -- FIX 2 (round P) ──
+     Before the AI is even allowed to consider booking something new, it needs
+     to know a real upcoming appointment already exists for this exact
+     conversation (same widget session) or this same phone number, so it can
+     tell the customer that directly instead of silently creating a second
+     one. This is a SEPARATE, wider check than 6b above (which only catches a
+     business-initiated reschedule awaiting confirmation) -- this one catches
+     the customer trying to book AGAIN, unprompted, while already booked.
+     leadId is already resolved by this point (section 3 above). */
+  let existingActiveAppt: { id: string; datetime: string; service_name: string | null; leadName: string | null } | null = null;
+  {
+    const { data: byConv } = await admin
+      .from("appointments")
+      .select("id, datetime, service_name, lead_id")
+      .eq("tenant_id", tenantId)
+      .eq("conversation_id", convId)
+      .neq("status", "cancelled")
+      .gte("datetime", new Date().toISOString())
+      .order("datetime", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    let row = byConv as { id: string; datetime: string; service_name: string | null; lead_id: string | null } | null;
+    if (!row && leadId) {
+      // Same real customer, but this specific conversation row has no
+      // booking of its own yet -- check by phone in case an earlier, separate
+      // conversation (e.g. a prior widget session before localStorage
+      // persistence, or a different channel) already booked something.
+      const { data: leadRow } = await admin.from("leads").select("phone").eq("id", leadId).maybeSingle();
+      const phone = (leadRow as { phone: string | null } | null)?.phone;
+      if (phone) {
+        const { data: samePhoneLeads } = await admin.from("leads").select("id").eq("tenant_id", tenantId).eq("phone", phone);
+        const leadIds = ((samePhoneLeads ?? []) as { id: string }[]).map((l) => l.id);
+        if (leadIds.length > 0) {
+          const { data: byPhone } = await admin
+            .from("appointments")
+            .select("id, datetime, service_name, lead_id")
+            .eq("tenant_id", tenantId)
+            .in("lead_id", leadIds)
+            .neq("status", "cancelled")
+            .gte("datetime", new Date().toISOString())
+            .order("datetime", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          row = byPhone as { id: string; datetime: string; service_name: string | null; lead_id: string | null } | null;
+        }
+      }
+    }
+    if (row) {
+      let leadName: string | null = null;
+      if (row.lead_id) {
+        const { data: ld } = await admin.from("leads").select("name").eq("id", row.lead_id).maybeSingle();
+        leadName = (ld as { name: string | null } | null)?.name ?? null;
+      }
+      existingActiveAppt = { id: row.id, datetime: row.datetime, service_name: row.service_name, leadName };
+    }
+  }
+  const existingApptDirective = existingActiveAppt
+    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. If the customer is asking to book a NEW or ADDITIONAL appointment (not simply confirming/adjusting this same one), tell them they already have this booking and ask whether they'd like to reschedule it to a new time or cancel it instead -- do NOT say "Booked ✓" for a second appointment while this one is still active. Only proceed with a genuinely new booking if they clearly explain this is for a different person or a real additional visit.`
+    : "";
 
   /* ── 7. Build system prompt ── */
   type ServiceRow   = { name: string; price?: string; description?: string };
@@ -463,7 +656,7 @@ Current date & time: ${todayFull}, ${currentTime}
 Services:
 ${servicesText}
 ${faqsText}
-${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}
+${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}${existingApptDirective}
 
 Rules:
 • Tone: ${tone} and warm — be like a helpful employee, not a robot
@@ -472,7 +665,8 @@ Rules:
 • Do NOT list your full services or price menu unprompted — not at the start of a conversation, not in response to a generic greeting or vague question. Only discuss a specific service once the customer names it or clearly asks what you offer.
 • Do NOT state a price unless the customer explicitly asks about cost/price for that specific service.
 • MANDATORY: ask ONE question at a time, never more. If you still need two or more pieces of information (e.g. which service/unit, a day/time, their name, their phone), ask for only the SINGLE most important missing one in this reply and stop there — wait for their answer before asking the next. Never bundle multiple questions into one message (e.g. never ask "which service, what date/time, and your name and number?" all together). This applies to booking just as much as anything else.
-• To book: ask for preferred day/time if not given (and nothing else in that same message). The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm it and move to finalize -- ask for any missing name/phone/service ONE AT A TIME, not together, then confirm with "Booked ✓" once you have what you need. If not, say so and offer the real alternatives given.
+• To book: ask for preferred day/time if not given (and nothing else in that same message). The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm the slot is available and move to collecting -- ask for any missing name/phone/service ONE AT A TIME, not together. MANDATORY, NO EXCEPTIONS: once you have service + day/time + name + phone, do NOT say "Booked ✓" yet — first ask one explicit yes/no confirmation question naming the exact day/time, e.g. "Should I go ahead and book this for [day/time]?", and stop there. Only after the customer replies with a clear affirmative (e.g. "yes", "please do", "confirm", "sounds good", "go ahead") in their NEXT message do you say "Booked ✓". If they say no, hesitate, or want to change something, do not book — ask what they'd like instead. This confirmation step is required even if they already sound certain earlier in the conversation; never skip straight from "here's what I have" to "Booked ✓" in the same reply. If not available, say so and offer the real alternatives given.
+• If EXISTING ACTIVE BOOKING above is present and the customer is trying to book something new rather than confirming/adjusting that one, follow the instruction in that section instead of the confirm-then-book flow -- do not collect details for a second booking until they've clarified whether this replaces the existing one.
 • If the customer explicitly declines to name a specific service (e.g. "no particular service, just want to come talk," "not sure yet, just visiting"), do not leave it blank or keep pushing -- accept a real fallback description of the visit itself (e.g. "General Consultation," "In-person meeting") as the service and move on to the next missing detail.
 • NEVER double-book a slot already listed above
 • NEVER book outside working hours
@@ -481,6 +675,7 @@ Rules:
 • MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) say something like "That's not something we currently offer, let me check with the team and get back to you" rather than a flat decline, (3) include the exact literal text [NEEDS_HUMAN] somewhere in your reply so the team is actually notified. This token is required every single time rule (1) applies, with zero exceptions — do not skip it just because you already declined the request.
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation
+• When asking for the customer's phone number, ask for it WITH a country code (e.g. "What's the best number to reach you, with country code? Like +971..."). If they reply with a number that looks incomplete or clearly missing a country code (a short local number with no + and no leading 00), ask them to confirm it once more including the country code before treating it as final -- do not just accept a bare local number silently.
 • Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in your reply. Use a period, comma, or a plain hyphen instead
 • Never end a reply with generic padding like "If there's anything else you need, just let me know!", "Feel free to reach out if you need anything else!", "How can I assist you today?", or any variation of that. If you genuinely have something specific to add, say that specific thing; otherwise just stop talking after answering.`;
 
@@ -583,7 +778,18 @@ Rules:
       // Visitor"), so a plain `.is("name", null)` check could never match
       // and a real name would never overwrite the placeholder. Matches the
       // placeholder values explicitly instead.
-      if (phone) await admin.from("leads").update({ phone }).eq("id", leadId).is("phone", null);
+      if (phone) {
+        // FIX 6 (round P): phone_unconfirmed is the real, guaranteed signal
+        // that a captured number has no genuine country code (see
+        // hasConfirmedCountryCode) -- set regardless of whether the AI's
+        // own prompt-level instruction to ask for one actually worked.
+        const { error: phoneUpdErr } = await admin.from("leads")
+          .update({ phone, phone_unconfirmed: !hasConfirmedCountryCode(phone) })
+          .eq("id", leadId).is("phone", null);
+        if (phoneUpdErr?.code === "42703" || phoneUpdErr?.code === "PGRST204") {
+          await admin.from("leads").update({ phone }).eq("id", leadId).is("phone", null);
+        }
+      }
       if (email) await admin.from("leads").update({ email }).eq("id", leadId).is("email", null);
       if (name && name !== "Customer" && name !== "Website Visitor") {
         await admin.from("leads").update({ name }).eq("id", leadId)
@@ -606,18 +812,26 @@ Rules:
       return;
     }
     if (!phone && !email) return; // creating a brand-new lead still needs a real way to reach them
-    const { data: lead, error: leadErr } = await admin
+    const newLeadRow: Record<string, unknown> = {
+      tenant_id: tenantId,
+      name: (name && name !== "Customer" && name !== "Website Visitor") ? name : customerName,
+      phone: phone || null,
+      email: email || null,
+      channel,
+      status: "new",
+    };
+    // FIX 6 (round P): same real, guaranteed country-code check as the
+    // update path above.
+    if (phone) newLeadRow.phone_unconfirmed = !hasConfirmedCountryCode(phone);
+    let { data: lead, error: leadErr } = await admin
       .from("leads")
-      .insert({
-        tenant_id: tenantId,
-        name: (name && name !== "Customer" && name !== "Website Visitor") ? name : customerName,
-        phone: phone || null,
-        email: email || null,
-        channel,
-        status: "new",
-      })
+      .insert(newLeadRow)
       .select("id")
       .single();
+    if (leadErr?.code === "42703" || leadErr?.code === "PGRST204") {
+      delete newLeadRow.phone_unconfirmed;
+      ({ data: lead, error: leadErr } = await admin.from("leads").insert(newLeadRow).select("id").single());
+    }
     if (leadErr || !lead) {
       console.error("[ai/reply] FAILED to create lead from detected contact info:", leadErr?.message);
       return;
@@ -676,20 +890,36 @@ Rules:
   let booked = false;
   let booking: { datetime: string | null; service: string | null } | null = null;
   let fix4Debug = "";
+  // FIX 2 (round P): hoisted so the duplicate-booking name-comparison guard
+  // below can read this turn's extracted name without a second GPT call.
+  let extractedCustomerName: string | null = null;
 
   if (apiKey) {
     try {
       const openai = new OpenAI({ apiKey });
+      // FIX 2 (round P): the confirm-before-book prompt change means "Booked
+      // ✓" now normally lands on a LATER turn than the one where the
+      // service/date/time were actually stated (customer says "yes, go
+      // ahead" with no specifics restated) -- this call previously only saw
+      // THIS turn's raw message+reply with zero earlier context, so it had
+      // no way to recover what was actually being confirmed and silently
+      // returned a null datetime/service, which meant no appointment ever
+      // got created despite a real, genuine confirmation. Same recent-
+      // context pattern as the 7b availability pre-check above.
+      const detectRecentContext = (history as Array<{ role: string; content: string }> ?? [])
+        .slice(-6)
+        .map((m) => `${m.role === "user" ? "Customer" : "AI"}: ${m.content}`)
+        .join("\n");
       const detect = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Extract booking info from the conversation turn below. IMPORTANT: this system has no real timezone conversion anywhere -- the current datetime given above already uses the exact same clock convention this business's appointments are stored and displayed in. Never apply any timezone shift, offset, or "helpful" conversion based on the business's city or country when producing the "datetime" field -- write the literal clock hour the customer stated or confirmed earlier in this conversation, unmodified, with a Z suffix (e.g. "3pm" -> "...T15:00:00Z", never adjusted). If the booked service matches one of this business's real services, the "service" field MUST be copied EXACTLY (same spelling, same wording) from this list, never paraphrased or reworded: ${kbServices.map((s) => s.name).join(", ") || "(none configured)"}. Reply ONLY valid JSON: {"booked": true|false, "datetime": "ISO 8601 or null", "service": "service name or null", "customerName": "extracted name or null", "customerPhone": "extracted phone or null"}. If the customer explicitly declined to name a specific service/unit/reason (e.g. "no particular service, just want to talk in person", "not sure yet"), do not return null for service -- return a real short fallback description of the visit itself, such as "General Consultation" or "In-person meeting".`,
+            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Extract booking info from the conversation below -- the customer's CURRENT message and the AI's reply to it are what actually decides "booked" (did the AI just finalize a booking in direct response to a genuine confirmation), but the datetime/service being confirmed is very often stated in EARLIER turns, not the current one -- use the recent context to recover it. IMPORTANT: this system has no real timezone conversion anywhere -- the current datetime given above already uses the exact same clock convention this business's appointments are stored and displayed in. Never apply any timezone shift, offset, or "helpful" conversion based on the business's city or country when producing the "datetime" field -- write the literal clock hour the customer stated or confirmed earlier in this conversation, unmodified, with a Z suffix (e.g. "3pm" -> "...T15:00:00Z", never adjusted). If the booked service matches one of this business's real services, the "service" field MUST be copied EXACTLY (same spelling, same wording) from this list, never paraphrased or reworded: ${kbServices.map((s) => s.name).join(", ") || "(none configured)"}. "booked" must be true ONLY if the AI's CURRENT reply literally finalizes the appointment (contains "Booked ✓" or unambiguously states it is now booked) in response to the customer's own explicit affirmative confirmation -- NOT when the AI is merely asking the customer to confirm before booking ("Should I go ahead and book this for..."), and NOT while details are still being collected. Reply ONLY valid JSON: {"booked": true|false, "datetime": "ISO 8601 or null", "service": "service name or null", "customerName": "extracted name or null", "customerPhone": "extracted phone or null"}. If the customer explicitly declined to name a specific service/unit/reason (e.g. "no particular service, just want to talk in person", "not sure yet"), do not return null for service -- return a real short fallback description of the visit itself, such as "General Consultation" or "In-person meeting".`,
           },
           {
             role: "user",
-            content: `Customer: "${message}"\nAI: "${aiReply}"`,
+            content: `${detectRecentContext ? detectRecentContext + "\n" : ""}Customer: "${message}"\nAI: "${aiReply}"`,
           },
         ],
         max_tokens: 150,
@@ -707,6 +937,7 @@ Rules:
 
       booked = parsed.booked === true;
       if (booked) booking = { datetime: parsed.datetime ?? null, service: parsed.service ?? null };
+      extractedCustomerName = parsed.customerName?.trim() || null;
 
       // CRITICAL FIX: routed through the same ensureLeadFromContact helper
       // as the regex scan above -- creates the lead here too if this GPT
@@ -755,7 +986,33 @@ Rules:
     // Same slot to the minute -- a redundant re-confirmation, not a change.
     const isSameSlot = existing && new Date(existing.datetime).getTime() === new Date(booking.datetime).getTime();
 
-    if (existing && !isSameSlot) {
+    // FIX 2 (round P): a real, DIFFERENT name trying to book a different
+    // slot on this SAME conversation while an appointment already exists is
+    // a suspicious second-booking attempt, not a reschedule -- the
+    // existingApptDirective injected into the system prompt above already
+    // told the AI to ask the customer to clarify (reschedule the existing
+    // one, or explain this is a genuinely different booking) instead of
+    // silently overwriting. This is the hard server-side backstop for that:
+    // guarantees no second appointment and no silent overwrite happen even
+    // if the model's reply slipped and said "Booked ✓" anyway. Only skips
+    // this guard (falls through to the normal reschedule path) when either
+    // name is unknown/generic -- can't tell, so assume it's the same
+    // person, preserving the original single-person reschedule UX.
+    let nameConflict = false;
+    if (existing && !isSameSlot && existing.lead_id && extractedCustomerName) {
+      const { data: existingLead } = await admin.from("leads").select("name").eq("id", existing.lead_id).maybeSingle();
+      const existingName = (existingLead as { name: string | null } | null)?.name;
+      const isRealName = (n: string | null | undefined) => !!n && n !== "Customer" && n !== "Website Visitor";
+      if (isRealName(existingName) && isRealName(extractedCustomerName)
+        && existingName!.trim().toLowerCase() !== extractedCustomerName.trim().toLowerCase()) {
+        nameConflict = true;
+      }
+    }
+
+    if (nameConflict) {
+      // Leave the existing appointment untouched -- no insert, no update.
+      // The customer already got told about it via existingApptDirective.
+    } else if (existing && !isSameSlot) {
       // Real reschedule detected via conversation (not the Appointments
       // page button, but the same real change) -- update in place.
       // Fallback: if migration_v29.sql (adds appointments.rescheduled)

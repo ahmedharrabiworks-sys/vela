@@ -5,6 +5,8 @@ import { getSupabase } from "@/lib/supabase";
 import type { Database } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
+// FIX 5 (round P): shared toast used by every delete/recycle-bin action.
+import Toast from "@/components/ui/Toast";
 
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   preview?: string;
@@ -65,6 +67,7 @@ export default function ConversationsPage() {
   const [renameValue, setRenameValue]       = useState("");
   const [deleteTarget, setDeleteTarget]     = useState<Conversation | null>(null);
   const [deleting, setDeleting]             = useState(false);
+  const [toast, setToast]                   = useState("");
   const bottomRef   = useRef<HTMLDivElement>(null);
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
@@ -272,6 +275,7 @@ export default function ConversationsPage() {
         setShowThread(false);
       }
       setDeleteTarget(null);
+      setToast("Conversation moved to Recycle Bin");
     } catch {
       setReplyError("Failed to delete conversation. Please try again");
       setTimeout(() => setReplyError(null), 5000);
@@ -759,6 +763,7 @@ export default function ConversationsPage() {
           </div>
         </div>
       )}
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
     </div>
   );
 }

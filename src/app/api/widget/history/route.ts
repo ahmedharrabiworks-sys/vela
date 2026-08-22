@@ -31,6 +31,12 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   const tenantId = req.nextUrl.searchParams.get("tenantId");
   const conversationId = req.nextUrl.searchParams.get("conversationId");
+  // FIX 3 (round P): a stored conversationId that actually belongs to a
+  // DIFFERENT site under the same tenant must not resolve here -- same
+  // "possession of the ID is the access boundary" model as before, just
+  // additionally scoped to the specific site when the widget knows one
+  // (see chat-client.tsx's STORAGE_KEY comment for the full root cause).
+  const websiteId = req.nextUrl.searchParams.get("websiteId");
 
   if (!tenantId || !conversationId) {
     return NextResponse.json({ error: "tenantId and conversationId are required" }, { status: 400, headers: CORS });
@@ -39,12 +45,38 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  const { data: conv } = await admin
-    .from("conversations")
-    .select("id")
-    .eq("id", conversationId)
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+  let conv: { id: string } | null = null;
+  if (websiteId) {
+    const { data, error } = await admin
+      .from("conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("tenant_id", tenantId)
+      .eq("website_id", websiteId)
+      .maybeSingle();
+    // migration_v32.sql (adds website_id) may not have run yet in
+    // production -- fall back to the tenant-only match rather than 500ing
+    // every widget history request until it does.
+    if (error?.code === "42703" || error?.code === "PGRST204") {
+      const fallback = await admin
+        .from("conversations")
+        .select("id")
+        .eq("id", conversationId)
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      conv = fallback.data as { id: string } | null;
+    } else {
+      conv = data as { id: string } | null;
+    }
+  } else {
+    const { data } = await admin
+      .from("conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    conv = data as { id: string } | null;
+  }
 
   if (!conv) {
     return NextResponse.json({ messages: [] }, { headers: CORS });
