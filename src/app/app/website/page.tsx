@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
+import { usePlan } from "@/lib/plans";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useTheme } from "@/lib/theme";
 import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
@@ -500,7 +501,7 @@ type VersionRecord = {
   html:       string;
 };
 
-type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean; published_url?: string | null; updated_at?: string | null };
+type WebsiteProject = { id: string; name: string | null; slug: string | null; is_published: boolean; published_url?: string | null; updated_at?: string | null; hasPublishedBefore?: boolean };
 
 type AnalyticsData = {
   totalVisits:    number;
@@ -1183,6 +1184,9 @@ function VersionCard({
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function WebsitePage() {
   const { t } = useI18n();
+  // FIX 2 (round O): drives the disconnect confirmation modal's single-site
+  // vs multi-site plan wording (relocated here from the Channels page).
+  const { config } = usePlan();
   const btype       = typeof window !== "undefined" ? localStorage.getItem("vela_business_type") : null;
   const suggestions = (btype && INDUSTRY_SUGGESTIONS[btype]) ? INDUSTRY_SUGGESTIONS[btype] : DEFAULT_SUGGESTIONS;
 
@@ -1337,6 +1341,15 @@ export default function WebsitePage() {
   const [websiteAiTone, setWebsiteAiTone]             = useState("professional");
   const [websiteAiLanguage, setWebsiteAiLanguage]     = useState("Auto-detect");
   const [deleteTarget, setDeleteTarget]           = useState<WebsiteProject | null>(null);
+  // FIX 2 (round O): real per-site connect/disconnect/reconnect, relocated
+  // here from the Channels page and scoped to the specific site row instead
+  // of a single tenant-wide toggle -- each site's is_published column is
+  // already independent at the DB level (confirmed round O diagnostic), so
+  // a multi-site tenant can have some sites live and others disconnected
+  // at the same time, each managed from its own row.
+  const [disconnectTarget, setDisconnectTarget]   = useState<WebsiteProject | null>(null);
+  const [disconnectingSite, setDisconnectingSite] = useState(false);
+  const [reconnectingId, setReconnectingId]       = useState<string | null>(null);
   const [restoreConfirmTarget, setRestoreConfirmTarget] = useState<VersionRecord | null>(null);
   const [imgEditTarget, setImgEditTarget]         = useState<{ vs: string; imgIdx: number; src: string; websiteId: string } | null>(null);
   const [imgSearchQuery, setImgSearchQuery]       = useState("");
@@ -1366,6 +1379,7 @@ export default function WebsitePage() {
           is_published: s.is_published,
           published_url: s.is_published ? (s.slug ? `/site/${s.slug}` : null) : null,
           updated_at:   s.updated_at ?? null,
+          hasPublishedBefore: s.hasPublishedBefore ?? false,
         })));
       }
     } catch { /* non-critical */ }
@@ -1615,7 +1629,7 @@ export default function WebsitePage() {
       if (data.slug) { setSiteSlug(data.slug); setSavedSlug(data.slug); }
       if (websiteIdRef.current) {
         setProjects((prev) => prev.map((p) =>
-          p.id === websiteIdRef.current ? { ...p, is_published: true, slug: data.slug ?? p.slug } : p
+          p.id === websiteIdRef.current ? { ...p, is_published: true, slug: data.slug ?? p.slug, hasPublishedBefore: true } : p
         ));
       }
 
@@ -1894,6 +1908,65 @@ export default function WebsitePage() {
     } catch { /* ignore. UI already updated */ }
     void refreshProjects();
   }, [deleteTarget, btype, siteLanguage, refreshProjects]);
+
+  // FIX 2 (round O): Disconnect a specific site -- unpublishes it for real
+  // (is_published: false, the same flag site/[tenantId]/route.ts gates on),
+  // same semantics as the tenant-wide version this replaces, just scoped to
+  // one row. The site's draft/published_html is left intact so Reconnect
+  // can restore it without rebuilding.
+  const handleDisconnectSite = useCallback((p: WebsiteProject) => {
+    setMenuOpenId(null);
+    setMenuPos(null);
+    setDisconnectTarget(p);
+  }, []);
+
+  const handleConfirmDisconnectSite = useCallback(async () => {
+    const p = disconnectTarget;
+    if (!p) return;
+    setDisconnectingSite(true);
+    try {
+      const res = await fetch("/api/website/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: p.id, isPublished: false }),
+      });
+      if (!res.ok) throw new Error("disconnect failed");
+      setProjects((prev) => prev.map((proj) => proj.id === p.id ? { ...proj, is_published: false } : proj));
+      if (p.id === websiteIdRef.current) { setIsPublished(false); setPublishedUrl(""); }
+      setDisconnectTarget(null);
+    } catch {
+      alert("Could not disconnect this site. Please try again.");
+    }
+    setDisconnectingSite(false);
+  }, [disconnectTarget]);
+
+  // Re-links the SAME already-built site -- republishes the already-stored
+  // published_html for that one row, no draft/chat flow involved. Only ever
+  // called for a site with hasPublishedBefore true (see the menu below);
+  // the backend also refuses isPublished:true when published_html is null.
+  const handleReconnectSite = useCallback(async (p: WebsiteProject) => {
+    setMenuOpenId(null);
+    setMenuPos(null);
+    setReconnectingId(p.id);
+    try {
+      const res = await fetch("/api/website/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: p.id, isPublished: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "reconnect failed");
+      setProjects((prev) => prev.map((proj) => proj.id === p.id ? { ...proj, is_published: true, slug: data.slug ?? proj.slug } : proj));
+      if (p.id === websiteIdRef.current) {
+        setIsPublished(true);
+        const slug = data.slug ?? p.slug;
+        setPublishedUrl(slug ? `/site/${slug}` : "");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not reconnect this site. Please try again.");
+    }
+    setReconnectingId(null);
+  }, []);
 
   // ── File attachment ───────────────────────────────────────────────────────────
   // FIX 3 (round G): shared by both the paperclip picker and the new paste
@@ -3342,13 +3415,35 @@ export default function WebsitePage() {
         return (
           <div
             style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 200 }}
-            className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-28"
+            className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-32"
           >
             <button
               onClick={() => { setMenuOpenId(null); setMenuPos(null); handleSwitchProject(mp); }}
               className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
               Edit site
             </button>
+            {/* FIX 2 (round O): real per-site connect state, relocated from
+                the Channels page. A live site gets Disconnect (opens the
+                confirmation modal below); a site that was published before
+                but is currently disconnected gets Reconnect (one-click,
+                restores from its own stored published_html -- no rebuild).
+                A site that has NEVER been published has no quick action
+                here -- "Edit site" already leads to the real Publish flow,
+                and there is nothing to restore yet. */}
+            {mp.is_published ? (
+              <button
+                onClick={() => handleDisconnectSite(mp)}
+                className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+                Disconnect
+              </button>
+            ) : mp.hasPublishedBefore ? (
+              <button
+                onClick={() => handleReconnectSite(mp)}
+                disabled={reconnectingId === mp.id}
+                className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C] disabled:opacity-50">
+                {reconnectingId === mp.id ? "Reconnecting…" : "Reconnect"}
+              </button>
+            ) : null}
             <button
               onClick={() => { setMenuPos(null); handleStartRename(mp); }}
               className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
@@ -3362,6 +3457,43 @@ export default function WebsitePage() {
           </div>
         );
       })()}
+
+      {/* Disconnect Site Confirmation Modal -- FIX 2 (round O), relocated
+          from the Channels page. Wording branches on whether the plan
+          supports more than one site (config.websites > 1): a single-site
+          plan frames this as losing the site's only connection, a
+          multi-site plan names this specific site since the tenant's other
+          sites are unaffected. */}
+      {disconnectTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">
+              {config.websites > 1
+                ? `Disconnect "${disconnectTarget.name || "this site"}"?`
+                : "Are you sure you want to disconnect this website?"}
+            </h2>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+              {config.websites > 1
+                ? "This site will go offline until you reconnect it. Your other sites are not affected."
+                : "This will take your site offline. You can reconnect the same site later without rebuilding it."}
+            </p>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setDisconnectTarget(null)}
+                disabled={disconnectingSite}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDisconnectSite}
+                disabled={disconnectingSite}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50">
+                {disconnectingSite ? "Disconnecting…" : "Disconnect"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Website Confirmation Modal */}
       {showNewWebsiteModal && (

@@ -489,45 +489,10 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// FIX 5 (round N): confirmation wording branches on whether the tenant's
-// plan supports more than one site (config.websites > 1). A single-site
-// plan (Starter=0, Pro=1) frames this as losing the only site's connection;
-// a multi-site plan (Premium=3, Custom=Infinity) names the specific site so
-// it's clear the tenant's other sites are unaffected.
-function DisconnectWebsiteModal({ siteName, multiSite, disconnecting, onClose, onConfirm }: {
-  siteName: string | null; multiSite: boolean; disconnecting: boolean; onClose: () => void; onConfirm: () => void;
-}) {
-  const label = siteName || "this website";
-  return (
-    <Modal onClose={onClose}>
-      <div className="p-6 text-center">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-[#FEF2F2]">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L14.71 3.86a2 2 0 00-3.42 0z" stroke="#DC2626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-        <h3 className="text-lg font-bold text-[#111111] mb-2">
-          {multiSite ? `Disconnect ${label}?` : "Are you sure you want to disconnect this website?"}
-        </h3>
-        <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
-          {multiSite
-            ? `This site will go offline and its AI assistant will stop responding until you reconnect it. Your other sites are not affected.`
-            : `This will take your site offline and stop the AI assistant from responding to visitors. You can reconnect the same site later without rebuilding it.`}
-        </p>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
-          <button
-            onClick={onConfirm}
-            disabled={disconnecting}
-            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90 bg-[#DC2626] disabled:opacity-50"
-          >
-            {disconnecting ? "Disconnecting…" : "Disconnect"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
+// FIX 5 (round N) / relocated FIX 2 (round O): the disconnect confirmation
+// modal (single-site vs multi-site plan wording) now lives in Website
+// Builder's site list, where the real per-site disconnect action is
+// triggered from -- see src/app/app/website/page.tsx's SiteDisconnectModal.
 
 /* ══════════════════════════════════════
    MAIN PAGE
@@ -537,21 +502,15 @@ type ChannelStatus = {
   whatsapp:  { connected: boolean; phone: string; displayName?: string; conversations: number; bookings: number };
 };
 
+// FIX 2 (round O): simplified back to a tenant-wide aggregate (see loadStatus).
+// Per-site connect/disconnect/reconnect/embed-toggle management lives in
+// Website Builder's own site list now, not here.
 type WebsiteState = {
   published: boolean;
   siteUrl: string | null;
   visits: number;
   conversations: number;
   leads: number;
-  websiteId: string | null;
-  embedAssistant: boolean;
-  // FIX 5 (round N): site name, needed for the disconnect confirmation
-  // modal's multi-site wording ("disconnect Maison Prestige?" vs a generic
-  // single-site warning). Also doubles as the signal that a real
-  // already-built site exists even when it's currently disconnected
-  // (websiteId is now populated whenever any previously-published site row
-  // exists, not only while it's currently live -- see loadStatus below).
-  name: string | null;
 };
 
 function ChannelsPageContent() {
@@ -564,13 +523,10 @@ function ChannelsPageContent() {
     whatsapp:  { connected: false, phone: "", conversations: 0, bookings: 0 },
   });
   const [showConnectMenu, setShowConnectMenu] = useState(false);
-  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0, websiteId: null, embedAssistant: true, name: null });
-  const [savingAssistant, setSavingAssistant] = useState(false);
-  const [reconnecting, setReconnecting] = useState(false);
+  const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0 });
   const [showEmbed, setShowEmbed]   = useState(false);
-  const [showWebsiteMenu, setShowWebsiteMenu] = useState(false);
   const embedSectionRef             = useRef<HTMLDivElement>(null);
-  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | "disconnect-website" | null>(null);
+  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
   const [copied, setCopied]         = useState(false);
   const [tenantId, setTenantId]     = useState("YOUR_TENANT_ID");
@@ -647,58 +603,48 @@ function ChannelsPageContent() {
       }
 
       // Website channel: tied to Website Builder, not a manual connect flow.
-      // "Connected" only when a real site is currently live (is_published).
-      // FIX 5 (round N): the is_published filter used to be applied at the
-      // query level, so disconnecting (unpublishing) a site made it
-      // disappear from this query entirely -- the card fell back to "Build
-      // a website", routing straight into the site-creation chat flow even
-      // though a real, already-built site still existed underneath. Now we
-      // fetch the most recently PUBLISHED site regardless of its CURRENT
-      // is_published state (an already-published site always has real
-      // published_html to restore on reconnect), and branch UI state on
-      // is_published ourselves below.
-      const { data: siteRow } = await s
+      // FIX 2 (round O): real per-site connect/disconnect/reconnect now
+      // lives in Website Builder's own site list (each site has its own
+      // is_published row on the websites table -- this was already
+      // site-scoped at the DB level, never tenant-scoped). This card is
+      // back to a simple aggregate: "Connected" whenever ANY of the
+      // tenant's sites is currently live, "Not connected" only when none
+      // are. siteUrl is only ever shown when exactly one site is live (an
+      // unambiguous single link) -- with 2+ live sites, "which one" is a
+      // Website Builder question, not a Channels-page one.
+      const { data: siteRows } = await s
         .from("websites")
-        .select("slug, id, name, embed_ai_assistant, is_published")
-        .eq("tenant_id", tenant.id)
-        .not("published_at", "is", null)
-        .order("published_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .select("slug, is_published")
+        .eq("tenant_id", tenant.id);
 
-      if (siteRow) {
-        const isLive = siteRow.is_published === true;
-        const slug = (siteRow.slug as string | null) || (tenant.id as string);
-        // CRITICAL FIX: "Chat conversions %" was conversations / website_visit_count
-        // -- but website_visit_count only tracks pageviews on the Vela-built
-        // site itself, not chat activity from an externally embedded widget,
-        // so it routinely undercounts relative to real conversations
-        // (confirmed live: 2 visits vs 4 real conversations = a nonsensical
-        // 200%). Real conversion is now leads produced from website chat
-        // (the same FK-traced, always <= conversations count already fixed
-        // for Analytics' Channel Breakdown) over website conversations --
-        // both reliable, both always keep the ratio <= 100%.
-        const [{ count: websiteConvCount }, { data: websiteConvRows }] = await Promise.all([
-          s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "website"),
-          s.from("conversations").select("lead_id").eq("tenant_id", tenant.id).eq("channel", "website"),
-        ]);
-        const websiteLeadCount = new Set(
-          ((websiteConvRows ?? []) as { lead_id: string | null }[]).map((r) => r.lead_id).filter((id): id is string => !!id)
-        ).size;
+      const publishedSites = ((siteRows ?? []) as { slug: string | null; is_published: boolean }[]).filter((r) => r.is_published);
+      const isLive = publishedSites.length > 0;
+      // CRITICAL FIX: "Chat conversions %" was conversations / website_visit_count
+      // -- but website_visit_count only tracks pageviews on the Vela-built
+      // site itself, not chat activity from an externally embedded widget,
+      // so it routinely undercounts relative to real conversations
+      // (confirmed live: 2 visits vs 4 real conversations = a nonsensical
+      // 200%). Real conversion is now leads produced from website chat
+      // (the same FK-traced, always <= conversations count already fixed
+      // for Analytics' Channel Breakdown) over website conversations --
+      // both reliable, both always keep the ratio <= 100%. Both counts are
+      // already tenant-wide aggregates across every site's conversations,
+      // not scoped to a single site.
+      const [{ count: websiteConvCount }, { data: websiteConvRows }] = await Promise.all([
+        s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "website"),
+        s.from("conversations").select("lead_id").eq("tenant_id", tenant.id).eq("channel", "website"),
+      ]);
+      const websiteLeadCount = new Set(
+        ((websiteConvRows ?? []) as { lead_id: string | null }[]).map((r) => r.lead_id).filter((id): id is string => !!id)
+      ).size;
 
-        setWebsite({
-          published: isLive,
-          siteUrl: isLive ? `${appUrl}/site/${slug}` : null,
-          visits: (cfg?.website_visit_count as number) ?? 0,
-          conversations: websiteConvCount ?? 0,
-          leads: websiteLeadCount,
-          websiteId: siteRow.id as string,
-          embedAssistant: siteRow.embed_ai_assistant !== false,
-          name: (siteRow.name as string | null) ?? null,
-        });
-      } else {
-        setWebsite({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0, websiteId: null, embedAssistant: true, name: null });
-      }
+      setWebsite({
+        published: isLive,
+        siteUrl: publishedSites.length === 1 ? `${appUrl}/site/${publishedSites[0].slug || tenant.id}` : null,
+        visits: (cfg?.website_visit_count as number) ?? 0,
+        conversations: websiteConvCount ?? 0,
+        leads: websiteLeadCount,
+      });
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -813,76 +759,11 @@ function ChannelsPageContent() {
     });
   };
 
-  const toggleEmbedAssistant = async () => {
-    if (!website.websiteId || savingAssistant) return;
-    const next = !website.embedAssistant;
-    setSavingAssistant(true);
-    try {
-      const res = await fetch("/api/website/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ websiteId: website.websiteId, embedAiAssistant: next }),
-      });
-      if (!res.ok) throw new Error("save failed");
-      setWebsite((prev) => ({ ...prev, embedAssistant: next }));
-      setToast({ msg: next ? "AI assistant enabled on your site" : "AI assistant removed from your site", type: "success" });
-    } catch {
-      setToast({ msg: "Could not update your site. Please try again.", type: "error" });
-    }
-    setSavingAssistant(false);
-  };
-
-  // FIX 5 (round N): Disconnect used to only flip embed_ai_assistant off --
-  // the site stayed live, the widget kept working for anyone reaching the
-  // page directly, and pressing Connect afterward routed back into the
-  // site-creation chat as if nothing existed. A real disconnect now
-  // unpublishes the site (is_published: false), the exact same flag
-  // site/[tenantId]/route.ts checks to serve the page at all -- so the site
-  // genuinely stops functioning, same as if it was never connected. The
-  // row itself (and its published_html) is left intact so Reconnect can
-  // restore it without rebuilding.
-  const confirmDisconnectWebsite = async () => {
-    if (!website.websiteId || savingAssistant) return;
-    setSavingAssistant(true);
-    try {
-      const res = await fetch("/api/website/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ websiteId: website.websiteId, isPublished: false }),
-      });
-      if (!res.ok) throw new Error("save failed");
-      setWebsite((prev) => ({ ...prev, published: false, siteUrl: null }));
-      setToast({ msg: "Website disconnected", type: "info" });
-      setModal(null);
-    } catch {
-      setToast({ msg: "Could not disconnect your site. Please try again.", type: "error" });
-    }
-    setSavingAssistant(false);
-  };
-
-  // Re-links the SAME already-built site as the active channel again --
-  // republishes the already-stored published_html, no draft/chat flow
-  // involved. Only reachable from the ⋯ menu when a previously-published
-  // site row exists but is currently disconnected (website.websiteId set,
-  // website.published false).
-  const reconnectWebsite = async () => {
-    if (!website.websiteId || reconnecting) return;
-    setReconnecting(true);
-    setShowWebsiteMenu(false);
-    try {
-      const res = await fetch("/api/website/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ websiteId: website.websiteId, isPublished: true }),
-      });
-      if (!res.ok) throw new Error("save failed");
-      await loadStatus();
-      setToast({ msg: "Website reconnected", type: "success" });
-    } catch {
-      setToast({ msg: "Could not reconnect your site. Please try again.", type: "error" });
-    }
-    setReconnecting(false);
-  };
+  // FIX 2 (round O): real connect/disconnect/reconnect + the AI-assistant-
+  // embed toggle now live per-site in Website Builder's own site list (each
+  // site has its own is_published + embed_ai_assistant columns -- this was
+  // already site-scoped at the DB level). This page only ever shows the
+  // tenant-wide aggregate (see loadStatus above and the Website card below).
 
   // FIX 7 (round D): real brand glyphs on a solid colored square, larger
   // (48px) container -- same icon source as /demo/channels (already the
@@ -941,15 +822,6 @@ function ChannelsPageContent() {
       {modal === "instagram" && <InstagramModal onClose={() => setModal(null)} />}
       {modal === "whatsapp"  && <WhatsAppModal  onClose={() => setModal(null)} onConnect={connectWhatsApp} />}
       {modal === "upgrade"   && <UpgradeModal   onClose={() => setModal(null)} />}
-      {modal === "disconnect-website" && (
-        <DisconnectWebsiteModal
-          siteName={website.name}
-          multiSite={config.websites > 1}
-          disconnecting={savingAssistant}
-          onClose={() => setModal(null)}
-          onConfirm={confirmDisconnectWebsite}
-        />
-      )}
       {modal === "instagram-settings" && (
         <ChannelSettingsModal
           channel="instagram"
@@ -1187,70 +1059,26 @@ function ChannelsPageContent() {
                 Chat widget on your website. Live AI conversations with visitors
               </p>
             </div>
-            {/* FIX 2 (round F): "Manage" now takes you straight to this
-                site's real Analytics inside Website Builder (deep-linked via
-                ?site=&tab=analytics) instead of a separate stats-only modal
-                here -- one real place for website performance, not two. The
-                embedAssistant toggle that used to live in that modal moved
-                down into this card's own body (below), so nothing was lost. */}
-            {website.published && website.websiteId ? (
-              <div className="flex flex-col gap-2 shrink-0">
-                <Link
-                  href={`/app/website?site=${encodeURIComponent(website.websiteId)}&tab=analytics`}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center"
-                >
-                  Manage
-                </Link>
-                <button
-                  onClick={() => setModal("disconnect-website")}
-                  disabled={savingAssistant}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] dark:border-red-900/50 text-[#DC2626] dark:text-red-400 hover:bg-[#FEF2F2] dark:hover:bg-red-950/30 transition-colors whitespace-nowrap disabled:opacity-50"
-                >
-                  {t("common.disconnect")}
-                </button>
-              </div>
-            ) : website.websiteId ? (
-              // FIX 5 (round N): a real, already-built site exists but is
-              // currently disconnected (unpublished) -- offer a real
-              // reconnect path via a ⋯ menu instead of "Build a website",
-              // which would route straight into the site-creation chat flow
-              // as if this site never existed.
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setShowWebsiteMenu((v) => !v)}
-                  disabled={reconnecting}
-                  aria-label="More website options"
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#9CA3AF] hover:text-[#374151] hover:border-[#D1D5DB] dark:hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {reconnecting ? (
-                    <span className="text-[10px]">…</span>
-                  ) : (
-                    <svg width="10" height="3" viewBox="0 0 16 4" fill="currentColor">
-                      <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="14" cy="2" r="1.5"/>
-                    </svg>
-                  )}
-                </button>
-                {showWebsiteMenu && (
-                  <>
-                    <div className="fixed inset-0 z-[59]" onClick={() => setShowWebsiteMenu(false)} />
-                    <div className="absolute right-0 top-full mt-1.5 z-[60] w-44 py-1.5 rounded-xl bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] shadow-xl">
-                      <button
-                        onClick={reconnectWebsite}
-                        disabled={reconnecting}
-                        className="w-full text-left px-3.5 py-2 text-xs font-semibold text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#2A2A32] transition-colors disabled:opacity-50"
-                      >
-                        {reconnecting ? "Reconnecting…" : "Reconnect"}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+            {/* FIX 2 (round O): back to a plain Connect / Connected card,
+                same shape as Instagram/WhatsApp above -- real per-site
+                connect/disconnect/reconnect + the AI-assistant-embed toggle
+                now live in Website Builder's own site list (each site
+                manages its own connection independently). "Manage" always
+                goes to Website Builder itself, where "which site" is
+                actually resolved -- this card never assumes a single site. */}
+            {website.published ? (
+              <Link
+                href="/app/website"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center shrink-0"
+              >
+                Manage
+              </Link>
             ) : (
               <Link
                 href="/app/website"
                 className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
               >
-                Build a website
+                Connect
               </Link>
             )}
           </div>
@@ -1265,7 +1093,9 @@ function ChannelsPageContent() {
                   conversations). Now leads / conversations, both reliably
                   traced via the real conversations.lead_id FK, so the ratio
                   can never exceed 100%. "Chat conversations" count removed
-                  -- redundant with the conversion % right next to it. */}
+                  -- redundant with the conversion % right next to it. Both
+                  counts are tenant-wide aggregates across every connected
+                  site, per FIX 2 (round O). */}
               <div className="flex items-center gap-6 pt-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex-wrap">
                 <div>
                   <p className="text-base font-bold text-[#111111] dark:text-white leading-none">{website.visits.toLocaleString()}</p>
@@ -1278,6 +1108,9 @@ function ChannelsPageContent() {
                   <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">Chat conversions</p>
                 </div>
               </div>
+              {/* siteUrl is only ever set when exactly one site is live --
+                  with 2+ connected sites, "which one" is a Website Builder
+                  question (each has its own row + its own live URL there). */}
               {website.siteUrl && (
                 <a
                   href={website.siteUrl}
@@ -1289,17 +1122,6 @@ function ChannelsPageContent() {
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 8l5-5M3.5 3h4.5v4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </a>
               )}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24]">
-                <p className="text-xs font-semibold text-[#374151] dark:text-[#E5E7EB]">AI assistant on this site</p>
-                <button
-                  onClick={toggleEmbedAssistant}
-                  disabled={savingAssistant}
-                  aria-label="Toggle AI assistant on this site"
-                  className={`w-9 h-5 rounded-full transition-all duration-200 relative shrink-0 disabled:opacity-50 ${website.embedAssistant ? "bg-[#FF6B35]" : "bg-[#E5E7EB]"}`}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${website.embedAssistant ? "left-4" : "left-0.5"}`} />
-                </button>
-              </div>
             </div>
           )}
 

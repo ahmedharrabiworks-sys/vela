@@ -44,17 +44,33 @@ export interface ServiceDuration {
 }
 
 /**
- * Parses free-text duration ("60 min", "1 hour", "1.5 hours", "45m", "90")
- * into a real minute count. Returns null when the text doesn't contain a
- * recognizable duration -- callers fall back to DEFAULT_SLOT_MINUTES
- * themselves so a missing/unparseable duration never blocks booking, it
- * just uses the same safe default this whole system already relied on.
+ * Parses free-text duration ("60 min", "1 hour", "1.5 hours", "45m", "90",
+ * "1-2 hours", "30 - 45 min") into a real minute count. Returns null when
+ * the text doesn't contain a recognizable duration -- callers fall back to
+ * DEFAULT_SLOT_MINUTES themselves so a missing/unparseable duration never
+ * blocks booking, it just uses the same safe default this whole system
+ * already relied on.
+ *
+ * FIX 1 (round O): a service with a RANGE duration ("1 – 2 Hours") must
+ * resolve to the MAX end, never the min -- the appointment could genuinely
+ * run the full range, and the blocking window has to assume the worst
+ * case. The range branch below is matched and resolved explicitly (both
+ * numbers captured, Math.max taken) so this is a deterministic guarantee,
+ * not an accident of which number the single-value regex happens to match
+ * first for a given string format.
  */
 export function parseDurationMinutes(text: string | null | undefined): number | null {
   if (!text) return null;
   const s = text.trim().toLowerCase();
+  // Range: "1-2 hours", "1 – 2 hours", "30-45 min", "1 to 2 hours" -- one
+  // unit word applying to both numbers. Always take the MAX end.
+  let m = s.match(/(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/);
+  if (m) {
+    const max = Math.max(parseFloat(m[1]), parseFloat(m[2]));
+    return Math.round(max * (/^h/.test(m[3]) ? 60 : 1));
+  }
   // Hours: "1 hour", "1.5 hours", "2h", "1hr"
-  let m = s.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
+  m = s.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
   if (m) return Math.round(parseFloat(m[1]) * 60);
   // Minutes: "60 min", "60 minutes", "60m", "60mins"
   m = s.match(/(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)\b/);
@@ -65,14 +81,47 @@ export function parseDurationMinutes(text: string | null | undefined): number | 
   return null;
 }
 
-/** Looks up a service's real duration by name (case-insensitive, trimmed
- * match); falls back to DEFAULT_SLOT_MINUTES when the service isn't found
- * or has no parseable duration set. */
+/**
+ * Looks up a service's real duration by name (case-insensitive, trimmed,
+ * exact match).
+ *
+ * FIX 1 (round O) root cause: a real booked appointment's service_name is
+ * whatever the booking-detection GPT call extracted at booking time in
+ * api/ai/reply/route.ts section 12 -- that extraction was unconstrained
+ * free text, so a service literally named "Real Estate Consulting" got
+ * saved as "Real Estate Consultation" (a paraphrase), and the exact-match
+ * lookup below silently failed and fell back to DEFAULT_SLOT_MINUTES (60),
+ * producing a blocking window of [9:00,10:00) instead of the real
+ * [9:00,11:00) for a "1-2 Hours" service -- exactly why a 10:00 AM request
+ * was wrongly accepted. Section 12's prompt is now constrained to copy the
+ * exact real service name (see that file), which prevents this at the
+ * source going forward, but a serviceName here can still fail to match --
+ * old rows saved before that fix, a service since renamed/removed, or a
+ * still-imperfect extraction. When that happens this NO LONGER falls back
+ * to a flat 60-minute guess (which is exactly what caused the bug): it
+ * falls back to the LONGEST real, parseable duration among the tenant's
+ * OWN services, since assuming the worst case is always the safe direction
+ * for a function whose entire purpose is to stop double-booking -- an
+ * over-wide window costs a redundant "that slot's taken" once in a while,
+ * an under-wide one lets two appointments overlap.
+ */
 function resolveDurationMinutes(services: ServiceDuration[] | undefined, serviceName: string | null | undefined): number {
   if (serviceName && services) {
     const match = services.find((s) => s.name?.trim().toLowerCase() === serviceName.trim().toLowerCase());
-    const parsed = parseDurationMinutes(match?.duration);
-    if (parsed !== null && parsed > 0) return parsed;
+    if (match) {
+      const parsed = parseDurationMinutes(match.duration);
+      if (parsed !== null && parsed > 0) return parsed;
+      // A matched service with no parseable duration (e.g. "Ongoing",
+      // "Until Sold", "Project Based") isn't a real calendar-slot service --
+      // DEFAULT_SLOT_MINUTES is the deliberate, correct fallback here.
+      return DEFAULT_SLOT_MINUTES;
+    }
+  }
+  if (services && services.length > 0) {
+    const parseable = services
+      .map((s) => parseDurationMinutes(s.duration))
+      .filter((d): d is number => d !== null && d > 0);
+    if (parseable.length > 0) return Math.max(...parseable);
   }
   return DEFAULT_SLOT_MINUTES;
 }

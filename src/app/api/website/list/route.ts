@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest) {
 
   const { data: rows, error } = await admin
     .from("websites")
-    .select("id, name, slug, is_published, updated_at")
+    .select("id, name, slug, is_published, updated_at, published_at")
     .eq("tenant_id", tenant.id)
     .order("updated_at", { ascending: false });
 
@@ -38,12 +38,19 @@ export async function GET(_req: NextRequest) {
       slug: string | null;
       is_published: boolean;
       updated_at: string | null;
+      published_at: string | null;
     }) => ({
       id:           s.id,
       name:         s.name,
       slug:         s.slug,
       is_published: s.is_published,
       updated_at:   s.updated_at,
+      // FIX 2 (round O): distinguishes "never published" (no quick
+      // Connect/Reconnect shortcut possible -- nothing to restore) from
+      // "published before, currently disconnected" (real Reconnect target,
+      // restores from the already-stored published_html). Site list menu
+      // in website/page.tsx uses this to decide whether to show Reconnect.
+      hasPublishedBefore: s.published_at !== null,
     })),
   });
 }
