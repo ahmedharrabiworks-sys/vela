@@ -5,7 +5,7 @@ import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
 import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText } from "@/lib/availability";
-import { stripAiTells } from "@/lib/text-clean";
+import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -291,7 +291,7 @@ export async function POST(req: NextRequest) {
   // question -- not treated as a generic message.
   const { data: pendingAppt } = await admin
     .from("appointments")
-    .select("id, datetime, service_name")
+    .select("id, datetime, service_name, lead_id")
     .eq("tenant_id", tenantId)
     .eq("conversation_id", convId)
     .eq("status", "pending")
@@ -377,10 +377,10 @@ export async function POST(req: NextRequest) {
   // Real pending-confirmation directive -- see section 6b above. Only ever
   // set when a genuine pending appointment row exists for this exact
   // conversation; never fabricated.
-  type PendingApptRow = { id: string; datetime: string; service_name?: string | null };
+  type PendingApptRow = { id: string; datetime: string; service_name?: string | null; lead_id?: string | null };
   const pending = pendingAppt as PendingApptRow | null;
   const pendingApptDirective = pending
-    ? `\n\nPENDING CONFIRMATION (this OVERRIDES anything discussed earlier in this conversation): This customer's appointment (${pending.service_name || "appointment"}) was just RESCHEDULED by the business to a NEW time: ${new Date(pending.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}. Any earlier date/time mentioned previously in this conversation is now OUT OF DATE -- ignore it. THIS new time above is what the customer's next message is actually responding to, and it needs THEIR confirmation. If their message clearly confirms/accepts it (e.g. "yes", "that works", "sounds good", "confirmed"), respond confirming THIS new time specifically and include the exact token [CONFIRM_APPOINTMENT:${pending.id}] somewhere in your reply. If they decline or ask for a different time instead, acknowledge that and include the exact token [NEEDS_HUMAN] so the team follows up -- do NOT confirm a different time yourself, and do NOT use [CONFIRM_APPOINTMENT:${pending.id}] unless they clearly accepted the exact new time above.`
+    ? `\n\nPENDING CONFIRMATION (this OVERRIDES anything discussed earlier in this conversation): This customer's appointment (${pending.service_name || "appointment"}) was just RESCHEDULED by the business to a NEW time: ${new Date(pending.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}. Any earlier date/time mentioned previously in this conversation is now OUT OF DATE -- ignore it. THIS new time above is what the customer's next message is actually responding to, and it needs THEIR confirmation. If their message clearly confirms/accepts it (e.g. "yes", "that works", "sounds good", "confirmed"), respond confirming THIS new time specifically and include the exact token [CONFIRM_APPOINTMENT:${pending.id}] somewhere in your reply. If they decline or ask for a different time instead, acknowledge that and include the exact token [NEEDS_HUMAN] so the team follows up -- do NOT confirm a different time yourself, and do NOT use [CONFIRM_APPOINTMENT:${pending.id}] unless they clearly accepted the exact new time above.`
     : "";
 
   const languageInstruction =
@@ -422,7 +422,7 @@ export async function POST(req: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Look at the customer's latest message, with recent conversation context, and determine if they are stating or confirming ONE concrete, fully-resolved date AND time they want to book (this includes confirming a time the AI itself just offered, e.g. "yes that works"). Resolve relative dates ("tomorrow", "next Tuesday", "the 15th at 3pm") using the current datetime above. Reply ONLY valid JSON: {"candidateDateTime": "ISO 8601 or null"}. Return null if no concrete date+time is being stated or confirmed right now.`,
+            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Look at the customer's latest message, with recent conversation context, and determine if they are stating or confirming ONE concrete, fully-resolved date AND time they want to book (this includes confirming a time the AI itself just offered, e.g. "yes that works"). Resolve relative dates ("tomorrow", "next Tuesday", "the 15th at 3pm") using the current datetime above. IMPORTANT: this system has no real timezone conversion anywhere -- the current datetime given above already uses the exact same clock convention this business's appointments are stored and displayed in. Never apply any timezone shift, offset, or "helpful" conversion based on the business's city or country -- write the literal clock hour the customer said, unmodified, with a Z suffix (e.g. customer says "3pm" -> "...T15:00:00Z", never adjusted). Reply ONLY valid JSON: {"candidateDateTime": "ISO 8601 or null"}. Return null if no concrete date+time is being stated or confirmed right now.`,
           },
           { role: "user", content: `${recentContext ? recentContext + "\n" : ""}Customer: "${message}"` },
         ],
@@ -476,7 +476,8 @@ Rules:
 • MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) say something like "That's not something we currently offer, let me check with the team and get back to you" rather than a flat decline, (3) include the exact literal text [NEEDS_HUMAN] somewhere in your reply so the team is actually notified. This token is required every single time rule (1) applies, with zero exceptions — do not skip it just because you already declined the request.
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation
-• Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in your reply. Use a period, comma, or a plain hyphen instead`;
+• Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in your reply. Use a period, comma, or a plain hyphen instead
+• Never end a reply with generic padding like "If there's anything else you need, just let me know!", "Feel free to reach out if you need anything else!", "How can I assist you today?", or any variation of that. If you genuinely have something specific to add, say that specific thing; otherwise just stop talking after answering.`;
 
   /* ── 8. Call OpenAI ── */
   let aiReply = "Thank you for your message! I'll get back to you shortly.";
@@ -541,6 +542,9 @@ Rules:
       }
       // Deterministic backstop for the no-em-dash rule above -- see stripAiTells.
       aiReply = stripAiTells(aiReply);
+      // FIX 3 (round M): deterministic backstop for the "let me know if
+      // anything else!" filler tic -- see stripFillerClosers.
+      aiReply = stripFillerClosers(aiReply);
     } catch (err) {
       console.error("[ai/reply] OpenAI error:", err);
     }
@@ -666,6 +670,7 @@ Rules:
   /* ── 12. Booking + human-handoff detection via structured extraction ── */
   let booked = false;
   let booking: { datetime: string | null; service: string | null } | null = null;
+  let fix4Debug = "";
 
   if (apiKey) {
     try {
@@ -675,7 +680,7 @@ Rules:
         messages: [
           {
             role: "system",
-            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Extract booking info from the conversation turn below. Reply ONLY valid JSON: {"booked": true|false, "datetime": "ISO 8601 or null", "service": "service name or null", "customerName": "extracted name or null", "customerPhone": "extracted phone or null"}. If the customer explicitly declined to name a specific service/unit/reason (e.g. "no particular service, just want to talk in person", "not sure yet"), do not return null for service -- return a real short fallback description of the visit itself, such as "General Consultation" or "In-person meeting".`,
+            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Extract booking info from the conversation turn below. IMPORTANT: this system has no real timezone conversion anywhere -- the current datetime given above already uses the exact same clock convention this business's appointments are stored and displayed in. Never apply any timezone shift, offset, or "helpful" conversion based on the business's city or country when producing the "datetime" field -- write the literal clock hour the customer stated or confirmed earlier in this conversation, unmodified, with a Z suffix (e.g. "3pm" -> "...T15:00:00Z", never adjusted). Reply ONLY valid JSON: {"booked": true|false, "datetime": "ISO 8601 or null", "service": "service name or null", "customerName": "extracted name or null", "customerPhone": "extracted phone or null"}. If the customer explicitly declined to name a specific service/unit/reason (e.g. "no particular service, just want to talk in person", "not sure yet"), do not return null for service -- return a real short fallback description of the visit itself, such as "General Consultation" or "In-person meeting".`,
           },
           {
             role: "user",
@@ -733,7 +738,7 @@ Rules:
 
     const { data: existingAppt } = await admin
       .from("appointments")
-      .select("id, datetime")
+      .select("id, datetime, lead_id")
       .eq("tenant_id", tenantId)
       .eq("conversation_id", convId)
       .neq("status", "cancelled")
@@ -741,7 +746,7 @@ Rules:
       .limit(1)
       .maybeSingle();
 
-    const existing = existingAppt as { id: string; datetime: string } | null;
+    const existing = existingAppt as { id: string; datetime: string; lead_id: string | null } | null;
     // Same slot to the minute -- a redundant re-confirmation, not a change.
     const isSameSlot = existing && new Date(existing.datetime).getTime() === new Date(booking.datetime).getTime();
 
@@ -802,6 +807,36 @@ Rules:
       }
     }
     // isSameSlot && existing: redundant re-confirmation, intentionally a no-op.
+  }
+
+  // FIX 4 (round M): real regression root-caused via TWO separate live
+  // reproductions, both traced to the same underlying gap and both fixed
+  // here in one place instead of scattered per-branch patches (an earlier
+  // attempt patched two individual branches -- the [CONFIRM_APPOINTMENT:id]
+  // token path above and the booking-detection insert/update path above --
+  // but leadId is not fully resolved until AFTER both of this request's
+  // ensureLeadFromContact calls have run (the regex-based one right after
+  // section 9, and the GPT-extraction one inside section 12), and the
+  // customer's confirming message is very often the SAME message that
+  // gives their name/phone for the first time -- so any backfill attempted
+  // mid-request, before leadId's final value is known, silently no-ops.
+  // This runs once, at the very end, after every code path in this request
+  // that could touch an appointment or resolve a lead has already run:
+  // catches ANY non-cancelled appointment for this conversation still
+  // missing a lead_id, whenever a real leadId is now known, regardless of
+  // which specific branch above created or confirmed it. Reproduced live
+  // against tenant 1fedeaa2... (real "Ahmed Harrabi" villa-viewing
+  // conversation): conversations.lead_id was correctly set by
+  // ensureLeadFromContact, appointments.lead_id stayed null because the
+  // confirming message went through the CONFIRM_APPOINTMENT token path,
+  // before leadId had been resolved from that same message.
+  if (leadId) {
+    await admin.from("appointments")
+      .update({ lead_id: leadId })
+      .eq("tenant_id", tenantId)
+      .eq("conversation_id", convId)
+      .is("lead_id", null)
+      .neq("status", "cancelled");
   }
 
   return NextResponse.json(

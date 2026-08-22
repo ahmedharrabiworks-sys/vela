@@ -47,13 +47,26 @@ const SORT_COL_KEYS: { key: SortKey; label: string; width: string }[] = [
   { key: "status",  label: "Status",     width: "min-w-[110px]" },
 ];
 
+// FIX 2 (round M): real root cause of the repeated "assistant confirms 10am,
+// DB/page shows 11am" bug, finally traced -- `appointments.datetime` is
+// written as literal wall-clock digits with a Z (UTC) suffix (e.g. the owner
+// says "10am", the row becomes `...T10:00:00Z`) with NO real per-tenant
+// timezone conversion anywhere in this app (there is no stored tenant
+// timezone to convert from/to). But `toLocaleTimeString`/`toLocaleDateString`
+// with no `timeZone` option convert using the VIEWER'S BROWSER timezone --
+// so a value stored as "10:00 UTC" displayed in a UTC+1 browser (e.g.
+// Tunisia) shows as "11:00", a full silent hour off, matching exactly what
+// was reported. Every write path treats the digits as literal wall-clock
+// time with no conversion; every display here must match that same
+// convention -- timeZone: "UTC" forces the raw stored digits to render
+// as-is, with zero browser-dependent drift, for every viewer everywhere.
 function formatDateLabel(dt: Date): string {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
   const d = new Date(dt); d.setHours(0, 0, 0, 0);
   if (d.getTime() === today.getTime()) return "Today";
   if (d.getTime() === tomorrow.getTime()) return "Tomorrow";
-  return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function calcSortDate(dt: Date): number {
@@ -328,7 +341,7 @@ export default function AppointmentsPage() {
         service: a.service_name ?? "Appointment",
         dateLabel: formatDateLabel(dt),
         sortDate: calcSortDate(dt),
-        time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }),
         rawDatetime: a.datetime,
         status: a.status,
         channel: a.leads?.channel ?? "website",
@@ -411,7 +424,7 @@ export default function AppointmentsPage() {
       prev.map((a) => {
         if (a.id !== id) return a;
         const dt = new Date(newDatetime);
-        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), rawDatetime: newDatetime, status: "pending", rescheduled: rescheduledFlagSaved || a.rescheduled };
+        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }), rawDatetime: newDatetime, status: "pending", rescheduled: rescheduledFlagSaved || a.rescheduled };
       })
     );
     flashRow(id);
@@ -419,7 +432,7 @@ export default function AppointmentsPage() {
     if (apt?.conversationId) {
       const dt = new Date(newDatetime);
       const dateLabel = formatDateLabel(dt);
-      const timeLabel = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      const timeLabel = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
       const proposal = `Hi ${apt.name.split(" ")[0]}, we'd like to move your ${apt.service} to ${dateLabel} at ${timeLabel}. Does that work for you? Reply to confirm or let us know if another time is better.`;
       try {
         await fetch(`/api/conversations/${apt.conversationId}/reply`, {

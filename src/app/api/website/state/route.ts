@@ -23,11 +23,11 @@ export async function GET(_req: NextRequest) {
   const requestedWebsiteId = new URL(_req.url).searchParams.get("websiteId");
 
   // Fetch the target website (specific or most-recently-updated)
-  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_html: string | null; chat: unknown; published_at: string | null; domain: string | null; domain_status: string | null } | null = null;
+  let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_html: string | null; chat: unknown; published_at: string | null; domain: string | null; domain_status: string | null; embed_ai_assistant: boolean | null } | null = null;
   if (requestedWebsiteId) {
     const { data } = await admin
       .from("websites")
-      .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status")
+      .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status, embed_ai_assistant")
       .eq("tenant_id", tenant.id)
       .eq("id", requestedWebsiteId)
       .maybeSingle();
@@ -35,7 +35,7 @@ export async function GET(_req: NextRequest) {
   } else {
     const { data } = await admin
       .from("websites")
-      .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status")
+      .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status, embed_ai_assistant")
       .eq("tenant_id", tenant.id)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -129,6 +129,13 @@ export async function GET(_req: NextRequest) {
     versions,
     customDomain:  site?.domain ?? null,
     domainStatus:  site?.domain_status ?? null,
+    // FIX 6 (round M): the live, real value of the toggle -- the Website
+    // Builder client previously never read this at all, instead sending a
+    // stale one-time-onboarding localStorage flag on every single chat/edit
+    // call, silently overwriting whatever the Channels page toggle had just
+    // set. See the client-side fix in app/website/page.tsx for the full
+    // root-cause explanation.
+    embedAiAssistant: site?.embed_ai_assistant ?? true,
     visitCount:    (tc?.website_visit_count as number | null) ?? 0,
     plan:          (tenant?.plan as string | null) ?? "starter",
   });

@@ -40,7 +40,19 @@ function buildWidgetScript(tenantId: string, websiteId?: string): string {
   return `<script>if(window.self===window.top){var s=document.createElement('script');s.src=${JSON.stringify(src)};s.async=true;document.body.appendChild(s);}</script>`;
 }
 
-function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClient, websiteIdForTracking?: string, embedAssistant = true) {
+// FIX 6 (round M): real root cause of "toggling the widget off is too slow
+// to take effect" -- whether the bootstrap <script> tag exists in the HTML
+// at all used to be decided HERE, at generation time, and that decision got
+// baked into this response's own Cache-Control (60s fresh + 300s
+// stale-while-revalidate below) -- so a toggle change could take up to ~6
+// minutes to reach a freshly reloaded site, and reloading DURING that
+// window just served the same stale cached snapshot again. The bootstrap
+// script tag is now ALWAYS included, unconditionally; the actual
+// enabled/disabled decision moved to /api/embed/[tenantId] (see that route),
+// which is fetched fresh by the browser on every real page load and has a
+// much shorter cache -- so a toggle change now reaches the site on the very
+// next reload, not whenever this page's HTML cache happens to expire.
+function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClient, websiteIdForTracking?: string) {
   // Increment visit counter fire-and-forget (best-effort read-modify-write)
   if (tenantIdForCount && admin) {
     (async () => {
@@ -62,7 +74,7 @@ function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClie
   let finalHtml = html;
   const injections = [
     websiteIdForTracking ? buildTrackScript(websiteIdForTracking) : "",
-    tenantIdForCount && embedAssistant ? buildWidgetScript(tenantIdForCount, websiteIdForTracking) : "",
+    tenantIdForCount ? buildWidgetScript(tenantIdForCount, websiteIdForTracking) : "",
   ].join("");
   if (injections) {
     finalHtml = html.includes("</body>")
@@ -100,13 +112,13 @@ export async function GET(
   if (!UUID_RE.test(tenantId)) {
     const { data: site } = await admin
       .from("websites")
-      .select("published_html, tenant_id, id, embed_ai_assistant")
+      .select("published_html, tenant_id, id")
       .eq("slug", tenantId)
       .eq("is_published", true)
       .maybeSingle();
 
     if (site?.published_html) {
-      return htmlResponse(site.published_html as string, site.tenant_id as string | undefined, admin, site.id as string | undefined, site.embed_ai_assistant !== false);
+      return htmlResponse(site.published_html as string, site.tenant_id as string | undefined, admin, site.id as string | undefined);
     }
 
     return new NextResponse("Site not found", { status: 404 });
@@ -116,7 +128,7 @@ export async function GET(
   // Look up the website by tenant_id (old URL format).
   const { data: site } = await admin
     .from("websites")
-    .select("published_html, slug, tenant_id, id, embed_ai_assistant")
+    .select("published_html, slug, tenant_id, id")
     .eq("tenant_id", tenantId)
     .eq("is_published", true)
     .order("published_at", { ascending: false })
@@ -130,7 +142,7 @@ export async function GET(
       const redirectUrl = new URL(`/site/${siteSlug}`, req.url);
       return NextResponse.redirect(redirectUrl, 301);
     }
-    return htmlResponse(site.published_html as string, tenantId, admin, site.id as string | undefined, site.embed_ai_assistant !== false);
+    return htmlResponse(site.published_html as string, tenantId, admin, site.id as string | undefined);
   }
 
   // Backward compat: sites published before websites table migration live in tenant_config.

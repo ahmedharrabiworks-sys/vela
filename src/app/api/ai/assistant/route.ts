@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
-import { stripAiTells, stripMarkdownFormatting } from "@/lib/text-clean";
+import { stripAiTells, stripMarkdownFormatting, stripFillerClosers } from "@/lib/text-clean";
 
 export const dynamic = "force-dynamic";
 
@@ -957,7 +957,7 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
     // replaces dash characters, never brackets, so token structure is
     // untouched. save_kb is gone entirely (round J) -- real tool calls now,
     // executed above, never text the client has to parse out of the reply.
-    const reply = stripMarkdownFormatting(stripAiTells(rawReply));
+    const reply = stripFillerClosers(stripMarkdownFormatting(stripAiTells(rawReply)));
     // FIX 1 (round J): replaces text-token detection on the client -- the
     // client no longer has to guess "did a save happen" by scanning the
     // reply for a marker string; the server already knows for certain.

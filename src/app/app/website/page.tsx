@@ -1454,12 +1454,24 @@ export default function WebsitePage() {
           domainStatus?: "pending" | "verified" | "failed" | null;
           visitCount?:   number;
           plan?:         string;
+          embedAiAssistant?: boolean;
         };
 
         if (data.websiteId) {
           setWebsiteId(data.websiteId);
           websiteIdRef.current = data.websiteId;
           setWebsiteCount(1);
+        }
+        // FIX 6 (round M): real regression -- this state previously only
+        // ever came from a one-time-onboarding localStorage flag, never the
+        // live DB value, and was then resent unmodified on every chat/edit
+        // call, silently reverting whatever the Channels page toggle had
+        // just set (in either direction) the next time the owner used
+        // Website Builder at all. Now synced from the real persisted value
+        // on every load, same as every other real site field above.
+        if (typeof data.embedAiAssistant === "boolean") {
+          setEmbedAssistant(data.embedAiAssistant);
+          setEmbedAssistantChosen(true);
         }
         if (data.html) {
           setHtml(data.html);
@@ -1740,6 +1752,7 @@ export default function WebsitePage() {
           name?: string | null; slug?: string | null;
           isPublished?: boolean; publishedUrl?: string | null;
           intake?: ContactInfo | null; chat?: Msg[] | null;
+          embedAiAssistant?: boolean;
         };
         if (websiteIdRef.current !== switchTarget) return;
         if (data.html) {
@@ -1753,6 +1766,14 @@ export default function WebsitePage() {
         if (typeof data.isPublished === "boolean") setIsPublished(data.isPublished);
         if (data.publishedUrl != null) setPublishedUrl(data.publishedUrl);
         if (data.intake) setContactInfo(data.intake);
+        // FIX 6 (round M): same real-value sync as initial page load -- each
+        // site has its own embed_ai_assistant value, switching sites must
+        // pick up THAT site's real value, not carry over whatever the
+        // previous site (or stale localStorage) had.
+        if (typeof data.embedAiAssistant === "boolean") {
+          setEmbedAssistant(data.embedAiAssistant);
+          setEmbedAssistantChosen(true);
+        }
         // FIX 4: restore this site's own chat history instead of leaving the
         // reset-to-initial-prompt state set above -- same pattern already used
         // on first page load.

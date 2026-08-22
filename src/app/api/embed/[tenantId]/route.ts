@@ -29,17 +29,39 @@ export async function GET(
   // approximation, still used for externally-pasted embeds with no
   // websiteId context).
   let accentColor: string | null = null;
+  // FIX 6 (round M): this route is now the SINGLE source of truth for
+  // whether the widget should actually render -- fetched fresh by the
+  // browser on every real page load (short cache below), unlike the parent
+  // site HTML which can be served from a stale cache for minutes. Reuses
+  // the SAME live website lookup this route already ran for accentColor --
+  // no new query, just one more selected column.
+  let disabled = false;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = createSupabaseAdmin() as any;
-    const query = admin.from("websites").select("published_spec").eq("is_published", true);
+    const query = admin.from("websites").select("published_spec, embed_ai_assistant").eq("is_published", true);
     const { data: site } = websiteId
       ? await query.eq("id", websiteId).eq("tenant_id", tenantId).maybeSingle()
       : await query.eq("tenant_id", tenantId).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    disabled = site?.embed_ai_assistant === false;
     const spec = site?.published_spec as { designDNA?: { palette?: { accent?: string } } } | null;
     const accent = spec?.designDNA?.palette?.accent;
     if (typeof accent === "string" && /^#[0-9a-f]{6}$/i.test(accent)) accentColor = accent;
-  } catch { /* fall back to brand gradient below */ }
+  } catch { /* fall back to brand gradient below; never treat a lookup failure as "disabled" */ }
+
+  if (disabled) {
+    return new Response("", {
+      headers: {
+        "Content-Type": "application/javascript; charset=utf-8",
+        // Short cache -- this is the freshness check the toggle depends on;
+        // a long cache here would reintroduce the exact staleness bug this
+        // fix targets. 30s balances quick propagation against not re-querying
+        // the DB on every single page view.
+        "Cache-Control": "public, max-age=30",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }
   const btnGradient = accentColor
     ? `linear-gradient(135deg,${accentColor},${accentColor})`
     : "linear-gradient(135deg,#FF6B35,#FF3366)";
@@ -243,7 +265,12 @@ export async function GET(
   return new Response(js, {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      // FIX 6 (round M): was max-age=3600 (1 hour) -- the toggle's
+      // enabled-check now lives entirely in this route (see `disabled`
+      // above), so a full hour of caching here would reintroduce the same
+      // staleness bug on the "just turned back on" direction. 30s matches
+      // the disabled-response cache above.
+      "Cache-Control": "public, max-age=30",
       "Access-Control-Allow-Origin": "*",
     },
   });

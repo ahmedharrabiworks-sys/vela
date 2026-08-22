@@ -1140,7 +1140,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
               <div key={a.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[#E5E7EB] bg-white">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#111111] truncate">{a.service_name || "Appointment"}</p>
-                  <p className="text-[10px] text-[#9CA3AF]">{new Date(a.datetime).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                  <p className="text-[10px] text-[#9CA3AF]">{new Date(a.datetime).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button disabled={busyId === a.id} onClick={() => restoreAppointment(a.id)}

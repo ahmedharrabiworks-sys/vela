@@ -47,7 +47,13 @@ export function formatBookedSlotsText(bookedSlots: BookedSlot[] | null | undefin
     bookedSlots
       .map((b) => {
         const dt = new Date(b.datetime);
-        return `• ${dt.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}${b.service_name ? ` (${b.service_name})` : ""}`;
+        // FIX 2 (round M): explicit timeZone: "UTC" -- datetime is stored as
+        // literal wall-clock digits with no real tenant timezone conversion
+        // (see appointments/page.tsx for the full explanation). This text
+        // feeds directly into what the customer-facing AI tells customers
+        // about booked times; without this it silently depended on the
+        // server process's default timezone happening to be UTC.
+        return `• ${dt.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${b.service_name ? ` (${b.service_name})` : ""}`;
       })
       .join("\n")
   );
@@ -134,8 +140,10 @@ export async function checkAvailability(
  * pre-flight extraction step for how the candidate datetime is resolved.
  */
 export function formatAvailabilityDirective(result: AvailabilityResult): string {
+  // FIX 2 (round M): explicit timeZone: "UTC" -- same reasoning as the other
+  // fmt call above in this file.
   const fmt = (d: Date) =>
-    d.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    d.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   const requestedLabel = fmt(result.requested);
 
   if (!result.conflict) {

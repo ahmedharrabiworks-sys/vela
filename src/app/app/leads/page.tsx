@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 import {
   DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor,
   DragOverlay, type DragEndEvent, type DragStartEvent,
@@ -45,6 +46,27 @@ const STAGE_COLORS: Record<Stage, { dot: string; text: string; bg: string; borde
   booked:    { dot: "#16A34A", text: "#15803D", bg: "#F0FDF4", border: "#16A34A" },
   client:    { dot: "#7C3AED", text: "#6D28D9", bg: "#F5F3FF", border: "#7C3AED" },
 };
+
+// FIX 1 (round M): the pipeline stage color pairs above were only ever
+// styled via inline `style={{background, color}}`, which cannot use
+// Tailwind's `dark:` variant mechanism at all -- so the light pastel
+// backgrounds (used on the header count pills and card avatars) stayed
+// light regardless of theme, showing as a stark white badge next to an
+// otherwise-dark column header. Confirmed via dark-mode screenshot. Dark
+// counterparts use the same desaturated-dark-bg + brightened-text pattern
+// already established elsewhere in the app (e.g. the "Connected" badge on
+// Channels: bg-[#052E16]/40 + text-[#34D399]).
+const STAGE_COLORS_DARK: Record<Stage, { dot: string; text: string; bg: string; border: string }> = {
+  new:       { dot: "#9CA3AF", text: "#9CA3AF", bg: "#2A2A32", border: "#3A3A44" },
+  contacted: { dot: "#FF6B35", text: "#FF8A5C", bg: "#3D2418", border: "#FF6B35" },
+  qualified: { dot: "#F59E0B", text: "#FBBF24", bg: "#3D3016", border: "#F59E0B" },
+  booked:    { dot: "#34D399", text: "#34D399", bg: "#052E16", border: "#16A34A" },
+  client:    { dot: "#A78BFA", text: "#C4B5FD", bg: "#2E1065", border: "#7C3AED" },
+};
+
+function getStageColors(stage: Stage, isDark: boolean) {
+  return (isDark ? STAGE_COLORS_DARK : STAGE_COLORS)[stage];
+}
 
 
 // FIX 6 (round F): real Lead Detail Modal -- opens on card click, shows the
@@ -166,7 +188,8 @@ function LeadDetailModal({
 // movement) engages dnd-kit.
 function DraggableLeadCard({ lead, stage, onOpen, t }: { lead: Lead; stage: Stage; onOpen: () => void; t: (key: string) => string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: lead.id });
-  const colors = STAGE_COLORS[stage];
+  const { theme } = useTheme();
+  const colors = getStageColors(stage, theme === "dark");
   return (
     <button
       ref={setNodeRef}
@@ -218,6 +241,7 @@ function timeAgo(ts: string | null, t: (key: string) => string) {
 
 export default function LeadsPage() {
   const { t } = useI18n();
+  const { theme } = useTheme();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -406,7 +430,7 @@ export default function LeadsPage() {
               <div className="flex gap-4 overflow-x-auto pb-6 -mx-1 px-1" style={{ scrollSnapType: "x mandatory" }}>
                 {PIPELINE_STAGES.map((stage) => {
                   const stageLeads = filtered.filter((l) => l.status === stage);
-                  const colors = STAGE_COLORS[stage];
+                  const colors = getStageColors(stage, theme === "dark");
                   return (
                     <div key={stage} className="flex-shrink-0 w-64" style={{ scrollSnapAlign: "start" }}>
                       {/* Column header -- FIX 6 (round I): tinted count pill
@@ -442,7 +466,7 @@ export default function LeadsPage() {
                 {draggingId ? (() => {
                   const lead = leads.find((l) => l.id === draggingId);
                   if (!lead) return null;
-                  const colors = STAGE_COLORS[lead.status as Stage] ?? STAGE_COLORS.new;
+                  const colors = getStageColors((lead.status as Stage) in STAGE_COLORS ? (lead.status as Stage) : "new", theme === "dark");
                   return (
                     <div className="bg-white dark:bg-[#17171C] rounded-2xl border border-[#FF6B35] shadow-xl p-4 w-64 rotate-2">
                       <div className="flex items-center gap-2.5 min-w-0">

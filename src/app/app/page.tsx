@@ -150,7 +150,12 @@ export default function DashboardPage() {
     setAppts(
       rawAppts.map((a) => ({
         id: a.id,
-        time: new Date(a.datetime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        // FIX 2 (round M): timeZone: "UTC" -- see the matching comment in
+        // src/app/app/appointments/page.tsx. datetime is stored as literal
+        // wall-clock digits with no real tenant timezone conversion; without
+        // this, a viewer's browser timezone silently shifts the displayed
+        // hour away from what was actually booked/saved.
+        time: new Date(a.datetime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }),
         name: a.leads?.name ?? t("dashboard.unknown"),
         service: a.service_name ?? t("dashboard.defaultService"),
         status: a.status,

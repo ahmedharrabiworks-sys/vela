@@ -174,19 +174,44 @@ export default function AITrainingPage() {
   const updateService = (i: number, patch: Partial<ServiceRow>) =>
     setKb((prev) => ({ ...prev, services: prev.services.map((s, idx) => idx === i ? { ...s, ...patch } : s) }));
 
+  // FIX 7 (round M): real root cause of "image paste -> extract services ->
+  // save" never landing -- an uploaded IMAGE was always vision-extracted
+  // correctly server-side, but the result only ever became a free-text blob
+  // appended to "extra" (appendExtracted below), never real structured
+  // kb.services entries. The upload route now returns the same structured
+  // KnowledgeBase shape the proven text/URL import path already returns
+  // (see /api/ai-training/import) -- routed into that SAME review flow
+  // (importedKb/importState/acceptImport) instead of a separate, weaker
+  // text-only path. PDFs keep the existing raw-text extraction (that route
+  // branch is unchanged) since PDF price lists are often less reliably
+  // structurable and this fix is scoped to the specifically reported image
+  // case.
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isImage = file.type.toLowerCase().startsWith("image/");
     setUploadStatus("uploading");
     setExtractedText("");
-    setActiveTab("Extra");
+    if (!isImage) setActiveTab("Extra");
     const form = new FormData();
     form.append("file", file);
     try {
       const res = await fetch("/api/ai-training/upload", { method: "POST", body: form });
-      const data = await res.json() as { text?: string; error?: string };
-      if (data.text) { setExtractedText(data.text); setUploadStatus("done"); }
-      else setUploadStatus("error");
+      const data = await res.json() as { text?: string; kb?: KnowledgeBase; error?: string };
+      if (isImage) {
+        if (data.kb) {
+          setUploadStatus("idle");
+          setImportedKb(data.kb);
+          setImportState("review");
+        } else {
+          setUploadStatus("error");
+        }
+      } else if (data.text) {
+        setExtractedText(data.text);
+        setUploadStatus("done");
+      } else {
+        setUploadStatus("error");
+      }
     } catch { setUploadStatus("error"); }
     if (fileRef.current) fileRef.current.value = "";
   };
