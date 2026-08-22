@@ -4,7 +4,7 @@ import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
-import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText } from "@/lib/availability";
+import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
 import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
 
 const CORS = {
@@ -422,17 +422,22 @@ export async function POST(req: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Look at the customer's latest message, with recent conversation context, and determine if they are stating or confirming ONE concrete, fully-resolved date AND time they want to book (this includes confirming a time the AI itself just offered, e.g. "yes that works"). Resolve relative dates ("tomorrow", "next Tuesday", "the 15th at 3pm") using the current datetime above. IMPORTANT: this system has no real timezone conversion anywhere -- the current datetime given above already uses the exact same clock convention this business's appointments are stored and displayed in. Never apply any timezone shift, offset, or "helpful" conversion based on the business's city or country -- write the literal clock hour the customer said, unmodified, with a Z suffix (e.g. customer says "3pm" -> "...T15:00:00Z", never adjusted). Reply ONLY valid JSON: {"candidateDateTime": "ISO 8601 or null"}. Return null if no concrete date+time is being stated or confirmed right now.`,
+            content: `Current datetime (ISO 8601): ${new Date().toISOString()}. Look at the customer's latest message, with recent conversation context, and determine if they are stating or confirming ONE concrete, fully-resolved date AND time they want to book (this includes confirming a time the AI itself just offered, e.g. "yes that works"). Resolve relative dates ("tomorrow", "next Tuesday", "the 15th at 3pm") using the current datetime above. IMPORTANT: this system has no real timezone conversion anywhere -- the current datetime given above already uses the exact same clock convention this business's appointments are stored and displayed in. Never apply any timezone shift, offset, or "helpful" conversion based on the business's city or country -- write the literal clock hour the customer said, unmodified, with a Z suffix (e.g. customer says "3pm" -> "...T15:00:00Z", never adjusted). Also identify which service (if any) is being discussed, matching one of these real services if possible: ${kbServices.map((s) => s.name).join(", ") || "(none configured)"}. Reply ONLY valid JSON: {"candidateDateTime": "ISO 8601 or null", "candidateService": "exact matching service name or null"}. Return null values if no concrete date+time is being stated or confirmed right now.`,
           },
           { role: "user", content: `${recentContext ? recentContext + "\n" : ""}Customer: "${message}"` },
         ],
-        max_tokens: 60,
+        max_tokens: 80,
         temperature: 0,
         response_format: { type: "json_object" },
       });
-      const parsed = JSON.parse(extract.choices[0]?.message?.content ?? "{}") as { candidateDateTime?: string | null };
+      const parsed = JSON.parse(extract.choices[0]?.message?.content ?? "{}") as { candidateDateTime?: string | null; candidateService?: string | null };
       if (parsed.candidateDateTime) {
-        const result = await checkAvailability(admin, tenantId, parsed.candidateDateTime);
+        // FIX 4 (round N): pass the real service (if identified) and the
+        // tenant's real services list (with each service's own free-text
+        // duration) so the conflict check uses a real per-service window
+        // instead of a fixed buffer -- see lib/availability.ts for the full
+        // root-cause explanation.
+        const result = await checkAvailability(admin, tenantId, parsed.candidateDateTime, DEFAULT_SLOT_MINUTES, parsed.candidateService, kbServices);
         if (result) availabilityDirective = formatAvailabilityDirective(result);
       }
     } catch (err) {

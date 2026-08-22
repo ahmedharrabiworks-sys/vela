@@ -12,12 +12,22 @@
  * conflicting) compute real alternative slots from the tenant's actual
  * schedule -- never invented times.
  *
- * Appointments has no per-service duration column (confirmed against
- * schema.sql + all migrations touching the table), so a fixed buffer is
- * used as the conflict window on both sides of a booked time. 60 minutes
- * is a reasonable default across the business types this product targets
- * (clinics, salons, gyms, etc.) -- a real per-service duration would
- * require a schema change and is out of scope here.
+ * FIX 4 (round N): appointments still has no per-service duration COLUMN
+ * (that remains true -- confirmed against schema.sql + all migrations), but
+ * a real per-service duration already exists as free text on each service
+ * in Train Your AI (kb.services[].duration, e.g. "60 min", "1 hour", "45
+ * minutes") -- it was just never used here. The fixed 60-minute buffer
+ * below silently allowed exactly the reported gap: a service that
+ * genuinely takes 60 minutes starting at 10:00 AM would let a DIFFERENT
+ * appointment be offered/confirmed at 10:30 AM, because the buffer was the
+ * same on every check regardless of what was actually booked or being
+ * requested. parseDurationMinutes below turns that free text into a real
+ * number (falling back to DEFAULT_SLOT_MINUTES only when a service has no
+ * duration set or isn't found), and checkAvailability now computes a real
+ * [start, start+duration) window for BOTH the requested slot and every
+ * existing booked appointment (looked up by its own service_name), and
+ * checks true interval overlap between them -- not a same-size buffer on
+ * every comparison.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -26,6 +36,45 @@ export const DEFAULT_SLOT_MINUTES = 60;
 export interface BookedSlot {
   datetime: string;
   service_name?: string | null;
+}
+
+export interface ServiceDuration {
+  name: string;
+  duration?: string | null;
+}
+
+/**
+ * Parses free-text duration ("60 min", "1 hour", "1.5 hours", "45m", "90")
+ * into a real minute count. Returns null when the text doesn't contain a
+ * recognizable duration -- callers fall back to DEFAULT_SLOT_MINUTES
+ * themselves so a missing/unparseable duration never blocks booking, it
+ * just uses the same safe default this whole system already relied on.
+ */
+export function parseDurationMinutes(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const s = text.trim().toLowerCase();
+  // Hours: "1 hour", "1.5 hours", "2h", "1hr"
+  let m = s.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/);
+  if (m) return Math.round(parseFloat(m[1]) * 60);
+  // Minutes: "60 min", "60 minutes", "60m", "60mins"
+  m = s.match(/(\d+(?:\.\d+)?)\s*(?:minutes?|mins?|m)\b/);
+  if (m) return Math.round(parseFloat(m[1]));
+  // Bare number, assumed minutes: "60", "90"
+  m = s.match(/^(\d+(?:\.\d+)?)$/);
+  if (m) return Math.round(parseFloat(m[1]));
+  return null;
+}
+
+/** Looks up a service's real duration by name (case-insensitive, trimmed
+ * match); falls back to DEFAULT_SLOT_MINUTES when the service isn't found
+ * or has no parseable duration set. */
+function resolveDurationMinutes(services: ServiceDuration[] | undefined, serviceName: string | null | undefined): number {
+  if (serviceName && services) {
+    const match = services.find((s) => s.name?.trim().toLowerCase() === serviceName.trim().toLowerCase());
+    const parsed = parseDurationMinutes(match?.duration);
+    if (parsed !== null && parsed > 0) return parsed;
+  }
+  return DEFAULT_SLOT_MINUTES;
 }
 
 export interface AvailabilityResult {
@@ -74,53 +123,95 @@ export async function checkAvailability(
   tenantId: string,
   requestedISO: string,
   slotMinutes: number = DEFAULT_SLOT_MINUTES,
+  requestedServiceName?: string | null,
+  services?: ServiceDuration[],
 ): Promise<AvailabilityResult | null> {
   const requested = new Date(requestedISO);
   if (isNaN(requested.getTime())) return null;
   if (requested.getTime() < Date.now() - 5 * 60_000) return null;
 
-  const bufferMs = slotMinutes * 60_000;
+  // FIX 4 (round N): the requested slot's real duration -- from the
+  // service's own kb.duration when it's known and parseable, otherwise the
+  // same DEFAULT_SLOT_MINUTES fallback this always used. `slotMinutes`
+  // (still accepted for backward compatibility) is now only the fallback
+  // used when no service/duration is resolvable, not a fixed buffer
+  // applied to every comparison regardless of what's actually booked.
+  const requestedDuration = requestedServiceName
+    ? resolveDurationMinutes(services, requestedServiceName)
+    : slotMinutes;
+  const requestedStart = requested.getTime();
+  const requestedEnd = requestedStart + requestedDuration * 60_000;
+  // Widened lookup window: a long-duration appointment booked well before
+  // the requested time can still genuinely overlap it (e.g. a 2-hour
+  // service starting 90 minutes earlier ends after the requested start) --
+  // a symmetric small buffer around the requested instant alone would miss
+  // that. 4 hours comfortably covers any realistic single-appointment
+  // duration on either side while staying a cheap, targeted query.
+  const lookupBufferMs = 4 * 60 * 60_000;
 
   const { data: nearby } = await admin
     .from("appointments")
     .select("datetime, service_name")
     .eq("tenant_id", tenantId)
     .neq("status", "cancelled")
-    .gte("datetime", new Date(requested.getTime() - bufferMs).toISOString())
-    .lte("datetime", new Date(requested.getTime() + bufferMs).toISOString())
-    .order("datetime", { ascending: true })
-    .limit(1);
+    .gte("datetime", new Date(requestedStart - lookupBufferMs).toISOString())
+    .lte("datetime", new Date(requestedStart + lookupBufferMs).toISOString())
+    .order("datetime", { ascending: true });
 
-  const conflictingSlot = ((nearby as BookedSlot[] | null) ?? [])[0] ?? null;
+  const nearbyRows = (nearby as BookedSlot[] | null) ?? [];
+  // Real interval overlap: [requestedStart, requestedEnd) intersects
+  // [bookedStart, bookedEnd) -- each existing appointment's end is computed
+  // from ITS OWN service's real duration, not the requested service's.
+  const withWindows = nearbyRows.map((b) => {
+    const bookedStart = new Date(b.datetime).getTime();
+    const bookedDuration = resolveDurationMinutes(services, b.service_name);
+    return { slot: b, bookedStart, bookedEnd: bookedStart + bookedDuration * 60_000 };
+  });
+  const conflictingRow = withWindows.find(
+    (w) => requestedStart < w.bookedEnd && w.bookedStart < requestedEnd,
+  );
+  const conflictingSlot = conflictingRow?.slot ?? null;
 
   const alternatives: Date[] = [];
   if (conflictingSlot) {
     // One wider query covering the rest of the day plus the same time next
-    // day, then walk hourly candidate slots against it -- real gaps computed
+    // day, then walk candidate slots (stepped by the REQUESTED service's
+    // own duration) against every real booked window -- real gaps computed
     // from the tenant's actual schedule, not invented times.
     const { data: rangeBookings } = await admin
       .from("appointments")
-      .select("datetime")
+      .select("datetime, service_name")
       .eq("tenant_id", tenantId)
       .neq("status", "cancelled")
-      .gte("datetime", new Date(requested.getTime() - bufferMs).toISOString())
-      .lte("datetime", new Date(requested.getTime() + 26 * 60 * 60_000).toISOString())
+      .gte("datetime", new Date(requestedStart - lookupBufferMs).toISOString())
+      .lte("datetime", new Date(requestedStart + 26 * 60 * 60_000).toISOString())
       .order("datetime", { ascending: true });
 
-    const bookedTimes = ((rangeBookings as { datetime: string }[] | null) ?? [])
-      .map((b) => new Date(b.datetime).getTime())
-      .filter((ts) => !isNaN(ts));
+    const bookedWindows = ((rangeBookings as BookedSlot[] | null) ?? [])
+      .map((b) => {
+        const bookedStart = new Date(b.datetime).getTime();
+        if (isNaN(bookedStart)) return null;
+        const bookedDuration = resolveDurationMinutes(services, b.service_name);
+        return { start: bookedStart, end: bookedStart + bookedDuration * 60_000 };
+      })
+      .filter((w): w is { start: number; end: number } => w !== null);
+
+    const stepMs = requestedDuration * 60_000;
+    const overlapsAny = (candStart: number) => {
+      const candEnd = candStart + stepMs;
+      return bookedWindows.some((w) => candStart < w.end && w.start < candEnd);
+    };
 
     for (let step = 1; step <= 6 && alternatives.length < 3; step++) {
-      const candidate = new Date(requested.getTime() + step * bufferMs);
-      if (!bookedTimes.some((ts) => Math.abs(ts - candidate.getTime()) < bufferMs)) {
-        alternatives.push(candidate);
+      const candidateStart = requestedStart + step * stepMs;
+      if (!overlapsAny(candidateStart)) {
+        alternatives.push(new Date(candidateStart));
       }
     }
     if (alternatives.length < 3) {
-      const nextDaySame = new Date(requested.getTime() + 24 * 60 * 60_000);
-      if (!bookedTimes.some((ts) => Math.abs(ts - nextDaySame.getTime()) < bufferMs)) {
-        alternatives.push(nextDaySame);
+      const nextDaySame = requestedStart + 24 * 60 * 60_000;
+      if (!overlapsAny(nextDaySame)) {
+        alternatives.push(new Date(nextDaySame));
       }
     }
   }

@@ -298,7 +298,7 @@ export default function AITrainingPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto space-y-4 pb-20 animate-pulse">
+      <div className="max-w-5xl mx-auto space-y-4 pb-20 animate-pulse">
         <div className="h-14 bg-[#F3F4F6] rounded-xl" />
         <div className="h-16 bg-[#F3F4F6] rounded-xl" />
         <div className="h-12 bg-[#F3F4F6] rounded-xl" />
@@ -314,7 +314,7 @@ export default function AITrainingPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
+    <div className="max-w-5xl mx-auto pb-24">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -480,7 +480,7 @@ export default function AITrainingPage() {
         {activeTab === "Services" && (
           <div>
             {kb.services.length > 0 && (
-              <div className="hidden sm:grid sm:grid-cols-[1fr_100px_90px_1fr_36px] px-2 py-2.5 border-b border-[#F3F4F6] bg-[#FAFAFA]">
+              <div className="hidden sm:grid sm:grid-cols-[0.8fr_90px_80px_1.8fr_36px] px-2 py-2.5 border-b border-[#F3F4F6] bg-[#FAFAFA]">
                 {[t("aiTraining.services.colService"), t("aiTraining.services.colPrice"), t("aiTraining.services.colDuration"), t("aiTraining.services.colDescription"), ""].map((h, i) => (
                   <span key={i} className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider px-2.5">{h}</span>
                 ))}
@@ -491,15 +491,23 @@ export default function AITrainingPage() {
               {kb.services.map((svc, i) => (
                 <div key={i} className="group hover:bg-[#FAFAFA] transition-colors">
                   {/* Desktop row */}
-                  <div className="hidden sm:grid sm:grid-cols-[1fr_100px_90px_1fr_36px] items-center px-2 py-1">
+                  <div className="hidden sm:grid sm:grid-cols-[0.8fr_90px_80px_1.8fr_36px] items-center px-2 py-1">
                     <input value={svc.name} onChange={(e) => updateService(i, { name: e.target.value })} onBlur={triggerAutoSave}
                       placeholder={t("aiTraining.services.namePlaceholder")} className={CELL} />
                     <input value={svc.price} onChange={(e) => updateService(i, { price: e.target.value })} onBlur={triggerAutoSave}
                       placeholder={t("aiTraining.services.pricePlaceholder")} className={CELL} />
                     <input value={svc.duration} onChange={(e) => updateService(i, { duration: e.target.value })} onBlur={triggerAutoSave}
                       placeholder={t("aiTraining.services.durationPlaceholder")} className={CELL} />
-                    <input value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.descPlaceholder")} className={CELL} />
+                    {/* FIX 3 (round N): a single-line <input> never wraps --
+                        a long real description was only readable by
+                        scrolling horizontally INSIDE the tiny input box.
+                        Description column widened (1.8fr vs 0.8fr for
+                        Name) and this cell is now a real wrapping textarea
+                        (2 visible rows, manually resizable if still not
+                        enough) so the full text is readable in place. */}
+                    <textarea value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder={t("aiTraining.services.descPlaceholder")} rows={2}
+                      className={`${CELL} resize-y leading-snug py-1.5`} />
                     <div className="flex justify-center">
                       <button onClick={() => removeService(i)}
                         className="p-1.5 text-[#D1D5DB] hover:text-[#DC2626] opacity-0 group-hover:opacity-100 transition-all rounded-lg">
@@ -522,8 +530,9 @@ export default function AITrainingPage() {
                       <input value={svc.duration} onChange={(e) => updateService(i, { duration: e.target.value })} onBlur={triggerAutoSave}
                         placeholder={t("aiTraining.services.durationPlaceholder")} className="w-24 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
                     </div>
-                    <input value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.descPlaceholder")} className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                    <textarea value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
+                      placeholder={t("aiTraining.services.descPlaceholder")} rows={2}
+                      className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35] resize-y leading-snug" />
                   </div>
                 </div>
               ))}

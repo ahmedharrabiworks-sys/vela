@@ -53,11 +53,24 @@ export async function GET(
     return new Response("", {
       headers: {
         "Content-Type": "application/javascript; charset=utf-8",
-        // Short cache -- this is the freshness check the toggle depends on;
-        // a long cache here would reintroduce the exact staleness bug this
-        // fix targets. 30s balances quick propagation against not re-querying
-        // the DB on every single page view.
-        "Cache-Control": "public, max-age=30",
+        // FIX 2 (round N): real root cause of "turning ON takes up to ~2
+        // minutes, OFF is instant" -- confirmed live via x-vercel-cache
+        // response headers. Vercel's Edge Network caches this route's
+        // response by URL for the full max-age window, and that cache is
+        // purely TIME-based -- a DB write (the toggle) has no way to
+        // invalidate it. Once an edge node caches the DISABLED (empty)
+        // response, it keeps serving that exact response for up to 30s
+        // from ITS OWN edge PoP regardless of the toggle being flipped back
+        // on in between -- and with multiple edge regions each caching
+        // independently on their own schedule, a real visitor's requests
+        // landing on different PoPs compounds this into a much longer
+        // effective delay than any single 30s window, matching the
+        // reported ~2 minutes. A toggle's live state is exactly the kind of
+        // thing that must never be time-cached at any layer -- switched to
+        // no-store so every single request (both directions) always hits
+        // this function fresh and reads the real current DB value, with no
+        // caching-layer asymmetry possible in either direction.
+        "Cache-Control": "no-store",
         "Access-Control-Allow-Origin": "*",
       },
     });
@@ -265,12 +278,12 @@ export async function GET(
   return new Response(js, {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
-      // FIX 6 (round M): was max-age=3600 (1 hour) -- the toggle's
-      // enabled-check now lives entirely in this route (see `disabled`
-      // above), so a full hour of caching here would reintroduce the same
-      // staleness bug on the "just turned back on" direction. 30s matches
-      // the disabled-response cache above.
-      "Cache-Control": "public, max-age=30",
+      // FIX 2 (round N): no-store -- see the matching comment on the
+      // disabled branch above for the full root-cause (Vercel Edge caching
+      // is time-based and cannot be invalidated by the toggle's DB write,
+      // causing a real, confirmed asymmetric delay between the two
+      // directions). Both branches must behave identically here.
+      "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": "*",
     },
   });

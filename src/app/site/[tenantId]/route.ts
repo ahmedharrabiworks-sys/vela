@@ -86,7 +86,18 @@ function htmlResponse(html: string, tenantIdForCount?: string, admin?: AdminClie
     status: 200,
     headers: {
       "Content-Type":             "text/html; charset=utf-8",
-      "Cache-Control":            "public, max-age=60, stale-while-revalidate=300",
+      // FIX 5 (round N): discovered live while verifying Disconnect actually
+      // stops a site from functioning -- with a positive max-age here, a
+      // disconnected (unpublished) site kept being served straight out of
+      // Vercel's edge cache for up to 60s (plus up to 300s more of
+      // stale-while-revalidate) after is_published flipped to false in the
+      // DB, silently failing the "same as never connected" requirement.
+      // Same root cause and same fix as /api/embed/[tenantId] (FIX 2, this
+      // round): Vercel's edge cache is purely time-based and cannot be
+      // invalidated by a DB write, and with multiple independent edge
+      // regions each caching on their own schedule, any positive max-age
+      // reintroduces a real staleness window regardless of how short it is.
+      "Cache-Control":            "no-store",
       "X-Content-Type-Options":   "nosniff",
       "X-Frame-Options":          "SAMEORIGIN",
       "X-XSS-Protection":         "1; mode=block",

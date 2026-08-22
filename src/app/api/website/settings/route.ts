@@ -48,6 +48,7 @@ export async function PUT(req: NextRequest) {
     name?:              string;
     slug?:              string;
     embedAiAssistant?:  boolean;
+    isPublished?:       boolean;
     // domain is intentionally omitted — use /api/website/domain
   };
 
@@ -64,7 +65,7 @@ export async function PUT(req: NextRequest) {
   // Resolve website
   const { data: site } = await admin
     .from("websites")
-    .select("id, slug")
+    .select("id, slug, published_html")
     .eq("tenant_id", tenant.id)
     .eq("id", body.websiteId ?? "")
     .maybeSingle();
@@ -108,6 +109,26 @@ export async function PUT(req: NextRequest) {
     updates.embed_ai_assistant = body.embedAiAssistant;
   }
 
+  // FIX 5 (round N): real Disconnect/Reconnect for the Website channel.
+  // is_published is the exact flag site/[tenantId]/route.ts checks before
+  // serving the page at all -- flipping it off is a genuine full disconnect
+  // (the site 404s, same as never having been connected), not just a
+  // cosmetic status. Flipping it back on is a real reconnect: it reuses the
+  // already-stored published_html, so the site is restored exactly as it
+  // was without going through generate/publish again. Reconnect is refused
+  // if the site was somehow never actually published (no published_html to
+  // restore) -- that site needs a real publish from Website Builder first.
+  if (typeof body.isPublished === "boolean") {
+    if (body.isPublished && !(site as { published_html: string | null }).published_html) {
+      return NextResponse.json(
+        { error: "This site has no published version to reconnect. Publish it from Website Builder first." },
+        { status: 400 }
+      );
+    }
+    updates.is_published = body.isPublished;
+    if (body.isPublished) updates.published_at = new Date().toISOString();
+  }
+
   // NOTE: domain / domain_status intentionally NOT handled here.
   // Use POST /api/website/domain to save a domain (always writes 'pending'),
   // GET  /api/website/domain to verify (only path that writes 'verified'),
@@ -117,7 +138,7 @@ export async function PUT(req: NextRequest) {
     .from("websites")
     .update(updates)
     .eq("id", (site as { id: string }).id)
-    .select("id, name, slug, domain, domain_status, embed_ai_assistant")
+    .select("id, name, slug, domain, domain_status, embed_ai_assistant, is_published")
     .single();
 
   if (updateErr) {
