@@ -731,7 +731,22 @@ Rules:
         messages: [
           {
             role: "system",
-            content: `The customer already has one active appointment on file. Look at ONLY their current message below and decide: are they asking to book a NEW, ADDITIONAL, SECOND, or separate appointment (for any stated or unstated reason, including insisting after being told no)? This is NOT true if they are asking about, confirming, rescheduling, or cancelling their EXISTING appointment, or asking something unrelated to booking. Reply ONLY valid JSON: {"wantsNewBooking": true|false}.`,
+            // Round S FIX 1 root cause: the prior wording ("are they asking
+            // to book a NEW appointment, for any stated or unstated
+            // reason") matched ANY message that referenced "another
+            // appointment" -- including a plain QUESTION about future
+            // eligibility/timing ("when can I do another appointment?"),
+            // not just an actual attempt to book one right now. Every
+            // classification call is already fresh per message (no stored
+            // flag anywhere in this route -- existingActiveAppt itself is
+            // re-queried from the DB on every request), so what looked like
+            // a "latched" refusal was really this same over-broad true
+            // verdict firing independently, turn after turn, on any
+            // message that merely mentioned another appointment. Narrowed
+            // to require a genuine ACTIVE ATTEMPT: a stated date/time, or
+            // an explicit imperative demand to book one now -- a question
+            // about a hypothetical future booking is explicitly false.
+            content: `The customer already has one active appointment on file. Look at ONLY their current message below and decide if it is a genuine, ACTIVE ATTEMPT to create a new/additional/second appointment right now. This is true ONLY when the message either (a) states or proposes a concrete new date/time for another appointment, or (b) is an explicit imperative demand to book/schedule/reserve another appointment immediately (e.g. "book another one", "schedule me a second one", "yes book it"), including insisting after being told no. This is NOT true for: a QUESTION about when, whether, or how they could book another appointment in the future (e.g. "when can I do another appointment?", "can I get a second one sometime?", "how do I book another?"), asking about, confirming, rescheduling, or cancelling their EXISTING appointment, or anything unrelated to booking. When a message is phrased as a question rather than a direct demand or a stated date/time, treat it as false. Reply ONLY valid JSON: {"wantsNewBooking": true|false}.`,
           },
           { role: "user", content: message },
         ],

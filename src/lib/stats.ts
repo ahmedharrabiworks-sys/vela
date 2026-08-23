@@ -12,23 +12,28 @@ import { createSupabaseAdmin } from "@/lib/supabase-server";
 //
 // FIX 4 (round R): the round-Q version showed "+N new" (a raw delta),
 // which still misrepresented a real 0->N change as a small-looking number
-// rather than what it actually is -- growth from nothing. isNew is now a
-// plain boolean: the real current count is already shown by the KPI's own
-// big number, so the badge only needs to say "New", never repeat a delta.
+// rather than what it actually is -- growth from nothing. isNew was a
+// plain boolean ("New" label) instead.
+// FIX 1 (round S): reverted back to a real "+X new" figure per explicit
+// request -- a plain "New" label lost the actual magnitude of the change
+// (0->5 and 0->100 looked identical). newCount carries the real current
+// count so the badge can render "+5 new" / "+100 new" using the true
+// number, still never a percentage (none is mathematically valid from a
+// zero base).
 export interface ChangeInfo {
   // Real percentage vs the prior period -- present whenever prior > 0, and
   // also present as exactly 0 when both prior and current are 0 (a real,
   // honest "no change", never hidden).
   pct?: number;
-  // True INSTEAD of pct only when prior was 0 and current > 0: no valid
-  // percentage exists from a zero base, so this renders as a plain "New"
-  // label -- the real current number is already visible as the KPI value.
-  isNew?: boolean;
+  // Real current count INSTEAD of pct only when prior was 0 and current >
+  // 0: no valid percentage exists from a zero base, so this renders as
+  // "+{newCount} new" using the true current number.
+  newCount?: number;
 }
 
 function computeChangeInfo(curr: number, prev: number): ChangeInfo {
   if (prev === 0 && curr === 0) return { pct: 0 };
-  if (prev === 0) return { isNew: true };
+  if (prev === 0) return { newCount: curr };
   return { pct: Math.round(((curr - prev) / prev) * 100) };
 }
 

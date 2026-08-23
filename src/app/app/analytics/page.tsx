@@ -56,14 +56,15 @@ function periodSum(dailyCounts: Record<string, number>, days: number, offsetDays
 // counts (periodSum defaults an empty bucket to a real 0, never "missing")
 // -- there is no genuine "no data" case left to represent, so this no
 // longer returns null at all.
-// FIX 4 (round R): isNew replaces the round-Q "newCount" raw delta -- the
-// real current number is already shown by the card's own big value, so
-// the badge only needs a plain "New" label, never a number that could
-// misread as a small increase.
-type ChangeResult = { pct: number } | { isNew: true };
+// FIX 4 (round R): isNew replaced the round-Q "newCount" raw delta with a
+// plain "New" label.
+// FIX 1 (round S): reverted back to a real "+X new" figure per explicit
+// request -- "New" lost the actual magnitude (0->5 and 0->100 looked
+// identical). newCount carries the real current count.
+type ChangeResult = { pct: number } | { newCount: number };
 function computeChange(current: number, prior: number): ChangeResult {
   if (prior === 0 && current === 0) return { pct: 0 };
-  if (prior === 0) return { isNew: true };
+  if (prior === 0) return { newCount: current };
   return { pct: Math.round(((current - prior) / prior) * 100) };
 }
 
@@ -91,10 +92,10 @@ function computeChange(current: number, prior: number): ChangeResult {
 // -- either a genuine percentage (pct, including a real 0%) or a real
 // absolute increase from a zero base (newCount) -- never hidden.
 // FIX 4 (round R): plain colored text, no arrow icons, no pill background
-// -- matches the Dashboard's own ChangeText styling exactly. isNew renders
-// as a plain "New" label (the real current number is already the card's
-// own big value); a real 0% renders as literal "0%" text, never hidden or
-// replaced by a vague phrase.
+// -- matches the Dashboard's own ChangeText styling exactly.
+// FIX 1 (round S): newCount renders as "+X new" using the real current
+// count (reverted from the plain "New" label); a real 0% renders as
+// literal "0%" text, never hidden or replaced by a vague phrase.
 function TrendBadge({ change }: { change: ChangeResult | null }) {
   if (change === null) {
     return (
@@ -103,8 +104,8 @@ function TrendBadge({ change }: { change: ChangeResult | null }) {
       </span>
     );
   }
-  if ("isNew" in change) {
-    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">New</span>;
+  if ("newCount" in change) {
+    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">+{change.newCount} new</span>;
   }
   const color = change.pct > 0 ? "text-green-600 dark:text-green-400" : change.pct < 0 ? "text-red-500 dark:text-red-400" : "text-[#9CA3AF] dark:text-[#6E6E76]";
   const sign = change.pct > 0 ? "+" : "";

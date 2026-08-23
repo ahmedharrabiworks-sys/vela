@@ -12,14 +12,15 @@ function StatusDot({ status }: { status: string }) {
   return <span className="w-2 h-2 rounded-full shrink-0 inline-block" style={{ background: colors[status] || "#9CA3AF" }} />;
 }
 
-// FIX 4 (round R): no more arrow icons and no more raw "+N new" delta --
-// pct (including a real 0) renders as plain colored text, isNew renders as
-// a plain "New" label. See lib/stats.ts's ChangeInfo for the full
-// definition of each case.
-function ChangeText({ change }: { change?: { pct?: number; isNew?: boolean } }) {
+// FIX 4 (round R): no more arrow icons -- pct (including a real 0)
+// renders as plain colored text.
+// FIX 1 (round S): reverted back to a real "+X new" figure (using the
+// true current count) instead of a plain "New" label -- see lib/stats.ts's
+// ChangeInfo for the full definition of each case.
+function ChangeText({ change }: { change?: { pct?: number; newCount?: number } }) {
   if (!change) return null;
-  if (change.isNew) {
-    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">New</span>;
+  if (change.newCount !== undefined) {
+    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">+{change.newCount} new</span>;
   }
   if (change.pct === undefined) return null;
   const color = change.pct > 0 ? "text-green-600 dark:text-green-400" : change.pct < 0 ? "text-red-500 dark:text-red-400" : "text-[#9CA3AF] dark:text-[#6E6E76]";
@@ -30,10 +31,10 @@ function ChangeText({ change }: { change?: { pct?: number; isNew?: boolean } }) 
 export type DashUIConv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 export type DashUIAppt = { id: string; time: string; name: string; service: string; status: string };
 // FIX 6 (round Q): change is a real ChangeInfo now, never a bare number --
-// pct is present for a real percentage (including a genuine 0%), isNew is
-// true instead when the prior period was 0 and current > 0 (no valid
-// percentage exists from a zero base). See lib/stats.ts's ChangeInfo.
-export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; isNew?: boolean } };
+// pct is present for a real percentage (including a genuine 0%), newCount
+// is present instead when the prior period was 0 and current > 0 (no
+// valid percentage exists from a zero base). See lib/stats.ts's ChangeInfo.
+export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; newCount?: number } };
 
 interface Props {
   loading: boolean;
