@@ -13,6 +13,7 @@ import {
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
 import { formatBookedSlotsText } from "@/lib/availability";
+import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 
 export const dynamic = "force-dynamic";
 
@@ -264,22 +265,61 @@ export async function POST(req: NextRequest) {
           .eq("channel", "phone")
           .maybeSingle();
 
+        // Round M FIX 1: telephony caller ID is usually already a real
+        // E.164 number, but Vapi/carrier config can pass one with no "+"
+        // depending on setup -- same real check every other channel's lead
+        // write already applies, so this path can't silently look
+        // "confirmed" when it isn't just because it happens to come from a
+        // phone call.
+        const callerPhoneUnconfirmed = !hasConfirmedCountryCode(callerNumber);
+        // Round M FIX 8: reuse the REAL call summary Vapi already provides
+        // (same one written to appointments.notes below) as this lead's
+        // intent summary too -- never fabricated, just surfaced onto the
+        // lead so the Leads/CRM detail view is consistent across channels.
+        const intentSummary = summary ? summary.slice(0, 200) : null;
+
         let leadId = (existingLead as { id?: string } | null)?.id;
         let isNewLead = false;
         if (leadId) {
-          await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
+          // Tiered fallback -- phone_unconfirmed (migration_v33.sql) and
+          // intent_summary (migration_v34.sql) are separate, independently-
+          // landed columns; dropping both on any single PGRST204 would
+          // silently lose real phone validation whenever only
+          // intent_summary was actually the missing one.
+          let updateRow: Record<string, unknown> = { status: "booked", phone_unconfirmed: callerPhoneUnconfirmed, intent_summary: intentSummary };
+          let { error: updErr } = await admin.from("leads").update(updateRow).eq("id", leadId);
+          if (updErr?.code === "PGRST204") {
+            const { intent_summary: _is, ...withoutSummary } = updateRow;
+            void _is;
+            updateRow = withoutSummary;
+            ({ error: updErr } = await admin.from("leads").update(updateRow).eq("id", leadId));
+          }
+          if (updErr?.code === "PGRST204") {
+            await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
+          }
         } else {
-          const { data: newLead } = await admin
-            .from("leads")
-            .insert({
-              tenant_id: resolvedTenantId,
-              name:      callerNumber,
-              phone:     callerNumber,
-              channel:   "phone",
-              status:    "booked",
-            })
-            .select("id")
-            .single();
+          let insertRow: Record<string, unknown> = {
+            tenant_id: resolvedTenantId,
+            name:      callerNumber,
+            phone:     callerNumber,
+            phone_unconfirmed: callerPhoneUnconfirmed,
+            channel:   "phone",
+            status:    "booked",
+            intent_summary: intentSummary,
+          };
+          let { data: newLead, error: leadErr } = await admin.from("leads").insert(insertRow).select("id").single();
+          if (leadErr?.code === "PGRST204") {
+            const { intent_summary: _is, ...withoutSummary } = insertRow;
+            void _is;
+            insertRow = withoutSummary;
+            ({ data: newLead, error: leadErr } = await admin.from("leads").insert(insertRow).select("id").single());
+          }
+          if (leadErr?.code === "PGRST204") {
+            const { phone_unconfirmed: _pu, ...withoutPhoneFlag } = insertRow;
+            void _pu;
+            insertRow = withoutPhoneFlag;
+            ({ data: newLead } = await admin.from("leads").insert(insertRow).select("id").single());
+          }
           leadId = (newLead as { id?: string } | null)?.id;
           isNewLead = true;
         }

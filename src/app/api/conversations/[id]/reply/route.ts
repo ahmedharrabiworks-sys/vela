@@ -164,9 +164,28 @@ export async function POST(
       await sendCustomerEmail({ toEmail: customerEmail, businessName, text: text.trim() });
     } catch (err) {
       console.error("[conversations/reply] Resend send to customer failed:", err);
+      // Round M FIX 5: real production logs (this exact 403, same wording,
+      // also hit by submit-form/route.ts's pre-existing owner-notification
+      // send -- confirmed this is not new or specific to this send path)
+      // showed every non-sandbox-owner recipient rejected with "You can
+      // only send testing emails to your own email address... verify a
+      // domain at resend.com/domains" -- Resend's account-wide sandbox
+      // restriction, not a code bug: the correct recipient (the lead's own
+      // real email, confirmed correct above) is being used, the request
+      // really reaches Resend, and Resend really rejects it. The prior
+      // round's "confirmed working" send only succeeded because that test
+      // happened to target the one email Resend's sandbox exempts (the
+      // account owner's own verified address) -- which no real customer
+      // will ever match. Surfacing the real reason here (Hard Rule 20:
+      // never leave a real blocker looking like a mystery bug) instead of
+      // a generic "delivery failed" that reads as a code defect.
+      const msg = err instanceof Error ? err.message : String(err);
+      const isSandboxRestriction = /only send testing emails|verify a domain/i.test(msg);
       return NextResponse.json({
         ok: true,
-        channelError: "Message saved but email delivery failed.",
+        channelError: isSandboxRestriction
+          ? "Message saved, but email delivery is blocked: Resend is still in sandbox mode (no verified sending domain), so it can only deliver to your own account email, not real customers. Verify a domain at resend.com/domains to enable this."
+          : "Message saved but email delivery failed.",
       });
     }
 

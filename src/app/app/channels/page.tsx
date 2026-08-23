@@ -508,6 +508,14 @@ function ChannelsPageContent() {
   });
   const [showConnectMenu, setShowConnectMenu] = useState(false);
   const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0 });
+  // Round M FIX 12: restored Disconnect for the Website card -- this is
+  // the aggregate/global switch (disconnects ALL of the tenant's connected
+  // sites at once, see /api/channels/disconnect's "website" branch), never
+  // a per-site action, so it gets its own confirm step (same pattern as
+  // Instagram/WhatsApp's disconnect, plus an explicit confirm since this
+  // one is destructive across every site at once).
+  const [showWebsiteDisconnectConfirm, setShowWebsiteDisconnectConfirm] = useState(false);
+  const [disconnectingWebsite, setDisconnectingWebsite] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
   const embedSectionRef             = useRef<HTMLDivElement>(null);
   const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | null>(null);
@@ -733,6 +741,23 @@ function ChannelsPageContent() {
       setToast({ msg: "Failed to disconnect. Please try again.", type: "error" });
     }
     setDisconnecting(null);
+  };
+
+  const disconnectWebsite = async () => {
+    setDisconnectingWebsite(true);
+    try {
+      await fetch("/api/channels/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "website" }),
+      });
+      setWebsite((prev) => ({ ...prev, published: false, siteUrl: null }));
+      setShowWebsiteDisconnectConfirm(false);
+      setToast({ msg: "All sites disconnected", type: "info" });
+    } catch {
+      setToast({ msg: "Failed to disconnect. Please try again.", type: "error" });
+    }
+    setDisconnectingWebsite(false);
   };
 
   const copyEmbed = () => {
@@ -1049,14 +1074,28 @@ function ChannelsPageContent() {
                 now live in Website Builder's own site list (each site
                 manages its own connection independently). "Manage" always
                 goes to Website Builder itself, where "which site" is
-                actually resolved -- this card never assumes a single site. */}
+                actually resolved -- this card never assumes a single site.
+                Round M FIX 12: Disconnect restored here (was dropped
+                entirely in the round-O restructure) -- matches Instagram/
+                WhatsApp's Manage+Disconnect stacked pattern, but this one
+                is the aggregate/global switch (disconnects every connected
+                site at once), never a per-site action -- that still lives
+                only in Website Builder's own site list. */}
             {website.published ? (
-              <Link
-                href="/app/website"
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center shrink-0"
-              >
-                Manage
-              </Link>
+              <div className="flex flex-col gap-2 shrink-0">
+                <Link
+                  href="/app/website"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center"
+                >
+                  Manage
+                </Link>
+                <button
+                  onClick={() => setShowWebsiteDisconnectConfirm(true)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] dark:border-red-900/50 text-[#DC2626] dark:text-red-400 hover:bg-[#FEF2F2] dark:hover:bg-red-950/30 transition-colors whitespace-nowrap"
+                >
+                  {t("common.disconnect")}
+                </button>
+              </div>
             ) : (
               <Link
                 href="/app/website"
@@ -1168,6 +1207,41 @@ function ChannelsPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Round M FIX 12: Website Disconnect confirmation -- destructive
+          across every connected site at once, so it gets an explicit
+          confirm step like the reference pattern used elsewhere in the
+          app, unlike Instagram/WhatsApp's single-click disconnect (each of
+          those only ever affects one channel/account, not a whole list of
+          independent sites). */}
+      {showWebsiteDisconnectConfirm && (
+        <Modal onClose={() => !disconnectingWebsite && setShowWebsiteDisconnectConfirm(false)}>
+          <div className="p-6 space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-[#111111]">Disconnect all your connected sites?</h3>
+              <p className="text-sm text-[#6B7280] mt-1.5">
+                Their AI assistants will stop responding until reconnected individually from Website Builder.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setShowWebsiteDisconnectConfirm(false)}
+                disabled={disconnectingWebsite}
+                className="text-sm font-semibold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={disconnectWebsite}
+                disabled={disconnectingWebsite}
+                className="text-sm font-semibold px-4 py-2 rounded-lg bg-[#DC2626] text-white hover:bg-[#B91C1C] transition-colors disabled:opacity-50"
+              >
+                {disconnectingWebsite ? "Disconnecting…" : "Disconnect"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

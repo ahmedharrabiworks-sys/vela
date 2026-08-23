@@ -597,7 +597,7 @@ function PublishPanel({
   domainInput, setDomainInput, domainError, setDomainError,
   connectingDomain, setConnectingDomain, checkingDomain, setCheckingDomain,
   removingDomain, setRemovingDomain,
-  draftDiffers, publishing, hasDraft, hasContactInfo, onPublish, onClose, setPublishedUrl,
+  draftDiffers, publishing, editSaving, hasDraft, hasContactInfo, onPublish, onClose, setPublishedUrl,
 }: {
   isPublished: boolean; publishedUrl: string; visitCount: number;
   siteName: string; setSiteName: (v: string) => void;
@@ -614,7 +614,7 @@ function PublishPanel({
   connectingDomain: boolean; setConnectingDomain: (v: boolean) => void;
   checkingDomain: boolean; setCheckingDomain: (v: boolean) => void;
   removingDomain: boolean; setRemovingDomain: (v: boolean) => void;
-  draftDiffers: boolean; publishing: boolean;
+  draftDiffers: boolean; publishing: boolean; editSaving: boolean;
   hasDraft: boolean; hasContactInfo: boolean;
   onPublish: () => void; onClose: () => void;
   setPublishedUrl: (v: string) => void;
@@ -1060,10 +1060,10 @@ function PublishPanel({
                         Some info is missing. Your site will still publish.
                       </p>
                     )}
-                    <button onClick={onPublish} disabled={publishing}
+                    <button onClick={onPublish} disabled={publishing || editSaving}
                       className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                       style={{ background: "var(--vp-color)" }}>
-                      {publishing ? (isPublished ? "Updating…" : "Publishing…") : isPublished ? "Update Site" : "Publish Now"}
+                      {editSaving ? "Saving edit…" : publishing ? (isPublished ? "Updating…" : "Publishing…") : isPublished ? "Update Site" : "Publish Now"}
                     </button>
                   </>
                 )}
@@ -1108,12 +1108,12 @@ function PublishPanel({
             <div className="space-y-1.5">
               <button
                 onClick={onPublish}
-                disabled={publishing}
+                disabled={publishing || editSaving}
                 className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                 style={{ background: "var(--vp-color)" }}>
-                {publishing ? "Updating…" : draftDiffers ? "Push Updates Live" : "Update Site"}
+                {editSaving ? "Saving edit…" : publishing ? "Updating…" : draftDiffers ? "Push Updates Live" : "Update Site"}
               </button>
-              {!draftDiffers && (
+              {!draftDiffers && !editSaving && (
                 <p className="text-center text-[10px] text-[#9CA3AF]">Site is up to date. Republish anytime</p>
               )}
             </div>
@@ -1369,6 +1369,18 @@ export default function WebsitePage() {
   const chatPanelRef  = useRef<HTMLDivElement>(null);
   const chatInputRef  = useRef<HTMLTextAreaElement>(null);
   const [showToolbarSiteMenu, setShowToolbarSiteMenu] = useState(false);
+  // Round M FIX 7: per-session cache of each site's already-loaded state,
+  // keyed by websiteId -- see handleSwitchProject below. Lets a repeat
+  // switch back to a site already visited this session apply instantly
+  // instead of re-fetching + re-waiting on the same data every single
+  // click, while still refreshing in the background so the cache never
+  // goes stale for long.
+  const siteStateCacheRef = useRef<Map<string, {
+    html: string; versions: VersionRecord[]; name: string | null; slug: string | null;
+    isPublished: boolean; publishedUrl: string | null; intake: ContactInfo | null;
+    chat: Msg[] | null; embedAiAssistant: boolean | null;
+  }>>(new Map());
+  const [switchingProject, setSwitchingProject] = useState(false);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -1612,7 +1624,18 @@ export default function WebsitePage() {
   // Does the actual publish API call — called from inside the publish panel.
   const handleDoPublish = useCallback(async () => {
     const currentHtml = htmlRef.current;
-    if (!built || publishing || !currentHtml) return;
+    // Round M FIX 3: real root cause of "Done saves, but Live still shows
+    // the old version" -- Done's own save (handleSaveEdit) is fire-and-
+    // forget from handleToggleEditMode's deferred teardown, so a fast
+    // Done -> "Update Site" click sequence could previously fire this
+    // publish request BEFORE that save's DB write had actually landed.
+    // /api/website/publish now always re-renders fresh from draft_spec
+    // (see that route for the other half of this fix), but that alone
+    // still isn't enough if it reads draft_spec before the prior save
+    // finished writing it -- so this now hard-blocks while editSaving is
+    // true, guaranteeing publish can only run before a save starts or
+    // strictly after one has fully completed, never during.
+    if (!built || publishing || editSaving || !currentHtml) return;
 
     setPublishing(true);
     try {
@@ -1650,7 +1673,7 @@ export default function WebsitePage() {
     } finally {
       setPublishing(false);
     }
-  }, [built, publishing]);
+  }, [built, publishing, editSaving]);
 
   // ── Version preview / restore ─────────────────────────────────────────────────
   const handlePreviewVersion = useCallback((v: VersionRecord) => {
@@ -1761,6 +1784,34 @@ export default function WebsitePage() {
     setSiteName(p.name ?? ""); setSiteSlug(p.slug ?? ""); setSavedSlug(p.slug ?? "");
     setIsPublished(p.is_published);
     setPublishedUrl(p.is_published ? (p.published_url ?? (p.slug ? `/site/${p.slug}` : "")) : "");
+
+    // Round M FIX 7: apply cached data for this site INSTANTLY if we've
+    // already loaded it once this session -- no waiting on a network
+    // round-trip to see a site you were just looking at a moment ago. Still
+    // kicks off the same fetch below in the background to keep the cache
+    // (and this view, if anything changed server-side meanwhile) fresh.
+    const cached = siteStateCacheRef.current.get(p.id);
+    if (cached) {
+      setHtml(cached.html); htmlRef.current = cached.html;
+      setBuilt(true); setActiveTab("preview");
+      setVersions(cached.versions);
+      if (cached.name) setSiteName(cached.name);
+      if (cached.slug) { setSiteSlug(cached.slug); setSavedSlug(cached.slug); }
+      setIsPublished(cached.isPublished);
+      if (cached.publishedUrl != null) setPublishedUrl(cached.publishedUrl);
+      if (cached.intake) setContactInfo(cached.intake);
+      if (typeof cached.embedAiAssistant === "boolean") {
+        setEmbedAssistant(cached.embedAiAssistant);
+        setEmbedAssistantChosen(true);
+      }
+      if (Array.isArray(cached.chat) && cached.chat.length > 1) setMsgs(cached.chat);
+    } else {
+      // No cached data for this site yet -- this is the ONLY case that
+      // should show a loading state at all; a genuinely built site (cached
+      // or freshly fetched) never passes through here again after this.
+      setSwitchingProject(true);
+    }
+
     try {
       const res = await fetch(`/api/website/state?websiteId=${encodeURIComponent(p.id)}`);
       if (websiteIdRef.current !== switchTarget) return;
@@ -1795,12 +1846,29 @@ export default function WebsitePage() {
         // FIX 4: restore this site's own chat history instead of leaving the
         // reset-to-initial-prompt state set above -- same pattern already used
         // on first page load.
+        let cleanChat: Msg[] | null = null;
         if (Array.isArray(data.chat) && data.chat.length > 1) {
-          const cleanChat = data.chat.filter((m) => !m.isBuilding);
+          cleanChat = data.chat.filter((m) => !m.isBuilding);
           setMsgs(cleanChat);
+        }
+        // Round M FIX 7: cache this site's fresh state for next time.
+        if (data.html) {
+          siteStateCacheRef.current.set(p.id, {
+            html: data.html,
+            versions: Array.isArray(data.versions) ? data.versions as VersionRecord[] : [],
+            name: data.name ?? null, slug: data.slug ?? null,
+            isPublished: typeof data.isPublished === "boolean" ? data.isPublished : p.is_published,
+            publishedUrl: data.publishedUrl ?? null,
+            intake: data.intake ?? null,
+            chat: cleanChat,
+            embedAiAssistant: typeof data.embedAiAssistant === "boolean" ? data.embedAiAssistant : null,
+          });
         }
       }
     } catch { /* ignore */ }
+    finally {
+      if (websiteIdRef.current === switchTarget) setSwitchingProject(false);
+    }
   }, [btype, siteLanguage]);
 
   // ── Panel drag-resize ─────────────────────────────────────────────────────────
@@ -2684,7 +2752,7 @@ export default function WebsitePage() {
                   connectingDomain={connectingDomain} setConnectingDomain={setConnectingDomain}
                   checkingDomain={checkingDomain} setCheckingDomain={setCheckingDomain}
                   removingDomain={removingDomain} setRemovingDomain={setRemovingDomain}
-                  draftDiffers={draftDiffers} publishing={publishing}
+                  draftDiffers={draftDiffers} publishing={publishing} editSaving={editSaving}
                   hasDraft={built && html.length > 50}
                   hasContactInfo={specHasContactInfo}
                   onPublish={handleDoPublish}
@@ -3224,6 +3292,24 @@ export default function WebsitePage() {
                   <p className="text-sm font-semibold text-[#111111] dark:text-white">{t("website.building")}</p>
                   <p className="text-xs text-[#6B7280]">Generating design, real photos, and booking flow…</p>
                 </div>
+              </div>
+
+            ) : switchingProject ? (
+              /* Round M FIX 7: this and the "!built" empty-state branch
+                 below used to be the SAME condition/UI -- switching to a
+                 different site (not yet cached this session, see
+                 handleSwitchProject) forces built=false while its fetch is
+                 in flight, so the loading window rendered the identical
+                 "Your website preview / describe your business" empty-state
+                 text a genuinely-never-built site shows. Indistinguishable
+                 from "this site's content is gone." A real skeleton now
+                 makes the loading window unambiguous -- it can never be
+                 mistaken for an empty/deleted site again. */
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] dark:bg-[#101014] flex flex-col min-h-0 p-6 gap-4 animate-pulse">
+                <div className="h-40 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded-xl" />
+                <div className="h-4 w-2/3 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded" />
+                <div className="h-4 w-1/2 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded" />
+                <div className="h-24 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded-xl mt-2" />
               </div>
 
             ) : !built ? (

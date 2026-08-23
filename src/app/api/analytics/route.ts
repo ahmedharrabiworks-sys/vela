@@ -36,10 +36,25 @@ export async function GET() {
   const { data: websiteRows } = await admin.from("websites").select("id").eq("tenant_id", tenantId);
   const websiteIds = ((websiteRows as { id: string }[] | null) ?? []).map((w) => w.id);
 
+  // Round M FIX 11: real, confirmed cause of the Dashboard-vs-Analytics
+  // count mismatch reported live -- Dashboard (lib/stats.ts) does bounded
+  // per-window count() queries with server-computed date boundaries;
+  // Analytics does this ONE wide 180-day fetch, bucketed into UTC-calendar-
+  // day maps, then SUMMED CLIENT-SIDE in analytics/page.tsx (periodSum/
+  // buildDayArray) against the browser's own Date.now() -- a genuinely
+  // different architecture, not just a different window. Two real,
+  // concrete gaps closed here that were unconditionally over-counting
+  // relative to Dashboard AND the Leads/CRM list itself: neither leads nor
+  // conversations were ever filtered by deleted_at (a soft-deleted/Recycle
+  // Bin row still counted here). The remaining difference -- Dashboard's
+  // "today" figure has no Analytics equivalent at all (Analytics has no
+  // day view, only 7d/30d/90d) -- is a real architectural difference, not
+  // a bug: comparing Dashboard's "leads today" against Analytics' 7-day
+  // sum was never actually the same period to begin with.
   const [leadsRes, convsRes, apptsRes, configRes, visitsRes] = await Promise.all([
-    admin.from("leads").select("channel, created_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
-    admin.from("conversations").select("channel, created_at, lead_id, needs_human, needs_human_resolved_at").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
-    admin.from("appointments").select("created_at, status, conversation_id").eq("tenant_id", tenantId).gte("created_at", oneEightyDaysAgo),
+    admin.from("leads").select("channel, created_at").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
+    admin.from("conversations").select("channel, created_at, lead_id, needs_human, needs_human_resolved_at").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
+    admin.from("appointments").select("created_at, status, conversation_id").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
     admin.from("tenant_config").select("website_visit_count").eq("tenant_id", tenantId).maybeSingle(),
     websiteIds.length > 0
       ? admin.from("site_visits").select("created_at").in("website_id", websiteIds).gte("created_at", oneEightyDaysAgo)

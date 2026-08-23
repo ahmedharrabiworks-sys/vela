@@ -888,14 +888,17 @@ type BinAppointment = { id: string; service_name: string | null; datetime: strin
 // recoverable unit, not individual rows like leads/appointments -- grouped
 // by the single shared deleted_at timestamp every "Clear" batch writes.
 type BinAssistantBatch = { deletedAt: string; count: number };
+// Round M FIX 10: websites brought into the same Recycle Bin pattern.
+type BinWebsite = { id: string; name: string | null; slug: string | null; deleted_at: string };
 
 // FIX 3 (round R): real, type-specific noun for the confirmation body copy
 // -- "This lead will be permanently erased..." vs "...conversation..." etc.
-const DELETE_KIND_NOUN: Record<"lead" | "conversation" | "appointment" | "assistant", string> = {
+const DELETE_KIND_NOUN: Record<"lead" | "conversation" | "appointment" | "assistant" | "website", string> = {
   lead: "lead",
   conversation: "conversation",
   appointment: "appointment",
   assistant: "conversation history",
+  website: "website",
 };
 
 function RecycleBinSection({ t }: { t: (key: string) => string }) {
@@ -905,6 +908,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
   const [conversations, setConversations] = useState<BinConversation[]>([]);
   const [appointments, setAppointments] = useState<BinAppointment[]>([]);
   const [assistantBatches, setAssistantBatches] = useState<BinAssistantBatch[]>([]);
+  const [websites, setWebsites] = useState<BinWebsite[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   // FIX 5 (round P): restore/permanent-delete actions here previously gave
   // zero feedback beyond the row disappearing from the list -- same shared
@@ -913,7 +917,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
   // FIX 5 (round Q): "Delete Permanently" executed immediately with no
   // confirmation -- a real, irreversible action one misclick away. Single
   // generic confirm-target used by all four delete-forever surfaces below.
-  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ kind: "lead" | "conversation" | "appointment" | "assistant"; id: string; label: string } | null>(null);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ kind: "lead" | "conversation" | "appointment" | "assistant" | "website"; id: string; label: string } | null>(null);
   const [deletingForever, setDeletingForever] = useState(false);
 
   useEffect(() => { load(); }, []);
@@ -927,21 +931,23 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     const { data: tenant } = await db.from("tenants").select("id").eq("owner_id", user.id).single();
     if (!tenant) { setLoading(false); return; }
 
-    const [leadsRes, convRes, apptRes, assistantRes] = await Promise.all([
+    const [leadsRes, convRes, apptRes, assistantRes, websitesRes] = await Promise.all([
       db.from("leads").select("id, name, phone, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
       db.from("conversations").select("id, customer_name, channel, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
       db.from("appointments").select("id, service_name, datetime, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
       db.from("assistant_messages").select("deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+      db.from("websites").select("id, name, slug, deleted_at").eq("tenant_id", tenant.id).not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
     ]);
 
     const missingColumn = (e: { code?: string } | null) => e?.code === "PGRST204" || e?.code === "42703" || e?.code === "PGRST205" || e?.code === "42P01";
-    if (missingColumn(leadsRes.error) || missingColumn(convRes.error) || missingColumn(apptRes.error)) {
-      console.warn("[recycle-bin] deleted_at column missing on one or more tables — run migration_v30.sql.");
+    if (missingColumn(leadsRes.error) || missingColumn(convRes.error) || missingColumn(apptRes.error) || missingColumn(websitesRes.error)) {
+      console.warn("[recycle-bin] deleted_at column missing on one or more tables — run migration_v30.sql / the websites migration.");
       setMigrationPending(true);
     }
     setLeads((leadsRes.data ?? []) as BinLead[]);
     setConversations((convRes.data ?? []) as BinConversation[]);
     setAppointments((apptRes.data ?? []) as BinAppointment[]);
+    setWebsites((websitesRes.data ?? []) as BinWebsite[]);
 
     // FIX 4 (round J): group cleared assistant messages by their shared
     // deleted_at timestamp into one restorable batch per "Clear" action.
@@ -1019,6 +1025,41 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     }
   }
 
+  // Round M FIX 10: routed through /api/website/settings (PATCH/DELETE)
+  // rather than a direct client Supabase call like leads/appointments use
+  // -- website_versions' FK to websites means a real hard delete needs to
+  // clear child rows first, and that route is already admin-privileged for
+  // exactly this, matching the existing pattern for the delete side (this
+  // file's own soft-delete flow already goes through that same route).
+  async function restoreWebsite(id: string) {
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/website/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: id, restore: true }),
+      });
+      if (res.ok) { setWebsites((prev) => prev.filter((w) => w.id !== id)); setToast("Website restored"); }
+      else setToast("Could not restore. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+  async function deleteWebsiteForever(id: string) {
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/website/settings?permanent=true", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteId: id }),
+      });
+      if (res.ok) { setWebsites((prev) => prev.filter((w) => w.id !== id)); setToast("Website permanently deleted"); }
+      else setToast("Could not delete. Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function restoreAssistantBatch(deletedAt: string) {
     setBusyId(deletedAt);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1049,11 +1090,12 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     else if (target.kind === "conversation") await deleteConversationForever(target.id);
     else if (target.kind === "appointment") await deleteAppointmentForever(target.id);
     else if (target.kind === "assistant") await deleteAssistantBatchForever(target.id);
+    else if (target.kind === "website") await deleteWebsiteForever(target.id);
     setDeletingForever(false);
     setDeleteConfirmTarget(null);
   }
 
-  const isEmpty = !loading && leads.length === 0 && conversations.length === 0 && appointments.length === 0 && assistantBatches.length === 0;
+  const isEmpty = !loading && leads.length === 0 && conversations.length === 0 && appointments.length === 0 && assistantBatches.length === 0 && websites.length === 0;
 
   return (
     <>
@@ -1149,6 +1191,32 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
                     {t("settings.recycleBin.restore")}
                   </button>
                   <button disabled={busyId === b.deletedAt} onClick={() => setDeleteConfirmTarget({ kind: "assistant", id: b.deletedAt, label: t("settings.recycleBin.assistantConversation") })}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.deleteForever")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && websites.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wide mb-2">{t("settings.recycleBin.websites")}</p>
+          <div className="space-y-1.5">
+            {websites.map((w) => (
+              <div key={w.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-[#E5E7EB] bg-white">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#111111] truncate">{w.name ?? w.slug ?? t("dashboard.unknown")}</p>
+                  <p className="text-[10px] text-[#9CA3AF] truncate">{w.slug ? `/site/${w.slug}` : ""}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button disabled={busyId === w.id} onClick={() => restoreWebsite(w.id)}
+                    className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
+                    {t("settings.recycleBin.restore")}
+                  </button>
+                  <button disabled={busyId === w.id} onClick={() => setDeleteConfirmTarget({ kind: "website", id: w.id, label: w.name ?? w.slug ?? t("dashboard.unknown") })}
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
                     {t("settings.recycleBin.deleteForever")}
                   </button>

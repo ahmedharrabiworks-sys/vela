@@ -1,11 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
+import { renderWebsite } from "@/lib/website-renderer";
+import type { WebsiteSpec, ImageMap } from "@/lib/website-renderer";
 
 export const dynamic = "force-dynamic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
+
+// Round M FIX 2: same extraction technique already used in save-edit/
+// route.ts's own local extractImageMap -- lets publish re-render fresh
+// from the current spec + current renderer code WITHOUT re-fetching new
+// Unsplash photos for sections whose images are already resolved.
+function extractImageMap(spec: WebsiteSpec, html: string): ImageMap {
+  const images: ImageMap = {};
+  const SINGLE_IMG = new Set(["hero", "hero-fullbleed", "hero-split", "hero-minimal", "about", "about-story"]);
+  const MULTI_IMG = new Set(["gallery", "gallery-grid", "listings-grid"]);
+  const SECTION_ANCHOR: Record<string, string> = {
+    "hero": "hero", "hero-fullbleed": "hero", "hero-split": "hero", "hero-minimal": "hero",
+    "about": "about", "about-story": "about",
+    "gallery": "gallery", "gallery-grid": "gallery",
+    "listings-grid": "listings",
+  };
+  for (let i = 0; i < spec.sections.length; i++) {
+    const s = spec.sections[i];
+    const anchor = SECTION_ANCHOR[s.type];
+    if (!anchor) continue;
+    const anchorIdx = html.indexOf(`id="${anchor}"`);
+    if (anchorIdx === -1) continue;
+    const slice = html.slice(anchorIdx, anchorIdx + 30_000);
+    if (MULTI_IMG.has(s.type)) {
+      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+)"/g;
+      let m: RegExpExecArray | null;
+      let j = 0;
+      while ((m = imgRe.exec(slice)) !== null) images[`${i}_${j++}`] = m[1];
+    } else if (SINGLE_IMG.has(s.type)) {
+      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+)"/);
+      if (m) images[String(i)] = m[1];
+    }
+  }
+  return images;
+}
 
 type VersionEntry = {
   id: string;
@@ -72,8 +108,44 @@ export async function POST(req: NextRequest) {
     site = data as SiteRow | null;
   }
 
-  // Always use the saved draft from DB — never trust client-submitted HTML
-  const htmlToPublish = site?.draft_html?.trim() || null;
+  // Round M FIX 2: previously copied draft_html verbatim into
+  // published_html -- if published_html was ever set from HTML rendered by
+  // OLDER renderer code (e.g. before a color/contrast/token fix landed),
+  // this route had no mechanism that would ever pick up current code; the
+  // stale bytes were published forever, unchanged, no matter how many times
+  // "Update Site" was pressed, unless the draft itself happened to also get
+  // regenerated some other way first. Now re-renders fresh from
+  // draft_spec using the CURRENT renderWebsite/resolveDesignDNA code on
+  // every publish, so styling fixes reach a real published site the moment
+  // it's next published -- not only sites edited after the fix shipped.
+  // Reuses existing images (via extractImageMap, same technique save-edit/
+  // route.ts already uses) and preserves the existing language/RTL
+  // direction (reverse-mapped from draft_html's own <html lang="…" dir="…">
+  // attributes, since language isn't a column on `websites` and is never
+  // client-supplied to this route) -- both real, unchanged values, never a
+  // silent reset to English/LTR for a non-English site.
+  const REVERSE_LANG_CODE: Record<string, string> = {
+    ar: "Arabic", fr: "French", es: "Spanish", de: "German",
+    it: "Italian", pt: "Portuguese", ru: "Russian", en: "English",
+  };
+  let htmlToPublish: string | null = null;
+  if (site?.draft_spec && site.draft_html) {
+    try {
+      const spec = site.draft_spec as WebsiteSpec;
+      const imageMap = extractImageMap(spec, site.draft_html);
+      const langMatch = site.draft_html.match(/<html[^>]*\slang="([a-z]{2})"/i);
+      const language = langMatch ? REVERSE_LANG_CODE[langMatch[1].toLowerCase()] : undefined;
+      htmlToPublish = renderWebsite(spec, imageMap, tenant.id as string, language);
+    } catch (err) {
+      console.error("[website/publish] fresh re-render failed, falling back to stored draft_html:", err);
+      htmlToPublish = site.draft_html.trim() || null;
+    }
+  } else {
+    // No draft_spec (a legacy site, or one whose spec is genuinely
+    // unavailable) -- fall back to whatever draft_html is already there
+    // rather than blocking a real publish over it.
+    htmlToPublish = site?.draft_html?.trim() || null;
+  }
 
   if (!htmlToPublish) {
     console.error("[website/publish] no draft_html for site", site?.id ?? "none", "tenant", tenant.id);

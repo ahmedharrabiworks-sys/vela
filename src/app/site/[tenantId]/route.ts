@@ -119,14 +119,28 @@ export async function GET(
 
   const admin = createSupabaseAdmin() as AdminClient;
 
+  // Round M FIX 10: a soft-deleted site (Recycle Bin) keeps its
+  // is_published flag as-is (so Restore brings it straight back live with
+  // no extra republish step) -- deleted_at is the real signal that must
+  // stop it resolving publicly. Falls back to the unfiltered query if the
+  // deleted_at migration hasn't run yet.
   // ── 1. Slug lookup first (canonical URL path) ─────────────────────────────
   if (!UUID_RE.test(tenantId)) {
-    const { data: site } = await admin
+    let { data: site, error: siteErr } = await admin
       .from("websites")
       .select("published_html, tenant_id, id")
       .eq("slug", tenantId)
       .eq("is_published", true)
+      .is("deleted_at", null)
       .maybeSingle();
+    if (siteErr?.code === "42703" || siteErr?.code === "PGRST204") {
+      ({ data: site } = await admin
+        .from("websites")
+        .select("published_html, tenant_id, id")
+        .eq("slug", tenantId)
+        .eq("is_published", true)
+        .maybeSingle());
+    }
 
     if (site?.published_html) {
       return htmlResponse(site.published_html as string, site.tenant_id as string | undefined, admin, site.id as string | undefined);
@@ -137,14 +151,25 @@ export async function GET(
 
   // ── 2. UUID param: legacy / direct tenant-id URL ──────────────────────────
   // Look up the website by tenant_id (old URL format).
-  const { data: site } = await admin
+  let { data: site, error: siteErr2 } = await admin
     .from("websites")
     .select("published_html, slug, tenant_id, id")
     .eq("tenant_id", tenantId)
     .eq("is_published", true)
+    .is("deleted_at", null)
     .order("published_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (siteErr2?.code === "42703" || siteErr2?.code === "PGRST204") {
+    ({ data: site } = await admin
+      .from("websites")
+      .select("published_html, slug, tenant_id, id")
+      .eq("tenant_id", tenantId)
+      .eq("is_published", true)
+      .order("published_at", { ascending: false })
+      .limit(1)
+      .maybeSingle());
+  }
 
   if (site?.published_html) {
     // If the site has a slug, 301-redirect so the canonical URL is used.

@@ -494,6 +494,55 @@ export async function POST(req: NextRequest) {
       existingActiveAppt = { id: row.id, datetime: row.datetime, service_name: row.service_name, leadName };
     }
   }
+
+  /* ── 6d. Most recently cancelled appointment -- FIX 6 (round M) ──────────
+     Real gap found in live testing: the AI could correctly CANCEL an
+     appointment (see the [CANCEL_APPOINTMENT:id] token below), but when the
+     customer then asked to undo/reactivate that same cancellation, the AI
+     had no way to look it up (existingActiveAppt above only ever finds
+     NON-cancelled rows) -- it fell back to treating "undo the cancel" as a
+     brand new booking request and created a genuine duplicate row instead
+     of reactivating the original. Only looked up when there's currently no
+     active appointment (if one already exists, "undo my cancellation"
+     would conflict with the one-active-appointment rule and isn't a real
+     case worth adding a lookup for). Same conversation-then-phone fallback
+     pattern as existingActiveAppt above, scoped the same way so this can
+     only ever surface THIS customer's own cancelled appointment. */
+  let mostRecentCancelledAppt: { id: string; datetime: string; service_name: string | null } | null = null;
+  if (!existingActiveAppt) {
+    const { data: byConv } = await admin
+      .from("appointments")
+      .select("id, datetime, service_name, lead_id")
+      .eq("tenant_id", tenantId)
+      .eq("conversation_id", convId)
+      .eq("status", "cancelled")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    let row = byConv as { id: string; datetime: string; service_name: string | null; lead_id: string | null } | null;
+    if (!row && leadId) {
+      const { data: leadRow } = await admin.from("leads").select("phone").eq("id", leadId).maybeSingle();
+      const phone = (leadRow as { phone: string | null } | null)?.phone;
+      if (phone) {
+        const { data: samePhoneLeads } = await admin.from("leads").select("id").eq("tenant_id", tenantId).eq("phone", phone);
+        const leadIds = ((samePhoneLeads ?? []) as { id: string }[]).map((l) => l.id);
+        if (leadIds.length > 0) {
+          const { data: byPhone } = await admin
+            .from("appointments")
+            .select("id, datetime, service_name, lead_id")
+            .eq("tenant_id", tenantId)
+            .in("lead_id", leadIds)
+            .eq("status", "cancelled")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          row = byPhone as { id: string; datetime: string; service_name: string | null; lead_id: string | null } | null;
+        }
+      }
+    }
+    if (row) mostRecentCancelledAppt = { id: row.id, datetime: row.datetime, service_name: row.service_name };
+  }
+
   // FIX 2 (round Q): the previous wording had an escape hatch ("only
   // proceed if they clearly explain this is a different person or a real
   // additional visit") -- confirmed live that this let a simple customer
@@ -529,6 +578,17 @@ export async function POST(req: NextRequest) {
   // cancel THIS conversation/phone's own active appointment.
   const existingApptDirective = existingActiveAppt
     ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. HARD LIMIT, NO EXCEPTIONS: this customer may only ever have ONE active appointment at a time. If they ask to book a new, additional, or second appointment for ANY reason -- including if they insist, say "just book another one", or claim it's for someone else -- do NOT collect a new date/time and do NOT open a booking flow. Firmly tell them only one active appointment is allowed at a time. A second appointment only becomes possible once this existing one is CANCELLED, or once its date/time has already passed -- rescheduling does NOT free up room for a second appointment, it only moves this SAME appointment to a different time, so NEVER state or imply that rescheduling enables a new booking. You may still separately offer to reschedule this existing appointment to a different time (as its own action, on its own), and separately offer to cancel it -- but when explaining what actually makes a NEW appointment possible, name only cancellation or the appointment already being in the past, never reschedule. Do not budge from this even if they push back or ask again. CANCELLATION: if the customer asks to cancel this existing appointment, first ask one explicit yes/no confirmation question naming it (e.g. "Should I go ahead and cancel your ${existingActiveAppt.service_name || "appointment"} on ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}?") and stop there. Only after they clearly confirm (e.g. "yes", "please do", "confirm", "go ahead") in their NEXT message, tell them it's been cancelled and include the exact token [CANCEL_APPOINTMENT:${existingActiveAppt.id}] somewhere in that reply -- this actually cancels it in the system, so only use it once they've genuinely confirmed, never earlier and never speculatively.`
+    : "";
+
+  // FIX 6 (round M): real "undo the cancellation" execution, mirroring the
+  // exact confirm-then-token pattern above -- see mostRecentCancelledAppt
+  // (section 6d). Only ever injected when there's genuinely no active
+  // appointment (existingActiveAppt is null) AND a real cancelled row
+  // exists to reactivate; the token is matched server-side against this
+  // exact id, so it can only ever reactivate THIS SAME row, never create a
+  // new one and never touch another customer's appointment.
+  const reactivateApptDirective = mostRecentCancelledAppt
+    ? `\n\nRECENTLY CANCELLED APPOINTMENT (real, on file for this customer): ${mostRecentCancelledAppt.service_name || "an appointment"} that was cancelled, originally for ${new Date(mostRecentCancelledAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}. MANDATORY, OVERRIDES YOUR DEFAULT ASSUMPTION: undoing this specific cancellation IS possible in this system, right now -- do NOT tell the customer a cancellation can never be undone or is permanent; that is factually wrong here. If the customer asks to undo the cancellation, un-cancel it, restore it, bring it back, or reverse it, first ask one explicit yes/no confirmation question naming it (e.g. "Should I un-cancel your ${mostRecentCancelledAppt.service_name || "appointment"} for ${new Date(mostRecentCancelledAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}?") and stop there. Only after they clearly confirm in their NEXT message (e.g. "yes", "please do", "confirm"), tell them it's been restored and include the exact token [REACTIVATE_APPOINTMENT:${mostRecentCancelledAppt.id}] somewhere in that reply. This REACTIVATES the exact same appointment record -- never treat "undo the cancel" as a request for a brand new booking, never collect a new date/time for it, and never open the normal booking flow for this.`
     : "";
 
   /* ── 7. Build system prompt ── */
@@ -694,7 +754,7 @@ Current date & time: ${todayFull}, ${currentTime}
 Services:
 ${servicesText}
 ${faqsText}
-${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}${existingApptDirective}
+${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}${existingApptDirective}${reactivateApptDirective}
 
 Rules:
 • Tone: ${tone} and warm — be like a helpful employee, not a robot
@@ -725,6 +785,28 @@ Rules:
   // inserting a brand-new duplicate appointment for the same confirmation
   // (see the guard on that block for the full explanation).
   let pendingApptConfirmedThisTurn = false;
+  // Round M FIX 6: same guard, for [REACTIVATE_APPOINTMENT:id] -- confirmed
+  // live that without this, section 12's own independent booking-detection
+  // extraction could still re-derive the SAME date/time from earlier
+  // conversation history on the customer's confirming message ("yes, please
+  // un-cancel it") and insert a genuine duplicate appointment alongside the
+  // just-reactivated original, even when the reactivate token itself
+  // executed correctly.
+  let reactivatedThisTurn = false;
+  // Round M FIX 6 (real root cause, found via live diagnostic logging):
+  // confirming a CANCELLATION ("yes, cancel it") was itself silently
+  // creating a duplicate appointment -- section 12's independent
+  // booking-detection extraction call sees the AI's own PRIOR message
+  // (which named the appointment's date/time while asking "should I go
+  // ahead and cancel your appointment on [date]?") plus the customer's
+  // short "yes", and misreads that as "confirming a date/time the AI just
+  // offered" for a NEW booking -- the exact ambiguity that extraction
+  // prompt is inherently prone to, just never triggered by a booking
+  // confirmation before. This is what made "undo the cancellation" look
+  // broken: by the time the customer asked to undo it, a phantom new
+  // appointment already existed, so existingActiveAppt was no longer null
+  // and the reactivate directive never even got a chance to fire.
+  let cancelledThisTurn = false;
   // Set true when section 7c's deterministic short-circuit below already
   // produced the reply for this turn -- skips the main creative completion
   // call entirely (see that block for why).
@@ -863,8 +945,9 @@ Rules:
           .eq("tenant_id", tenantId);
         if (cancelErr) {
           console.error("[ai/reply] FAILED to cancel appointment:", cancelErr.message);
-        } else if (!isTest) {
-          await createNotification(admin, {
+        } else {
+          cancelledThisTurn = true;
+          if (!isTest) await createNotification(admin, {
             tenantId,
             type: "appointment",
             title: "Appointment cancelled",
@@ -876,6 +959,39 @@ Rules:
         // Model hallucinated a token for an id that isn't this customer's
         // real active appointment -- strip it, never act on it.
         rawReply = rawReply.replace(cancelMatch[0], "").replace(/\s{2,}/g, " ").trim();
+      }
+
+      // Round M FIX 6: real reactivate/undo-cancellation execution -- same
+      // trusted-token pattern as CANCEL_APPOINTMENT above, matched against
+      // mostRecentCancelledAppt.id (section 6d) so the model can only ever
+      // reactivate THIS customer's own most recently cancelled appointment.
+      // Sets status back to "pending" -- the exact same value the existing
+      // dashboard "Reactivate" button already uses (appointments/page.tsx's
+      // handleReactivate), so an AI-driven undo behaves identically to an
+      // owner-driven one. Updates the SAME row -- never inserts a new one,
+      // which is exactly the duplicate-appointment bug this fix closes.
+      const reactivateMatch = rawReply.match(/\[REACTIVATE_APPOINTMENT:([a-f0-9-]+)\]/i);
+      if (reactivateMatch && mostRecentCancelledAppt && reactivateMatch[1] === mostRecentCancelledAppt.id) {
+        rawReply = rawReply.replace(reactivateMatch[0], "").replace(/\s{2,}/g, " ").trim();
+        const { error: reactivateErr } = await admin
+          .from("appointments")
+          .update({ status: "pending" })
+          .eq("id", mostRecentCancelledAppt.id)
+          .eq("tenant_id", tenantId);
+        if (reactivateErr) {
+          console.error("[ai/reply] FAILED to reactivate appointment:", reactivateErr.message);
+        } else {
+          reactivatedThisTurn = true;
+          if (!isTest) await createNotification(admin, {
+            tenantId,
+            type: "appointment",
+            title: "Appointment reactivated",
+            body: mostRecentCancelledAppt.service_name || "Appointment",
+            link: "/app/appointments",
+          });
+        }
+      } else if (reactivateMatch) {
+        rawReply = rawReply.replace(reactivateMatch[0], "").replace(/\s{2,}/g, " ").trim();
       }
 
       // Extract [NEEDS_HUMAN] signal and strip it from visible reply
@@ -1145,7 +1261,7 @@ Rules:
   // rescheduled + notify. An existing row with the SAME datetime -> just a
   // redundant re-confirmation, do nothing (never touch status, never
   // duplicate).
-  if (booked && !pendingApptConfirmedThisTurn && booking?.datetime) {
+  if (booked && !pendingApptConfirmedThisTurn && !reactivatedThisTurn && !cancelledThisTurn && booking?.datetime) {
     // FIX 10: never save a blank service -- the detection prompt above now
     // asks the model for a real fallback description when the customer
     // explicitly declined to name one, but this is a hard backstop in case
@@ -1225,13 +1341,23 @@ Rules:
         });
       }
     } else if (!existing) {
+      // Round M FIX 9: this is a genuinely new appointment created only
+      // after the mandatory confirm-then-book flow in the system prompt
+      // (Rules above: "first ask one explicit yes/no confirmation question
+      // ... only after the customer replies with a clear affirmative...")
+      // -- the customer already explicitly confirmed this exact date/time
+      // in the conversation, so requiring the owner to separately click
+      // Confirm in the dashboard is redundant. "confirmed" here only;
+      // the reschedule-update branch above and submit-form/route.ts's own
+      // insert (no interactive confirmation loop, just a single form
+      // submit) intentionally still default to "pending" -- unchanged.
       await admin.from("appointments").insert({
         tenant_id: tenantId,
         lead_id: leadId,
         conversation_id: convId,
         service_name: serviceName,
         datetime: booking.datetime,
-        status: "pending",
+        status: "confirmed",
       });
 
       if (leadId) {
@@ -1249,6 +1375,53 @@ Rules:
       }
     }
     // isSameSlot && existing: redundant re-confirmation, intentionally a no-op.
+  }
+
+  // FIX 8 (round M): a short, real "what they want" summary for the
+  // Leads/CRM detail view -- website-form leads already had this (their own
+  // form's message field), but leads created through this AI conversation
+  // flow (website widget, Instagram, WhatsApp -- all funnel through this
+  // same route) never got one, so the CRM looked inconsistent across
+  // channels. Cheap gpt-4o-mini call over the REAL conversation so far,
+  // never fabricated -- explicitly told to say it doesn't know rather than
+  // guess when there isn't enough real content yet. Only runs once a real
+  // lead exists and there's real conversation content to summarize; skipped
+  // for test messages so it never burns API cost on non-real traffic.
+  if (leadId && apiKey && !isTest) {
+    try {
+      const openai = new OpenAI({ apiKey });
+      const convoText = [...(history as Array<{ role: string; content: string }> ?? []), { role: "user", content: message }]
+        .slice(-10)
+        .map((m) => `${m.role === "user" ? "Customer" : "AI"}: ${m.content}`)
+        .join("\n");
+      const summaryCheck = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Summarize in ONE short line (under 100 characters) what this customer wants, based ONLY on what they actually said in the conversation below -- never invent or guess details they didn't mention. If there isn't yet enough real content to say anything specific, reply with exactly: NONE. Reply ONLY valid JSON: {"summary": "..." or null}.`,
+          },
+          { role: "user", content: convoText },
+        ],
+        max_tokens: 60,
+        temperature: 0,
+        response_format: { type: "json_object" },
+      });
+      const parsedSummary = JSON.parse(summaryCheck.choices[0]?.message?.content ?? "{}") as { summary?: string | null };
+      const summaryText = parsedSummary.summary?.trim();
+      if (summaryText && summaryText.toUpperCase() !== "NONE") {
+        const { error: summaryErr } = await admin
+          .from("leads")
+          .update({ intent_summary: summaryText.slice(0, 200) })
+          .eq("id", leadId);
+        if (summaryErr?.code === "PGRST204") {
+          console.warn("[ai/reply] leads.intent_summary column missing — run the pending migration.");
+        }
+      }
+    } catch (err) {
+      // Best-effort -- never blocks the real reply over a summary.
+      console.error("[ai/reply] intent summary generation failed:", err);
+    }
   }
 
   // FIX 4 (round M): real regression root-caused via TWO separate live

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { createHash } from "crypto";
 import { createNotification } from "@/lib/notifications";
+import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 
 export const dynamic = "force-dynamic";
 
@@ -115,21 +116,64 @@ export async function POST(
 
   const name = [firstName, lastName].filter(Boolean).join(" ");
 
+  // Round M FIX 1: this path previously wrote `phone` raw with no
+  // country-code check at all -- the AI conversation flow (ensureLeadFromContact
+  // in ai/reply/route.ts) already validates via hasConfirmedCountryCode and
+  // flags phone_unconfirmed when a number isn't self-describing (no real
+  // country code), but the website's own booking/consultation form bypassed
+  // that entirely, so a bare local number submitted here looked identical to
+  // a real, confirmed one everywhere it's shown. Same real check now applied
+  // here -- saved either way (never blocks a real submission), just flagged
+  // for the owner to see/correct like every other channel already does.
+  const phoneUnconfirmed = phone ? !hasConfirmedCountryCode(phone) : false;
+
+  // Round M FIX 8: a short, real "what they want" summary for the Leads/CRM
+  // detail view. This channel already has genuine, non-fabricated customer
+  // text (the form's own message field) -- used directly as the summary,
+  // consistent with the intent_summary field other channels now populate
+  // (see ensureLeadFromContact in ai/reply/route.ts) rather than needing an
+  // extra AI call for something the customer already stated plainly.
+  const intentSummary = message ? message.slice(0, 200) : null;
+
   // ── Save to leads table (same schema as other channels) ───────────────────
-  const { data: insertedLead, error: insertErr } = await admin.from("leads").insert({
+  let insertRow: Record<string, unknown> = {
     tenant_id: tenant.id,
     name,
     phone:    phone    || null,
+    phone_unconfirmed: phoneUnconfirmed,
     email:    email    || null,
     channel:  "website",
     status:   datetime ? "booked" : "new",
     ip_hash:  ipHash,
+    intent_summary: intentSummary,
     form_data: {
       service:            service  || null,
       preferred_datetime: datetime || null,
       message:            message  || null,
     },
-  }).select("id").single();
+  };
+  let { data: insertedLead, error: insertErr } = await admin.from("leads").insert(insertRow).select("id").single();
+  if (insertErr?.code === "PGRST204") {
+    // Tiered fallback, not a single all-or-nothing retry: phone_unconfirmed
+    // (migration_v33.sql) and intent_summary (migration_v34.sql) are
+    // separate, independently-landed columns -- dropping BOTH together on
+    // any single PGRST204 would silently lose real phone validation
+    // whenever only intent_summary happened to be the missing one (this
+    // fired live: real bare-local-number submission stored
+    // phone_unconfirmed=false, the column's own DEFAULT, instead of the
+    // correctly-computed true, because the fallback removed a column that
+    // was actually already present).
+    const { intent_summary: _is, ...withoutSummary } = insertRow;
+    void _is;
+    insertRow = withoutSummary;
+    ({ data: insertedLead, error: insertErr } = await admin.from("leads").insert(insertRow).select("id").single());
+    if (insertErr?.code === "PGRST204") {
+      const { phone_unconfirmed: _pu, ...withoutPhoneFlag } = insertRow;
+      void _pu;
+      insertRow = withoutPhoneFlag;
+      ({ data: insertedLead, error: insertErr } = await admin.from("leads").insert(insertRow).select("id").single());
+    }
+  }
 
   if (insertErr) {
     console.error("[submit-form] insert error:", insertErr.message);

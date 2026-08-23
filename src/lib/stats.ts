@@ -89,9 +89,9 @@ export interface DashboardStats {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function computeAiResolutionRate(admin: any, tenantId: string, sinceISO?: string): Promise<number | null> {
-  let totalQuery = admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId);
+  let totalQuery = admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null);
   let aiHandledQuery = admin.from("conversations").select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId).eq("needs_human", false);
+    .eq("tenant_id", tenantId).is("deleted_at", null).eq("needs_human", false);
   if (sinceISO) {
     totalQuery = totalQuery.gte("created_at", sinceISO);
     aiHandledQuery = aiHandledQuery.gte("created_at", sinceISO);
@@ -130,20 +130,30 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     callsYesterdayRes,
     aiResolutionRate,
   ] = await Promise.all([
-    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
-    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
-    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", twoWeeksAgo.toISOString()).lt("created_at", weekAgo.toISOString()),
-    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
-    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", twoWeeksAgo.toISOString()).lt("created_at", weekAgo.toISOString()),
-    admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
-    admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", twoWeeksAgo.toISOString()).lt("created_at", weekAgo.toISOString()),
-    admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("needs_human", true),
-    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", todayStart.toISOString()),
-    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", todayStart.toISOString()),
+    // Round M FIX 11: leads/conversations/appointments counts previously
+    // had NO deleted_at filter anywhere in this file -- a soft-deleted row
+    // (Recycle Bin) still counted here even though the Leads/CRM list
+    // itself (leads/page.tsx) already excludes it. This alone doesn't
+    // explain a Dashboard-vs-Analytics MISMATCH (Analytics had the exact
+    // same gap, so both over-counted equally relative to the CRM), but it's
+    // a real, concrete discrepancy against what the owner sees in the CRM
+    // list, and leaving it unfixed on only one of the two surfaces would
+    // have introduced a NEW mismatch. Now filtered consistently here and in
+    // api/analytics/route.ts.
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", weekAgo.toISOString()),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", twoWeeksAgo.toISOString()).lt("created_at", weekAgo.toISOString()),
+    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", weekAgo.toISOString()),
+    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", twoWeeksAgo.toISOString()).lt("created_at", weekAgo.toISOString()),
+    admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", weekAgo.toISOString()),
+    admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", twoWeeksAgo.toISOString()).lt("created_at", weekAgo.toISOString()),
+    admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).eq("needs_human", true),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", todayStart.toISOString()),
+    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", todayStart.toISOString()),
     admin.from("messages").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("is_test", false).gte("created_at", todayStart.toISOString()),
     admin.from("agent_calls").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", todayStart.toISOString()),
-    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
-    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
+    admin.from("appointments").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
     admin.from("messages").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("is_test", false).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
     admin.from("agent_calls").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
     // CRITICAL FIX: this previously computed over ALL-TIME conversations

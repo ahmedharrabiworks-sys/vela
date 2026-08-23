@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as { channel?: string };
   const { channel } = body;
 
-  if (channel !== "instagram" && channel !== "whatsapp") {
+  if (channel !== "instagram" && channel !== "whatsapp" && channel !== "website") {
     return NextResponse.json({ success: false, message: "Invalid channel" }, { status: 400 });
   }
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     await admin.from("tenant_config")
       .update({ instagram_connected: false, instagram_username: "", instagram_access_token: "", instagram_business_id: "" })
       .eq("tenant_id", tenant.id);
-  } else {
+  } else if (channel === "whatsapp") {
     // Deactivate all active whatsapp_accounts rows for this tenant
     await admin.from("whatsapp_accounts")
       .update({ is_active: false })
@@ -37,6 +37,20 @@ export async function POST(req: NextRequest) {
     await admin.from("tenant_config")
       .update({ whatsapp_connected: false, whatsapp_phone: "", whatsapp_waba_id: null })
       .eq("tenant_id", tenant.id);
+  } else {
+    // Round M FIX 12: Website has no single tenant_config aggregate flag
+    // like instagram_connected/whatsapp_connected -- "connected" is
+    // computed live as ANY of this tenant's websites having is_published
+    // true (see channels/page.tsx's loadStatus). This is deliberately the
+    // GLOBAL/aggregate switch, not a per-site action: it unpublishes EVERY
+    // one of the tenant's sites at once, mirroring what disconnecting
+    // Instagram/WhatsApp does at the tenant level. Per-site reconnect still
+    // happens individually in Website Builder afterward (sets is_published
+    // back to true for just that one site), untouched by this route.
+    await admin.from("websites")
+      .update({ is_published: false })
+      .eq("tenant_id", tenant.id)
+      .eq("is_published", true);
   }
 
   return NextResponse.json({ success: true });

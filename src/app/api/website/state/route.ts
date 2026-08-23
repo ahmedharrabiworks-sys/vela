@@ -43,12 +43,22 @@ export async function GET(_req: NextRequest) {
     site = data as typeof site;
   }
 
-  // All websites for this tenant (project sidebar)
-  const { data: allSites } = await admin
+  // All websites for this tenant (project sidebar) -- Round M FIX 10: a
+  // soft-deleted (Recycle Bin) site must never appear in this list. Falls
+  // back to unfiltered if the deleted_at migration hasn't run yet.
+  let { data: allSites, error: allSitesErr } = await admin
     .from("websites")
     .select("id, name, slug, is_published, updated_at")
     .eq("tenant_id", tenant.id)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false });
+  if (allSitesErr?.code === "42703" || allSitesErr?.code === "PGRST204") {
+    ({ data: allSites } = await admin
+      .from("websites")
+      .select("id, name, slug, is_published, updated_at")
+      .eq("tenant_id", tenant.id)
+      .order("updated_at", { ascending: false }));
+  }
   const projects = (allSites ?? []).map((s: { id: string; name: string | null; slug: string | null; is_published: boolean; updated_at: string | null }) => ({
     id: s.id,
     name: s.name,

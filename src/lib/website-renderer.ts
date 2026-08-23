@@ -86,6 +86,17 @@ function darkenHex(hex: string, amount: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+// Round M FIX 4: same perceived-brightness formula already used in
+// website-design-system.ts for heading/accentFg contrast checks -- one
+// local copy here since this file doesn't import that module's internals.
+function perceivedBrightness(hex: string): number {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return 128;
+  const num = parseInt(m[1], 16);
+  const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 // ── CSS generator ─────────────────────────────────────────────────────────────
 function buildCss(t: DesignTokens): string {
   const isDark = t.dark;
@@ -307,7 +318,18 @@ button,input,select,textarea{font-family:inherit;}
   // orange-accented site gets a deep warm brown-black band, a teal site
   // gets a deep teal-black band, etc. -- always a real shade of that site's
   // own palette, never an independent color.
-  --footer-bg:${isDark ? t.bg : darkenHex(t.accent, 0.82)};
+  // Round M FIX 4: the isDark===true branch used to trust t.bg directly,
+  // unchecked -- isDark and bg are two independently LLM-supplied fields
+  // (DesignDNA has no cross-validation between them, same class of gap the
+  // heading-vs-bg fix already closed elsewhere in resolveDesignDNA), so a
+  // model emitting isDark:true with a genuinely light bg silently produced
+  // a LIGHT --footer-bg. Every consumer of this variable (.ws-footer,
+  // .ws-stats and its stat labels/values -- see below) hardcodes light text
+  // assuming a dark backdrop, so that combination rendered near-invisible
+  // "98% CLIENT SATISFACTION"-style stats. Falls back to the same
+  // darkened-accent derivation used for the non-dark case whenever t.bg
+  // doesn't actually clear a basic brightness bar for a dark band.
+  --footer-bg:${isDark && perceivedBrightness(t.bg) < 100 ? t.bg : darkenHex(t.accent, 0.82)};
   --fs-display:clamp(3rem,10vw,8rem);
   --fs-hero-xl:clamp(2.5rem,5vw,4rem);
   --fs-h2:clamp(1.75rem,3vw,2.5rem);

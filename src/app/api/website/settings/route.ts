@@ -149,9 +149,53 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json(updated);
 }
 
+// ── PATCH /api/website/settings ───────────────────────────────────────────────
+// Round M FIX 10: restore path for the Recycle Bin -- mirrors this same
+// file's DELETE handler (soft-delete) and conversations/[id]/route.ts's own
+// PATCH {restore:true} convention.
+export async function PATCH(req: NextRequest) {
+  const body = await req.json().catch(() => ({})) as { websiteId?: string; restore?: boolean };
+
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const admin = createSupabaseAdmin() as AdminClient;
+
+  const { data: tenant } = await admin
+    .from("tenants").select("id").eq("owner_id", user.id).maybeSingle();
+  if (!tenant?.id) return NextResponse.json({ error: "No tenant found" }, { status: 404 });
+
+  const websiteId = typeof body.websiteId === "string" ? body.websiteId.trim() : "";
+  if (!websiteId || !body.restore) return NextResponse.json({ error: "websiteId and restore required" }, { status: 400 });
+
+  const { data: site } = await admin
+    .from("websites")
+    .select("id")
+    .eq("id", websiteId)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+  if (!site) return NextResponse.json({ error: "Website not found" }, { status: 404 });
+
+  const { error: restoreErr } = await admin
+    .from("websites")
+    .update({ deleted_at: null })
+    .eq("id", websiteId);
+  if (restoreErr) {
+    console.error("[website/settings] restore error:", restoreErr.message);
+    return NextResponse.json({ error: "Failed to restore. Please try again." }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
 // ── DELETE /api/website/settings ──────────────────────────────────────────────
+// ?permanent=true (Round M FIX 10) -- Delete Permanently from the Recycle
+// Bin, same query-param convention already used by conversations' own
+// DELETE ?hard=true. Without it, this soft-deletes (see below).
 export async function DELETE(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as { websiteId?: string };
+  const permanent = new URL(req.url).searchParams.get("permanent") === "true";
 
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -175,10 +219,42 @@ export async function DELETE(req: NextRequest) {
     .maybeSingle();
   if (!site) return NextResponse.json({ error: "Website not found" }, { status: 404 });
 
-  // Delete version history first (FK constraint)
-  await admin.from("website_versions").delete().eq("website_id", websiteId);
-  // Delete the website record
-  await admin.from("websites").delete().eq("id", websiteId);
+  if (permanent) {
+    // Real, irreversible hard delete -- only ever reached from Settings ->
+    // Recycle Bin -> "Delete Permanently", same confirmation-modal pattern
+    // as every other entity type there.
+    await admin.from("website_versions").delete().eq("website_id", websiteId);
+    const { error: hardDeleteErr } = await admin.from("websites").delete().eq("id", websiteId);
+    if (hardDeleteErr) {
+      console.error("[website/settings] permanent delete error:", hardDeleteErr.message);
+      return NextResponse.json({ error: "Failed to delete. Please try again." }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // Round M FIX 10: brought in line with the existing Recycle Bin pattern
+  // already used for Leads/Conversations/Appointments -- deleting a site
+  // now soft-deletes (sets deleted_at) instead of immediately, permanently
+  // destroying the row and its entire version history. Version history is
+  // deliberately preserved (not deleted) so Restore brings back everything,
+  // not just an empty shell. list/state/generate's "existing websites"
+  // query and the public /site/[tenantId] route all now filter deleted_at
+  // IS NULL, so a soft-deleted site stops resolving publicly immediately
+  // (matching what a hard delete used to do) while remaining fully
+  // restorable from Settings -> Recycle Bin.
+  const { error: deleteErr } = await admin
+    .from("websites")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", websiteId);
+
+  if (deleteErr?.code === "PGRST204") {
+    console.error("[website/settings] websites.deleted_at column missing — run the pending migration. Refusing to hard-delete instead.");
+    return NextResponse.json({ error: "Delete isn't available yet — a pending database update is needed. Please try again shortly." }, { status: 500 });
+  }
+  if (deleteErr) {
+    console.error("[website/settings] soft-delete error:", deleteErr.message);
+    return NextResponse.json({ error: "Failed to delete. Please try again." }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

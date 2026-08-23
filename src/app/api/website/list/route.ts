@@ -20,11 +20,24 @@ export async function GET(_req: NextRequest) {
 
   if (!tenant?.id) return NextResponse.json({ sites: [] });
 
-  const { data: rows, error } = await admin
+  // Round M FIX 10: soft-deleted sites (Recycle Bin) must never show up in
+  // the normal Sites list. Falls back to an unfiltered query if the
+  // deleted_at migration hasn't run yet, rather than breaking the whole
+  // list over one optional column.
+  let { data: rows, error } = await admin
     .from("websites")
     .select("id, name, slug, is_published, updated_at, published_at")
     .eq("tenant_id", tenant.id)
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false });
+
+  if (error?.code === "42703" || error?.code === "PGRST204") {
+    ({ data: rows, error } = await admin
+      .from("websites")
+      .select("id, name, slug, is_published, updated_at, published_at")
+      .eq("tenant_id", tenant.id)
+      .order("updated_at", { ascending: false }));
+  }
 
   if (error) {
     console.error("[website/list] query error:", error.message);
