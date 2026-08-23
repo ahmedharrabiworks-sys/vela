@@ -2255,16 +2255,38 @@ export default function WebsitePage() {
   const handleToggleEditMode = useCallback(() => {
     if (building || !built) return;
     if (editMode) {
-      // Exiting: flush any pending debounced save immediately
-      if (editSaveTimerRef.current) {
-        clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = null;
+      // FIX 3 (round L): the floating edit panel's textarea only sends its
+      // value to the parent on blur (EDIT_SCRIPT's `pe()` -> postMessage,
+      // see the 'vela-edit' case in the message listener below). Clicking
+      // this Done button shifts focus out of the iframe, firing that blur
+      // (and queuing the postMessage) synchronously during the click's
+      // mousedown phase -- but postMessage delivery is always a macrotask,
+      // so it cannot arrive before this onClick handler finishes in the
+      // SAME tick. Tearing down editSpecRef/editMode immediately here (the
+      // old behavior) meant the final edit's message either found
+      // editSpecRef.current already null (the listener's `if (!cur)
+      // return` silently drops it) or arrived after the listener itself
+      // had unmounted (its effect cleans up as soon as editMode flips to
+      // false) -- the last edit never reached the server, and the
+      // immediate flush below (reading the stale editSpecRef.current from
+      // before the message arrived) then overwrote the visible preview
+      // with that stale version -- exactly the "Done reverts my edit" bug.
+      // Deferring teardown by one tick lets that already-queued postMessage
+      // (and the still-mounted listener that applies it and schedules its
+      // own debounced save) land first; the flush below is now
+      // unconditional (not gated on a timer having been pending) so
+      // whatever editSpecRef.current ends up holding always gets persisted.
+      setTimeout(() => {
+        if (editSaveTimerRef.current) {
+          clearTimeout(editSaveTimerRef.current);
+          editSaveTimerRef.current = null;
+        }
         if (editSpecRef.current) void handleSaveEdit(editSpecRef.current);
-      }
-      editSpecRef.current = null;
-      setEditSpec(null);
-      setUndoStack([]);
-      setEditMode(false);
+        editSpecRef.current = null;
+        setEditSpec(null);
+        setUndoStack([]);
+        setEditMode(false);
+      }, 60);
     } else {
       // Entering: parse spec from current preview HTML
       const pHtml = previewVersionHtml ?? htmlRef.current;

@@ -24,7 +24,13 @@ export const dynamic = "force-dynamic";
  * Channel behavior:
  *   whatsapp  — saves to DB + sends via Meta Graph API v22.0 to the customer's phone number
  *   instagram — saves to DB + sends via Meta Graph API v22.0 to the customer's Instagram PSID
- *   website   — saves to DB only (widget is stateless; customer won't see it live)
+ *   website   — saves to DB, widget polling still applies (see below) PLUS a real email to the
+ *               lead's address via Resend when one is on file (round L FIX 6) -- most customers
+ *               never reopen the exact widget session, so email is the real delivery path for
+ *               this channel now, not just a same-session poll. SMS is NOT wired (no working
+ *               outbound Twilio Messages integration exists anywhere in this codebase -- only a
+ *               now-dead Twilio Verify/OTP flow for a retired WhatsApp-connect step) -- flagged
+ *               via channelNote when a phone number exists but no email does, rather than faked.
  */
 export async function POST(
   req: NextRequest,
@@ -46,7 +52,7 @@ export async function POST(
   // Verify ownership — same join pattern as conversations/[id]/resolve
   const { data: conv, error: convErr } = await admin
     .from("conversations")
-    .select("id, tenant_id, channel, customer_name, lead_id, tenants!inner(owner_id)")
+    .select("id, tenant_id, channel, customer_name, lead_id, tenants!inner(owner_id, business_name)")
     .eq("id", params.id)
     .single();
 
@@ -56,6 +62,8 @@ export async function POST(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ownerId = (conv.tenants as any)?.owner_id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const businessName = ((conv.tenants as any)?.business_name as string | undefined) || "the business";
   if (ownerId !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -111,12 +119,57 @@ export async function POST(
   // ── Channel delivery ──────────────────────────────────────────────────────
 
   if (channel === "website") {
-    // FIX 3: the widget now polls for new messages while open (see
+    // FIX 3: the widget still polls for new messages while open (see
     // chat-client.tsx), so this IS delivered to a visitor with the widget
-    // currently open, within the poll interval -- not instant push, but a
-    // real delivery, not silently history-only as before. A visitor who has
-    // since closed the widget will see it the next time they reopen it
-    // (full history restore, FIX 4), same as any other channel.
+    // currently open, within the poll interval. A visitor who has since
+    // closed the widget only ever saw it on next reopen (full history
+    // restore) -- most real customers never do that, so round L FIX 6 adds
+    // a real primary delivery path: email the lead's address on file via
+    // Resend (the exact fetch-based pattern already used in
+    // submit-form/route.ts's sendFormNotification). SMS is intentionally
+    // NOT attempted here -- there is no working outbound Twilio Messages
+    // integration anywhere in this codebase (only a dead Twilio Verify/OTP
+    // flow for a retired WhatsApp-connect step), so a phone-only lead gets
+    // an honest channelNote instead of a faked send.
+    let customerEmail: string | null = null;
+    let customerPhone: string | null = null;
+    if (conv.lead_id) {
+      const { data: lead } = await admin
+        .from("leads")
+        .select("email, phone")
+        .eq("id", conv.lead_id)
+        .maybeSingle();
+      const l = lead as { email: string | null; phone: string | null } | null;
+      customerEmail = l?.email ?? null;
+      customerPhone = l?.phone ?? null;
+    }
+
+    if (!customerEmail) {
+      return NextResponse.json({
+        ok: true,
+        channelNote: customerPhone
+          ? "No email on file for this customer. SMS delivery isn't set up yet (needs a Twilio integration) -- message saved to chat history only for now."
+          : "No email or phone on file for this customer -- message saved to chat history only. They'll see it if they reopen the same website chat.",
+      });
+    }
+
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json({
+        ok: true,
+        channelNote: "Email delivery isn't connected yet (RESEND_API_KEY not set) -- message saved to chat history only for now.",
+      });
+    }
+
+    try {
+      await sendCustomerEmail({ toEmail: customerEmail, businessName, text: text.trim() });
+    } catch (err) {
+      console.error("[conversations/reply] Resend send to customer failed:", err);
+      return NextResponse.json({
+        ok: true,
+        channelError: "Message saved but email delivery failed.",
+      });
+    }
+
     return NextResponse.json({ ok: true });
   }
 
@@ -211,4 +264,36 @@ export async function POST(
     ok: true,
     channelNote: `Message saved. Channel '${channel}' doesn't support outbound replies yet.`,
   });
+}
+
+// Round L FIX 6: same raw-fetch Resend pattern already established in
+// submit-form/route.ts's sendFormNotification -- reuses RESEND_API_KEY/
+// RESEND_FROM_EMAIL, the same env vars, the same failure semantics (throws
+// on a non-ok response so the caller can report channelError without ever
+// treating a failed send as a fatal error for the request as a whole).
+async function sendCustomerEmail(p: { toEmail: string; businessName: string; text: string }) {
+  const from = process.env.RESEND_FROM_EMAIL ?? "Vela <onboarding@resend.dev>";
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization:  `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to:      p.toEmail,
+      subject: `New message from ${p.businessName}`,
+      html: `
+        <p style="margin:0 0 16px;font-family:sans-serif;font-size:14px;color:#111111;">You have a new message from <strong>${p.businessName}</strong>:</p>
+        <p style="margin:0 0 20px;padding:14px 16px;background:#F9FAFB;border-radius:8px;font-family:sans-serif;font-size:14px;color:#111111;white-space:pre-wrap;">${p.text}</p>
+        <p style="margin-top:24px;font-size:12px;color:#9CA3AF;font-family:sans-serif;">Reply directly to this business through the chat on their website.</p>
+      `,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Resend ${res.status}: ${body}`);
+  }
 }

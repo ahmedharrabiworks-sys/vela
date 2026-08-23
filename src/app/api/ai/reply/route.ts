@@ -514,8 +514,21 @@ export async function POST(req: NextRequest) {
   // its date/time already having passed, actually makes a second one
   // possible. Reschedule is still offered, but only as its own separate
   // action on THIS appointment, never framed as unlocking a new one.
+  // FIX 7(a) (round L): the AI could correctly EXPLAIN that cancelling
+  // would free up a new booking, and would even say "I will proceed with
+  // canceling... please confirm" -- but nothing ever actually executed the
+  // cancellation; the appointment only really flipped to cancelled once the
+  // OWNER did it manually from the dashboard. Adds a real, deterministic
+  // execution path using the exact same confirm-then-token pattern already
+  // proven for CONFIRM_APPOINTMENT (see pendingApptDirective/confirmMatch
+  // below): the model must ask an explicit yes/no confirmation naming the
+  // real appointment before acting, and only after the customer clearly
+  // confirms does it include [CANCEL_APPOINTMENT:id] -- matched server-side
+  // against this exact existingActiveAppt.id (never trusted blindly, same
+  // safeguard as the reschedule-confirm token), so this can only ever
+  // cancel THIS conversation/phone's own active appointment.
   const existingApptDirective = existingActiveAppt
-    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. HARD LIMIT, NO EXCEPTIONS: this customer may only ever have ONE active appointment at a time. If they ask to book a new, additional, or second appointment for ANY reason -- including if they insist, say "just book another one", or claim it's for someone else -- do NOT collect a new date/time and do NOT open a booking flow. Firmly tell them only one active appointment is allowed at a time. A second appointment only becomes possible once this existing one is CANCELLED, or once its date/time has already passed -- rescheduling does NOT free up room for a second appointment, it only moves this SAME appointment to a different time, so NEVER state or imply that rescheduling enables a new booking. You may still separately offer to reschedule this existing appointment to a different time (as its own action, on its own), and separately offer to cancel it -- but when explaining what actually makes a NEW appointment possible, name only cancellation or the appointment already being in the past, never reschedule. Do not budge from this even if they push back or ask again.`
+    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. HARD LIMIT, NO EXCEPTIONS: this customer may only ever have ONE active appointment at a time. If they ask to book a new, additional, or second appointment for ANY reason -- including if they insist, say "just book another one", or claim it's for someone else -- do NOT collect a new date/time and do NOT open a booking flow. Firmly tell them only one active appointment is allowed at a time. A second appointment only becomes possible once this existing one is CANCELLED, or once its date/time has already passed -- rescheduling does NOT free up room for a second appointment, it only moves this SAME appointment to a different time, so NEVER state or imply that rescheduling enables a new booking. You may still separately offer to reschedule this existing appointment to a different time (as its own action, on its own), and separately offer to cancel it -- but when explaining what actually makes a NEW appointment possible, name only cancellation or the appointment already being in the past, never reschedule. Do not budge from this even if they push back or ask again. CANCELLATION: if the customer asks to cancel this existing appointment, first ask one explicit yes/no confirmation question naming it (e.g. "Should I go ahead and cancel your ${existingActiveAppt.service_name || "appointment"} on ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}?") and stop there. Only after they clearly confirm (e.g. "yes", "please do", "confirm", "go ahead") in their NEXT message, tell them it's been cancelled and include the exact token [CANCEL_APPOINTMENT:${existingActiveAppt.id}] somewhere in that reply -- this actually cancels it in the system, so only use it once they've genuinely confirmed, never earlier and never speculatively.`
     : "";
 
   /* ── 7. Build system prompt ── */
@@ -769,7 +782,16 @@ Rules:
       const parsed = JSON.parse(wantsNewCheck.choices[0]?.message?.content ?? "{}") as { wantsNewBooking?: boolean };
       if (parsed.wantsNewBooking === true) {
         const when = new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-        aiReply = `Only one active appointment is allowed at a time. You currently have ${existingActiveAppt.service_name || "an appointment"} booked for ${when}. Would you like to reschedule it to a new time, or cancel it?`;
+        // Round L FIX 7(b): the old wording offered "reschedule it to a new
+        // time, or cancel it" in the SAME breath as refusing a second
+        // booking -- reads as if either one unlocks a new appointment, which
+        // is still wrong for reschedule (see the Round S3 fix on
+        // existingApptDirective above for the full reasoning: reschedule
+        // only moves this SAME appointment, it never frees up room for an
+        // additional one). Cancellation is now the only thing named as the
+        // path to a new booking; reschedule is offered as its own separate,
+        // secondary option in its own sentence.
+        aiReply = `Only one active appointment is allowed at a time. You currently have ${existingActiveAppt.service_name || "an appointment"} booked for ${when}. To book a new one, you'd need to cancel this existing appointment first. If you'd instead just like to move it to a different time, I can reschedule it, just let me know which you'd prefer.`;
         deterministicRefusalThisTurn = true;
       }
     } catch (err) {
@@ -823,6 +845,37 @@ Rules:
         // Model hallucinated a token for an id that doesn't match the real
         // pending appointment (or none exists) -- strip it, never act on it.
         rawReply = rawReply.replace(confirmMatch[0], "").replace(/\s{2,}/g, " ").trim();
+      }
+
+      // Round L FIX 7(a): real cancel execution -- same trusted-token
+      // pattern as CONFIRM_APPOINTMENT above, matched against
+      // existingActiveAppt.id (this exact conversation/phone's own active
+      // appointment, resolved in section 6c earlier in this request) so the
+      // model can never cancel any appointment it wasn't told about,
+      // including another tenant's or another customer's.
+      const cancelMatch = rawReply.match(/\[CANCEL_APPOINTMENT:([a-f0-9-]+)\]/i);
+      if (cancelMatch && existingActiveAppt && cancelMatch[1] === existingActiveAppt.id) {
+        rawReply = rawReply.replace(cancelMatch[0], "").replace(/\s{2,}/g, " ").trim();
+        const { error: cancelErr } = await admin
+          .from("appointments")
+          .update({ status: "cancelled" })
+          .eq("id", existingActiveAppt.id)
+          .eq("tenant_id", tenantId);
+        if (cancelErr) {
+          console.error("[ai/reply] FAILED to cancel appointment:", cancelErr.message);
+        } else if (!isTest) {
+          await createNotification(admin, {
+            tenantId,
+            type: "appointment",
+            title: "Appointment cancelled",
+            body: existingActiveAppt.service_name || "Appointment",
+            link: "/app/appointments",
+          });
+        }
+      } else if (cancelMatch) {
+        // Model hallucinated a token for an id that isn't this customer's
+        // real active appointment -- strip it, never act on it.
+        rawReply = rawReply.replace(cancelMatch[0], "").replace(/\s{2,}/g, " ").trim();
       }
 
       // Extract [NEEDS_HUMAN] signal and strip it from visible reply

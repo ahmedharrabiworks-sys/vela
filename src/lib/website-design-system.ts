@@ -265,6 +265,16 @@ const LEGACY: Record<string, NewPresetName> = {
   "clinical":         "medical",
 };
 
+// Round L FIX 4: shared perceived-brightness formula (same weights already
+// used below for accentFg) -- a single helper so every contrast decision in
+// this file uses the same, consistent threshold.
+function perceivedBrightness(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 export function resolveTokens(preset: PresetName, accentOverride?: string): DesignTokens {
   const effective = (LEGACY[preset as string] ?? preset) as NewPresetName;
   const tok = { ...BASE[effective] ?? BASE["realestate"] };
@@ -274,6 +284,13 @@ export function resolveTokens(preset: PresetName, accentOverride?: string): Desi
     const g = parseInt(accentOverride.slice(3, 5), 16);
     const b = parseInt(accentOverride.slice(5, 7), 16);
     tok.accentAlpha = `rgba(${r},${g},${b},0.09)`;
+    // Round L FIX 4: accentFg was left at the PRESET's hardcoded default,
+    // which assumed the preset's OWN accent color -- an overridden accent
+    // (a real tenant/business color) can have very different brightness,
+    // leaving e.g. white button text on a light custom accent unreadable.
+    // Recomputed here with the same formula/threshold resolveDesignDNA
+    // already uses for its own accentFg below.
+    tok.accentFg = perceivedBrightness(accentOverride) > 186 ? "#111111" : "#FFFFFF";
   }
   return tok;
 }
@@ -366,13 +383,32 @@ export function resolveDesignDNA(dna: DesignDNA): DesignTokens {
   const hFont = dna.headingFont && APPROVED_FONTS[dna.headingFont] ? dna.headingFont : null;
   const bFont = dna.bodyFont    && APPROVED_FONTS[dna.bodyFont]    ? dna.bodyFont    : null;
 
+  const resolvedBg   = hexOk(dna.palette?.bg)    ? dna.palette.bg    : base.bg;
+  const resolvedText = hexOk(dna.palette?.text)  ? dna.palette.text  : base.text;
+  // Round L FIX 4 (confirmed root cause of unreadable generated text):
+  // `heading` below comes from `...base` (the mood's BASE preset, e.g.
+  // "fitness" for bold-energetic/tech-sharp), which was designed as a
+  // matched pair with THAT preset's OWN bg. coerceDesignDNA (generate/
+  // route.ts) can force a mood onto a DIFFERENT bg than its base preset's
+  // (bold-energetic/tech-sharp both map to "fitness", whose heading is
+  // white for its own near-black bg, while coerceDesignDNA gives both
+  // moods a forced-light bg) -- base.heading then lands on the wrong
+  // background with zero contrast. Checked here against the REAL resolved
+  // bg; falls back to `text` (already a same-mood-matched, trustworthy
+  // pair with resolvedBg) when the inherited heading color doesn't clear a
+  // basic brightness-difference bar.
+  const bgLum = perceivedBrightness(resolvedBg);
+  const headingLum = perceivedBrightness(base.heading);
+  const heading = Math.abs(bgLum - headingLum) < 100 ? resolvedText : base.heading;
+
   return {
     ...base,
     preset:           baseName,
     dark:             dna.isDark ?? base.dark,
-    bg:               hexOk(dna.palette?.bg)    ? dna.palette.bg    : base.bg,
-    text:             hexOk(dna.palette?.text)  ? dna.palette.text  : base.text,
+    bg:               resolvedBg,
+    text:             resolvedText,
     muted:            hexOk(dna.palette?.muted) ? dna.palette.muted : base.muted,
+    heading,
     accent,
     accentFg:         accentLum > 186 ? "#111111" : "#FFFFFF",
     accentAlpha:      `rgba(${r},${g},${b},0.10)`,

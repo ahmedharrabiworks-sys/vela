@@ -183,6 +183,54 @@ function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, 
   return [];
 }
 
+// Round L FIX 5 (part 2): fetchSpecImages below always re-fetches EVERY
+// image-bearing section's photo on every edit-mode call, even sections
+// whose imageQuery text is byte-identical to before -- the cross-site/
+// same-page dedup set (usedUrls) then sees that section's PREVIOUS photo
+// as "already used" and deliberately picks a DIFFERENT one for the exact
+// same query, so an edit request naming only ONE section could still
+// silently swap another section's photo. Confirmed live: asking to change
+// only the hero headline also changed two other sections' images even
+// though touchedSectionIndices correctly kept their CONTENT untouched.
+// This extracts the REAL existing photo URLs straight out of the
+// currently-rendered HTML (same technique already proven in save-edit/
+// route.ts's extractImageMap, for the manual inline editor's identical
+// "don't re-roll images nobody touched" need) so the edit-mode branch can
+// override the freshly-fetched map for any untouched section index back
+// to its real existing photo. Same section-type coverage as that existing
+// implementation (hero variants, about, gallery, listings-grid) -- other
+// image-bearing component types keep today's existing re-fetch behavior,
+// same limitation the manual editor's own version already has.
+function extractExistingImageMap(spec: WebsiteSpec, html: string): ImageMap {
+  const images: ImageMap = {};
+  const SINGLE_IMG = new Set(["hero", "hero-fullbleed", "hero-split", "hero-minimal", "about", "about-story"]);
+  const MULTI_IMG = new Set(["gallery", "gallery-grid", "listings-grid"]);
+  const SECTION_ANCHOR: Record<string, string> = {
+    "hero": "hero", "hero-fullbleed": "hero", "hero-split": "hero", "hero-minimal": "hero",
+    "about": "about", "about-story": "about",
+    "gallery": "gallery", "gallery-grid": "gallery",
+    "listings-grid": "listings",
+  };
+  for (let i = 0; i < spec.sections.length; i++) {
+    const s = spec.sections[i];
+    const anchor = SECTION_ANCHOR[s.type];
+    if (!anchor) continue;
+    const anchorIdx = html.indexOf(`id="${anchor}"`);
+    if (anchorIdx === -1) continue;
+    const slice = html.slice(anchorIdx, anchorIdx + 30_000);
+    if (MULTI_IMG.has(s.type)) {
+      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+)"/g;
+      let m: RegExpExecArray | null;
+      let j = 0;
+      while ((m = imgRe.exec(slice)) !== null) images[`${i}_${j++}`] = m[1];
+    } else if (SINGLE_IMG.has(s.type)) {
+      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+)"/);
+      if (m) images[String(i)] = m[1];
+    }
+  }
+  return images;
+}
+
 // ── Fetch all images for a spec ───────────────────────────────────────────────
 // Runs sequentially (not parallel) so the shared usedUrls set prevents
 // duplicate images appearing on the same page or across sites (FIX 3).
@@ -2348,11 +2396,25 @@ function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string 
   const imageInstruction = noPhotoMode
     ? `IMAGES: This site has NO photography and the owner did not ask for stock photos. Do NOT add imageQuery or imageQueries to any section. Do NOT add gallery-grid or any section that depends on photography. If the existing spec has imageQuery/imageQueries fields, remove them. Use typography, color, and icons instead.`
     : `IMAGE QUERIES — DO NOT CHANGE UNLESS ASKED: Copy every section's existing imageQuery/imageQueries through UNCHANGED by default. Only write a new imageQuery/imageQueries value for a section if EITHER (a) the change request specifically concerns images/photos (e.g. "change the photo", "add more images", "use a different hero picture"), OR (b) you are rewriting that section's entire content as the requested change (e.g. the request replaces what that section is about, not just a wording tweak) and the old image query no longer matches the new content. A section the owner did not mention, and whose content you are not rewriting, MUST keep its exact existing imageQuery/imageQueries value — do not "refresh" or "improve" it as a side effect.${noPhotoNote}`;
+  // Round L FIX 5: the round-5 fix above only ever addressed imageQuery
+  // drift via a prompt instruction -- confirmed live that the SAME class of
+  // bug still happens for other fields (an unrelated section's text or
+  // image changing when only one specific section/element was named), since
+  // this edit call always regenerates the ENTIRE spec from scratch
+  // (temperature 0.3, non-zero) and nothing server-side ever checked
+  // whether sections the request didn't mention actually stayed identical.
+  // touchedSectionIndices is a real, code-enforced backstop: the model
+  // must now self-report exactly which section indices it intentionally
+  // changed, and the route below reverts every OTHER section back to its
+  // exact existing content regardless of what the model put there --
+  // whether it drifted through this instruction or not, no untouched
+  // section can ever end up different, because it defers to the code check, not just the prompt.
   return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
 STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
 CONTENT RULES: Never invent commercial terms the owner did not state — no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided. Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in copy — use a period, comma, or plain hyphen instead.
-${imageInstruction}`;
+${imageInstruction}
+SCOPE — MANDATORY: the "Current spec" sections array is 0-indexed. Determine exactly which section index(es) the requested change actually concerns (usually just one). Copy every OTHER section through with byte-for-byte identical content, imageQuery/imageQueries, and every other field -- do not paraphrase, "improve", reformat, or refresh anything in a section the request did not name or clearly imply. In your JSON response, include a top-level "touchedSectionIndices" array listing ONLY the 0-based index/indices of the section(s) you actually changed (e.g. "touchedSectionIndices": [2]). If you are adding or removing a section (changing the array length), still list the indices of any EXISTING sections whose content you intentionally changed, if any -- an empty array means every existing section's content is unchanged from the current spec.`;
 }
 
 // ── Conversational intake: DECISION only (ask vs generate) ───────────────────
@@ -2703,6 +2765,13 @@ export async function POST(req: NextRequest) {
     // Phase 2e — nav/footer variants (default to standard; overridden in initial-generate path)
     let selectedNavVariant = "";
     let selectedFooterVariant = "";
+    // Round L FIX 5 (part 2): set only in the edit-mode revise branch below,
+    // read later where imageMap is fetched -- lets that later code reuse
+    // real existing photos for sections the edit didn't touch instead of
+    // re-fetching (and possibly dedup-swapping) them. Declared at this
+    // outer scope because the edit-mode branch's own locals go out of
+    // scope before the imageMap fetch runs.
+    let editUntouchedImageMap: ImageMap | null = null;
 
     if (currentHtml) {
       // ── Edit mode: apply change to existing site ──────────────────────────
@@ -2744,14 +2813,77 @@ export async function POST(req: NextRequest) {
           [{ role: "system", content: buildReviseSystem(!!heroUpload, noPhotoMode) }, { role: "user", content: revisionPrompt }],
           0.3,
           "buildReviseSystem",
-        ) as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string };
+        ) as Partial<WebsiteSpec> & { designDNA?: unknown; category?: string; touchedSectionIndices?: unknown };
         const incomingDNA = parsed.designDNA ? coerceDesignDNA(parsed.designDNA, tenant?.id || businessName) : undefined;
+        // Round L FIX 5: real, code-enforced scoping backstop -- see the
+        // SCOPE instruction in buildReviseSystem above. Only enforced when
+        // the section COUNT is unchanged (an add/delete legitimately
+        // changes the array length, and there is no reliable way to map
+        // old index -> new index in that case, so this backstop steps
+        // aside and trusts the model for that turn, same as before this
+        // fix). When the count matches, every section index the model
+        // didn't self-report as touched is forced back to its EXACT
+        // existing content -- a real code check, not just a prompt
+        // instruction, so drift the model introduces despite the
+        // instruction (a paraphrased headline, a "refreshed" image query on
+        // a section nobody asked about) can never reach the saved spec.
+        const revisedSections = parsed.sections ?? existing.sections;
+        let enforcedSections = revisedSections;
+        if (revisedSections.length === existing.sections.length) {
+          const touched = new Set(
+            Array.isArray(parsed.touchedSectionIndices)
+              ? parsed.touchedSectionIndices.filter((i): i is number => typeof i === "number")
+              : []
+          );
+          enforcedSections = revisedSections.map((sec, i) => (touched.has(i) ? sec : existing.sections[i]));
+          // Round L FIX 5 (part 2): live-confirmed the self-report alone
+          // isn't enough -- GPT sometimes marks a section "touched" (and
+          // regenerates its imageQuery) even while leaving that section's
+          // actual visible content byte-identical, which slipped the new
+          // imageQuery straight past the enforcement above. This second,
+          // independent pass ignores touchedSectionIndices entirely and
+          // compares each section's real content (everything except
+          // imageQuery/imageQueries, which per the SCOPE instruction's own
+          // schema rule are always siblings of content, never inside it) --
+          // whenever that's genuinely unchanged, imageQuery/imageQueries are
+          // force-pinned back to the existing values regardless of what the
+          // model did with them, so a section's photo can only ever change
+          // when something about that section actually, visibly changed.
+          enforcedSections = enforcedSections.map((sec, i) => {
+            const ex = existing.sections[i] as Record<string, unknown> | undefined;
+            const cur = sec as Record<string, unknown>;
+            if (!ex) return sec;
+            const strip = (s: Record<string, unknown>) => {
+              const { imageQuery, imageQueries, ...rest } = s;
+              return rest;
+            };
+            const visibleContentSame = JSON.stringify(strip(cur)) === JSON.stringify(strip(ex));
+            if (!visibleContentSame) return sec;
+            return { ...cur, imageQuery: ex.imageQuery, imageQueries: ex.imageQueries };
+          }) as typeof enforcedSections;
+          // Real existing photo URLs, read where imageMap is fetched
+          // further below to override the freshly-fetched map for sections
+          // whose imageQuery/imageQueries (after the pinning pass above)
+          // ended up IDENTICAL to before -- a section pinned above always
+          // qualifies here, since its query can no longer have changed.
+          const existingImages = extractExistingImageMap(existing, currentHtml);
+          const imageQueryUnchanged = (i: number): boolean => {
+            const a = enforcedSections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> } | undefined;
+            const b = existing.sections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> } | undefined;
+            if (!a || !b) return false;
+            return getImageQuery(a) === getImageQuery(b)
+              && JSON.stringify(getImageQueries(a)) === JSON.stringify(getImageQueries(b));
+          };
+          editUntouchedImageMap = Object.fromEntries(
+            Object.entries(existingImages).filter(([key]) => imageQueryUnchanged(Number(key.split("_")[0])))
+          );
+        }
         spec = {
           ...existing, ...parsed,
           ...(incomingDNA ? { designDNA: incomingDNA } : existing.designDNA ? { designDNA: existing.designDNA } : {}),
           ...(parsed.category ?? (existing as { category?: string }).category ? { category: parsed.category ?? (existing as { category?: string }).category } : {}),
           stylePreset: coercePreset(parsed.stylePreset ?? existing.stylePreset),
-          sections: parsed.sections ?? existing.sections,
+          sections: enforcedSections,
         };
       }
     } else {
@@ -3103,6 +3235,15 @@ export async function POST(req: NextRequest) {
       uploadSlot === "logo" ? "hero" : uploadSlot,
       usedUrls
     );
+    // Round L FIX 5 (part 2): override with the REAL existing photo for any
+    // section the edit didn't touch -- see editUntouchedImageMap above.
+    // Applied after fetchSpecImages so a freshly re-fetched (and possibly
+    // dedup-swapped) photo for an untouched section never wins.
+    if (editUntouchedImageMap) {
+      for (const [key, url] of Object.entries(editUntouchedImageMap)) {
+        imageMap[key] = url;
+      }
+    }
 
     // ── Resolve / create the websites record ─────────────────────────────────
     let websiteId: string | null = null;
