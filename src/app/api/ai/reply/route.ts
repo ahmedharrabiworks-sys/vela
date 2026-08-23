@@ -53,10 +53,12 @@ function isTenantRateLimited(tenantId: string): boolean {
 
 // New: per-conversation (or per-IP, before a conversation exists) hourly
 // cap -- catches a single visitor/session flooding messages within a
-// tenant's shared per-minute budget. 30/hour comfortably covers a real,
-// even unusually chatty, customer conversation.
+// tenant's shared per-minute budget. FIX 1 (round R): raised 30 -> 60/hour
+// -- a genuine customer exchange (even an unusually long one) should never
+// come close to this; it exists purely as an abuse ceiling, not a real
+// UX constraint.
 const CONV_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
-const CONV_RATE_LIMIT = 30;
+const CONV_RATE_LIMIT = 60;
 const CONV_WINDOW_MS  = 60 * 60_000;
 
 // Per-tenant daily backstop -- see the real-query check right after tenant
@@ -86,10 +88,13 @@ function getClientIp(req: NextRequest): string {
 // `data.reply` as a normal chat bubble, so a rate-limited request must
 // never surface as a raw {error} JSON body or a visible HTTP failure.
 function gracefulLimitReply(convId: string | null, contactPhone?: string | null): NextResponse {
-  const contact = contactPhone ? ` You can also reach us directly at ${contactPhone}.` : "";
+  // FIX 1 (round R): clear, explicit wording per the round's exact ask --
+  // "reached the conversation limit," not a vague "getting a lot of
+  // messages" that could read as normal small talk from the AI.
+  const contact = contactPhone ? ` You can also contact us directly at ${contactPhone}.` : "";
   return NextResponse.json(
     {
-      reply: `Sorry, I'm getting a lot of messages right now and need a moment to catch up. Please try again shortly.${contact}`,
+      reply: `You've reached the conversation limit for now. Please try again later${contactPhone ? "" : " or contact us directly"}.${contact}`,
       conversationId: convId,
       booked: false,
       booking: null,
@@ -695,8 +700,60 @@ Rules:
   // inserting a brand-new duplicate appointment for the same confirmation
   // (see the guard on that block for the full explanation).
   let pendingApptConfirmedThisTurn = false;
+  // Set true when section 7c's deterministic short-circuit below already
+  // produced the reply for this turn -- skips the main creative completion
+  // call entirely (see that block for why).
+  let deterministicRefusalThisTurn = false;
 
-  if (apiKey) {
+  /* ── 7c. Deterministic duplicate-booking refusal -- FIX 2 (round R) ────────
+     Extensive live testing (17 real requests across many phrasings, both
+     direct API calls and the real widget UI) never reproduced the reported
+     "no response at all" for a rephrased second-appointment request -- the
+     existingApptDirective prompt rule above held up correctly every time.
+     Rather than keep chasing an unreproducible failure, this makes the
+     refusal a hard, code-level guarantee instead of a purely prompt-
+     dependent one: whenever an active appointment exists, a cheap, focused
+     classification call decides ONLY "is this message asking for a new/
+     additional booking" (not the open-ended creative reply), and if so, a
+     fixed, deterministic refusal string is used directly -- the main
+     gpt-4o completion call is skipped entirely for this turn, so there is
+     no way for an LLM-level hiccup (empty completion, moderation refusal,
+     an off-script reply) to ever produce silence or a wrong reply for this
+     specific, narrow case. Any other message (discussing/rescheduling the
+     existing appointment, an unrelated question) still goes through the
+     normal creative reply below, with existingApptDirective still injected
+     for natural conversation about it. */
+  if (apiKey && existingActiveAppt) {
+    try {
+      const openai = new OpenAI({ apiKey });
+      const wantsNewCheck = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `The customer already has one active appointment on file. Look at ONLY their current message below and decide: are they asking to book a NEW, ADDITIONAL, SECOND, or separate appointment (for any stated or unstated reason, including insisting after being told no)? This is NOT true if they are asking about, confirming, rescheduling, or cancelling their EXISTING appointment, or asking something unrelated to booking. Reply ONLY valid JSON: {"wantsNewBooking": true|false}.`,
+          },
+          { role: "user", content: message },
+        ],
+        max_tokens: 20,
+        temperature: 0,
+        response_format: { type: "json_object" },
+      });
+      const parsed = JSON.parse(wantsNewCheck.choices[0]?.message?.content ?? "{}") as { wantsNewBooking?: boolean };
+      if (parsed.wantsNewBooking === true) {
+        const when = new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+        aiReply = `Only one active appointment is allowed at a time. You currently have ${existingActiveAppt.service_name || "an appointment"} booked for ${when}. Would you like to reschedule it to a new time, or cancel it?`;
+        deterministicRefusalThisTurn = true;
+      }
+    } catch (err) {
+      // Best-effort -- a failed classification just means the normal
+      // creative-reply path below runs instead (which still has
+      // existingApptDirective injected), never a broken/blank turn.
+      console.error("[ai/reply] duplicate-booking classification failed:", err);
+    }
+  }
+
+  if (!deterministicRefusalThisTurn && apiKey) {
     try {
       const openai = new OpenAI({ apiKey });
 
@@ -930,7 +987,14 @@ Rules:
   // below can read this turn's extracted name without a second GPT call.
   let extractedCustomerName: string | null = null;
 
-  if (apiKey) {
+  // FIX 2 (round R): a deterministic-refusal turn (section 7c above) is
+  // guaranteed to never be a real booking confirmation -- skip this
+  // extraction call entirely rather than risk it independently
+  // misreading the turn (confirmed live: this extraction can return
+  // booked:true for a refusal-only turn on its own, harmlessly absorbed
+  // downstream by the same-slot/name-conflict guards, but skipping it
+  // here removes that ambiguity completely for this specific case).
+  if (!deterministicRefusalThisTurn && apiKey) {
     try {
       const openai = new OpenAI({ apiKey });
       // FIX 2 (round P): the confirm-before-book prompt change means "Booked

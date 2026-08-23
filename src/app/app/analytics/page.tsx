@@ -56,10 +56,14 @@ function periodSum(dailyCounts: Record<string, number>, days: number, offsetDays
 // counts (periodSum defaults an empty bucket to a real 0, never "missing")
 // -- there is no genuine "no data" case left to represent, so this no
 // longer returns null at all.
-type ChangeResult = { pct: number } | { newCount: number };
+// FIX 4 (round R): isNew replaces the round-Q "newCount" raw delta -- the
+// real current number is already shown by the card's own big value, so
+// the badge only needs a plain "New" label, never a number that could
+// misread as a small increase.
+type ChangeResult = { pct: number } | { isNew: true };
 function computeChange(current: number, prior: number): ChangeResult {
   if (prior === 0 && current === 0) return { pct: 0 };
-  if (prior === 0) return { newCount: current };
+  if (prior === 0) return { isNew: true };
   return { pct: Math.round(((current - prior) / prior) * 100) };
 }
 
@@ -86,27 +90,25 @@ function computeChange(current: number, prior: number): ChangeResult {
 // exists, computeChange above always returns a real, renderable value now
 // -- either a genuine percentage (pct, including a real 0%) or a real
 // absolute increase from a zero base (newCount) -- never hidden.
+// FIX 4 (round R): plain colored text, no arrow icons, no pill background
+// -- matches the Dashboard's own ChangeText styling exactly. isNew renders
+// as a plain "New" label (the real current number is already the card's
+// own big value); a real 0% renders as literal "0%" text, never hidden or
+// replaced by a vague phrase.
 function TrendBadge({ change }: { change: ChangeResult | null }) {
   if (change === null) {
     return (
-      <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#9CA3AF] dark:text-[#6E6E76]" title="No prior-period data to compare yet">
+      <span className="text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6E6E76]" title="No prior-period data to compare yet">
         –
       </span>
     );
   }
-  if ("newCount" in change) {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" title="No activity in the prior period to compare against">
-        ↑+{change.newCount}
-      </span>
-    );
+  if ("isNew" in change) {
+    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">New</span>;
   }
-  const up = change.pct >= 0;
-  return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"}`}>
-      {up ? "↑" : "↓"}{Math.abs(change.pct)}%
-    </span>
-  );
+  const color = change.pct > 0 ? "text-green-600 dark:text-green-400" : change.pct < 0 ? "text-red-500 dark:text-red-400" : "text-[#9CA3AF] dark:text-[#6E6E76]";
+  const sign = change.pct > 0 ? "+" : "";
+  return <span className={`text-[11px] font-semibold ${color}`}>{sign}{change.pct}%</span>;
 }
 
 function buildLabels(days: number): string[] {

@@ -8,26 +8,60 @@ import { createSupabaseAdmin } from "@/lib/supabase-server";
 // still-exported (currently unused in any UI, but exported and part of
 // this same "no fake numbers" surface) pctChange went the opposite wrong
 // direction: it fabricated a fixed "100%" whenever prev=0 and curr>0,
-// regardless of the real current value. Both replaced by ChangeInfo, which
-// makes every real case representable honestly: prev=0/curr=0 is a real,
-// literal 0% (never hidden); prev=0/curr>0 has no valid percentage
-// (division by zero is not "100%") so the real absolute count is carried
-// instead, for the UI to render as "+N new" rather than a fabricated
-// percentage; prev>0 is the normal, unchanged percentage math.
+// regardless of the real current value. Both replaced by ChangeInfo.
+//
+// FIX 4 (round R): the round-Q version showed "+N new" (a raw delta),
+// which still misrepresented a real 0->N change as a small-looking number
+// rather than what it actually is -- growth from nothing. isNew is now a
+// plain boolean: the real current count is already shown by the KPI's own
+// big number, so the badge only needs to say "New", never repeat a delta.
 export interface ChangeInfo {
   // Real percentage vs the prior period -- present whenever prior > 0, and
-  // also present as exactly 0 when both prior and current are 0.
+  // also present as exactly 0 when both prior and current are 0 (a real,
+  // honest "no change", never hidden).
   pct?: number;
-  // Present INSTEAD of pct only when prior was 0 and current > 0: the real
-  // absolute current count, since no valid percentage exists from a zero
-  // base.
-  newCount?: number;
+  // True INSTEAD of pct only when prior was 0 and current > 0: no valid
+  // percentage exists from a zero base, so this renders as a plain "New"
+  // label -- the real current number is already visible as the KPI value.
+  isNew?: boolean;
 }
 
 function computeChangeInfo(curr: number, prev: number): ChangeInfo {
   if (prev === 0 && curr === 0) return { pct: 0 };
-  if (prev === 0) return { newCount: curr };
+  if (prev === 0) return { isNew: true };
   return { pct: Math.round(((curr - prev) / prev) * 100) };
+}
+
+// FIX 4 (round R): real last-7-day daily counts for the Dashboard's
+// sparklines -- Oussama's own feedback that the Dashboard "feels visually
+// empty." Fetches only `created_at` for the window (cheap, no row data)
+// and buckets client-side rather than running 7 separate COUNT queries per
+// metric. A day with no real rows is a real 0 in that day's bucket, never
+// omitted -- the array is always exactly 7 entries, oldest to newest,
+// ending today.
+async function getDailySparkline(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  table: string,
+  tenantId: string,
+  extraEq?: [string, unknown],
+): Promise<number[]> {
+  const now = new Date();
+  const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
+  let query = admin.from(table).select("created_at").eq("tenant_id", tenantId).gte("created_at", start.toISOString());
+  if (extraEq) query = query.eq(extraEq[0], extraEq[1]);
+  const { data, error } = await query;
+  const buckets = new Array(7).fill(0);
+  if (error || !data) return buckets;
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  for (const row of data as { created_at: string }[]) {
+    const d = new Date(row.created_at);
+    const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+    const daysAgo = Math.round((todayStart.getTime() - dayStart.getTime()) / (24 * 60 * 60 * 1000));
+    const idx = 6 - daysAgo;
+    if (idx >= 0 && idx < 7) buckets[idx]++;
+  }
+  return buckets;
 }
 
 export interface DashboardStats {
@@ -57,6 +91,13 @@ export interface DashboardStats {
   appointmentsTodayChange: ChangeInfo;
   messagesTodayChange: ChangeInfo;
   callsTodayChange: ChangeInfo;
+  // FIX 4 (round R): real last-7-day daily counts for each KPI's
+  // sparkline, oldest to newest, always exactly 7 entries (a day with no
+  // activity is a real 0, never omitted). See getDailySparkline above.
+  leadsSparkline: number[];
+  appointmentsSparkline: number[];
+  messagesSparkline: number[];
+  callsSparkline: number[];
 }
 
 /**
@@ -122,6 +163,10 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     messagesYesterdayRes,
     callsYesterdayRes,
     aiResolutionRate,
+    leadsSparkline,
+    appointmentsSparkline,
+    messagesSparkline,
+    callsSparkline,
   ] = await Promise.all([
     admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
     admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
@@ -148,6 +193,10 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     // this KPI strip and with how Analytics scopes its own version to its
     // selected window rather than all time.
     computeAiResolutionRate(admin, tenantId, todayStart.toISOString()),
+    getDailySparkline(admin, "leads", tenantId),
+    getDailySparkline(admin, "appointments", tenantId),
+    getDailySparkline(admin, "messages", tenantId, ["is_test", false]),
+    getDailySparkline(admin, "agent_calls", tenantId),
   ]);
 
   const totalLeads = totalLeadsRes.count ?? 0;
@@ -189,5 +238,9 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     appointmentsTodayChange: computeChangeInfo(appointmentsToday, appointmentsYesterday),
     messagesTodayChange: computeChangeInfo(messagesToday, messagesYesterday),
     callsTodayChange: computeChangeInfo(callsToday, callsYesterday),
+    leadsSparkline,
+    appointmentsSparkline,
+    messagesSparkline,
+    callsSparkline,
   };
 }

@@ -889,6 +889,15 @@ type BinAppointment = { id: string; service_name: string | null; datetime: strin
 // by the single shared deleted_at timestamp every "Clear" batch writes.
 type BinAssistantBatch = { deletedAt: string; count: number };
 
+// FIX 3 (round R): real, type-specific noun for the confirmation body copy
+// -- "This lead will be permanently erased..." vs "...conversation..." etc.
+const DELETE_KIND_NOUN: Record<"lead" | "conversation" | "appointment" | "assistant", string> = {
+  lead: "lead",
+  conversation: "conversation",
+  appointment: "appointment",
+  assistant: "conversation history",
+};
+
 function RecycleBinSection({ t }: { t: (key: string) => string }) {
   const [loading, setLoading] = useState(true);
   const [migrationPending, setMigrationPending] = useState(false);
@@ -1177,18 +1186,23 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
       )}
       {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
 
-      {/* FIX 5 (round Q): Delete Permanently confirmation -- same modal
-          shell/style already used elsewhere (e.g. the site-disconnect
-          modal in website/page.tsx). Only ever hard-deletes after this
-          explicit confirmation. */}
+      {/* FIX 5 (round Q) / FIX 3 (round R): Delete Permanently confirmation
+          -- same modal shell/style already used elsewhere (e.g. the site-
+          disconnect modal in website/page.tsx). Only ever hard-deletes
+          after this explicit confirmation. Copy is unambiguous about
+          irreversibility, and the two buttons are asymmetric (flex-1 /
+          flex-[2], same ratio as UpgradeModal elsewhere in this app) so
+          "Delete Permanently" always fits on one line -- at max-w-sm it
+          was borderline-wrapping at equal 50/50 width on both desktop and
+          375px. */}
       {deleteConfirmTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-base font-bold text-[#111111] dark:text-white">
-              Delete &ldquo;{deleteConfirmTarget.label}&rdquo; permanently?
+              Delete {deleteConfirmTarget.label} permanently?
             </h2>
             <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
-              This cannot be undone.
+              This {DELETE_KIND_NOUN[deleteConfirmTarget.kind]} will be permanently erased and cannot be restored from the Recycle Bin afterward.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button
@@ -1200,7 +1214,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
               <button
                 onClick={handleConfirmDeleteForever}
                 disabled={deletingForever}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50">
+                className="flex-[2] text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 whitespace-nowrap">
                 {deletingForever ? "Deleting…" : "Delete Permanently"}
               </button>
             </div>

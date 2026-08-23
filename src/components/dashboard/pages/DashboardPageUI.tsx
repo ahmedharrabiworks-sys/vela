@@ -12,13 +12,52 @@ function StatusDot({ status }: { status: string }) {
   return <span className="w-2 h-2 rounded-full shrink-0 inline-block" style={{ background: colors[status] || "#9CA3AF" }} />;
 }
 
+// FIX 4 (round R): compact real-data sparkline under each KPI number --
+// Oussama's own feedback that the Dashboard "feels visually empty." Pure
+// SVG (no charting dependency, matching the hand-rolled chart already used
+// on Analytics), 7 real daily values -- a day with no activity is a real
+// 0 point, never omitted, so a brand-new tenant's sparkline is a flat line
+// at 0, not blank.
+function Sparkline({ data }: { data: number[] }) {
+  if (!data || data.length === 0) return null;
+  const W = 100, H = 28, pad = 2;
+  const max = Math.max(...data, 1);
+  const pts = data.map((v, i) => ({
+    x: pad + (i / Math.max(data.length - 1, 1)) * (W - pad * 2),
+    y: H - pad - (v / max) * (H - pad * 2),
+  }));
+  const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const allZero = data.every((v) => v === 0);
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-2 block">
+      <path d={d} fill="none" stroke={allZero ? "#E5E7EB" : "#FF6B35"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+// FIX 4 (round R): no more arrow icons and no more raw "+N new" delta --
+// pct (including a real 0) renders as plain colored text, isNew renders as
+// a plain "New" label. See lib/stats.ts's ChangeInfo for the full
+// definition of each case.
+function ChangeText({ change }: { change?: { pct?: number; isNew?: boolean } }) {
+  if (!change) return null;
+  if (change.isNew) {
+    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">New</span>;
+  }
+  if (change.pct === undefined) return null;
+  const color = change.pct > 0 ? "text-green-600 dark:text-green-400" : change.pct < 0 ? "text-red-500 dark:text-red-400" : "text-[#9CA3AF] dark:text-[#6E6E76]";
+  const sign = change.pct > 0 ? "+" : "";
+  return <span className={`text-[11px] font-semibold ${color}`}>{sign}{change.pct}%</span>;
+}
+
 export type DashUIConv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 export type DashUIAppt = { id: string; time: string; name: string; service: string; status: string };
-// FIX 6 (round Q): change is a real ChangeInfo now, never a bare number --
-// pct is present for a real percentage (including a genuine 0%), newCount
-// is present instead when the prior period was 0 and current > 0 (no valid
-// percentage exists from a zero base). See lib/stats.ts's ChangeInfo.
-export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; newCount?: number } };
+// FIX 6 (round Q) / FIX 4 (round R): change is a real ChangeInfo now,
+// never a bare number -- pct is present for a real percentage (including
+// a genuine 0%), isNew is true instead when the prior period was 0 and
+// current > 0 (no valid percentage exists from a zero base). See
+// lib/stats.ts's ChangeInfo. sparkline is the real last-7-day daily series.
+export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; isNew?: boolean }; sparkline?: number[] };
 
 interface Props {
   loading: boolean;
@@ -141,36 +180,20 @@ export default function DashboardPageUI({
                 const isNumeric = Number.isFinite(numeric) && String(numeric) === k.value.trim();
                 return (
                   <div key={k.label} className="bg-white border border-[#E5E7EB] rounded-xl px-5 py-5">
-                    <p className="text-[11px] text-[#6B7280] mb-3">{t(`dashboard.${k.label}`)}</p>
-                    <p className="text-2xl font-bold text-[#111111] leading-none mb-2">
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <p className="text-[11px] text-[#6B7280]">{t(`dashboard.${k.label}`)}</p>
+                      {/* FIX 4 (round R): plain colored text, no arrow icon,
+                          no pill background -- and never the vague "Same
+                          as yesterday" phrase; a real 0% renders as the
+                          literal text "0%". See ChangeText above. */}
+                      <ChangeText change={k.change} />
+                    </div>
+                    <p className="text-2xl font-bold text-[#111111] leading-none">
                       {isNumeric ? <CountUp value={numeric} /> : k.value}
                     </p>
-                    {/* FIX 6 (round Q) root cause: this used to be
-                        `{k.change !== undefined && (...)}` -- and
-                        pctChangeOrUndefined in lib/stats.ts returned
-                        undefined whenever YESTERDAY was 0, regardless of
-                        today's real count, so the badge was omitted
-                        entirely (not even a placeholder) for both the
-                        "0 -> 0, no change" case and the "0 -> N, real new
-                        activity" case. change is now always a real
-                        ChangeInfo: pct (including a genuine 0) renders the
-                        normal badge unchanged; newCount (prior was 0, this
-                        is a real increase from a zero base with no valid
-                        percentage) renders as a real "+N new" count
-                        instead of a fabricated percentage. */}
-                    {k.change?.pct !== undefined && (
-                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        k.change.pct > 0 ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : k.change.pct < 0 ? "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400" : "bg-[#F3F4F6] text-[#9CA3AF]"
-                      }`}>
-                        {k.change.pct > 0 ? "↑" : k.change.pct < 0 ? "↓" : "–"}
-                        {k.change.pct !== 0 ? `${Math.abs(k.change.pct)}% ${t("dashboard.vsYesterday")}` : t("dashboard.sameAsYesterday")}
-                      </span>
-                    )}
-                    {k.change?.newCount !== undefined && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400">
-                        ↑+{k.change.newCount} {t("dashboard.newToday")}
-                      </span>
-                    )}
+                    {/* FIX 4 (round R): real last-7-day trend -- Oussama's
+                        feedback that the Dashboard felt visually empty. */}
+                    {k.sparkline && <Sparkline data={k.sparkline} />}
                   </div>
                 );
               })}
