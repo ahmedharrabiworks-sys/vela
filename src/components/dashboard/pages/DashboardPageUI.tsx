@@ -14,7 +14,11 @@ function StatusDot({ status }: { status: string }) {
 
 export type DashUIConv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 export type DashUIAppt = { id: string; time: string; name: string; service: string; status: string };
-export type DashUIKPI  = { label: string; value: string; change?: number };
+// FIX 6 (round Q): change is a real ChangeInfo now, never a bare number --
+// pct is present for a real percentage (including a genuine 0%), newCount
+// is present instead when the prior period was 0 and current > 0 (no valid
+// percentage exists from a zero base). See lib/stats.ts's ChangeInfo.
+export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; newCount?: number } };
 
 interface Props {
   loading: boolean;
@@ -141,12 +145,30 @@ export default function DashboardPageUI({
                     <p className="text-2xl font-bold text-[#111111] leading-none mb-2">
                       {isNumeric ? <CountUp value={numeric} /> : k.value}
                     </p>
-                    {k.change !== undefined && (
+                    {/* FIX 6 (round Q) root cause: this used to be
+                        `{k.change !== undefined && (...)}` -- and
+                        pctChangeOrUndefined in lib/stats.ts returned
+                        undefined whenever YESTERDAY was 0, regardless of
+                        today's real count, so the badge was omitted
+                        entirely (not even a placeholder) for both the
+                        "0 -> 0, no change" case and the "0 -> N, real new
+                        activity" case. change is now always a real
+                        ChangeInfo: pct (including a genuine 0) renders the
+                        normal badge unchanged; newCount (prior was 0, this
+                        is a real increase from a zero base with no valid
+                        percentage) renders as a real "+N new" count
+                        instead of a fabricated percentage. */}
+                    {k.change?.pct !== undefined && (
                       <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                        k.change > 0 ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : k.change < 0 ? "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400" : "bg-[#F3F4F6] text-[#9CA3AF]"
+                        k.change.pct > 0 ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : k.change.pct < 0 ? "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400" : "bg-[#F3F4F6] text-[#9CA3AF]"
                       }`}>
-                        {k.change > 0 ? "↑" : k.change < 0 ? "↓" : "–"}
-                        {k.change !== 0 ? `${Math.abs(k.change)}% ${t("dashboard.vsYesterday")}` : t("dashboard.sameAsYesterday")}
+                        {k.change.pct > 0 ? "↑" : k.change.pct < 0 ? "↓" : "–"}
+                        {k.change.pct !== 0 ? `${Math.abs(k.change.pct)}% ${t("dashboard.vsYesterday")}` : t("dashboard.sameAsYesterday")}
+                      </span>
+                    )}
+                    {k.change?.newCount !== undefined && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400">
+                        ↑+{k.change.newCount} {t("dashboard.newToday")}
                       </span>
                     )}
                   </div>

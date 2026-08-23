@@ -142,12 +142,55 @@ export async function GET(
     'transition:opacity 0.2s, box-shadow 0.2s', 'touch-action:none'
   ].join(';');
 
+  // FIX 3 (round Q): the iframe (chat-client.tsx) used to own conversation
+  // persistence entirely on its own via ITS OWN localStorage -- correct for
+  // a same-origin embed (a Vela-built site's auto-injected widget, parent
+  // and iframe both on this app's own domain), but a customer who pastes
+  // this script on their OWN external site puts the iframe in a genuine
+  // cross-origin/third-party context, where Safari's ITP and similar
+  // browser privacy features can restrict or fully partition an iframe's
+  // own storage -- the widget would then silently fall into its "storage
+  // unavailable, conversation just won't persist" path on every single
+  // load, matching the reported "refresh always loses history" symptom.
+  // This script, by contrast, always runs in the PARENT page's own
+  // first-party context, where localStorage is never third-party-
+  // restricted -- so persistence now lives here instead, passed INTO the
+  // iframe on load and read back OUT via postMessage whenever the iframe
+  // establishes or updates a conversationId. Same key scheme the iframe's
+  // own (still-kept-as-fallback) storage already used, so an existing
+  // conversation from before this fix is not orphaned.
+  var CONV_KEY = 'vela_conv_' + tenantId + '_' + (websiteId || 'default');
+  var storedConv = null;
+  try {
+    var rawConv = localStorage.getItem(CONV_KEY);
+    if (rawConv) {
+      var parsedConv = JSON.parse(rawConv);
+      if (parsedConv && parsedConv.id && parsedConv.expiresAt && Date.now() <= parsedConv.expiresAt) {
+        storedConv = parsedConv.id;
+      } else {
+        localStorage.removeItem(CONV_KEY);
+      }
+    }
+  } catch (e) {}
+
+  window.addEventListener('message', function (ev) {
+    if (ev && ev.data && ev.data.type === 'vela-widget-conv' && ev.data.conversationId) {
+      try {
+        localStorage.setItem(CONV_KEY, JSON.stringify({
+          id: ev.data.conversationId,
+          expiresAt: Date.now() + 48 * 60 * 60 * 1000
+        }));
+      } catch (e) {}
+    }
+  });
+
   /* iframe */
   var frame = document.createElement('iframe');
   frame.id    = '__vela_widget';
   var qs = [];
-  if (source)    qs.push('source=' + source);
-  if (websiteId) qs.push('websiteId=' + encodeURIComponent(websiteId));
+  if (source)     qs.push('source=' + source);
+  if (websiteId)  qs.push('websiteId=' + encodeURIComponent(websiteId));
+  if (storedConv) qs.push('conv=' + encodeURIComponent(storedConv));
   frame.src   = base + '/widget/' + tenantId + (qs.length ? '?' + qs.join('&') : '');
   frame.title = 'Chat with us';
   var frameRight  = baseRight;

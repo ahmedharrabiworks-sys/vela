@@ -1,13 +1,43 @@
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 
+// FIX 6 (round Q) root cause: the badge disappeared because
+// pctChangeOrUndefined returned `undefined` whenever the PRIOR period was
+// 0 -- regardless of what the CURRENT count was -- and the Dashboard's own
+// render condition (`{k.change !== undefined && (...)}`) omitted the badge
+// entirely for undefined, no placeholder at all. A separate bug in the
+// still-exported (currently unused in any UI, but exported and part of
+// this same "no fake numbers" surface) pctChange went the opposite wrong
+// direction: it fabricated a fixed "100%" whenever prev=0 and curr>0,
+// regardless of the real current value. Both replaced by ChangeInfo, which
+// makes every real case representable honestly: prev=0/curr=0 is a real,
+// literal 0% (never hidden); prev=0/curr>0 has no valid percentage
+// (division by zero is not "100%") so the real absolute count is carried
+// instead, for the UI to render as "+N new" rather than a fabricated
+// percentage; prev>0 is the normal, unchanged percentage math.
+export interface ChangeInfo {
+  // Real percentage vs the prior period -- present whenever prior > 0, and
+  // also present as exactly 0 when both prior and current are 0.
+  pct?: number;
+  // Present INSTEAD of pct only when prior was 0 and current > 0: the real
+  // absolute current count, since no valid percentage exists from a zero
+  // base.
+  newCount?: number;
+}
+
+function computeChangeInfo(curr: number, prev: number): ChangeInfo {
+  if (prev === 0 && curr === 0) return { pct: 0 };
+  if (prev === 0) return { newCount: curr };
+  return { pct: Math.round(((curr - prev) / prev) * 100) };
+}
+
 export interface DashboardStats {
   totalLeads: number;
   newLeadsThisWeek: number;
-  newLeadsChange: number;
+  newLeadsChange: ChangeInfo;
   appointmentsThisWeek: number;
-  appointmentsChange: number;
+  appointmentsChange: ChangeInfo;
   conversationsThisWeek: number;
-  conversationsChange: number;
+  conversationsChange: ChangeInfo;
   needsHumanCount: number;
   // Today's real counts — command-center view (Dashboard redesign)
   leadsToday: number;
@@ -19,28 +49,14 @@ export interface DashboardStats {
   // for the exact definition). null when there's no real data yet (honest
   // zero-state, never a fabricated 0% or 100%).
   aiResolutionRate: number | null;
-  // Today-vs-yesterday percent change for each Today KPI. undefined (key
-  // omitted from the object) when yesterday has zero of that metric --
-  // never fabricated as a misleading "100%" or "0%" against an empty prior
-  // period. See pctChangeOrUndefined below.
-  leadsTodayChange?: number;
-  appointmentsTodayChange?: number;
-  messagesTodayChange?: number;
-  callsTodayChange?: number;
-}
-
-function pctChange(curr: number, prev: number): number {
-  if (prev === 0) return curr > 0 ? 100 : 0;
-  return Math.round(((curr - prev) / prev) * 100);
-}
-
-// Unlike pctChange above (used for the existing weekly fields), this never
-// fabricates a change percentage when there's no real prior-period data to
-// compare against -- returns undefined so the caller can omit the badge
-// entirely rather than showing a misleading "up 100%" against zero.
-function pctChangeOrUndefined(curr: number, prev: number): number | undefined {
-  if (prev === 0) return undefined;
-  return Math.round(((curr - prev) / prev) * 100);
+  // Today-vs-yesterday change for each Today KPI. Always present now (see
+  // ChangeInfo above) -- a real "today" and "yesterday" always exist as
+  // concepts for any tenant, so there is no case where this should be
+  // absent, only cases where it's a real 0, a real new-count, or a real pct.
+  leadsTodayChange: ChangeInfo;
+  appointmentsTodayChange: ChangeInfo;
+  messagesTodayChange: ChangeInfo;
+  callsTodayChange: ChangeInfo;
 }
 
 /**
@@ -155,11 +171,11 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
   return {
     totalLeads,
     newLeadsThisWeek: newLeads,
-    newLeadsChange: pctChange(newLeads, prevLeads),
+    newLeadsChange: computeChangeInfo(newLeads, prevLeads),
     appointmentsThisWeek: appts,
-    appointmentsChange: pctChange(appts, prevAppts),
+    appointmentsChange: computeChangeInfo(appts, prevAppts),
     conversationsThisWeek: convs,
-    conversationsChange: pctChange(convs, prevConvs),
+    conversationsChange: computeChangeInfo(convs, prevConvs),
     needsHumanCount: needsHuman,
     leadsToday,
     appointmentsToday,
@@ -169,9 +185,9 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     // never let it break the rest of the dashboard.
     callsToday,
     aiResolutionRate,
-    leadsTodayChange: pctChangeOrUndefined(leadsToday, leadsYesterday),
-    appointmentsTodayChange: pctChangeOrUndefined(appointmentsToday, appointmentsYesterday),
-    messagesTodayChange: pctChangeOrUndefined(messagesToday, messagesYesterday),
-    callsTodayChange: pctChangeOrUndefined(callsToday, callsYesterday),
+    leadsTodayChange: computeChangeInfo(leadsToday, leadsYesterday),
+    appointmentsTodayChange: computeChangeInfo(appointmentsToday, appointmentsYesterday),
+    messagesTodayChange: computeChangeInfo(messagesToday, messagesYesterday),
+    callsTodayChange: computeChangeInfo(callsToday, callsYesterday),
   };
 }

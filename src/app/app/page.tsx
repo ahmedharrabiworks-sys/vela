@@ -5,10 +5,13 @@ import { getSupabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import DashboardPageUI from "@/components/dashboard/pages/DashboardPageUI";
 import { ResumeLastAppRoute } from "@/lib/last-route";
+import type { ChangeInfo } from "@/lib/stats";
 
 type Conv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 type Appt = { id: string; time: string; name: string; service: string; status: string };
-type KPI  = { label: string; value: string; change?: number };
+// FIX 6 (round Q): change is now always a real ChangeInfo (pct and/or
+// newCount), never undefined -- see lib/stats.ts's ChangeInfo for why.
+type KPI  = { label: string; value: string; change?: ChangeInfo };
 
 function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
@@ -105,7 +108,7 @@ export default function DashboardPage() {
       .then((stats: {
         leadsToday?: number; appointmentsToday?: number; messagesToday?: number; callsToday?: number;
         aiResolutionRate?: number | null;
-        leadsTodayChange?: number; appointmentsTodayChange?: number; messagesTodayChange?: number; callsTodayChange?: number;
+        leadsTodayChange?: ChangeInfo; appointmentsTodayChange?: ChangeInfo; messagesTodayChange?: ChangeInfo; callsTodayChange?: ChangeInfo;
       }) => {
         setKpis([
           { label: "kpiLeadsToday",        value: String(stats.leadsToday ?? 0),        change: stats.leadsTodayChange },

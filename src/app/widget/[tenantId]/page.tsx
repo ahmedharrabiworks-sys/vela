@@ -35,9 +35,18 @@ export default async function WidgetPage({
   searchParams,
 }: {
   params: { tenantId: string };
-  searchParams: { source?: string; websiteId?: string };
+  searchParams: { source?: string; websiteId?: string; conv?: string };
 }) {
   const { tenantId } = params;
+  // FIX 3 (round Q): a stable conversationId the PARENT page's own embed
+  // script persisted in ITS first-party localStorage (see
+  // api/embed/[tenantId]/route.ts) -- passed in so the widget can resume
+  // even when its OWN iframe-internal storage is unavailable/restricted
+  // (third-party iframe context on an externally-embedded site). Validated
+  // as a real UUID before being trusted for anything.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const rawConv = searchParams?.conv || "";
+  const initialConversationId = UUID_RE.test(rawConv) ? rawConv : undefined;
   // source=site means this widget is the one auto-injected on a published
   // Vela-built site (see site/[tenantId]/route.ts); anything else is an
   // externally pasted embed. Tagged on the conversation as the channel so
@@ -123,6 +132,7 @@ export default async function WidgetPage({
       channel={channel}
       accentColor={accentColor}
       hidePoweredBy={hidePoweredBy}
+      initialConversationId={initialConversationId}
     />
   );
 }

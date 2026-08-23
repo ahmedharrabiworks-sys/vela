@@ -901,6 +901,11 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
   // zero feedback beyond the row disappearing from the list -- same shared
   // toast component every other delete flow in the app now uses.
   const [toast, setToast] = useState("");
+  // FIX 5 (round Q): "Delete Permanently" executed immediately with no
+  // confirmation -- a real, irreversible action one misclick away. Single
+  // generic confirm-target used by all four delete-forever surfaces below.
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ kind: "lead" | "conversation" | "appointment" | "assistant"; id: string; label: string } | null>(null);
+  const [deletingForever, setDeletingForever] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -1024,6 +1029,21 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
     setBusyId(null);
   }
 
+  // FIX 5 (round Q): single dispatcher the confirm modal calls -- routes to
+  // whichever of the four real delete-forever functions matches the
+  // pending target's kind, so the modal itself stays generic.
+  async function handleConfirmDeleteForever() {
+    const target = deleteConfirmTarget;
+    if (!target) return;
+    setDeletingForever(true);
+    if (target.kind === "lead") await deleteLeadForever(target.id);
+    else if (target.kind === "conversation") await deleteConversationForever(target.id);
+    else if (target.kind === "appointment") await deleteAppointmentForever(target.id);
+    else if (target.kind === "assistant") await deleteAssistantBatchForever(target.id);
+    setDeletingForever(false);
+    setDeleteConfirmTarget(null);
+  }
+
   const isEmpty = !loading && leads.length === 0 && conversations.length === 0 && appointments.length === 0 && assistantBatches.length === 0;
 
   return (
@@ -1067,7 +1087,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
                     {t("settings.recycleBin.restore")}
                   </button>
-                  <button disabled={busyId === l.id} onClick={() => deleteLeadForever(l.id)}
+                  <button disabled={busyId === l.id} onClick={() => setDeleteConfirmTarget({ kind: "lead", id: l.id, label: l.name ?? t("dashboard.unknown") })}
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
                     {t("settings.recycleBin.deleteForever")}
                   </button>
@@ -1093,7 +1113,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
                     {t("settings.recycleBin.restore")}
                   </button>
-                  <button disabled={busyId === c.id} onClick={() => deleteConversationForever(c.id)}
+                  <button disabled={busyId === c.id} onClick={() => setDeleteConfirmTarget({ kind: "conversation", id: c.id, label: c.customer_name ?? t("dashboard.unknown") })}
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
                     {t("settings.recycleBin.deleteForever")}
                   </button>
@@ -1119,7 +1139,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
                     {t("settings.recycleBin.restore")}
                   </button>
-                  <button disabled={busyId === b.deletedAt} onClick={() => deleteAssistantBatchForever(b.deletedAt)}
+                  <button disabled={busyId === b.deletedAt} onClick={() => setDeleteConfirmTarget({ kind: "assistant", id: b.deletedAt, label: t("settings.recycleBin.assistantConversation") })}
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
                     {t("settings.recycleBin.deleteForever")}
                   </button>
@@ -1145,7 +1165,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all disabled:opacity-50">
                     {t("settings.recycleBin.restore")}
                   </button>
-                  <button disabled={busyId === a.id} onClick={() => deleteAppointmentForever(a.id)}
+                  <button disabled={busyId === a.id} onClick={() => setDeleteConfirmTarget({ kind: "appointment", id: a.id, label: a.service_name || "Appointment" })}
                     className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all disabled:opacity-50">
                     {t("settings.recycleBin.deleteForever")}
                   </button>
@@ -1156,6 +1176,37 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
         </div>
       )}
       {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
+
+      {/* FIX 5 (round Q): Delete Permanently confirmation -- same modal
+          shell/style already used elsewhere (e.g. the site-disconnect
+          modal in website/page.tsx). Only ever hard-deletes after this
+          explicit confirmation. */}
+      {deleteConfirmTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">
+              Delete &ldquo;{deleteConfirmTarget.label}&rdquo; permanently?
+            </h2>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+              This cannot be undone.
+            </p>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={() => setDeleteConfirmTarget(null)}
+                disabled={deletingForever}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDeleteForever}
+                disabled={deletingForever}
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50">
+                {deletingForever ? "Deleting…" : "Delete Permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

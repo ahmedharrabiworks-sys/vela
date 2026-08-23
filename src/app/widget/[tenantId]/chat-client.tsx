@@ -4,6 +4,13 @@ import { useState, useEffect, useRef } from "react";
 
 type Msg = { role: "user" | "assistant"; content: string; id: string };
 
+// FIX 1 (round Q): hard ceiling on how long a single send() waits for
+// /api/ai/reply before giving up -- see the comment in send() for why this
+// exists. 25s comfortably covers real OpenAI latency (the route makes up
+// to 3 sequential calls) while still guaranteeing the UI never hangs
+// indefinitely on a dropped connection or infra-level stall.
+const REQUEST_TIMEOUT_MS = 25_000;
+
 export default function WidgetChat({
   tenantId,
   websiteId,
@@ -12,6 +19,7 @@ export default function WidgetChat({
   channel,
   accentColor,
   hidePoweredBy,
+  initialConversationId,
 }: {
   tenantId: string;
   websiteId?: string;
@@ -20,6 +28,11 @@ export default function WidgetChat({
   channel: string;
   accentColor?: string | null;
   hidePoweredBy?: boolean;
+  // FIX 3 (round Q): a stable id the PARENT page's own first-party
+  // localStorage already had for this visitor, passed down from page.tsx.
+  // Preferred over this component's own (iframe-internal, possibly
+  // third-party-storage-restricted) localStorage read on mount.
+  initialConversationId?: string;
 }) {
   // Round 5 FIX 7: was a fixed Vela-brand gradient regardless of the site
   // it's embedded on. Falls back to the Vela brand gradient only when no
@@ -74,12 +87,26 @@ export default function WidgetChat({
   function persistConversation(id: string) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ id, expiresAt: Date.now() + SESSION_MS }));
-    } catch { /* localStorage unavailable (private mode, quota) -- conversation just won't persist */ }
+    } catch { /* localStorage unavailable (private mode, quota) -- see the
+      postMessage below, which is the fix for exactly this case: the
+      PARENT page's own first-party storage (never third-party-restricted)
+      still gets a copy even when this iframe's own storage doesn't work. */ }
+    // FIX 3 (round Q): tells the parent embed script (api/embed/[tenantId]/
+    // route.ts) to persist this id in ITS OWN first-party localStorage too
+    // -- a no-op when this page is loaded directly with no embedding parent
+    // (postMessage to "*" with no listener just goes nowhere).
+    try {
+      window.parent.postMessage({ type: "vela-widget-conv", conversationId: id }, "*");
+    } catch { /* not embedded, or parent unreachable -- iframe-local storage above still applies */ }
   }
 
   /* Restore conversationId + real message history on mount */
   useEffect(() => {
-    const stored = readStoredConversation();
+    // FIX 3 (round Q): prefer the parent-supplied id (first-party storage,
+    // survives even when this iframe's own localStorage is restricted)
+    // over this component's own iframe-internal read -- see the prop
+    // comment above for the full root cause.
+    const stored = initialConversationId || readStoredConversation();
     if (stored) {
       setConversationId(stored);
       persistConversation(stored); // touch expiry -- reopening counts as activity
@@ -158,10 +185,30 @@ export default function WidgetChat({
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
+    // FIX 1 (round Q): diagnosed live with full network capture (33 real
+    // messages through this exact widget, past both the burst and per-
+    // conversation caps) -- every capped response DID come back as a
+    // correct 200 with a real `reply` string, and this code DID render it
+    // and clear loading every time, so a stuck-forever state could not be
+    // reproduced under a normal capped request. The one gap this can't
+    // protect against on its own is the underlying fetch() promise never
+    // settling at all -- a dropped connection or an infrastructure-level
+    // hang on a slow request (e.g. the daily-cap check's real DB query
+    // taking unusually long) means fetch() never resolves OR rejects, so
+    // neither the try body nor the catch block ever runs, and `finally`
+    // (which clears loading) never fires either -- indistinguishable from
+    // "stuck on typing forever" to the visitor. AbortController forces a
+    // hard ceiling: no matter what happens server-side or on the network,
+    // this request settles (as an abort, which the catch below treats like
+    // any other network error) within REQUEST_TIMEOUT_MS, guaranteeing
+    // `finally` always runs and the input always re-enables.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const res = await fetch("/api/ai/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tenantId,
           websiteId,
@@ -195,12 +242,14 @@ export default function WidgetChat({
           : [...prev, { id: `a-${Date.now()}`, role: "assistant", content: aiContent }]
       );
     } catch (err) {
-      console.error("[vela-widget] network error:", err);
+      const timedOut = err instanceof DOMException && err.name === "AbortError";
+      console.error(timedOut ? "[vela-widget] request timed out:" : "[vela-widget] network error:", err);
       setMessages((prev) => [
         ...prev,
         { id: `err-${Date.now()}`, role: "assistant", content: "Something went wrong. Please try again." },
       ]);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
       inputRef.current?.focus();
     }

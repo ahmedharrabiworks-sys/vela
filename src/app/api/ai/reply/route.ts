@@ -489,8 +489,16 @@ export async function POST(req: NextRequest) {
       existingActiveAppt = { id: row.id, datetime: row.datetime, service_name: row.service_name, leadName };
     }
   }
+  // FIX 2 (round Q): the previous wording had an escape hatch ("only
+  // proceed if they clearly explain this is a different person or a real
+  // additional visit") -- confirmed live that this let a simple customer
+  // insistence ("another one please") read as satisfying it, so the AI
+  // opened a brand new booking flow anyway. One active appointment per
+  // conversation/phone is now a HARD limit with no exception the model can
+  // reason its way around: reschedule or cancel are the only two paths
+  // ever offered while one exists, full stop.
   const existingApptDirective = existingActiveAppt
-    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. If the customer is asking to book a NEW or ADDITIONAL appointment (not simply confirming/adjusting this same one), tell them they already have this booking and ask whether they'd like to reschedule it to a new time or cancel it instead -- do NOT say "Booked ✓" for a second appointment while this one is still active. Only proceed with a genuinely new booking if they clearly explain this is for a different person or a real additional visit.`
+    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. HARD LIMIT, NO EXCEPTIONS: this customer may only ever have ONE active appointment at a time. If they ask to book a new, additional, or second appointment for ANY reason -- including if they insist, say "just book another one", or claim it's for someone else -- do NOT collect a new date/time and do NOT open a booking flow. Firmly tell them only one active appointment is allowed at a time, and offer ONLY two options: reschedule this existing appointment to a new time, or cancel it. Do not budge from this even if they push back or ask again. The only way a second appointment can ever exist is if this one is first cancelled or rescheduled away.`
     : "";
 
   /* ── 7. Build system prompt ── */
@@ -666,7 +674,7 @@ Rules:
 • Do NOT state a price unless the customer explicitly asks about cost/price for that specific service.
 • MANDATORY: ask ONE question at a time, never more. If you still need two or more pieces of information (e.g. which service/unit, a day/time, their name, their phone), ask for only the SINGLE most important missing one in this reply and stop there — wait for their answer before asking the next. Never bundle multiple questions into one message (e.g. never ask "which service, what date/time, and your name and number?" all together). This applies to booking just as much as anything else.
 • To book: ask for preferred day/time if not given (and nothing else in that same message). The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm the slot is available and move to collecting -- ask for any missing name/phone/service ONE AT A TIME, not together. MANDATORY, NO EXCEPTIONS: once you have service + day/time + name + phone, do NOT say "Booked ✓" yet — first ask one explicit yes/no confirmation question naming the exact day/time, e.g. "Should I go ahead and book this for [day/time]?", and stop there. Only after the customer replies with a clear affirmative (e.g. "yes", "please do", "confirm", "sounds good", "go ahead") in their NEXT message do you say "Booked ✓". If they say no, hesitate, or want to change something, do not book — ask what they'd like instead. This confirmation step is required even if they already sound certain earlier in the conversation; never skip straight from "here's what I have" to "Booked ✓" in the same reply. If not available, say so and offer the real alternatives given.
-• If EXISTING ACTIVE BOOKING above is present and the customer is trying to book something new rather than confirming/adjusting that one, follow the instruction in that section instead of the confirm-then-book flow -- do not collect details for a second booking until they've clarified whether this replaces the existing one.
+• If EXISTING ACTIVE BOOKING above is present and the customer is trying to book something new rather than confirming/adjusting that one, follow the HARD LIMIT instruction in that section instead of the confirm-then-book flow, with no exceptions -- never collect a date/time for a second booking while one is active, even if the customer insists.
 • If the customer explicitly declines to name a specific service (e.g. "no particular service, just want to come talk," "not sure yet, just visiting"), do not leave it blank or keep pushing -- accept a real fallback description of the visit itself (e.g. "General Consultation," "In-person meeting") as the service and move on to the next missing detail.
 • NEVER double-book a slot already listed above
 • NEVER book outside working hours
@@ -779,15 +787,43 @@ Rules:
       // and a real name would never overwrite the placeholder. Matches the
       // placeholder values explicitly instead.
       if (phone) {
-        // FIX 6 (round P): phone_unconfirmed is the real, guaranteed signal
-        // that a captured number has no genuine country code (see
-        // hasConfirmedCountryCode) -- set regardless of whether the AI's
-        // own prompt-level instruction to ask for one actually worked.
-        const { error: phoneUpdErr } = await admin.from("leads")
-          .update({ phone, phone_unconfirmed: !hasConfirmedCountryCode(phone) })
-          .eq("id", leadId).is("phone", null);
-        if (phoneUpdErr?.code === "42703" || phoneUpdErr?.code === "PGRST204") {
-          await admin.from("leads").update({ phone }).eq("id", leadId).is("phone", null);
+        // FIX 4 (round Q) root cause: this always used
+        // `.is("phone", null)`, so it only ever wrote a phone number the
+        // VERY FIRST time one was captured for this lead -- once any phone
+        // (even an unconfirmed local number with no country code) was
+        // saved, the field was no longer null, and every SUBSEQUENT
+        // message never matched the filter again, silently discarding a
+        // customer's later correction ("oh sorry, that's +971..."). Fixed
+        // by reading the lead's current phone/phone_unconfirmed first: a
+        // genuinely NEW correction (this lead's existing number is
+        // unconfirmed AND the new one now has a real country code) is
+        // allowed to overwrite even though phone is no longer null -- that
+        // is exactly the upgrade this flag exists to detect. A number that
+        // was already confirmed is still never clobbered by a later,
+        // possibly-noisier capture (the original "never clobber a real
+        // value" protection, preserved for the case that's actually
+        // trustworthy).
+        let { data: currentLead, error: leadReadErr } = await admin
+          .from("leads").select("phone, phone_unconfirmed").eq("id", leadId).maybeSingle();
+        const phoneUnconfirmedColumnMissing = leadReadErr?.code === "42703" || leadReadErr?.code === "PGRST204";
+        if (phoneUnconfirmedColumnMissing) {
+          ({ data: currentLead } = await admin.from("leads").select("phone").eq("id", leadId).maybeSingle());
+        }
+        const current = currentLead as { phone: string | null; phone_unconfirmed?: boolean | null } | null;
+        const nowConfirmed = hasConfirmedCountryCode(phone);
+        const isCorrection = !!current?.phone && current.phone_unconfirmed === true && nowConfirmed;
+
+        if (!current?.phone || isCorrection) {
+          if (phoneUnconfirmedColumnMissing) {
+            await admin.from("leads").update({ phone }).eq("id", leadId);
+          } else {
+            const { error: phoneUpdErr } = await admin.from("leads")
+              .update({ phone, phone_unconfirmed: !nowConfirmed })
+              .eq("id", leadId);
+            if (phoneUpdErr?.code === "42703" || phoneUpdErr?.code === "PGRST204") {
+              await admin.from("leads").update({ phone }).eq("id", leadId);
+            }
+          }
         }
       }
       if (email) await admin.from("leads").update({ email }).eq("id", leadId).is("email", null);

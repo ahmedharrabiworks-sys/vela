@@ -47,10 +47,20 @@ function periodSum(dailyCounts: Record<string, number>, days: number, offsetDays
   return buildDayArray(dailyCounts, days, offsetDays).reduce((a, b) => a + b, 0);
 }
 
-function computeChange(current: number, prior: number): number | null {
-  if (prior === 0 && current === 0) return null;
-  if (prior === 0) return null;
-  return Math.round(((current - prior) / prior) * 100);
+// FIX 6 (round Q) root cause: both the "prior=0, current=0" (a real "no
+// change" state) and "prior=0, current>0" (a real increase from a zero
+// base, just not expressible as a percentage) cases collapsed into the
+// same `null` return here, which TrendBadge then rendered as an identical
+// neutral "no data to compare" placeholder -- losing the real distinction
+// between them. Both prior and current here are always real, defined
+// counts (periodSum defaults an empty bucket to a real 0, never "missing")
+// -- there is no genuine "no data" case left to represent, so this no
+// longer returns null at all.
+type ChangeResult = { pct: number } | { newCount: number };
+function computeChange(current: number, prior: number): ChangeResult {
+  if (prior === 0 && current === 0) return { pct: 0 };
+  if (prior === 0) return { newCount: current };
+  return { pct: Math.round(((current - prior) / prior) * 100) };
 }
 
 // FIX 10 (pixel match): reference puts the pill top-right of the card next
@@ -71,7 +81,12 @@ function computeChange(current: number, prior: number): number | null {
 // renders a neutral, honest "–" chip instead of nothing -- never a
 // fabricated direction/percentage, just visual confirmation the badge slot
 // is real and simply has nothing to compare against yet.
-function TrendBadge({ change }: { change: number | null }) {
+// FIX 6 (round Q): change is null only while analytics itself hasn't
+// loaded yet (the "–" placeholder still applies there); once real data
+// exists, computeChange above always returns a real, renderable value now
+// -- either a genuine percentage (pct, including a real 0%) or a real
+// absolute increase from a zero base (newCount) -- never hidden.
+function TrendBadge({ change }: { change: ChangeResult | null }) {
   if (change === null) {
     return (
       <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#9CA3AF] dark:text-[#6E6E76]" title="No prior-period data to compare yet">
@@ -79,10 +94,17 @@ function TrendBadge({ change }: { change: number | null }) {
       </span>
     );
   }
-  const up = change >= 0;
+  if ("newCount" in change) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" title="No activity in the prior period to compare against">
+        ↑+{change.newCount}
+      </span>
+    );
+  }
+  const up = change.pct >= 0;
   return (
     <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${up ? "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-950/40 text-red-500 dark:text-red-400"}`}>
-      {up ? "↑" : "↓"}{Math.abs(change)}%
+      {up ? "↑" : "↓"}{Math.abs(change.pct)}%
     </span>
   );
 }
