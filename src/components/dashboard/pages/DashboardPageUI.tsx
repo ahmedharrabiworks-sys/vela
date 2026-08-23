@@ -12,29 +12,6 @@ function StatusDot({ status }: { status: string }) {
   return <span className="w-2 h-2 rounded-full shrink-0 inline-block" style={{ background: colors[status] || "#9CA3AF" }} />;
 }
 
-// FIX 4 (round R): compact real-data sparkline under each KPI number --
-// Oussama's own feedback that the Dashboard "feels visually empty." Pure
-// SVG (no charting dependency, matching the hand-rolled chart already used
-// on Analytics), 7 real daily values -- a day with no activity is a real
-// 0 point, never omitted, so a brand-new tenant's sparkline is a flat line
-// at 0, not blank.
-function Sparkline({ data }: { data: number[] }) {
-  if (!data || data.length === 0) return null;
-  const W = 100, H = 28, pad = 2;
-  const max = Math.max(...data, 1);
-  const pts = data.map((v, i) => ({
-    x: pad + (i / Math.max(data.length - 1, 1)) * (W - pad * 2),
-    y: H - pad - (v / max) * (H - pad * 2),
-  }));
-  const d = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const allZero = data.every((v) => v === 0);
-  return (
-    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-2 block">
-      <path d={d} fill="none" stroke={allZero ? "#E5E7EB" : "#FF6B35"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
 // FIX 4 (round R): no more arrow icons and no more raw "+N new" delta --
 // pct (including a real 0) renders as plain colored text, isNew renders as
 // a plain "New" label. See lib/stats.ts's ChangeInfo for the full
@@ -52,12 +29,11 @@ function ChangeText({ change }: { change?: { pct?: number; isNew?: boolean } }) 
 
 export type DashUIConv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
 export type DashUIAppt = { id: string; time: string; name: string; service: string; status: string };
-// FIX 6 (round Q) / FIX 4 (round R): change is a real ChangeInfo now,
-// never a bare number -- pct is present for a real percentage (including
-// a genuine 0%), isNew is true instead when the prior period was 0 and
-// current > 0 (no valid percentage exists from a zero base). See
-// lib/stats.ts's ChangeInfo. sparkline is the real last-7-day daily series.
-export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; isNew?: boolean }; sparkline?: number[] };
+// FIX 6 (round Q): change is a real ChangeInfo now, never a bare number --
+// pct is present for a real percentage (including a genuine 0%), isNew is
+// true instead when the prior period was 0 and current > 0 (no valid
+// percentage exists from a zero base). See lib/stats.ts's ChangeInfo.
+export type DashUIKPI  = { label: string; value: string; change?: { pct?: number; isNew?: boolean } };
 
 interface Props {
   loading: boolean;
@@ -191,9 +167,6 @@ export default function DashboardPageUI({
                     <p className="text-2xl font-bold text-[#111111] leading-none">
                       {isNumeric ? <CountUp value={numeric} /> : k.value}
                     </p>
-                    {/* FIX 4 (round R): real last-7-day trend -- Oussama's
-                        feedback that the Dashboard felt visually empty. */}
-                    {k.sparkline && <Sparkline data={k.sparkline} />}
                   </div>
                 );
               })}

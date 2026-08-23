@@ -32,38 +32,6 @@ function computeChangeInfo(curr: number, prev: number): ChangeInfo {
   return { pct: Math.round(((curr - prev) / prev) * 100) };
 }
 
-// FIX 4 (round R): real last-7-day daily counts for the Dashboard's
-// sparklines -- Oussama's own feedback that the Dashboard "feels visually
-// empty." Fetches only `created_at` for the window (cheap, no row data)
-// and buckets client-side rather than running 7 separate COUNT queries per
-// metric. A day with no real rows is a real 0 in that day's bucket, never
-// omitted -- the array is always exactly 7 entries, oldest to newest,
-// ending today.
-async function getDailySparkline(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  admin: any,
-  table: string,
-  tenantId: string,
-  extraEq?: [string, unknown],
-): Promise<number[]> {
-  const now = new Date();
-  const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
-  let query = admin.from(table).select("created_at").eq("tenant_id", tenantId).gte("created_at", start.toISOString());
-  if (extraEq) query = query.eq(extraEq[0], extraEq[1]);
-  const { data, error } = await query;
-  const buckets = new Array(7).fill(0);
-  if (error || !data) return buckets;
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-  for (const row of data as { created_at: string }[]) {
-    const d = new Date(row.created_at);
-    const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
-    const daysAgo = Math.round((todayStart.getTime() - dayStart.getTime()) / (24 * 60 * 60 * 1000));
-    const idx = 6 - daysAgo;
-    if (idx >= 0 && idx < 7) buckets[idx]++;
-  }
-  return buckets;
-}
-
 export interface DashboardStats {
   totalLeads: number;
   newLeadsThisWeek: number;
@@ -91,13 +59,6 @@ export interface DashboardStats {
   appointmentsTodayChange: ChangeInfo;
   messagesTodayChange: ChangeInfo;
   callsTodayChange: ChangeInfo;
-  // FIX 4 (round R): real last-7-day daily counts for each KPI's
-  // sparkline, oldest to newest, always exactly 7 entries (a day with no
-  // activity is a real 0, never omitted). See getDailySparkline above.
-  leadsSparkline: number[];
-  appointmentsSparkline: number[];
-  messagesSparkline: number[];
-  callsSparkline: number[];
 }
 
 /**
@@ -163,10 +124,6 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     messagesYesterdayRes,
     callsYesterdayRes,
     aiResolutionRate,
-    leadsSparkline,
-    appointmentsSparkline,
-    messagesSparkline,
-    callsSparkline,
   ] = await Promise.all([
     admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
     admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
@@ -193,10 +150,6 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     // this KPI strip and with how Analytics scopes its own version to its
     // selected window rather than all time.
     computeAiResolutionRate(admin, tenantId, todayStart.toISOString()),
-    getDailySparkline(admin, "leads", tenantId),
-    getDailySparkline(admin, "appointments", tenantId),
-    getDailySparkline(admin, "messages", tenantId, ["is_test", false]),
-    getDailySparkline(admin, "agent_calls", tenantId),
   ]);
 
   const totalLeads = totalLeadsRes.count ?? 0;
@@ -238,9 +191,5 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     appointmentsTodayChange: computeChangeInfo(appointmentsToday, appointmentsYesterday),
     messagesTodayChange: computeChangeInfo(messagesToday, messagesYesterday),
     callsTodayChange: computeChangeInfo(callsToday, callsYesterday),
-    leadsSparkline,
-    appointmentsSparkline,
-    messagesSparkline,
-    callsSparkline,
   };
 }

@@ -11,9 +11,7 @@ type Conv = { id: string; customer_name: string | null; channel: string; preview
 type Appt = { id: string; time: string; name: string; service: string; status: string };
 // FIX 6 (round Q): change is now always a real ChangeInfo (pct and/or
 // isNew), never undefined -- see lib/stats.ts's ChangeInfo for why.
-// FIX 4 (round R): sparkline is the real last-7-day daily series for this
-// KPI (see lib/stats.ts's getDailySparkline) -- always 7 real entries.
-type KPI  = { label: string; value: string; change?: ChangeInfo; sparkline?: number[] };
+type KPI  = { label: string; value: string; change?: ChangeInfo };
 
 function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
@@ -111,13 +109,12 @@ export default function DashboardPage() {
         leadsToday?: number; appointmentsToday?: number; messagesToday?: number; callsToday?: number;
         aiResolutionRate?: number | null;
         leadsTodayChange?: ChangeInfo; appointmentsTodayChange?: ChangeInfo; messagesTodayChange?: ChangeInfo; callsTodayChange?: ChangeInfo;
-        leadsSparkline?: number[]; appointmentsSparkline?: number[]; messagesSparkline?: number[]; callsSparkline?: number[];
       }) => {
         setKpis([
-          { label: "kpiLeadsToday",        value: String(stats.leadsToday ?? 0),        change: stats.leadsTodayChange, sparkline: stats.leadsSparkline },
-          { label: "kpiAppointmentsToday", value: String(stats.appointmentsToday ?? apptCountFast), change: stats.appointmentsTodayChange, sparkline: stats.appointmentsSparkline },
-          { label: "kpiMessagesToday",     value: String(stats.messagesToday ?? 0),      change: stats.messagesTodayChange, sparkline: stats.messagesSparkline },
-          { label: "kpiCallsToday",        value: String(stats.callsToday ?? 0),         change: stats.callsTodayChange, sparkline: stats.callsSparkline },
+          { label: "kpiLeadsToday",        value: String(stats.leadsToday ?? 0),        change: stats.leadsTodayChange },
+          { label: "kpiAppointmentsToday", value: String(stats.appointmentsToday ?? apptCountFast), change: stats.appointmentsTodayChange },
+          { label: "kpiMessagesToday",     value: String(stats.messagesToday ?? 0),      change: stats.messagesTodayChange },
+          { label: "kpiCallsToday",        value: String(stats.callsToday ?? 0),         change: stats.callsTodayChange },
         ]);
         setAiResolutionRate(stats.aiResolutionRate ?? null);
       })

@@ -159,11 +159,22 @@ export default function WidgetChat({
         const data = await res.json() as { messages?: { role: string; content: string }[] };
         if (!data.messages) return;
         const fetched = data.messages;
+        // Round S fix: was a Set of `${role}:${content}` matched across the
+        // ENTIRE history, which wrongly treated a genuinely NEW turn's reply
+        // as "already shown" whenever its text happened to match an EARLIER
+        // turn's -- e.g. the duplicate-booking refusal (section 7c in
+        // ai/reply/route.ts) is deterministic and repeats verbatim, so a
+        // customer's second "book another one" got silently dropped here,
+        // never rendered, even though the server had genuinely replied.
+        // Position-based instead: /api/widget/history is authoritative and
+        // strictly ordered, so anything beyond what's already rendered
+        // (excluding the client-only "welcome" placeholder) is real and new,
+        // regardless of whether its text matches something shown earlier.
         setMessages((prev) => {
-          const seen = new Set(prev.map((m) => `${m.role}:${m.content}`));
-          const fresh = fetched.filter((m) => !seen.has(`${m.role}:${m.content}`));
-          if (fresh.length === 0) return prev;
-          return [...prev, ...fresh.map((m, i) => ({ id: `poll-${Date.now()}-${i}`, role: m.role as "user" | "assistant", content: m.content }))];
+          const shown = prev.filter((m) => m.id !== "welcome").length;
+          if (fetched.length <= shown) return prev;
+          const tail = fetched.slice(shown);
+          return [...prev, ...tail.map((m, i) => ({ id: `poll-${Date.now()}-${i}`, role: m.role as "user" | "assistant", content: m.content }))];
         });
       } catch { /* next poll will retry */ }
     }, 5000);
@@ -234,13 +245,18 @@ export default function WidgetChat({
       }
 
       const aiContent = data.reply ?? "I'll get back to you shortly!";
-      // Dedupe against `prev` (not an outer snapshot) -- see the polling
-      // effect's comment above for the race this closes.
-      setMessages((prev) =>
-        prev.some((m) => m.role === "assistant" && m.content === aiContent)
-          ? prev
-          : [...prev, { id: `a-${Date.now()}`, role: "assistant", content: aiContent }]
-      );
+      // Round S fix: only compare against the single MOST RECENT message,
+      // not the entire history (see the matching comment in the polling
+      // effect above for the false-negative bug that caused). Checking just
+      // the last entry still closes the original same-turn race this dedupe
+      // exists for -- see the CRITICAL FIX comment above -- because that
+      // race always leaves poll()'s duplicate-append as the newest entry at
+      // the exact moment this fetch resolves.
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        const alreadyShown = last?.role === "assistant" && last.content === aiContent;
+        return alreadyShown ? prev : [...prev, { id: `a-${Date.now()}`, role: "assistant", content: aiContent }];
+      });
     } catch (err) {
       const timedOut = err instanceof DOMException && err.name === "AbortError";
       console.error(timedOut ? "[vela-widget] request timed out:" : "[vela-widget] network error:", err);
