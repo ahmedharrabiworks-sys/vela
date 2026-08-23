@@ -502,8 +502,20 @@ export async function POST(req: NextRequest) {
   // conversation/phone is now a HARD limit with no exception the model can
   // reason its way around: reschedule or cancel are the only two paths
   // ever offered while one exists, full stop.
+  //
+  // FIX 1 (round S3): "...or rescheduled away" was logically wrong --
+  // rescheduling only moves this SAME appointment to a different time, it
+  // never frees up room for an ADDITIONAL one, so it can never be a real
+  // path to a second booking. This false claim was exactly what surfaced
+  // when a customer asked an informational question like "when can I book
+  // another appointment" (routes through the creative reply below, which
+  // reads this directive) -- the model correctly relayed what it was told,
+  // which was itself wrong. Only cancelling the existing appointment, or
+  // its date/time already having passed, actually makes a second one
+  // possible. Reschedule is still offered, but only as its own separate
+  // action on THIS appointment, never framed as unlocking a new one.
   const existingApptDirective = existingActiveAppt
-    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. HARD LIMIT, NO EXCEPTIONS: this customer may only ever have ONE active appointment at a time. If they ask to book a new, additional, or second appointment for ANY reason -- including if they insist, say "just book another one", or claim it's for someone else -- do NOT collect a new date/time and do NOT open a booking flow. Firmly tell them only one active appointment is allowed at a time, and offer ONLY two options: reschedule this existing appointment to a new time, or cancel it. Do not budge from this even if they push back or ask again. The only way a second appointment can ever exist is if this one is first cancelled or rescheduled away.`
+    ? `\n\nEXISTING ACTIVE BOOKING (real, currently on file for this customer): ${existingActiveAppt.service_name || "an appointment"} at ${new Date(existingActiveAppt.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}${existingActiveAppt.leadName ? ` under the name ${existingActiveAppt.leadName}` : ""}. HARD LIMIT, NO EXCEPTIONS: this customer may only ever have ONE active appointment at a time. If they ask to book a new, additional, or second appointment for ANY reason -- including if they insist, say "just book another one", or claim it's for someone else -- do NOT collect a new date/time and do NOT open a booking flow. Firmly tell them only one active appointment is allowed at a time. A second appointment only becomes possible once this existing one is CANCELLED, or once its date/time has already passed -- rescheduling does NOT free up room for a second appointment, it only moves this SAME appointment to a different time, so NEVER state or imply that rescheduling enables a new booking. You may still separately offer to reschedule this existing appointment to a different time (as its own action, on its own), and separately offer to cancel it -- but when explaining what actually makes a NEW appointment possible, name only cancellation or the appointment already being in the past, never reschedule. Do not budge from this even if they push back or ask again.`
     : "";
 
   /* ── 7. Build system prompt ── */
