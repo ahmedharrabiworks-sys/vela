@@ -244,6 +244,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               .from("conversations")
               .select("id", { count: "exact", head: true })
               .eq("tenant_id", tenant.id)
+              .is("deleted_at", null)
               .eq("needs_human", true);
             setNeedsAttentionCount(count ?? 0);
           }

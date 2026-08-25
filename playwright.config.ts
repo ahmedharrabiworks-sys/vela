@@ -94,5 +94,16 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
     },
+    // ── 7. Round M2 — live re-verification, desktop 1280px. Same
+    // reuse-stored-session pattern as round9.
+    {
+      name: "round-m2",
+      testMatch: /round-m2-.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 900 },
+        storageState: "e2e/.auth/user.json",
+      },
+    },
   ],
 });

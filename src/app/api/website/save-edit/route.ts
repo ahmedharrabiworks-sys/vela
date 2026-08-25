@@ -8,47 +8,77 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
+// Round M3 FIX 3: getImageQuery/getImageQueries are verbatim copies of the
+// same-named helpers in generate/route.ts (internal there, not exported;
+// duplicated for the same reason the e2e scripts do -- see that file's
+// TEST-01 comment).
+function getImageQuery(s: { imageQuery?: string; content?: Record<string, unknown> }): string | null {
+  if (typeof s.imageQuery === "string" && s.imageQuery.trim()) return s.imageQuery.trim();
+  if (s.content && typeof s.content.imageQuery === "string" && (s.content.imageQuery as string).trim()) {
+    return (s.content.imageQuery as string).trim();
+  }
+  return null;
+}
+function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, unknown> }): string[] {
+  if (Array.isArray(s.imageQueries) && s.imageQueries.length) return s.imageQueries;
+  if (s.content && Array.isArray(s.content.imageQueries)) return s.content.imageQueries as string[];
+  return [];
+}
+
 /**
  * Extracts the ImageMap from existing rendered HTML by matching img src attributes
  * to the section indices encoded in the spec. Used to re-render HTML after a text
  * edit without re-fetching images from Unsplash.
+ *
+ * Round M3 FIX 3: this used to only recognize a hardcoded allowlist of older
+ * section types (hero, about, gallery, listings-grid variants) via a fixed
+ * id-anchor lookup. Every newer image-bearing section type added since (property-
+ * listings-grid, portfolio-grid, treatment-gallery, membership-plans-
+ * display, trust-badges-band, agent-card, trainer-showcase, testimonial-
+ * grid, etc. -- generate/route.ts's own fetchSpecImages has never been
+ * type-restricted like this) fell through this allowlist silently -- ANY
+ * visual edit (a text-style/color/spacing/border/shadow change through the
+ * floating panel, or an image-replace click) on a site containing one of
+ * these richer components re-rendered with that section's real photos
+ * silently dropped, because they were never captured into the imageMap
+ * this function returns. The bug survived refresh/publish because the drop
+ * happened at SAVE time, baked into the newly persisted draft_html itself --
+ * this is the concrete mechanism behind "an edit not surviving a refresh/
+ * publish cycle."
+ * Fixed to be section-type-agnostic: every section gets a `data-vs="{i}"`
+ * marker on its outer tag unconditionally (website-renderer.ts, all
+ * section types, not edit-mode-gated) -- used as the boundary instead of a
+ * type-specific id anchor, and whether to key single (`i`) vs multi
+ * (`i_j`) is driven by whether the SPEC itself expects one image or several
+ * (imageQuery vs imageQueries), not by a fixed type list.
  */
 function extractImageMap(spec: WebsiteSpec, html: string): ImageMap {
   const images: ImageMap = {};
 
-  const SINGLE_IMG = new Set([
-    "hero", "hero-fullbleed", "hero-split", "hero-minimal",
-    "about", "about-story",
-  ]);
-  const MULTI_IMG = new Set(["gallery", "gallery-grid", "listings-grid"]);
-
-  const SECTION_ANCHOR: Record<string, string> = {
-    "hero": "hero", "hero-fullbleed": "hero", "hero-split": "hero", "hero-minimal": "hero",
-    "about": "about", "about-story": "about",
-    "gallery": "gallery", "gallery-grid": "gallery",
-    "listings-grid": "listings",
-  };
-
   for (let i = 0; i < spec.sections.length; i++) {
-    const s = spec.sections[i];
-    const anchor = SECTION_ANCHOR[s.type];
-    if (!anchor) continue;
+    const s = spec.sections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> };
+    const isMulti = getImageQueries(s).length > 0;
+    const isSingle = !isMulti && !!getImageQuery(s);
+    if (!isMulti && !isSingle) continue; // this section never had images to begin with
 
-    const anchorIdx = html.indexOf(`id="${anchor}"`);
-    if (anchorIdx === -1) continue;
+    const secStart = html.indexOf(`data-vs="${i}"`);
+    if (secStart === -1) continue;
+    const nextStart = html.indexOf(`data-vs="${i + 1}"`, secStart + 1);
+    const slice = nextStart === -1 ? html.slice(secStart) : html.slice(secStart, nextStart);
 
-    // Use a generous slice starting from the section anchor
-    const slice = html.slice(anchorIdx, anchorIdx + 30_000);
-
-    if (MULTI_IMG.has(s.type)) {
-      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+)"/g;
+    // Round M3 FIX 3: matches https:// (Unsplash) AND data:image/... (an
+    // owner-uploaded photo) -- the original https?://-only pattern silently
+    // lost any uploaded image on the next edit too, same underlying class
+    // of bug as the type-allowlist gap above.
+    if (isMulti) {
+      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/g;
       let m: RegExpExecArray | null;
       let j = 0;
       while ((m = imgRe.exec(slice)) !== null) {
         images[`${i}_${j++}`] = m[1];
       }
-    } else if (SINGLE_IMG.has(s.type)) {
-      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+)"/);
+    } else {
+      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/);
       if (m) images[String(i)] = m[1];
     }
   }

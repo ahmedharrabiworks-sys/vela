@@ -111,10 +111,15 @@ export async function POST(req: NextRequest) {
   const tenantId = tenant.id;
 
   // Load real-time data in parallel
+  // Round M2 FIX 10: this upfront "live data" block had no deleted_at filter
+  // (unlike this same file's get_leads/get_appointments/get_conversations
+  // tool-call handlers below, which already filter correctly) -- a
+  // soft-deleted lead/appointment/conversation inflated the counts the
+  // Assistant states as fact in its reply (e.g. "Upcoming appointments: N").
   const [leadsRes, apptsRes, convsRes, cfgRes] = await Promise.all([
-    admin.from("leads").select("id, name, status, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(5),
-    admin.from("appointments").select("id, datetime, status, service_name, leads(name)").eq("tenant_id", tenantId).gte("datetime", new Date().toISOString()).order("datetime", { ascending: true }).limit(5),
-    admin.from("conversations").select("id, channel, status, needs_human, customer_name").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(8),
+    admin.from("leads").select("id, name, status, created_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
+    admin.from("appointments").select("id, datetime, status, service_name, leads(name)").eq("tenant_id", tenantId).is("deleted_at", null).gte("datetime", new Date().toISOString()).order("datetime", { ascending: true }).limit(5),
+    admin.from("conversations").select("id, channel, status, needs_human, customer_name").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
     admin.from("tenant_config").select("instagram_connected, whatsapp_connected, services_json, knowledge_base").eq("tenant_id", tenantId).maybeSingle(),
   ]);
 

@@ -68,10 +68,16 @@ export default function DashboardPage() {
     // Load data in parallel — leads are no longer queried directly here;
     // KPI counts (including leadsToday) come from /api/stats below, which
     // is also the source of truth used by Analytics for consistency.
+    // Round M2 FIX 10: both queries below previously had no deleted_at
+    // filter -- a soft-deleted today's appointment briefly inflated the
+    // fast-path KPI (apptCountFast) before /api/stats resolves, and a
+    // soft-deleted conversation could still appear in the Recent
+    // Conversations widget.
     const [apptRes, convRes, configRes] = await Promise.all([
       db.from("appointments")
         .select("id, service_name, datetime, status, leads(name)")
         .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
         .neq("status", "cancelled")
         .gte("datetime", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
         .lte("datetime", new Date(new Date().setHours(23, 59, 59, 999)).toISOString())
@@ -80,6 +86,7 @@ export default function DashboardPage() {
       db.from("conversations")
         .select("id, customer_name, channel, last_message_at")
         .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
         .order("last_message_at", { ascending: false })
         .limit(5),
       db.from("tenant_config")

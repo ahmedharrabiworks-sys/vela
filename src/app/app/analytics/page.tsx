@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
   // dashboard anyway.
   const [range, setRange] = useState<Range>("7d");
   const [series, setSeries] = useState<Series>("leads");
-  const { isPro } = usePlan();
+  const { isPro, planLoaded } = usePlan();
   const { t } = useI18n();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -287,10 +287,17 @@ export default function AnalyticsPage() {
       });
   }, []);
 
+  // Round M3 FIX 4: wait for usePlan()'s async check to actually settle
+  // before deciding to skip this fetch -- gating on isPro alone used its
+  // FIRST-RENDER value (a synchronous localStorage guess that defaults to
+  // "starter" whenever vela_profile has no plan field yet), which could
+  // read as false for a genuine Pro/Premium tenant just long enough for
+  // this effect to already have skipped fetching real data.
   useEffect(() => {
+    if (!planLoaded) return;
     if (!isPro) { setLoading(false); return; }
     doFetch();
-  }, [isPro, doFetch]);
+  }, [planLoaded, isPro, doFetch]);
 
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
 

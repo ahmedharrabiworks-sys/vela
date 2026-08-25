@@ -1381,6 +1381,34 @@ export default function WebsitePage() {
     chat: Msg[] | null; embedAiAssistant: boolean | null;
   }>>(new Map());
   const [switchingProject, setSwitchingProject] = useState(false);
+  // Round M2 FIX 4: real root cause of "every chat edit resets scroll to
+  // the hero" -- all three iframe variants below key off content derived
+  // from the HTML itself (`key={previewHtml}` / `key={previewHtml.length}-...`),
+  // so React treats ANY edit, even a one-word change, as a brand new
+  // element: the old iframe (and its scroll position, and any live JS
+  // state inside it) is destroyed and a fresh one mounted from scratch.
+  // Fixed by keying only on device/frame dimensions (still needs a real
+  // remount when those change) -- content updates now flow through the
+  // SAME iframe via its `srcDoc` prop alone. `srcDoc` changing still
+  // renavigates the iframe's own document (unavoidable -- that's how
+  // srcDoc works), so scroll position is explicitly captured on every
+  // scroll (previewIframeRef's onLoad below can't read the OLD document's
+  // scroll after it's already been replaced) and restored once the new
+  // document finishes loading.
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
+  const iframeScrollRef = useRef<number>(0);
+  const handlePreviewIframeLoad = useCallback(() => {
+    const win = previewIframeRef.current?.contentWindow;
+    if (!win) return;
+    if (iframeScrollRef.current > 0) {
+      try { win.scrollTo(0, iframeScrollRef.current); } catch { /* cross-origin or not ready -- best effort */ }
+    }
+    try {
+      win.addEventListener("scroll", () => {
+        iframeScrollRef.current = win.scrollY;
+      });
+    } catch { /* sandboxed iframe without same-origin -- scroll tracking degrades to always-top, never a crash */ }
+  }, []);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -2250,7 +2278,14 @@ export default function WebsitePage() {
       setViewMode("preview");
       setActiveTab("preview");
 
-      const successMsg = built
+      // Round M3 FIX 1(b): a server-provided `reply` alongside real `html`
+      // means something DID change but wasn't a full, unqualified success
+      // (e.g. an image was requested but couldn't be found) -- it must win
+      // over the canned success line, not be silently dropped. The
+      // conversational-question branch above already handles `reply` when
+      // `html` is absent; this covers the "html changed, but be honest
+      // about a partial failure" case.
+      const successMsg = data.reply ? data.reply : built
         ? "Done! Your website has been updated. Click \"Update Site\" to push it live, or keep refining."
         : "Got it. Your website is ready! Check the preview →\n\nYou can say things like \"make the hero darker\", \"add a gallery section\", or upload a photo to refine it.";
 
@@ -3470,7 +3505,9 @@ export default function WebsitePage() {
               /* Desktop — full pane width */
               <div className="flex-1 min-h-0 flex overflow-hidden">
                 <iframe
-                  key={previewHtml}
+                  key="preview-desktop"
+                  ref={previewIframeRef}
+                  onLoad={handlePreviewIframeLoad}
                   srcDoc={iframeSrc}
                   title="Website preview"
                   className="bg-white w-full h-full"
@@ -3485,7 +3522,9 @@ export default function WebsitePage() {
                   style={{ width: iframeW, height: iframeH }}
                 >
                   <iframe
-                    key={`${previewHtml.length}-${iframeW}-${iframeH}`}
+                    key={`preview-frame-${iframeW}-${iframeH}`}
+                    ref={previewIframeRef}
+                    onLoad={handlePreviewIframeLoad}
                     srcDoc={iframeSrc}
                     title="Website preview"
                     style={{ width: iframeW, height: iframeH, display: "block" }}
@@ -3498,7 +3537,9 @@ export default function WebsitePage() {
               /* Laptop — 1280px wide, scrollable horizontally, no frame */
               <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-4">
                 <iframe
-                  key={`${previewHtml.length}-${iframeW}`}
+                  key={`preview-laptop-${iframeW}`}
+                  ref={previewIframeRef}
+                  onLoad={handlePreviewIframeLoad}
                   srcDoc={iframeSrc}
                   title="Website preview"
                   style={{ width: iframeW, minHeight: "100%", height: "100%", display: "block" }}
@@ -3652,7 +3693,7 @@ export default function WebsitePage() {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors">
+                className="flex-[2] text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors whitespace-nowrap">
                 Delete
               </button>
             </div>

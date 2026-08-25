@@ -65,6 +65,18 @@ export default function ConversationsPage() {
   const [menuPos, setMenuPos]               = useState<{ top: number; left: number } | null>(null);
   const [renamingId, setRenamingId]         = useState<string | null>(null);
   const [renameValue, setRenameValue]       = useState("");
+  // Round M2 FIX 7: real root cause of "Rename does nothing" -- when the
+  // conversation being renamed is ALSO the currently-selected one, it's
+  // shown in BOTH the list row AND the detail-panel header at once. Both
+  // surfaces shared the same `renamingId` check, so both their rename
+  // &lt;input&gt;s mounted simultaneously, both with autoFocus -- the second to
+  // mount stole focus from the first, firing that first input's onBlur
+  // (which calls handleSaveRename, immediately closing edit mode again)
+  // before the user ever got a keystroke in. Renaming the CURRENTLY-
+  // SELECTED conversation always hits this, since the detail panel only
+  // exists for it. Tracks which surface's "..." menu is open so only ONE
+  // input ever renders/autofocuses for a given rename.
+  const [menuSource, setMenuSource]         = useState<"list" | "detail" | null>(null);
   const [deleteTarget, setDeleteTarget]     = useState<Conversation | null>(null);
   const [deleting, setDeleting]             = useState(false);
   const [toast, setToast]                   = useState("");
@@ -435,7 +447,7 @@ export default function ConversationsPage() {
 
           {filtered.map((conv) => {
             const isActive = selected?.id === conv.id;
-            const isRenaming = renamingId === conv.id;
+            const isRenaming = renamingId === conv.id && menuSource === "list";
             return (
               <div key={conv.id}
                 className={`group relative w-full flex items-start gap-3 pl-4 pr-1 py-3.5 transition-all ${
@@ -501,6 +513,7 @@ export default function ConversationsPage() {
                         const rect = e.currentTarget.getBoundingClientRect();
                         setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
                         setMenuOpenId(conv.id);
+                        setMenuSource("list");
                       }
                     }}
                     aria-label="Conversation options"
@@ -541,7 +554,7 @@ export default function ConversationsPage() {
               </div>
 
               <div className="flex-1 min-w-0">
-                {renamingId === selected.id ? (
+                {renamingId === selected.id && menuSource === "detail" ? (
                   <input
                     autoFocus
                     value={renameValue}
@@ -589,6 +602,7 @@ export default function ConversationsPage() {
                       const rect = e.currentTarget.getBoundingClientRect();
                       setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
                       setMenuOpenId(selected.id);
+                      setMenuSource("detail");
                     }
                   }}
                   aria-label="Conversation options"
@@ -740,23 +754,29 @@ export default function ConversationsPage() {
         );
       })()}
 
-      {/* Delete Conversation Confirmation Modal */}
+      {/* Delete Conversation Confirmation Modal -- Round M2 FIX 8: now
+          byte-for-byte matched to the reference clean pattern (settings.tsx
+          Recycle Bin "Delete Permanently" modal): dark-mode classes added
+          (this modal previously had none, unlike the reference), and the
+          button ratio changed from equal flex-1/flex-1 -- which wrapped
+          "Delete conversation" onto two lines at max-w-sm width -- to the
+          asymmetric flex-1/flex-[2] + whitespace-nowrap the reference uses. */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111]">{t("conversations.deleteConfirmTitle")}</h2>
-            <p className="text-sm text-[#6B7280] leading-relaxed">{t("conversations.deleteConfirmBody")}</p>
+          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] dark:text-white">{t("conversations.deleteConfirmTitle")}</h2>
+            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">{t("conversations.deleteConfirmBody")}</p>
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-50 transition-colors">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-50 transition-colors">
                 {t("conversations.cancel")}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleting}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
+                className="flex-[2] text-sm font-semibold px-4 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors whitespace-nowrap">
                 {deleting ? "…" : t("conversations.confirmDelete")}
               </button>
             </div>

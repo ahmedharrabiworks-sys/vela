@@ -24,22 +24,47 @@ export async function GET(_req: NextRequest) {
 
   // Fetch the target website (specific or most-recently-updated)
   let site: { id: string; name: string | null; slug: string | null; is_published: boolean; draft_html: string | null; published_html: string | null; chat: unknown; published_at: string | null; domain: string | null; domain_status: string | null; embed_ai_assistant: boolean | null } | null = null;
+  // Round M2 FIX 9: both branches below previously had no deleted_at filter,
+  // so a soft-deleted (Recycle Bin) site's full html/chat/versions could
+  // still be fetched and rehydrated into the builder -- e.g. via the
+  // ?site=<id> deep link Channels' "Manage" link produces. Falls back to
+  // unfiltered if the deleted_at migration hasn't run yet, same pattern as
+  // the "all sites" query below.
   if (requestedWebsiteId) {
-    const { data } = await admin
+    let { data, error } = await admin
       .from("websites")
       .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status, embed_ai_assistant")
       .eq("tenant_id", tenant.id)
       .eq("id", requestedWebsiteId)
+      .is("deleted_at", null)
       .maybeSingle();
+    if (error?.code === "42703" || error?.code === "PGRST204") {
+      ({ data } = await admin
+        .from("websites")
+        .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status, embed_ai_assistant")
+        .eq("tenant_id", tenant.id)
+        .eq("id", requestedWebsiteId)
+        .maybeSingle());
+    }
     site = data as typeof site;
   } else {
-    const { data } = await admin
+    let { data, error } = await admin
       .from("websites")
       .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status, embed_ai_assistant")
       .eq("tenant_id", tenant.id)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (error?.code === "42703" || error?.code === "PGRST204") {
+      ({ data } = await admin
+        .from("websites")
+        .select("id, name, slug, is_published, draft_html, published_html, chat, published_at, domain, domain_status, embed_ai_assistant")
+        .eq("tenant_id", tenant.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle());
+    }
     site = data as typeof site;
   }
 

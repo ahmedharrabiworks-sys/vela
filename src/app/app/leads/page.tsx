@@ -223,13 +223,25 @@ function DraggableLeadCard({ lead, stage, onOpen, t }: { lead: Lead; stage: Stag
           <ChannelIcon channel={lead.channel} size={13} />
         </span>
       </div>
-      {lead.phone && (
-        <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-2.5 font-mono truncate flex items-center gap-1">
-          {lead.phone}
-          {lead.phone_unconfirmed && (
-            <span title="No country code confirmed for this number" className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400" />
+      {/* Round M3 FIX 5: this card only ever rendered lead.phone -- a lead
+          with only an email on file (no phone) showed no contact info at
+          all here, and a lead with both showed phone only, silently
+          dropping the email even though it was right there on the row.
+          Both now render independently, same as the full detail panel. */}
+      {(lead.phone || lead.email) && (
+        <div className="mb-2.5 space-y-0.5">
+          {lead.phone && (
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] font-mono truncate flex items-center gap-1">
+              {lead.phone}
+              {lead.phone_unconfirmed && (
+                <span title="No country code confirmed for this number" className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400" />
+              )}
+            </p>
           )}
-        </p>
+          {lead.email && (
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate">{lead.email}</p>
+          )}
+        </div>
       )}
       <div className="flex items-center justify-between pt-2.5 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
         <span className="text-[10px] text-[#9CA3AF] dark:text-[#6E6E76]">{timeAgo(lead.created_at, t)}</span>

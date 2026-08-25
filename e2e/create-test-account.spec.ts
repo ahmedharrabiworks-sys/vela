@@ -188,6 +188,9 @@ test("create test account and generate 3 websites", async ({ page }) => {
 
   // Step 2 — business info (waits for step 2 to appear)
   await expect(page.getByText("Tell us about your business")).toBeVisible({ timeout: 10_000 });
+  // Onboarding UI now has a separate required "Company Name" field ahead of
+  // the business description textarea (previously absent from this script).
+  await page.getByPlaceholder("Your business name").fill("Vela E2E Test Co");
   await page.locator("textarea").fill("Dental clinic in Dubai offering general dentistry and cosmetic treatments.");
   // Wait a moment for AI detection debounce, then skip it — it's optional
   await page.waitForTimeout(1_200);

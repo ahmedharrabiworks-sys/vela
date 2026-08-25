@@ -8,31 +8,52 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-const SINGLE_IMG = new Set(["hero", "hero-fullbleed", "hero-split", "hero-minimal", "about", "about-story"]);
-const MULTI_IMG  = new Set(["gallery", "gallery-grid", "listings-grid"]);
+// Round M3 FIX 3: getImageQuery/getImageQueries are verbatim copies of the
+// same-named helpers in generate/route.ts (internal there, not exported).
+function getImageQuery(s: { imageQuery?: string; content?: Record<string, unknown> }): string | null {
+  if (typeof s.imageQuery === "string" && s.imageQuery.trim()) return s.imageQuery.trim();
+  if (s.content && typeof s.content.imageQuery === "string" && (s.content.imageQuery as string).trim()) {
+    return (s.content.imageQuery as string).trim();
+  }
+  return null;
+}
+function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, unknown> }): string[] {
+  if (Array.isArray(s.imageQueries) && s.imageQueries.length) return s.imageQueries;
+  if (s.content && Array.isArray(s.content.imageQueries)) return s.content.imageQueries as string[];
+  return [];
+}
 
-const SECTION_ANCHOR: Record<string, string> = {
-  "hero": "hero", "hero-fullbleed": "hero", "hero-split": "hero", "hero-minimal": "hero",
-  "about": "about", "about-story": "about",
-  "gallery": "gallery", "gallery-grid": "gallery", "listings-grid": "listings",
-};
-
+// Round M3 FIX 3: was restricted to a hardcoded allowlist of older section
+// types via a fixed id anchor (SECTION_ANCHOR/SINGLE_IMG/MULTI_IMG) -- every
+// newer image-bearing section type (property-listings-grid, portfolio-grid,
+// treatment-gallery, membership-plans-display, trust-badges-band,
+// agent-card, trainer-showcase, testimonial-grid, etc.) fell through
+// silently, so replacing ONE image on a site containing any of these richer
+// components dropped their real photos from the freshly-saved draft_html --
+// same root cause and fix as save-edit/route.ts's extractImageMap. Now
+// section-type-agnostic: `data-vs="{i}"` (unconditional on every section,
+// all types) is the boundary, and single-vs-multi keying is driven by
+// whether the spec itself expects one image or several.
 function extractImageMap(spec: WebsiteSpec, html: string): ImageMap {
   const images: ImageMap = {};
   for (let i = 0; i < spec.sections.length; i++) {
-    const s = spec.sections[i];
-    const anchor = SECTION_ANCHOR[s.type];
-    if (!anchor) continue;
-    const anchorIdx = html.indexOf(`id="${anchor}"`);
-    if (anchorIdx === -1) continue;
-    const slice = html.slice(anchorIdx, anchorIdx + 30_000);
-    if (MULTI_IMG.has(s.type)) {
-      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+)"/g;
+    const s = spec.sections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> };
+    const isMulti = getImageQueries(s).length > 0;
+    const isSingle = !isMulti && !!getImageQuery(s);
+    if (!isMulti && !isSingle) continue;
+
+    const secStart = html.indexOf(`data-vs="${i}"`);
+    if (secStart === -1) continue;
+    const nextStart = html.indexOf(`data-vs="${i + 1}"`, secStart + 1);
+    const slice = nextStart === -1 ? html.slice(secStart) : html.slice(secStart, nextStart);
+
+    if (isMulti) {
+      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/g;
       let m: RegExpExecArray | null;
       let j = 0;
       while ((m = imgRe.exec(slice)) !== null) images[`${i}_${j++}`] = m[1];
-    } else if (SINGLE_IMG.has(s.type)) {
-      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+)"/);
+    } else {
+      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/);
       if (m) images[String(i)] = m[1];
     }
   }

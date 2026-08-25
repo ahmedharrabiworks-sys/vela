@@ -567,18 +567,21 @@ function ChannelsPageContent() {
         // Website channel's "chat conversations" count below (conversations
         // scoped by channel). Only queried when actually connected, matching
         // the rule that a stat pair only ever shows once real data exists.
+        // Round M2 FIX 10: none of these 4 channel-card counts filtered
+        // deleted_at -- a soft-deleted lead/conversation still inflated the
+        // Instagram/WhatsApp stat pairs shown here.
         const [igConvRes, igLeadRes, waConvRes, waBookedRes] = await Promise.all([
           igConnected
-            ? s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "instagram")
+            ? s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).is("deleted_at", null).eq("channel", "instagram")
             : Promise.resolve({ count: 0 }),
           igConnected
-            ? s.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "instagram")
+            ? s.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).is("deleted_at", null).eq("channel", "instagram")
             : Promise.resolve({ count: 0 }),
           waConnected
-            ? s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "whatsapp")
+            ? s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).is("deleted_at", null).eq("channel", "whatsapp")
             : Promise.resolve({ count: 0 }),
           waConnected
-            ? s.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "whatsapp").eq("status", "booked")
+            ? s.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).is("deleted_at", null).eq("channel", "whatsapp").eq("status", "booked")
             : Promise.resolve({ count: 0 }),
         ]);
 
@@ -604,10 +607,22 @@ function ChannelsPageContent() {
       // are. siteUrl is only ever shown when exactly one site is live (an
       // unambiguous single link) -- with 2+ live sites, "which one" is a
       // Website Builder question, not a Channels-page one.
-      const { data: siteRows } = await s
+      // Round M2 FIX 9: soft-deleted sites keep is_published=true (Recycle
+      // Bin preserves state for Restore), so without this filter a deleted
+      // site was still counted as "live" here -- Channels showed "Connected"
+      // and produced a Manage link for a site that 404s publicly. Falls
+      // back to unfiltered if the deleted_at migration hasn't run yet.
+      let { data: siteRows, error: siteRowsErr } = await s
         .from("websites")
         .select("slug, is_published")
-        .eq("tenant_id", tenant.id);
+        .eq("tenant_id", tenant.id)
+        .is("deleted_at", null);
+      if (siteRowsErr?.code === "42703" || siteRowsErr?.code === "PGRST204") {
+        ({ data: siteRows } = await s
+          .from("websites")
+          .select("slug, is_published")
+          .eq("tenant_id", tenant.id));
+      }
 
       const publishedSites = ((siteRows ?? []) as { slug: string | null; is_published: boolean }[]).filter((r) => r.is_published);
       const isLive = publishedSites.length > 0;
@@ -622,9 +637,12 @@ function ChannelsPageContent() {
       // both reliable, both always keep the ratio <= 100%. Both counts are
       // already tenant-wide aggregates across every site's conversations,
       // not scoped to a single site.
+      // Round M2 FIX 10: added deleted_at filter -- a soft-deleted website
+      // conversation was still counted here and its lead_id still fed into
+      // the distinct-leads Set below.
       const [{ count: websiteConvCount }, { data: websiteConvRows }] = await Promise.all([
-        s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("channel", "website"),
-        s.from("conversations").select("lead_id").eq("tenant_id", tenant.id).eq("channel", "website"),
+        s.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).is("deleted_at", null).eq("channel", "website"),
+        s.from("conversations").select("lead_id").eq("tenant_id", tenant.id).is("deleted_at", null).eq("channel", "website"),
       ]);
       const websiteLeadCount = new Set(
         ((websiteConvRows ?? []) as { lead_id: string | null }[]).map((r) => r.lead_id).filter((id): id is string => !!id)

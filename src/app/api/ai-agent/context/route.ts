@@ -23,21 +23,28 @@ export async function GET(req: NextRequest) {
   const admin = createSupabaseAdmin() as any;
   const tenantId = tenant.id;
 
+  // Round M2 FIX 10: leads/appointments/conversations counts here previously
+  // had no deleted_at filter -- these totals are rendered verbatim into the
+  // live voice-agent context string and the AI Agent Overview page, so a
+  // soft-deleted row was inflating numbers stated as fact to the owner.
   const [leadsRes, apptRes, convRes, cfgRes, callsRes] = await Promise.all([
     admin.from("leads")
       .select("id, name, stage, created_at", { count: "exact" })
       .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(3),
     admin.from("appointments")
       .select("id, customer_name, service, scheduled_at", { count: "exact" })
       .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
       .gte("scheduled_at", new Date().toISOString())
       .order("scheduled_at", { ascending: true })
       .limit(3),
     admin.from("conversations")
       .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId),
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null),
     admin.from("tenant_config")
       .select("instagram_connected, whatsapp_connected, knowledge_base, phone_agent_knowledge_base, agent_settings")
       .eq("tenant_id", tenantId)

@@ -44,6 +44,32 @@ function esc(s: unknown): string {
     .replace(/"/g, "&quot;");
 }
 
+// Round M2 FIX 6: shared markup for the country-code phone picker (real
+// widget behavior lives in PAGE_SCRIPT, website-renderer.ts) -- replaces a
+// plain unvalidated `<input type="tel" name="phone">` on every generated
+// booking/consultation form. The visible national-number input keeps a
+// DIFFERENT name (never "phone") so it's never itself collected by the
+// generic form-data reader (`querySelectorAll('input[name],...')` in
+// wsFormBlock/wsSubmitForm); the real submitted value is the hidden
+// `name="phone"` input, kept in sync (dial code + digits) by the widget's
+// own JS on every keystroke -- no changes needed to the submit handlers or
+// the server-side submit-form route, both already just read whatever is
+// in the field literally named "phone".
+function phoneInputField(required: boolean): string {
+  return `<div class="ws-phone-input" data-ws-phone>
+      <button type="button" class="ws-phone-cc" data-ws-phone-cc aria-label="Select country code">
+        <span data-ws-phone-flag>🇦🇪</span><span data-ws-phone-dial>+971</span>
+        <svg width="8" height="8" viewBox="0 0 10 10"><path d="M2 3l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+      </button>
+      <input type="tel" class="ws-phone-national" data-ws-phone-national placeholder="50 123 4567" autocomplete="tel-national"${required ? " required" : ""}>
+      <input type="hidden" name="phone" data-ws-phone-hidden>
+      <div class="ws-phone-dropdown" data-ws-phone-dropdown hidden>
+        <input type="text" class="ws-phone-search" data-ws-phone-search placeholder="Search country…">
+        <div class="ws-phone-list" data-ws-phone-list></div>
+      </div>
+    </div>`;
+}
+
 // ── Nav ───────────────────────────────────────────────────────────────────────
 const NAV_BURGER = `<button class="ws-nav-burger" aria-label="Toggle navigation" aria-expanded="false" onclick="wsNavToggle(this)">
     <span class="ws-nav-burger-line"></span>
@@ -440,7 +466,7 @@ function contactForm(ctaText: string, services: string[]): string {
     </div>
     <div class="ws-form-group">
       <label class="ws-form-label">Phone</label>
-      <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number">
+      ${phoneInputField(false)}
     </div>
     ${services.length ? `
     <div class="ws-form-group">
@@ -1983,7 +2009,7 @@ export function renderMultiStepForm(
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Phone</label>
-              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number">
+              ${phoneInputField(false)}
             </div>
           </div>
           <button type="button" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;margin-top:4px;" onclick="wsMsfNext()">Continue →</button>
@@ -2036,7 +2062,7 @@ export function renderAppointmentForm(
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Phone</label>
-              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number" required>
+              ${phoneInputField(true)}
             </div>
           </div>
           <div class="ws-form-row">
@@ -2113,7 +2139,7 @@ export function renderValuationForm(
             </div>
             <div class="ws-form-group">
               <label class="ws-form-label">Phone</label>
-              <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number" required>
+              ${phoneInputField(true)}
             </div>
           </div>
           <div class="ws-form-group">
@@ -2422,7 +2448,7 @@ export function renderMembershipForm(
           </div>
           <div class="ws-form-group">
             <label class="ws-form-label">Phone</label>
-            <input class="ws-form-input" type="tel" name="phone" placeholder="Phone number">
+            ${phoneInputField(false)}
           </div>
           <div class="ws-fb-err" style="display:none;"></div>
           <button type="submit" class="ws-btn ws-btn-accent" style="width:100%;justify-content:center;" data-label="${esc(submit)}">${esc(submit)}</button>

@@ -9,7 +9,7 @@ import {
   type SiteTemplate, type TemplateSection,
 } from "@/lib/website-templates";
 import { PLAN_CONFIG } from "@/lib/plan-config";
-import { stripAiTells } from "@/lib/text-clean";
+import { stripAiTells, stripMarkdownFormatting } from "@/lib/text-clean";
 
 export const dynamic = "force-dynamic";
 // 300s: two sequential GPT-4o calls + Unsplash fetches can exceed 60s on cold starts
@@ -183,6 +183,38 @@ function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, 
   return [];
 }
 
+// Round M2 FIX 5: stray literal markdown characters (backticks, asterisks,
+// underscores, code fences) confirmed live in generated site copy --
+// stripMarkdownFormatting already exists (src/lib/text-clean.ts) and is
+// already applied to the AI business assistant's own replies, but this
+// route never imported or applied it to any of the actual generated
+// WebsiteSpec copy -- headlines, subheadlines, testimonial quotes, FAQ
+// answers, etc. all went straight from GPT's JSON output through esc()
+// (which only escapes &/</>/") into the rendered HTML with zero markdown
+// cleanup. Walks every real copy string inside a section's `content`
+// (never touches imageQuery/imageQueries/type/variant -- those aren't
+// visible copy and altering them could change image search behavior).
+function deepCleanSectionCopy(value: unknown): unknown {
+  if (typeof value === "string") return stripMarkdownFormatting(value);
+  if (Array.isArray(value)) return value.map((v) => deepCleanSectionCopy(v));
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = deepCleanSectionCopy(v);
+    return out;
+  }
+  return value;
+}
+function cleanSpecCopy(spec: WebsiteSpec): WebsiteSpec {
+  return {
+    ...spec,
+    businessName: typeof spec.businessName === "string" ? stripMarkdownFormatting(spec.businessName) : spec.businessName,
+    sections: spec.sections.map((s) => ({
+      ...s,
+      content: s.content ? (deepCleanSectionCopy(s.content) as typeof s.content) : s.content,
+    })),
+  };
+}
+
 // Round L FIX 5 (part 2): fetchSpecImages below always re-fetches EVERY
 // image-bearing section's photo on every edit-mode call, even sections
 // whose imageQuery text is byte-identical to before -- the cross-site/
@@ -201,30 +233,42 @@ function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, 
 // implementation (hero variants, about, gallery, listings-grid) -- other
 // image-bearing component types keep today's existing re-fetch behavior,
 // same limitation the manual editor's own version already has.
+// Round M3 FIX 3: was restricted to a hardcoded allowlist of older section
+// types via a fixed id anchor (SECTION_ANCHOR/SINGLE_IMG/MULTI_IMG) --
+// every newer image-bearing section type (property-listings-grid,
+// portfolio-grid, treatment-gallery, membership-plans-display,
+// trust-badges-band, agent-card, trainer-showcase, testimonial-grid, etc.)
+// fell through silently. Because this function feeds editUntouchedImageMap
+// (the "reuse the real existing photo for any section THIS edit didn't
+// touch" mechanism), any chat edit that touched ONE section on a site
+// containing one of these richer components either lost that untouched
+// section's real photo entirely, or -- since fetchSpecImages below is
+// type-agnostic and still saw its original imageQuery on the spec --
+// silently re-fetched a DIFFERENT Unsplash photo for a section the owner
+// never asked to change (wasted Unsplash calls, inconsistent between
+// turns), defeating the entire point of this preservation mechanism. Same
+// fix as save-edit/route.ts and image-replace/route.ts's extractImageMap:
+// section-type-agnostic via the unconditional `data-vs="{i}"` marker.
 function extractExistingImageMap(spec: WebsiteSpec, html: string): ImageMap {
   const images: ImageMap = {};
-  const SINGLE_IMG = new Set(["hero", "hero-fullbleed", "hero-split", "hero-minimal", "about", "about-story"]);
-  const MULTI_IMG = new Set(["gallery", "gallery-grid", "listings-grid"]);
-  const SECTION_ANCHOR: Record<string, string> = {
-    "hero": "hero", "hero-fullbleed": "hero", "hero-split": "hero", "hero-minimal": "hero",
-    "about": "about", "about-story": "about",
-    "gallery": "gallery", "gallery-grid": "gallery",
-    "listings-grid": "listings",
-  };
   for (let i = 0; i < spec.sections.length; i++) {
-    const s = spec.sections[i];
-    const anchor = SECTION_ANCHOR[s.type];
-    if (!anchor) continue;
-    const anchorIdx = html.indexOf(`id="${anchor}"`);
-    if (anchorIdx === -1) continue;
-    const slice = html.slice(anchorIdx, anchorIdx + 30_000);
-    if (MULTI_IMG.has(s.type)) {
-      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+)"/g;
+    const s = spec.sections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> };
+    const isMulti = getImageQueries(s).length > 0;
+    const isSingle = !isMulti && !!getImageQuery(s);
+    if (!isMulti && !isSingle) continue;
+
+    const secStart = html.indexOf(`data-vs="${i}"`);
+    if (secStart === -1) continue;
+    const nextStart = html.indexOf(`data-vs="${i + 1}"`, secStart + 1);
+    const slice = nextStart === -1 ? html.slice(secStart) : html.slice(secStart, nextStart);
+
+    if (isMulti) {
+      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/g;
       let m: RegExpExecArray | null;
       let j = 0;
       while ((m = imgRe.exec(slice)) !== null) images[`${i}_${j++}`] = m[1];
-    } else if (SINGLE_IMG.has(s.type)) {
-      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+)"/);
+    } else {
+      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/);
       if (m) images[String(i)] = m[1];
     }
   }
@@ -516,6 +560,14 @@ const DESCRIPTION_HERO_QUERY_PATTERNS: { pattern: RegExp; query: string }[] = [
   { pattern: /\b(photography\s*studio|photo\s*studio)\b/i, query: "photography studio interior natural light editorial minimal" },
   { pattern: /\b(dental|dentist|orthodont)/i, query: "bright dental clinic reception modern clean professional photography" },
   { pattern: /\b(clinic|medical practice|physio|dermatolog|health\s*cent(er|re)|vet(erinary)?)\b/i, query: "modern medical clinic reception bright white clean minimal" },
+  // Round M2 FIX 1: confirmed live -- "luxury car rental" fell through
+  // every pattern above into the real-estate pattern's own fallback (no
+  // automotive vocabulary existed anywhere in this table, and the business
+  // classifies into the catch-all "professional" template category, which
+  // CATEGORY_TO_PRESET maps to "realestate"), producing a hotel-pool/villa
+  // hero image for a car business. Checked before real estate since both
+  // can share "luxury" in their description.
+  { pattern: /\b(car\s*rental|auto(mobile)?\s*rental|vehicle\s*rental|exotic\s*car|luxury\s*car|car\s*hire|car\s*dealership|auto\s*dealership|\bmotors\b)/i, query: "luxury sports car exterior showroom dramatic lighting editorial" },
   { pattern: /\b(real\s*estate|realtor|property|villa|apartment for sale)\b/i, query: "luxury villa exterior architecture daylight clean modern editorial" },
   // hotel checked before restaurant: a hotel description mentioning its own
   // on-site restaurant as an amenity should still resolve to the hotel query.
@@ -632,9 +684,20 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
 
     const hasQ = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
 
+    // Round M2 FIX 1: ABOUT_PHOTO_QUERY/PRESET_GALLERY_QUERIES have the
+    // exact same gap as HERO_PHOTO_QUERY -- no automotive entry, so they
+    // fell through to rawCategory="professional" -> preset="realestate"
+    // too, producing a real-estate-agent-office about photo and a property
+    // gallery for a car business. Same description-pattern check as the
+    // hero fix above, reused here rather than building a whole second
+    // category for one business type.
+    const isAutomotive = /\b(car\s*rental|auto(mobile)?\s*rental|vehicle\s*rental|exotic\s*car|luxury\s*car|car\s*hire|car\s*dealership|auto\s*dealership|\bmotors\b)/i.test(fullText);
+
     if (!hasQ) {
       if (ABOUT_TYPES.has(s.type)) {
-        const aboutPhotoQuery = ABOUT_PHOTO_QUERY[rawCategory] ?? ABOUT_PHOTO_QUERY[preset] ?? "professional team workspace bright modern editorial";
+        const aboutPhotoQuery = isAutomotive
+          ? "luxury car interior dashboard steering wheel detail editorial"
+          : ABOUT_PHOTO_QUERY[rawCategory] ?? ABOUT_PHOTO_QUERY[preset] ?? "professional team workspace bright modern editorial";
         (s as { imageQuery?: string }).imageQuery = aboutPhotoQuery;
       }
     }
@@ -643,7 +706,16 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     if (MULTI_GALLERY_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       if (!qs.length) {
-        const fallbackGallery = PRESET_GALLERY_QUERIES[preset] ?? [
+        const fallbackGallery = isAutomotive
+          ? [
+              "luxury sports car exterior editorial",
+              "car dashboard interior detail close-up",
+              "sports car wheel rim detail editorial",
+              "luxury car showroom interior bright minimal",
+              "car key handover close-up editorial",
+              "luxury car headlight detail dramatic lighting",
+            ]
+          : PRESET_GALLERY_QUERIES[preset] ?? [
           "professional service interior clean bright editorial",
           "business workspace detail minimal editorial",
           "team professional consultation warm light",
@@ -2622,6 +2694,19 @@ function extractContactFromText(text: string): string {
 // their own to upload.
 function extractNoPhotoOptOut(fullText: string): boolean {
   const t = fullText.toLowerCase();
+
+  // Round M2 FIX 1 (live-testing discovery): the loose `\bno\b...\bphotos?\b`
+  // pattern below fired on phrasing like "no need for my own photos, please
+  // use stock photography" -- a REQUEST for stock photos, not an opt-out --
+  // because it only checks proximity of "no" to "photo(s)", not what "no" is
+  // actually negating. Confirmed live: this produced a fully photo-free site
+  // (zero Unsplash fetches) for a business that explicitly asked for stock
+  // imagery. An unnegated request for stock/professional photography
+  // anywhere in the message now overrides the loose opt-out match.
+  const affirmativeStockRequest = /\b(use|add|include|find|get|want|need)\b[^.!?\n]{0,25}\b(stock\s+photo|stock\s+imagery|professional\s+(stock\s+)?photograph)/;
+  const negatedStockRequest = /\b(don'?t|do\s+not|no)\b[^.!?\n]{0,15}\b(use|want|need|include)\b[^.!?\n]{0,20}\b(stock\s+photo|stock\s+imagery|professional\s+photograph)/;
+  if (affirmativeStockRequest.test(t) && !negatedStockRequest.test(t)) return false;
+
   const noPhotoOptOut = [
     /\bno\b[^.!?\n]{0,20}\b(photos?|images?|pictures?|stock\s+photo)/,
     /\bwithout\b[^.!?\n]{0,15}\b(photos?|images?|pictures?)/,
@@ -2633,6 +2718,90 @@ function extractNoPhotoOptOut(fullText: string): boolean {
     /\bno\s+stock\b/,
   ];
   return noPhotoOptOut.some((re) => re.test(t));
+}
+
+// Round M3 FIX 1: explicit "add/use a photo" request detector, paired with
+// resolveNoPhotoMode below. A message that plainly asks for a photo/image
+// (e.g. "add a photo to the hero") but never uses stock/professional-
+// photography wording did not match extractNoPhotoOptOut's own affirmative-
+// request guard, and was not itself a recognized "opt back in" signal.
+function extractPhotoOptIn(text: string): boolean {
+  const t = text.toLowerCase();
+  return /\b(add|insert|include|attach|put|use|show|upload)\b[^.!?\n]{0,20}\b(a\s+|an\s+|one\s+)?(photo|image|picture|stock)/.test(t)
+    || /\byes\b[^.!?\n]{0,20}\b(photo|image|picture)/.test(t);
+}
+
+// A short reply ("no you add", "sure", "go ahead", "ok do it") only makes
+// sense as a photo-related answer when the immediately preceding assistant
+// turn actually raised photos -- used by resolveNoPhotoMode below to
+// disambiguate replies too short/context-dependent for extractPhotoOptIn's
+// own keyword match to catch on their own.
+function isShortAffirmativeReply(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length > 40) return false; // long replies are judged on their own words, not as a bare "yes"
+  return /\b(yes|yeah|yep|sure|ok|okay|go ahead|do it|please|you add|you do it|add one|add it)\b/.test(t)
+    && !/\bno\s+(photos?|images?|pictures?)\b/.test(t); // "no photos" itself must still opt out, not in
+}
+
+// Symmetric counterpart to isShortAffirmativeReply: a bare "no" / "nope" /
+// "skip it" only means "no photos" in the context of a preceding assistant
+// question that raised photos -- otherwise it's ambiguous and contributes no
+// signal (handled the same way this already worked before this fix).
+function isShortNegativeReply(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length > 40) return false;
+  return /\b(no|nope|nah|skip|skip it|none)\b/.test(t);
+}
+
+// Round M3 FIX 1: root cause of "AI says Done! but no image ever appears" --
+// noPhotoMode was computed once from the ENTIRE chat history concatenated
+// into one string (extractNoPhotoOptOut(allChatText)). Once the owner said
+// ANYTHING opt-out-shaped at ANY point in the conversation (even during the
+// original onboarding interview), noPhotoMode stayed permanently true for
+// every future turn -- so a later, explicit "no you add one" edit request
+// still got silently stripped of its imageQuery by the noPhotoMode block in
+// route.ts further down, while the client still showed the canned "Done!
+// Your website has been updated" success message regardless (that message is
+// shown purely because the HTTP call succeeded, not because the requested
+// change happened -- see handleSend in website/page.tsx).
+// Live-repro traced: the literal reply "no you add" contains neither a
+// photo/image keyword (extractPhotoOptIn) nor an opt-out phrase
+// (extractNoPhotoOptOut) on its own -- it only means "yes, add a photo" in
+// the context of the assistant's own preceding question ("would you like to
+// upload your own photo, or should I add one for you?"). The real bug was
+// two-fold: (1) no notion of recency -- one early opt-out permanently
+// overrode every later message, and (2) short context-dependent replies were
+// invisible to a pure keyword scan with no view of what they were replying
+// to.
+// Fix: scan turns most-recent-first (current message, then full prior chat
+// history newest-to-oldest) and let the FIRST turn with an explicit signal
+// decide -- opt-out, an explicit opt-in phrase, or a short affirmative reply
+// whose preceding assistant turn raised photos. The owner's latest stated
+// preference always wins. No explicit signal anywhere -> default false
+// (stock photography on), preserving the original opt-in-only default.
+function resolveNoPhotoMode(
+  priorChat: Array<{ role: string; content: string }>,
+  currentMessage: string,
+): boolean {
+  // Build a most-recent-first list of { message, precedingAssistantText }.
+  const turns: { text: string; precedingAssistant: string }[] = [
+    { text: currentMessage, precedingAssistant: [...priorChat].reverse().find((m) => m.role !== "user")?.content ?? "" },
+  ];
+  for (let i = priorChat.length - 1; i >= 0; i--) {
+    if (priorChat[i].role !== "user") continue;
+    const precedingAssistant = priorChat.slice(0, i).reverse().find((m) => m.role !== "user")?.content ?? "";
+    turns.push({ text: priorChat[i].content, precedingAssistant });
+  }
+
+  for (const { text, precedingAssistant } of turns) {
+    if (!text) continue;
+    if (extractNoPhotoOptOut(text)) return true;
+    if (extractPhotoOptIn(text)) return false;
+    const precedingRaisedPhotos = /\b(photos?|images?|pictures?)\b/i.test(precedingAssistant);
+    if (isShortAffirmativeReply(text) && precedingRaisedPhotos) return false;
+    if (isShortNegativeReply(text) && precedingRaisedPhotos) return true;
+  }
+  return false;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2712,29 +2881,19 @@ export async function POST(req: NextRequest) {
     : undefined;
 
   // FIX 1 (round 2): stock photography is opt-in only, and must apply to EVERY
-  // request for this site, not just the very first generate call. Previously
-  // this was only computed inside the fresh-generation branch (currentHtml
-  // falsy) -- any later message on an already-built site (currentHtml truthy,
-  // e.g. "add a gallery") took a completely separate revision path that never
-  // set or checked it, so sections added or regenerated after the first build
-  // (the reported Gallery bug) silently fell back to stock photography.
-  // Computed once here from the full available conversation so it is
-  // consistent across every turn, in both the fresh-generation and revision
-  // paths.
-  // Only the owner's own messages are scanned -- the assistant's own photo
-  // question mentions photography/stock terms to offer the choice, and
-  // including assistant/ai-role messages here would risk that offer itself
-  // being misread as the owner's answer (the same class of bug that broke
-  // detection in the opposite direction last round).
-  const allChatText = [
-    ...(Array.isArray(body.chat)
-      ? body.chat.filter((m) => m.role === "user").map((m) => m.content)
-      : []),
-    message ?? "",
-  ].join(" ");
+  // request for this site, not just the very first generate call -- computed
+  // fresh on every turn from the conversation, not just the fresh-generation
+  // branch, so sections added/regenerated after the first build don't
+  // silently fall back to stock photography (the original "Gallery bug").
+  // Round M3 FIX 1: this used to flatten the ENTIRE chat history into one
+  // string and check it for a single opt-out match -- meaning one early
+  // "no photos" locked noPhotoMode true forever, silently overriding a much
+  // later explicit "add a photo" edit request while the client still showed
+  // a canned "Done!" success message. resolveNoPhotoMode (above) scans
+  // most-recent-first instead, so the owner's latest stated preference wins.
   // FIX 2: default is real stock photography; noPhotoMode only activates on
-  // an explicit opt-out (see extractNoPhotoOptOut above).
-  const noPhotoMode = !heroUpload && extractNoPhotoOptOut(allChatText);
+  // an explicit opt-out.
+  const noPhotoMode = !heroUpload && resolveNoPhotoMode(Array.isArray(body.chat) ? body.chat : [], message ?? "");
 
   const admin = createSupabaseAdmin() as AdminClient;
   const { data: tenant } = await admin
@@ -2780,6 +2939,24 @@ export async function POST(req: NextRequest) {
       if (revisionLang) effectiveLanguage = revisionLang;
 
       const existing = extractSpec(currentHtml);
+
+      // Round M2 FIX 1(b): downstream image-query resolution (ensureImageQueries /
+      // resolveDescriptionHeroQuery / the isAutomotive-style business-type
+      // detectors) reads fullContextText -- for edits this stayed the raw
+      // edit message alone ("change the hero image, more dramatic"), with no
+      // knowledge of what the business actually is. An explicit "change this
+      // image" request could then never resolve to a business-relevant query
+      // and silently fell back to a generic style-preset default (confirmed
+      // live: a car rental site's hero reverted to a hotel-pool photo after
+      // asking to change it to a car shot). Seeded with the existing spec's
+      // business name/category plus the full prior chat history, same
+      // context the initial-generate path already gets.
+      const priorChatForImageContext = (body.chat ?? []).filter((m) => !m.isError && Boolean(m.content?.trim()));
+      fullContextText = [
+        existing?.businessName ?? businessName,
+        existing?.category ?? "",
+        buildAccumulatedDescription(priorChatForImageContext, msgText),
+      ].filter(Boolean).join(" ");
 
       // Classify: conversational question vs. revision command.
       // Only classify when there is a parsed spec and a non-empty text message.
@@ -2836,36 +3013,34 @@ export async function POST(req: NextRequest) {
               : []
           );
           enforcedSections = revisedSections.map((sec, i) => (touched.has(i) ? sec : existing.sections[i]));
-          // Round L FIX 5 (part 2): live-confirmed the self-report alone
-          // isn't enough -- GPT sometimes marks a section "touched" (and
-          // regenerates its imageQuery) even while leaving that section's
-          // actual visible content byte-identical, which slipped the new
-          // imageQuery straight past the enforcement above. This second,
-          // independent pass ignores touchedSectionIndices entirely and
-          // compares each section's real content (everything except
-          // imageQuery/imageQueries, which per the SCOPE instruction's own
-          // schema rule are always siblings of content, never inside it) --
-          // whenever that's genuinely unchanged, imageQuery/imageQueries are
-          // force-pinned back to the existing values regardless of what the
-          // model did with them, so a section's photo can only ever change
-          // when something about that section actually, visibly changed.
-          enforcedSections = enforcedSections.map((sec, i) => {
-            const ex = existing.sections[i] as Record<string, unknown> | undefined;
-            const cur = sec as Record<string, unknown>;
-            if (!ex) return sec;
-            const strip = (s: Record<string, unknown>) => {
-              const { imageQuery, imageQueries, ...rest } = s;
-              return rest;
-            };
-            const visibleContentSame = JSON.stringify(strip(cur)) === JSON.stringify(strip(ex));
-            if (!visibleContentSame) return sec;
-            return { ...cur, imageQuery: ex.imageQuery, imageQueries: ex.imageQueries };
-          }) as typeof enforcedSections;
+          // Round L FIX 5 (part 2) had a second pass here that additionally
+          // reverted imageQuery/imageQueries back to the existing values
+          // for ANY section whose non-image content matched the existing
+          // section byte-for-byte -- intended to catch GPT marking a
+          // section "touched" while accidentally drifting its image with
+          // no real content change. Round M2 FIX 1(b): confirmed live this
+          // was ALSO reverting the exact opposite, legitimate case -- a
+          // section the user explicitly asked to change the IMAGE of, where
+          // GPT correctly (and per buildReviseSystem's own instruction,
+          // deliberately) writes a new imageQuery while leaving that
+          // section's other content untouched, since only the image was
+          // asked for. That signature (content same, image different) is
+          // structurally IDENTICAL for both the wanted and unwanted case --
+          // there is no way to tell them apart from the data alone once a
+          // section is genuinely self-reported as touched. Removed: for any
+          // section NOT in `touched`, the line above already force-reverts
+          // the ENTIRE section object (including its image) to `existing`,
+          // so no separate image-specific pass is needed for the untouched
+          // case; for a section IN `touched`, its image is now trusted the
+          // same way the rest of its content already is.
           // Real existing photo URLs, read where imageMap is fetched
           // further below to override the freshly-fetched map for sections
-          // whose imageQuery/imageQueries (after the pinning pass above)
-          // ended up IDENTICAL to before -- a section pinned above always
-          // qualifies here, since its query can no longer have changed.
+          // whose imageQuery/imageQueries ended up IDENTICAL to before (a
+          // reverted/untouched section always qualifies, since its query
+          // can no longer differ from the existing one) -- this still
+          // prevents fetchSpecImages' own dedup-vs-usedUrls interaction
+          // from swapping an untouched section's photo to a different one
+          // for the SAME query text.
           const existingImages = extractExistingImageMap(existing, currentHtml);
           const imageQueryUnchanged = (i: number): boolean => {
             const a = enforcedSections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> } | undefined;
@@ -3245,6 +3420,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Round M3 FIX 1(b): "AI claims an image was added but none ever
+    // appears" -- fetchSpecImages silently omits a section's key from
+    // imageMap on ANY fetch failure (bad query, Unsplash rate limit/outage,
+    // missing key -- see fetchUnsplashPhoto), and the client's success
+    // message ("Done! Your website has been updated") is shown purely
+    // because the HTTP call returned 200, regardless of whether the
+    // requested image actually attached. When this turn's own message was
+    // itself an explicit photo request (extractPhotoOptIn), check whether
+    // every section that ended up with an imageQuery/imageQueries this turn
+    // actually got a real URL; if not, return an honest reply instead of
+    // silently succeeding so the client shows the truth, not a canned claim.
+    let imageInsertFailed = false;
+    if (currentHtml && extractPhotoOptIn(message ?? "")) {
+      for (let i = 0; i < spec.sections.length; i++) {
+        const s = spec.sections[i];
+        const q  = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
+        const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
+        if (q && !imageMap[String(i)]) { imageInsertFailed = true; break; }
+        if (qs.some((_, j) => !imageMap[`${i}_${j}`])) { imageInsertFailed = true; break; }
+      }
+    }
+
     // ── Resolve / create the websites record ─────────────────────────────────
     let websiteId: string | null = null;
     let siteSlug = "";
@@ -3252,11 +3449,17 @@ export async function POST(req: NextRequest) {
     let siteIsPublished = false;
 
     if (tenant?.id) {
-      // Find existing websites for this tenant
+      // Find existing websites for this tenant. Round M2 FIX 1 (live-testing
+      // discovery): this had no deleted_at filter, so a soft-deleted
+      // (Recycle Bin) site still counted against the plan's website limit --
+      // a tenant who deleted their only site to make room for a new one hit
+      // "Your pro plan allows 1 website" anyway, unable to create a
+      // replacement without permanently deleting from Settings first.
       const { data: existingSites } = await admin
         .from("websites")
         .select("id, slug, name, is_published")
         .eq("tenant_id", tenant.id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: true });
 
       const sites = (existingSites ?? []) as { id: string; slug: string; name: string; is_published: boolean }[];
@@ -3327,6 +3530,11 @@ export async function POST(req: NextRequest) {
     // Phase 2e — stamp nav/footer variant pool selections onto spec before render
     spec.navVariant    = selectedNavVariant;
     spec.footerVariant = selectedFooterVariant;
+
+    // Round M2 FIX 5: strip stray markdown artifacts from every real copy
+    // field right before render, regardless of which branch (initial build
+    // or chat edit) produced this spec.
+    spec = cleanSpecCopy(spec);
 
     // Render HTML with tenantId so the booking form knows where to POST
     const html = renderWebsite(spec, imageMap, tenant?.id as string | undefined, effectiveLanguage);
@@ -3424,6 +3632,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       html, websiteId, slug: siteSlug, name: siteName, isPublished: siteIsPublished,
       ...(Object.keys(extractedContact).length > 0 ? { intake: extractedContact } : {}),
+      ...(imageInsertFailed ? {
+        reply: "I updated the site, but I wasn't able to find a matching photo just now (the image search didn't return a usable result). Everything else went through — try asking again in a moment, or describe the photo you want differently.",
+      } : {}),
     });
   } catch (err) {
     // Log the full error so Vercel function logs show the real cause, not just the message
