@@ -78,6 +78,18 @@ async function fetchUnsplashImage(query: string): Promise<string | null> {
   }
 }
 
+// Round M4 FIX 2: this route had zero validation on body.imageData -- any
+// size or content could be POSTed directly. Same cap already used for the
+// initial hero-upload path in generate/route.ts (5MB raw -> base64 is ~4/3
+// larger), duplicated here since that file doesn't export its constants.
+// Concretely explains the reported "upload does nothing" symptom: a real
+// phone-camera photo easily exceeds Vercel's request body limit once
+// base64-encoded, the fetch in website/page.tsx's handleImageReplace
+// silently swallowed any non-ok response, and the modal closed regardless
+// -- see that file's own fix for the client-side half of this.
+const ALLOWED_IMG_TYPES = new Set(["jpeg", "jpg", "png", "webp"]);
+const MAX_IMG_DATA_URL_LEN = Math.ceil(5 * 1024 * 1024 * (4 / 3)) + 100; // +headroom for the data: URI prefix
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {
     websiteId?: string;
@@ -90,6 +102,16 @@ export async function POST(req: NextRequest) {
 
   if (!body.websiteId || body.vs === undefined) {
     return NextResponse.json({ error: "websiteId and vs required" }, { status: 400 });
+  }
+
+  if (body.imageData) {
+    const m = /^data:image\/(jpeg|jpg|png|webp);base64,/.exec(body.imageData);
+    if (!m || !ALLOWED_IMG_TYPES.has(m[1])) {
+      return NextResponse.json({ error: "Unsupported image format. Use JPEG, PNG, or WEBP." }, { status: 400 });
+    }
+    if (body.imageData.length > MAX_IMG_DATA_URL_LEN) {
+      return NextResponse.json({ error: "Image too large. Please use a photo under 5MB." }, { status: 413 });
+    }
   }
 
   const supabase = createSupabaseServerClient();

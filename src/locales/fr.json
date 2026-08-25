@@ -338,6 +338,7 @@
       "phone": "Téléphone",
       "email": "E-mail",
       "service": "Service demandé",
+      "conversationSummary": "Résumé de la conversation",
       "message": "Message",
       "noDetails": "Aucun détail supplémentaire pour ce prospect.",
       "stage": "Étape du pipeline",

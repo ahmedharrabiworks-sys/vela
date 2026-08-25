@@ -192,7 +192,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <header className="h-14 md:h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 md:px-6 shrink-0" style={{ transition: "background 0.2s" }}>
+        {/* Round M4 FIX 3: hardcoded bg-white/border-[#E5E7EB] with no dark:
+            variant -- every other surface in the app shell is dark-mode
+            aware, but this topbar (rendered above EVERY /app/* page) stayed
+            plain white in dark mode, showing as a stray white bar at the
+            very top of the page. */}
+        <header className="h-14 md:h-16 bg-white dark:bg-[#17171C] border-b border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between px-4 md:px-6 shrink-0" style={{ transition: "background 0.2s" }}>
           <div className="flex items-center gap-2 md:gap-3">
 
             {/* Hamburger — mobile only */}

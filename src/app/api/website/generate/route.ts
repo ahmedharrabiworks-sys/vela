@@ -692,11 +692,33 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     // hero fix above, reused here rather than building a whole second
     // category for one business type.
     const isAutomotive = /\b(car\s*rental|auto(mobile)?\s*rental|vehicle\s*rental|exotic\s*car|luxury\s*car|car\s*hire|car\s*dealership|auto\s*dealership|\bmotors\b)/i.test(fullText);
+    // Round M4 FIX 1: confirmed live -- a dental clinic's gallery got a mix
+    // of generic "empty white room"/"patient care" stock photography and an
+    // unrelated hospital surgery/IV-drip photo. Root cause: rawCategory here
+    // is always the COARSE 5-value templateCategory ("medical" for every
+    // dental/doctor/physio/dermatology/pharmacy/optician business alike --
+    // see the classifier's own "medical — dental, doctor, physio..." vocab
+    // list), so PRESET_GALLERY_QUERIES["medical"] and
+    // ABOUT_PHOTO_QUERY["medical"] are shared across ALL of those sub-types
+    // and include generic entries ("clean white corridor light minimal
+    // geometric", "patient care professional warm studio light",
+    // "medical technology equipment white abstract") that read as
+    // hospital/general-practice stock photography, not dental specifically
+    // -- exactly matching the reported "empty white rooms" and "hospital
+    // surgery/IV-drip" results. The HERO query already avoids this (see
+    // DESCRIPTION_HERO_QUERY_PATTERNS' dedicated dental pattern, checked
+    // before the generic clinic/medical one), but ABOUT and GALLERY never
+    // had the same fullText-based override. Reuses the existing, already
+    // dental-specific TREATMENT_QUERIES pool (Phase 2c) instead of adding a
+    // new one, same fullText-detection approach as isAutomotive above.
+    const isDental = /\b(dental|dentist|orthodont|teeth\s*whitening|cosmetic\s*dentistry|oral\s*health)/i.test(fullText);
 
     if (!hasQ) {
       if (ABOUT_TYPES.has(s.type)) {
         const aboutPhotoQuery = isAutomotive
           ? "luxury car interior dashboard steering wheel detail editorial"
+          : isDental
+          ? "dentist consultation patient chair bright clean minimal"
           : ABOUT_PHOTO_QUERY[rawCategory] ?? ABOUT_PHOTO_QUERY[preset] ?? "professional team workspace bright modern editorial";
         (s as { imageQuery?: string }).imageQuery = aboutPhotoQuery;
       }
@@ -715,6 +737,8 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
               "car key handover close-up editorial",
               "luxury car headlight detail dramatic lighting",
             ]
+          : isDental
+          ? TREATMENT_QUERIES
           : PRESET_GALLERY_QUERIES[preset] ?? [
           "professional service interior clean bright editorial",
           "business workspace detail minimal editorial",

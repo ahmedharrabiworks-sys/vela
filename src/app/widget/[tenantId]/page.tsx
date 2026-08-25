@@ -76,6 +76,10 @@ export default async function WidgetPage({
   // to anonymous visitors on a different device than the owner's own
   // browser) could never see.
   let hidePoweredBy = false;
+  // Round M4 FIX 7: real trained service names for the structured intake
+  // box's dropdown. Empty means no KB trained yet -- the form still works,
+  // falling back to free-text-only (see chat-client.tsx).
+  let trainedServices: string[] = [];
 
   try {
     const adminClient = createSupabaseAdmin();
@@ -95,11 +99,27 @@ export default async function WidgetPage({
 
     const { data: cfg } = await admin
       .from("tenant_config")
-      .select("language, hide_powered_by")
+      .select("language, hide_powered_by, knowledge_base, services_json")
       .eq("tenant_id", tenantId)
       .maybeSingle();
     language = (cfg as { language?: string } | null)?.language ?? null;
     hidePoweredBy = (cfg as { hide_powered_by?: boolean } | null)?.hide_powered_by === true;
+
+    // Round M4 FIX 7: real trained services for the structured intake box's
+    // dropdown -- same KB-first-then-legacy-fallback precedence ai/reply
+    // already uses, so the dropdown always matches what the AI itself knows
+    // how to book. Names only (price/duration aren't needed for the picker).
+    try {
+      const rawKb = (cfg as { knowledge_base?: string } | null)?.knowledge_base;
+      const kb = rawKb ? (JSON.parse(rawKb) as { services?: { name?: string }[] }) : null;
+      const kbNames = (kb?.services ?? []).map((s) => s.name).filter((n): n is string => !!n?.trim());
+      if (kbNames.length > 0) {
+        trainedServices = kbNames;
+      } else {
+        const legacy = (cfg as { services_json?: { name?: string }[] } | null)?.services_json ?? [];
+        trainedServices = legacy.map((s) => s.name).filter((n): n is string => !!n?.trim());
+      }
+    } catch { /* malformed KB JSON -- structured form falls back to free-text only */ }
 
     const query = admin.from("websites").select("name, published_spec").eq("is_published", true);
     const { data: site } = websiteId
@@ -133,6 +153,7 @@ export default async function WidgetPage({
       accentColor={accentColor}
       hidePoweredBy={hidePoweredBy}
       initialConversationId={initialConversationId}
+      trainedServices={trainedServices}
     />
   );
 }

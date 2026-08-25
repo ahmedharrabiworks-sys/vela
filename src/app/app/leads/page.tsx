@@ -24,6 +24,14 @@ type Lead = {
   phone_unconfirmed?: boolean | null;
   email?: string | null;
   form_data?: { message?: string; service?: string; preferred_datetime?: string | null } | null;
+  // Round M4 FIX 4: AI-generated synthesis of the FULL conversation so far
+  // (see ai/reply/route.ts's summary call) -- distinct from form_data.message,
+  // which is only the customer's own literal first-message text. Already
+  // generated and stored for every channel (website widget, Instagram,
+  // WhatsApp all funnel through ai/reply; the website form's own submit-form
+  // route sets it directly from the real form message) -- this page just
+  // never selected or rendered it.
+  intent_summary?: string | null;
   last_message?: string;
   created_at: string | null;
 };
@@ -145,13 +153,24 @@ function LeadDetailModal({
               <p className="text-sm text-[#111111] dark:text-white">{lead.form_data.service}</p>
             </div>
           )}
+          {/* Round M4 FIX 4: AI-generated synthesis of the full conversation
+              (leads.intent_summary) -- distinct from form_data.message below,
+              which is only the customer's own literal first-message text.
+              Already generated server-side for every channel; this is the
+              first time it's actually shown here. */}
+          {lead.intent_summary && (
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.conversationSummary")}</p>
+              <p className="text-sm text-[#374151] dark:text-[#D1D5DB] whitespace-pre-wrap">{lead.intent_summary}</p>
+            </div>
+          )}
           {lead.form_data?.message && (
             <div>
               <p className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wide mb-0.5">{t("leads.detail.message")}</p>
               <p className="text-sm text-[#374151] dark:text-[#D1D5DB] whitespace-pre-wrap">{lead.form_data.message}</p>
             </div>
           )}
-          {!lead.phone && !lead.email && !lead.form_data?.service && !lead.form_data?.message && (
+          {!lead.phone && !lead.email && !lead.form_data?.service && !lead.intent_summary && !lead.form_data?.message && (
             <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76]">{t("leads.detail.noDetails")}</p>
           )}
         </div>
@@ -311,12 +330,12 @@ export default function LeadsPage() {
     // run yet either -- same tiered fallback pattern, one more rung.
     let { data, error } = await db
       .from("leads")
-      .select("id, name, channel, status, phone, email, phone_unconfirmed, form_data, created_at")
+      .select("id, name, channel, status, phone, email, phone_unconfirmed, intent_summary, form_data, created_at")
       .eq("tenant_id", tenant.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[leads] phone_unconfirmed or deleted_at column missing — run migration_v30.sql / migration_v33.sql. Retrying without phone_unconfirmed.");
+      console.warn("[leads] phone_unconfirmed, intent_summary, or deleted_at column missing — run migration_v30.sql / migration_v33.sql / migration_v34.sql. Retrying without phone_unconfirmed/intent_summary.");
       ({ data, error } = await db
         .from("leads")
         .select("id, name, channel, status, phone, email, form_data, created_at")

@@ -338,6 +338,7 @@
       "phone": "Telefon",
       "email": "E-Mail",
       "service": "Angefragte Leistung",
+      "conversationSummary": "Gesprächszusammenfassung",
       "message": "Nachricht",
       "noDetails": "Keine weiteren Details für diesen Lead erfasst.",
       "stage": "Pipeline-Phase",

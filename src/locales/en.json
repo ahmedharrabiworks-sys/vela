@@ -337,6 +337,7 @@
       "phone": "Phone",
       "email": "Email",
       "service": "Service requested",
+      "conversationSummary": "Conversation summary",
       "message": "Message",
       "noDetails": "No additional details captured for this lead.",
       "stage": "Pipeline stage",

@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { PhoneInput, DEFAULT_PHONE_COUNTRY, type PhoneCountry } from "@/components/ui/PhoneInput";
 
 type Msg = { role: "user" | "assistant"; content: string; id: string };
+// Round M4 FIX 7: structured intake box, an alternative to typing everything
+// conversationally. "custom" means the customer needs something not in the
+// tenant's trained service list -- switches the Service field to free text
+// and the submission always becomes a pending lead, never a direct booking
+// (see structured-booking/route.ts for why).
+const CUSTOM_SERVICE = "__custom__";
 
 // FIX 1 (round Q): hard ceiling on how long a single send() waits for
 // /api/ai/reply before giving up -- see the comment in send() for why this
@@ -20,6 +27,7 @@ export default function WidgetChat({
   accentColor,
   hidePoweredBy,
   initialConversationId,
+  trainedServices = [],
 }: {
   tenantId: string;
   websiteId?: string;
@@ -33,6 +41,10 @@ export default function WidgetChat({
   // Preferred over this component's own (iframe-internal, possibly
   // third-party-storage-restricted) localStorage read on mount.
   initialConversationId?: string;
+  // Round M4 FIX 7: real trained service names for the structured intake
+  // box's dropdown, fetched server-side in page.tsx. Empty -> the form still
+  // works, offering only the free-text "something else" path.
+  trainedServices?: string[];
 }) {
   // Round 5 FIX 7: was a fixed Vela-brand gradient regardless of the site
   // it's embedded on. Falls back to the Vela brand gradient only when no
@@ -48,6 +60,19 @@ export default function WidgetChat({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
+
+  // ── Round M4 FIX 7: structured intake box state ──────────────────────────
+  const [mode, setMode]                 = useState<"chat" | "form">("chat");
+  const [formName, setFormName]         = useState("");
+  const [formPhoneCountry, setFormPhoneCountry] = useState<PhoneCountry>(DEFAULT_PHONE_COUNTRY);
+  const [formPhone, setFormPhone]       = useState("");
+  const [formService, setFormService]   = useState(trainedServices[0] ?? CUSTOM_SERVICE);
+  const [formCustomService, setFormCustomService] = useState("");
+  const [formDate, setFormDate]         = useState("");
+  const [formTime, setFormTime]         = useState("");
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError]       = useState("");
+  const [formResult, setFormResult]     = useState<{ message: string; booked: boolean } | null>(null);
 
   // FIX 4: was sessionStorage, which is cleared the moment the tab/window
   // closes -- every single reopen of the widget (or the site) started a
@@ -278,6 +303,58 @@ export default function WidgetChat({
     }
   };
 
+  // ── Round M4 FIX 7: structured intake box submit ─────────────────────────
+  // A dedicated, deterministic endpoint (not /api/ai/reply) -- this
+  // submission IS the explicit confirmation (Fix 6), so the server checks
+  // real availability and either books directly or explains unavailability,
+  // with no extra "should I confirm?" round trip.
+  const submitStructuredBooking = async () => {
+    setFormError("");
+    const name = formName.trim();
+    if (!name) { setFormError("Please enter your name."); return; }
+    if (!formPhone.trim()) { setFormError("Please enter your phone number."); return; }
+    const isCustom = formService === CUSTOM_SERVICE;
+    const service = isCustom ? formCustomService.trim() : formService;
+    if (!service) { setFormError("Please choose or describe what you need."); return; }
+
+    setFormSubmitting(true);
+    try {
+      const res = await fetch("/api/widget/structured-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId,
+          websiteId,
+          conversationId,
+          name,
+          phone: `${formPhoneCountry.dial} ${formPhone.trim()}`,
+          service,
+          date: formDate || undefined,
+          time: formTime || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; booked?: boolean; message?: string; error?: string };
+      if (!res.ok || !data.ok) {
+        setFormError(data.error || "Something went wrong. Please try again.");
+        return;
+      }
+      setFormResult({ message: data.message || "Thanks, we've got your request!", booked: !!data.booked });
+      // Also drop the result into the chat thread so switching back to chat
+      // shows a coherent history rather than the form result vanishing.
+      setMessages((prev) => [...prev, { id: `form-${Date.now()}`, role: "assistant", content: data.message || "Thanks, we've got your request!" }]);
+    } catch {
+      setFormError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormName(""); setFormPhone(""); setFormPhoneCountry(DEFAULT_PHONE_COUNTRY);
+    setFormService(trainedServices[0] ?? CUSTOM_SERVICE); setFormCustomService("");
+    setFormDate(""); setFormTime(""); setFormError(""); setFormResult(null);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-white font-sans" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
 
@@ -309,6 +386,97 @@ export default function WidgetChat({
         </button>
       </div>
 
+      {/* Round M4 FIX 7: structured intake box -- an alternative to typing
+          everything conversationally, not a replacement (the chat below
+          stays fully functional; this just toggles which is visible). */}
+      {mode === "form" ? (
+        <div className="flex-1 overflow-y-auto px-4 py-4 bg-[#F9FAFB]">
+          {formResult ? (
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 shadow-sm space-y-3">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center ${formResult.booked ? "bg-green-50" : "bg-[#FFF5F0]"}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d={formResult.booked ? "M3 8.5l3 3 7-7" : "M8 5v4M8 11h.01"} stroke={formResult.booked ? "#16A34A" : "#FF6B35"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <p className="text-sm text-[#111111] leading-relaxed">{formResult.message}</p>
+              <div className="flex gap-2 pt-1">
+                <button onClick={resetForm}
+                  className="flex-1 text-xs font-semibold px-3 py-2 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
+                  Submit another request
+                </button>
+                <button onClick={() => setMode("chat")}
+                  className="flex-1 text-xs font-semibold px-3 py-2 rounded-xl text-white hover:opacity-90 transition-opacity"
+                  style={{ background: gradient }}>
+                  Back to chat
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-4 shadow-sm space-y-3">
+              <p className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wide">Quick booking</p>
+              <div>
+                <label className="text-[11px] font-semibold text-[#374151] block mb-1">Name</label>
+                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Your name"
+                  className="w-full text-sm border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-[#374151] block mb-1">Phone</label>
+                <PhoneInput
+                  country={formPhoneCountry}
+                  onCountryChange={setFormPhoneCountry}
+                  value={formPhone}
+                  onChange={setFormPhone}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-[#374151] block mb-1">Service</label>
+                {trainedServices.length > 0 ? (
+                  <select value={formService} onChange={(e) => setFormService(e.target.value)}
+                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-[#111111] bg-white focus:outline-none focus:border-[#FF6B35]/50 transition-colors">
+                    {trainedServices.map((s) => <option key={s} value={s}>{s}</option>)}
+                    <option value={CUSTOM_SERVICE}>Something else…</option>
+                  </select>
+                ) : null}
+                {(trainedServices.length === 0 || formService === CUSTOM_SERVICE) && (
+                  <input type="text" value={formCustomService} onChange={(e) => setFormCustomService(e.target.value)}
+                    placeholder="What do you need?"
+                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 transition-colors mt-2" />
+                )}
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[11px] font-semibold text-[#374151] block mb-1">Date</label>
+                  <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[#111111] focus:outline-none focus:border-[#FF6B35]/50 transition-colors" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[11px] font-semibold text-[#374151] block mb-1">Time</label>
+                  <input type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)}
+                    className="w-full text-sm border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[#111111] focus:outline-none focus:border-[#FF6B35]/50 transition-colors" />
+                </div>
+              </div>
+              {formError && (
+                <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formError}</p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setMode("chat")}
+                  className="flex-1 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
+                  Back to chat
+                </button>
+                <button onClick={submitStructuredBooking} disabled={formSubmitting}
+                  className="flex-[2] text-sm font-semibold px-3 py-2.5 rounded-xl text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  style={{ background: gradient }}>
+                  {formSubmitting ? "Submitting…" : "Submit"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#F9FAFB]">
         {messages.map((msg) => (
@@ -376,7 +544,17 @@ export default function WidgetChat({
             </svg>
           </button>
         </div>
+        {/* Round M4 FIX 7: toggle to the structured intake box -- an easier
+            alternative for a visitor who'd rather fill a short form than type
+            everything out. */}
+        <button onClick={() => setMode("form")}
+          className="w-full mt-2 text-[11px] font-semibold text-center hover:underline transition-colors"
+          style={{ color: accentColor || "#FF6B35" }}>
+          Prefer a quick form instead? →
+        </button>
       </div>
+      </>
+      )}
 
       {/* Powered by Vela -- FIX 6: now reads the real per-tenant setting
           (tenant_config.hide_powered_by), fetched server-side in page.tsx.

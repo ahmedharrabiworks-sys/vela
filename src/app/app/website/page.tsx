@@ -1358,6 +1358,12 @@ export default function WebsitePage() {
   const [imgEditTarget, setImgEditTarget]         = useState<{ vs: string; imgIdx: number; src: string; websiteId: string } | null>(null);
   const [imgSearchQuery, setImgSearchQuery]       = useState("");
   const [imgSearching, setImgSearching]           = useState(false);
+  // Round M4 FIX 2: handleImageReplace previously swallowed any failed
+  // response silently (if (!res.ok) return;) and closed the modal
+  // regardless in its `finally` block -- an upload that failed (e.g. too
+  // large, wrong format, network error) looked identical to one that
+  // succeeded: the modal just closed with nothing having changed.
+  const [imgReplaceError, setImgReplaceError]     = useState("");
   const [showColorPanel, setShowColorPanel]       = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
@@ -2414,24 +2420,38 @@ export default function WebsitePage() {
   }, [undoStack, handleSaveEdit]);
 
   // ── Inline edit: replace image ────────────────────────────────────────────────
+  // Round M4 FIX 2: a failed request here (too-large upload, bad format,
+  // network hiccup, server error) used to be swallowed silently -- no
+  // message shown, and the modal still closed in `finally` as if the
+  // replacement had gone through. The upload looked like it "did nothing"
+  // because the failure was invisible, not because nothing happened. Now
+  // surfaces the real error and keeps the modal open (so the photo/search
+  // is still right there to retry) on failure; only closes on success or
+  // an explicit Cancel/Remove.
   const handleImageReplace = useCallback(async (
     wsId: string, vs: string, imgIdx: number,
     action: { query?: string; imageData?: string; remove?: boolean }
   ) => {
     setImgSearching(true);
+    setImgReplaceError("");
     try {
       const res = await fetch("/api/website/image-replace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ websiteId: wsId, vs, imgIdx, ...action }),
       });
-      if (!res.ok) return;
-      const data = await res.json() as { html?: string };
+      const data = await res.json().catch(() => ({})) as { html?: string; error?: string };
+      if (!res.ok) {
+        setImgReplaceError(data.error || "Couldn't update the image. Please try again.");
+        return;
+      }
       if (data.html) { setHtml(data.html); htmlRef.current = data.html; }
-    } finally {
-      setImgSearching(false);
       setImgEditTarget(null);
       setImgSearchQuery("");
+    } catch {
+      setImgReplaceError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setImgSearching(false);
     }
   }, []);
 
@@ -3733,12 +3753,17 @@ export default function WebsitePage() {
       {/* Image Edit Modal */}
       {imgEditTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
-          onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); }}>
+          onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); setImgReplaceError(""); }}>
           <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}>
             <h2 className="text-base font-bold text-[#111111] dark:text-white">Replace image</h2>
             {imgEditTarget.src && (
               <img src={imgEditTarget.src} alt="" className="w-full h-32 object-cover rounded-lg" />
+            )}
+            {imgReplaceError && (
+              <p className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">
+                {imgReplaceError}
+              </p>
             )}
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Search Unsplash</p>
@@ -3768,8 +3793,23 @@ export default function WebsitePage() {
                 <input type="file" accept="image/*" className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
+                    e.target.value = ""; // allow re-selecting the same file after an error
                     if (!file) return;
+                    setImgReplaceError("");
+                    // Round M4 FIX 2: matches the server's own cap (image-replace/
+                    // route.ts) -- reject an oversized file immediately with a
+                    // clear message instead of letting a silent upload failure
+                    // round-trip to the server first.
+                    if (file.size > 5 * 1024 * 1024) {
+                      setImgReplaceError("That photo is too large. Please use one under 5MB.");
+                      return;
+                    }
+                    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type)) {
+                      setImgReplaceError("Unsupported image format. Use JPEG, PNG, or WEBP.");
+                      return;
+                    }
                     const reader = new FileReader();
+                    reader.onerror = () => setImgReplaceError("Couldn't read that file. Please try another photo.");
                     reader.onload = () => {
                       if (typeof reader.result === "string") {
                         void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { imageData: reader.result });
@@ -3786,7 +3826,7 @@ export default function WebsitePage() {
                 Remove
               </button>
             </div>
-            <button onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); }}
+            <button onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); setImgReplaceError(""); }}
               className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
               Cancel
             </button>
