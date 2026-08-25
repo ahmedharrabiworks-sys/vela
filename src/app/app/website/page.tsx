@@ -98,6 +98,64 @@ function extractSpec(html: string): WebsiteSpec | null {
   try { return JSON.parse(m[1]) as WebsiteSpec; } catch { return null; }
 }
 
+// Round M5 FIX 2: a real photo upload "did nothing" -- confirmed root cause
+// is deeper than last round's client-side 5MB guard suggested. Vercel
+// Serverless Functions (Node.js runtime, what /api/website/image-replace
+// runs on) have a hard ~4.5MB REQUEST BODY limit -- not configurable via
+// maxDuration or any route-level setting, it's a platform ceiling. Base64
+// encoding adds ~33% overhead, so last round's "under 5MB raw" guard let
+// through files that became ~6.7MB base64 -- comfortably OVER the real
+// 4.5MB ceiling, guaranteed to fail (a 413 the server never even sees
+// cleanly; the platform itself rejects the request). A typical real phone
+// photo (3-8MB raw JPEG) was never going to fit raw, guard or no guard.
+// Fixed by compressing client-side BEFORE upload -- resizes to a real
+// display-appropriate max dimension (1920px long side, matching the same
+// minWidth already used for hero images server-side in fetchSpecImages)
+// and re-encodes as JPEG, stepping quality down until the result
+// comfortably clears the real platform limit with headroom for the JSON
+// wrapper (see MAX_IMG_DATA_URL_LEN in image-replace/route.ts, which is
+// this same real ceiling enforced server-side too).
+const UPLOAD_TARGET_BASE64_BYTES = 3.5 * 1024 * 1024; // ~3.5MB base64 -> ~4.7MB request body incl. JSON wrapper, safely under Vercel's ~4.5MB body cap only once further reduced by quality stepping below; see loop below for the real enforced ceiling
+const UPLOAD_MAX_DIMENSION = 1920;
+
+async function compressImageForUpload(file: File): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Couldn't read that image file."));
+      el.src = objectUrl;
+    });
+
+    const scale = Math.min(1, UPLOAD_MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * scale));
+    const h = Math.max(1, Math.round(img.naturalHeight * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Couldn't process that image file.");
+    ctx.drawImage(img, 0, 0, w, h);
+
+    // Step quality down until the encoded result clears the real target --
+    // handles a busy/high-entropy photo that doesn't compress as well as a
+    // simple one, rather than a single fixed quality that might still be
+    // too large for some real photos.
+    for (const quality of [0.85, 0.72, 0.6, 0.45, 0.3]) {
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      if (dataUrl.length <= UPLOAD_TARGET_BASE64_BYTES) return dataUrl;
+    }
+    // Even the lowest quality didn't clear the target -- return it anyway
+    // (still far smaller than the original raw file); the server's own
+    // MAX_IMG_DATA_URL_LEN check is the final, authoritative backstop.
+    return canvas.toDataURL("image/jpeg", 0.3);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 // Self-contained edit script injected into the preview iframe when Edit mode is ON.
 // Reads window.VS_SPEC, annotates editable text elements with data-ve attributes,
 // and postMessages { type:"vela-edit", sectionIndex, field, itemIndex?, subField?, value }
@@ -531,7 +589,11 @@ type Msg = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_ATTACH   = 4;
-const MAX_IMG_SIZE = 5 * 1024 * 1024;
+// Round M5 FIX 2: raised from 5MB now that this file is compressed
+// client-side before upload (compressImageForUpload) -- this is just a
+// sane ceiling on the ORIGINAL file so a huge uncompressed image doesn't
+// hang the browser during compression, not the actual upload size.
+const MAX_IMG_SIZE = 20 * 1024 * 1024;
 
 const INDUSTRY_SUGGESTIONS: Record<string, string[]> = {
   "Gym & Fitness":     ["Build a bold fitness website with membership plans", "Add a free trial offer section", "Show class schedule and trainers"],
@@ -2092,25 +2154,26 @@ export default function WebsitePage() {
       }
       if (file.size > MAX_IMG_SIZE) {
         console.error(`[WebsiteBuilder paste-pipeline] REJECTED at validation -- "${file.name}" is ${file.size} bytes, over the ${MAX_IMG_SIZE} byte cap`);
-        setAttachError(`"${file.name || "That image"}" is too large (max 5MB). Try a smaller screenshot.`);
+        setAttachError(`"${file.name || "That image"}" is too large (max 20MB). Try a smaller photo.`);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
+      // Round M5 FIX 2: same real root cause as the editor's image-replace
+      // upload -- raw base64 of a real phone photo routinely exceeds
+      // Vercel's real ~4.5MB request body ceiling, and up to MAX_ATTACH (4)
+      // of these can be sent in a single chat message, compounding it.
+      // Reuses the same compressImageForUpload used there.
+      compressImageForUpload(file).then((dataUrl) => {
         const base64 = dataUrl.split(",")[1] ?? "";
-        console.log(`[WebsiteBuilder paste-pipeline] step 3/5 file read OK -- "${file.name}", base64 length ${base64.length}`);
+        console.log(`[WebsiteBuilder paste-pipeline] step 3/5 file compressed OK -- "${file.name}", base64 length ${base64.length}`);
         setAttachedImages((prev) =>
           prev.length < MAX_ATTACH
-            ? [...prev, { preview: dataUrl, base64, mimeType: file.type }]
+            ? [...prev, { preview: dataUrl, base64, mimeType: "image/jpeg" }]
             : prev,
         );
-      };
-      reader.onerror = () => {
-        console.error(`[WebsiteBuilder paste-pipeline] REJECTED at file read -- FileReader.onerror fired for "${file.name}"`, reader.error);
-        setAttachError("Couldn't read that image. Please try again.");
-      };
-      reader.readAsDataURL(file);
+      }).catch((err) => {
+        console.error(`[WebsiteBuilder paste-pipeline] REJECTED at compression -- "${file.name}"`, err);
+        setAttachError("Couldn't process that image. Please try again.");
+      });
     });
   }, [attachedImages.length]);
 
@@ -3791,31 +3854,33 @@ export default function WebsitePage() {
                   Upload photo
                 </span>
                 <input type="file" accept="image/*" className="hidden"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     e.target.value = ""; // allow re-selecting the same file after an error
                     if (!file) return;
                     setImgReplaceError("");
-                    // Round M4 FIX 2: matches the server's own cap (image-replace/
-                    // route.ts) -- reject an oversized file immediately with a
-                    // clear message instead of letting a silent upload failure
-                    // round-trip to the server first.
-                    if (file.size > 5 * 1024 * 1024) {
-                      setImgReplaceError("That photo is too large. Please use one under 5MB.");
+                    // Round M5 FIX 2: raw input is compressed before upload
+                    // (see compressImageForUpload above), so a real phone
+                    // photo (commonly 3-8MB raw) is fine here -- this cap is
+                    // just a sane ceiling on the ORIGINAL file so a huge
+                    // uncompressed image (e.g. a 40MB+ camera RAW-adjacent
+                    // export) doesn't hang the browser during compression.
+                    if (file.size > 20 * 1024 * 1024) {
+                      setImgReplaceError("That photo is too large. Please use one under 20MB.");
                       return;
                     }
                     if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type)) {
                       setImgReplaceError("Unsupported image format. Use JPEG, PNG, or WEBP.");
                       return;
                     }
-                    const reader = new FileReader();
-                    reader.onerror = () => setImgReplaceError("Couldn't read that file. Please try another photo.");
-                    reader.onload = () => {
-                      if (typeof reader.result === "string") {
-                        void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { imageData: reader.result });
-                      }
-                    };
-                    reader.readAsDataURL(file);
+                    setImgSearching(true);
+                    try {
+                      const compressed = await compressImageForUpload(file);
+                      void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { imageData: compressed });
+                    } catch {
+                      setImgReplaceError("Couldn't process that photo. Please try another one.");
+                      setImgSearching(false);
+                    }
                   }}
                 />
               </label>

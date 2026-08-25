@@ -1283,6 +1283,23 @@ Rules:
     // that still comes back empty.
     const serviceName = booking.service?.trim() || "General Consultation";
 
+    // Round M5 FIX 4(c): confirmed live -- Service Requested showed
+    // correctly for a website-form lead (submit-form/route.ts writes
+    // form_data.service directly) but was always blank for a lead that
+    // booked through this conversational flow instead, even though the
+    // service was right there in `booking.service`. Root cause: this whole
+    // file never wrote to leads.form_data at all -- ensureLeadFromContact
+    // only ever updates phone/email/name. Merged in (not overwritten) so any
+    // other form_data fields already on the lead (e.g. a prior form
+    // submission's own message) are preserved.
+    if (leadId) {
+      const { data: leadRow } = await admin.from("leads").select("form_data").eq("id", leadId).maybeSingle();
+      const existingFormData = (leadRow as { form_data?: Record<string, unknown> } | null)?.form_data ?? {};
+      await admin.from("leads").update({
+        form_data: { ...existingFormData, service: serviceName },
+      }).eq("id", leadId);
+    }
+
     const { data: existingAppt } = await admin
       .from("appointments")
       .select("id, datetime, lead_id")

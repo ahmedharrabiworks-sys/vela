@@ -21,6 +21,25 @@ export const DEMO_KPIS: DemoKPI[] = [
 
 export const DEMO_AI_RESOLUTION_RATE = 94;
 
+// Round M5 FIX 7 (Dashboard redesign): demo fixtures for the new Lead
+// Pipeline bar / AI Activity panel / Recent Activity timeline -- fake data
+// stays confined to /demo per the standing "real app never shows fake
+// numbers" rule; real /app pages source these from getDashboardStats().
+export const DEMO_NEEDS_HUMAN_COUNT = 2;
+
+export type DemoLeadPipeline = { new: number; contacted: number; qualified: number; booked: number; client: number };
+export const DEMO_LEAD_PIPELINE: DemoLeadPipeline = { new: 14, contacted: 9, qualified: 6, booked: 10, client: 27 };
+
+export type DemoActivityItem = { id: string; type: "conversation" | "appointment"; label: string; sub: string; time: string };
+export const DEMO_ACTIVITY: DemoActivityItem[] = [
+  { id: "act1", type: "conversation", label: "Sara Khalid",     sub: "New message",      time: "1m"  },
+  { id: "act2", type: "appointment",  label: "Khaled Ibrahim",  sub: "Cavity Filling",    time: "4m"  },
+  { id: "act3", type: "conversation", label: "Mohammed Hassan", sub: "New message",       time: "5m"  },
+  { id: "act4", type: "conversation", label: "Layla Mansouri",  sub: "New message",       time: "18m" },
+  { id: "act5", type: "appointment",  label: "Nour Al-Saad",    sub: "Orthodontic Check", time: "22m" },
+  { id: "act6", type: "appointment",  label: "Hassan Youssef",  sub: "Root Canal",        time: "1h"  },
+];
+
 export const DEMO_CONVS: DemoConv[] = [
   { id: "c1", customer_name: "Sara Khalid",     channel: "whatsapp",  preview: "Is Tuesday 11 AM still available?",    time: "1m",  isNew: true  },
   { id: "c2", customer_name: "Mohammed Hassan", channel: "instagram", preview: "What are your prices for whitening?",  time: "5m",  isNew: true  },

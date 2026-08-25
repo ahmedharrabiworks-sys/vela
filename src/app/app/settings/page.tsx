@@ -469,16 +469,16 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-20">
-      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-      {showCapModal && usage?.messages.limit !== null && (
-        <UsageCapModal
-          used={usage!.messages.used}
-          limit={usage!.messages.limit!}
-          onClose={() => setShowCapModal(false)}
-        />
-      )}
-
+    // Round M5 FIX 3: Toast/UsageCapModal below used to be direct children of
+    // this SAME space-y-5 container -- only exempt from its stray
+    // sibling-margin-top by the accident of being first in JSX source order.
+    // Same real bug confirmed live on leads/page.tsx's LeadDetailModal
+    // (space-y-5 pushed a "fixed inset-0" backdrop down from the true
+    // viewport top by exactly its own margin value, leaving the header
+    // undimmed). Fixed the same way: space-y-5 scoped to an inner wrapper
+    // around only the normal-flow content.
+    <div className="max-w-4xl mx-auto pb-20">
+    <div className="space-y-5">
       <div>
         <h1 className="text-xl font-bold text-[#111111]">{t("settings.title")}</h1>
         <p className="text-sm text-[#6B7280] mt-1">{t("settings.subtitle")}</p>
@@ -871,6 +871,16 @@ export default function SettingsPage() {
           {section === "recycleBin" && <RecycleBinSection t={t} />}
         </div>
       </div>
+    </div>
+
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
+      {showCapModal && usage?.messages.limit !== null && (
+        <UsageCapModal
+          used={usage!.messages.used}
+          limit={usage!.messages.limit!}
+          onClose={() => setShowCapModal(false)}
+        />
+      )}
     </div>
   );
 }

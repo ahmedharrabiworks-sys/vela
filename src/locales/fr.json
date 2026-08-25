@@ -282,7 +282,15 @@
     "timeNow": "maintenant",
     "timeMinutes": "min",
     "timeHours": "h",
-    "timeDays": "j"
+    "timeDays": "j",
+    "leadPipeline": "Pipeline de prospects",
+    "aiActivity": "Activité IA",
+    "recentActivity": "Activité récente",
+    "activityNewMessage": "Nouveau message",
+    "escalatedToHuman": "Transmis à vous",
+    "messagesHandled": "Messages traités",
+    "callsHandled": "Appels traités",
+    "noActivity": "Aucune activité pour le moment"
   },
   "conversations": {
     "title": "Conversations",
@@ -338,7 +346,7 @@
       "phone": "Téléphone",
       "email": "E-mail",
       "service": "Service demandé",
-      "conversationSummary": "Résumé de la conversation",
+      "conversationSummary": "Conclusion",
       "message": "Message",
       "noDetails": "Aucun détail supplémentaire pour ce prospect.",
       "stage": "Étape du pipeline",

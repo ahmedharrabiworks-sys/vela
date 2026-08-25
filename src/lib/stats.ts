@@ -64,6 +64,12 @@ export interface DashboardStats {
   appointmentsTodayChange: ChangeInfo;
   messagesTodayChange: ChangeInfo;
   callsTodayChange: ChangeInfo;
+  // Round M5 FIX 7: Lead Pipeline stage bar (Dashboard redesign) -- real
+  // per-stage counts, same 5 stages/labels as the Leads/CRM Kanban board
+  // (leads/page.tsx's PIPELINE_STAGES). Never inferred/estimated -- a real
+  // COUNT query per stage, all-time (not scoped to "today"), since a
+  // pipeline is a snapshot of where every current lead sits right now.
+  leadPipeline: { new: number; contacted: number; qualified: number; booked: number; client: number };
 }
 
 /**
@@ -129,6 +135,11 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     messagesYesterdayRes,
     callsYesterdayRes,
     aiResolutionRate,
+    leadsNewRes,
+    leadsContactedRes,
+    leadsQualifiedRes,
+    leadsBookedRes,
+    leadsClientRes,
   ] = await Promise.all([
     // Round M FIX 11: leads/conversations/appointments counts previously
     // had NO deleted_at filter anywhere in this file -- a soft-deleted row
@@ -165,6 +176,14 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     // this KPI strip and with how Analytics scopes its own version to its
     // selected window rather than all time.
     computeAiResolutionRate(admin, tenantId, todayStart.toISOString()),
+    // Round M5 FIX 7: Lead Pipeline stage bar -- 5 real per-stage counts,
+    // additive queries only, same stage values as leads/page.tsx's
+    // PIPELINE_STAGES. Does not alter any existing query above.
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).eq("status", "new"),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).eq("status", "contacted"),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).eq("status", "qualified"),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).eq("status", "booked"),
+    admin.from("leads").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null).eq("status", "client"),
   ]);
 
   const totalLeads = totalLeadsRes.count ?? 0;
@@ -206,5 +225,12 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
     appointmentsTodayChange: computeChangeInfo(appointmentsToday, appointmentsYesterday),
     messagesTodayChange: computeChangeInfo(messagesToday, messagesYesterday),
     callsTodayChange: computeChangeInfo(callsToday, callsYesterday),
+    leadPipeline: {
+      new: leadsNewRes?.count ?? 0,
+      contacted: leadsContactedRes?.count ?? 0,
+      qualified: leadsQualifiedRes?.count ?? 0,
+      booked: leadsBookedRes?.count ?? 0,
+      client: leadsClientRes?.count ?? 0,
+    },
   };
 }

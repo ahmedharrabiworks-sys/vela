@@ -282,7 +282,15 @@
     "timeNow": "jetzt",
     "timeMinutes": "Min.",
     "timeHours": "Std.",
-    "timeDays": "T"
+    "timeDays": "T",
+    "leadPipeline": "Lead-Pipeline",
+    "aiActivity": "KI-Aktivität",
+    "recentActivity": "Letzte Aktivität",
+    "activityNewMessage": "Neue Nachricht",
+    "escalatedToHuman": "An Sie eskaliert",
+    "messagesHandled": "Bearbeitete Nachrichten",
+    "callsHandled": "Bearbeitete Anrufe",
+    "noActivity": "Noch keine Aktivität"
   },
   "conversations": {
     "title": "Gespräche",
@@ -338,7 +346,7 @@
       "phone": "Telefon",
       "email": "E-Mail",
       "service": "Angefragte Leistung",
-      "conversationSummary": "Gesprächszusammenfassung",
+      "conversationSummary": "Fazit",
       "message": "Nachricht",
       "noDetails": "Keine weiteren Details für diesen Lead erfasst.",
       "stage": "Pipeline-Phase",

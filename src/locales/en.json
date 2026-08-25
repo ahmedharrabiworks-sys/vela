@@ -281,7 +281,15 @@
     "timeNow": "now",
     "timeMinutes": "m",
     "timeHours": "h",
-    "timeDays": "d"
+    "timeDays": "d",
+    "leadPipeline": "Lead Pipeline",
+    "aiActivity": "AI Activity",
+    "recentActivity": "Recent Activity",
+    "activityNewMessage": "New message",
+    "escalatedToHuman": "Escalated to you",
+    "messagesHandled": "Messages handled",
+    "callsHandled": "Calls handled",
+    "noActivity": "No activity yet"
   },
   "conversations": {
     "title": "Conversations",
@@ -337,7 +345,7 @@
       "phone": "Phone",
       "email": "Email",
       "service": "Service requested",
-      "conversationSummary": "Conversation summary",
+      "conversationSummary": "Conclusion",
       "message": "Message",
       "noDetails": "No additional details captured for this lead.",
       "stage": "Pipeline stage",

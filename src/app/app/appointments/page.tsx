@@ -551,13 +551,19 @@ export default function AppointmentsPage() {
   const modalApt = modal ? appointments.find((a) => a.id === modal.id) : null;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5 pb-20">
-      {modal?.type === "message"    && modalApt && <SendModal       apt={modalApt} onClose={() => setModal(null)} />}
-      {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
-      {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
-      {modal?.type === "delete"     && modalApt && <DeleteModal     apt={modalApt} onConfirm={handleDelete}    onClose={() => setModal(null)} />}
-      {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
-
+    // Round M5 FIX 3: the 4 modals + Toast below used to be direct children
+    // of this SAME space-y-5 container, ahead of Header etc in JSX order --
+    // they only escaped the bug BY ACCIDENT of being first in source order
+    // (Tailwind's space-y-* skips the first child), which breaks the moment
+    // any of them render while something else is also mounted before them,
+    // or if this ordering ever changes. Same real bug confirmed live on
+    // leads/page.tsx's LeadDetailModal (a stray marginTop from space-y-5
+    // pushed a "fixed inset-0" backdrop down from the true viewport top,
+    // leaving the header undimmed) -- fixed the same way: space-y-5 scoped
+    // to an inner wrapper around only the normal-flow content, modals/toast
+    // kept as true siblings of the page root so they can never inherit it.
+    <div className="max-w-7xl mx-auto pb-20">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -789,6 +795,13 @@ export default function AppointmentsPage() {
           )}
         </div>
       )}
+    </div>
+
+      {modal?.type === "message"    && modalApt && <SendModal       apt={modalApt} onClose={() => setModal(null)} />}
+      {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
+      {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
+      {modal?.type === "delete"     && modalApt && <DeleteModal     apt={modalApt} onConfirm={handleDelete}    onClose={() => setModal(null)} />}
+      {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
     </div>
   );
 }

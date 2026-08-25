@@ -411,7 +411,21 @@ export default function LeadsPage() {
   });
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5 pb-20">
+    // Round M5 FIX 3: LeadDetailModal/Toast below used to be direct children
+    // of this SAME space-y-5 container -- Tailwind's space-y-* utility adds
+    // margin-top to every child except the first via a sibling selector, with
+    // no regard for `position: fixed`. Once other real content rendered
+    // before it (Header, Search, the Kanban board are all unconditional),
+    // the modal was never the first child, so it silently got a stray
+    // margin-top pushing its "fixed inset-0" backdrop down from the true
+    // viewport top -- confirmed live via computed styles: marginTop was
+    // exactly 20px (space-y-5's 1.25rem), leaving a real, undimmed gap
+    // across the top of the screen, header included. Fixed by scoping
+    // space-y-5 to an INNER wrapper around only the normal-flow content;
+    // the modal/toast stay outside it as true siblings of the page root, so
+    // they can never inherit this margin regardless of DOM order.
+    <div className="max-w-[1400px] mx-auto pb-20">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -545,6 +559,7 @@ export default function LeadsPage() {
           )}
         </>
       )}
+    </div>
 
       {selectedId && (() => {
         const selectedLead = leads.find((l) => l.id === selectedId);

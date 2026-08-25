@@ -127,13 +127,15 @@ export async function POST(
   // for the owner to see/correct like every other channel already does.
   const phoneUnconfirmed = phone ? !hasConfirmedCountryCode(phone) : false;
 
-  // Round M FIX 8: a short, real "what they want" summary for the Leads/CRM
-  // detail view. This channel already has genuine, non-fabricated customer
-  // text (the form's own message field) -- used directly as the summary,
-  // consistent with the intent_summary field other channels now populate
-  // (see ensureLeadFromContact in ai/reply/route.ts) rather than needing an
-  // extra AI call for something the customer already stated plainly.
-  const intentSummary = message ? message.slice(0, 200) : null;
+  // Round M5 FIX 4: confirmed live -- this channel's own Message field
+  // already shows the customer's literal text verbatim, so copying it into
+  // intent_summary too made the lead detail view show the exact same
+  // sentence twice under two different labels ("Conclusion" and "Message").
+  // No real AI conversation happened here to synthesize -- this is a
+  // single-shot form submission, not the multi-turn chat widget/Instagram/
+  // WhatsApp exchanges ai/reply/route.ts actually summarizes with a real GPT
+  // call. Left null; Message alone is sufficient for this channel.
+  const intentSummary = null;
 
   // ── Save to leads table (same schema as other channels) ───────────────────
   let insertRow: Record<string, unknown> = {

@@ -16,7 +16,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const ALLOWED_IMG_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
-const MAX_IMG_B64 = Math.ceil(5 * 1024 * 1024 * (4 / 3));
+// Round M5 FIX 2: this was 5MB raw * 4/3 =~ 6.7MB base64 -- ABOVE Vercel
+// Serverless Functions' real ~4.5MB request body ceiling (a platform limit,
+// not configurable here), so this "cap" could never actually catch the real
+// failure case before the platform itself silently rejected the request.
+// Same correction as image-replace/route.ts's MAX_IMG_DATA_URL_LEN; the
+// client (website/page.tsx's attachFilesToChat, feeding this same
+// images[].data field) now compresses before sending, so this is the
+// server-side backstop, set BELOW the real platform ceiling with headroom.
+const MAX_IMG_B64 = 4 * 1024 * 1024;
 const MAX_MSG_LEN = 5000;
 
 // ── JSON-spec completion with truncation recovery ──────────────────────────────
@@ -611,8 +619,36 @@ function buildItemImageQuery(itemTitle: string | undefined, businessType: string
   return `${cleanTitle} ${businessType} close-up editorial natural light`.replace(/\s+/g, " ").trim();
 }
 
+// Round M5 FIX 1: confirmed live -- asking to change the hero to a "patient
+// pic" produced another random generic studio-interior shot. Root cause:
+// resolveDescriptionHeroQuery/HERO_PHOTO_QUERY only ever resolve a query from
+// the BUSINESS TYPE (dental, automotive, etc.) -- a concrete visual subject
+// the owner explicitly names in an edit request (patient, doctor, chair,
+// car, chef...) was never looked at, let alone incorporated. This is checked
+// against the CURRENT edit message only (not the whole accumulated
+// fullText), so an old, unrelated mention of one of these words earlier in
+// the conversation can never hijack a later, different request.
+const IMAGE_DESCRIPTOR_WORDS = [
+  "patient", "doctor", "dentist", "nurse", "receptionist", "reception",
+  "waiting room", "treatment room", "consultation room", "dental chair", "chair",
+  "car", "vehicle", "showroom", "dashboard", "steering wheel",
+  "chef", "kitchen", "dish", "dining room", "table setting",
+  "staff", "team", "employee", "customer", "client",
+  "storefront", "exterior", "interior", "entrance", "lobby",
+  "product", "menu", "counter", "bar",
+  "trainer", "workout", "gym floor", "equipment",
+  "stylist", "salon chair", "spa",
+  "office", "meeting room", "desk",
+];
+
+function extractImageDescriptor(text: string): string | null {
+  const t = text.toLowerCase();
+  const found = IMAGE_DESCRIPTOR_WORDS.find((w) => new RegExp(`\\b${w}\\b`, "i").test(t));
+  return found ?? null;
+}
+
 // ── Server-side safety net: inject imageQuery for visual sections that GPT missed
-function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, fullText: string, hasOwnerPhoto: boolean): void {
+function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, fullText: string, hasOwnerPhoto: boolean, currentMessage: string = ""): void {
   // Resolve preset key: v2 uses category, v1 uses stylePreset
   const PRESET_ALIAS: Record<string, string> = {
     "editorial-luxury": "hotel", "minimal-warm": "beauty", "saas-sharp": "fitness",
@@ -664,6 +700,43 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
   const MULTI_PRODUCT_TYPES = new Set(["product-grid"]);
   const MULTI_SHOWCASE_TYPES = new Set(["feature-showcase"]);
 
+  // Round M2 FIX 1: ABOUT_PHOTO_QUERY/PRESET_GALLERY_QUERIES have the
+  // exact same gap as HERO_PHOTO_QUERY -- no automotive entry, so they
+  // fell through to rawCategory="professional" -> preset="realestate"
+  // too, producing a real-estate-agent-office about photo and a property
+  // gallery for a car business. Same description-pattern check as the
+  // hero fix above, reused here rather than building a whole second
+  // category for one business type.
+  // Round M4 FIX 1: confirmed live -- a dental clinic's gallery got a mix
+  // of generic "empty white room"/"patient care" stock photography and an
+  // unrelated hospital surgery/IV-drip photo. Root cause: rawCategory here
+  // is always the COARSE 5-value templateCategory ("medical" for every
+  // dental/doctor/physio/dermatology/pharmacy/optician business alike --
+  // see the classifier's own "medical — dental, doctor, physio..." vocab
+  // list), so PRESET_GALLERY_QUERIES["medical"] and
+  // ABOUT_PHOTO_QUERY["medical"] are shared across ALL of those sub-types
+  // and include generic entries ("clean white corridor light minimal
+  // geometric", "patient care professional warm studio light",
+  // "medical technology equipment white abstract") that read as
+  // hospital/general-practice stock photography, not dental specifically
+  // -- exactly matching the reported "empty white rooms" and "hospital
+  // surgery/IV-drip" results. The HERO query already avoids this (see
+  // DESCRIPTION_HERO_QUERY_PATTERNS' dedicated dental pattern, checked
+  // before the generic clinic/medical one), but ABOUT and GALLERY never
+  // had the same fullText-based override. Reuses the existing, already
+  // dental-specific TREATMENT_QUERIES pool (Phase 2c) instead of adding a
+  // new one, same fullText-detection approach as isAutomotive above.
+  // Round M5 FIX 1: hoisted out of the loop below (both only ever depend on
+  // fullText, never on the current section `s`) so the hero branch -- which
+  // runs before these were previously computed -- can use them too.
+  const isAutomotive = /\b(car\s*rental|auto(mobile)?\s*rental|vehicle\s*rental|exotic\s*car|luxury\s*car|car\s*hire|car\s*dealership|auto\s*dealership|\bmotors\b)/i.test(fullText);
+  const isDental = /\b(dental|dentist|orthodont|teeth\s*whitening|cosmetic\s*dentistry|oral\s*health)/i.test(fullText);
+  // Round M5 FIX 1: the concrete visual subject the owner just named in
+  // THIS edit request (e.g. "patient"), if any -- see IMAGE_DESCRIPTOR_WORDS
+  // above for why this is checked against currentMessage alone, not fullText.
+  const imageDescriptor = currentMessage ? extractImageDescriptor(currentMessage) : null;
+  const descriptorBusinessLabel = isAutomotive ? "luxury car dealership" : isDental ? "dental clinic" : businessType;
+
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
 
@@ -673,7 +746,14 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     // so it works correctly even when rawCategory doesn't exist in either
     // dict below (the actual root cause of the villa-on-coffee-shop bug).
     if (HERO_TYPES.has(s.type)) {
-      const heroPhotoQuery = resolveDescriptionHeroQuery(fullText)
+      // Round M5 FIX 1: an explicit visual subject in the current edit
+      // request wins over the generic business-type pool entirely -- the
+      // owner named exactly what they want, so guessing from category alone
+      // (and getting it wrong, as confirmed live) is never better than using
+      // their own word.
+      const heroPhotoQuery = imageDescriptor
+        ? `${imageDescriptor} ${descriptorBusinessLabel} professional photography clean bright natural light`.replace(/\s+/g, " ").trim()
+        : resolveDescriptionHeroQuery(fullText)
         ?? HERO_PHOTO_QUERY[rawCategory]
         ?? HERO_PHOTO_QUERY[preset]
         ?? "professional business interior clean bright modern minimal";
@@ -683,35 +763,6 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     }
 
     const hasQ = getImageQuery(s as { imageQuery?: string; content?: Record<string, unknown> });
-
-    // Round M2 FIX 1: ABOUT_PHOTO_QUERY/PRESET_GALLERY_QUERIES have the
-    // exact same gap as HERO_PHOTO_QUERY -- no automotive entry, so they
-    // fell through to rawCategory="professional" -> preset="realestate"
-    // too, producing a real-estate-agent-office about photo and a property
-    // gallery for a car business. Same description-pattern check as the
-    // hero fix above, reused here rather than building a whole second
-    // category for one business type.
-    const isAutomotive = /\b(car\s*rental|auto(mobile)?\s*rental|vehicle\s*rental|exotic\s*car|luxury\s*car|car\s*hire|car\s*dealership|auto\s*dealership|\bmotors\b)/i.test(fullText);
-    // Round M4 FIX 1: confirmed live -- a dental clinic's gallery got a mix
-    // of generic "empty white room"/"patient care" stock photography and an
-    // unrelated hospital surgery/IV-drip photo. Root cause: rawCategory here
-    // is always the COARSE 5-value templateCategory ("medical" for every
-    // dental/doctor/physio/dermatology/pharmacy/optician business alike --
-    // see the classifier's own "medical — dental, doctor, physio..." vocab
-    // list), so PRESET_GALLERY_QUERIES["medical"] and
-    // ABOUT_PHOTO_QUERY["medical"] are shared across ALL of those sub-types
-    // and include generic entries ("clean white corridor light minimal
-    // geometric", "patient care professional warm studio light",
-    // "medical technology equipment white abstract") that read as
-    // hospital/general-practice stock photography, not dental specifically
-    // -- exactly matching the reported "empty white rooms" and "hospital
-    // surgery/IV-drip" results. The HERO query already avoids this (see
-    // DESCRIPTION_HERO_QUERY_PATTERNS' dedicated dental pattern, checked
-    // before the generic clinic/medical one), but ABOUT and GALLERY never
-    // had the same fullText-based override. Reuses the existing, already
-    // dental-specific TREATMENT_QUERIES pool (Phase 2c) instead of adding a
-    // new one, same fullText-detection approach as isAutomotive above.
-    const isDental = /\b(dental|dentist|orthodont|teeth\s*whitening|cosmetic\s*dentistry|oral\s*health)/i.test(fullText);
 
     if (!hasQ) {
       if (ABOUT_TYPES.has(s.type)) {
@@ -3398,7 +3449,7 @@ export async function POST(req: NextRequest) {
       // Server-side fallback: inject imageQuery for any visual section GPT missed.
       // Pass fullContextText (all conversation turns for initial generate) so city
       // and business-type hints are available even when tenant profile fields are empty.
-      ensureImageQueries(spec, industry, city, fullContextText, !!heroUpload);
+      ensureImageQueries(spec, industry, city, fullContextText, !!heroUpload, message ?? "");
     }
 
     let uploadSlot: "hero" | "about" | "team" | "gallery" | "logo" = "hero";

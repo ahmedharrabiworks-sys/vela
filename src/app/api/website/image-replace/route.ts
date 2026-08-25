@@ -79,16 +79,22 @@ async function fetchUnsplashImage(query: string): Promise<string | null> {
 }
 
 // Round M4 FIX 2: this route had zero validation on body.imageData -- any
-// size or content could be POSTed directly. Same cap already used for the
-// initial hero-upload path in generate/route.ts (5MB raw -> base64 is ~4/3
-// larger), duplicated here since that file doesn't export its constants.
-// Concretely explains the reported "upload does nothing" symptom: a real
-// phone-camera photo easily exceeds Vercel's request body limit once
-// base64-encoded, the fetch in website/page.tsx's handleImageReplace
-// silently swallowed any non-ok response, and the modal closed regardless
-// -- see that file's own fix for the client-side half of this.
+// size or content could be POSTed directly.
+// Round M5 FIX 2 (correction): the cap set last round (5MB raw * 4/3 =~
+// 6.7MB base64) was itself ABOVE Vercel Serverless Functions' real hard
+// request-body ceiling (~4.5MB, a platform limit -- not configurable via
+// maxDuration or any route setting). That meant this "validation" could
+// never actually reject the failure case before the platform itself did --
+// a real phone photo close to that old "under 5MB raw" guidance was always
+// going to be rejected at the platform level, invisibly, regardless of this
+// check. The real fix is client-side compression before upload (see
+// compressImageForUpload in website/page.tsx, which now keeps the encoded
+// result comfortably under this same real ceiling); this is the server-side
+// backstop for that, set BELOW the actual ~4.5MB platform limit with
+// headroom for the JSON wrapper (websiteId/vs/imgIdx are negligible, but
+// the data: URI prefix and any proxy overhead are not).
 const ALLOWED_IMG_TYPES = new Set(["jpeg", "jpg", "png", "webp"]);
-const MAX_IMG_DATA_URL_LEN = Math.ceil(5 * 1024 * 1024 * (4 / 3)) + 100; // +headroom for the data: URI prefix
+const MAX_IMG_DATA_URL_LEN = 4 * 1024 * 1024; // ~4MB base64 text, safely under the real ~4.5MB platform body cap
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({})) as {

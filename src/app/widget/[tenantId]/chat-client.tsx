@@ -13,10 +13,28 @@ const CUSTOM_SERVICE = "__custom__";
 
 // FIX 1 (round Q): hard ceiling on how long a single send() waits for
 // /api/ai/reply before giving up -- see the comment in send() for why this
-// exists. 25s comfortably covers real OpenAI latency (the route makes up
-// to 3 sequential calls) while still guaranteeing the UI never hangs
-// indefinitely on a dropped connection or infra-level stall.
-const REQUEST_TIMEOUT_MS = 25_000;
+// exists.
+// Round M5 FIX 6: confirmed live -- a real booking-confirmation turn
+// ("yes please" after the AI proposes a slot) can chain up to 3 SEQUENTIAL
+// OpenAI calls server-side (the availability pre-check extraction, the main
+// reply, and the intent_summary synthesis once a lead exists -- see
+// ai/reply/route.ts sections 7b, the main completion, and the intent-
+// summary block after it), on a route explicitly provisioned for up to 300s
+// (maxDuration=300). The old 25s client ceiling was far below what the
+// server itself is built to tolerate -- a legitimate but slow completion
+// (cold start + real OpenAI latency on 3 calls) got reported to the
+// customer as "Something went wrong. Please try again." even when the
+// server went on to complete successfully (including actually booking the
+// appointment) a few seconds later, since Vercel serverless execution isn't
+// killed just because the client gave up on the HTTP response. The customer
+// then asking "why" got a disconnected answer because nothing about that
+// canned client-side message was ever real conversation history -- the
+// server has no error to explain, because from ITS side nothing failed.
+// Raised to a more realistic ceiling, and paired with a post-timeout
+// reconciliation check (see the catch block in send()) that looks for the
+// real reply shortly after, instead of leaving a false error on screen when
+// the server actually did finish.
+const REQUEST_TIMEOUT_MS = 45_000;
 
 export default function WidgetChat({
   tenantId,
@@ -72,7 +90,12 @@ export default function WidgetChat({
   const [formTime, setFormTime]         = useState("");
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError]       = useState("");
-  const [formResult, setFormResult]     = useState<{ message: string; booked: boolean } | null>(null);
+  // Round M5 FIX 5: isConflict distinguishes "the chosen slot was actually
+  // unavailable" (structured-booking/route.ts's Case C conflict branch,
+  // which is the only branch that returns `alternatives`) from every other
+  // non-booked outcome (untrained service, no date/time given) -- only the
+  // conflict case is allowed to resubmit; see the result UI below.
+  const [formResult, setFormResult]     = useState<{ message: string; booked: boolean; isConflict: boolean } | null>(null);
 
   // FIX 4: was sessionStorage, which is cleared the moment the tab/window
   // closes -- every single reopen of the widget (or the site) started a
@@ -285,10 +308,37 @@ export default function WidgetChat({
     } catch (err) {
       const timedOut = err instanceof DOMException && err.name === "AbortError";
       console.error(timedOut ? "[vela-widget] request timed out:" : "[vela-widget] network error:", err);
+      const errMsgId = `err-${Date.now()}`;
       setMessages((prev) => [
         ...prev,
-        { id: `err-${Date.now()}`, role: "assistant", content: "Something went wrong. Please try again." },
+        { id: errMsgId, role: "assistant", content: "Something went wrong. Please try again." },
       ]);
+      // Round M5 FIX 6: a client-side TIMEOUT (not a genuine network/offline
+      // failure -- the request really did reach the server) doesn't mean the
+      // server failed. Vercel serverless execution isn't cancelled just
+      // because the client gave up on the HTTP response, and this exact
+      // route is provisioned for up to 300s. Check shortly after whether the
+      // server actually finished (and possibly booked the appointment) --
+      // if a real reply landed, replace the false error with it instead of
+      // leaving the customer looking at an error that was never real, and
+      // instead of an unrelated "why" follow-up having no real answer to
+      // give (nothing genuinely failed server-side in that case).
+      if (timedOut && conversationId) {
+        setTimeout(async () => {
+          try {
+            const histRes = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(conversationId)}${websiteId ? `&websiteId=${encodeURIComponent(websiteId)}` : ""}`);
+            const histData = await histRes.json() as { messages?: { role: string; content: string }[] };
+            const lastReal = (histData.messages ?? []).filter((m) => m.role === "assistant").slice(-1)[0];
+            if (lastReal?.content) {
+              setMessages((prev) => {
+                const stillShowingError = prev.some((m) => m.id === errMsgId);
+                if (!stillShowingError) return prev; // customer already moved on / it self-resolved via polling
+                return prev.map((m) => m.id === errMsgId ? { ...m, content: lastReal.content } : m);
+              });
+            }
+          } catch { /* best-effort reconciliation -- the error message stands if this fails too */ }
+        }, 4000);
+      }
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
@@ -333,12 +383,16 @@ export default function WidgetChat({
           time: formTime || undefined,
         }),
       });
-      const data = await res.json().catch(() => ({})) as { ok?: boolean; booked?: boolean; message?: string; error?: string };
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; booked?: boolean; message?: string; error?: string; alternatives?: string[] };
       if (!res.ok || !data.ok) {
         setFormError(data.error || "Something went wrong. Please try again.");
         return;
       }
-      setFormResult({ message: data.message || "Thanks, we've got your request!", booked: !!data.booked });
+      setFormResult({
+        message: data.message || "Thanks, we've got your request!",
+        booked: !!data.booked,
+        isConflict: Array.isArray(data.alternatives),
+      });
       // Also drop the result into the chat thread so switching back to chat
       // shows a coherent history rather than the form result vanishing.
       setMessages((prev) => [...prev, { id: `form-${Date.now()}`, role: "assistant", content: data.message || "Thanks, we've got your request!" }]);
@@ -349,9 +403,17 @@ export default function WidgetChat({
     }
   };
 
-  const resetForm = () => {
-    setFormName(""); setFormPhone(""); setFormPhoneCountry(DEFAULT_PHONE_COUNTRY);
-    setFormService(trainedServices[0] ?? CUSTOM_SERVICE); setFormCustomService("");
+  // Round M5 FIX 5: confirmed live -- this used to be a general-purpose
+  // "start over" available after ANY result, including a real confirmed
+  // booking, letting a customer submit unlimited additional bookings through
+  // this form with nothing enforcing the one-active-appointment rule the
+  // conversational flow already respects (see existingApptDirective in
+  // ai/reply/route.ts). Now only reachable from the conflict result (see the
+  // result UI below) -- a real confirmed booking shows no resubmit action at
+  // all, only "Back to chat". Keeps name/phone/service (still correct) and
+  // only clears date/time, since the customer is choosing a new TIME for the
+  // same request, not starting an unrelated one.
+  const pickDifferentTime = () => {
     setFormDate(""); setFormTime(""); setFormError(""); setFormResult(null);
   };
 
@@ -400,10 +462,16 @@ export default function WidgetChat({
               </div>
               <p className="text-sm text-[#111111] leading-relaxed">{formResult.message}</p>
               <div className="flex gap-2 pt-1">
-                <button onClick={resetForm}
-                  className="flex-1 text-xs font-semibold px-3 py-2 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
-                  Submit another request
-                </button>
+                {/* Round M5 FIX 5: resubmission is ONLY offered when the
+                    original slot was genuinely unavailable -- never after a
+                    real confirmed booking, and never as a general "start
+                    over" for any other outcome. */}
+                {!formResult.booked && formResult.isConflict && (
+                  <button onClick={pickDifferentTime}
+                    className="flex-1 text-xs font-semibold px-3 py-2 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
+                    Choose a different time
+                  </button>
+                )}
                 <button onClick={() => setMode("chat")}
                   className="flex-1 text-xs font-semibold px-3 py-2 rounded-xl text-white hover:opacity-90 transition-opacity"
                   style={{ background: gradient }}>
