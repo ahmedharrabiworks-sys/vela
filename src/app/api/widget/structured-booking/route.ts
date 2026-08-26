@@ -148,10 +148,25 @@ export async function POST(req: NextRequest) {
       .insert(convInsertRow)
       .select("id")
       .single();
-    if (convErr?.code === "42703" || convErr?.code === "PGRST204") {
+    // Round M9 FIX 3(b) follow-up: live testing surfaced a real, previously
+    // silent failure mode here -- a stale websiteId (the widget persists
+    // conversationId/websiteId in localStorage for 48h; if the site is
+    // deleted/regenerated with a new id in that window, e.g. a fresh
+    // Website Builder publish, the OLD id a returning visitor's browser
+    // still has no longer exists) trips the conversations_website_id_fkey
+    // foreign key constraint (code 23503), which the existing 42703/
+    // PGRST204 schema-mismatch fallback never caught -- newConv/convId
+    // silently stayed null with zero logging, so the conversation (and
+    // therefore this customer's whole message thread) just never
+    // persisted, no error visible anywhere. Now degrades the same way the
+    // schema-mismatch case already does: drop website_id and retry rather
+    // than lose the thread over a stale reference, and log whatever's left
+    // instead of swallowing it.
+    if (convErr?.code === "42703" || convErr?.code === "PGRST204" || convErr?.code === "23503") {
       delete convInsertRow.website_id;
-      ({ data: newConv } = await admin.from("conversations").insert(convInsertRow).select("id").single());
+      ({ data: newConv, error: convErr } = await admin.from("conversations").insert(convInsertRow).select("id").single());
     }
+    if (convErr) console.error("[structured-booking] conversation insert failed:", convErr.code, convErr.message);
     convId = (newConv as { id: string } | null)?.id ?? null;
   }
 
@@ -232,12 +247,16 @@ export async function POST(req: NextRequest) {
       await createNotification(admin, {
         tenantId: tenant.id as string,
         type: "lead",
-        title: "New request — service not yet trained",
+        title: "New request, service not yet trained",
         body: `${name}: ${service}`,
         link: "/app/ai-training",
       });
     }
-    const caseAMessage = "Thanks! Your request has been received. We'll reply to your phone number within 24 hours once we confirm availability for that.";
+    // Round M9 FIX 3(c): the old copy ("Your request has been received...
+    // we'll reply within 24 hours") read as templated/robotic per direct
+    // feedback. No em-dash/en-dash/double-hyphen/underscore, per the
+    // standing copy rule.
+    const caseAMessage = "Thanks for reaching out. We don't have full details on this service yet, so we're checking with the team and will text you back shortly to confirm.";
     await finalizeConversation(leadId, caseAMessage);
     return NextResponse.json({
       ok: true,

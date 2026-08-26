@@ -1,16 +1,28 @@
 /**
  * Standing project rule (already applied to written copy sitewide): no em
- * dash, en dash, or double-hyphen in anything the product writes or says.
- * System prompts instruct every AI surface not to use them, but this is a
- * cheap, deterministic backstop for the rare case a model slips one in
- * anyway -- applied to real-time AI chat replies (customer-facing widget
- * and the owner-facing business assistant) and Website Builder's
- * AI-generated copy.
+ * dash, en dash, double-hyphen, or underscore in anything the product
+ * writes or says. System prompts instruct every AI surface not to use
+ * them, but this is a cheap, deterministic backstop for the rare case a
+ * model slips one in anyway -- applied to real-time AI chat replies
+ * (customer-facing widget and the owner-facing business assistant) and
+ * Website Builder's AI-generated copy.
+ *
+ * Round M9: the rule was already enforced for dashes here but never
+ * covered underscores, and ai/reply/route.ts (the customer-facing chat
+ * pipeline) calls this WITHOUT stripMarkdownFormatting alongside it -- so
+ * a model-emitted markdown underscore (e.g. "_word_" for emphasis, or a
+ * stray snake_case slip) would have reached the customer as a literal
+ * underscore, unlike website/generate and ai/assistant which already run
+ * stripMarkdownFormatting too. Closing it here covers every caller at
+ * once. Runs of underscores collapse to a single space rather than being
+ * deleted outright, so "check_availability" degrades to "check
+ * availability" instead of "checkavailability".
  */
 export function stripAiTells(text: string): string {
   return text
     .replace(/\s*--\s*/g, ", ")
     .replace(/\s*[—–]\s*/g, ", ")
+    .replace(/_+/g, " ")
     .replace(/,\s*,/g, ",")
     .replace(/\s{2,}/g, " ")
     .trim();

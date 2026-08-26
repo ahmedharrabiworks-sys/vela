@@ -282,6 +282,7 @@
     "timeMinutes": "m",
     "timeHours": "h",
     "timeDays": "d",
+    "todayLive": "Today, live",
     "leadPipeline": "Lead Pipeline",
     "aiActivity": "AI Activity",
     "recentActivity": "Recent Activity",

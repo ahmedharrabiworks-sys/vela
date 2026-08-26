@@ -223,8 +223,8 @@ export async function POST(req: NextRequest) {
         ? new Date(bookedAppointment.datetime).toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })
         : null;
       const confirmText = bookedAppointment
-        ? `Good news — ${newService.name} is now available! Your appointment is confirmed for ${whenLabel}. See you then!`
-        : `Good news — ${newService.name} is now available! Let us know your preferred day and time and we'll get you booked in.`;
+        ? `Good news, ${newService.name} is now available! Your appointment is confirmed for ${whenLabel}. See you then!`
+        : `Good news, ${newService.name} is now available! Let us know your preferred day and time and we'll get you booked in.`;
       const sendResult = await sendCustomerMessage(admin, { conversationId, tenantId: tenant.id, text: confirmText, asOwnerReply: false });
       customerNotified = sendResult.ok;
     }

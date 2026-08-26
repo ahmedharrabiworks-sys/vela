@@ -163,6 +163,20 @@ export default function DashboardPageUI({
           <p className="text-sm text-[#9CA3AF] dark:text-[#6E6E76]">{bName ? `${bName} · ` : ""}{today}</p>
         </div>
 
+        {/* Round M9 FIX 7: the metrics band already labels each figure
+            "X Today" individually, but that lives in small 10.5px uppercase
+            tracked text easy to skim past -- direct feedback was that the
+            top numbers' time period wasn't unambiguous at a glance. One
+            small pill above the whole band, not repeated per-metric, so it
+            reads as "this whole row is live/today" without adding visual
+            noise to numbers that already carry their own label. */}
+        <div className="flex items-center gap-1.5 mb-3.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76]">
+            {t("dashboard.todayLive")}
+          </span>
+        </div>
+
         {/* Metrics band -- no cards, no icon badges; typography and a single
             hairline rule carry the whole thing. Grid so it degrades cleanly
             to 2 columns at 375px without any divider math breaking. */}
@@ -209,9 +223,16 @@ export default function DashboardPageUI({
         </div>
       </div>
 
-      {/* ── Lead Pipeline — a real proportional flow, not a row of numbers ── */}
+      {/* Round M9 FIX 7: was a bare full-width strip (thin bar + legend row,
+          no border) sandwiched between the metrics band and the bordered
+          Conversations/Appointments cards below -- the one section on the
+          page with no card treatment at all, which read as unfinished
+          rather than a deliberate choice. Now a real card, same visual
+          language as every list surface below it (rounded-2xl border,
+          padded), so the page reads as one consistent set of surfaces
+          instead of a typographic band, an orphaned strip, then cards. */}
       {!loading && leadPipeline && (
-        <div>
+        <div className="rounded-2xl border border-[#EDEDEF] dark:border-[#232328] p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76]">
               {t("dashboard.leadPipeline")}
@@ -364,15 +385,23 @@ export default function DashboardPageUI({
         </div>
       </div>
 
-      {/* ── AI Activity + Recent Activity — lightweight, borderless ── */}
+      {/* Round M9 FIX 7: was two borderless typographic lists directly on the
+          page background -- unlike Conversations/Appointments above (both
+          real bordered cards with row dividers and hover states), this row
+          had no card treatment at all, which is exactly what made it read
+          as an afterthought next to the more considered surfaces above it.
+          Now both get the same rounded-2xl border + row treatment as every
+          other list on the page -- AI Activity as a compact stat card,
+          Recent Activity as a real divided row list matching Conversations'
+          row pattern (icon, label, time), not a loose flex row. */}
       {!loading && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* AI Activity — 2 cols, inline stat row, no card */}
+          {/* AI Activity — 2 cols, compact stat card */}
           <div className="lg:col-span-2 min-w-0">
             <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-4">
               {t("dashboard.aiActivity")}
             </h2>
-            <div className="space-y-3.5">
+            <div className="rounded-2xl border border-[#EDEDEF] dark:border-[#232328] px-5 py-4 space-y-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[#6B7280] dark:text-[#9CA3AF]">{t("dashboard.messagesHandled")}</span>
                 <span className="text-[13px] font-semibold text-[#111111] dark:text-white tabular-nums">{messagesToday}</span>
@@ -394,25 +423,29 @@ export default function DashboardPageUI({
             </div>
           </div>
 
-          {/* Recent Activity — 3 cols */}
+          {/* Recent Activity — 3 cols, real divided row list */}
           <div className="lg:col-span-3 min-w-0">
             <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-4">
               {t("dashboard.recentActivity")}
             </h2>
-            {activity.length === 0 ? (
-              <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76]">{t("dashboard.noActivity")}</p>
-            ) : (
-              <div className="space-y-3">
-                {activity.map((item) => (
-                  <div key={item.id} className="flex items-center gap-2.5">
-                    <ActivityDot type={item.type} />
-                    <span className="text-[13px] font-medium text-[#111111] dark:text-white truncate">{item.label}</span>
-                    <span className="text-[12px] text-[#9CA3AF] dark:text-[#6E6E76] truncate">{item.sub}</span>
-                    <span className="text-[11px] text-[#C4C4CA] dark:text-[#4A4A52] shrink-0 ml-auto">{item.time}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="rounded-2xl border border-[#EDEDEF] dark:border-[#232328] overflow-hidden">
+              {activity.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                  <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76]">{t("dashboard.noActivity")}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
+                  {activity.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2.5 px-5 py-3.5">
+                      <ActivityDot type={item.type} />
+                      <span className="text-[13px] font-medium text-[#111111] dark:text-white truncate">{item.label}</span>
+                      <span className="text-[12px] text-[#9CA3AF] dark:text-[#6E6E76] truncate">{item.sub}</span>
+                      <span className="text-[11px] text-[#C4C4CA] dark:text-[#4A4A52] shrink-0 ml-auto">{item.time}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

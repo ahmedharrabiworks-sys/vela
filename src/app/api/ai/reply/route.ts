@@ -1515,7 +1515,7 @@ Rules:
     await createNotification(admin, {
       tenantId,
       type: "lead",
-      title: "New request — service not yet trained",
+      title: "New request, service not yet trained",
       body: `${customerName !== "Customer" ? customerName : "A customer"}: ${untrainedServiceThisTurn}`,
       link: "/app/ai-training",
     });

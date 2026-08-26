@@ -402,9 +402,49 @@ export default function WidgetChat({
         booked: !!data.booked,
         isConflict: Array.isArray(data.alternatives),
       });
-      // Also drop the result into the chat thread so switching back to chat
-      // shows a coherent history rather than the form result vanishing.
-      setMessages((prev) => [...prev, { id: `form-${Date.now()}`, role: "assistant", content: data.message || "Thanks, we've got your request!" }]);
+      // Round M9 FIX 3(b): this used to manually push data.message into
+      // `messages` as a synthetic local-only bubble. structured-booking's
+      // own finalizeConversation() already writes BOTH the real user
+      // message (the request summary) and the real assistant reply
+      // (this exact text) to the server -- confirmed via code trace. The
+      // 5s reconciliation poll above counts messages by POSITION
+      // (`shown = prev.filter(...).length`), so that manual push (one
+      // synthetic item) desynced the count against the real 2-message
+      // server history, and the next poll tick appended the real
+      // assistant message again as if it were new -- a genuine duplicate,
+      // not a guess (this exact position-based dedupe assumption is the
+      // same class of bug the Round S fix above already documents for a
+      // different trigger). Fixed by fetching the real history instead of
+      // guessing, same shape/pattern as the mount-time restore -- "Back to
+      // chat" now shows the server's actual truth immediately, and the
+      // poll's position count stays correctly aligned, so it never
+      // re-adds anything.
+      let restoredFromHistory = false;
+      if (data.conversationId) {
+        try {
+          const histRes = await fetch(`/api/widget/history?tenantId=${encodeURIComponent(tenantId)}&conversationId=${encodeURIComponent(data.conversationId)}${websiteId ? `&websiteId=${encodeURIComponent(websiteId)}` : ""}`);
+          const histData = await histRes.json() as { messages?: { role: string; content: string }[] };
+          if (histData.messages && histData.messages.length > 0) {
+            setMessages([
+              { id: "welcome", role: "assistant", content: greeting },
+              ...histData.messages.map((m, i) => ({ id: `h-${i}`, role: m.role as "user" | "assistant", content: m.content })),
+            ]);
+            restoredFromHistory = true;
+          }
+        } catch { /* falls through to the local-only fallback below */ }
+      }
+      // Fallback: structured-booking's own server-side conversation
+      // persistence can genuinely fail (e.g. a stale cached conversationId/
+      // websiteId from a much earlier visit pointing at a since-deleted
+      // site -- confirmed live during Playwright verification of this exact
+      // fix). The lead is still saved either way; this just makes sure the
+      // customer still sees their result at least once in chat even when
+      // the server-side thread didn't persist, instead of silently showing
+      // nothing. Never double-adds: only runs when the real fetch above
+      // found no history to show.
+      if (!restoredFromHistory) {
+        setMessages((prev) => [...prev, { id: `form-${Date.now()}`, role: "assistant", content: data.message || "Thanks, we've got your request!" }]);
+      }
     } catch {
       setFormError("Couldn't reach the server. Check your connection and try again.");
     } finally {

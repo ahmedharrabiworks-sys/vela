@@ -300,12 +300,20 @@ export default function AnalyticsPage() {
   }, [planLoaded, isPro, doFetch]);
 
   const days = range === "1d" ? 1 : range === "7d" ? 7 : range === "30d" ? 30 : 90;
-  // Round M8 FIX 5: every other range means "the last N days including
-  // today"; "1d" specifically means yesterday (a real, complete calendar
-  // day), not partial data for today-so-far, so it needs its own offset --
-  // periodSum/buildDayArray already supported this via their existing
-  // offsetDays parameter (built for exactly this), just never used before.
-  const baseOffset = range === "1d" ? 1 : 0;
+  // Round M9 FIX 5: Round M8 made "1d" mean strict calendar-yesterday
+  // (baseOffset=1), which is precisely why it showed no data live -- the
+  // real test activity happened TODAY, and yesterday's real bucket was
+  // genuinely empty. That's not a bug in the math, but it's not what a
+  // business owner clicking "1d" actually wants either: Dashboard's own
+  // "Today" KPIs are calendar-day-so-far (lib/stats.ts's todayStart is
+  // midnight-to-now, not a trailing 24h window), so "1d" here now means
+  // the same thing -- today's real activity so far, offset 0, exactly like
+  // every other range already worked before that change. The label below
+  // says "Today" (not "1d") so the meaning is never ambiguous again. The
+  // period-over-period comparison naturally becomes today vs. yesterday
+  // with zero special-casing, since offset+days=1 already lands on
+  // yesterday's real bucket.
+  const baseOffset = 0;
 
   const dailyBySeries: Record<Series, Record<string, number>> = useMemo(() => ({
     leads: analytics?.dailyCounts ?? {},
@@ -356,7 +364,7 @@ export default function AnalyticsPage() {
 
   const hasChannelData = channelTable.some((r) => r.conversations > 0 || r.leads > 0);
 
-  const periodLabel = `${t("analytics.vsLast")} ${range}`;
+  const periodLabel = range === "1d" ? "vs yesterday" : `${t("analytics.vsLast")} ${range}`;
 
   // FIX 7: real client-side CSV export of the currently-loaded data -- no
   // new backend endpoint needed (analytics is already fully loaded into
@@ -406,7 +414,7 @@ export default function AnalyticsPage() {
             {(["1d", "7d", "30d", "90d"] as Range[]).map((r) => (
               <button key={r} onClick={() => setRange(r)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "bg-[#FF6B35] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
-                {r}
+                {r === "1d" ? "Today" : r}
               </button>
             ))}
           </div>

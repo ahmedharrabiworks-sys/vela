@@ -283,6 +283,7 @@
     "timeMinutes": "min",
     "timeHours": "h",
     "timeDays": "j",
+    "todayLive": "Aujourd'hui, en direct",
     "leadPipeline": "Pipeline de prospects",
     "aiActivity": "Activité IA",
     "recentActivity": "Activité récente",

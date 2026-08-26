@@ -279,23 +279,13 @@ var elBotGrp=mkGrp('El ↓',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:
 panel.appendChild(elBotGrp.g);
 var elSpEls=[_div_elsp,elTopGrp.g,elBotGrp.g];
 elSpEls.forEach(function(el2){el2.style.display='none';});
-/* ── Section content align (Round M8 FIX 1) — only shown when the
-   current section has an empty image slot, so recentering the text is
-   offered exactly when it's useful, not as permanent clutter. ────────── */
-var _div_ca=document.createElement('div');_div_ca.className='vep-divider';panel.appendChild(_div_ca);
-var caGrp=mkGrp('Content align',[{lbl:'←',val:'left'},{lbl:'↔',val:'center'},{lbl:'→',val:'right'}]);
-panel.appendChild(caGrp.g);
-var caEls=[_div_ca,caGrp.g];
-caEls.forEach(function(el2){el2.style.display='none';});
-caGrp.btns.forEach(function(b){b.addEventListener('click',function(){
-  if(curSi===null)return;
-  var v=b.dataset.val;
-  var sec=document.querySelector('[data-vs="'+curSi+'"]');
-  if(sec)sec.style.textAlign=v;
-  setActive(caGrp.btns,v);
-  parent.postMessage({type:'vela-content-align',sectionIndex:curSi,align:v},'*');
-  pos();
-});});
+// Round M9 FIX 1: the Content Align control used to live here, buried at
+// the bottom of this already-long text-style panel -- confirmed too hard
+// to find/use. Moved to the Replace Image modal instead (page.tsx,
+// parent-side), which already opens directly at the exact moment an empty
+// image slot is the thing the owner is looking at -- a simple, obvious
+// 3-button row right there, not a control they'd need to know to go
+// looking for on an unrelated text element.
 /* ── State ─────────────────────────────────────────────────────────────── */
 var curEl=null,curSi=null,curF=null,curIi=null,curSk=null;
 var curTop='',curBot='',curBorderW='',curBorderC='#374151',curShadow='',curElTop='',curElBot='';
@@ -365,15 +355,6 @@ function show(el,si,f,ii,sk){
   setActive(elTopGrp.btns,curElTop);
   setActive(elBotGrp.btns,curElBot);
   elSpEls.forEach(function(el2){el2.style.display=eltype?'':'none';});
-  // Round M8 FIX 1: only offer content-align when this section genuinely
-  // has an empty image slot right now (a placeholder <div>, not a real
-  // <img>) -- not permanent clutter on every section.
-  var hasEmptySlot=!!(secEl&&secEl.querySelector('div[data-ws-photo]'));
-  caEls.forEach(function(el2){el2.style.display=hasEmptySlot?'':'none';});
-  if(hasEmptySlot){
-    var caEntry=(spec._sectionContentAlign||{})[String(si)];
-    setActive(caGrp.btns,caEntry||'left');
-  }
   panel.removeAttribute('hidden');
   pos();
 }
@@ -2458,9 +2439,30 @@ export default function WebsitePage() {
   }, [input, attachedImages, building, built, html, msgs, contactInfo, persistChat, embedAssistant]);
 
   // ── Inline edit: save edited spec to server ───────────────────────────────────
-  const handleSaveEdit = useCallback(async (spec: WebsiteSpec) => {
+  // Round M9 FIX 2: Oussama's own diagnosis was correct -- "Saving..." then
+  // a scroll jump, DURING active editing, before Done. Real cause: every
+  // single autosave tick (each debounced text/color/spacing/border/shadow
+  // edit) called setHtml(data.html), which feeds previewHtml -> editSrcDoc
+  // -> iframeSrc -> <iframe srcDoc>, forcing a FULL iframe reload on EVERY
+  // tick, not just on Done. Round M7/M8's fixes made each individual reload
+  // less visually jarring (early scroll restore), but never questioned why
+  // a reload was happening at all mid-session -- it shouldn't have been:
+  // the iframe's own EDIT_SCRIPT already applies every text/color/spacing/
+  // border/shadow change directly to its live DOM the instant it happens
+  // (applyS/sec.style.*), well before this debounced network round-trip
+  // even fires, so the visible preview was already 100% correct -- the
+  // reload this triggered was pure redundant churn, reloading the iframe
+  // to show content it was already showing. Fixed with a real `silent`
+  // mode: autosave ticks now persist to the server and keep
+  // editSpecRef/htmlRef in sync (so Done, Undo, and the next autosave all
+  // still see fresh state) WITHOUT ever touching the React state that
+  // drives the iframe's srcDoc -- zero visual reload, zero jump. Only
+  // explicit, deliberate actions (Done, Undo, confirming a content-align
+  // choice) still request a visible refresh, and only once each.
+  const handleSaveEdit = useCallback(async (spec: WebsiteSpec, opts?: { silent?: boolean }) => {
     const wId = websiteIdRef.current;
     if (!wId) return;
+    const silent = opts?.silent === true;
     setEditSaving(true);
     try {
       const res  = await fetch("/api/website/save-edit", {
@@ -2470,16 +2472,22 @@ export default function WebsitePage() {
       });
       const data = await res.json() as { html?: string; error?: string };
       if (data.html) {
-        setHtml(data.html);
+        // Keeps refs (never trigger a render) fresh regardless of silent --
+        // Done's flush, the next autosave tick, and copyCode all read these.
         htmlRef.current = data.html;
         setDraftDiffers(true);
         const freshSpec = extractSpec(data.html);
-        if (freshSpec) { editSpecRef.current = freshSpec; setEditSpec(freshSpec); }
+        if (freshSpec) editSpecRef.current = freshSpec;
         const editVer: VersionRecord = {
           id: crypto.randomUUID(), label: "Manual edit",
           created_at: new Date().toISOString(), type: "generate", html: data.html,
         };
         setVersions((prev) => [...prev.slice(-19), editVer]);
+        if (!silent) {
+          // Only path that actually reloads the visible iframe.
+          setHtml(data.html);
+          if (freshSpec) setEditSpec(freshSpec);
+        }
       }
     } catch { /* non-critical */ }
     finally { setEditSaving(false); }
@@ -2582,6 +2590,30 @@ export default function WebsitePage() {
     }
   }, []);
 
+  // ── Inline edit: recenter a section's text when its image slot is empty ──────
+  // Round M9 FIX 1: moved here from a buried control inside the floating
+  // text-style panel (confirmed too hard to find/use) -- now a plain,
+  // immediate action triggered directly from the Replace Image modal,
+  // which already opens at exactly the moment an empty slot is what the
+  // owner is looking at. Same persisted-override mechanism as before
+  // (_sectionContentAlign, reapplied on every load by both EDIT_SCRIPT and
+  // website-renderer.ts's buildStyleReapplyScript) -- only the trigger
+  // point changed.
+  const handleContentAlign = useCallback((vs: string, align: "left" | "center" | "right") => {
+    const cur = editSpecRef.current;
+    if (!cur) return;
+    const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+    const sca = (next._sectionContentAlign ?? {}) as Record<string, "left" | "center" | "right">;
+    sca[vs] = align;
+    next._sectionContentAlign = sca;
+    editSpecRef.current = next;
+    setEditSpec(next);
+    if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    void handleSaveEdit(next);
+    setImgEditTarget(null);
+    setImgSearchQuery("");
+  }, [handleSaveEdit]);
+
   // ── Inline edit: change palette colour ───────────────────────────────────────
   const handlePaletteChange = useCallback((key: string, value: string) => {
     const cur = editSpecRef.current;
@@ -2591,6 +2623,14 @@ export default function WebsitePage() {
     editSpecRef.current = next;
     setEditSpec(next);
     if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+    // Not silent: unlike text/spacing/border/shadow, palette colours are NOT
+    // applied live to the iframe DOM by EDIT_SCRIPT -- --accent/--accent-fg/
+    // --accent-alpha/etc are derived server-side by resolveDesignDNA (a real
+    // computation: contrast-checked foreground colour, alpha blending, footer
+    // darkening), not a 1:1 CSS variable copy, so there is no safe client-side
+    // equivalent to apply instantly. The reload is the only correct way to
+    // preview a colour change -- going silent here would just show nothing
+    // happening until Done, which is a regression, not a fix.
     editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 600);
   }, [handleSaveEdit]);
 
@@ -2626,7 +2666,7 @@ export default function WebsitePage() {
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next, { silent: true }); }, 800);
         return;
       }
 
@@ -2646,7 +2686,7 @@ export default function WebsitePage() {
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next, { silent: true }); }, 800);
         return;
       }
 
@@ -2662,7 +2702,7 @@ export default function WebsitePage() {
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next, { silent: true }); }, 800);
         return;
       }
 
@@ -2678,24 +2718,7 @@ export default function WebsitePage() {
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
-        return;
-      }
-
-      if (msgType === "vela-content-align") {
-        // Round M8 FIX 1: recenter a section's text when its image slot is
-        // empty -- same debounced-save pattern as border/shadow above.
-        const { sectionIndex, align } = e.data as { sectionIndex: number; align: "left" | "center" | "right" };
-        const cur = editSpecRef.current;
-        if (!cur) return;
-        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
-        const sca = (next._sectionContentAlign ?? {}) as Record<string, "left" | "center" | "right">;
-        sca[String(sectionIndex)] = align;
-        next._sectionContentAlign = sca;
-        editSpecRef.current = next;
-        setEditSpec(next);
-        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next, { silent: true }); }, 800);
         return;
       }
 
@@ -2711,7 +2734,7 @@ export default function WebsitePage() {
         editSpecRef.current = next;
         setEditSpec(next);
         if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next, { silent: true }); }, 800);
         return;
       }
 
@@ -2725,6 +2748,10 @@ export default function WebsitePage() {
         const tmp = secs[from]; secs[from] = secs[to]; secs[to] = tmp;
         editSpecRef.current = next;
         setEditSpec(next);
+        // Not silent: unlike text/spacing/border/shadow, EDIT_SCRIPT never
+        // reorders the live iframe DOM itself (the up/down buttons only post
+        // this message) -- the reload is the only thing that shows the new
+        // section order, so it's required here, not redundant churn.
         void handleSaveEdit(next);
         return;
       }
@@ -2753,7 +2780,7 @@ export default function WebsitePage() {
       setEditSpec(next);
       // Debounce save: 1s after last field edit
       if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
-      editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 1000);
+      editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next, { silent: true }); }, 1000);
     }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
@@ -3946,6 +3973,33 @@ export default function WebsitePage() {
             <h2 className="text-base font-bold text-[#111111] dark:text-white">Replace image</h2>
             {imgEditTarget.src && (
               <img src={imgEditTarget.src} alt="" className="w-full h-32 object-cover rounded-lg" />
+            )}
+            {/* Round M9 FIX 1: simple, obvious 3-button align control --
+                shown right here, right when an empty slot is what the owner
+                is looking at, instead of buried in the text-style panel. */}
+            {!imgEditTarget.src && (
+              <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#FAFAFA] dark:bg-[#1E1E24] p-3.5 space-y-2.5">
+                <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+                  No image here yet. You can add one below, or align the text to fill the space instead:
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["left", "center", "right"] as const).map((align) => {
+                    const active = (editSpec?._sectionContentAlign?.[imgEditTarget.vs] ?? "left") === align;
+                    return (
+                      <button key={align}
+                        onClick={() => handleContentAlign(imgEditTarget.vs, align)}
+                        className={`text-xs font-semibold py-2 rounded-lg border transition-colors capitalize ${
+                          active
+                            ? "text-white border-transparent"
+                            : "bg-white dark:bg-[#17171C] border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F3F4F6] dark:hover:bg-[#26262C]"
+                        }`}
+                        style={active ? { background: "var(--vp-color)" } : undefined}>
+                        {align}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
             {imgReplaceError && (
               <p className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">

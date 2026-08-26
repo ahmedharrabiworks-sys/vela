@@ -313,11 +313,43 @@ export default function SettingsPage() {
     try {
       if (userId) {
         const supabase = getSupabase();
+        // Round M9 FIX 6: real, confirmed root cause of "Dashboard still
+        // shows the old business name after a real Settings change" --
+        // reproduced live with the real authenticated client: this used to
+        // be an upsert with onConflict:"owner_id", but tenants.owner_id has
+        // no unique constraint in the schema (only a plain foreign key), so
+        // Postgres rejected every single call with a real error (42P10,
+        // "there is no unique or exclusion constraint matching the ON
+        // CONFLICT specification") -- confirmed via a direct call using the
+        // real test account's own session. That error was never checked
+        // (no `error` read from the result, only a try/catch around the
+        // await, and supabase-js does not throw on a query error), so the
+        // business name (and industry/city/phone/website in the same call)
+        // has never actually been written to tenants by this save path,
+        // for any tenant, ever -- only the local saveProfile() cache
+        // updated, which is why Settings' own field looked like it saved
+        // while anything reading tenants.business_name fresh (the
+        // Dashboard) never saw the change. The tenant row is guaranteed to
+        // already exist by the time someone reaches Settings (ensureTenant
+        // creates it on first load elsewhere), so this is a plain update,
+        // not an upsert -- no unique constraint needed, and RLS's
+        // tenant_owner policy already permits it. Error is now read and
+        // surfaced instead of silently discarded. `plan` deliberately
+        // dropped from this payload -- it belongs to the Billing section,
+        // not Business Info, and since this call is now real, writing it
+        // here would let an unrelated business-info save silently
+        // overwrite plan from a possibly-stale local cache value.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        const { error: saveErr } = await (supabase as any)
           .from("tenants")
-          .upsert({ owner_id: userId, business_name: businessName, industry, city, phone: phoneToSave, website, plan: getProfile()?.plan ?? "starter" }, { onConflict: "owner_id" });
-        setToast(t("settings.billing.toastSaved"));
+          .update({ business_name: businessName, industry, city, phone: phoneToSave, website })
+          .eq("owner_id", userId);
+        if (saveErr) {
+          console.error("[settings] business save failed:", saveErr.code, saveErr.message);
+          setToast(t("settings.billing.toastSavedLocally"));
+        } else {
+          setToast(t("settings.billing.toastSaved"));
+        }
       }
     } catch {
       setToast(t("settings.billing.toastSavedLocally"));

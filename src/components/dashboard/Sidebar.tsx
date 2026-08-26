@@ -305,6 +305,29 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     return () => { void sub.unsubscribe(); };
   }, [sidebarTenantId, demoProfile, refreshUnreadCount]);
 
+  // Round M9 FIX 4: real, confirmed cause of the badge never updating live --
+  // a direct test (subscribe, then perform a real UPDATE via the admin
+  // client, wait for the event) proved the realtime subscription above
+  // never actually receives a `conversations` UPDATE event at all. The
+  // table was never added to Supabase's realtime publication (this
+  // Sidebar subscription is the only place in the whole codebase that ever
+  // subscribed to `conversations` -- every other real-time usage is on
+  // `messages` or `notifications`), so no application code bug was
+  // involved; PATCH /api/conversations/[id]/read genuinely sets
+  // last_read_at correctly (confirmed via direct query), the row-level fix
+  // is real, it just never reaches this badge live. Needs a real SQL fix
+  // (ALTER PUBLICATION supabase_realtime ADD TABLE conversations -- see
+  // migration_v37.sql). Until that runs, this route-change fallback keeps
+  // the badge honest without relying on realtime at all: navigating away
+  // from (or back to) any page re-fetches the real count, so reading a
+  // conversation and then clicking elsewhere in the app corrects the badge
+  // immediately instead of only on a full reload.
+  useEffect(() => {
+    if (!sidebarTenantId || demoProfile) return;
+    void refreshUnreadCount(sidebarTenantId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   // FIX 8: load real notifications for the nav dots. Same endpoint the bell
   // already polls -- a second, independent fetch here (not shared state)
   // keeps this component decoupled, matching how needs_human above is also

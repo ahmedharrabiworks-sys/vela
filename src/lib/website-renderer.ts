@@ -776,7 +776,7 @@ ${serviceCardOverrides}
   transition:transform .25s,box-shadow .25s;
 }
 .ws-listing-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.12);}
-.ws-listing-img{aspect-ratio:4/3;overflow:hidden;background:linear-gradient(135deg,var(--surface),var(--bg-alt));}
+.ws-listing-img{aspect-ratio:4/3;overflow:hidden;}
 .ws-listing-body{padding:28px 24px;}
 .ws-listing-title{
   font-family:var(--font-heading);font-size:1.15rem;font-weight:600;
@@ -1050,7 +1050,6 @@ ${serviceCardOverrides}
 .ws-gallery-strip-item{
   flex:0 0 clamp(240px,30vw,380px);
   height:280px;border-radius:var(--radius-lg);overflow:hidden;
-  background:linear-gradient(135deg,var(--surface),var(--bg-alt));
 }
 
 /* ── Listings: masonry ───────────────────────────────────────────────────── */
@@ -1067,7 +1066,7 @@ ${serviceCardOverrides}
 .ws-listing-wide-row--rev{grid-template-columns:1.5fr 1fr;}
 .ws-listing-wide-row--rev .ws-listing-wide-img{order:2;}
 .ws-listing-wide-row--rev .ws-listing-wide-body{order:1;}
-.ws-listing-wide-img{height:300px;overflow:hidden;background:linear-gradient(135deg,var(--surface),var(--bg-alt));}
+.ws-listing-wide-img{height:300px;overflow:hidden;}
 .ws-listing-wide-body{padding:40px;}
 
 /* ── Logo strip ──────────────────────────────────────────────────────────── */
@@ -1087,7 +1086,6 @@ ${serviceCardOverrides}
 .ws-product-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.12);}
 .ws-product-img{
   aspect-ratio:1/1;overflow:hidden;position:relative;
-  background:linear-gradient(135deg,var(--surface),var(--bg-alt));
 }
 .ws-product-badge{
   position:absolute;top:12px;left:12px;
@@ -1109,7 +1107,7 @@ ${serviceCardOverrides}
 .ws-showcase-row{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;}
 .ws-showcase-row--rev{direction:rtl;}
 .ws-showcase-row--rev>*{direction:ltr;}
-.ws-showcase-img{aspect-ratio:16/10;overflow:hidden;border-radius:var(--radius-lg);background:linear-gradient(135deg,var(--surface),var(--bg-alt));}
+.ws-showcase-img{aspect-ratio:16/10;overflow:hidden;border-radius:var(--radius-lg);}
 .ws-showcase-num{font-family:var(--font-heading);font-size:3.5rem;font-weight:800;color:var(--accent);opacity:.2;line-height:1;margin-bottom:16px;}
 .ws-showcase-title{font-family:var(--font-heading);font-size:1.75rem;font-weight:var(--heading-weight);color:var(--color-heading);margin-bottom:16px;line-height:1.2;}
 .ws-showcase-desc{font-size:1rem;color:var(--color-muted);line-height:1.75;}
@@ -1275,7 +1273,7 @@ ${serviceCardOverrides}
 
 /* ── Phase 2b: agent-card ────────────────────────────────────────────────── */
 .ws-agent-card{display:grid;grid-template-columns:280px 1fr;gap:var(--sp-xl);align-items:start;max-width:860px;margin:0 auto;}
-.ws-agent-photo{width:100%;aspect-ratio:3/4;border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);}
+.ws-agent-photo{width:100%;aspect-ratio:3/4;border-radius:var(--radius-lg);overflow:hidden;}
 .ws-agent-name{font-family:var(--font-heading);font-size:clamp(1.6rem,3vw,2.4rem);font-weight:var(--heading-weight);color:var(--color-heading);margin-bottom:8px;}
 .ws-agent-title{font-size:0.9rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
 .ws-agent-bio{font-size:0.98rem;color:var(--color-text);line-height:1.75;margin-bottom:28px;}

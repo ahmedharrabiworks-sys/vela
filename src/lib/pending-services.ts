@@ -16,7 +16,7 @@ export async function recordPendingServiceRequest(
   try {
     const { data: existing, error: readErr } = await admin
       .from("pending_service_requests")
-      .select("id")
+      .select("id, lead_id")
       .eq("tenant_id", tenantId)
       .eq("status", "pending")
       .ilike("service_name", serviceName)
@@ -27,7 +27,25 @@ export async function recordPendingServiceRequest(
       console.error("[pending-services] read failed:", readErr.code, readErr.message);
       return;
     }
-    if (existing) return; // already queued for this exact service name, don't spam duplicates
+    if (existing) {
+      // Round M9 FIX 3(a): this used to just `return` here, permanently
+      // freezing lead_id to whichever customer happened to ask FIRST -- live
+      // repro confirmed a second, real customer's date/time (correctly
+      // stored on their own lead row's form_data) was silently unreachable
+      // forever, because pending-services/route.ts's confirm-service flow
+      // only ever reads the ONE lead_id on this row. The row is single-lead
+      // by schema (one confirm action, one sendCustomerMessage call), so the
+      // honest fix is to keep it pointed at the MOST RECENT requester --
+      // whoever asked most recently is who the owner is confirming for.
+      if (existing.lead_id !== (leadId ?? null)) {
+        const { error: updateErr } = await admin
+          .from("pending_service_requests")
+          .update({ lead_id: leadId ?? null })
+          .eq("id", existing.id);
+        if (updateErr) console.error("[pending-services] lead_id refresh failed:", updateErr.code, updateErr.message);
+      }
+      return;
+    }
 
     const { error: insertErr } = await admin.from("pending_service_requests").insert({
       tenant_id: tenantId,
