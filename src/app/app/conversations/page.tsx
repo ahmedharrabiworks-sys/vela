@@ -12,6 +12,7 @@ type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   preview?: string;
   isNew?: boolean;
   needs_human?: boolean;
+  last_read_at?: string | null;
 };
 type Message = Database["public"]["Tables"]["messages"]["Row"] & { is_test?: boolean; is_owner_reply?: boolean };
 
@@ -151,10 +152,21 @@ export default function ConversationsPage() {
           .order("created_at", { ascending: false })
           .limit(1);
         const last = msgs?.[0] as { role: string; content: string } | undefined;
+        // Round M8 FIX 4: was `last?.role === "user"` -- that's really "is
+        // the AI/owner still owing a reply," not "has the owner actually
+        // seen this," so a conversation the owner had already opened and
+        // read (but where the customer's message still happens to be the
+        // most recent one, e.g. AI is paused or the thread needs_human)
+        // stayed marked unread forever with no way to clear it. Now a real
+        // read/unread signal: unread whenever the conversation has ever had
+        // a message and either was never opened (last_read_at null) or has
+        // new activity since it was last opened.
+        const lastReadAt = (conv as Conversation).last_read_at;
+        const isNew = !!last && (!lastReadAt || (conv.last_message_at != null && new Date(conv.last_message_at).getTime() > new Date(lastReadAt).getTime()));
         return {
           ...conv,
           preview: last?.content?.slice(0, 60) ?? "",
-          isNew: last?.role === "user",
+          isNew,
         } as Conversation;
       })
     );
@@ -180,6 +192,16 @@ export default function ConversationsPage() {
     setSelected(conv);
     setShowThread(true);
     await fetchMessages(conv.id);
+
+    // Round M8 FIX 4: mark read the moment the owner actually opens it.
+    // Optimistic local clear first (instant badge/dot update), server call
+    // fire-and-forget -- a failure here just means the badge doesn't clear
+    // until the next real fetch, never a broken conversation view.
+    const readAt = new Date().toISOString();
+    setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, isNew: false, last_read_at: readAt } : c)));
+    if (selected?.id !== conv.id) {
+      fetch(`/api/conversations/${conv.id}/read`, { method: "PATCH" }).catch(() => { /* next real fetch reconciles */ });
+    }
 
     // Unsubscribe from previous channel
     if (realtimeSub.current) {

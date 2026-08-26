@@ -156,6 +156,20 @@ async function compressImageForUpload(file: File): Promise<string> {
   }
 }
 
+// Round M7/M8 FIX 2: restores iframe scroll position synchronously during
+// the new document's own HTML parse (well before the `load` event, which
+// fires late on an image-heavy page and lets the browser visibly paint the
+// unscrolled top-of-page first). Shared by both the edit-mode and
+// plain-preview injection branches below so every reload trigger --
+// panel edits AND chat-driven edits, which exit edit mode before sending --
+// gets the same early restore. Returns "" (no script) when there's nothing
+// to restore to (fresh load, never scrolled).
+function buildScrollRestoreScript(currentScroll: number): string {
+  const t = Math.max(0, Math.round(currentScroll));
+  if (t <= 0) return "";
+  return `(function(){var t=${t};window.scrollTo(0,t);var n=0;function tick(){if(n++>20)return;if(window.scrollY<t-2){window.scrollTo(0,t);requestAnimationFrame(tick);}}requestAnimationFrame(tick);})();`;
+}
+
 // Self-contained edit script injected into the preview iframe when Edit mode is ON.
 // Reads window.VS_SPEC, annotates editable text elements with data-ve attributes,
 // and postMessages { type:"vela-edit", sectionIndex, field, itemIndex?, subField?, value }
@@ -265,6 +279,23 @@ var elBotGrp=mkGrp('El ↓',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:
 panel.appendChild(elBotGrp.g);
 var elSpEls=[_div_elsp,elTopGrp.g,elBotGrp.g];
 elSpEls.forEach(function(el2){el2.style.display='none';});
+/* ── Section content align (Round M8 FIX 1) — only shown when the
+   current section has an empty image slot, so recentering the text is
+   offered exactly when it's useful, not as permanent clutter. ────────── */
+var _div_ca=document.createElement('div');_div_ca.className='vep-divider';panel.appendChild(_div_ca);
+var caGrp=mkGrp('Content align',[{lbl:'←',val:'left'},{lbl:'↔',val:'center'},{lbl:'→',val:'right'}]);
+panel.appendChild(caGrp.g);
+var caEls=[_div_ca,caGrp.g];
+caEls.forEach(function(el2){el2.style.display='none';});
+caGrp.btns.forEach(function(b){b.addEventListener('click',function(){
+  if(curSi===null)return;
+  var v=b.dataset.val;
+  var sec=document.querySelector('[data-vs="'+curSi+'"]');
+  if(sec)sec.style.textAlign=v;
+  setActive(caGrp.btns,v);
+  parent.postMessage({type:'vela-content-align',sectionIndex:curSi,align:v},'*');
+  pos();
+});});
 /* ── State ─────────────────────────────────────────────────────────────── */
 var curEl=null,curSi=null,curF=null,curIi=null,curSk=null;
 var curTop='',curBot='',curBorderW='',curBorderC='#374151',curShadow='',curElTop='',curElBot='';
@@ -334,6 +365,15 @@ function show(el,si,f,ii,sk){
   setActive(elTopGrp.btns,curElTop);
   setActive(elBotGrp.btns,curElBot);
   elSpEls.forEach(function(el2){el2.style.display=eltype?'':'none';});
+  // Round M8 FIX 1: only offer content-align when this section genuinely
+  // has an empty image slot right now (a placeholder <div>, not a real
+  // <img>) -- not permanent clutter on every section.
+  var hasEmptySlot=!!(secEl&&secEl.querySelector('div[data-ws-photo]'));
+  caEls.forEach(function(el2){el2.style.display=hasEmptySlot?'':'none';});
+  if(hasEmptySlot){
+    var caEntry=(spec._sectionContentAlign||{})[String(si)];
+    setActive(caGrp.btns,caEntry||'left');
+  }
   panel.removeAttribute('hidden');
   pos();
 }
@@ -511,18 +551,33 @@ if(sshad&&typeof sshad==='object'){
     if(st.boxShadow!==undefined)sec.style.boxShadow=st.boxShadow;
   });
 }
+/* ── Re-apply persisted section content alignment (Round M8 FIX 1) ──────── */
+var sca=spec._sectionContentAlign;
+if(sca&&typeof sca==='object'){
+  Object.keys(sca).forEach(function(key){
+    var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
+    sec.style.textAlign=sca[key];
+  });
+}
 /* ── Image click handler ───────────────────────────────────────────────── */
 /* Round M7 FIX 1: was [data-vs] img only -- an emptied/removed image slot
-   renders as a gradient-placeholder <div> (website-sections.ts's photo()
-   and every raw hero-image branch), which has no <img> tag at all, so it
-   had nothing to attach a click listener to (permanently unclickable after
-   Remove) and was skipped when counting allImgs, silently shifting the
-   imgIdx of every real image slot after it in the same section. Every
-   image-slot element -- populated <img> or empty placeholder <div> -- now
-   carries data-ws-photo="1", so both bugs are fixed by selecting on that
-   marker instead of the tag name. */
+   renders as a placeholder <div> (website-sections.ts's photo() and every
+   raw hero-image branch; Round M8 FIX 1 changed this from a visible
+   gradient to a transparent blank, but the element itself is unchanged),
+   which has no <img> tag at all, so it had nothing to attach a click
+   listener to (permanently unclickable after Remove) and was skipped when
+   counting allImgs, silently shifting the imgIdx of every real image slot
+   after it in the same section. Every image-slot element -- populated
+   <img> or empty placeholder <div> -- now carries data-ws-photo="1", so
+   both bugs are fixed by selecting on that marker instead of the tag name. */
 var imgSty=document.createElement('style');
-imgSty.textContent='[data-vs] [data-ws-photo]{cursor:pointer;transition:filter .15s;}[data-vs] img[data-ws-photo]:hover{filter:brightness(.78) saturate(.9);}[data-vs] div[data-ws-photo]:hover{filter:brightness(.88);}';
+/* Round M8 FIX 1: empty slots now render fully transparent (no visible
+   gradient box) so the published/preview page never looks "obviously
+   empty" -- but brightness()/saturate() filters do nothing on a
+   transparent fill, so an edit-mode-only hover tint replaces them for the
+   placeholder <div> case specifically, keeping the slot discoverable while
+   editing without it being visible outside edit mode. */
+imgSty.textContent='[data-vs] [data-ws-photo]{cursor:pointer;transition:filter .15s,background-color .15s;}[data-vs] img[data-ws-photo]:hover{filter:brightness(.78) saturate(.9);}[data-vs] div[data-ws-photo]:hover{background-color:var(--accent-alpha);}';
 document.head.appendChild(imgSty);
 document.querySelectorAll('[data-vs] [data-ws-photo]').forEach(function(img){
   img.addEventListener('click',function(e){
@@ -2627,6 +2682,23 @@ export default function WebsitePage() {
         return;
       }
 
+      if (msgType === "vela-content-align") {
+        // Round M8 FIX 1: recenter a section's text when its image slot is
+        // empty -- same debounced-save pattern as border/shadow above.
+        const { sectionIndex, align } = e.data as { sectionIndex: number; align: "left" | "center" | "right" };
+        const cur = editSpecRef.current;
+        if (!cur) return;
+        const next: WebsiteSpec = JSON.parse(JSON.stringify(cur));
+        const sca = (next._sectionContentAlign ?? {}) as Record<string, "left" | "center" | "right">;
+        sca[String(sectionIndex)] = align;
+        next._sectionContentAlign = sca;
+        editSpecRef.current = next;
+        setEditSpec(next);
+        if (editSaveTimerRef.current) clearTimeout(editSaveTimerRef.current);
+        editSaveTimerRef.current = setTimeout(() => { void handleSaveEdit(next); }, 800);
+        return;
+      }
+
       if (msgType === "vela-el-spacing") {
         const { sectionIndex, elementType, marginTop, marginBottom } = e.data as { sectionIndex: number; elementType: string; marginTop: string; marginBottom: string };
         const cur = editSpecRef.current;
@@ -2718,15 +2790,33 @@ export default function WebsitePage() {
   // retries for a few animation frames in case the target section's own
   // (loading="lazy") images haven't expanded the layout enough yet to reach
   // that scroll offset on the very first attempt.
+  // Round M8 FIX 2: the fix above only ever helped while editMode stayed
+  // true for the whole reload. Chat-driven edits during an active edit
+  // session don't -- handleSend unconditionally exits edit mode before
+  // sending ("edit mode is blocked during builds") and nothing re-enters it
+  // automatically once the response lands, so a chat edit's reload runs
+  // through the PLAIN previewHtml branch below (editMode false at that
+  // point), which had no injected script at all -- only the old, late
+  // onLoad-based restore applied, reproducing the exact same visible jump
+  // for this one specific, very common trigger (typing a chat instruction
+  // mid-session) while every panel-driven edit (already verified live) was
+  // fine. buildScrollRestoreScript is shared so both branches -- edit mode
+  // on AND off -- get the same early, in-document restore.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const editSrcDoc = useMemo(() => {
-    if (!editMode || !previewHtml) return previewHtml;
+    if (!previewHtml) return previewHtml;
+    const scrollRestore = buildScrollRestoreScript(iframeScrollRef.current);
+    if (!editMode) {
+      if (!scrollRestore) return previewHtml;
+      const plainInject = `<script>${scrollRestore}<\/script>`;
+      return previewHtml.includes("</body>")
+        ? previewHtml.replace("</body>", plainInject + "</body>")
+        : previewHtml + plainInject;
+    }
     const spec = editSpecRef.current;
     if (!spec) return previewHtml;
     const specJson = JSON.stringify(spec)
       .replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
-    const targetScroll = Math.max(0, Math.round(iframeScrollRef.current));
-    const scrollRestore = targetScroll > 0 ? `(function(){var t=${targetScroll};window.scrollTo(0,t);var n=0;function tick(){if(n++>20)return;if(window.scrollY<t-2){window.scrollTo(0,t);requestAnimationFrame(tick);}}requestAnimationFrame(tick);})();` : "";
     const inject = `<script>${scrollRestore}window.VS_EDIT_MODE=true;window.VS_SPEC=${specJson};${EDIT_SCRIPT}<\/script>`;
     return previewHtml.includes("</body>")
       ? previewHtml.replace("</body>", inject + "</body>")
@@ -2734,7 +2824,11 @@ export default function WebsitePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editMode, previewHtml]); // editSpec intentionally excluded. Uses ref
 
-  const iframeSrc = editMode ? (editSrcDoc ?? previewHtml) : previewHtml;
+  // Round M8 FIX 2: editSrcDoc now handles both editMode states itself
+  // (see its comment above) -- always route through it so a chat-triggered
+  // reload (editMode false at that point) still gets the early scroll
+  // restore, not just panel-driven edits.
+  const iframeSrc = editSrcDoc ?? previewHtml;
 
   // Device preview — real pixel dimensions, no transform scaling
   const _baseW        = device === "tablet" ? 834 : 390;

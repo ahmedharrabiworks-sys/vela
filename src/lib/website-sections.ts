@@ -40,9 +40,15 @@ function icon(name: string, size = 20): string {
 // misalignment whenever a multi-image section mixes real photos with empty
 // slots (the old `querySelectorAll('img')`-only count silently skipped
 // placeholders, shifting every index after one).
+// Round M8 FIX 1: a visible gradient box read as "obviously broken/empty"
+// -- replaced with a fully transparent blank so an emptied slot shows
+// whatever the section's own real background already is, with no separate
+// visual box competing for attention. Still occupies the exact same
+// footprint (via `cls`'s own width/height) and still carries data-ws-photo,
+// so it stays clickable to add a new image.
 function photo(src: string | undefined, alt: string, cls: string, style = ""): string {
-  if (src) return `<img data-ws-photo="1" src="${esc(src)}" alt="${esc(alt)}" class="${cls}" style="${style}" loading="lazy" onerror="this.style.display='none';this.parentElement&&(this.parentElement.style.background='linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--surface) 100%)')">`;
-  return `<div data-ws-photo="1" class="${cls}" style="background:linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--bg-alt) 100%);${style}" aria-label="${esc(alt)}"></div>`;
+  if (src) return `<img data-ws-photo="1" src="${esc(src)}" alt="${esc(alt)}" class="${cls}" style="${style}" loading="lazy" onerror="this.style.display='none';this.parentElement&&(this.parentElement.style.background='transparent')">`;
+  return `<div data-ws-photo="1" class="${cls}" style="background:transparent;${style}" aria-label="${esc(alt)}"></div>`;
 }
 
 function esc(s: unknown): string {
@@ -169,7 +175,7 @@ function renderHeroBleedBottom(
   return `<section class="ws-hero ws-hero--el" id="hero">
   ${imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" class="ws-hero-img" fetchpriority="high">`
-    : `<div data-ws-photo="1" class="ws-hero-img" style="background:linear-gradient(160deg,${t.heroBg} 0%,${t.heroBg} 55%,${t.accent}20 100%);"></div>`}
+    : `<div data-ws-photo="1" class="ws-hero-img" style="background:${t.heroBg};"></div>`}
   <div class="ws-hero-overlay" style="background:${t.heroOverlay};"></div>
   <div class="ws-hero-content ws-hero-content--el">
     ${c.eyebrow ? `<p class="ws-hero-eyebrow"><span class="ws-hero-eyebrow-rule"></span>${esc(c.eyebrow)}</p>` : ""}
@@ -191,7 +197,7 @@ function renderHeroBleedCenter(
   return `<section class="ws-hero ws-hero--ee" id="hero">
   ${imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" class="ws-hero-img" fetchpriority="high">`
-    : `<div data-ws-photo="1" class="ws-hero-img" style="background:linear-gradient(160deg,${t.heroBg} 0%,${t.heroBg} 55%,${t.accent}20 100%);"></div>`}
+    : `<div data-ws-photo="1" class="ws-hero-img" style="background:${t.heroBg};"></div>`}
   <div class="ws-hero-overlay" style="background:${t.heroOverlay};"></div>
   <div class="ws-hero-content ws-hero-content--ee">
     ${c.eyebrow ? `<p class="ws-hero-eyebrow ws-hero-eyebrow--ee">${esc(c.eyebrow)}</p>` : ""}
@@ -215,7 +221,7 @@ function renderHeroCenteredGlow(
   // emptied slot here had zero elements to click to re-add an image.
   const imgHtml = imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" alt="" class="ws-hero-img" fetchpriority="high" style="opacity:0.18;">`
-    : `<div data-ws-photo="1" class="ws-hero-img" style="opacity:0.18;background:linear-gradient(160deg,${t.heroBg} 0%,${t.heroBg} 55%,${t.accent}20 100%);"></div>`;
+    : `<div data-ws-photo="1" class="ws-hero-img" style="opacity:0.18;background:${t.heroBg};"></div>`;
   return `<section class="ws-hero ws-hero--ss" id="hero">
   ${imgHtml}
   <div class="ws-hero-glow"></div>
@@ -250,7 +256,7 @@ function renderHeroSplit(
   <div class="ws-hero-split-media${isClinical ? " ws-hero-split-media--cb" : ""}">
     ${imageUrl
       ? `<img data-ws-photo="1" src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" fetchpriority="high" style="width:100%;height:100%;object-fit:cover;display:block;">`
-      : `<div data-ws-photo="1" style="width:100%;height:100%;background:linear-gradient(135deg,${t.heroBg},${t.accent});"></div>`}
+      : `<div data-ws-photo="1" style="width:100%;height:100%;background:transparent;"></div>`}
   </div>
 </section>`;
 }
@@ -299,7 +305,7 @@ function renderHeroSplitRight(
   <div class="ws-hero-split-media">
     ${imageUrl
       ? `<img data-ws-photo="1" src="${esc(imageUrl)}" alt="${esc(c.headline || "Hero")}" fetchpriority="high" style="width:100%;height:100%;object-fit:cover;display:block;">`
-      : `<div data-ws-photo="1" style="width:100%;height:100%;background:linear-gradient(135deg,${t.accent},${t.heroBg});"></div>`}
+      : `<div data-ws-photo="1" style="width:100%;height:100%;background:transparent;"></div>`}
   </div>
   <div class="ws-hero-split-text">
     ${c.eyebrow ? `<p class="ws-hero-eyebrow" style="color:var(--accent);">${esc(c.eyebrow)}</p>` : ""}
@@ -1896,7 +1902,7 @@ export function renderAgentCard(
       <div class="ws-agent-photo">
         ${imageUrl
           ? `<img data-ws-photo="1" src="${esc(imageUrl)}" alt="${esc(c.name)}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" onerror="this.style.display='none'">`
-          : `<div data-ws-photo="1" style="width:100%;height:100%;background:linear-gradient(135deg,var(--surface) 0%,var(--accent-alpha) 50%,var(--bg-alt) 100%);display:block;" aria-label="${esc(c.name)}"></div>`}
+          : `<div data-ws-photo="1" style="width:100%;height:100%;background:transparent;display:block;" aria-label="${esc(c.name)}"></div>`}
       </div>
       <div class="ws-agent-info">
         <h2 class="ws-agent-name">${esc(c.name)}</h2>

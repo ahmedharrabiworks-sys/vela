@@ -379,13 +379,54 @@ export async function POST(req: NextRequest) {
   // chronological order before building the OpenAI messages array below.
   const { data: recentHistoryDesc } = await admin
     .from("messages")
-    .select("role, content")
+    .select("role, content, created_at")
     .eq("conversation_id", convId)
     .eq("tenant_id", tenantId)
     .eq("is_test", false)
     .order("created_at", { ascending: false })
     .limit(20);
-  const history = ((recentHistoryDesc as Array<{ role: string; content: string }> | null) ?? []).slice().reverse();
+  const historyDesc = (recentHistoryDesc as Array<{ role: string; content: string; created_at: string }> | null) ?? [];
+  const history = historyDesc.slice().reverse();
+
+  // Round M8 FIX 3(c): real, confirmed mechanism behind repeated/duplicate
+  // AI replies -- the widget's client-side request timeout (45s) does NOT
+  // cancel the server-side request (Vercel keeps running it up to this
+  // route's real 300s budget, by design -- see chat-client.tsx's own FIX 6
+  // comment). When a genuinely slow turn (the booking-confirmation path
+  // alone can chain up to 3 sequential OpenAI calls) outlasts the client
+  // timeout, the customer sees "Something went wrong. Please try again" --
+  // an instruction they naturally follow, immediately, because the input
+  // box re-enables the moment the client gives up (nothing tracks "the
+  // previous request might still be running server-side"). That retry is a
+  // genuinely separate HTTP request/invocation; nothing before this point
+  // in the file ever checked for one already in flight for the same
+  // conversation. Both the original (slow but still-running) request and
+  // the retry independently complete, each inserting its own real assistant
+  // reply -- and because the conversation context is nearly identical
+  // between them, GPT produces near-identical text for both, which the
+  // widget then correctly (and separately) renders as two real messages.
+  // This is not a rendering/dedupe bug (chat-client.tsx's client-side
+  // dedupe already handles the same-tick race that isn't this) -- it's two
+  // genuinely distinct, real, successfully-processed requests. Guarded here
+  // with the cheapest real signal available: the immediately-prior message
+  // in this exact conversation is a "user" turn with THIS EXACT text and no
+  // assistant reply after it yet, submitted within the server's own request
+  // budget window -- that combination cannot happen except when this exact
+  // message is already being processed by another still-running
+  // invocation. Short-circuits before any OpenAI call or DB write, so the
+  // in-flight original request remains the only one that will ever insert a
+  // reply for this turn.
+  const lastMsg = historyDesc[0];
+  if (lastMsg && lastMsg.role === "user" && lastMsg.content === message) {
+    const ageMs = Date.now() - new Date(lastMsg.created_at).getTime();
+    if (ageMs >= 0 && ageMs < 280_000) {
+      return NextResponse.json({
+        reply: "Still working on your previous message, one moment…",
+        conversationId: convId,
+        duplicateSuppressed: true,
+      }, { headers: CORS });
+    }
+  }
 
   /* ── 5. Save customer message ── */
   // CRITICAL FIX: this insert's result was never captured or checked --

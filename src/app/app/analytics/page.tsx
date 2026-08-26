@@ -9,7 +9,7 @@ import CountUp from "@/components/ui/CountUp";
 import CircularProgress from "@/components/ui/CircularProgress";
 import { useTheme } from "@/lib/theme";
 
-type Range = "7d" | "30d" | "90d";
+type Range = "1d" | "7d" | "30d" | "90d";
 type Series = "leads" | "conversations" | "appointments";
 
 type ChannelRow = { channel: string; conversations: number; leads: number; share: number };
@@ -299,7 +299,13 @@ export default function AnalyticsPage() {
     doFetch();
   }, [planLoaded, isPro, doFetch]);
 
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const days = range === "1d" ? 1 : range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  // Round M8 FIX 5: every other range means "the last N days including
+  // today"; "1d" specifically means yesterday (a real, complete calendar
+  // day), not partial data for today-so-far, so it needs its own offset --
+  // periodSum/buildDayArray already supported this via their existing
+  // offsetDays parameter (built for exactly this), just never used before.
+  const baseOffset = range === "1d" ? 1 : 0;
 
   const dailyBySeries: Record<Series, Record<string, number>> = useMemo(() => ({
     leads: analytics?.dailyCounts ?? {},
@@ -307,18 +313,18 @@ export default function AnalyticsPage() {
     appointments: analytics?.dailyApptCounts ?? {},
   }), [analytics]);
 
-  const chartData = buildDayArray(dailyBySeries[series], days);
+  const chartData = buildDayArray(dailyBySeries[series], days, baseOffset);
   const chartLabels = buildLabels(days);
 
-  const totalLeads = analytics ? periodSum(analytics.dailyCounts, days) : 0;
-  const totalConvs = analytics ? periodSum(analytics.dailyConvCounts, days) : 0;
-  const totalAppts = analytics ? periodSum(analytics.dailyApptCounts, days) : 0;
+  const totalLeads = analytics ? periodSum(analytics.dailyCounts, days, baseOffset) : 0;
+  const totalConvs = analytics ? periodSum(analytics.dailyConvCounts, days, baseOffset) : 0;
+  const totalAppts = analytics ? periodSum(analytics.dailyApptCounts, days, baseOffset) : 0;
   const websiteVisits = analytics?.websiteVisits ?? 0;
   const channelTable = analytics?.channelBreakdown ?? [];
 
-  const leadsChange = analytics ? computeChange(periodSum(analytics.dailyCounts, days), periodSum(analytics.dailyCounts, days, days)) : null;
-  const apptsChange = analytics ? computeChange(periodSum(analytics.dailyApptCounts, days), periodSum(analytics.dailyApptCounts, days, days)) : null;
-  const convsChange = analytics ? computeChange(periodSum(analytics.dailyConvCounts, days), periodSum(analytics.dailyConvCounts, days, days)) : null;
+  const leadsChange = analytics ? computeChange(periodSum(analytics.dailyCounts, days, baseOffset), periodSum(analytics.dailyCounts, days, baseOffset + days)) : null;
+  const apptsChange = analytics ? computeChange(periodSum(analytics.dailyApptCounts, days, baseOffset), periodSum(analytics.dailyApptCounts, days, baseOffset + days)) : null;
+  const convsChange = analytics ? computeChange(periodSum(analytics.dailyConvCounts, days, baseOffset), periodSum(analytics.dailyConvCounts, days, baseOffset + days)) : null;
 
   // AI Resolution Rate -- FIX: previously computed once server-side over a
   // fixed 180-day window regardless of the 7d/30d/90d selector, so it never
@@ -327,10 +333,10 @@ export default function AnalyticsPage() {
   // every other card (dailyConvAiHandled / dailyConvCounts, summed over the
   // selected range), so it respects the range selector and gets a real
   // period-over-period badge exactly like Leads/Conversations/Appointments.
-  const aiHandledForRange = analytics ? periodSum(analytics.dailyConvAiHandled, days) : 0;
+  const aiHandledForRange = analytics ? periodSum(analytics.dailyConvAiHandled, days, baseOffset) : 0;
   const aiResolutionRate = totalConvs > 0 ? Math.round((aiHandledForRange / totalConvs) * 100) : null;
-  const priorConvTotal = analytics ? periodSum(analytics.dailyConvCounts, days, days) : 0;
-  const priorAiHandled = analytics ? periodSum(analytics.dailyConvAiHandled, days, days) : 0;
+  const priorConvTotal = analytics ? periodSum(analytics.dailyConvCounts, days, baseOffset + days) : 0;
+  const priorAiHandled = analytics ? periodSum(analytics.dailyConvAiHandled, days, baseOffset + days) : 0;
   const priorAiRate = priorConvTotal > 0 ? Math.round((priorAiHandled / priorConvTotal) * 100) : null;
   const aiRateChange = aiResolutionRate !== null && priorAiRate !== null ? computeChange(aiResolutionRate, priorAiRate) : null;
 
@@ -397,7 +403,7 @@ export default function AnalyticsPage() {
             </p>
           </div>
           <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
-            {(["7d", "30d", "90d"] as Range[]).map((r) => (
+            {(["1d", "7d", "30d", "90d"] as Range[]).map((r) => (
               <button key={r} onClick={() => setRange(r)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "bg-[#FF6B35] text-white" : "text-[#6B7280] hover:text-[#111111]"}`}>
                 {r}

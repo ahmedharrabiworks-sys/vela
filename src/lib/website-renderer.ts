@@ -65,6 +65,11 @@ export interface WebsiteSpec {
   _sectionSpacing?: Record<string, { paddingTop?: string; paddingBottom?: string; marginTop?: string; marginBottom?: string }>;
   _sectionBorders?: Record<string, { border?: string }>;
   _sectionShadows?: Record<string, { boxShadow?: string }>;
+  // Round M8 FIX 1: lets the owner recenter a section's text block when its
+  // image slot is empty (offered in the editor only when that's true, see
+  // page.tsx's EDIT_SCRIPT), so a blank image area doesn't leave the text
+  // looking awkwardly off to one side.
+  _sectionContentAlign?: Record<string, "left" | "center" | "right">;
   // Phase 2e — nav/footer variant pool
   navVariant?: string;
   footerVariant?: string;
@@ -1542,7 +1547,8 @@ function buildStyleReapplyScript(spec: WebsiteSpec): string {
     (spec._textStyles && Object.keys(spec._textStyles).length > 0) ||
     (spec._sectionSpacing && Object.keys(spec._sectionSpacing).length > 0) ||
     (spec._sectionBorders && Object.keys(spec._sectionBorders).length > 0) ||
-    (spec._sectionShadows && Object.keys(spec._sectionShadows).length > 0);
+    (spec._sectionShadows && Object.keys(spec._sectionShadows).length > 0) ||
+    (spec._sectionContentAlign && Object.keys(spec._sectionContentAlign).length > 0);
   if (!hasOverrides) return "";
 
   const overrides = {
@@ -1551,6 +1557,7 @@ function buildStyleReapplyScript(spec: WebsiteSpec): string {
     sectionSpacing: spec._sectionSpacing ?? {},
     sectionBorders: spec._sectionBorders ?? {},
     sectionShadows: spec._sectionShadows ?? {},
+    sectionContentAlign: spec._sectionContentAlign ?? {},
   };
   // Guard against a style/text value containing a literal "</script>"
   // substring breaking out of the inline script tag early.
@@ -1660,6 +1667,12 @@ function buildStyleReapplyScript(spec: WebsiteSpec): string {
     var st=sshad[key];
     var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
     if(st.boxShadow!==undefined)sec.style.boxShadow=st.boxShadow;
+  });
+  // Round M8 FIX 1: recenter a section's text when its image slot is empty.
+  var sca=OV.sectionContentAlign;
+  Object.keys(sca).forEach(function(key){
+    var sec=document.querySelector('[data-vs="'+key+'"]');if(!sec)return;
+    sec.style.textAlign=sca[key];
   });
 })();
 <\/script>`;

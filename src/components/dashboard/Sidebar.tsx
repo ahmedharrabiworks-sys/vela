@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Logo from "@/components/ui/Logo";
@@ -171,11 +171,16 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   const [initials, setInitials] = useState("V");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  // Real needs-attention conversations count for the Conversations nav badge
-  // (was a hardcoded "3" that never reflected real data). null = not loaded
-  // yet / no real tenant (badge hidden); demo mode shows a fixed fixture
-  // number since Hard Rule 3 allows fake data only in /demo.
+  // Round M8 FIX 4: this badge now reflects REAL unread conversations
+  // (last_read_at null, or older than the conversation's last_message_at)
+  // instead of needs_human -- needs_human is a distinct escalation flag
+  // that also feeds the AI Resolution Rate metric elsewhere, so clearing it
+  // just by opening a conversation would corrupt that metric. Kept the
+  // original name to minimize surface area, but the SOURCE query changed.
+  // null = not loaded yet / no real tenant (badge hidden); demo mode shows
+  // a fixed fixture number since Hard Rule 3 allows fake data only in /demo.
   const [needsAttentionCount, setNeedsAttentionCount] = useState<number | null>(demoProfile ? 3 : null);
+  const [sidebarTenantId, setSidebarTenantId] = useState<string | null>(null);
   // FIX 8: real unseen-activity dots on Dashboard/Appointments/Analytics/
   // Leads -- reuses the exact same notifications table already powering the
   // bell (see NotificationBell.tsx), never a second tracking system. Leads
@@ -216,6 +221,37 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Round M8 FIX 4: PostgREST can't compare two columns of the same row
+  // (last_message_at vs last_read_at) in a single filter, so this fetches
+  // the small per-conversation fields needed and counts unread client-side.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const refreshUnreadCount = useCallback(async (tenantId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = getSupabase() as any;
+    let { data, error } = await supabase
+      .from("conversations")
+      .select("id, last_message_at, last_read_at")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null);
+    if (error?.code === "42703" || error?.code === "PGRST204") {
+      // last_read_at column not migrated yet -- fall back to the old
+      // needs_human signal rather than showing a broken/zero badge.
+      const { count } = await supabase
+        .from("conversations")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+        .eq("needs_human", true);
+      setNeedsAttentionCount(count ?? 0);
+      return;
+    }
+    type Row = { id: string; last_message_at: string | null; last_read_at: string | null };
+    const unread = ((data ?? []) as Row[]).filter((c) =>
+      !!c.last_message_at && (!c.last_read_at || new Date(c.last_message_at).getTime() > new Date(c.last_read_at).getTime())
+    ).length;
+    setNeedsAttentionCount(unread);
+  }, []);
+
   useEffect(() => {
     if (demoProfile) return;
     async function loadAuth() {
@@ -239,14 +275,8 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
           if (tenant?.business_name) setDisplayName(tenant.business_name as string);
 
           if (tenant?.id) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { count } = await (supabase as any)
-              .from("conversations")
-              .select("id", { count: "exact", head: true })
-              .eq("tenant_id", tenant.id)
-              .is("deleted_at", null)
-              .eq("needs_human", true);
-            setNeedsAttentionCount(count ?? 0);
+            setSidebarTenantId(tenant.id as string);
+            await refreshUnreadCount(tenant.id as string);
           }
         }
       } catch { /* no auth session */ }
@@ -254,6 +284,26 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     loadAuth();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Round M8 FIX 4: the Sidebar mounts once per app session (lives in the
+  // shared layout, not remounted per route), so the unread count was
+  // fetched exactly once at mount and never again -- reading a conversation
+  // (or a new message arriving) on the Conversations page never updated
+  // this badge until a full reload. Real-time subscription to the same
+  // table keeps it live, matching NotificationBell's own pattern.
+  useEffect(() => {
+    if (!sidebarTenantId || demoProfile) return;
+    const supabase = getSupabase();
+    const sub = supabase
+      .channel(`sidebar-conversations-${sidebarTenantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations", filter: `tenant_id=eq.${sidebarTenantId}` },
+        () => { void refreshUnreadCount(sidebarTenantId); }
+      )
+      .subscribe();
+    return () => { void sub.unsubscribe(); };
+  }, [sidebarTenantId, demoProfile, refreshUnreadCount]);
 
   // FIX 8: load real notifications for the nav dots. Same endpoint the bell
   // already polls -- a second, independent fetch here (not shared state)
