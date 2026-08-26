@@ -393,6 +393,13 @@
       "businessInfo": "Infos entreprise",
       "extra": "Supplémentaire"
     },
+    "requestedServices": {
+      "title": "Services demandés",
+      "subtitle": "Des clients les ont demandés, mais ils ne sont pas encore configurés.",
+      "dismiss": "Ignorer",
+      "addAsService": "Ajouter comme service",
+      "confirm": "Confirmer"
+    },
     "services": {
       "colService": "Service",
       "colPrice": "Prix",

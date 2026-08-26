@@ -393,6 +393,13 @@
       "businessInfo": "معلومات النشاط",
       "extra": "إضافي"
     },
+    "requestedServices": {
+      "title": "خدمات مطلوبة",
+      "subtitle": "طلبها العملاء، لكنها لم تُدرَّب بعد.",
+      "dismiss": "تجاهل",
+      "addAsService": "إضافة كخدمة",
+      "confirm": "تأكيد"
+    },
     "services": {
       "colService": "الخدمة",
       "colPrice": "السعر",

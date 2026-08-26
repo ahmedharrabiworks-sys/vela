@@ -392,6 +392,13 @@
       "businessInfo": "Business Info",
       "extra": "Extra"
     },
+    "requestedServices": {
+      "title": "Requested services",
+      "subtitle": "Customers asked for these, but they're not trained yet.",
+      "dismiss": "Dismiss",
+      "addAsService": "Add as service",
+      "confirm": "Confirm"
+    },
     "services": {
       "colService": "Service",
       "colPrice": "Price",

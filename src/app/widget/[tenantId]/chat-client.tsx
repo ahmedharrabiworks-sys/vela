@@ -383,10 +383,19 @@ export default function WidgetChat({
           time: formTime || undefined,
         }),
       });
-      const data = await res.json().catch(() => ({})) as { ok?: boolean; booked?: boolean; message?: string; error?: string; alternatives?: string[] };
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; booked?: boolean; message?: string; error?: string; alternatives?: string[]; conversationId?: string };
       if (!res.ok || !data.ok) {
         setFormError(data.error || "Something went wrong. Please try again.");
         return;
+      }
+      // Round M6 FIX 6(c): structured-booking now creates a real conversation
+      // record server-side and returns its id -- adopt it the same way a
+      // regular chat reply does, so switching back to chat continues the
+      // SAME real thread (history, follow-up, Recent Messages) instead of
+      // this submission living only in local, ephemeral component state.
+      if (data.conversationId) {
+        setConversationId(data.conversationId);
+        persistConversation(data.conversationId);
       }
       setFormResult({
         message: data.message || "Thanks, we've got your request!",

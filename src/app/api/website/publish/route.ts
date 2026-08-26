@@ -9,34 +9,58 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// Round M FIX 2: same extraction technique already used in save-edit/
-// route.ts's own local extractImageMap -- lets publish re-render fresh
-// from the current spec + current renderer code WITHOUT re-fetching new
-// Unsplash photos for sections whose images are already resolved.
+// Round M3 FIX 3 (retroactively applied here -- see FIX 1, round M6): this
+// function was a STALE, pre-fix duplicate of the extraction technique also
+// used in save-edit/route.ts and image-replace/route.ts. Those two files
+// already got a fix that made extraction section-type-agnostic (matching
+// via the unconditional `data-vs="{i}"` marker + spec-driven single/multi
+// detection), but this copy in publish/route.ts was never updated -- it
+// still used a hardcoded per-type allowlist (SINGLE_IMG/MULTI_IMG/
+// SECTION_ANCHOR) that never recognized feature-showcase, treatment-
+// gallery, property-listings-grid, portfolio-grid, membership-plans-
+// display, trust-badges-band, agent-card, trainer-showcase, or any other
+// image-bearing section type added after the original hero/about/gallery/
+// listings-grid set. Any of those section types had their real photos
+// silently dropped every time Publish was pressed, even though the exact
+// same draft correctly showed those photos in the editor (which reads
+// save-edit's already-fixed extraction). Now identical logic to the other
+// two files -- single source of truth for the underlying algorithm, still
+// duplicated per-file consistent with the existing pattern in this repo.
+function getImageQuery(s: { imageQuery?: string; content?: Record<string, unknown> }): string | null {
+  if (typeof s.imageQuery === "string" && s.imageQuery.trim()) return s.imageQuery.trim();
+  if (s.content && typeof s.content.imageQuery === "string" && (s.content.imageQuery as string).trim()) {
+    return (s.content.imageQuery as string).trim();
+  }
+  return null;
+}
+function getImageQueries(s: { imageQueries?: string[]; content?: Record<string, unknown> }): string[] {
+  if (Array.isArray(s.imageQueries) && s.imageQueries.length) return s.imageQueries;
+  if (s.content && Array.isArray(s.content.imageQueries)) return s.content.imageQueries as string[];
+  return [];
+}
 function extractImageMap(spec: WebsiteSpec, html: string): ImageMap {
   const images: ImageMap = {};
-  const SINGLE_IMG = new Set(["hero", "hero-fullbleed", "hero-split", "hero-minimal", "about", "about-story"]);
-  const MULTI_IMG = new Set(["gallery", "gallery-grid", "listings-grid"]);
-  const SECTION_ANCHOR: Record<string, string> = {
-    "hero": "hero", "hero-fullbleed": "hero", "hero-split": "hero", "hero-minimal": "hero",
-    "about": "about", "about-story": "about",
-    "gallery": "gallery", "gallery-grid": "gallery",
-    "listings-grid": "listings",
-  };
   for (let i = 0; i < spec.sections.length; i++) {
-    const s = spec.sections[i];
-    const anchor = SECTION_ANCHOR[s.type];
-    if (!anchor) continue;
-    const anchorIdx = html.indexOf(`id="${anchor}"`);
-    if (anchorIdx === -1) continue;
-    const slice = html.slice(anchorIdx, anchorIdx + 30_000);
-    if (MULTI_IMG.has(s.type)) {
-      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+)"/g;
+    const s = spec.sections[i] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> };
+    const isMulti = getImageQueries(s).length > 0;
+    const isSingle = !isMulti && !!getImageQuery(s);
+    if (!isMulti && !isSingle) continue; // this section never had images to begin with
+
+    const secStart = html.indexOf(`data-vs="${i}"`);
+    if (secStart === -1) continue;
+    const nextStart = html.indexOf(`data-vs="${i + 1}"`, secStart + 1);
+    const slice = nextStart === -1 ? html.slice(secStart) : html.slice(secStart, nextStart);
+
+    // Matches https:// (Unsplash) AND data:image/... (an owner-uploaded photo).
+    if (isMulti) {
+      const imgRe = /<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/g;
       let m: RegExpExecArray | null;
       let j = 0;
-      while ((m = imgRe.exec(slice)) !== null) images[`${i}_${j++}`] = m[1];
-    } else if (SINGLE_IMG.has(s.type)) {
-      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+)"/);
+      while ((m = imgRe.exec(slice)) !== null) {
+        images[`${i}_${j++}`] = m[1];
+      }
+    } else {
+      const m = slice.match(/<img[^>]+src="(https?:\/\/[^"]+|data:image\/[^"]+)"/);
       if (m) images[String(i)] = m[1];
     }
   }

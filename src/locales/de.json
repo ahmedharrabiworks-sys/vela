@@ -393,6 +393,13 @@
       "businessInfo": "Unternehmensinfo",
       "extra": "Weiteres"
     },
+    "requestedServices": {
+      "title": "Angefragte Leistungen",
+      "subtitle": "Kunden haben danach gefragt, sie sind aber noch nicht trainiert.",
+      "dismiss": "Verwerfen",
+      "addAsService": "Als Leistung hinzufügen",
+      "confirm": "Bestätigen"
+    },
     "services": {
       "colService": "Leistung",
       "colPrice": "Preis",

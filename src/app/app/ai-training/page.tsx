@@ -92,6 +92,61 @@ export default function AITrainingPage() {
   const [extractedText, setExtractedText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Round M6 FIX 6(b): customer-requested services not yet trained --
+  // real queue from pending_service_requests, owner can dismiss or
+  // confirm/add (with a real price) directly from here.
+  type PendingRequest = { id: string; serviceName: string; createdAt: string; leadName: string | null; leadPhone: string | null };
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addPrice, setAddPrice] = useState("");
+  const [pendingBusy, setPendingBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/pending-services")
+      .then((r) => r.json())
+      .then((data: { requests?: PendingRequest[] }) => setPendingRequests(data.requests ?? []))
+      .catch(() => { /* honest empty state on failure -- never fake data */ });
+  }, []);
+
+  const dismissRequest = async (id: string) => {
+    setPendingBusy(true);
+    setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await fetch("/api/pending-services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "dismiss" }),
+      });
+    } finally {
+      setPendingBusy(false);
+    }
+  };
+
+  const confirmAddRequest = async (id: string) => {
+    const price = addPrice.trim();
+    if (!price) return;
+    setPendingBusy(true);
+    try {
+      const res = await fetch("/api/pending-services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "add", price }),
+      });
+      if (res.ok) {
+        setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+        setAddingId(null);
+        setAddPrice("");
+        // Server already persisted the new service into knowledge_base --
+        // refetch so the Services tab reflects it without a full page reload.
+        const fresh = await fetch("/api/ai-training").then((r) => r.json()) as KnowledgeBase;
+        setKb({ ...DEFAULT_KB, ...fresh });
+        showToast(t("aiTraining.saved"));
+      }
+    } finally {
+      setPendingBusy(false);
+    }
+  };
+
   const [importInput, setImportInput]   = useState("");
   const [importState, setImportState]   = useState<ImportState>("idle");
   const [importedKb, setImportedKb]     = useState<KnowledgeBase | null>(null);
@@ -451,6 +506,62 @@ export default function AITrainingPage() {
           </div>
         )}
       </div>
+
+      {/* ── Requested services — real customer requests for services not yet
+          trained (Round M6 FIX 6b). Own the price prompt: name comes
+          straight from the customer's own request, price is the one real
+          field the AI doesn't have. ── */}
+      {pendingRequests.length > 0 && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-amber-100 dark:border-amber-900/30">
+            <p className="text-sm font-bold text-[#111111] dark:text-white">{t("aiTraining.requestedServices.title")}</p>
+            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">{t("aiTraining.requestedServices.subtitle")}</p>
+          </div>
+          <div className="divide-y divide-amber-100 dark:divide-amber-900/30">
+            {pendingRequests.map((r) => (
+              <div key={r.id} className="px-4 py-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{r.serviceName}</p>
+                    <p className="text-xs text-[#9CA3AF] mt-0.5">
+                      {r.leadName || t("dashboard.unknown")}{r.leadPhone ? ` · ${r.leadPhone}` : ""}
+                    </p>
+                  </div>
+                  {addingId !== r.id && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => dismissRequest(r.id)} disabled={pendingBusy}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg text-[#6B7280] dark:text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
+                        {t("aiTraining.requestedServices.dismiss")}
+                      </button>
+                      <button onClick={() => { setAddingId(r.id); setAddPrice(""); }} disabled={pendingBusy}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                        style={{ background: "var(--vela-gradient)" }}>
+                        {t("aiTraining.requestedServices.addAsService")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {addingId === r.id && (
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <input value={addPrice} onChange={(e) => setAddPrice(e.target.value)}
+                      placeholder={t("aiTraining.services.pricePlaceholder")} autoFocus
+                      className="flex-1 text-sm border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24] rounded-lg px-3 py-1.5 text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                    <button onClick={() => confirmAddRequest(r.id)} disabled={pendingBusy || !addPrice.trim()}
+                      className="text-xs font-bold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                      style={{ background: "var(--vela-gradient)" }}>
+                      {t("aiTraining.requestedServices.confirm")}
+                    </button>
+                    <button onClick={() => setAddingId(null)} disabled={pendingBusy}
+                      className="text-xs font-semibold px-2 py-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors shrink-0">
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Segment tabs — underline style, not pill buttons ── */}
       <div className="flex gap-5 border-b border-[#E5E7EB] dark:border-[#2A2A32] mb-0 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>

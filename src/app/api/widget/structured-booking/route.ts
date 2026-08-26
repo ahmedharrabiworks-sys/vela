@@ -4,6 +4,7 @@ import { createHash } from "crypto";
 import { createNotification } from "@/lib/notifications";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 import { checkAvailability, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
+import { recordPendingServiceRequest } from "@/lib/pending-services";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,67 @@ export async function POST(req: NextRequest) {
   const websiteId = sanitize(body.websiteId, 100) || null;
   const phoneUnconfirmed = !hasConfirmedCountryCode(phone);
 
+  // Round M6 FIX 6(c): this route never created a real conversation record --
+  // structured-form bookings had no thread for the AI to follow up in, and
+  // never showed up in Recent Messages/Conversations at all, unlike a normal
+  // chat-based interaction. `conversationId` was already accepted in the
+  // request body (the widget passes its current session's id when one
+  // exists, e.g. the customer chatted first, then used the form) but was
+  // never actually read anywhere in this file -- confirmed via a full-file
+  // search, a genuinely dead field. Same tenant/website ownership validation
+  // as ai/reply/route.ts: a conversationId that doesn't genuinely belong to
+  // this tenant+site is treated as absent, never trusted blindly.
+  const requestedConvId = sanitize(body.conversationId, 100) || null;
+  let convId: string | null = null;
+  if (requestedConvId) {
+    const { data: existingConv } = await admin
+      .from("conversations")
+      .select("id")
+      .eq("id", requestedConvId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    convId = (existingConv as { id: string } | null)?.id ?? null;
+  }
+  if (!convId) {
+    const convInsertRow: Record<string, unknown> = {
+      tenant_id: tenant.id,
+      lead_id: null,
+      channel: "website",
+      customer_name: name,
+      ai_enabled: true,
+      last_message_at: new Date().toISOString(),
+    };
+    if (websiteId) convInsertRow.website_id = websiteId;
+    let { data: newConv, error: convErr } = await admin
+      .from("conversations")
+      .insert(convInsertRow)
+      .select("id")
+      .single();
+    if (convErr?.code === "42703" || convErr?.code === "PGRST204") {
+      delete convInsertRow.website_id;
+      ({ data: newConv } = await admin.from("conversations").insert(convInsertRow).select("id").single());
+    }
+    convId = (newConv as { id: string } | null)?.id ?? null;
+  }
+
+  // Real message thread mirroring what a normal chat interaction would
+  // produce -- the user message is exactly what the customer submitted via
+  // the form, never fabricated. The matching assistant reply is written
+  // per-branch below (right before each return), using the exact same
+  // `message` text already sent back to the widget.
+  if (convId) {
+    const requestSummary = `I'd like to book ${service}${date && time ? ` on ${date} at ${time}` : ""}.`;
+    await admin.from("messages").insert({ conversation_id: convId, tenant_id: tenant.id, role: "user", content: requestSummary, is_test: false });
+    await admin.from("conversations").update({ customer_name: name, last_message_at: new Date().toISOString() }).eq("id", convId);
+  }
+
+  async function finalizeConversation(leadId: string | null, replyMessage: string): Promise<void> {
+    if (!convId) return;
+    if (leadId) await admin.from("conversations").update({ lead_id: leadId }).eq("id", convId).is("lead_id", null);
+    await admin.from("messages").insert({ conversation_id: convId, tenant_id: tenant.id, role: "assistant", content: replyMessage, is_test: false });
+    await admin.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", convId);
+  }
+
   // ── Load real trained services (same KB-first precedence as ai/reply) ───
   const { data: cfg } = await admin
     .from("tenant_config")
@@ -162,19 +224,27 @@ export async function POST(req: NextRequest) {
       { service, preferred_datetime: (date && time) ? `${date}T${time}:00Z` : null, message: null },
     );
     if (leadId) {
+      // Round M6 FIX 6(b): same pending-service queue the chat path now
+      // writes to (ai/reply/route.ts) -- lets the owner dismiss or
+      // confirm/add this exact request as a real trained service from
+      // Train Your AI, regardless of which channel it came from.
+      await recordPendingServiceRequest(admin, tenant.id as string, service, leadId);
       await createNotification(admin, {
         tenantId: tenant.id as string,
         type: "lead",
         title: "New request — service not yet trained",
         body: `${name}: ${service}`,
-        link: "/app/leads",
+        link: "/app/ai-training",
       });
     }
+    const caseAMessage = "Thanks! Your request has been received. We'll reply to your phone number within 24 hours once we confirm availability for that.";
+    await finalizeConversation(leadId, caseAMessage);
     return NextResponse.json({
       ok: true,
       booked: false,
       pending: true,
-      message: "Thanks! Your request has been received. We'll reply to your phone number within 24 hours once we confirm availability for that.",
+      message: caseAMessage,
+      conversationId: convId,
     }, { headers: CORS });
   }
 
@@ -185,9 +255,12 @@ export async function POST(req: NextRequest) {
     if (leadId) {
       await createNotification(admin, { tenantId: tenant.id as string, type: "lead", title: "New lead from Website", body: name, link: "/app/leads" });
     }
+    const caseBMessage = "Thanks! Please let us know your preferred date and time and we'll confirm availability.";
+    await finalizeConversation(leadId, caseBMessage);
     return NextResponse.json({
       ok: true, booked: false, pending: true,
-      message: "Thanks! Please let us know your preferred date and time and we'll confirm availability.",
+      message: caseBMessage,
+      conversationId: convId,
     }, { headers: CORS });
   }
 
@@ -212,13 +285,16 @@ export async function POST(req: NextRequest) {
       await createNotification(admin, { tenantId: tenant.id as string, type: "lead", title: "New lead from Website", body: `${name}: ${matchedServiceName} (requested slot unavailable)`, link: "/app/leads" });
     }
     const fmt = (d: Date) => d.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+    const conflictMessage = availability.alternatives.length > 0
+      ? `That time isn't available. Here are some options: ${availability.alternatives.map(fmt).join(", ")}. Reply in chat or resubmit with a different time.`
+      : "That time isn't available and we don't have a nearby opening. We've saved your request and will follow up within 24 hours.";
+    await finalizeConversation(leadId, conflictMessage);
     return NextResponse.json({
       ok: true,
       booked: false,
-      message: availability.alternatives.length > 0
-        ? `That time isn't available. Here are some options: ${availability.alternatives.map(fmt).join(", ")}. Reply in chat or resubmit with a different time.`
-        : "That time isn't available and we don't have a nearby opening. We've saved your request and will follow up within 24 hours.",
+      message: conflictMessage,
       alternatives: availability.alternatives.map((d) => d.toISOString()),
+      conversationId: convId,
     }, { headers: CORS });
   }
 
@@ -238,13 +314,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500, headers: CORS });
   }
 
-  const { error: apptErr } = await admin.from("appointments").insert({
+  const apptInsertRow: Record<string, unknown> = {
     tenant_id: tenant.id,
     lead_id: leadId,
     service_name: matchedServiceName,
     datetime: requestedISO,
     status: "confirmed",
-  });
+  };
+  if (convId) apptInsertRow.conversation_id = convId;
+  let { error: apptErr } = await admin.from("appointments").insert(apptInsertRow);
+  if (apptErr?.code === "42703" || apptErr?.code === "PGRST204") {
+    delete apptInsertRow.conversation_id;
+    ({ error: apptErr } = await admin.from("appointments").insert(apptInsertRow));
+  }
   if (apptErr) {
     console.error("[structured-booking] appointment insert error:", apptErr.message);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500, headers: CORS });
@@ -259,9 +341,12 @@ export async function POST(req: NextRequest) {
   });
 
   const whenLabel = requested.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  const bookedMessage = `Booked ✓ ${matchedServiceName} on ${whenLabel}. See you then, ${name.split(" ")[0]}!`;
+  await finalizeConversation(leadId, bookedMessage);
   return NextResponse.json({
     ok: true,
     booked: true,
-    message: `Booked ✓ ${matchedServiceName} on ${whenLabel}. See you then, ${name.split(" ")[0]}!`,
+    message: bookedMessage,
+    conversationId: convId,
   }, { headers: CORS });
 }

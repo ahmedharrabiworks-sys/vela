@@ -141,38 +141,71 @@ export async function POST(req: NextRequest) {
   const spec = (site.draft_spec ?? null) as WebsiteSpec | null;
   if (!spec) return NextResponse.json({ error: "No spec found" }, { status: 404 });
 
-  const existingHtml = (site.draft_html as string | null) ?? "";
-  const imageMap = extractImageMap(spec, existingHtml);
+  // Round M6 FIX 2: this whole block previously ran uncaught. The REAL bug
+  // (confirmed via a real request against production, no OpenAI/Unsplash
+  // call involved): `imgKey` referenced a `MULTI_IMG` set that no longer
+  // exists in this file -- it was removed from extractImageMap by the
+  // earlier Round M3 FIX 3 refactor (which made extraction section-type-
+  // agnostic), but this SEPARATE usage of the same now-deleted constant,
+  // a few lines below extractImageMap, was missed. Every image replace
+  // request that reached this line threw `ReferenceError: MULTI_IMG is not
+  // defined`, uncaught, producing a bare Vercel 500 with an EMPTY body and
+  // no content-type (confirmed live: status 500, content-type null, empty
+  // body) -- not our route's JSON error shape at all. The client's
+  // `res.json().catch(() => ({}))` swallowed the unparseable empty body
+  // into `{}`, `data.error` came back undefined, and the generic "Couldn't
+  // update the image" fallback showed -- with NOTHING about size, storage,
+  // or format, because the real failure was a dead variable reference that
+  // had nothing to do with any of last round's hypotheses. This is why
+  // `next.config.mjs`'s `typescript.ignoreBuildErrors: true` matters here:
+  // `npm run build` never caught this at compile time despite it being a
+  // hard "Cannot find name 'MULTI_IMG'" TypeScript error.
+  // Fixed: imgKey now uses the same isMulti/isSingle spec-driven check as
+  // extractImageMap itself (getImageQueries/getImageQuery, defined above),
+  // no more reference to a type-hardcoded set. Also wrapped in try/catch so
+  // any future unexpected failure here logs a real, specific server-side
+  // error and returns real JSON instead of silently degrading into this
+  // exact opaque-500 pattern again.
+  try {
+    const existingHtml = (site.draft_html as string | null) ?? "";
+    const imageMap = extractImageMap(spec, existingHtml);
 
-  const vs    = body.vs;
-  const idx   = body.imgIdx ?? 0;
-  const secIdx = parseInt(vs, 10);
-  const section = !isNaN(secIdx) && secIdx < spec.sections.length ? spec.sections[secIdx] : null;
-  const imgKey  = (section && MULTI_IMG.has(section.type)) ? `${vs}_${idx}` : vs;
+    const vs    = body.vs;
+    const idx   = body.imgIdx ?? 0;
+    const secIdx = parseInt(vs, 10);
+    const section = !isNaN(secIdx) && secIdx < spec.sections.length
+      ? (spec.sections[secIdx] as { imageQuery?: string; imageQueries?: string[]; content?: Record<string, unknown> })
+      : null;
+    const isMulti = !!section && getImageQueries(section).length > 0;
+    const imgKey  = isMulti ? `${vs}_${idx}` : vs;
 
-  if (body.remove) {
-    delete imageMap[imgKey];
-  } else if (body.query) {
-    const newUrl = await fetchUnsplashImage(body.query);
-    if (!newUrl) return NextResponse.json({ error: "No image found for that query" }, { status: 422 });
-    imageMap[imgKey] = newUrl;
-  } else if (body.imageData) {
-    imageMap[imgKey] = body.imageData;
-  } else {
-    return NextResponse.json({ error: "query, imageData, or remove required" }, { status: 400 });
+    if (body.remove) {
+      delete imageMap[imgKey];
+    } else if (body.query) {
+      const newUrl = await fetchUnsplashImage(body.query);
+      if (!newUrl) return NextResponse.json({ error: "No image found for that query" }, { status: 422 });
+      imageMap[imgKey] = newUrl;
+    } else if (body.imageData) {
+      imageMap[imgKey] = body.imageData;
+    } else {
+      return NextResponse.json({ error: "query, imageData, or remove required" }, { status: 400 });
+    }
+
+    const html = renderWebsite(spec, imageMap, tenant.id as string);
+
+    await admin.from("websites").update({
+      draft_html: html,
+      updated_at: new Date().toISOString(),
+    }).eq("id", body.websiteId).eq("tenant_id", tenant.id);
+
+    await admin.from("tenant_config").upsert(
+      { tenant_id: tenant.id, website_html: html },
+      { onConflict: "tenant_id" }
+    );
+
+    return NextResponse.json({ html });
+  } catch (err) {
+    console.error("[website/image-replace] unexpected failure:", err instanceof Error ? err.stack : err);
+    return NextResponse.json({ error: "Couldn't update the image. Please try again." }, { status: 500 });
   }
-
-  const html = renderWebsite(spec, imageMap, tenant.id as string);
-
-  await admin.from("websites").update({
-    draft_html: html,
-    updated_at: new Date().toISOString(),
-  }).eq("id", body.websiteId).eq("tenant_id", tenant.id);
-
-  await admin.from("tenant_config").upsert(
-    { tenant_id: tenant.id, website_html: html },
-    { onConflict: "tenant_id" }
-  );
-
-  return NextResponse.json({ html });
 }

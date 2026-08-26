@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
+import { recordPendingServiceRequest } from "@/lib/pending-services";
 import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
 import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
@@ -785,7 +786,7 @@ Rules:
 • NEVER book outside working hours
 • "Let me check that for you — can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on) — never for checking a schedule, which you already have.
 • Never invent prices, services, or times not listed above
-• MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) say something like "That's not something we currently offer, let me check with the team and get back to you" rather than a flat decline, (3) include the exact literal text [NEEDS_HUMAN] somewhere in your reply so the team is actually notified. This token is required every single time rule (1) applies, with zero exceptions — do not skip it just because you already declined the request.
+• MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) tell them explicitly and specifically that THIS service isn't currently listed, and that their request has been saved for the business to confirm within 24 hours and follow up on their phone number — e.g. "[Service they asked about] isn't listed as one of our current services, so we've saved your request — the business will confirm within 24 hours and follow up on your phone number." Adapt the wording naturally to the conversation, but always (a) name the specific service they asked about, (b) make clear it is not currently offered/trained, (c) mention the 24-hour confirmation, and (d) mention following up on their phone number. Never use a vague "let me check with the team" that doesn't say any of this. (3) include the exact literal token [UNTRAINED_SERVICE:the exact service name they asked about] somewhere in your reply, e.g. [UNTRAINED_SERVICE:teeth grinding night guard] — this both notifies the team with the real service name and marks the conversation as needing attention, so do NOT also include [NEEDS_HUMAN] for this same case. This token is required every single time rule (1) applies, with zero exceptions — do not skip it just because you already declined the request.
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation
 • When asking for the customer's phone number, ask for it WITH a country code (e.g. "What's the best number to reach you, with country code? Like +971..."). If they reply with a number that looks incomplete or clearly missing a country code (a short local number with no + and no leading 00), ask them to confirm it once more including the country code before treating it as final -- do not just accept a bare local number silently.
@@ -826,6 +827,12 @@ Rules:
   // produced the reply for this turn -- skips the main creative completion
   // call entirely (see that block for why).
   let deterministicRefusalThisTurn = false;
+  // Round M6 FIX 6(a)/(b): set from [UNTRAINED_SERVICE:<name>] when the
+  // model asks about a service not in this business's trained list -- carries
+  // the real requested service name out to the notification + pending-queue
+  // write after this completion block (needs leadId, which may still be
+  // resolved later in section 12).
+  let untrainedServiceThisTurn: string | null = null;
 
   /* ── 7c. Deterministic duplicate-booking refusal -- FIX 2 (round R) ────────
      Extensive live testing (17 real requests across many phrasings, both
@@ -1007,6 +1014,18 @@ Rules:
         }
       } else if (reactivateMatch) {
         rawReply = rawReply.replace(reactivateMatch[0], "").replace(/\s{2,}/g, " ").trim();
+      }
+
+      // Round M6 FIX 6(a)/(b): real, specific signal for an untrained/
+      // unmatched service request -- see the system prompt rule above.
+      // Implies needsHuman the same way [NEEDS_HUMAN] does; the notification
+      // + pending-service-queue write happen later in this request once
+      // leadId is as resolved as it'll get for this turn (section 12).
+      const untrainedMatch = rawReply.match(/\[UNTRAINED_SERVICE:([^\]]+)\]/i);
+      if (untrainedMatch) {
+        rawReply = rawReply.replace(untrainedMatch[0], "").replace(/\s{2,}/g, " ").trim();
+        untrainedServiceThisTurn = untrainedMatch[1].trim().slice(0, 200) || null;
+        if (untrainedServiceThisTurn) needsHuman = true;
       }
 
       // Extract [NEEDS_HUMAN] signal and strip it from visible reply
@@ -1197,6 +1216,11 @@ Rules:
   // FIX 2 (round P): hoisted so the duplicate-booking name-comparison guard
   // below can read this turn's extracted name without a second GPT call.
   let extractedCustomerName: string | null = null;
+  // Round M6 FIX 4: hoisted independent of `booking` -- see the write block
+  // right after this extraction call for why (booking.service was only ever
+  // populated when booked===true, silently discarding a genuinely mentioned
+  // service on every other turn).
+  let mentionedService: string | null = null;
 
   // FIX 2 (round R): a deterministic-refusal turn (section 7c above) is
   // guaranteed to never be a real booking confirmation -- skip this
@@ -1249,6 +1273,12 @@ Rules:
       booked = parsed.booked === true;
       if (booked) booking = { datetime: parsed.datetime ?? null, service: parsed.service ?? null };
       extractedCustomerName = parsed.customerName?.trim() || null;
+      // Round M6 FIX 4: captured regardless of `booked` -- a service can be
+      // genuinely mentioned/selected long before (or without) a completed
+      // booking (still gathering date/time, a pending-confirmation "yes"
+      // turn, a reactivate turn), and the structured-booking form's
+      // equivalent field is written unconditionally the same way.
+      mentionedService = parsed.service?.trim() || null;
 
       // CRITICAL FIX: routed through the same ensureLeadFromContact helper
       // as the regex scan above -- creates the lead here too if this GPT
@@ -1259,6 +1289,28 @@ Rules:
         await ensureLeadFromContact(parsed.customerPhone ?? null, null, parsed.customerName ?? null);
       }
     } catch { /* best-effort */ }
+  }
+
+  // Round M6 FIX 4: Service Requested was only ever written to
+  // leads.form_data inside the booking-confirmed block further below --
+  // meaning any turn that mentioned a real service WITHOUT completing a
+  // full booking in that same turn (still collecting date/time, a "yes"
+  // confirming a PENDING appointment via [CONFIRM_APPOINTMENT], a
+  // reactivate turn) silently never recorded it, unlike
+  // structured-booking/route.ts, which writes its equivalent `service`
+  // field into form_data unconditionally on every lead create/update. This
+  // is the general, path-agnostic write: whenever a lead exists and this
+  // turn's extraction identified a service, record it. The booking-
+  // confirmed block below still runs afterward on a genuine booking turn
+  // and overwrites with the authoritative confirmed value (including the
+  // "General Consultation" fallback), so a later, more specific turn always
+  // wins over an earlier, tentative mention.
+  if (leadId && mentionedService) {
+    const { data: leadRow } = await admin.from("leads").select("form_data").eq("id", leadId).maybeSingle();
+    const existingFormData = (leadRow as { form_data?: Record<string, unknown> } | null)?.form_data ?? {};
+    await admin.from("leads").update({
+      form_data: { ...existingFormData, service: mentionedService },
+    }).eq("id", leadId);
   }
 
   // CRITICAL FIX (duplicate appointment rows): this used to unconditionally
@@ -1407,6 +1459,25 @@ Rules:
       }
     }
     // isSameSlot && existing: redundant re-confirmation, intentionally a no-op.
+  }
+
+  // Round M6 FIX 6(b): the untrained-service token from section 8 -- notify
+  // the owner (real service name + lead) and queue it in
+  // pending_service_requests so they can dismiss it or confirm/add it as a
+  // real trained service from Train Your AI, instead of needing to separately
+  // notice the escalation and manually go create the service from scratch.
+  // Placed here (after section 12) so leadId reflects whatever this turn's
+  // own contact-info extraction resolved, not just what existed at the start
+  // of the request.
+  if (untrainedServiceThisTurn && !isTest) {
+    await recordPendingServiceRequest(admin, tenantId, untrainedServiceThisTurn, leadId);
+    await createNotification(admin, {
+      tenantId,
+      type: "lead",
+      title: "New request — service not yet trained",
+      body: `${customerName !== "Customer" ? customerName : "A customer"}: ${untrainedServiceThisTurn}`,
+      link: "/app/ai-training",
+    });
   }
 
   // FIX 8 (round M): a short, real "what they want" summary for the
