@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({})) as { id?: string; action?: "dismiss" | "add"; price?: string };
+  const body = await req.json().catch(() => ({})) as { id?: string; action?: "dismiss" | "add"; price?: string; duration?: string };
   if (!body.id || (body.action !== "dismiss" && body.action !== "add")) {
     return NextResponse.json({ error: "id and a valid action are required" }, { status: 400 });
   }
@@ -83,11 +83,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // action === "add": price is the one real required field the AI doesn't
-  // already have -- everything else (name) came straight from the customer's
-  // own request.
+  // action === "add": price AND duration are the two real required fields
+  // the AI doesn't already have -- every other trained service already
+  // stores duration (the booking/availability logic reads it, see
+  // checkAvailability's serviceDuration lookup), so a service added here
+  // without one behaves inconsistently with every other trained service.
+  // Round M7 FIX 3(a): duration was previously not even asked for.
   const price = (body.price ?? "").trim();
+  const duration = (body.duration ?? "").trim();
   if (!price) return NextResponse.json({ error: "Price is required to add this as a service." }, { status: 400 });
+  if (!duration) return NextResponse.json({ error: "Duration is required to add this as a service." }, { status: 400 });
 
   const { data: cfg } = await admin
     .from("tenant_config")
@@ -100,7 +105,7 @@ export async function POST(req: NextRequest) {
     try { kb = { ...DEFAULT_KB, ...JSON.parse(cfg.knowledge_base as string) }; } catch { /* malformed, fall back to default */ }
   }
 
-  const newService = { name: (row as { service_name: string }).service_name, price, duration: "", description: "" };
+  const newService = { name: (row as { service_name: string }).service_name, price, duration, description: "" };
   const saveKb: KnowledgeBase = { ...kb, services: [...kb.services, newService] };
 
   const { error: saveErr } = await admin.from("tenant_config").upsert(

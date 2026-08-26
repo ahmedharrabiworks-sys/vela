@@ -512,17 +512,26 @@ if(sshad&&typeof sshad==='object'){
   });
 }
 /* ── Image click handler ───────────────────────────────────────────────── */
+/* Round M7 FIX 1: was [data-vs] img only -- an emptied/removed image slot
+   renders as a gradient-placeholder <div> (website-sections.ts's photo()
+   and every raw hero-image branch), which has no <img> tag at all, so it
+   had nothing to attach a click listener to (permanently unclickable after
+   Remove) and was skipped when counting allImgs, silently shifting the
+   imgIdx of every real image slot after it in the same section. Every
+   image-slot element -- populated <img> or empty placeholder <div> -- now
+   carries data-ws-photo="1", so both bugs are fixed by selecting on that
+   marker instead of the tag name. */
 var imgSty=document.createElement('style');
-imgSty.textContent='[data-vs] img{cursor:pointer;transition:filter .15s;}[data-vs] img:hover{filter:brightness(.78) saturate(.9);}';
+imgSty.textContent='[data-vs] [data-ws-photo]{cursor:pointer;transition:filter .15s;}[data-vs] img[data-ws-photo]:hover{filter:brightness(.78) saturate(.9);}[data-vs] div[data-ws-photo]:hover{filter:brightness(.88);}';
 document.head.appendChild(imgSty);
-document.querySelectorAll('[data-vs] img').forEach(function(img){
+document.querySelectorAll('[data-vs] [data-ws-photo]').forEach(function(img){
   img.addEventListener('click',function(e){
     e.stopPropagation();e.preventDefault();
     var sec=img.closest('[data-vs]');if(!sec)return;
     var vs=sec.getAttribute('data-vs');
-    var allImgs=Array.prototype.slice.call(sec.querySelectorAll('img'));
+    var allImgs=Array.prototype.slice.call(sec.querySelectorAll('[data-ws-photo]'));
     var imgIdx=allImgs.indexOf(img);
-    parent.postMessage({type:'vela-img-click',vs:vs,imgIdx:imgIdx,src:img.src},'*');
+    parent.postMessage({type:'vela-img-click',vs:vs,imgIdx:imgIdx,src:img.tagName==='IMG'?img.src:''},'*');
   });
 });
 /* ── Section reorder handles ────────────────────────────────────────────── */
@@ -2690,6 +2699,25 @@ export default function WebsitePage() {
   // Depends on previewHtml (reloads iframe after server save) but intentionally
   // reads editSpecRef.current (not editSpec state) so that mid-edit field changes
   // do NOT trigger an iframe reload — only the server-returned HTML does.
+  //
+  // Round M7 FIX 2: the visible "jump to hero, then back down" on every edit
+  // is real and inherent to how srcDoc reloads work -- a new document always
+  // starts painting at scroll 0, and the ONLY prior restore
+  // (handlePreviewIframeLoad, below) only runs on the iframe's `load` event,
+  // which fires late on a page with this many images -- by then the browser
+  // has already painted the top-of-page state at least once, visibly. Every
+  // edit trigger (chat, Colors, text-style panel, image-replace) already
+  // shares this exact same reload path (all funnel through setHtml ->
+  // previewHtml -> this memo -> iframeSrc -> <iframe srcDoc>), so this was
+  // never a divergent-path bug -- Round M3 FIX 4's capture/restore mechanism
+  // was structurally applied everywhere, just too late in the load sequence
+  // to avoid the flash. Fixed by restoring scroll from INSIDE the new
+  // document's own injected script instead: this executes synchronously
+  // during HTML parsing, well before `load` fires, so it runs before the
+  // user has a chance to see the unscrolled top-of-page paint settle. Also
+  // retries for a few animation frames in case the target section's own
+  // (loading="lazy") images haven't expanded the layout enough yet to reach
+  // that scroll offset on the very first attempt.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const editSrcDoc = useMemo(() => {
     if (!editMode || !previewHtml) return previewHtml;
@@ -2697,7 +2725,9 @@ export default function WebsitePage() {
     if (!spec) return previewHtml;
     const specJson = JSON.stringify(spec)
       .replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
-    const inject = `<script>window.VS_EDIT_MODE=true;window.VS_SPEC=${specJson};${EDIT_SCRIPT}<\/script>`;
+    const targetScroll = Math.max(0, Math.round(iframeScrollRef.current));
+    const scrollRestore = targetScroll > 0 ? `(function(){var t=${targetScroll};window.scrollTo(0,t);var n=0;function tick(){if(n++>20)return;if(window.scrollY<t-2){window.scrollTo(0,t);requestAnimationFrame(tick);}}requestAnimationFrame(tick);})();` : "";
+    const inject = `<script>${scrollRestore}window.VS_EDIT_MODE=true;window.VS_SPEC=${specJson};${EDIT_SCRIPT}<\/script>`;
     return previewHtml.includes("</body>")
       ? previewHtml.replace("</body>", inject + "</body>")
       : previewHtml + inject;

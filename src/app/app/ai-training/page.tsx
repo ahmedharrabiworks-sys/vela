@@ -94,12 +94,22 @@ export default function AITrainingPage() {
 
   // Round M6 FIX 6(b): customer-requested services not yet trained --
   // real queue from pending_service_requests, owner can dismiss or
-  // confirm/add (with a real price) directly from here.
+  // confirm/add (with a real price + duration) directly from here.
   type PendingRequest = { id: string; serviceName: string; createdAt: string; leadName: string | null; leadPhone: string | null };
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addPrice, setAddPrice] = useState("");
+  const [addDuration, setAddDuration] = useState("");
   const [pendingBusy, setPendingBusy] = useState(false);
+  // Round M7 FIX 3(b): confirmed via a real Supabase query that the server
+  // write itself lands correctly, but the added service could still end up
+  // permanently missing from what the owner sees -- the mount-time KB fetch
+  // below (a separate, independent fetch, no ordering guarantee against
+  // this flow's own update) can resolve AFTER a service is added and
+  // silently overwrite it with what was on file before the add. Set
+  // whenever kb changes via a real save/append so that late-resolving
+  // fetch can detect it's now stale and skip applying itself.
+  const kbMutatedRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/pending-services")
@@ -124,23 +134,31 @@ export default function AITrainingPage() {
 
   const confirmAddRequest = async (id: string) => {
     const price = addPrice.trim();
-    if (!price) return;
+    const duration = addDuration.trim();
+    if (!price || !duration) return;
     setPendingBusy(true);
     try {
       const res = await fetch("/api/pending-services", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action: "add", price }),
+        body: JSON.stringify({ id, action: "add", price, duration }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; service?: ServiceRow; error?: string };
+      if (res.ok && data.service) {
         setPendingRequests((prev) => prev.filter((r) => r.id !== id));
         setAddingId(null);
         setAddPrice("");
-        // Server already persisted the new service into knowledge_base --
-        // refetch so the Services tab reflects it without a full page reload.
-        const fresh = await fetch("/api/ai-training").then((r) => r.json()) as KnowledgeBase;
-        setKb({ ...DEFAULT_KB, ...fresh });
+        setAddDuration("");
+        // Round M7 FIX 3(b): append the server's own confirmed service
+        // object LOCALLY instead of re-fetching the whole KB -- a refetch
+        // here raced against the page's own mount-time KB fetch (below) and
+        // could be silently overwritten if that one resolved later. Marking
+        // kbMutatedRef also protects against that specific race directly.
+        kbMutatedRef.current = true;
+        setKb((prev) => ({ ...prev, services: [...prev.services, data.service as ServiceRow] }));
         showToast(t("aiTraining.saved"));
+      } else {
+        showToast(data.error || "Couldn't add that service. Please try again.");
       }
     } finally {
       setPendingBusy(false);
@@ -171,7 +189,13 @@ export default function AITrainingPage() {
             body: JSON.stringify(loaded),
           });
         }
-        setKb(loaded);
+        // Round M7 FIX 3(b): this fetch was already in flight before the
+        // Requested Services panel could possibly be interacted with, but a
+        // slow/contended network round-trip has no ordering guarantee
+        // against that flow's own (faster) local append -- if a real kb
+        // mutation already landed while this was still pending, applying
+        // this now-stale snapshot would silently discard it.
+        if (!kbMutatedRef.current) setKb(loaded);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -184,6 +208,7 @@ export default function AITrainingPage() {
 
   const save = useCallback(async (data: KnowledgeBase) => {
     setSaving(true);
+    kbMutatedRef.current = true;
     try {
       await fetch("/api/ai-training", {
         method: "POST",
@@ -533,7 +558,7 @@ export default function AITrainingPage() {
                         className="text-xs font-semibold px-3 py-1.5 rounded-lg text-[#6B7280] dark:text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
                         {t("aiTraining.requestedServices.dismiss")}
                       </button>
-                      <button onClick={() => { setAddingId(r.id); setAddPrice(""); }} disabled={pendingBusy}
+                      <button onClick={() => { setAddingId(r.id); setAddPrice(""); setAddDuration(""); }} disabled={pendingBusy}
                         className="text-xs font-bold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                         style={{ background: "var(--vela-gradient)" }}>
                         {t("aiTraining.requestedServices.addAsService")}
@@ -542,11 +567,14 @@ export default function AITrainingPage() {
                   )}
                 </div>
                 {addingId === r.id && (
-                  <div className="flex items-center gap-2 mt-2.5">
+                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                     <input value={addPrice} onChange={(e) => setAddPrice(e.target.value)}
                       placeholder={t("aiTraining.services.pricePlaceholder")} autoFocus
-                      className="flex-1 text-sm border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24] rounded-lg px-3 py-1.5 text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
-                    <button onClick={() => confirmAddRequest(r.id)} disabled={pendingBusy || !addPrice.trim()}
+                      className="flex-1 min-w-[90px] text-sm border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24] rounded-lg px-3 py-1.5 text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                    <input value={addDuration} onChange={(e) => setAddDuration(e.target.value)}
+                      placeholder={t("aiTraining.services.durationPlaceholder")}
+                      className="flex-1 min-w-[90px] text-sm border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24] rounded-lg px-3 py-1.5 text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                    <button onClick={() => confirmAddRequest(r.id)} disabled={pendingBusy || !addPrice.trim() || !addDuration.trim()}
                       className="text-xs font-bold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                       style={{ background: "var(--vela-gradient)" }}>
                       {t("aiTraining.requestedServices.confirm")}
