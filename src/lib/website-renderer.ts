@@ -257,8 +257,21 @@ function buildCss(t: DesignTokens): string {
 }
 .ws-hero-split-media{
   flex:1 1 50%;position:relative;min-height:480px;overflow:hidden;
-  background:${t.heroBg};
+  background:var(--bg-alt);
 }
+/* Round M10 FIX 1: was t.heroBg -- same anti-pattern already diagnosed and
+   fixed for the stats-band at Round 5 FIX 3 above (a mood-keyed constant,
+   ALWAYS dark -- #1A1A1A/#0A2540/#050505/#1C1A17/#0A0A0A/#211F1C across the
+   6 presets -- with no relation to the site's actual palette). heroBg exists
+   for FULL-BLEED photo heroes where white overlay text needs guaranteed
+   contrast; this is a SIDE PANEL sitting next to a plain text panel that
+   already uses the site's real theme (t.bg/t.heading), so an empty slot
+   here rendered a jarring near-black block against an otherwise light site
+   -- confirmed live on a real published site (BrightSmile Dental Clinic,
+   re-rendered by the current code, still showed #0A2540). var(--bg-alt) is
+   the same neutral, theme-correct fallback every OTHER non-full-bleed photo
+   wrapper in this file already uses (.ws-hero-res-img, .ws-hero-tf-img,
+   .ws-hero-bof-img, .ws-hero-ed-media, .ws-hero-port-main/-stack-item). */
 .ws-hero-split-media--cb{border-radius:0 0 0 ${t.radiusLg};}
 .ws-hero-headline--split{
   font-family:var(--font-heading);

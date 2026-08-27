@@ -285,6 +285,7 @@
     "timeDays": "j",
     "todayLive": "Aujourd'hui, en direct",
     "leadPipeline": "Pipeline de prospects",
+    "leadsInProgress": "en cours",
     "aiActivity": "Activité IA",
     "recentActivity": "Activité récente",
     "activityNewMessage": "Nouveau message",

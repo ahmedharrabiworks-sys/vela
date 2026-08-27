@@ -52,7 +52,7 @@ export async function GET() {
   // a bug: comparing Dashboard's "leads today" against Analytics' 7-day
   // sum was never actually the same period to begin with.
   const [leadsRes, convsRes, apptsRes, configRes, visitsRes] = await Promise.all([
-    admin.from("leads").select("channel, created_at").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
+    admin.from("leads").select("id, channel, created_at").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
     admin.from("conversations").select("channel, created_at, lead_id, needs_human, needs_human_resolved_at").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
     admin.from("appointments").select("created_at, status, conversation_id").eq("tenant_id", tenantId).is("deleted_at", null).gte("created_at", oneEightyDaysAgo),
     admin.from("tenant_config").select("website_visit_count").eq("tenant_id", tenantId).maybeSingle(),
@@ -67,7 +67,7 @@ export async function GET() {
   if (visitsRes.error) console.error("[analytics] site_visits query error (non-fatal — likely migration_v28.sql pending):", visitsRes.error.message, visitsRes.error.code);
   const websiteVisits = ((configRes.data as Record<string, unknown> | null)?.website_visit_count as number | null) ?? 0;
 
-  const leads: { channel: string | null; created_at: string }[] = leadsRes.data ?? [];
+  const leads: { id: string; channel: string | null; created_at: string }[] = leadsRes.data ?? [];
   const conversations: { channel: string; created_at: string; lead_id: string | null; needs_human: boolean; needs_human_resolved_at: string | null }[] = convsRes.data ?? [];
   const appointments: { created_at: string; status: string; conversation_id: string | null }[] = apptsRes.data ?? [];
   const visits: { created_at: string }[] = visitsRes.data ?? [];
@@ -97,9 +97,32 @@ export async function GET() {
   // a human added by hand.
   const dailyApptAiBooked: Record<string, number> = {};
 
+  // Round M10 FIX 5: real, confirmed cause of Leads showing 0 for "Today"
+  // while Conversations/Appointments correctly showed 1 for the SAME real
+  // activity -- live data check found a real conversation + real
+  // appointment created today, both referencing a real lead whose OWN
+  // created_at was from yesterday (a returning customer engaging again, not
+  // a brand-new lead). dailyCounts (leads) buckets strictly by
+  // leads.created_at, so a repeat lead's renewed activity today is
+  // invisible to it, even though it's exactly as real as today's
+  // conversation/appointment. dailyLeadTouches is a separate, additive
+  // signal: the same distinct-lead-via-real-FK technique the channel
+  // breakdown below already uses (see its own "CRITICAL FIX" comment) --
+  // a lead counts for a given day if it was CREATED that day OR REFERENCED
+  // by a conversation created that day (deduplicated via a Set, so a lead
+  // with both events on the same day only counts once). Used only for the
+  // single-day "Today" view (analytics/page.tsx) -- 7d/30d/90d keep using
+  // plain dailyCounts unchanged, since summing per-day distinct-lead sets
+  // across a multi-day range would double-count a repeat lead active on
+  // more than one day within that range, which was never reported as wrong
+  // and risks a real regression for no reported benefit.
+  const leadTouchSets: Record<string, Set<string>> = {};
+  const dailyLeadTouches: Record<string, number> = {};
+
   leads.forEach((l) => {
     const date = l.created_at.slice(0, 10);
     dailyCounts[date] = (dailyCounts[date] ?? 0) + 1;
+    (leadTouchSets[date] ??= new Set()).add(l.id);
   });
   conversations.forEach((c) => {
     const date = c.created_at.slice(0, 10);
@@ -107,7 +130,11 @@ export async function GET() {
     if (c.needs_human === false) {
       dailyConvAiHandled[date] = (dailyConvAiHandled[date] ?? 0) + 1;
     }
+    if (c.lead_id) {
+      (leadTouchSets[date] ??= new Set()).add(c.lead_id);
+    }
   });
+  Object.entries(leadTouchSets).forEach(([date, set]) => { dailyLeadTouches[date] = set.size; });
   appointments.forEach((a) => {
     const date = a.created_at.slice(0, 10);
     dailyApptCounts[date] = (dailyApptCounts[date] ?? 0) + 1;
@@ -176,6 +203,7 @@ export async function GET() {
     totalAppointments,
     totalVisits90d,
     dailyCounts,
+    dailyLeadTouches,
     dailyConvCounts,
     dailyApptCounts,
     dailyVisitCounts,

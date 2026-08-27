@@ -118,5 +118,17 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
     },
+    // ── 9. Round M10 — live re-verification. Tests set their own viewport
+    // per-case (1440/1280/375, light/dark), so the project-level viewport is
+    // just a safe default.
+    {
+      name: "round-m10",
+      testMatch: /round-m10-.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 900 },
+        storageState: "e2e/.auth/user.json",
+      },
+    },
   ],
 });

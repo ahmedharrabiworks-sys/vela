@@ -21,6 +21,7 @@ type AnalyticsData = {
   totalAppointments: number;
   totalVisits90d: number;
   dailyCounts: Record<string, number>;
+  dailyLeadTouches: Record<string, number>;
   dailyConvCounts: Record<string, number>;
   dailyApptCounts: Record<string, number>;
   dailyVisitCounts: Record<string, number>;
@@ -315,22 +316,32 @@ export default function AnalyticsPage() {
   // yesterday's real bucket.
   const baseOffset = 0;
 
+  // Round M10 FIX 5: "Today" (range==="1d") uses dailyLeadTouches instead of
+  // plain dailyCounts -- see the server's own comment (api/analytics/
+  // route.ts) for the confirmed root cause (a real lead's OWN created_at
+  // predates today even though a real conversation/appointment involving
+  // them happened today). 7d/30d/90d keep the original leads.created_at
+  // bucketing unchanged -- summing dailyLeadTouches across a multi-day
+  // range would double-count a repeat lead active on more than one day in
+  // that range, which was never reported as wrong.
+  const leadsSourceForRange = range === "1d" ? (analytics?.dailyLeadTouches ?? {}) : (analytics?.dailyCounts ?? {});
+
   const dailyBySeries: Record<Series, Record<string, number>> = useMemo(() => ({
-    leads: analytics?.dailyCounts ?? {},
+    leads: range === "1d" ? (analytics?.dailyLeadTouches ?? {}) : (analytics?.dailyCounts ?? {}),
     conversations: analytics?.dailyConvCounts ?? {},
     appointments: analytics?.dailyApptCounts ?? {},
-  }), [analytics]);
+  }), [analytics, range]);
 
   const chartData = buildDayArray(dailyBySeries[series], days, baseOffset);
   const chartLabels = buildLabels(days);
 
-  const totalLeads = analytics ? periodSum(analytics.dailyCounts, days, baseOffset) : 0;
+  const totalLeads = analytics ? periodSum(leadsSourceForRange, days, baseOffset) : 0;
   const totalConvs = analytics ? periodSum(analytics.dailyConvCounts, days, baseOffset) : 0;
   const totalAppts = analytics ? periodSum(analytics.dailyApptCounts, days, baseOffset) : 0;
   const websiteVisits = analytics?.websiteVisits ?? 0;
   const channelTable = analytics?.channelBreakdown ?? [];
 
-  const leadsChange = analytics ? computeChange(periodSum(analytics.dailyCounts, days, baseOffset), periodSum(analytics.dailyCounts, days, baseOffset + days)) : null;
+  const leadsChange = analytics ? computeChange(periodSum(leadsSourceForRange, days, baseOffset), periodSum(leadsSourceForRange, days, baseOffset + days)) : null;
   const apptsChange = analytics ? computeChange(periodSum(analytics.dailyApptCounts, days, baseOffset), periodSum(analytics.dailyApptCounts, days, baseOffset + days)) : null;
   const convsChange = analytics ? computeChange(periodSum(analytics.dailyConvCounts, days, baseOffset), periodSum(analytics.dailyConvCounts, days, baseOffset + days)) : null;
 

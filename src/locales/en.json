@@ -284,6 +284,7 @@
     "timeDays": "d",
     "todayLive": "Today, live",
     "leadPipeline": "Lead Pipeline",
+    "leadsInProgress": "in the pipeline",
     "aiActivity": "AI Activity",
     "recentActivity": "Recent Activity",
     "activityNewMessage": "New message",
