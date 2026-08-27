@@ -257,21 +257,26 @@ function buildCss(t: DesignTokens): string {
 }
 .ws-hero-split-media{
   flex:1 1 50%;position:relative;min-height:480px;overflow:hidden;
-  background:var(--bg-alt);
+  background:var(--bg);
 }
-/* Round M10 FIX 1: was t.heroBg -- same anti-pattern already diagnosed and
-   fixed for the stats-band at Round 5 FIX 3 above (a mood-keyed constant,
-   ALWAYS dark -- #1A1A1A/#0A2540/#050505/#1C1A17/#0A0A0A/#211F1C across the
-   6 presets -- with no relation to the site's actual palette). heroBg exists
-   for FULL-BLEED photo heroes where white overlay text needs guaranteed
-   contrast; this is a SIDE PANEL sitting next to a plain text panel that
-   already uses the site's real theme (t.bg/t.heading), so an empty slot
-   here rendered a jarring near-black block against an otherwise light site
-   -- confirmed live on a real published site (BrightSmile Dental Clinic,
-   re-rendered by the current code, still showed #0A2540). var(--bg-alt) is
-   the same neutral, theme-correct fallback every OTHER non-full-bleed photo
-   wrapper in this file already uses (.ws-hero-res-img, .ws-hero-tf-img,
-   .ws-hero-bof-img, .ws-hero-ed-media, .ws-hero-port-main/-stack-item). */
+/* Round M10 FIX 1 (was t.heroBg, then var(--bg-alt) -- see prior comment
+   below this one for that history) + FIX 1 follow-up: var(--bg-alt) was
+   still an approximation, not an exact match -- confirmed live on the same
+   real site, --bg-alt resolves to #F6F9FC while .ws-hero--split (the
+   section this media panel sits inside, two rules up) uses background:
+   ${t.bg}, which for that site is #FFFFFF. Two visually-close but
+   genuinely different colors, exactly matching "close but not exact".
+   var(--bg) is set from this SAME t.bg value in :root (see buildCss's
+   :root block), so it is a guaranteed exact match to the section's own
+   background for every site/palette, not an approximation. NOTE: the other
+   non-full-bleed photo wrappers listed in the superseded comment below
+   (.ws-hero-res-img, .ws-hero-tf-img, .ws-hero-bof-img, .ws-hero-ed-media,
+   .ws-hero-port-main/-stack-item) sit inside sections that ALSO set their
+   own background directly from the t.bg JS variable, not t.bgAlt -- they
+   likely carry this exact same close-but-not-exact imprecision, but are
+   untouched here since this round's confirmed report is specifically the
+   split hero; worth a dedicated look if reported again on a different hero
+   variant. */
 .ws-hero-split-media--cb{border-radius:0 0 0 ${t.radiusLg};}
 .ws-hero-headline--split{
   font-family:var(--font-heading);

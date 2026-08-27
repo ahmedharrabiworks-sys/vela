@@ -27,6 +27,9 @@ type AnalyticsData = {
   dailyVisitCounts: Record<string, number>;
   dailyConvAiHandled: Record<string, number>;
   dailyApptAiBooked: Record<string, number>;
+  hourlyLeadTouches: number[];
+  hourlyConvCounts: number[];
+  hourlyApptCounts: number[];
   channelBreakdown: ChannelRow[];
   websiteVisits: number;
 };
@@ -113,6 +116,19 @@ function TrendBadge({ change }: { change: ChangeResult | null }) {
   return <span className={`text-[11px] font-semibold ${color}`}>{sign}{change.pct}%</span>;
 }
 
+// Round M10 FIX 5 follow-up: 24 real UTC-hour labels for the "Today" chart
+// (see buildHourArray below) -- every 3rd hour labeled (0/3/6/9/...21) to
+// stay legible without crowding, matching the same "label every Nth point"
+// pattern already used for the 30d/90d cases below.
+function buildHourLabels(): string[] {
+  return Array.from({ length: 24 }, (_, h) => {
+    if (h % 3 !== 0) return "";
+    const period = h < 12 ? "am" : "pm";
+    const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${display}${period}`;
+  });
+}
+
 function buildLabels(days: number): string[] {
   return Array.from({ length: days }, (_, i) => {
     const d = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000);
@@ -128,7 +144,7 @@ function buildLabels(days: number): string[] {
 // viewBox uses preserveAspectRatio="none" (scales non-uniformly to fill its
 // container), so cursor position is converted from screen pixels to the
 // 800x140 viewBox coordinate space via the actual rendered bounding rect.
-function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: string[]; days: number; unitLabel: string }) {
+function LineChart({ data, labels, days, hourly = false, unitLabel }: { data: number[]; labels: string[]; days: number; hourly?: boolean; unitLabel: string }) {
   const { theme } = useTheme();
   // SVG stroke/fill are presentation attributes, invisible to the app's
   // class-based dark-mode system -- gridlines specifically need a real dark
@@ -163,7 +179,15 @@ function LineChart({ data, labels, days, unitLabel }: { data: number[]; labels: 
   const areaD = pts.length > 0 ? d + ` L ${pts[pts.length - 1].x} ${H - padBottom} L ${pts[0].x} ${H - padBottom} Z` : "";
   const hasData = data.some((v) => v > 0);
 
+  // Round M10 FIX 5 follow-up: index i is an hour-of-day (0-23), not a day
+  // offset, when hourly -- the original day-offset math would otherwise
+  // compute nonsense (future dates jumping a full day per hover step).
   const dateForIndex = (i: number): string => {
+    if (hourly) {
+      const period = i < 12 ? "am" : "pm";
+      const displayHour = i === 0 ? 12 : i > 12 ? i - 12 : i;
+      return `${displayHour}:00${period} today`;
+    }
     const dt = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000);
     return dt.toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" });
   };
@@ -332,8 +356,25 @@ export default function AnalyticsPage() {
     appointments: analytics?.dailyApptCounts ?? {},
   }), [analytics, range]);
 
-  const chartData = buildDayArray(dailyBySeries[series], days, baseOffset);
-  const chartLabels = buildLabels(days);
+  // Round M10 FIX 5 follow-up: real, confirmed cause of the "Today" chart
+  // showing a single dot with no line -- live data check found genuine
+  // intra-day spread (two real conversations ~12.5 hours apart today), so
+  // this was a real bucketing bug, not a correct single-point day. The
+  // day-level maps above collapse an entire day into ONE bucket by design
+  // (that's what makes the 7d/30d/90d line charts work), so a 1-day range
+  // could only ever plot one x-axis point from them -- a hand-rolled line
+  // chart can't show movement from one point no matter what. The server now
+  // also computes a real 24-hour breakdown for today specifically
+  // (hourlyLeadTouches/hourlyConvCounts/hourlyApptCounts); used here only
+  // for range==="1d", so 7d/30d/90d are completely unaffected.
+  const hourlyBySeries: Record<Series, number[]> = useMemo(() => ({
+    leads: analytics?.hourlyLeadTouches ?? Array(24).fill(0),
+    conversations: analytics?.hourlyConvCounts ?? Array(24).fill(0),
+    appointments: analytics?.hourlyApptCounts ?? Array(24).fill(0),
+  }), [analytics]);
+
+  const chartData = range === "1d" ? hourlyBySeries[series] : buildDayArray(dailyBySeries[series], days, baseOffset);
+  const chartLabels = range === "1d" ? buildHourLabels() : buildLabels(days);
 
   const totalLeads = analytics ? periodSum(leadsSourceForRange, days, baseOffset) : 0;
   const totalConvs = analytics ? periodSum(analytics.dailyConvCounts, days, baseOffset) : 0;
@@ -562,7 +603,7 @@ export default function AnalyticsPage() {
             {loading ? (
               <div className="h-40 bg-[#F9FAFB] rounded-xl animate-pulse" />
             ) : (
-              <LineChart data={chartData} labels={chartLabels} days={days} unitLabel={seriesToggles.find((s) => s.key === series)?.label.toLowerCase() ?? ""} />
+              <LineChart data={chartData} labels={chartLabels} days={days} hourly={range === "1d"} unitLabel={seriesToggles.find((s) => s.key === series)?.label.toLowerCase() ?? ""} />
             )}
           </div>
 

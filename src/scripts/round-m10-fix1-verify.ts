@@ -28,7 +28,12 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SU
   const cssRule = html.match(/\.ws-hero-split-media\{[^}]*\}/);
   console.log("Fresh .ws-hero-split-media rule:", cssRule ? cssRule[0] : "NOT FOUND (site may not use the split hero variant)");
 
+  const sectionRule = html.match(/\.ws-hero--split\{[^}]*\}/);
+  console.log("The section's own rule:", sectionRule ? sectionRule[0] : "NOT FOUND");
+
+  const bgVar = html.match(/(?<!-)--bg:[^;]+;/);
   const bgAltVar = html.match(/--bg-alt:[^;]+;/);
+  console.log("This site's real --bg token:", bgVar ? bgVar[0] : "NOT FOUND");
   console.log("This site's real --bg-alt token:", bgAltVar ? bgAltVar[0] : "NOT FOUND");
 
   const heroSection = html.match(/<section[^>]*id="hero"[\s\S]*?<\/section>/);
@@ -36,6 +41,8 @@ const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SU
   console.log("\nHero empty-slot element:", emptySlot ? emptySlot[0] : "NOT FOUND");
 
   console.log("\n=== DIAGNOSIS ===");
-  const stillHardcoded = /#0A2540|#1A1A1A|#050505|#1C1A17|#0A0A0A|#211F1C/.test(cssRule?.[0] ?? "");
-  console.log(stillHardcoded ? "FAIL: still hardcoded dark" : "PASS: no longer hardcoded, uses var(--bg-alt)");
+  const usesExactBg = /background:var\(--bg\);/.test(cssRule?.[0] ?? "");
+  const sectionUsesSameVar = (sectionRule?.[0] ?? "").includes(bgVar?.[0]?.match(/#[0-9A-Fa-f]{3,8}/)?.[0] ?? "___nomatch___");
+  console.log(usesExactBg ? "PASS: media wrapper uses var(--bg) directly" : "FAIL: media wrapper does not use var(--bg)");
+  console.log(sectionUsesSameVar ? "PASS: section's own background resolves to the exact same colour value" : "check manually -- could not confirm exact value match");
 })();

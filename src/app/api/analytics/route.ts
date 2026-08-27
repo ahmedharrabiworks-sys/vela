@@ -28,6 +28,11 @@ export async function GET() {
   // so the same payload doubles as "full real history" for the per-metric
   // detail view (Analytics redesign) without a second endpoint.
   const oneEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+  // UTC-day boundary, matching the same convention every other "today"
+  // calculation in this file already uses (created_at.slice(0,10) against
+  // ISO/UTC timestamps) -- used below for the hourly-today breakdown.
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
 
   // Real website-visit time series (site_visits, per-visit rows) — joined
   // via this tenant's website ids. Graceful: an empty/missing table (e.g.
@@ -135,6 +140,46 @@ export async function GET() {
     }
   });
   Object.entries(leadTouchSets).forEach(([date, set]) => { dailyLeadTouches[date] = set.size; });
+
+  // Round M10 FIX 5 follow-up: real, confirmed cause of the "Today" chart
+  // showing a single dot with no line -- live data check found genuine
+  // intra-day spread (two real conversations today, ~12.5 hours apart:
+  // 07:28 and 19:59 UTC), so this is a real bucketing bug, not "correctly
+  // just one point" -- the day-level maps above collapse an entire day into
+  // ONE bucket by design (needed for the 7d/30d/90d line charts), so a
+  // single-day range can only ever plot one x-axis point from them. Adds a
+  // SEPARATE, additive 24-length hourly breakdown covering ONLY today (UTC
+  // hour 0-23), used exclusively by the client's "1d"/Today chart view --
+  // 7d/30d/90d keep reading the unchanged day-level maps above. Leads use
+  // the same touch-based definition as dailyLeadTouches above (a lead
+  // created that hour OR referenced by a conversation created that hour),
+  // for the same consistency reason that fix already established.
+  const hourlyLeadTouchSets: Set<string>[] = Array.from({ length: 24 }, () => new Set<string>());
+  const hourlyConvCounts: number[] = Array(24).fill(0);
+  const hourlyApptCounts: number[] = Array(24).fill(0);
+  const todayStartMs = todayStart.getTime();
+  const tomorrowStartMs = todayStartMs + 24 * 60 * 60 * 1000;
+  const hourIndexIfToday = (iso: string): number | null => {
+    const ms = new Date(iso).getTime();
+    if (ms < todayStartMs || ms >= tomorrowStartMs) return null;
+    return Math.floor((ms - todayStartMs) / (60 * 60 * 1000));
+  };
+  leads.forEach((l) => {
+    const h = hourIndexIfToday(l.created_at);
+    if (h !== null) hourlyLeadTouchSets[h].add(l.id);
+  });
+  conversations.forEach((c) => {
+    const h = hourIndexIfToday(c.created_at);
+    if (h === null) return;
+    hourlyConvCounts[h] += 1;
+    if (c.lead_id) hourlyLeadTouchSets[h].add(c.lead_id);
+  });
+  appointments.forEach((a) => {
+    const h = hourIndexIfToday(a.created_at);
+    if (h !== null) hourlyApptCounts[h] += 1;
+  });
+  const hourlyLeadTouches = hourlyLeadTouchSets.map((s) => s.size);
+
   appointments.forEach((a) => {
     const date = a.created_at.slice(0, 10);
     dailyApptCounts[date] = (dailyApptCounts[date] ?? 0) + 1;
@@ -207,6 +252,9 @@ export async function GET() {
     dailyConvCounts,
     dailyApptCounts,
     dailyVisitCounts,
+    hourlyLeadTouches,
+    hourlyConvCounts,
+    hourlyApptCounts,
     dailyConvAiHandled,
     dailyApptAiBooked,
     channelBreakdown,
