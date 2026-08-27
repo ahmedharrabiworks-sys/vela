@@ -130,5 +130,15 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
     },
+    // ── 10. Round M11 — live re-verification.
+    {
+      name: "round-m11",
+      testMatch: /round-m11-.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 900 },
+        storageState: "e2e/.auth/user.json",
+      },
+    },
   ],
 });

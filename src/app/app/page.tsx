@@ -12,11 +12,6 @@ type Appt = { id: string; time: string; name: string; service: string; status: s
 // FIX 6 (round Q): change is now always a real ChangeInfo (pct and/or
 // isNew), never undefined -- see lib/stats.ts's ChangeInfo for why.
 type KPI  = { label: string; value: string; change?: ChangeInfo };
-// Round M5 FIX 7 (Dashboard redesign): a compact merged feed of real events
-// already fetched for the Conversations/Appointments widgets -- no new
-// queries, just a derived, timestamp-sorted view of data already in state.
-type ActivityItem = { id: string; type: "conversation" | "appointment"; label: string; sub: string; time: string; ts: number };
-type LeadPipeline = { new: number; contacted: number; qualified: number; booked: number; client: number };
 
 function timeAgo(ts: string | null, t: (key: string) => string) {
   if (!ts) return "";
@@ -41,12 +36,11 @@ export default function DashboardPage() {
   const [kbScore, setKbScore]       = useState(100); // default high → no flash before load
   const [kbBannerDismissed, setKbBannerDismissed] = useState(false);
   const [aiResolutionRate, setAiResolutionRate] = useState<number | null>(null);
-  // Round M5 FIX 7 (Dashboard redesign): AI Activity panel + Lead Pipeline
-  // bar + Recent Activity timeline -- all real, all sourced from data
-  // already computed by getDashboardStats/already fetched for other widgets.
+  // Round M11 FIX B: Lead Pipeline and Recent Activity are gone (3 redesign
+  // rounds rejected, removed rather than attempted a 4th) -- needsHumanCount
+  // is the one real signal from that removed area worth keeping, now shown
+  // as its own cell in the KPI band instead of a dedicated section.
   const [needsHumanCount, setNeedsHumanCount] = useState(0);
-  const [leadPipeline, setLeadPipeline] = useState<LeadPipeline>({ new: 0, contacted: 0, qualified: 0, booked: 0, client: 0 });
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     setBannerDismissed(localStorage.getItem("vela_onboarding_banner_dismissed") === "true");
@@ -86,11 +80,7 @@ export default function DashboardPage() {
     // Conversations widget.
     const [apptRes, convRes, configRes] = await Promise.all([
       db.from("appointments")
-        // Round M5 FIX 7: created_at added for the Recent Activity timeline
-        // (real "when was this appointment booked" signal) -- purely
-        // additive to the projection, does not change the filter/order/
-        // limit or any existing behavior of this query.
-        .select("id, service_name, datetime, status, created_at, leads(name)")
+        .select("id, service_name, datetime, status, leads(name)")
         .eq("tenant_id", tenantId)
         .is("deleted_at", null)
         .neq("status", "cancelled")
@@ -130,7 +120,6 @@ export default function DashboardPage() {
       aiResolutionRate?: number | null;
       leadsTodayChange?: ChangeInfo; appointmentsTodayChange?: ChangeInfo; messagesTodayChange?: ChangeInfo; callsTodayChange?: ChangeInfo;
       needsHumanCount?: number;
-      leadPipeline?: LeadPipeline;
     } | null = null;
     try {
       const statsRes = await fetch("/api/stats");
@@ -146,7 +135,6 @@ export default function DashboardPage() {
     ]);
     setAiResolutionRate(statsResult?.aiResolutionRate ?? null);
     setNeedsHumanCount(statsResult?.needsHumanCount ?? 0);
-    setLeadPipeline(statsResult?.leadPipeline ?? { new: 0, contacted: 0, qualified: 0, booked: 0, client: 0 });
 
     // Conversations
     const rawConvs = (convRes.data ?? []) as Array<{
@@ -176,7 +164,7 @@ export default function DashboardPage() {
     setConvs(enriched);
 
     // Appointments
-    type ApptRaw = { id: string; service_name: string | null; datetime: string; status: string; created_at?: string; leads?: { name: string | null } | null };
+    type ApptRaw = { id: string; service_name: string | null; datetime: string; status: string; leads?: { name: string | null } | null };
     const rawAppts = (apptRes.data ?? []) as ApptRaw[];
     setAppts(
       rawAppts.map((a) => ({
@@ -192,32 +180,6 @@ export default function DashboardPage() {
         status: a.status,
       }))
     );
-
-    // Round M5 FIX 7: Recent Activity timeline -- a real, timestamp-sorted
-    // merge of the two event feeds already fetched above (conversations by
-    // last_message_at, appointments by created_at = when the booking was
-    // actually made, not its future scheduled slot). No new queries.
-    const convActivity: ActivityItem[] = rawConvs
-      .filter((c) => !!c.last_message_at)
-      .map((c) => ({
-        id: `conv-${c.id}`,
-        type: "conversation" as const,
-        label: c.customer_name ?? t("dashboard.unknown"),
-        sub: t("dashboard.activityNewMessage"),
-        time: timeAgo(c.last_message_at, t),
-        ts: new Date(c.last_message_at as string).getTime(),
-      }));
-    const apptActivity: ActivityItem[] = rawAppts
-      .filter((a) => !!a.created_at)
-      .map((a) => ({
-        id: `appt-${a.id}`,
-        type: "appointment" as const,
-        label: a.leads?.name ?? t("dashboard.unknown"),
-        sub: a.service_name ?? t("dashboard.defaultService"),
-        time: timeAgo(a.created_at as string, t),
-        ts: new Date(a.created_at as string).getTime(),
-      }));
-    setActivity([...convActivity, ...apptActivity].sort((x, y) => y.ts - x.ts).slice(0, 6));
 
     // Onboarding + KB score
     const cfg = configRes.data as { instagram_connected?: boolean; whatsapp_connected?: boolean; knowledge_base?: string } | null;
@@ -281,8 +243,6 @@ export default function DashboardPage() {
         onDismissKbBanner={dismissKbBanner}
         aiResolutionRate={aiResolutionRate}
         needsHumanCount={needsHumanCount}
-        leadPipeline={leadPipeline}
-        activity={activity}
       />
     </>
   );

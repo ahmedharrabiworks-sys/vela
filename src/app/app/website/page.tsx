@@ -447,7 +447,14 @@ function mk(el,si,f,ii,sk){
   el.addEventListener('click',function(e){e.stopPropagation();e.preventDefault();show(el,si,f,ii,sk);});
 }
 /* ── Field definitions ─────────────────────────────────────────────────── */
-var HERO=[{sel:'[class*="ws-hero-headline"]',field:'headline'},{sel:'[class*="ws-hero-sub"]',field:'subheadline'},{sel:'.ws-btn-accent',field:'ctaPrimary'},{sel:'.ws-btn-ghost',field:'ctaSecondary'},{sel:'.ws-btn-outline',field:'ctaSecondary'}];
+/* Round M11 FIX C: headline/subheadline/eyebrow selectors rewritten to
+   cover every real hero variant -- see the matching comment in
+   website-renderer.ts's buildStyleReapplyScript for the full root cause
+   (13 of 19 hero variants use an abbreviated "-XX-h"/"-XX-sub"/"-XX-eyebrow"
+   class pattern that never matched the old substring selectors). This copy
+   of D must stay in sync with that one -- see the note where mk() is
+   defined above for why two copies exist at all. */
+var HERO=[{sel:'h1[class^="ws-hero-"]',field:'headline'},{sel:'[class*="ws-hero-sub"],[class$="-sub"]',field:'subheadline'},{sel:'[class$="-eyebrow"],.ws-hero-chip',field:'eyebrow'},{sel:'.ws-btn-accent',field:'ctaPrimary'},{sel:'.ws-btn-ghost',field:'ctaSecondary'},{sel:'.ws-btn-outline',field:'ctaSecondary'}];
 var D={};
 D['hero']=D['hero-fullbleed']=D['hero-split']=D['hero-minimal']=HERO;
 D['about']=D['about-story']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'p[style*="color:var(--color-muted)"]',field:'body'},{items:'.ws-bullet',arrayField:'bullets',fields:[{sel:'.ws-bullet-title',field:'title'},{sel:'.ws-bullet-text',field:'text'}]}];
@@ -464,9 +471,42 @@ D['faq']=D['faq-accordion']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyeb
 D['cta_banner']=D['cta-band']=[{sel:'.ws-cta-headline',field:'headline'},{sel:'.ws-cta-sub',field:'sub'},{sel:'.ws-btn-white',field:'ctaText'}];
 D['booking']=D['contact-block']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'button[type="submit"]',field:'ctaText'},{sel:'.ws-contact-value[data-field="phone"]',field:'phone'},{sel:'.ws-contact-value[data-field="email"]',field:'email'},{sel:'.ws-contact-value[data-field="address"]',field:'address'},{sel:'.ws-contact-value[data-field="hours"]',field:'hours'}];
 D['footer']=[{sel:'.ws-footer-tag',field:'tagline'},{sel:'.ws-footer-bottom',field:'copyright'}];
-D['gallery']=D['gallery-grid']=D['logo-strip']=D['product-grid']=[];
-D['feature-showcase']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-showcase-item',arrayField:'items',fields:[{sel:'.ws-showcase-title',field:'title'},{sel:'.ws-showcase-desc',field:'description'}]}];
-D['integration-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-intg-tile',arrayField:'integrations',fields:[{sel:'.ws-intg-name',field:'name'}]}];
+D['gallery']=D['gallery-grid']=[];
+/* Round M11 FIX C: two pre-existing entries never matched the real rendered
+   HTML -- see the matching comment in website-renderer.ts for the full
+   detail (feature-showcase's item wrapper is .ws-showcase-row, not
+   .ws-showcase-item; integration-grid's real classes/array field are
+   .ws-integration-tile/-name and c.items, not .ws-intg-tile/-name and
+   c.integrations). product-grid/logo-strip were registered as deliberately
+   empty but actually render real, previously-unwired text. */
+D['feature-showcase']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-showcase-row',arrayField:'items',fields:[{sel:'.ws-showcase-title',field:'title'},{sel:'.ws-showcase-desc',field:'description'}]}];
+D['integration-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-integration-tile',arrayField:'items',fields:[{sel:'.ws-integration-name',field:'name'}]}];
+D['product-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-product-card',arrayField:'items',fields:[{sel:'.ws-product-name',field:'title'},{sel:'.ws-product-desc',field:'description'},{sel:'.ws-product-price',field:'price'},{sel:'.ws-product-badge',field:'badge'}]}];
+/* logo-strip: only the headline -- c.names is a plain string array, which
+   the save handler's itemIndex+subField model doesn't support (it assumes
+   every array item is an object); out of scope for this coverage fix. */
+D['logo-strip']=[{sel:'.ws-logo-strip-label',field:'headline'}];
+/* Round M11 FIX C: 15 section types added across the Phase 2b/2c/2d
+   component pools were never added to D at all -- every real text element
+   in all of them was completely unclickable. See website-renderer.ts's
+   copy for the full reasoning on which fields are deliberately excluded
+   (icon+text elements, composite/concatenated fields, nested-child-element
+   fields -- all would corrupt on save's el.textContent=value). */
+D['testimonial-single-quote']=[{sel:'.ws-tsq-quote',field:'quote'},{sel:'.ws-tsq-name',field:'name'},{sel:'.ws-tsq-role',field:'role'}];
+D['testimonial-grid']=[{sel:'.ws-heading',field:'headline'},{sel:'.ws-eyebrow',field:'eyebrow'},{items:'.ws-tgrid-card',arrayField:'items',fields:[{sel:'.ws-tgrid-quote',field:'quote'},{sel:'.ws-tgrid-name',field:'name'},{sel:'.ws-tgrid-role',field:'role'}]}];
+D['comparison-table']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{items:'.ws-cmp-row',arrayField:'rows',fields:[{sel:'.ws-cmp-feat',field:'feature'},{sel:'.ws-cmp-us',field:'ours'},{sel:'.ws-cmp-them',field:'theirs'}]}];
+D['agent-card']=[{sel:'.ws-agent-name',field:'name'},{sel:'.ws-agent-title',field:'title'},{sel:'.ws-agent-bio',field:'bio'}];
+D['press-quote-band']=[{sel:'.ws-pqb-quote',field:'quote'},{sel:'.ws-pqb-source',field:'source'},{sel:'.ws-pqb-pub',field:'publication'}];
+D['trainer-showcase']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{items:'.ws-trainer-card',arrayField:'trainers',fields:[{sel:'.ws-trainer-name',field:'name'},{sel:'.ws-trainer-spec',field:'specialty'},{sel:'.ws-trainer-bio',field:'bio'}]}];
+D['trust-badges-band']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{items:'.ws-tbadge',arrayField:'badges',fields:[{sel:'.ws-tbadge-val',field:'value'},{sel:'.ws-tbadge-lbl',field:'label'}]}];
+D['multi-step-form']=[{sel:'.ws-heading',field:'headline'},{sel:'button[type="submit"]',field:'submitLabel'}];
+D['appointment-form']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{sel:'button[type="submit"]',field:'submitLabel'}];
+D['valuation-form']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{sel:'button[type="submit"]',field:'submitLabel'}];
+D['property-listings-grid']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{items:'.ws-prop-card',arrayField:'listings',fields:[{sel:'.ws-prop-badge',field:'badge'},{sel:'.ws-prop-location',field:'location'},{sel:'.ws-prop-title',field:'title'},{sel:'.ws-prop-price',field:'price'}]}];
+D['treatment-gallery']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{items:'.ws-treat-card',arrayField:'services',fields:[{sel:'.ws-treat-title',field:'title'},{sel:'.ws-treat-desc',field:'description'},{sel:'.ws-treat-price',field:'price'}]}];
+D['portfolio-grid']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{items:'.ws-port-card',arrayField:'projects',fields:[{sel:'.ws-port-meta',field:'category'},{sel:'.ws-port-title',field:'title'},{sel:'.ws-port-desc',field:'description'}]}];
+D['membership-plans-display']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{sel:'.ws-subheading',field:'subheadline'},{items:'.ws-mpdisplay-card',arrayField:'tiers',fields:[{sel:'.ws-mpdisplay-name',field:'name'},{sel:'.ws-mpdisplay-price',field:'price'}]}];
+D['membership-form']=[{sel:'.ws-eyebrow',field:'eyebrow'},{sel:'.ws-heading',field:'headline'},{sel:'button[type="submit"]',field:'submitLabel'},{items:'.ws-mem-tier',arrayField:'tiers',fields:[{sel:'.ws-mem-tier-name',field:'name'}]}];
 /* ── Process sections ──────────────────────────────────────────────────── */
 function proc(el,si,sec){
   var defs=D[sec.type];if(!defs)return;
