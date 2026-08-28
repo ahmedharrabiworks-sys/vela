@@ -542,7 +542,7 @@ function S6({ onCTA, onClose }: { onCTA: () => void; onClose: () => void }) {
             boxShadow: "0 0 60px rgba(255,107,53,0.45), 0 8px 32px rgba(255,51,102,0.3)",
           }}
         >
-          Start Free Trial
+          Get Started
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -565,7 +565,7 @@ function S6({ onCTA, onClose }: { onCTA: () => void; onClose: () => void }) {
         className="mt-10 flex items-center gap-6 text-white/20 text-sm"
       >
         <span>✓ No credit card</span>
-        <span>✓ 14-day free trial</span>
+        <span>✓ Set up in minutes</span>
         <span>✓ Cancel anytime</span>
       </motion.div>
     </div>

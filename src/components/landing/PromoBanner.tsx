@@ -32,7 +32,7 @@ export default function PromoBanner() {
           href="/auth/signup"
           className="shrink-0 text-base font-bold px-6 py-2.5 rounded-lg bg-white text-[#FF6B35] hover:bg-white/90 transition-colors whitespace-nowrap"
         >
-          Start 7-Day Free Trial
+          Get Started
         </Link>
       </div>
     </div>

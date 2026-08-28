@@ -23,12 +23,12 @@ const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
 
 const FAQ_ITEMS = [
   {
-    q: "Is there a free trial?",
-    a: "Yes. Try Vela free for 7 days, no commitment required. Explore the full product before your first charge. Cancel anytime.",
+    q: "Do I need a credit card to sign up?",
+    a: "No. Creating your Vela account doesn't require a credit card. Explore the product and get set up first.",
   },
   {
-    q: "Do I need a credit card to start?",
-    a: "Yes. We ask for your card to start the trial, but you won't be charged until day 8. Cancel anytime before then and pay nothing.",
+    q: "Can I cancel anytime?",
+    a: "Yes. There are no contracts or cancellation fees. You can cancel directly from your billing settings at any time.",
   },
   {
     q: "Can I switch plans?",

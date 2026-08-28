@@ -503,7 +503,6 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
     blocks: [
       { type: "p", text: "For privacy related questions, to exercise any of the rights described in this Privacy Policy, or to request a data processing addendum, contact us at velaOsSupport@gmail.com. This is currently our general customer support contact and handles privacy related questions as well, since a dedicated privacy inbox has not yet been established." },
       { type: "p", text: "Vela currently operates from Germany. As of the date of this Privacy Policy, Vela is not incorporated as a separate legal entity and does not have a registered business address to publish. We are not going to display a placeholder company name or address here, or invent one, in place of that real information. Once Vela is incorporated, this section will be updated with the operating entity's legal name and registered business address." },
-      { type: "note", text: "We have not appointed a Data Protection Officer or an EU or UK representative under Articles 27 or 37 of the GDPR, and do not currently hold any data protection or security certification. If your jurisdiction legally requires us to have appointed a representative or DPO for the processing described in this Privacy Policy, please contact us using the details above so we can address this directly, since we would rather hear from you than have this be a silent gap." },
     ],
   },
 ];
