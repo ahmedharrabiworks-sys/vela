@@ -596,7 +596,7 @@
         },
         {
           "q": "Les données de mes clients sont-elles en sécurité ?",
-          "a": "Toutes les données sont stockées chiffrées dans Supabase avec Row Level Security. Vos données sont complètement isolées des autres entreprises sur la plateforme. Nous ne partageons ni ne vendons jamais les données clients. La conformité RGPD est intégrée."
+          "a": "Toutes les données sont stockées chiffrées dans Supabase avec Row Level Security. Vos données sont complètement isolées des autres entreprises sur la plateforme. Nous ne partageons ni ne vendons jamais les données clients. Vela est conçu en tenant compte de la protection des données et des principes du RGPD."
         },
         {
           "q": "Puis-je annuler mon abonnement ?",

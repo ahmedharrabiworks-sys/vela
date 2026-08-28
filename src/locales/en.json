@@ -588,7 +588,7 @@
         },
         {
           "q": "Is my customer data safe?",
-          "a": "All data is stored encrypted in Supabase with Row Level Security. Meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. GDPR and data protection compliance is built in."
+          "a": "All data is stored encrypted in Supabase with Row Level Security. Meaning your data is completely isolated from other businesses on the platform. We never share or sell customer data. Vela is designed with data protection and GDPR considerations in mind."
         },
         {
           "q": "Can I cancel my subscription?",

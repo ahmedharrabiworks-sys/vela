@@ -596,7 +596,7 @@
         },
         {
           "q": "Sind meine Kundendaten sicher?",
-          "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert. Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir teilen oder verkaufen niemals Kundendaten. DSGVO-Konformität ist eingebaut."
+          "a": "Alle Daten werden verschlüsselt in Supabase mit Row Level Security gespeichert. Ihre Daten sind vollständig von anderen Unternehmen auf der Plattform isoliert. Wir teilen oder verkaufen niemals Kundendaten. Vela wurde mit Blick auf Datenschutz und die Grundsätze der DSGVO entwickelt."
         },
         {
           "q": "Kann ich mein Abonnement kündigen?",
