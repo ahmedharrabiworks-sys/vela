@@ -4,8 +4,20 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import CountUp from "@/components/ui/CountUp";
 
-const CHANNEL_COLORS: Record<string, string> = { instagram: "#E1306C", whatsapp: "#25D366", website: "#FF6B35" };
-const STATUS_COLORS: Record<string, string> = { confirmed: "#16A34A", pending: "#FF6B35", cancelled: "#DC2626" };
+// Round M12 -- final visual pass, concrete references: Linear's app
+// (linear.app) and Vercel's dashboard (vercel.com/dashboard). Both are
+// near-monochrome -- no colored badges, no icon-in-circle avatars, no
+// bordered/shadowed cards for plain data, hairline dividers instead of
+// boxes, one accent color reserved for the one or two things that are
+// genuinely live/actionable. Channel and appointment status used to be
+// colored dots/text (Instagram pink, WhatsApp green, confirmed green/
+// pending orange/cancelled red) -- pure decoration once you look at what
+// it was actually communicating (which channel a message came from is
+// metadata, not urgency). Replaced with plain quiet text labels; the ONE
+// color that survives is the orange "isNew" dot on an unread conversation,
+// because that is real, current status a business owner needs to notice
+// right now -- exactly the "live indicator" carve-out.
+const CHANNEL_LABEL: Record<string, string> = { instagram: "Instagram", whatsapp: "WhatsApp", website: "Website" };
 
 // Round M8 FIX 6: full redesign. The previous version (icon-in-colored-
 // square per metric, five separate bordered cards, a second row of two
@@ -35,12 +47,12 @@ const STATUS_COLORS: Record<string, string> = { confirmed: "#16A34A", pending: "
 function ChangeText({ change }: { change?: { pct?: number; newCount?: number } }) {
   if (!change) return null;
   if (change.newCount !== undefined) {
-    return <span className="text-green-600 dark:text-green-400">+{change.newCount} new</span>;
+    return <span className="font-medium text-emerald-700/80 dark:text-emerald-400/80">+{change.newCount} new</span>;
   }
   if (change.pct === undefined) return null;
-  const color = change.pct > 0 ? "text-green-600 dark:text-green-400" : change.pct < 0 ? "text-red-500 dark:text-red-400" : "text-[#9CA3AF] dark:text-[#6E6E76]";
+  const color = change.pct > 0 ? "text-emerald-700/80 dark:text-emerald-400/80" : change.pct < 0 ? "text-red-600/70 dark:text-red-400/70" : "text-[#9CA3AF] dark:text-[#6E6E76]";
   const sign = change.pct > 0 ? "+" : "";
-  return <span className={color}>{sign}{change.pct}%</span>;
+  return <span className={`font-medium ${color}`}>{sign}{change.pct}%</span>;
 }
 
 export type DashUIConv = { id: string; customer_name: string | null; channel: string; preview: string; time: string; isNew: boolean };
@@ -80,7 +92,7 @@ export default function DashboardPageUI({
   const displayName = firstName || t("greeting.there");
 
   return (
-    <div className="max-w-6xl mx-auto pb-24 space-y-10">
+    <div className="max-w-6xl mx-auto pb-24 space-y-12">
 
       {/* KB low-score banner */}
       {showKbBanner && (
@@ -141,41 +153,48 @@ export default function DashboardPageUI({
         </div>
       )}
 
-      {/* ── Header: greeting + primary metrics band, one composition ── */}
+      {/* ── Header: greeting + primary metrics band, one composition ──
+          Round M12: real reference implementation, Linear + Vercel
+          dashboard. Both run almost entirely on typography and space --
+          no card, no shadow, no fill color anywhere in this whole section.
+          Whitespace increased throughout (mb-10/mb-4 instead of mb-8/mb-3.5,
+          pb-9/gap-y-9 instead of pb-7/gap-y-7) so the band reads as composed
+          breathing room, not just "less stuff." */}
       <div>
-        <div className="flex items-baseline justify-between gap-4 flex-wrap mb-8">
+        <div className="flex items-baseline justify-between gap-4 flex-wrap mb-10">
           <h1 className="text-[26px] leading-tight font-semibold tracking-tight text-[#111111] dark:text-white">
             {loading ? t("common.loading") : `${t(greetKey)}, ${displayName}`}
           </h1>
           <p className="text-sm text-[#9CA3AF] dark:text-[#6E6E76]">{bName ? `${bName} · ` : ""}{today}</p>
         </div>
 
-        {/* Round M9 FIX 7: the metrics band already labels each figure
-            "X Today" individually, but that lives in small 10.5px uppercase
-            tracked text easy to skim past -- direct feedback was that the
-            top numbers' time period wasn't unambiguous at a glance. One
-            small pill above the whole band, not repeated per-metric, so it
-            reads as "this whole row is live/today" without adding visual
-            noise to numbers that already carry their own label. */}
-        <div className="flex items-center gap-1.5 mb-3.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+        {/* The ONE live-status use of Vela orange on this whole page -- this
+            dot is real, current status ("these numbers are moving right
+            now"), which is exactly the carve-out for accent color. It was
+            green before, which had drifted into decoration (green usually
+            means "success/confirmed," not "this is orange-brand Vela's
+            live indicator"). */}
+        <div className="flex items-center gap-1.5 mb-4">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] animate-pulse" />
           <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76]">
             {t("dashboard.todayLive")}
           </span>
         </div>
 
-        {/* Metrics band -- no cards, no icon badges; typography and a single
-            hairline rule carry the whole thing. Grid so it degrades cleanly
-            to 2 columns at 375px without any divider math breaking.
-            6 columns (was 5): Round M11 FIX B moved "Escalated to Human" in
-            here from the now-removed AI Activity card -- see this file's top
-            comment for the full reasoning. */}
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-x-6 gap-y-7 pb-7 border-b border-[#EDEDEF] dark:border-[#232328]">
+        {/* Metrics band -- the numbers are the ONLY thing with real visual
+            weight on the entire page (36px, was 32px), always monochrome
+            (the amber "escalated" conditional is gone -- a plain stat
+            number changing color by severity is exactly the kind of
+            decorative color Linear/Vercel dashboards don't do; the number
+            itself, sitting in a dedicated cell with a plain label, already
+            says everything it needs to). Comparison badges stay small and
+            quiet underneath -- real signal, never bold or badge-shaped. */}
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-x-8 gap-y-9 pb-9 border-b border-[#EDEDEF] dark:border-[#232328]">
           {loading
             ? [1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="animate-pulse">
                   <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-16 mb-3" />
-                  <div className="h-8 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-12" />
+                  <div className="h-9 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-12" />
                 </div>
               ))
             : kpis.map((k) => {
@@ -183,14 +202,14 @@ export default function DashboardPageUI({
                 const isNumeric = Number.isFinite(numeric) && String(numeric) === k.value.trim();
                 return (
                   <div key={k.label} className="min-w-0">
-                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-2 truncate">
+                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-2.5 truncate">
                       {t(`dashboard.${k.label}`)}
                     </p>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-[32px] leading-none font-semibold tracking-tight text-[#111111] dark:text-white tabular-nums">
+                      <p className="text-[36px] leading-none font-semibold tracking-tight text-[#111111] dark:text-white tabular-nums">
                         {isNumeric ? <CountUp value={numeric} /> : k.value}
                       </p>
-                      <span className="text-[11px] font-semibold shrink-0"><ChangeText change={k.change} /></span>
+                      <span className="text-[11px] shrink-0"><ChangeText change={k.change} /></span>
                     </div>
                   </div>
                 );
@@ -198,13 +217,13 @@ export default function DashboardPageUI({
 
           {!loading && (
             <div className="min-w-0">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-2 truncate">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-2.5 truncate">
                 {t("dashboard.aiResolutionRate")}
               </p>
               {aiResolutionRate === null ? (
                 <p className="text-sm text-[#9CA3AF] dark:text-[#6E6E76] pt-2.5">{t("dashboard.noDataYet")}</p>
               ) : (
-                <p className="text-[32px] leading-none font-semibold tracking-tight text-[#111111] dark:text-white tabular-nums">
+                <p className="text-[36px] leading-none font-semibold tracking-tight text-[#111111] dark:text-white tabular-nums">
                   <CountUp value={aiResolutionRate} suffix="%" />
                 </p>
               )}
@@ -213,13 +232,10 @@ export default function DashboardPageUI({
 
           {!loading && (
             <div className="min-w-0">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-2 truncate">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76] mb-2.5 truncate">
                 {t("dashboard.escalatedToHuman")}
               </p>
-              <p
-                className="text-[32px] leading-none font-semibold tracking-tight tabular-nums text-[#111111] dark:text-white"
-                style={needsHumanCount > 0 ? { color: "#D97706" } : undefined}
-              >
+              <p className="text-[36px] leading-none font-semibold tracking-tight tabular-nums text-[#111111] dark:text-white">
                 <CountUp value={needsHumanCount} />
               </p>
             </div>
@@ -227,12 +243,25 @@ export default function DashboardPageUI({
         </div>
       </div>
 
-      {/* ── Main grid: Conversations + Appointments ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      {/* ── Main grid: Conversations + Appointments ──
+          Round M12: this is the section the reference direction calls out
+          by name -- "clean lists/tables, not bordered cards with icons,
+          closer to how Linear renders an issue list." Concretely: the
+          rounded-2xl border card wrapper is gone entirely (both lists now
+          sit directly on the page background, only a hairline divide-y
+          between rows), the circular colored-ring avatar is gone (it was
+          the single most "icon-in-a-box" element on the page), and channel/
+          appointment-status both switched from saturated color to plain
+          quiet text -- neither is genuinely urgent status, both are
+          metadata, and metadata doesn't need a color. A vertical hairline
+          between the two columns (lg+ only, where they actually sit side
+          by side) replaces the two separate card boundaries with one quiet
+          shared edge, closer to a real split view than two floating boxes. */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-10 gap-y-10">
 
         {/* Conversations — 2 cols */}
         <div className="lg:col-span-2 min-w-0">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76]">
               {t("dashboard.recentMessages")}
             </h2>
@@ -240,58 +269,53 @@ export default function DashboardPageUI({
               {t("dashboard.viewAll")} →
             </a>
           </div>
-          <div className="rounded-2xl border border-[#EDEDEF] dark:border-[#232328] overflow-hidden">
-            {loading ? (
-              <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-3 px-5 py-4 animate-pulse">
-                    <div className="w-7 h-7 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E24] shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-2/3" />
-                      <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-4/5" />
-                    </div>
+          {loading ? (
+            <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-4 animate-pulse">
+                  <div className="flex-1 space-y-2">
+                    <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-2/3" />
+                    <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-4/5" />
                   </div>
-                ))}
-              </div>
-            ) : convs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB] mb-1">{t("dashboard.noConversations")}</p>
-                <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76] mb-4">{t("dashboard.connectToReceive")}</p>
-                <Link href={`${basePath}/channels`} className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>
-                  {t("dashboard.connectChannel")}
-                </Link>
-              </div>
-            ) : (
-              <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
-                {convs.map((c) => (
-                  <a key={c.id} href={`${basePath}/conversations`} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAFA] dark:hover:bg-[#16161A] transition-colors cursor-pointer">
-                    <div className="relative shrink-0">
-                      <div className="w-7 h-7 rounded-full bg-[#F3F4F6] dark:bg-[#1E1E24] flex items-center justify-center text-[11px] font-semibold text-[#374151] dark:text-[#D1D5DB]">
-                        {(c.customer_name ?? "?")[0].toUpperCase()}
-                      </div>
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0F0F12]"
-                        style={{ background: CHANNEL_COLORS[c.channel] || "#9CA3AF" }} />
+                </div>
+              ))}
+            </div>
+          ) : convs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB] mb-1">{t("dashboard.noConversations")}</p>
+              <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76] mb-4">{t("dashboard.connectToReceive")}</p>
+              <Link href={`${basePath}/channels`} className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vp-color)" }}>
+                {t("dashboard.connectChannel")}
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
+              {convs.map((c) => (
+                <a key={c.id} href={`${basePath}/conversations`} className="flex items-center gap-4 py-4 -mx-3 px-3 rounded-lg hover:bg-[#FAFAFA] dark:hover:bg-[#16161A] transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[13.5px] truncate ${c.isNew ? "font-semibold text-[#111111] dark:text-white" : "font-medium text-[#374151] dark:text-[#D1D5DB]"}`}>
+                        {c.customer_name ?? t("dashboard.unknown")}
+                      </span>
+                      {/* The one accent color surviving in this list -- a
+                          real unread signal, not decoration. */}
+                      {c.isNew && <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] shrink-0" />}
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-[#C4C4CA] dark:text-[#4A4A52] shrink-0">
+                        {CHANNEL_LABEL[c.channel] ?? c.channel}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[13px] truncate ${c.isNew ? "font-semibold text-[#111111] dark:text-white" : "font-medium text-[#374151] dark:text-[#D1D5DB]"}`}>
-                          {c.customer_name ?? t("dashboard.unknown")}
-                        </span>
-                        {c.isNew && <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] shrink-0" />}
-                      </div>
-                      <p className="text-[11.5px] text-[#9CA3AF] dark:text-[#6E6E76] truncate mt-0.5">{c.preview || t("dashboard.noMessages")}</p>
-                    </div>
-                    <span className="text-[10.5px] text-[#C4C4CA] dark:text-[#4A4A52] shrink-0">{c.time}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
+                    <p className="text-[12px] text-[#9CA3AF] dark:text-[#6E6E76] truncate mt-1">{c.preview || t("dashboard.noMessages")}</p>
+                  </div>
+                  <span className="text-[11px] text-[#9CA3AF] dark:text-[#6E6E76] shrink-0 tabular-nums">{c.time}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Appointments — 3 cols */}
-        <div className="lg:col-span-3 min-w-0">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-3 min-w-0 lg:border-l lg:border-[#EDEDEF] lg:dark:border-[#232328] lg:pl-10">
+          <div className="flex items-center justify-between mb-5">
             <h2 className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-[#6E6E76]">
               {t("dashboard.todayAppointments")}
             </h2>
@@ -299,41 +323,45 @@ export default function DashboardPageUI({
               {t("dashboard.viewAll")} →
             </a>
           </div>
-          <div className="rounded-2xl border border-[#EDEDEF] dark:border-[#232328] overflow-hidden">
-            {loading ? (
-              <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
-                    <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-10" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-1/2" />
-                      <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-1/3" />
-                    </div>
+          {loading ? (
+            <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-4 animate-pulse">
+                  <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-2.5 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-1/2" />
+                    <div className="h-2 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded w-1/3" />
                   </div>
-                ))}
-              </div>
-            ) : appts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB] mb-1">{t("dashboard.noAppointments")}</p>
-                <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76]">{t("dashboard.appointmentsHint")}</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
-                {appts.map((a) => (
-                  <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#FAFAFA] dark:hover:bg-[#16161A] transition-colors cursor-pointer">
-                    <span className="text-[11.5px] font-medium text-[#9CA3AF] dark:text-[#6E6E76] w-11 shrink-0 tabular-nums">{a.time}</span>
+                </div>
+              ))}
+            </div>
+          ) : appts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB] mb-1">{t("dashboard.noAppointments")}</p>
+              <p className="text-xs text-[#9CA3AF] dark:text-[#6E6E76]">{t("dashboard.appointmentsHint")}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#F3F4F6] dark:divide-[#1E1E24]">
+              {appts.map((a) => {
+                // Cancelled reads as dimmed, not colored -- the same
+                // "typography/opacity carries meaning" treatment Linear
+                // uses for a done/cancelled issue, instead of a red label.
+                const cancelled = a.status === "cancelled";
+                return (
+                  <div key={a.id} className={`flex items-center gap-4 py-4 -mx-3 px-3 rounded-lg hover:bg-[#FAFAFA] dark:hover:bg-[#16161A] transition-colors cursor-pointer ${cancelled ? "opacity-45" : ""}`}>
+                    <span className="text-[12px] font-medium text-[#9CA3AF] dark:text-[#6E6E76] w-11 shrink-0 tabular-nums">{a.time}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-[#111111] dark:text-white truncate">{a.name}</p>
-                      <p className="text-[11.5px] text-[#9CA3AF] dark:text-[#6E6E76] truncate mt-0.5">{a.service}</p>
+                      <p className={`text-[13.5px] font-semibold text-[#111111] dark:text-white truncate ${cancelled ? "line-through" : ""}`}>{a.name}</p>
+                      <p className="text-[12px] text-[#9CA3AF] dark:text-[#6E6E76] truncate mt-0.5">{a.service}</p>
                     </div>
-                    <span className="text-[10.5px] font-medium capitalize shrink-0" style={{ color: STATUS_COLORS[a.status] || "#9CA3AF" }}>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-[#9CA3AF] dark:text-[#6E6E76] shrink-0">
                       {a.status}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

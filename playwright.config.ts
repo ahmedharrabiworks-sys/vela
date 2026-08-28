@@ -140,5 +140,16 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
     },
+    // ── 11. Round M12 — live re-verification. Tests set their own viewport
+    // per-case (1440/1280/375, light/dark).
+    {
+      name: "round-m12",
+      testMatch: /round-m12-.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 900 },
+        storageState: "e2e/.auth/user.json",
+      },
+    },
   ],
 });
