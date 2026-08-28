@@ -12,6 +12,33 @@ import {
 const slugCache = new Map<string, { slug: string | null; expiresAt: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// PRODUCTION INCIDENT FIX (Aug 28): real live 504 MIDDLEWARE_INVOCATION_TIMEOUT
+// confirmed in production -- root cause was supabase.auth.getUser() below
+// (line ~155, present unchanged since this middleware was first written)
+// having NO timeout at all. Reproduced directly: a request carrying a real
+// but EXPIRED session cookie forces the Supabase client to attempt a
+// refresh-token exchange, and when that specific call hangs (confirmed live,
+// 20s+ with zero response), the entire Edge middleware invocation hangs
+// with it until Vercel's own hard ceiling kills it -- every request to
+// /app/* or /auth/login|signup, for any visitor whose session cookie has
+// simply expired (a normal, expected, constantly-occurring state for
+// returning users, not an edge case). This is a real, general defensive
+// gap, not specific to whatever triggered today's incident -- any external
+// call in Edge middleware with no timeout can take the whole app down the
+// same way. withTimeout below is used to bound every such call here.
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (!done) { done = true; resolve(fallback); }
+    }, ms);
+    promise.then(
+      (v) => { if (!done) { done = true; clearTimeout(timer); resolve(v); } },
+      () => { if (!done) { done = true; clearTimeout(timer); resolve(fallback); } },
+    );
+  });
+}
+
 function getAppHost(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? "https://tryvela.com")
     .replace(/^https?:\/\//, "")
@@ -36,12 +63,17 @@ async function resolveCustomDomain(hostname: string): Promise<string | null> {
       `&domain_status=eq.verified` +
       `&select=slug,id` +
       `&limit=1`;
+    // Same production-incident hardening as the auth check below -- this
+    // fetch previously had no timeout of its own either; AbortSignal.timeout
+    // is the fetch-specific equivalent of withTimeout for a request that
+    // needs to actually be cancelled, not just raced.
     const res = await fetch(`${sbUrl}/rest/v1/websites?${params}`, {
       headers: {
         apikey: anonKey,
         Authorization: `Bearer ${svcKey}`,
         Accept: "application/json",
       },
+      signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
     const rows = await res.json() as { slug: string | null; id: string }[];
@@ -151,8 +183,22 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session — keeps the JWT alive on every request
-  const { data: { user } } = await supabase.auth.getUser();
+  // Refresh session — keeps the JWT alive on every request.
+  // PRODUCTION INCIDENT FIX (Aug 28): this call had no timeout -- confirmed
+  // live as the real hang point (see withTimeout's own comment above for
+  // the full root cause). Bounded to 5s and fails closed to user=null on
+  // timeout, i.e. treated exactly like a genuinely unauthenticated visitor
+  // (redirected to /auth/login below) rather than left hanging until
+  // Vercel's own hard ceiling kills the whole invocation. 5s is comfortably
+  // under Vercel's middleware timeout ceiling and far below what a real
+  // visitor would ever wait for a page to start loading, while still being
+  // generous for a normal, healthy auth check (which completes in well
+  // under 1s under real conditions).
+  const { user } = await withTimeout(
+    supabase.auth.getUser().then(({ data }) => ({ user: data.user })),
+    5000,
+    { user: null },
+  );
 
   // Redirect unauthenticated users away from /app
   if (path.startsWith("/app") && !user) {
@@ -165,11 +211,18 @@ export async function middleware(request: NextRequest) {
   // steps (see /auth/callback and /auth/signup?onboarding=google).
   if ((path.startsWith("/auth/login") || path.startsWith("/auth/signup")) && user) {
     if (path.startsWith("/auth/signup")) {
-      const { data: tenant } = await supabase
-        .from("tenants")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
+      // Same production-incident hardening as the auth check above --
+      // fails closed to "no tenant found" on timeout, i.e. lets the visitor
+      // stay on /auth/signup rather than hang the whole request. Worst case
+      // on a timeout: an existing user with a tenant briefly sees the
+      // signup page instead of being bounced to /app -- harmless, and
+      // correctable by just navigating there themselves.
+      const { tenant } = await withTimeout(
+        supabase.from("tenants").select("id").eq("owner_id", user.id).maybeSingle()
+          .then(({ data }) => ({ tenant: data })),
+        5000,
+        { tenant: null },
+      );
       if (!tenant) {
         return response;
       }
