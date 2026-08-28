@@ -84,7 +84,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         type: "sub",
         title: "2.10 Information From Integrations",
         blocks: [
-          { type: "p", text: "Where you connect a Connected Channel such as Instagram or WhatsApp, once that integration is active in production as described in Section 8.2, we receive information from that platform necessary to operate the connection, such as account identifiers, page or business account identifiers, and access tokens, as well as the messages your End Customers send through that channel. This information is subject to the applicable platform's own terms in addition to this Privacy Policy." },
+          { type: "p", text: "Where you connect a Connected Channel such as Instagram or WhatsApp, once that integration is active in production as described in Section 8.2, we receive information from that platform necessary to operate the connection, such as account identifiers, page or business account identifiers, and access tokens, as well as the messages your End Customers send through that channel. This information is subject to the applicable platform's own terms in addition to this Privacy Policy. We use this Instagram and WhatsApp platform data solely to operate the connected messaging feature described in Section 2.3, such as generating and delivering your AI Agent's replies; we do not use it for advertising or ad targeting, and, consistent with Section 3, we do not sell it." },
         ],
       },
       {
@@ -458,6 +458,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
           "You can request export or deletion of other categories of User Content or Customer Data, and closure of your Account, by contacting us as described in Section 23.",
         ],
       },
+      { type: "note", text: "How to request data deletion: contact us at the address in Section 23 and describe what you would like deleted, for example your Account, or the message history associated with a Connected Channel such as Instagram or WhatsApp. This applies whether you are a Customer requesting deletion of your own Account data, or an End Customer requesting deletion of your own message data. We will delete or anonymize the requested data within a reasonable period, except where we are required to retain specific records as described in Section 10." },
       { type: "p", text: "These controls apply at the Account level. Where an End Customer wants a specific message, call record, or lead entry corrected or removed, the Customer who operates the relevant AI Agent is generally best placed to action that request directly within their dashboard, since they control the underlying record." },
     ],
   },
