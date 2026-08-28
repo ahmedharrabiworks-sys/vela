@@ -344,16 +344,16 @@ export const TERMS_SECTIONS: LegalSection[] = [
   },
   {
     id: "subscription-plans-and-trials",
-    title: "17. Subscription Plans and Free Trials",
+    title: "17. Subscription Plans",
     blocks: [
-      { type: "p", text: "Vela offers multiple subscription tiers, each with its own feature set, usage allowances, and price, as described on our Pricing page. We reserve the right to introduce new Plans, retire existing Plans, or adjust Plan features and pricing at any time. Material price changes to your active Subscription will be communicated to you in advance of taking effect, in accordance with Section 18.6." },
-      { type: "p", text: "From time to time we may offer a free trial or introductory offer for a Plan. Where such an offer is presented to you at signup or elsewhere, the specific terms of that offer, including its duration, any card requirement, and what happens at the end of the trial period, are as stated at the time the offer is presented to you and will govern in the event of any conflict with a general description of trials in these Terms. Unless expressly stated otherwise at the time of the offer, we do not guarantee that a free trial or introductory offer is currently available, and any such offer may be withdrawn or modified at our discretion for future signups." },
+      { type: "p", text: "Vela offers multiple subscription tiers, each with its own feature set, usage allowances, and price, as described on our Pricing page. Plans are cancel anytime, as described in Section 20. We reserve the right to introduce new Plans, retire existing Plans, or adjust Plan features and pricing at any time. Material price changes to your active Subscription will be communicated to you in advance of taking effect, in accordance with Section 18.6." },
     ],
   },
   {
     id: "billing-taxes-payment",
     title: "18. Billing, Taxes, and Payment",
     blocks: [
+      { type: "note", text: "As of the date of these Terms, live payment collection through a payment processor is not yet active on the Service. This Section describes how billing will work once it is active. We will not charge a live payment method until this functionality is genuinely in place." },
       {
         type: "sub",
         title: "18.1 Billing Cycle",
@@ -461,7 +461,7 @@ export const TERMS_SECTIONS: LegalSection[] = [
     id: "third-party-services",
     title: "24. Third Party Services",
     blocks: [
-      { type: "p", text: "The Service integrates with and relies on a number of Third Party Services to deliver its functionality, including providers of artificial intelligence language processing, voice call handling, text to speech and speech to text transcription, messaging channel connectivity such as Meta for Instagram and WhatsApp, stock photography for the website builder, transactional email delivery, payment processing, and cloud infrastructure and hosting. These providers, and the categories of data they may process, are described in more detail in our Privacy Policy." },
+      { type: "p", text: "The Service integrates with and relies on a number of Third Party Services to deliver its functionality, including providers of artificial intelligence language processing, voice call handling, text to speech and speech to text transcription, stock photography for the website builder, transactional email delivery, and cloud infrastructure and hosting. These providers, and the categories of data they may process, are described in more detail in our Privacy Policy. The Service is also built to connect to Meta for Instagram and WhatsApp messaging and to a payment processor for billing; as described in our Privacy Policy, these two integrations are not yet active in our production environment, and Sections 8 and 18 of these Terms describe the applicable functionality and billing terms that will apply once they are." },
       { type: "p", text: "Your use of the Service is subject to the availability and proper functioning of these Third Party Services. Vela is not responsible for the availability, performance, security, content, or policies of any Third Party Service, and any outage, change, discontinuation, or policy change by a Third Party Service provider may affect the availability or behavior of related functionality within the Service. We will use reasonable efforts to adapt the Service to material Third Party Service changes where feasible." },
     ],
   },
@@ -556,8 +556,8 @@ export const TERMS_SECTIONS: LegalSection[] = [
     id: "dispute-resolution",
     title: "32. Dispute Resolution and Governing Law",
     blocks: [
-      { type: "p", text: "Vela has not yet finalized a governing jurisdiction for these Terms. Once finalized, these Terms will be governed by the laws of [GOVERNING LAW JURISDICTION TO BE CONFIRMED], without regard to conflict of law principles, except where a different governing law is required by applicable mandatory consumer protection rules in your jurisdiction." },
-      { type: "p", text: "We encourage you to contact us first to resolve any dispute informally using the contact details in Section 35. If a dispute cannot be resolved informally, it will be subject to the exclusive jurisdiction of the competent courts of [GOVERNING LAW JURISDICTION TO BE CONFIRMED], unless applicable law requires otherwise. This Section does not limit any right you may have to bring a claim in your local courts under mandatory consumer protection law, and does not require arbitration unless a separate arbitration agreement is entered into by the parties." },
+      { type: "p", text: "Vela is not currently incorporated as a separate legal entity. Because a governing law and choice of court clause is normally tied to the legal entity that is a party to a contract, we are not going to designate a specific governing jurisdiction here while that entity does not yet exist, since doing so would suggest a level of corporate formality that is not yet accurate. Once Vela is incorporated, this Section will be updated to state the governing law and jurisdiction that will apply to these Terms going forward, and we will provide notice of that change as described in Section 33." },
+      { type: "p", text: "In the meantime, we encourage you to contact us first to resolve any dispute informally using the contact details in Section 35, and we will engage in good faith to do so. This Section does not limit any right you may have to bring a claim in your local courts under mandatory consumer protection law applicable to you, and does not require arbitration unless a separate arbitration agreement is entered into by the parties." },
     ],
   },
   {
@@ -620,7 +620,7 @@ export const TERMS_SECTIONS: LegalSection[] = [
     title: "35. Contact Information",
     blocks: [
       { type: "p", text: "If you have any questions about these Terms, please contact us at velaOsSupport@gmail.com. This is currently our general customer support contact and handles questions about these Terms as well, since dedicated legal and privacy inboxes have not yet been established." },
-      { type: "note", text: "Operating entity, registered address, and governing jurisdiction: Vela is not currently incorporated as a separate legal entity, does not yet have a registered business address, and has not yet finalized a governing jurisdiction. Placeholders for this information: [LEGAL ENTITY NAME], [REGISTERED ADDRESS], [JURISDICTION OF INCORPORATION]. This section will be updated with accurate information once Vela's corporate structure is finalized." },
+      { type: "p", text: "Vela currently operates from Germany. As of the date of these Terms, Vela is not incorporated as a separate legal entity and does not have a registered business address to publish. We are not going to display a placeholder company name or address here, or invent one, in place of that real information. Once Vela is incorporated, this section will be updated with the operating entity's legal name and registered business address." },
     ],
   },
 ];

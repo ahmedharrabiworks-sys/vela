@@ -20,7 +20,7 @@ const SECTIONS = [
       { key: "about",    href: "#" },
       { key: "blog",     href: "#" },
       { key: "careers",  href: "#" },
-      { key: "contact",  href: "mailto:hello@tryvela.com" },
+      { key: "contact",  href: "mailto:velaOsSupport@gmail.com" },
     ],
   },
   {
@@ -28,7 +28,7 @@ const SECTIONS = [
     links: [
       { key: "privacy",  href: "/privacy" },
       { key: "terms",    href: "/terms" },
-      { key: "cookies",  href: "#" },
+      { key: "cookies",  href: "/cookies" },
     ],
   },
 ];

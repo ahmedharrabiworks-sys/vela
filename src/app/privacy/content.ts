@@ -28,14 +28,14 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         type: "sub",
         title: "2.2 User Content and Knowledge Base Data",
         blocks: [
-          { type: "p", text: "We collect the business information you provide to configure and train your AI Agents, including your knowledge base content, services and pricing information, business hours, booking policies, uploaded documents and images, and any other content you submit to personalize your AI Agents." },
+          { type: "p", text: "We collect the business information you provide to configure and train your AI Agents, including your knowledge base content, services and pricing information, business hours, booking policies, and any other content you submit to personalize your AI Agents. Where you upload a document or image specifically to train your AI, such as a price list or menu, the file is processed at the time of upload to extract the structured business information it contains, and that extracted information, not the original file, is what is saved into your knowledge base; we do not separately retain a persistent copy of the uploaded file itself. Where you upload an image for use directly on a website you build with the Service, such as a logo or a photo, the image is retained as part of that website's own content for as long as needed to display it on your site, since it forms part of the page itself rather than a separate uploaded file." },
         ],
       },
       {
         type: "sub",
         title: "2.3 Conversation and Messaging Data",
         blocks: [
-          { type: "p", text: "We process the content of conversations between your AI Agent and your End Customers across connected channels, including website chat, the embeddable chat widget, Instagram, and WhatsApp, in order to generate responses, maintain conversation history, and populate your leads, appointments, and customer relationship management records." },
+          { type: "p", text: "We process the content of conversations between your AI Agent and your End Customers across connected channels, including website chat and the embeddable chat widget, in order to generate responses, maintain conversation history, and populate your leads, appointments, and customer relationship management records. The Service is also built to support Instagram and WhatsApp as Connected Channels; as described in Section 8.2, those integrations are not yet active in our production environment, so no conversation content is currently processed through them." },
         ],
       },
       {
@@ -56,7 +56,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         type: "sub",
         title: "2.6 Website and Usage Data",
         blocks: [
-          { type: "p", text: "We automatically collect certain information when you or your website visitors use the Service, including browser type, device information, IP address, pages visited, features used, referring URLs, and timestamps of activity, using standard web server logging and our own first party product analytics. We also track visit counts and chat widget interactions for websites built with the Service so that you can see traffic and engagement in your dashboard." },
+          { type: "p", text: "We automatically collect certain information when you use the Service, such as pages visited, features used, and timestamps of activity, through our own first party product analytics, which is tied to your authenticated Account rather than a separate tracking identifier. For websites built with the Service, we separately record aggregate visit statistics, such as visit counts, device type, approximate country, and referring page, so that you can see traffic and engagement in your dashboard; a visitor is counted using a one way cryptographic hash generated from their IP address and browser type at the time of the visit, and we do not store the visitor's raw IP address for this purpose or use it to build an ongoing profile of that visitor. Our hosting provider's own infrastructure may separately log IP addresses transiently, as standard practice for any web server, for purposes such as network security and abuse prevention; this is not a data collection choice made by Vela's application itself." },
         ],
       },
       {
@@ -77,21 +77,21 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         type: "sub",
         title: "2.9 Payment Information",
         blocks: [
-          { type: "p", text: "If you subscribe to a paid Plan, payment card and billing details are collected and processed directly by our payment processor. We do not store full payment card numbers on our own systems, and we retain only limited billing metadata, such as the plan purchased and payment status, necessary to administer your subscription." },
+          { type: "p", text: "As described in Section 8.2, the Service does not currently process live subscription payments through a payment processor. Once live billing is activated, this section will describe how payment card and billing details are collected and processed directly by our payment processor, that we do not store full payment card numbers on our own systems, and that we retain only limited billing metadata, such as the plan purchased and payment status, necessary to administer your subscription." },
         ],
       },
       {
         type: "sub",
         title: "2.10 Information From Integrations",
         blocks: [
-          { type: "p", text: "Where you connect a Connected Channel such as Instagram or WhatsApp, we receive information from that platform necessary to operate the connection, such as account identifiers, page or business account identifiers, and access tokens, as well as the messages your End Customers send through that channel. This information is subject to the applicable platform's own terms in addition to this Privacy Policy." },
+          { type: "p", text: "Where you connect a Connected Channel such as Instagram or WhatsApp, once that integration is active in production as described in Section 8.2, we receive information from that platform necessary to operate the connection, such as account identifiers, page or business account identifiers, and access tokens, as well as the messages your End Customers send through that channel. This information is subject to the applicable platform's own terms in addition to this Privacy Policy." },
         ],
       },
       {
         type: "sub",
         title: "2.11 Information From Third Parties",
         blocks: [
-          { type: "p", text: "We may receive limited information from Third Party Services that support the Service, such as delivery and error information from our email provider, or account status information from our payment processor, as necessary to operate the Service." },
+          { type: "p", text: "We may receive limited information from Third Party Services that support the Service, such as delivery and error information from our email provider, as necessary to operate the Service. Once live billing is activated as described in Section 8.2, we will also receive account status information from our payment processor." },
         ],
       },
       {
@@ -232,7 +232,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         type: "ul",
         items: [
           "Subprocessors and service providers who support the Service, as described in Section 8, under contractual confidentiality and data protection obligations;",
-          "Connected Channel providers such as Meta, to the extent necessary to send and receive messages through Instagram or WhatsApp that you have connected;",
+          "Connected Channel providers such as Meta, to the extent necessary to send and receive messages through Instagram or WhatsApp that you have connected, once that integration is active in production as described in Section 8.2;",
           "Professional advisors, such as legal or accounting advisors, where necessary for a legitimate business purpose;",
           "Any party in connection with a merger, acquisition, financing, or sale of assets, subject to appropriate confidentiality protections and, where required by law, notice to affected individuals;",
           "Law enforcement, regulators, or other third parties where required by law, legal process, or to protect the rights, property, or safety of Vela, our customers, End Customers, or others.",
@@ -254,7 +254,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
     id: "subprocessors",
     title: "8. Subprocessors and Service Providers",
     blocks: [
-      { type: "p", text: "We use the following categories of third party subprocessors and service providers to deliver the Service. This list reflects providers integrated into the Service and may be updated as the Service evolves; where a provider is described as not yet fully active, it means the integration exists in our systems but full production use is pending configuration on our side." },
+      { type: "p", text: "We use the following categories of third party subprocessors and service providers to deliver the Service. This table reflects a direct technical audit of our production configuration, not a general list of integrations that exist somewhere in our codebase. Some functionality is built and code complete but not yet processing real data in production because we have deliberately not activated the underlying credentials; those are listed separately in Section 8.2 rather than presented as active." },
       {
         type: "table",
         headers: ["Provider", "Purpose", "Data potentially processed"],
@@ -262,12 +262,10 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
           ["OpenAI", "Generates AI chat responses, marketing content, website copy, and knowledge base extraction using large language models.", "Conversation content, business knowledge base data, prompts and configuration."],
           ["Vapi", "Provides voice call routing and orchestration for the AI voice phone agent.", "Call audio in transit, call metadata."],
           ["ElevenLabs", "Provides text to speech voice synthesis and speech to text transcription for voice calls.", "Call audio, generated call transcripts."],
-          ["Meta (Instagram and WhatsApp)", "Provides the messaging infrastructure used to send and receive messages when you connect Instagram or WhatsApp.", "Message content, platform account identifiers, access tokens."],
           ["Supabase", "Provides our primary database and authentication infrastructure, hosted in the West Europe region.", "Account data, business data, conversation and call records, authentication credentials."],
           ["Vercel", "Hosts and serves the Vela application, dashboard, and websites built with the website builder.", "Application traffic and request data, including data in transit to and from the Service."],
           ["Unsplash", "Provides stock photography used by the website builder to generate images for Customer websites.", "Image search queries derived from business information; does not receive End Customer personal data."],
           ["Resend", "Provides transactional email delivery, such as website contact form notifications, where configured.", "Recipient email address and message content of the relevant notification."],
-          ["Payment processor", "Processes Subscription payments where billing is active on your account.", "Payment card and billing details, handled directly by the processor."],
         ],
       },
       { type: "p", text: "We may also engage additional service providers to support functions such as customer support, security monitoring, and infrastructure operations, each bound by contractual confidentiality and data protection obligations. Where the exact geographic processing location of a given provider is not stated above, this is because it depends on that provider's own infrastructure configuration, which may include multiple regions." },
@@ -275,12 +273,27 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
         type: "sub",
         title: "8.1 Why Each Subprocessor Is Necessary",
         blocks: [
-          { type: "p", text: "Each subprocessor listed above supports a specific, necessary part of the Service. OpenAI, Vapi, and ElevenLabs together provide the artificial intelligence and voice technology that make the AI chat and voice agents possible; without them, the Service could not generate conversational responses or handle phone calls. Meta provides the only supported means of sending and receiving messages through Instagram and WhatsApp, since these are proprietary platforms that require use of their own infrastructure. Supabase and Vercel provide the database, authentication, and hosting infrastructure on which the entire Service runs. Unsplash and Resend support specific optional features, the website builder's stock imagery and transactional email notifications respectively, and are only invoked when those features are used." },
+          { type: "p", text: "Each subprocessor listed above supports a specific, necessary part of the Service. OpenAI, Vapi, and ElevenLabs together provide the artificial intelligence and voice technology that make the AI chat and voice agents possible; without them, the Service could not generate conversational responses or handle phone calls. Supabase and Vercel provide the database, authentication, and hosting infrastructure on which the entire Service runs. Unsplash and Resend support specific optional features, the website builder's stock imagery and transactional email notifications respectively, and are only invoked when those features are used." },
         ],
       },
       {
         type: "sub",
-        title: "8.2 Changes to Subprocessors",
+        title: "8.2 Integrations That Are Not Yet Processing Data in Production",
+        blocks: [
+          { type: "p", text: "The following integrations exist in our codebase but are not currently active in our production environment, because we have not yet configured the credentials required for them to function. We list them here for transparency, since our Terms of Service and marketing materials describe this functionality, and so this Privacy Policy is not read as implying that these providers are currently receiving your data when they are not." },
+          {
+            type: "ul",
+            items: [
+              "Meta (Instagram and WhatsApp): the code to connect and message through Instagram and WhatsApp exists, but the credentials required to complete a real connection or process a real message through Meta's platforms are not currently configured in production, so no Customer or End Customer data is currently sent to or received from Meta through the Service. This will change once we complete Meta's business verification process and activate these credentials, at which point this Privacy Policy will be updated and Meta will move to the table in Section 8.",
+              "Payment processing: the Service does not currently process live Subscription payments through any payment processor. Billing integration code exists but uses placeholder, non functional credentials, and no real payment card or billing data is currently collected or transmitted to a payment processor through the Service. Section 18 of our Terms of Service describes how this will work once billing is activated.",
+            ],
+          },
+          { type: "p", text: "When either integration is activated in production, we will update this Privacy Policy before or at the time real data begins flowing to that provider." },
+        ],
+      },
+      {
+        type: "sub",
+        title: "8.3 Changes to Subprocessors",
         blocks: [
           { type: "p", text: "We may add or replace subprocessors over time as the Service evolves. Where we add a new subprocessor that will process personal data in a materially different way than described in this Privacy Policy, we will update this page and, where required by a specific contractual commitment to a Customer, provide additional notice." },
         ],
@@ -419,7 +432,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
           "First party analytics technologies, which help us understand how the Service is used, based on our own internal usage tracking rather than a third party advertising or analytics network.",
         ],
       },
-      { type: "p", text: "We do not currently use third party advertising or marketing cookies on the Service. Most browsers allow you to control cookies through their settings, including blocking or deleting them. Disabling essential cookies will affect your ability to sign in and use core features of the Service. Where applicable law requires consent for certain non essential cookies before they are set, we aim to provide an appropriate mechanism for obtaining that consent; if you believe such a mechanism is required for a specific jurisdiction and does not currently appear on the Service, please contact us." },
+      { type: "p", text: "We do not use third party advertising, marketing, or cross site tracking cookies anywhere in the Service. A complete, itemized list of every cookie and local storage key we use, what each one does, and why no cookie consent banner currently appears on the Service, is available in our Cookie Policy at /cookies. Most browsers allow you to control cookies and local storage through their settings, including blocking or deleting them; disabling the essential authentication cookie will affect your ability to sign in and use core features of the Service." },
     ],
   },
   {
@@ -437,7 +450,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
       {
         type: "ul",
         items: [
-          "You can disconnect Instagram or WhatsApp from your Account at any time from the Channels page, which stops new messages from that channel from being processed;",
+          "You can disconnect Instagram or WhatsApp from your Account at any time from the Channels page, which stops new messages from that channel from being processed once that integration is active in production as described in Section 8.2;",
           "Where you build a website with the Service, you can choose whether an AI chat widget is added to it during the build process, and you can turn the AI Agent on or off for a published website at any time from the Channels page;",
           "You can review, edit, or remove your knowledge base content, including business information, services, and frequently asked questions, from the Train Your AI section of your dashboard at any time, and changes take effect for future conversations;",
           "You can export appointment records as a CSV file from the Appointments page;",
@@ -489,7 +502,8 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
     title: "23. Contact Information",
     blocks: [
       { type: "p", text: "For privacy related questions, to exercise any of the rights described in this Privacy Policy, or to request a data processing addendum, contact us at velaOsSupport@gmail.com. This is currently our general customer support contact and handles privacy related questions as well, since a dedicated privacy inbox has not yet been established." },
-      { type: "note", text: "Operating entity, registered address, and governing jurisdiction: Vela is not currently incorporated as a separate legal entity, does not yet have a registered business address, and has not yet finalized a governing jurisdiction. Placeholders for this information: [LEGAL ENTITY NAME], [REGISTERED ADDRESS], [JURISDICTION OF INCORPORATION]. This section will be updated with accurate information once Vela's corporate structure is finalized. If your jurisdiction requires you to be told the identity of a specific data protection officer or representative, and one has been appointed, that information will also be provided here." },
+      { type: "p", text: "Vela currently operates from Germany. As of the date of this Privacy Policy, Vela is not incorporated as a separate legal entity and does not have a registered business address to publish. We are not going to display a placeholder company name or address here, or invent one, in place of that real information. Once Vela is incorporated, this section will be updated with the operating entity's legal name and registered business address." },
+      { type: "note", text: "We have not appointed a Data Protection Officer or an EU or UK representative under Articles 27 or 37 of the GDPR, and do not currently hold any data protection or security certification. If your jurisdiction legally requires us to have appointed a representative or DPO for the processing described in this Privacy Policy, please contact us using the details above so we can address this directly, since we would rather hear from you than have this be a silent gap." },
     ],
   },
 ];
