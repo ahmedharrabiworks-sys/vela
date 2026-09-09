@@ -172,6 +172,58 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
     document.body.appendChild(script);
   }, []);
 
+  // Meta's JS SDK (v22.0) does its own internal validation on the function
+  // reference passed as the FB.login() callback, and breaks on an AsyncFunction
+  // (throws "Expression is of type asyncfunction, not function" immediately,
+  // before the popup ever opens). This must stay a plain synchronous function;
+  // the actual async work (the callback POST) lives in this separate helper,
+  // invoked but not awaited from the plain callback below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleFacebookLoginResponse = async (response: any) => {
+    if (response.status !== "connected" || !response.authResponse?.code) {
+      // User cancelled or denied — quietly return to idle
+      setStatus("idle");
+      return;
+    }
+
+    const code            = response.authResponse.code as string;
+    const waba_id         = response.authResponse.session_info?.waba_id as string | undefined;
+    const phone_number_id = response.authResponse.session_info?.phone_number_id as string | undefined;
+
+    if (!waba_id || !phone_number_id) {
+      setErrorMsg("Could not retrieve WhatsApp Business account info. Please try again.");
+      setStatus("error");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/whatsapp/callback", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ code, waba_id, phone_number_id }),
+      });
+      const data = await res.json() as {
+        ok?: boolean;
+        phoneNumber?: string;
+        displayName?: string;
+        error?: string;
+      };
+
+      if (!res.ok || !data.ok) {
+        setErrorMsg(data.error ?? "Connection failed. Please try again.");
+        setStatus("error");
+        return;
+      }
+
+      setConnectedPhone(data.phoneNumber ?? "");
+      setConnectedName(data.displayName ?? "");
+      setStatus("success");
+    } catch {
+      setErrorMsg("Network error. Please check your connection and try again.");
+      setStatus("error");
+    }
+  };
+
   const handleConnect = () => {
     if (!window.FB) {
       setErrorMsg("Facebook SDK not loaded yet. Please wait a moment and try again.");
@@ -182,49 +234,8 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
     setErrorMsg("");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    window.FB.login(async (response: any) => {
-      if (response.status !== "connected" || !response.authResponse?.code) {
-        // User cancelled or denied — quietly return to idle
-        setStatus("idle");
-        return;
-      }
-
-      const code            = response.authResponse.code as string;
-      const waba_id         = response.authResponse.session_info?.waba_id as string | undefined;
-      const phone_number_id = response.authResponse.session_info?.phone_number_id as string | undefined;
-
-      if (!waba_id || !phone_number_id) {
-        setErrorMsg("Could not retrieve WhatsApp Business account info. Please try again.");
-        setStatus("error");
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/auth/whatsapp/callback", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ code, waba_id, phone_number_id }),
-        });
-        const data = await res.json() as {
-          ok?: boolean;
-          phoneNumber?: string;
-          displayName?: string;
-          error?: string;
-        };
-
-        if (!res.ok || !data.ok) {
-          setErrorMsg(data.error ?? "Connection failed. Please try again.");
-          setStatus("error");
-          return;
-        }
-
-        setConnectedPhone(data.phoneNumber ?? "");
-        setConnectedName(data.displayName ?? "");
-        setStatus("success");
-      } catch {
-        setErrorMsg("Network error. Please check your connection and try again.");
-        setStatus("error");
-      }
+    window.FB.login((response: any) => {
+      handleFacebookLoginResponse(response);
     },
     {
       config_id:                      process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID ?? "",
