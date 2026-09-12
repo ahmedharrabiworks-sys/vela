@@ -220,9 +220,13 @@ export default function TrainingPage() {
   /* ── Additional Information: reuses the existing AI Training "Magic Import"
      routes (/api/ai-training/upload + /api/ai-training/import) to extract
      business knowledge from an uploaded file, a website URL, or a social
-     profile link, then merges the result into the same knowledge_base the
-     5 interview questions feed into (never overwrites — see /api/ai-training
-     ?merge=true). Fully optional; nothing here blocks completing training. ── */
+     profile link, then merges the result into BOTH the general knowledge_base
+     (the 5 interview questions feed into it too, and the internal Assistant
+     + text chat AI read it) AND phone_agent_knowledge_base (what the
+     Knowledge Base tab actually displays) -- see mergeIntoKb/mergeIntoPhoneKb
+     above. Never overwrites either (see /api/ai-training?merge=true and
+     mergeIntoPhoneKb's own merge). Fully optional; nothing here blocks
+     completing training. ── */
   const EMPTY_KB = {
     services: [] as Array<{ name: string; price: string; duration: string; description: string }>,
     faqs: [] as Array<{ q: string; a: string }>,
@@ -230,14 +234,58 @@ export default function TrainingPage() {
     extra: "",
   };
 
-  const mergeIntoKb = useCallback(async (kb: typeof EMPTY_KB) => {
-    const res = await fetch("/api/ai-training?merge=true", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(kb),
-    });
-    return res.ok;
+  // FIX 3 (bug list): this section lives on the Phone Agent's own training
+  // page and tells the owner it trains "your Phone Agent," but only ever
+  // wrote to tenant_config.knowledge_base (the general KB the interview
+  // questions feed) -- never to tenant_config.phone_agent_knowledge_base,
+  // the column the dedicated Phone Agent Knowledge Base editor reads and
+  // writes. The live call-time system prompt does merge both columns
+  // (see src/lib/knowledge-base.ts), so a phone call itself was never
+  // missing this content -- but the Knowledge Base editor the owner
+  // actually looks at never showed it, which is the real, visible bug.
+  // Now writes to both, with the same non-destructive merge semantics
+  // /api/ai-training?merge=true already uses (append extra, new data wins
+  // per-field, never silently overwritten by an empty value).
+  const mergeIntoPhoneKb = useCallback(async (kb: typeof EMPTY_KB) => {
+    try {
+      const getRes = await fetch("/api/ai-agent/phone-knowledge");
+      if (!getRes.ok) return false;
+      const existing = await getRes.json() as {
+        services: Array<{ name: string; price: string; duration: string; description: string }>;
+        business: { hours: string; address: string; bookingPolicy: string };
+        extra: string;
+      };
+      const merged = {
+        services: kb.services.length > 0 ? kb.services : existing.services,
+        business: {
+          hours:         kb.business.hours         || existing.business.hours,
+          address:       kb.business.address       || existing.business.address,
+          bookingPolicy: kb.business.bookingPolicy || existing.business.bookingPolicy,
+        },
+        extra: [existing.extra, kb.extra].filter(Boolean).join("\n\n") || "",
+      };
+      const postRes = await fetch("/api/ai-agent/phone-knowledge", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(merged),
+      });
+      return postRes.ok;
+    } catch {
+      return false;
+    }
   }, []);
+
+  const mergeIntoKb = useCallback(async (kb: typeof EMPTY_KB) => {
+    const [generalOk, phoneOk] = await Promise.all([
+      fetch("/api/ai-training?merge=true", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(kb),
+      }).then((res) => res.ok).catch(() => false),
+      mergeIntoPhoneKb(kb),
+    ]);
+    return generalOk || phoneOk;
+  }, [mergeIntoPhoneKb]);
 
   const analyzeMaterials = useCallback(async () => {
     if (!materialFile && !websiteUrl.trim() && !socialUrl.trim()) return;

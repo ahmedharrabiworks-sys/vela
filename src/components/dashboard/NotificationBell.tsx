@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { fmtTimeAgo } from "@/components/dashboard/CallTranscript";
 
@@ -51,6 +51,7 @@ const POLL_INTERVAL_MS = 30_000;
 
 export function NotificationBell() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -145,7 +146,24 @@ export function NotificationBell() {
   const handleClick = (n: NotificationRow) => {
     if (!n.read) markRead(n.id);
     setOpen(false);
-    if (n.link) router.push(n.link);
+    if (!n.link) return;
+    // FIX 2 (bug list): the real cause of "clicking a new lead notification
+    // sometimes routes to a lead that isn't there yet" -- Leads/Appointments
+    // are client components that fetch their data exactly once on mount
+    // (no realtime subscription, unlike this bell). A new notification can
+    // arrive while the user is ALREADY sitting on /app/leads (e.g. a live
+    // conversation just turned into a lead); router.push() to the SAME
+    // route is a no-op in the App Router -- no remount, no refetch -- so
+    // the page just keeps showing what it fetched before the new lead
+    // existed. Navigating to a genuinely different page already works
+    // correctly (a fresh mount always fetches current data, and by the time
+    // this realtime notification event fires the underlying row is already
+    // committed server-side). Only the same-page case needs a real reload.
+    if (n.link === pathname) {
+      window.location.reload();
+    } else {
+      router.push(n.link);
+    }
   };
 
   return (

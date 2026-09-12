@@ -418,7 +418,18 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
       const supabase = getSupabase();
       await supabase.auth.signOut();
     } catch { /* ignore */ }
-    router.push("/");
+    // FIX 1 (bug list): router.push() is a soft, client-side transition --
+    // it can land on "/" while Next.js's client Router Cache still holds a
+    // prefetched page (e.g. /auth/signup) fetched while the old session
+    // cookie was still valid, or before signOut()'s cookie write has been
+    // picked up by a subsequent client-side navigation. That's the real
+    // cause of "logout, then click the signup CTA, and land back in /app":
+    // middleware only re-checks auth on the request it actually sees, and a
+    // stale cached client-side navigation can skip that fresh check. A hard
+    // navigation forces a real new request for everything that follows --
+    // no prefetch cache, no router cache, middleware evaluates the real,
+    // now-cleared cookie from scratch.
+    window.location.href = "/";
   };
 
   const selectLanguage = (lang: string) => {
