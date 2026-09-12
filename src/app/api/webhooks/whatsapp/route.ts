@@ -63,7 +63,12 @@ export async function POST(req: NextRequest) {
   }
 
   const expected = "sha256=" + crypto.createHmac("sha256", secret).update(body).digest("hex");
-  if (signature !== expected) {
+  // Security audit Part 2: timing-safe compare, matching the pattern already
+  // used in whatsapp/webhook/route.ts's Twilio signature check.
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expected);
+  const validSig = sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf);
+  if (!validSig) {
     console.warn("[webhooks/whatsapp] Signature validation failed — possible forged request");
     return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }

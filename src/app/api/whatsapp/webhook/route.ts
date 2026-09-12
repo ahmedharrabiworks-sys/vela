@@ -88,11 +88,24 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = createSupabaseAdmin() as any;
 
-    // Find tenant by the receiving Twilio number
+    // Find tenant by the receiving Twilio number.
+    // Security audit Part 2/4 (found while auditing webhook signature
+    // verification): this previously filtered ONLY on whatsapp_connected,
+    // with no match against `to` at all -- meaning any two tenants with
+    // whatsapp_connected=true would race for the FIRST row Postgres
+    // returned, regardless of which tenant's number the message was
+    // actually sent to. Real cross-tenant misrouting (wrong AI persona,
+    // wrong knowledge base, a real customer's message and the lead it
+    // creates landing in a different tenant's account) the moment this
+    // dead path is ever reactivated. Twilio's own migration_v4.sql already
+    // added a composite (whatsapp_connected, whatsapp_phone) index for
+    // exactly this lookup -- the code just never used the second column.
+    const toNumber = to.replace("whatsapp:", "");
     const { data: configs } = await admin
       .from("tenant_config")
       .select("tenant_id")
       .eq("whatsapp_connected", true)
+      .eq("whatsapp_phone", toNumber)
       .limit(1);
 
     if (!configs || configs.length === 0) {

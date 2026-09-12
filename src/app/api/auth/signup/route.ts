@@ -72,7 +72,9 @@ export async function POST(req: Request) {
       ) {
         return NextResponse.json({ error: "already_exists" }, { status: 409 });
       }
-      return NextResponse.json({ error: "create_failed", detail: error.message }, { status: 400 });
+      // Security audit Part 5: never return the raw Supabase Auth error
+      // message to the client -- already logged server-side above.
+      return NextResponse.json({ error: "create_failed" }, { status: 400 });
     }
 
     if (data.user) {

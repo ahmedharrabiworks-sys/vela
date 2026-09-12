@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { renderWebsite } from "@/lib/website-renderer";
 import type { WebsiteSpec, ImageMap } from "@/lib/website-renderer";
+import { isRealImage } from "@/lib/file-signature";
 
 export const dynamic = "force-dynamic";
 
@@ -111,12 +112,27 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.imageData) {
-    const m = /^data:image\/(jpeg|jpg|png|webp);base64,/.exec(body.imageData);
+    const m = /^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/s.exec(body.imageData);
     if (!m || !ALLOWED_IMG_TYPES.has(m[1])) {
       return NextResponse.json({ error: "Unsupported image format. Use JPEG, PNG, or WEBP." }, { status: 400 });
     }
     if (body.imageData.length > MAX_IMG_DATA_URL_LEN) {
       return NextResponse.json({ error: "Image too large. Please use a photo under 5MB." }, { status: 413 });
+    }
+    // Security audit Part 4: the data: URI's "image/png" label is written by
+    // the CALLER, not by anything that inspected the actual bytes -- this is
+    // the highest-priority upload path in the app to check for real, since
+    // whatever passes here gets embedded straight into a real customer's
+    // published website HTML. Decode just enough to check the real magic
+    // bytes before accepting it.
+    let realBytes: Buffer;
+    try {
+      realBytes = Buffer.from(m[2], "base64");
+    } catch {
+      return NextResponse.json({ error: "Unsupported image format. Use JPEG, PNG, or WEBP." }, { status: 400 });
+    }
+    if (!isRealImage(realBytes, ["jpeg", "png", "webp"])) {
+      return NextResponse.json({ error: "That file isn't a real, readable image." }, { status: 400 });
     }
   }
 

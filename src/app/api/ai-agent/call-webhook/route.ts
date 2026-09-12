@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import {
   DEFAULT_VOICE_ID,
@@ -28,8 +29,15 @@ export async function POST(req: NextRequest) {
     console.error("[call-webhook] VAPI_WEBHOOK_SECRET not configured — rejecting request");
     return NextResponse.json({ error: "Service misconfigured" }, { status: 401 });
   }
-  const incoming = req.headers.get("x-vapi-secret");
-  if (incoming !== secret) {
+  // Security audit Part 2: upgraded from a plain !== compare to a
+  // timing-safe one, matching the Twilio/Meta webhooks' pattern elsewhere
+  // in this codebase -- a direct string compare leaks how many leading
+  // characters matched via response-time variance.
+  const incoming = req.headers.get("x-vapi-secret") ?? "";
+  const incomingBuf = Buffer.from(incoming);
+  const secretBuf   = Buffer.from(secret);
+  const validSecret = incomingBuf.length === secretBuf.length && crypto.timingSafeEqual(incomingBuf, secretBuf);
+  if (!validSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

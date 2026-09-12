@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import OpenAI from "openai";
 import type { KnowledgeBase } from "@/app/api/ai-training/route";
+import { isRealImage, isRealPdf } from "@/lib/file-signature";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,19 @@ export async function POST(req: NextRequest) {
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
+
+  // Security audit Part 4: file.type / the .pdf extension above are both
+  // fully client-asserted and prove nothing about the real bytes -- check
+  // the actual magic number before trusting either branch below.
+  if (isPdf) {
+    if (!isRealPdf(buffer)) {
+      return NextResponse.json({ error: "That file isn't a real PDF." }, { status: 400 });
+    }
+  } else {
+    if (!isRealImage(buffer, ["jpeg", "png", "webp", "gif", "bmp"])) {
+      return NextResponse.json({ error: "That file isn't a real, readable image." }, { status: 400 });
+    }
+  }
 
   if (isPdf) {
     try {

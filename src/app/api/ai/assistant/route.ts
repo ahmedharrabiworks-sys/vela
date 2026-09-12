@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { stripAiTells, stripMarkdownFormatting, stripFillerClosers } from "@/lib/text-clean";
+import { isRealImage } from "@/lib/file-signature";
 
 export const dynamic = "force-dynamic";
 
@@ -67,14 +68,18 @@ export async function POST(req: NextRequest) {
   };
   const localeName = LOCALE_NAMES[locale] ?? "English";
 
-  // Validate images: max 4, allowed types, max 5 MB each
+  // Validate images: max 4, allowed types, max 5 MB each.
+  // Security audit Part 4: img.mimeType is asserted by the caller, not
+  // derived from the actual bytes -- also check the real magic number
+  // before trusting an attachment enough to send it to OpenAI's vision API.
   const validImages = images
     .slice(0, 4)
     .filter((img) =>
       img?.data &&
       img?.mimeType &&
       ALLOWED_IMG_TYPES.has(img.mimeType) &&
-      img.data.length <= MAX_IMG_B64
+      img.data.length <= MAX_IMG_B64 &&
+      isRealImage(Buffer.from(img.data, "base64"), ["jpeg", "png", "webp", "gif", "bmp"])
     );
   // The client already surfaces a real rejection error to the user now, but
   // if one somehow still reaches here (an older cached client, or a type

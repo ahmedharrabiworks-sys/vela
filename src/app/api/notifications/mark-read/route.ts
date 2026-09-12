@@ -32,7 +32,10 @@ export async function POST(req: NextRequest) {
     .eq("tenant_id", tenant.id); // scoped -- never let one tenant mark another's notification read
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // Security audit Part 5: never return a raw DB error message to the
+    // client -- log full detail server-side only, return a generic message.
+    console.error("[notifications/mark-read] update failed:", error.message);
+    return NextResponse.json({ error: "Failed to update notification" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Security audit Part 1: this route is public, unauthenticated, and calls
+// OpenAI on every non-empty description with zero rate limiting -- a
+// scriptable, unlimited real-cost drain (unlike the debounced 1/sec a real
+// user typing in the signup form ever triggers). Same in-memory per-IP
+// sliding-window pattern used in auth/signup/route.ts.
+const DETECT_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
+const DETECT_RATE_LIMIT = 20;
+const DETECT_WINDOW_MS  = 60_000;
+
+function isDetectRateLimited(ip: string): boolean {
+  const now   = Date.now();
+  const entry = DETECT_RATE_MAP.get(ip);
+  if (!entry || now - entry.windowStart >= DETECT_WINDOW_MS) {
+    DETECT_RATE_MAP.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  if (entry.count >= DETECT_RATE_LIMIT) return true;
+  entry.count++;
+  return false;
+}
+
 function detectFallback(desc: string): string {
   const d = desc.toLowerCase();
   if (/ecommerce|e-commerce|online store|dropshipping|sell online/.test(d)) return "E-Commerce";
@@ -31,8 +52,20 @@ function detectFallback(desc: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = (forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip") ?? "unknown").trim();
+
   const body = await req.json().catch(() => ({}));
   const description: string = body?.description ?? "";
+
+  if (isDetectRateLimited(ip)) {
+    // Degrade to the free local heuristic rather than a hard error -- a real
+    // user typing normally never gets near this limit, so this path is only
+    // ever hit by scripted abuse; returning a normal-looking fallback result
+    // costs nothing and doesn't need special client-side handling.
+    console.warn(`[detect-business] RATE LIMIT HIT (${DETECT_RATE_LIMIT}/min): ip=${ip}`);
+    return NextResponse.json({ type: description.trim() ? detectFallback(description) : "" });
+  }
 
   if (!description.trim()) {
     return NextResponse.json({ type: "" });

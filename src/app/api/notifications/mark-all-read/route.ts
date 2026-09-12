@@ -28,7 +28,11 @@ export async function POST(req: NextRequest) {
     .eq("read", false);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // Security audit Part 5: never return a raw DB error message to the
+    // client (can leak schema/column/constraint detail) -- log full detail
+    // server-side only, return a generic message.
+    console.error("[notifications/mark-all-read] update failed:", error.message);
+    return NextResponse.json({ error: "Failed to update notifications" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

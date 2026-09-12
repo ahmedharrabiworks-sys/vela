@@ -13,6 +13,27 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+// Security audit Part 1: public, unauthenticated, no rate limit at all --
+// a real conversationId is a 122-bit UUID (not a meaningful enumeration
+// target, see the comment below), but unlimited DB reads from any single
+// source is still worth bounding. Same in-memory per-IP pattern used
+// elsewhere in this codebase.
+const RATE_MAP = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT = 60;
+const WINDOW_MS  = 60_000;
+
+function isRateLimited(ip: string): boolean {
+  const now   = Date.now();
+  const entry = RATE_MAP.get(ip);
+  if (!entry || now - entry.windowStart >= WINDOW_MS) {
+    RATE_MAP.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  if (entry.count >= RATE_LIMIT) return true;
+  entry.count++;
+  return false;
+}
+
 /**
  * GET /api/widget/history?tenantId=...&conversationId=...
  *
@@ -29,6 +50,12 @@ export async function OPTIONS() {
  * a conversation, just applied to a read instead of a write.
  */
 export async function GET(req: NextRequest) {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const ip = (forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip") ?? "unknown").trim();
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ messages: [] }, { status: 429, headers: CORS });
+  }
+
   const tenantId = req.nextUrl.searchParams.get("tenantId");
   const conversationId = req.nextUrl.searchParams.get("conversationId");
   // FIX 3 (round P): a stored conversationId that actually belongs to a
