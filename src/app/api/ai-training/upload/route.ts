@@ -89,10 +89,17 @@ export async function POST(req: NextRequest) {
 
   if (isPdf) {
     try {
-      // Dynamic import avoids webpack bundling issues
-      const pdfParse = (await import("pdf-parse")).default;
-      const data = await pdfParse(buffer);
-      const text = data.text?.trim() ?? "";
+      // Dynamic import avoids webpack bundling issues.
+      // pdf-parse v2 has no default export -- it's a named `PDFParse` class
+      // (constructor takes { data: Buffer }, then .getText() -> TextResult).
+      // pageJoiner: "" suppresses the library's default per-page
+      // "-- N of M --" boundary marker so extracted text stays plain,
+      // matching this route's pre-existing (v1) output shape.
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buffer });
+      const result = await parser.getText({ pageJoiner: "" });
+      await parser.destroy();
+      const text = result.text?.trim() ?? "";
       if (!text) {
         return NextResponse.json({ error: "Could not extract text from PDF (may be image-based)" }, { status: 422 });
       }
