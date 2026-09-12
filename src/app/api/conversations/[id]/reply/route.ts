@@ -180,7 +180,16 @@ export async function POST(
       // never leave a real blocker looking like a mystery bug) instead of
       // a generic "delivery failed" that reads as a code defect.
       const msg = err instanceof Error ? err.message : String(err);
-      const isSandboxRestriction = /only send testing emails|verify a domain/i.test(msg);
+      // FIX (this round): "testing email address instead of domains like"
+      // is a second real Resend sandbox-mode wording (confirmed live via
+      // submit-form/route.ts hitting it directly) -- fires when the
+      // recipient's domain looks unverifiable (e.g. a test account's
+      // @example.com), as opposed to this file's originally-observed
+      // wording ("only send testing emails to your own email address"),
+      // which fires for a real-looking but non-owner domain. Same root
+      // cause either way; both patterns now recognized here and in
+      // submit-form/route.ts's matching check.
+      const isSandboxRestriction = /only send testing emails|testing email address|verify a domain/i.test(msg);
       return NextResponse.json({
         ok: true,
         channelError: isSandboxRestriction

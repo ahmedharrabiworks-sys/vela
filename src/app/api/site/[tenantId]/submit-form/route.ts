@@ -240,8 +240,37 @@ export async function POST(
         });
       }
     } catch (emailErr) {
-      // Never fail the request — lead is already saved
-      console.warn("[submit-form] Resend notification failed:", emailErr);
+      // Never fail the request — lead is already saved.
+      //
+      // Narrow improvement (found while diagnosing a real production case):
+      // a generic "[submit-form] Resend notification failed: Error: ..."
+      // buried in server logs looks identical whether the cause is a
+      // transient network blip or Resend's account being stuck in sandbox
+      // mode (no verified sending domain) -- the latter is a real,
+      // persistent, silent failure: EVERY real customer's booking-
+      // notification email fails the exact same way, forever, until
+      // someone happens to read server logs and notices. This exact gap was
+      // already identified once before (see conversations/[id]/reply/
+      // route.ts's Round M FIX 5, which named this file directly as also
+      // affected) but never actually applied here -- same detection regex
+      // as that file now applied here too, covering both real Resend
+      // sandbox-mode wordings confirmed live: "only send testing emails"
+      // and "testing email address ... domains like". Does NOT attempt to
+      // fix the underlying cause (verifying a domain requires real DNS
+      // access this code doesn't have) and never blocks the request either way.
+      const errStr = emailErr instanceof Error ? emailErr.message : String(emailErr);
+      const isSandboxModeError = /only send testing emails|testing email address|verify a domain/i.test(errStr);
+      if (isSandboxModeError) {
+        console.error(
+          "[submit-form] EMAIL DELIVERY BLOCKED — Resend account has no verified sending domain " +
+          "(still in sandbox mode, which only allows sending to the account's own address). " +
+          "Every real customer booking-notification email is silently failing until this is fixed. " +
+          "Action needed: verify a sending domain in the Resend dashboard, then set RESEND_FROM_EMAIL " +
+          "to an address on that domain. Raw error:", errStr
+        );
+      } else {
+        console.warn("[submit-form] Resend notification failed:", emailErr);
+      }
     }
   } else {
     console.warn("[submit-form] RESEND_API_KEY not set — skipping email notification");

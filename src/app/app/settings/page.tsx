@@ -1034,11 +1034,16 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
   }
   async function deleteAppointmentForever(id: string) {
     setBusyId(id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = getSupabase() as any;
-    const { error } = await db.from("appointments").delete().eq("id", id);
-    if (!error) { setAppointments((prev) => prev.filter((a) => a.id !== id)); setToast("Appointment permanently deleted"); }
-    else setToast("Could not delete. Please try again.");
+    // Routed through a real API endpoint (not a plain client-side delete)
+    // so the linked conversation's transcript can be scrubbed server-side
+    // in the same action -- see api/appointments/[id]/route.ts for why.
+    try {
+      const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+      if (res.ok) { setAppointments((prev) => prev.filter((a) => a.id !== id)); setToast("Appointment permanently deleted"); }
+      else setToast("Could not delete. Please try again.");
+    } catch {
+      setToast("Could not delete. Please try again.");
+    }
     setBusyId(null);
   }
 
