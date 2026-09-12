@@ -54,7 +54,21 @@ export async function ensureTenant(
 ): Promise<TenantRow> {
   const admin = createSupabaseAdmin() as AdminClient;
 
-  async function fetchExisting(): Promise<TenantRow | null> {
+  // Emergency stopgap (found live in production, 2026-09-12): a heavily
+  // polled account -- NotificationBell fetches /api/notifications every
+  // 30s, and that route calls this function on every single poll -- kept
+  // re-triggering tenant creation even AFTER the fast path was made
+  // resilient to pre-existing duplicates. Root cause: fetchExisting()
+  // treated a transient SELECT error (a real Supabase/PostgREST hiccup --
+  // more likely to actually occur at all simply because this account is
+  // queried ~100+ times/hour from a left-open tab, not because of anything
+  // wrong with the row itself) IDENTICALLY to "confirmed zero rows", and
+  // fell through to creating a brand-new tenant on that uncertain signal.
+  // That is exactly backwards: an unknown read must never be treated as
+  // permission to create. fetchExisting() now distinguishes "confirmed
+  // absent" from "errored, we don't actually know" -- only a CONFIRMED
+  // absence (after one retry) is allowed to reach the creation path below.
+  async function fetchExisting(): Promise<{ tenant: TenantRow | null; confirmedAbsent: boolean }> {
     const { data, error } = await admin
       .from("tenants")
       .select("*")
@@ -64,22 +78,40 @@ export async function ensureTenant(
 
     if (error) {
       console.error("[ensureTenant] SELECT error:", error.code, error.message);
-      return null;
+      return { tenant: null, confirmedAbsent: false };
     }
-    if (!data || data.length === 0) return null;
+    if (!data || data.length === 0) return { tenant: null, confirmedAbsent: true };
 
     const t = data[0];
     return {
-      id: t.id,
-      business_name: t.business_name ?? "",
-      industry: t.industry ?? "",
-      city: t.city ?? "",
+      tenant: {
+        id: t.id,
+        business_name: t.business_name ?? "",
+        industry: t.industry ?? "",
+        city: t.city ?? "",
+      },
+      confirmedAbsent: false,
     };
   }
 
   // Fast path: tenant already exists (the overwhelming majority of calls).
-  const existing = await fetchExisting();
-  if (existing) return existing;
+  const first = await fetchExisting();
+  if (first.tenant) return first.tenant;
+
+  if (!first.confirmedAbsent) {
+    // The read itself failed -- retry once before giving up. A real,
+    // confirmed "zero rows" is required before this function is allowed
+    // to create anything; a second consecutive error means we genuinely
+    // don't know, so this throws rather than risk another duplicate.
+    const retry = await fetchExisting();
+    if (retry.tenant) return retry.tenant;
+    if (!retry.confirmedAbsent) {
+      throw new Error(
+        `ensureTenant: could not verify whether a tenant exists for user ${userId} (SELECT failed twice) -- refusing to create one on an uncertain read`
+      );
+    }
+  }
+  // Reached only after a real, confirmed "zero rows" result -- safe to create.
 
   // Derive sensible defaults from auth metadata
   const emailPrefix = (userEmail ?? "").split("@")[0] ?? "My Business";
@@ -116,7 +148,7 @@ export async function ensureTenant(
     // concurrent call won the race between our fetchExisting() above and
     // this upsert. Fetch the winner -- it is guaranteed to exist now.
     const winner = await fetchExisting();
-    if (winner) return winner;
+    if (winner.tenant) return winner.tenant;
   } else {
     // Upsert itself failed -- most likely because migration_v38.sql hasn't
     // been run yet (no unique constraint for ON CONFLICT to target).
@@ -139,7 +171,7 @@ export async function ensureTenant(
   if (!newTenant) {
     // Last resort: someone else created it in the meantime after all.
     const winner = await fetchExisting();
-    if (winner) return winner;
+    if (winner.tenant) return winner.tenant;
     throw new Error(`Failed to create or fetch tenant for user ${userId}`);
   }
 

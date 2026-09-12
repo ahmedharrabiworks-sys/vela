@@ -2303,3 +2303,12 @@ INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('de92953a-
 INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('ab24f7a6-1b3e-474d-9b5c-714661ca4bc7', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T17:15:22.336034+00:00');
 INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('da1362b0-1688-4fb6-87f6-f96194486cba', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T18:00:57.241646+00:00');
 INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('7a1d4e34-1e4b-42ad-980c-e8671ad8e4e1', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T18:01:12.326807+00:00');
+
+-- ============================================================
+-- 3rd-pass cleanup: one more duplicate formed for c03d2ed1 before
+-- the emergency stopgap (fetchExisting() error-handling fix) went
+-- live. Generated: 2026-09-12T18:38:34.426Z
+-- ============================================================
+
+-- Owner c03d2ed1-04aa-400b-8bf3-c056e8f56c53 (kept: 1fedeaa2-0367-42b5-8ada-c22fa667aef1) -- 1 empty rows deleted
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('3481e9dd-5955-40c2-998c-277617ffc208', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T18:25:11.317596+00:00');
