@@ -2273,3 +2273,33 @@ INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('e039ece6-
 -- confirmed before deletion.
 INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('9d030208-6953-417c-a143-99c616739ebe', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T14:41:06.328987+00:00');
 INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('157630bd-4815-44b0-9785-6579d33eee14', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T14:41:07.988051+00:00');
+
+-- ============================================================
+-- FOLLOW-UP CLEANUP: constraint application failed once (a second
+-- owner_id had duplicates, and the first owner had regrown more --
+-- same still-open pre-constraint race, both re-scanned live and
+-- confirmed clean before deletion. Generated: 2026-09-12T18:21:32.341Z
+-- ============================================================
+
+-- Owner c03d2ed1-04aa-400b-8bf3-c056e8f56c53 (kept: 1fedeaa2-0367-42b5-8ada-c22fa667aef1) -- 12 empty rows deleted
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('2a1a32ba-bee8-4a06-94f7-c13d7743b333', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T15:00:15.67149+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('5973a4c4-b783-4c49-a799-61c093202041', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T15:00:31.955255+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('d4a49541-94e6-4a8f-a950-ebb7df384401', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T15:15:15.887894+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('6feb2db9-481e-45c2-9765-4128d548d01f', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T15:45:10.46502+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('74cab053-47f2-4845-bc84-446ba9796137', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T15:55:10.14601+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('3cd99aca-6a15-437c-bc43-e4848758d6ab', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T16:00:21.697119+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('d361d615-4001-4bd3-bd3f-4228cafd57fc', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T16:17:09.495248+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('9abb9b86-c14a-4ab5-9bf7-324a2add6203', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T16:40:10.218148+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('325d8967-1eb4-49fa-845b-434da30b548d', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T16:50:12.109199+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('45ac941a-a0f5-4e1e-8c46-b56e0de8876c', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T17:10:12.425567+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('4d3312bf-0310-41eb-90bb-b03daba56fec', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T17:45:12.369992+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('430e955a-fab6-46e6-9f8b-a91e0fcd4d7d', 'c03d2ed1-04aa-400b-8bf3-c056e8f56c53', 'Ahmed Harrabi', '2026-09-12T17:55:09.958637+00:00');
+
+-- Owner db348d25-9af8-4af5-83f9-43cdf144bcbd (kept: 1e1dc4c4-1893-4f51-94de-231565b85dc9) -- 7 empty rows deleted
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('23ad5cbc-cd2a-402f-a72c-641453829315', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T14:50:22.121842+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('b0e49e61-9b67-4e89-9fb1-b86971bfba5f', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T15:00:23.743583+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('94e42636-22b6-4fec-8d5d-ce95407b9829', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T16:10:24.18268+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('de92953a-9836-4268-928b-b055df04163a', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T16:45:21.995972+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('ab24f7a6-1b3e-474d-9b5c-714661ca4bc7', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T17:15:22.336034+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('da1362b0-1688-4fb6-87f6-f96194486cba', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T18:00:57.241646+00:00');
+INSERT INTO tenants (id, owner_id, business_name, created_at) VALUES ('7a1d4e34-1e4b-42ad-980c-e8671ad8e4e1', 'db348d25-9af8-4af5-83f9-43cdf144bcbd', 'Vela E2E Test', '2026-09-12T18:01:12.326807+00:00');
