@@ -137,7 +137,7 @@ export default function PricingPage() {
         <p className="text-center text-sm text-[#9CA3AF] mt-8">
           Cancel anytime{" · "}
           <Link href="/auth/signup" className="text-[#FF6B35] hover:underline font-medium">
-            Start your 7-day trial →
+            Get Started →
           </Link>
         </p>
 

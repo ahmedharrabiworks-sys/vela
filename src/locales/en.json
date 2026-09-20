@@ -516,7 +516,7 @@
         "starter": {
           "name": "Starter",
           "description": "One AI channel. Automated replies, lead capture, and CRM.",
-          "cta": "Start Your Trial",
+          "cta": "Get Started",
           "features": [
             "150 voice minutes/month",
             "500 text messages/month",
@@ -533,7 +533,7 @@
         "pro": {
           "name": "Pro",
           "description": "All channels, phone agent, website, and full CRM.",
-          "cta": "Start Your Trial",
+          "cta": "Get Started",
           "features": [
             "AI Voice Phone Agent",
             "All 3 channels (phone, Instagram, WhatsApp)",
@@ -550,7 +550,7 @@
         "premium": {
           "name": "Premium",
           "description": "Everything in Pro. Priority routing, 3 websites, and unlimited team.",
-          "cta": "Start Your Trial",
+          "cta": "Get Started",
           "features": [
             "1,300 voice minutes/month",
             "All 3 channels + priority routing",
