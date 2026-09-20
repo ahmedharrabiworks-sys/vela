@@ -121,10 +121,27 @@ export async function POST(req: NextRequest) {
   // tool-call handlers below, which already filter correctly) -- a
   // soft-deleted lead/appointment/conversation inflated the counts the
   // Assistant states as fact in its reply (e.g. "Upcoming appointments: N").
+  //
+  // FIX (bulk-delete-conversations round): real root cause of "delete all
+  // conversations" failing with a generic "issue accessing the conversation
+  // data" error -- conversations has no `status` column (confirmed against
+  // the real live schema: id, tenant_id, lead_id, channel, created_at,
+  // needs_human, customer_name, ai_enabled, last_message_at,
+  // needs_human_resolved_at, deleted_at, website_id, last_read_at). This
+  // SELECT included `status` anyway -- almost certainly copied from the
+  // leads/appointments queries right above it, both of which DO have a real
+  // status column. Every single call errored with a real Postgres
+  // "column conversations.status does not exist", silently degrading this
+  // query's result to nothing here (convsRes.data ?? [] safely masked the
+  // failure, so the assistant's own baseline "Live data" context has been
+  // chronically reporting 0 conversations / 0 needing human attention on
+  // EVERY call, real data or not) -- and loudly surfacing as a real tool
+  // error whenever the model called get_conversations() below to resolve a
+  // bulk target list, which is exactly the reported bug.
   const [leadsRes, apptsRes, convsRes, cfgRes] = await Promise.all([
     admin.from("leads").select("id, name, status, created_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
     admin.from("appointments").select("id, datetime, status, service_name, leads(name)").eq("tenant_id", tenantId).is("deleted_at", null).gte("datetime", new Date().toISOString()).order("datetime", { ascending: true }).limit(5),
-    admin.from("conversations").select("id, channel, status, needs_human, customer_name").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
+    admin.from("conversations").select("id, channel, needs_human, customer_name").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
     admin.from("tenant_config").select("instagram_connected, whatsapp_connected, services_json, knowledge_base").eq("tenant_id", tenantId).maybeSingle(),
   ]);
 
@@ -260,10 +277,13 @@ The voice agent (AI Agent section) goes further — it answers real phone calls,
 - Annual billing saves ~20%. Cancel anytime.
 
 ## Real data access and real actions — use your tools, don't refuse
-You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations, get_recycle_bin (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message, delete_lead, delete_appointment, delete_conversation, restore_lead, restore_appointment, restore_conversation, toggle_conversation_ai (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL — never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation, delete or restore a lead/appointment/conversation) — CALL THE REAL TOOL for it. Never say deleting isn't supported — it is; delete_lead/delete_appointment/delete_conversation move the item to the same Recycle Bin used everywhere else in the app (Settings → Recycle Bin), so it's always recoverable, never a permanent hard delete. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence — never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. After a delete, briefly mention it's recoverable from the Recycle Bin in Settings if it feels natural, but keep it to one short sentence. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that) — and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
+You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations, get_recycle_bin (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message, delete_lead, delete_appointment, delete_conversation, restore_lead, restore_appointment, restore_conversation, toggle_conversation_ai, permanently_delete (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL — never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation, delete or restore a lead/appointment/conversation) — CALL THE REAL TOOL for it. Never say deleting isn't supported — it is; delete_lead/delete_appointment/delete_conversation move the item to the same Recycle Bin used everywhere else in the app (Settings → Recycle Bin), so it's always recoverable, never a permanent hard delete on their own. A real permanent delete IS also possible via permanently_delete, but it has its own strict confirmation rule below — never call it as a substitute for delete_lead/delete_appointment/delete_conversation. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence — never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. After a delete, briefly mention it's recoverable from the Recycle Bin in Settings if it feels natural, but keep it to one short sentence. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that) — and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet — once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
 
 ## Recycle Bin vs. cancelled — these are two different things, never confuse them
 A "cancelled" appointment still exists normally, just with status=cancelled (get_appointments finds these -- including past-dated ones; asking about cancelled appointments always searches all time, not just upcoming). The Recycle Bin (Settings → Recycle Bin) holds SOFT-DELETED leads/appointments/conversations -- a completely different, separate place, only visible via get_recycle_bin. A single item can be BOTH at once (cancelled AND in the Recycle Bin) -- if asked, report each state accurately and distinctly, don't collapse them into one. If the owner says "restore", "recycle bin", "deleted", "removed", or asks to bring something back, that means the Recycle Bin -- call get_recycle_bin (never assume nothing's there just because get_appointments/get_leads/get_conversations came back empty or didn't mention it, those never include Recycle Bin items) and use restore_lead/restore_appointment/restore_conversation. get_appointments' result tells you whether to mention cancelled/Recycle Bin counts this turn (via its "instruction" field) -- it already tracks whether you mentioned this earlier in the conversation, so follow that field exactly: mention once when it says to, then stop repeating it on later unrelated replies unless the owner asks again directly.
+
+## Permanently deleting from the Recycle Bin: NEVER on the first request, always confirm first
+permanently_delete is irreversible -- once it runs, the item is gone forever, not recoverable from the Recycle Bin or anywhere else. MANDATORY, NO EXCEPTIONS, same pattern as every other real confirmation in this system: the FIRST time the owner asks to permanently delete something, empty the Recycle Bin, or "delete it forever" -- no matter how they phrase it, even if they sound certain -- do NOT call permanently_delete yet. Instead call get_recycle_bin first if you don't already know what's in there this turn, tell the owner exactly what would be permanently deleted (a real count and, if there are only a few, what they are), and ask ONE explicit yes/no confirmation question naming it, e.g. "This will permanently delete 4 items and can't be undone -- go ahead?" -- then stop there and wait. Only call permanently_delete with confirmed=true after the owner's very next message contains a clear, explicit affirmative (e.g. "yes", "confirm", "do it", "go ahead"). If they say no, hesitate, or ask a question instead, do not call the tool -- answer them normally. This confirmation step is required even if they already sounded certain in their first message; never skip straight from the request to calling the tool in the same reply.
 
 ## Sending a message to a named customer
 If get_conversations doesn't show a conversation whose customer_name matches who the owner means, do NOT give up and say there's no conversation. Call get_leads (or get_appointments) to find that person by name and get their real leadId, then call send_message with that leadId instead of a conversationId -- it will resolve the right conversation thread even when the display name doesn't match yet. Only tell the owner no conversation exists if send_message itself actually returns that error after you've tried the leadId path.
@@ -594,6 +614,34 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
         },
       },
     },
+    // FEATURE (owner-requested): a real hard-delete for items already in the
+    // Recycle Bin -- previously the assistant correctly told owners to use
+    // Settings -> Recycle Bin -> Delete Permanently instead, since no tool
+    // existed for it. Irreversible, so confirmed must be explicitly true --
+    // see the "NEVER call this without real confirmation" system-prompt rule
+    // below, which mirrors the exact confirm-then-act wording already
+    // proven in ai/reply/route.ts's booking-confirmation flow (ask one
+    // explicit yes/no question naming what will happen, stop, only proceed
+    // after a clear affirmative in the owner's NEXT message). Server-side
+    // backstop below refuses to run at all when confirmed isn't literally
+    // true, regardless of what the model claims about prior conversation --
+    // never trusts the model's own account of what was said earlier.
+    {
+      type: "function",
+      function: {
+        name: "permanently_delete",
+        description: "PERMANENTLY and IRREVERSIBLY delete items already in the Recycle Bin (leads/appointments/conversations that already have deleted_at set) -- gone forever, cannot be restored, unlike delete_lead/delete_appointment/delete_conversation which only move something INTO the Recycle Bin. MANDATORY, NO EXCEPTIONS: never call this tool on a first or ambiguous request, even if the owner says 'permanently delete X', 'empty the recycle bin', 'delete it forever', or similar. First call get_recycle_bin to see the real items, tell the owner exactly what would be permanently deleted (a real count and/or named items), and ask one explicit yes/no confirmation question naming it, e.g. 'This will permanently delete 4 items and can't be undone -- go ahead?', then STOP and wait -- do not call this tool in that same reply. Only call it after the owner's very next message contains a clear, explicit affirmative (e.g. 'yes', 'confirm', 'do it', 'go ahead') responding to that exact question.",
+        parameters: {
+          type: "object",
+          properties: {
+            category: { type: "string", enum: ["lead", "appointment", "conversation"], description: "Restrict to one Recycle Bin category. Omit to target all three (a full 'empty the Recycle Bin')." },
+            ids: { type: "array", items: { type: "string" }, description: "Specific real ids (from get_recycle_bin) to permanently delete. Omit to permanently delete every item in the given scope -- all of one category, or the entire Recycle Bin if category is also omitted." },
+            confirmed: { type: "boolean", description: "Must be true. Only set true if the owner just gave a clear, explicit yes to your own confirmation question in their immediately preceding message. Never true on a first, unconfirmed request -- this executes immediately and cannot be undone." },
+          },
+          required: ["confirmed"],
+        },
+      },
+    },
     {
       type: "function",
       function: {
@@ -719,7 +767,17 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       // for those -- this was the real root cause of "issue accessing your
       // conversations": the model had no id to fall back on when the name
       // match came up empty.
-      let q = admin.from("conversations").select("id, channel, status, needs_human, customer_name, lead_id, created_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
+      //
+      // BUG 1 FIX (real root cause of "delete all conversations" failing):
+      // `status` is not a real column on conversations (confirmed against
+      // the live schema) -- this SELECT has been requesting it anyway,
+      // almost certainly copied from the leads/appointments queries which
+      // DO have a real status column. Every call errored with a real
+      // Postgres "column conversations.status does not exist", which the
+      // model then paraphrased to the owner as a generic "issue accessing
+      // the conversation data" -- reproduced live, confirmed via the exact
+      // error string, before this fix.
+      let q = admin.from("conversations").select("id, channel, needs_human, customer_name, lead_id, created_at").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(clampLimit(args.limit));
       if (args.needsHuman === true) q = q.eq("needs_human", true);
       const { data, error } = await q;
       return error ? { error: error.message } : { conversations: data };
@@ -878,6 +936,45 @@ After all topics are collected or confirmed: thank them briefly, show 2–3 bull
       if (error) return { error: error.message };
       if (!data || data.length === 0) return { error: "Conversation not found in Recycle Bin" };
       return { ok: true, restored: data[0] };
+    }
+    // FEATURE (owner-requested): real hard-delete for items already in the
+    // Recycle Bin. Two independent, code-level safety gates -- neither
+    // relies on trusting the model's own account of the conversation:
+    // (1) confirmed must be the literal boolean true, checked here, not
+    //     just requested by the schema -- a model that calls this without
+    //     it (whatever it believes happened earlier in the chat) gets
+    //     refused and told to actually ask first.
+    // (2) every delete below is scoped with .not("deleted_at", "is", null)
+    //     in addition to the usual .eq("tenant_id", tenantId) -- this tool
+    //     can never touch a row that hasn't already been soft-deleted via
+    //     delete_lead/delete_appointment/delete_conversation (or the
+    //     Recycle Bin UI) first, so it cannot be used to bypass that
+    //     existing step even if the model gets confused about scope.
+    // A real .delete() (not .update()) -- the one and only place in this
+    // file that does a genuine, permanent, unrecoverable delete.
+    if (name === "permanently_delete") {
+      if (args.confirmed !== true) {
+        return { error: "Not confirmed. Ask the owner one explicit yes/no confirmation question naming exactly what will be permanently deleted, then only call this again after they clearly say yes in their next message." };
+      }
+      const category = typeof args.category === "string" ? args.category : null;
+      const ids = Array.isArray(args.ids) ? args.ids.filter((x: unknown): x is string => typeof x === "string") : null;
+      const tables: { key: "lead" | "appointment" | "conversation"; table: string }[] = [
+        { key: "lead", table: "leads" },
+        { key: "appointment", table: "appointments" },
+        { key: "conversation", table: "conversations" },
+      ];
+      const targets = category ? tables.filter((t) => t.key === category) : tables;
+      if (targets.length === 0) return { error: "Unknown category -- use 'lead', 'appointment', or 'conversation', or omit for all three." };
+      const counts: Record<string, number> = {};
+      for (const t of targets) {
+        let q = admin.from(t.table).delete().eq("tenant_id", tenantId).not("deleted_at", "is", null);
+        if (ids && ids.length > 0) q = q.in("id", ids);
+        const { data, error } = await q.select("id");
+        if (error) return { error: error.message };
+        counts[t.key] = data?.length ?? 0;
+      }
+      const totalDeleted = Object.values(counts).reduce((a, b) => a + b, 0);
+      return { ok: true, permanentlyDeleted: counts, totalDeleted };
     }
     if (name === "toggle_conversation_ai") {
       if (typeof args.conversationId !== "string" || typeof args.enabled !== "boolean") return { error: "conversationId and enabled are required" };
