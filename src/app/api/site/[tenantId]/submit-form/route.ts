@@ -324,7 +324,7 @@ async function sendFormNotification(p: NotificationParams) {
         </table>
         <p style="margin-top:24px;font-size:12px;color:#9CA3AF;font-family:sans-serif;">
           Submitted via your Vela website. View in your
-          <a href="https://vela-g8h4.vercel.app/app/leads" style="color:#FF6B35;">CRM dashboard</a>.
+          <a href="https://velaos.co/app/leads" style="color:#FF6B35;">CRM dashboard</a>.
         </p>
       `,
     }),

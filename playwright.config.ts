@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
 // and saves storageState to e2e/.auth/user.json, which is reused by all tests.
 //
 // Required env vars (add to .env.local — never commit):
-//   PLAYWRIGHT_BASE_URL   — defaults to https://vela-g8h4.vercel.app
+//   PLAYWRIGHT_BASE_URL   — defaults to https://velaos.co
 //   TEST_ACCOUNT_EMAIL    — Vela account email for the test tenant
 //   TEST_ACCOUNT_PASSWORD — password for that account
 
@@ -22,7 +22,7 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "https://vela-g8h4.vercel.app",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "https://velaos.co",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

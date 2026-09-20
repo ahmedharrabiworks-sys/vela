@@ -3588,7 +3588,7 @@ export default function WebsitePage() {
               </div>
               <div className="flex-1 mx-4">
                 <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono truncate">
-                  {publishedUrl ? `${origin}${publishedUrl}` : "yoursite.vela.ai"}
+                  {publishedUrl ? `${origin}${publishedUrl}` : "yoursite.velaos.co"}
                 </div>
               </div>
             </div>

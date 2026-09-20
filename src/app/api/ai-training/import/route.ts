@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
   try {
     const resp = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; VelaBot/1.0; +https://vela-g8h4.vercel.app)",
+        "User-Agent": "Mozilla/5.0 (compatible; VelaBot/1.0; +https://velaos.co)",
         "Accept": "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(8000),

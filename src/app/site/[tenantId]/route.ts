@@ -35,7 +35,7 @@ function buildWidgetScript(tenantId: string, websiteId?: string): string {
   // a website named "Azure Bay Hotel" -- the widget on that hotel site
   // answered as "Vela dental clinning". Passing websiteId lets the widget
   // resolve and identify as the specific site it's actually on.
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") || "https://app.vela.ai";
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") || "https://velaos.co";
   const src = `${appUrl}/api/embed/${encodeURIComponent(tenantId)}?source=site${websiteId ? `&websiteId=${encodeURIComponent(websiteId)}` : ""}`;
   return `<script>if(window.self===window.top){var s=document.createElement('script');s.src=${JSON.stringify(src)};s.async=true;document.body.appendChild(s);}</script>`;
 }

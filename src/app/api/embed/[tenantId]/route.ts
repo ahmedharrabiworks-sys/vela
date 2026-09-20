@@ -8,7 +8,7 @@ export async function GET(
   const { tenantId } = params;
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-    "https://app.vela.ai";
+    "https://velaos.co";
   // source=site (set only by the auto-injected script on a published Vela
   // site, see site/[tenantId]/route.ts) vs. absent (an externally pasted
   // embed) -- passed through to the widget so conversations are tagged

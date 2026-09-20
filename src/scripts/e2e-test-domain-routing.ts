@@ -40,13 +40,13 @@ function isCustomDomain(hostname: string, appHost: string): boolean {
   );
 }
 
-const appHostFromEnv = (process.env.NEXT_PUBLIC_APP_URL ?? "https://tryvela.com")
+const appHostFromEnv = (process.env.NEXT_PUBLIC_APP_URL ?? "https://velaos.co")
   .replace(/^https?:\/\//, "")
   .split("/")[0]
   .toLowerCase();
 
 // In local dev NEXT_PUBLIC_APP_URL = http://localhost:3000, so appHostFromEnv = 'localhost:3000'.
-// In production it will be 'tryvela.com'. The isCustomDomain() logic is the same either way;
+// In production it will be 'velaos.co'. The isCustomDomain() logic is the same either way;
 // we test production-equivalent behavior by using the canonical production host directly.
 const PROD_APP_HOST = "tryvela.com";
 console.log(`  appHost from env: "${appHostFromEnv}" (dev may be localhost; production: "${PROD_APP_HOST}")`);

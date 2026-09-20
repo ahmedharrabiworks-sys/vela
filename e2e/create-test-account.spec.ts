@@ -21,7 +21,7 @@ import { test, expect, Page } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "https://vela-g8h4.vercel.app";
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "https://velaos.co";
 const TS        = Date.now();
 const EMAIL     = `vela-e2e-test-${TS}@example.com`;
 const PASSWORD  = `VelaTest${TS}!E2E`;

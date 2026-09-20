@@ -3,6 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "env": {
-    "NEXT_PUBLIC_APP_URL": "https://vela.ai"
+    "NEXT_PUBLIC_APP_URL": "https://velaos.co"
   }
 }

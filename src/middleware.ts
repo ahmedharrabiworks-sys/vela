@@ -40,7 +40,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 function getAppHost(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "https://tryvela.com")
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "https://velaos.co")
     .replace(/^https?:\/\//, "")
     .split("/")[0]
     .toLowerCase();
@@ -91,7 +91,7 @@ export async function middleware(request: NextRequest) {
 
   // Custom domain: any host that is NOT the main Vela app, NOT localhost, NOT a Vercel preview.
   // vela-g8h4.vercel.app and all other *.vercel.app URLs are excluded by the .vercel.app check.
-  // tryvela.com (and any NEXT_PUBLIC_APP_URL value) is excluded by the appHost check.
+  // velaos.co (and any NEXT_PUBLIC_APP_URL value) is excluded by the appHost check.
   const isCustomDomain =
     hostname !== appHost &&
     !hostname.startsWith("localhost") &&

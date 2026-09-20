@@ -38,8 +38,8 @@ Core loop: business signs up → connects Instagram/WhatsApp/Website → Vela AI
 
 | Thing | Value |
 |---|---|
-| Live site | https://vela-g8h4.vercel.app (also aliased to tryvela.com) |
-| Health | https://vela-g8h4.vercel.app/api/health |
+| Live site | https://velaos.co (also aliased to vela-g8h4.vercel.app and tryvela.com) |
+| Health | https://velaos.co/api/health |
 | GitHub | https://github.com/ahmedharrabiworks-sys/vela (branch: master) |
 | Supabase | puyinskgvwycmrvkzgac (West EU Ireland) |
 | Vercel | brandlab/vela-g8h4 (Claude Code deploys via `npx vercel deploy --prod`) |
@@ -226,7 +226,7 @@ Step 5 ✅ **Phase 1 tenant detail page — commit `f9f19c2`:** `src/app/mission
 Phase 2, Stage 1 ✅ **AI-Employee layer foundation — commit `1070221`, deployed `dpl_D7wEdQA38bFnYuxheGvhnQhWmoxc`:** `supabase/migration_v15.sql` (departments/employees/employee_signals/learning_log — ⚠️ **RUN IN SUPABASE SQL EDITOR**). `queries.ts` extended: `getEmployeeRoster`, `getEmployeeDetail`, `computeWebsiteAgentSignals`. Seed script `src/scripts/seed-website-agent.mjs` (idempotent, 10-check verification — **run after migration_v15.sql**). Routes: `GET /api/mission-control/employees`, `GET /api/mission-control/employees/[id]`. Pages: `/mission-control/employees` (roster), `/mission-control/employees/[id]` (detail + signal history + learning log). Website Agent is the only seeded employee — 5 real signals from `websites` table. See §13 Phase 2 completion record.
 
 ### Phase E — Launch
-27. Custom domain (getvela.ai or similar)
+27. ~~Custom domain (getvela.ai or similar)~~ **DONE** — velaOS.co purchased, "Valid Configuration" in Vercel. Full code-side migration from vela-g8h4.vercel.app (NEXT_PUBLIC_APP_URL, vercel.json, middleware.ts, all hardcoded fallback URLs) — see §7 domain migration commit.
 28. E-commerce website type (future — dropped from active Design Engine scope, see §12)
 29. Voice notes in training (future — audio recording + transcription)
 30. Video for landing page (Screen Studio or Remotion — after product is stable)
