@@ -24,9 +24,20 @@ export async function POST(req: NextRequest) {
   if (!tenant) return NextResponse.json({ success: false, message: "Tenant not found" }, { status: 404 });
 
   if (channel === "instagram") {
-    await admin.from("tenant_config")
-      .update({ instagram_connected: false, instagram_username: "", instagram_access_token: "", instagram_business_id: "" })
-      .eq("tenant_id", tenant.id);
+    // instagram_token_expires_at added by migration_v39.sql (Instagram
+    // Business Login rebuild) -- cleared here too so a disconnect doesn't
+    // leave a stale expiry sitting behind a disconnected account. Tiered
+    // fallback matches the pattern used elsewhere for not-yet-migrated
+    // columns (e.g. auth/instagram/callback/route.ts).
+    const clearFields: Record<string, unknown> = {
+      instagram_connected: false, instagram_username: "", instagram_access_token: "", instagram_business_id: "",
+      instagram_token_expires_at: null,
+    };
+    const { error: igErr } = await admin.from("tenant_config").update(clearFields).eq("tenant_id", tenant.id);
+    if (igErr?.code === "PGRST204" || igErr?.code === "42703") {
+      delete clearFields.instagram_token_expires_at;
+      await admin.from("tenant_config").update(clearFields).eq("tenant_id", tenant.id);
+    }
   } else if (channel === "whatsapp") {
     // Deactivate all active whatsapp_accounts rows for this tenant
     await admin.from("whatsapp_accounts")
