@@ -1,4 +1,20 @@
 /**
+ * ⚠️ STALE — DO NOT TRUST A PASSING RESULT FROM THIS FILE ⚠️
+ * Written entirely against the deprecated Facebook Login + linked Page
+ * Instagram method (Page id/token, graph.facebook.com/{page-id}/messages,
+ * pages_messaging/pages_show_list scopes). That method is now rejected
+ * outright by Meta ("Invalid Scopes") and was replaced with Instagram
+ * Business Login (graph.instagram.com, an Instagram-scoped user id/token,
+ * instagram_business_basic/instagram_business_manage_messages/
+ * instagram_business_manage_comments scopes) -- see auth/instagram/route.ts,
+ * auth/instagram/callback/route.ts, lib/instagram-send.ts, and
+ * webhooks/instagram/route.ts for the real, current implementation.
+ * Every check below (Sections A, B, C, D10) asserts the OLD shape and will
+ * now correctly FAIL against the rebuilt source -- that is expected, not a
+ * regression. Left in place as a historical record rather than deleted
+ * (nothing else references it), but a real rewrite against the new flow is
+ * its own separate task, not done here.
+ *
  * Instagram Meta Messaging API — mocked-response test suite
  *
  * Per Hard Rule 20 (build against placeholder credentials until final integration day):

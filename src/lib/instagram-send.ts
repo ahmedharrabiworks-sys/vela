@@ -1,30 +1,41 @@
 /**
  * Instagram Messaging API — send a DM reply on behalf of a tenant.
- * Uses Graph API v22.0+ (same version floor as whatsapp-send.ts).
+ * Uses Instagram API with Instagram Login ("Instagram Business Login") --
+ * graph.instagram.com, NOT graph.facebook.com. There is no Facebook Page
+ * in this model: the id sent to is the Instagram professional account's
+ * own id (stored in tenant_config.instagram_business_id), and the token is
+ * that account's own long-lived Instagram User access token (stored in
+ * tenant_config.instagram_access_token).
+ *
+ * REBUILT (found broken live during Meta App Review): this previously sent
+ * via graph.facebook.com/{page-id}/messages using a Facebook Page Access
+ * Token -- the deprecated method Meta now rejects at the OAuth step, so
+ * that Page/token combination can no longer be obtained for new
+ * connections. Confirmed against Meta's current docs, not guessed:
+ * graph.instagram.com/{ig-id}/messages, Authorization: Bearer header (same
+ * as before), request body has no "messaging_type" field (not part of the
+ * documented shape for this endpoint -- dropped rather than carried over
+ * unverified).
  *
  * Called by: src/app/api/webhooks/instagram/route.ts
- *
- * Token: must be a Page Access Token (instagram_access_token in tenant_config),
- * NOT a user access token. Page tokens don't expire while the user retains page role.
  */
 export async function sendInstagramMessage(
-  pageId: string,
-  pageToken: string,
+  igUserId: string,
+  accessToken: string,
   recipientId: string,
   text: string
 ): Promise<void> {
   const res = await fetch(
-    `https://graph.facebook.com/v22.0/${pageId}/messages`,
+    `https://graph.instagram.com/v22.0/${igUserId}/messages`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${pageToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         recipient: { id: recipientId },
         message: { text },
-        messaging_type: "RESPONSE",
       }),
     }
   );
@@ -32,11 +43,11 @@ export async function sendInstagramMessage(
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as { error?: { message?: string; code?: number } };
     // Log detail server-side only — never surface token or full recipient ID to callers
-    console.error("[instagram-send] Meta Graph API error:", {
+    console.error("[instagram-send] Graph API error:", {
       status: res.status,
       code: data.error?.code,
       message: data.error?.message,
-      pageId,
+      igUserId,
       // Partial recipient for logs — don't log full scoped user ID
       recipientPrefix: recipientId.slice(0, 6) + "…",
     });

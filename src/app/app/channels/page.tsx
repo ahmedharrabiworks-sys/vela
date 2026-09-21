@@ -58,7 +58,7 @@ function InstagramModal({ onClose }: { onClose: () => void }) {
   const PERMISSIONS = [
     { label: "Read Instagram DMs", desc: "So Vela AI can see and respond to incoming messages" },
     { label: "Manage messages",    desc: "So Vela AI can send replies on your behalf" },
-    { label: "Read page info",     desc: "To link your Instagram Business account to your Facebook Page" },
+    { label: "Comment access",     desc: "Part of Instagram's standard business permissions — comment automation isn't built yet" },
   ];
 
   return (
@@ -97,7 +97,7 @@ function InstagramModal({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-[#9CA3AF] mb-4">You need an Instagram Business account connected to a Facebook Page.</p>
+            <p className="text-[11px] text-[#9CA3AF] mb-4">You need an Instagram professional account (Business or Creator). No Facebook Page required.</p>
             <button onClick={() => setStep(1)} className="w-full py-3 rounded-xl font-semibold text-white text-sm hover:opacity-90" style={{ background: "#111111" }}>
               Continue to Meta Authorization
             </button>

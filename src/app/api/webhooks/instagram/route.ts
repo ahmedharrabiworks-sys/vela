@@ -63,25 +63,31 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  // ── Resolve tenant + credentials from Instagram Business Account ID ───────────
-  // entry[].id is the Instagram Business Account ID (populated when the webhook
-  // was subscribed via the IG Business Account).
+  // ── Resolve tenant + credentials from the Instagram-scoped account id ─────────
+  // entry[].id is the Instagram professional account's own id -- the exact
+  // value stored in instagram_business_id by the Instagram Business Login
+  // callback (auth/instagram/callback/route.ts). REBUILT: previously also
+  // read instagram_page_id (a Facebook Page id) here to send replies via
+  // graph.facebook.com/{page-id}/messages -- that Page concept doesn't exist
+  // in Instagram Business Login. entry.id IS the id to send FROM under the
+  // new model (see instagram-send.ts), so no separate id needs to be read
+  // back out of tenant_config at all -- only the access token does.
   const entries = (payload.entry as { id?: string; messaging?: unknown[] }[]) ?? [];
-  let tenantId:    string | null = null;
-  let igPageId:    string | null = null;
-  let igPageToken: string | null = null;
+  let tenantId:      string | null = null;
+  let igUserId:      string | null = null;
+  let igAccessToken: string | null = null;
 
   for (const entry of entries) {
     if (!entry.id) continue;
     const { data: cfg } = await admin
       .from("tenant_config")
-      .select("tenant_id, instagram_page_id, instagram_access_token")
+      .select("tenant_id, instagram_access_token")
       .eq("instagram_business_id", entry.id)
       .maybeSingle();
     if (cfg?.tenant_id) {
-      tenantId    = cfg.tenant_id            as string;
-      igPageId    = cfg.instagram_page_id    as string | null;
-      igPageToken = cfg.instagram_access_token as string | null;
+      tenantId      = cfg.tenant_id              as string;
+      igUserId      = entry.id;
+      igAccessToken = cfg.instagram_access_token as string | null;
       break;
     }
   }
@@ -129,16 +135,18 @@ export async function POST(req: NextRequest) {
 
         if (!aiReply) continue;
 
-        if (!igPageId || !igPageToken) {
-          // Page credentials missing — tenant connected before migration_v12 ran.
-          // They must reconnect Instagram to refresh stored credentials.
-          console.warn("[webhook/instagram] Missing page credentials for tenant", tenantId,
-            "— user must reconnect Instagram to get Page token");
+        if (!igUserId || !igAccessToken) {
+          // Credentials missing — tenant connected under the old Facebook-
+          // Page-based method (or before this rebuild), so there's no
+          // Instagram Business Login token stored. They must reconnect
+          // Instagram to get a real Instagram User access token.
+          console.warn("[webhook/instagram] Missing Instagram Business Login credentials for tenant", tenantId,
+            "— user must reconnect Instagram");
           continue;
         }
 
         try {
-          await sendInstagramMessage(igPageId, igPageToken, senderId, aiReply);
+          await sendInstagramMessage(igUserId, igAccessToken, senderId, aiReply);
         } catch (err) {
           console.error("[webhook/instagram] Send reply error for tenant", tenantId, ":", err);
         }
