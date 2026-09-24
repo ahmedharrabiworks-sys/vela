@@ -87,11 +87,11 @@ function computeChange(current: number, prior: number): ChangeResult {
 // compare to yesterday (rarely null) while these compare to a full prior
 // period (commonly null for weeks after signup), so "omit" reads as "this
 // card's badge feature doesn't exist" rather than "no signal yet." Now
-// renders a neutral, honest "–" chip instead of nothing -- never a
+// renders a neutral, honest " to " chip instead of nothing -- never a
 // fabricated direction/percentage, just visual confirmation the badge slot
 // is real and simply has nothing to compare against yet.
 // FIX 6 (round Q): change is null only while analytics itself hasn't
-// loaded yet (the "–" placeholder still applies there); once real data
+// loaded yet (the " to " placeholder still applies there); once real data
 // exists, computeChange above always returns a real, renderable value now
 // -- either a genuine percentage (pct, including a real 0%) or a real
 // absolute increase from a zero base (newCount) -- never hidden.
@@ -104,7 +104,7 @@ function TrendBadge({ change }: { change: ChangeResult | null }) {
   if (change === null) {
     return (
       <span className="text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6E6E76]" title="No prior-period data to compare yet">
-        –
+, 
       </span>
     );
   }
@@ -449,7 +449,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-20">
-      {/* Header — FIX: no special background here anymore, same as every
+      {/* Header, FIX: no special background here anymore, same as every
           other dashboard page (was a hardcoded orange/pink gradient that
           didn't match Conversations/Leads/Channels and looked worse in
           dark mode, since an inline style isn't touched by the dark-mode

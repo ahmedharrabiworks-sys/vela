@@ -1,10 +1,10 @@
 /**
- * Phase 5a Verification — Section spacing controls
+ * Phase 5a Verification, Section spacing controls
  *
  * Three checks (per the verification requirement):
- *   CHECK 1 — Panel DOM: EDIT_SCRIPT in page.tsx contains all required spacing code
- *   CHECK 2 — Spec round-trip: _sectionSpacing survives renderWebsite → HTML comment → extractSpec
- *   CHECK 3 — 375px: rendered HTML with spacing applied has no overflow-causing attributes;
+ *   CHECK 1, Panel DOM: EDIT_SCRIPT in page.tsx contains all required spacing code
+ *   CHECK 2, Spec round-trip: _sectionSpacing survives renderWebsite → HTML comment → extractSpec
+ *   CHECK 3, 375px: rendered HTML with spacing applied has no overflow-causing attributes;
  *              inline styles are section-level padding (block-axis only), panel positioning
  *              is viewport-clamped at 375px.
  *
@@ -47,8 +47,8 @@ check("curTop / curBot state vars declared",
   pageSource.includes("var curTop='',curBot='';"));
 check("SP_VALS array with 5 entries",
   pageSource.includes("var SP_VALS=['','16px','32px','48px','64px'];"));
-check("SP_LBLS array with labels — S M L XL",
-  pageSource.includes("var SP_LBLS=['—','S','M','L','XL'];"));
+check("SP_LBLS array with labels, S M L XL",
+  pageSource.includes("var SP_LBLS=[', ','S','M','L','XL'];"));
 check("topGrp mkGrp call",
   pageSource.includes("var topGrp=mkGrp('↑ Top',"));
 check("botGrp mkGrp call",
@@ -89,7 +89,7 @@ check("handler debounces save at 800ms (same as vela-style)",
     // find the vela-spacing block and check it has the 800ms debounce
     const idx = pageSource.indexOf('if (msgType === "vela-spacing")');
     if (idx === -1) return false;
-    // the block spans ~800 chars — use 1000 to be safe
+    // the block spans ~800 chars, use 1000 to be safe
     const block = pageSource.slice(idx, idx + 1000);
     return block.includes("800");
   })());
@@ -189,17 +189,17 @@ if (renderedHtml) {
   }
 }
 
-// ── CHECK 3: 375px — no horizontal overflow from section-level padding ────────
-console.log("\n══ CHECK 3: 375px — spacing values and overflow safety ══\n");
+// ── CHECK 3: 375px, no horizontal overflow from section-level padding ────────
+console.log("\n══ CHECK 3: 375px, spacing values and overflow safety ══\n");
 
 // The EDIT_SCRIPT applies inline paddingTop/Bottom to [data-vs] block elements.
-// These are block-axis properties — they cannot cause horizontal overflow.
+// These are block-axis properties, they cannot cause horizontal overflow.
 // We verify:
-//   (a) all SP_VALS are vertical-only CSS properties (paddingTop/Bottom — not paddingLeft/Right)
+//   (a) all SP_VALS are vertical-only CSS properties (paddingTop/Bottom, not paddingLeft/Right)
 //   (b) the panel's positioning code clamps to window.innerWidth-8 (safe at 375px)
 //   (c) rendered HTML with _sectionSpacing has no viewport-width-conflicting inline styles
 
-check("EDIT_SCRIPT applies paddingTop only (not paddingLeft/Right — no horizontal overflow risk)",
+check("EDIT_SCRIPT applies paddingTop only (not paddingLeft/Right, no horizontal overflow risk)",
   pageSource.includes("sec.style.paddingTop=v;") &&
   !pageSource.includes("sec.style.paddingLeft") &&
   !pageSource.includes("sec.style.paddingRight"));
@@ -212,12 +212,12 @@ check("EDIT_SCRIPT applies paddingBottom only (not paddingLeft/Right)",
 check("Panel positioning clamps to viewport width (if(l+pw>window.innerWidth-8))",
   pageSource.includes("if(l+pw>window.innerWidth-8)l=window.innerWidth-pw-8;"));
 
-check("SP_VALS max value is 64px (XL) — within typical section padding range, no overflow",
+check("SP_VALS max value is 64px (XL), within typical section padding range, no overflow",
   (() => {
     const idx = pageSource.indexOf("var SP_VALS=");
     if (idx === -1) return false;
     const line = pageSource.slice(idx, idx + 80);
-    // Values: '' / 16px / 32px / 48px / 64px — all ≤64px, nothing extreme
+    // Values: '' / 16px / 32px / 48px / 64px, all ≤64px, nothing extreme
     return line.includes("64px") && !line.includes("128px") && !line.includes("200px");
   })());
 
@@ -237,7 +237,7 @@ if (renderedHtml) {
     const hasWidthOverride = /data-vs="[^"]*"[^>]*style="[^"]*width\s*:[^"]*"/.test(renderedHtml);
     check("no inline width overrides on [data-vs] sections in rendered HTML",
       !hasWidthOverride,
-      hasWidthOverride ? "found inline width style on a section — could conflict with spacing" : undefined);
+      hasWidthOverride ? "found inline width style on a section, could conflict with spacing" : undefined);
   }
 }
 

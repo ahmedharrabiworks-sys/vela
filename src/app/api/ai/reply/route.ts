@@ -19,7 +19,7 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-// ── Rate limiting — FIX 1 (round P) ─────────────────────────────────────────
+// ── Rate limiting, FIX 1 (round P) ─────────────────────────────────────────
 // Diagnostic before this round's changes: yes, rate limiting was already
 // live (Security Hardening Round 1, commit afc881f) -- a per-tenant 30
 // req/min in-memory sliding window, confirmed present in this file. Three
@@ -34,7 +34,7 @@ export async function OPTIONS() {
 // Keyed by tenantId (not IP) because the cost risk is per-tenant: a bot with any
 // valid tenantId can drain that tenant's AI budget. 30 req/min comfortably covers
 // normal heavy chat usage while capping attack cost to ~$0.12/min per tenant.
-// Limitation: resets on Vercel cold starts / across serverless instances — a durable
+// Limitation: resets on Vercel cold starts / across serverless instances, a durable
 // store (Redis or a Supabase counter) would be needed for airtight enforcement.
 const TENANT_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
 const TENANT_RATE_LIMIT = 30;
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Input length cap — reject before any DB/AI work
+  // Input length cap, reject before any DB/AI work
   if (message.length > 2000) {
     return NextResponse.json(
       { error: "Message too long (max 2000 characters)" },
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Per-tenant burst rate limit — checked before any DB/OpenAI calls, cheap
+  // Per-tenant burst rate limit, checked before any DB/OpenAI calls, cheap
   // Map lookup so a flood is rejected without ever touching the database.
   if (isTenantRateLimited(tenantId)) {
     console.warn(`[ai/reply] RATE LIMIT HIT (per-tenant burst, ${TENANT_RATE_LIMIT}/min): tenant=${tenantId}`);
@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle());
   }
 
-  /* ── 2. Plan-level message cap (Starter only — Pro/Premium/Custom = Infinity) ── */
+  /* -- 2. Plan-level message cap. Starter/Pro/Premium are finite, Custom = Infinity -- */
   const planId = ((tenant.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
   const msgLimit = PLAN_CONFIG[planId]?.textMessages ?? PLAN_CONFIG.starter.textMessages;
 
@@ -660,7 +660,7 @@ export async function POST(req: NextRequest) {
   const t = tenant as TenantRow;
   const cfg = (config ?? {}) as ConfigRow;
 
-  // Parse the AI training knowledge base (new) — falls back to legacy services_json
+  // Parse the AI training knowledge base (new), falls back to legacy services_json
   let kb: KnowledgeBase = {};
   if (cfg.knowledge_base) {
     try { kb = JSON.parse(cfg.knowledge_base as string) as KnowledgeBase; } catch { /* ignore */ }
@@ -686,13 +686,13 @@ export async function POST(req: NextRequest) {
   const servicesText =
     kbServices.length > 0
       ? kbServices
-          .map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.duration ? ` (${s.duration})` : ""}${s.description ? `: ${s.description}` : ""}`)
+          .map((s) => `• ${s.name}${s.price ? `, ${s.price}` : ""}${s.duration ? ` (${s.duration})` : ""}${s.description ? `: ${s.description}` : ""}`)
           .join("\n")
       : legacyServices.length > 0
       ? legacyServices
-          .map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`)
+          .map((s) => `• ${s.name}${s.price ? `, ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`)
           .join("\n")
-      : "(No services configured yet — use general knowledge about the industry)";
+      : "(No services configured yet, use general knowledge about the industry)";
 
   // FAQs: prefer KB (q/a format), fall back to legacy (question/answer format)
   const faqsText =
@@ -711,8 +711,8 @@ export async function POST(req: NextRequest) {
   const workingHoursText = kbBusiness.hours
     ? `Working hours: ${kbBusiness.hours}`
     : bookingRules?.workingHours
-    ? `Working hours: ${bookingRules.workingHours.days.join(", ")} ${bookingRules.workingHours.start}–${bookingRules.workingHours.end}`
-    : "Working hours: not specified — use reasonable business hours";
+    ? `Working hours: ${bookingRules.workingHours.days.join(", ")} ${bookingRules.workingHours.start} to ${bookingRules.workingHours.end}`
+    : "Working hours: not specified, use reasonable business hours";
 
   const addressText = kbBusiness.address ? `Address: ${kbBusiness.address}` : "";
   const bookingPolicyText = kbBusiness.bookingPolicy ? `\nBooking policy: ${kbBusiness.bookingPolicy}` : "";
@@ -813,27 +813,27 @@ ${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}${e
 
 Rules:
 • MANDATORY, HIGHEST PRIORITY (second-layer defense -- see api/appointments/[id]/route.ts for the primary, data-level fix this backs up): the REAL-TIME AVAILABILITY CHECK, EXISTING ACTIVE BOOKING, PENDING CONFIRMATION, and RECENTLY CANCELLED APPOINTMENT sections above (whichever are present in this exact message) are freshly re-checked against the real schedule for this exact reply. If any of them conflicts with something said earlier in this same conversation -- including your OWN earlier "Booked ✓" or confirmation message -- the sections above are always correct and the earlier conversation is stale; trust them, not your memory of the conversation. If NONE of those sections mention an active appointment for this customer, then no active appointment exists right now, even if you confirmed one earlier in this same conversation. A system note may also appear in this conversation explaining why (e.g. it was cancelled and removed) -- if so, base your answer on it. Either way, never repeat an earlier "Booked ✓"/confirmation as if it still holds once the live sections above no longer support it; tell the customer honestly that you don't see an active appointment on file and offer to book a new one if they'd like.
-• Tone: ${tone} and warm — be like a helpful employee, not a robot
+• Tone: ${tone} and warm, be like a helpful employee, not a robot
 • Language: ${languageInstruction}
-• Be concise — maximum 3 sentences per reply
-• Do NOT list your full services or price menu unprompted — not at the start of a conversation, not in response to a generic greeting or vague question. Only discuss a specific service once the customer names it or clearly asks what you offer.
+• Be concise, maximum 3 sentences per reply
+• Do NOT list your full services or price menu unprompted, not at the start of a conversation, not in response to a generic greeting or vague question. Only discuss a specific service once the customer names it or clearly asks what you offer.
 • Do NOT state a price unless the customer explicitly asks about cost/price for that specific service.
-• MANDATORY: ask ONE question at a time, never more. If you still need two or more pieces of information (e.g. which service/unit, a day/time, their name, their phone), ask for only the SINGLE most important missing one in this reply and stop there — wait for their answer before asking the next. Never bundle multiple questions into one message (e.g. never ask "which service, what date/time, and your name and number?" all together). This applies to booking just as much as anything else.
-• To book: ask for preferred day/time if not given (and nothing else in that same message). The moment the customer states or confirms a specific day/time, answer immediately in this same reply — never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm the slot is available and move to collecting -- ask for any missing name/phone/service ONE AT A TIME, not together. MANDATORY, NO EXCEPTIONS: once you have service + day/time + name + phone, do NOT say "Booked ✓" yet — first ask one explicit yes/no confirmation question naming the exact day/time, e.g. "Should I go ahead and book this for [day/time]?", and stop there. Only after the customer replies with a clear affirmative (e.g. "yes", "please do", "confirm", "sounds good", "go ahead") in their NEXT message do you say "Booked ✓". If they say no, hesitate, or want to change something, do not book — ask what they'd like instead. This confirmation step is required even if they already sound certain earlier in the conversation; never skip straight from "here's what I have" to "Booked ✓" in the same reply. If not available, say so and offer the real alternatives given.
+• MANDATORY: ask ONE question at a time, never more. If you still need two or more pieces of information (e.g. which service/unit, a day/time, their name, their phone), ask for only the SINGLE most important missing one in this reply and stop there, wait for their answer before asking the next. Never bundle multiple questions into one message (e.g. never ask "which service, what date/time, and your name and number?" all together). This applies to booking just as much as anything else.
+• To book: ask for preferred day/time if not given (and nothing else in that same message). The moment the customer states or confirms a specific day/time, answer immediately in this same reply, never say "let me check and get back to you" for a date/time question; the system already checked (see REAL-TIME AVAILABILITY CHECK above when present). If available and within working hours, confirm the slot is available and move to collecting -- ask for any missing name/phone/service ONE AT A TIME, not together. MANDATORY, NO EXCEPTIONS: once you have service + day/time + name + phone, do NOT say "Booked ✓" yet, first ask one explicit yes/no confirmation question naming the exact day/time, e.g. "Should I go ahead and book this for [day/time]?", and stop there. Only after the customer replies with a clear affirmative (e.g. "yes", "please do", "confirm", "sounds good", "go ahead") in their NEXT message do you say "Booked ✓". If they say no, hesitate, or want to change something, do not book, ask what they'd like instead. This confirmation step is required even if they already sound certain earlier in the conversation; never skip straight from "here's what I have" to "Booked ✓" in the same reply. If not available, say so and offer the real alternatives given.
 • EXCEPTION to the confirmation step above (this is the ONLY exception -- every other case still requires the explicit yes/no question): if the CUSTOMER'S OWN SINGLE MESSAGE right now already states all four of service + day/time + name + phone together, unprompted, in one go (not built up piece by piece across several of your questions) -- that message IS their explicit confirmation. Skip the "should I go ahead" question entirely and go straight to checking availability and, if available, "Booked ✓" in this same reply. This does NOT apply when you had to ask for the pieces one at a time and they arrived separately -- only when the customer volunteered everything at once themselves.
 • If EXISTING ACTIVE BOOKING above is present and the customer is trying to book something new rather than confirming/adjusting that one, follow the HARD LIMIT instruction in that section instead of the confirm-then-book flow, with no exceptions -- never collect a date/time for a second booking while one is active, even if the customer insists.
 • Once a booking's date/time has been confirmed (either just now with "Booked ✓", or it already existed when this conversation started), say it in full ONE time and then stop repeating it. In every later reply, refer to it briefly ("your appointment", "your booking", "it") instead of restating the full day/time again -- only state the exact date/time again if the customer is directly asking about it, confirming a reschedule, or confirming a cancellation.
 • If the customer explicitly declines to name a specific service (e.g. "no particular service, just want to come talk," "not sure yet, just visiting"), do not leave it blank or keep pushing -- accept a real fallback description of the visit itself (e.g. "General Consultation," "In-person meeting") as the service and move on to the next missing detail.
 • NEVER double-book a slot already listed above
 • NEVER book outside working hours
-• "Let me check that for you — can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on) — never for checking a schedule, which you already have.
+• "Let me check that for you, can I get your contact number?" may ONLY be used for something genuinely outside your knowledge that is NOT a date/time availability question (e.g. a specific technical detail you have no info on), never for checking a schedule, which you already have.
 • Never invent prices, services, or times not listed above
-• MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) tell them explicitly and specifically that THIS service isn't currently listed, and that their request has been saved for the business to confirm within 24 hours and follow up on their phone number — e.g. "[Service they asked about] isn't listed as one of our current services, so we've saved your request — the business will confirm within 24 hours and follow up on your phone number." Adapt the wording naturally to the conversation, but always (a) name the specific service they asked about, (b) make clear it is not currently offered/trained, (c) mention the 24-hour confirmation, and (d) mention following up on their phone number. Never use a vague "let me check with the team" that doesn't say any of this. (3) include the exact literal token [UNTRAINED_SERVICE:the exact service name they asked about] somewhere in your reply, e.g. [UNTRAINED_SERVICE:teeth grinding night guard] — this both notifies the team with the real service name and marks the conversation as needing attention, so do NOT also include [NEEDS_HUMAN] for this same case. This token is required every single time rule (1) applies, with zero exceptions — do not skip it just because you already declined the request.
+• MANDATORY, NO EXCEPTIONS: whenever the customer asks about a service, treatment, or product that is NOT in the Services list above, you must do all three of the following in that same reply: (1) do not claim to offer it and do not invent any details about it (no price, no duration, nothing), (2) tell them explicitly and specifically that THIS service isn't currently listed, and that their request has been saved for the business to confirm within 24 hours and follow up on their phone number, e.g. "[Service they asked about] isn't listed as one of our current services, so we've saved your request, the business will confirm within 24 hours and follow up on your phone number." Adapt the wording naturally to the conversation, but always (a) name the specific service they asked about, (b) make clear it is not currently offered/trained, (c) mention the 24-hour confirmation, and (d) mention following up on their phone number. Never use a vague "let me check with the team" that doesn't say any of this. (3) include the exact literal token [UNTRAINED_SERVICE:the exact service name they asked about] somewhere in your reply, e.g. [UNTRAINED_SERVICE:teeth grinding night guard], this both notifies the team with the real service name and marks the conversation as needing attention, so do NOT also include [NEEDS_HUMAN] for this same case. This token is required every single time rule (1) applies, with zero exceptions, do not skip it just because you already declined the request.
 • If the customer asks to speak to a human, manager, or real person, include the exact token [NEEDS_HUMAN] somewhere in your reply
 • If the customer mentions their name or phone number, remember it for the conversation
 • When asking for the customer's phone number, ask for it WITH a country code (e.g. "What's the best number to reach you, with country code? Like +971..."). If they reply with a number that looks incomplete or clearly missing a country code (a short local number with no + and no leading 00), ask them to confirm it once more including the country code before treating it as final -- do not just accept a bare local number silently.
 • MANDATORY: if the customer already stated a local number earlier in this conversation and their VERY NEXT reply is just a country code on its own (e.g. "+216", "971", "just the code is +971") with no other digits, that is them completing the SAME number you already asked about -- combine it with the local number they already gave (country code + the digits they already stated) and treat that combined number as the final, confirmed one. Do NOT ask for the phone number again from scratch in this case -- doing so ignores what they already told you and makes you look like you weren't listening.
-• Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in your reply. Use a period, comma, or a plain hyphen instead
+• Never use an em dash, en dash, or double-hyphen anywhere in your reply. Use a period, comma, or a plain hyphen instead
 • Never end a reply with generic padding like "If there's anything else you need, just let me know!", "Feel free to reach out if you need anything else!", "How can I assist you today?", or any variation of that. If you genuinely have something specific to add, say that specific thing; otherwise just stop talking after answering.`;
 
   /* ── 8. Call OpenAI ── */
@@ -1450,7 +1450,7 @@ Rules:
         rescheduled: true,
       }).eq("id", existing.id).eq("tenant_id", tenantId);
       if (updErr?.code === "PGRST204") {
-        console.warn("[ai/reply] appointments.rescheduled column missing — run migration_v29.sql. Retrying without it.");
+        console.warn("[ai/reply] appointments.rescheduled column missing, run migration_v29.sql. Retrying without it.");
         await admin.from("appointments").update({
           service_name: serviceName,
           datetime: booking.datetime,
@@ -1561,7 +1561,7 @@ Rules:
           .update({ intent_summary: summaryText.slice(0, 200) })
           .eq("id", leadId);
         if (summaryErr?.code === "PGRST204") {
-          console.warn("[ai/reply] leads.intent_summary column missing — run the pending migration.");
+          console.warn("[ai/reply] leads.intent_summary column missing, run the pending migration.");
         }
       }
     } catch (err) {

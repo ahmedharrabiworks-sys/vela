@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 /**
  * DELETE /api/appointments/[id]
  *
- * Permanently deletes an appointment (Recycle Bin's "Delete Permanently" —
+ * Permanently deletes an appointment (Recycle Bin's "Delete Permanently", 
  * the row must already be soft-deleted; this is never the first delete
  * action). Auth-gated: the appointment's tenant must be owned by the
  * calling user.

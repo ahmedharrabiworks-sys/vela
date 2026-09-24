@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Sync voice to the Vapi assistant immediately so inbound calls hear the new voice
-  // without requiring a re-provision. Fire-and-forget — never block the settings save.
+  // without requiring a re-provision. Fire-and-forget, never block the settings save.
   const assistantId = existingCfg?.vapi_assistant_id as string | null | undefined;
   const vapiKey = process.env.VAPI_API_KEY;
   if (assistantId && vapiKey) {

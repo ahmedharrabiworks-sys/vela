@@ -66,7 +66,7 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading]     = useState(true);
 
-  // Voice card — preview playback state (merged in from the former standalone Voice tab)
+  // Voice card, preview playback state (merged in from the former standalone Voice tab)
   const [playing, setPlaying]         = useState<string | null>(null);
   const [generating, setGenerating]   = useState<string | null>(null);
   const [previewNote, setPreviewNote] = useState<string | null>(null);
@@ -192,7 +192,7 @@ export default function SettingsPage() {
           <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.settings.subtitle")}</p>
         </div>
 
-        {/* Identity / Personality & Tone / Greeting Style — stacked, each card
+        {/* Identity / Personality & Tone / Greeting Style, stacked, each card
             sized to its own content. Was a height-matched 2-column grid; that
             left a dead zone under Identity since its content is much shorter
             than Personality + Greeting combined. */}
@@ -262,13 +262,13 @@ export default function SettingsPage() {
 
         </div>
 
-        {/* Greeting Style + Speaking Speed — merged two-column card. Each column
+        {/* Greeting Style + Speaking Speed, merged two-column card. Each column
             uses items-start so a taller sibling never pads out the shorter one. */}
         <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
           <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>{t("aiAgent.settings.greeting")}</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
-            {/* Greeting Style + custom script + Greeting Language — left */}
+            {/* Greeting Style + custom script + Greeting Language, left */}
             <div className="space-y-4">
               <div className="space-y-2">
                 {GREETING_STYLES.map((g) => {
@@ -332,7 +332,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Speaking Speed — right */}
+            {/* Speaking Speed, right */}
             <div className="max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.voice.speakingSpeed")}</h3>
@@ -394,7 +394,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Voice — full width (merged in from the former standalone Voice tab).
+        {/* Voice, full width (merged in from the former standalone Voice tab).
             Speaking Speed now lives in the merged Greeting card above; this card
             is voice selection only. */}
         <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
@@ -489,7 +489,7 @@ export default function SettingsPage() {
             </div>
         </div>
 
-        {/* Custom instructions — full-width */}
+        {/* Custom instructions, full-width */}
         <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
           <h2 className="text-sm font-semibold mb-1" style={{ color: textPrimary }}>{t("aiAgent.settings.customInstructions")}</h2>
           <p className="text-xs mb-4" style={{ color: textMuted }}>

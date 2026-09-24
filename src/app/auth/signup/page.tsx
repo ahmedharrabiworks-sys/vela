@@ -381,7 +381,7 @@ function SignupPageContent() {
         return;
       }
 
-      // Server-side creation — uses admin client with email_confirm:true to bypass
+      // Server-side creation, uses admin client with email_confirm:true to bypass
       // the Supabase free-tier email rate limit (2/hour) that breaks client signUp.
       const res = await fetch("/api/auth/signup", {
         method: "POST",
@@ -411,7 +411,7 @@ function SignupPageContent() {
         return;
       }
 
-      // Account created — sign in immediately (email is already confirmed)
+      // Account created, sign in immediately (email is already confirmed)
       const supabase = getSupabase();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -657,7 +657,7 @@ function SignupPageContent() {
               <h1 className="text-xl font-bold text-[#111111] mb-1">Choose your plan</h1>
               <p className="text-[#6B7280] text-sm mb-5">Cancel anytime</p>
 
-              {/* Billing toggle — matches /pricing page */}
+              {/* Billing toggle, matches /pricing page */}
               <div className="inline-flex items-center p-0.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
                 <button type="button" onClick={() => setBilling("monthly")}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
@@ -686,7 +686,7 @@ function SignupPageContent() {
               </div>
             )}
 
-            {/* Cards — same style as /pricing page */}
+            {/* Cards, same style as /pricing page */}
             <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch mb-4">
               {PLANS.filter((p) => !p.isCustom).map((p) => {
                 const isSelected = plan === p.id;
@@ -732,7 +732,7 @@ function SignupPageContent() {
                       )}
                     </div>
 
-                    {/* Feature list — top-line bullets only, matching /pricing page */}
+                    {/* Feature list, top-line bullets only, matching /pricing page */}
                     <ul className="flex-1 mb-4 divide-y divide-[#F3F4F6]">
                       {INHERIT_LINE[planKey] && (
                         <li className="flex items-start gap-3 py-2">

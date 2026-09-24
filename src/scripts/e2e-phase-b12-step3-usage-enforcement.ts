@@ -1,9 +1,9 @@
 /**
- * E2E verification: Phase B item 12 Step 3 — message cap enforcement.
+ * E2E verification: Phase B item 12 Step 3, message cap enforcement.
  * Three scenarios:
- *   A — Starter tenant at cap: 501st request returns 429
- *   B — Pro tenant: never blocked regardless of count
- *   C — Starter tenant under cap: normal 200
+ *   A, Starter tenant at cap: 501st request returns 429
+ *   B, Pro tenant: never blocked regardless of count
+ *   C, Starter tenant under cap: normal 200
  *
  * Run:
  *   $env:NEXT_PUBLIC_SUPABASE_URL="..."
@@ -21,7 +21,7 @@ const admin = createClient(url, key, { auth: { persistSession: false } });
 const checks: { label: string; pass: boolean; detail?: string }[] = [];
 function check(label: string, pass: boolean, detail?: string) {
   checks.push({ label, pass, detail });
-  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? `, ${detail}` : ""}`);
 }
 
 // Fake enough assistant messages to push a tenant past the Starter 500-msg cap.
@@ -90,7 +90,7 @@ async function sendMessage(tenantId: string, conversationId?: string) {
 }
 
 async function main() {
-  console.log("=== Phase B item 12 Step 3 — Usage Enforcement E2E ===\n");
+  console.log("=== Phase B item 12 Step 3, Usage Enforcement E2E ===\n");
 
   // Find a Starter tenant and a Pro tenant
   const { data: starterTenants } = await admin
@@ -101,8 +101,8 @@ async function main() {
   const starter = (starterTenants ?? [])[0] as any;
   const pro     = (proTenants ?? [])[0] as any;
 
-  if (!starter) { console.log("⚠️  No Starter tenant found — skipping Scenario A."); }
-  if (!pro)     { console.log("⚠️  No Pro/Premium/Custom tenant found — skipping Scenario B."); }
+  if (!starter) { console.log("⚠️  No Starter tenant found, skipping Scenario A."); }
+  if (!pro)     { console.log("⚠️  No Pro/Premium/Custom tenant found, skipping Scenario B."); }
 
   // Track all seeded row IDs for cleanup
   const seededMsgIds: string[] = [];
@@ -133,7 +133,7 @@ async function main() {
       console.log(`  Seeded ${ids.length} rows.`);
     }
 
-    // Now at exactly 500 — the next request should be blocked
+    // Now at exactly 500, the next request should be blocked
     console.log("  Sending request #501 (should return 429)...");
     const { status: blockedStatus, body: blockedBody } = await sendMessage(starterTenantId);
     console.log(`  HTTP ${blockedStatus}: ${JSON.stringify(blockedBody).slice(0, 200)}`);
@@ -148,7 +148,7 @@ async function main() {
     // The 429 fires before any conversation/message creation, so no rows to clean up from it.
   }
 
-  // ── SCENARIO B: Pro tenant — never blocked ─────────────────────────────
+  // ── SCENARIO B: Pro tenant, never blocked ─────────────────────────────
   if (pro) {
     const proTenantId: string = pro.id;
     console.log(`\n--- Scenario B: ${pro.plan} tenant "${pro.business_name}" (${proTenantId}) ---`);
@@ -172,18 +172,18 @@ async function main() {
     }
   }
 
-  // ── SCENARIO C: Starter under cap — normal reply ───────────────────────
+  // ── SCENARIO C: Starter under cap, normal reply ───────────────────────
   // We need a Starter tenant with headroom. If we seeded rows above, remove
   // enough to drop back below the cap, then test.
   if (starter) {
     const starterTenantId: string = starter.id;
     console.log(`\n--- Scenario C: Starter under cap (removing seed rows first) ---`);
 
-    // Delete all seeded rows — drops count back to existingCount (which was < 500)
+    // Delete all seeded rows, drops count back to existingCount (which was < 500)
     if (seededMsgIds.length > 0) {
       await admin.from("messages").delete().in("id", seededMsgIds);
       seededMsgIds.length = 0;
-      console.log("  Seed rows removed — tenant is now under cap.");
+      console.log("  Seed rows removed, tenant is now under cap.");
     }
 
     const { status, body } = await sendMessage(starterTenantId);

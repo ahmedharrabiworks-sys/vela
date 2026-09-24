@@ -62,7 +62,7 @@
     "recycleBin": {
       "title": "Corbeille",
       "subtitle": "Les prospects, conversations et rendez-vous supprimés restent ici jusqu'à ce que vous les restauriez ou les supprimiez définitivement.",
-      "migrationPending": "La configuration de la corbeille est encore en cours côté serveur — les éléments supprimés peuvent ne pas encore apparaître.",
+      "migrationPending": "La configuration de la corbeille est encore en cours côté serveur. Les éléments supprimés peuvent ne pas encore apparaître.",
       "empty": "La corbeille est vide",
       "emptyHint": "Tout ce que vous supprimez depuis Prospects, Conversations ou Rendez-vous apparaît d'abord ici.",
       "leads": "Prospects",

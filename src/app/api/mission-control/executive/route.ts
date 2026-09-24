@@ -33,7 +33,7 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "get_theoretical_mrr",
       description:
-        "Returns theoretical MRR (plan price × active tenant count per tier). NOT actual collected revenue — Stripe is not integrated. Always label this as 'theoretical'.",
+        "Returns theoretical MRR (plan price × active tenant count per tier). NOT actual collected revenue, Stripe is not integrated. Always label this as 'theoretical'.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -60,7 +60,7 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "get_at_risk_tenants",
       description:
-        "Returns tenants matching behavioral risk proxies: no login in 14+ days, KB never trained, or zero calls in 30 days. These are behavioral proxies only — never label as 'churned'.",
+        "Returns tenants matching behavioral risk proxies: no login in 14+ days, KB never trained, or zero calls in 30 days. These are behavioral proxies only, never label as 'churned'.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -150,13 +150,13 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "run_security_audit",
       description:
-        "Runs an on-demand security audit via the Security Agent employee. Checks: RLS policies (tenant data tables), webhook secret coverage, client-side env var exposure, and schema vs known migrations. Report-only — no changes made. Returns findings grouped by category with severity (critical/warning/info) and evidence. Use get_employee_roster to find the Security Agent employee ID first.",
+        "Runs an on-demand security audit via the Security Agent employee. Checks: RLS policies (tenant data tables), webhook secret coverage, client-side env var exposure, and schema vs known migrations. Report-only, no changes made. Returns findings grouped by category with severity (critical/warning/info) and evidence. Use get_employee_roster to find the Security Agent employee ID first.",
       parameters: {
         type: "object",
         properties: {
           employee_id: {
             type: "string",
-            description: "UUID of the Security Agent employee (from get_employee_roster — use the one named 'Security Agent')",
+            description: "UUID of the Security Agent employee (from get_employee_roster, use the one named 'Security Agent')",
           },
         },
         required: ["employee_id"],
@@ -167,15 +167,15 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are the Vela Master Executive AI — a real-time intelligence interface for the Vela platform owner.
+const SYSTEM_PROMPT = `You are the Vela Master Executive AI, a real-time intelligence interface for the Vela platform owner.
 You have access to tools that query live production data directly.
 
-HARD RULES — never violate, no exceptions:
+HARD RULES, never violate, no exceptions:
 1. Every factual answer requires a tool call first. Do not answer from memory or general knowledge.
 2. If no available tool can directly answer the question, say: "That data isn't available yet." Then briefly explain why. Do not guess, estimate, extrapolate, or derive one metric from a different metric to fill the gap.
-3. A tool result of 0 means 0. Report it honestly — do not soften, reframe, or imply it might be higher.
-4. Revenue figures are ALWAYS labeled "theoretical MRR" (plan price × tenant count). Actual collected revenue does not exist in any tool — never invent it.
-5. At-risk data is a BEHAVIORAL PROXY — it means "no login in 14+ days, KB untrained, or no calls in 30 days." It is NOT churn, NOT cancellation rate, NOT a churn rate. Never compute or report a "churn rate" from at-risk data. If asked for churn rate, say "That data isn't available yet — churn rate requires actual subscription cancellations, which requires Stripe to be connected."
+3. A tool result of 0 means 0. Report it honestly, do not soften, reframe, or imply it might be higher.
+4. Revenue figures are ALWAYS labeled "theoretical MRR" (plan price × tenant count). Actual collected revenue does not exist in any tool, never invent it.
+5. At-risk data is a BEHAVIORAL PROXY, it means "no login in 14+ days, KB untrained, or no calls in 30 days." It is NOT churn, NOT cancellation rate, NOT a churn rate. Never compute or report a "churn rate" from at-risk data. If asked for churn rate, say "That data isn't available yet, churn rate requires actual subscription cancellations, which requires Stripe to be connected."
 6. Do NOT derive metrics that weren't explicitly produced by a tool. If a tool returns at-risk count and total count, do NOT compute at-risk% and call it "churn rate" or any other metric the user asked for. Metric substitution is not allowed.
 
 Your available data sources (via tools):
@@ -183,14 +183,14 @@ Your available data sources (via tools):
 - Theoretical MRR by plan tier
 - Voice minute usage and cost per tenant (current month)
 - Platform activity: conversations, leads, appointments, calls (current month)
-- At-risk tenants (behavioral proxies only — NOT churn)
+- At-risk tenants (behavioral proxies only, NOT churn)
 - AI employee roster with real signal values
 - Per-tenant engagement detail and recent activity
 - Security audit via Security Agent employee (RLS policies, webhook secrets, env var exposure, schema drift)
 
-Metrics that do NOT exist in any tool — never answer these by substitution:
-- Churn rate or cancellation rate (requires Stripe — not connected)
-- Actual collected revenue (requires Stripe — not connected)
+Metrics that do NOT exist in any tool, never answer these by substitution:
+- Churn rate or cancellation rate (requires Stripe, not connected)
+- Actual collected revenue (requires Stripe, not connected)
 - Customer lifetime value, CAC, marketing ROI
 - Future projections of any kind`;
 
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
       { role: "user", content: body.message.trim() },
     ];
 
-    // Tool-calling loop — max 6 iterations (prevents runaway tool chains)
+    // Tool-calling loop, max 6 iterations (prevents runaway tool chains)
     for (let i = 0; i < 6; i++) {
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -279,14 +279,14 @@ export async function POST(request: NextRequest) {
         tools: MC_TOOLS,
         tool_choice: "auto",
         max_tokens: 800,
-        temperature: 0.2, // low temp — this is a data retrieval interface, not creative
+        temperature: 0.2, // low temp, this is a data retrieval interface, not creative
       });
 
       const choice = response.choices[0];
       const assistantMsg = choice.message;
       messages.push(assistantMsg);
 
-      // No tool calls — model produced a final text answer
+      // No tool calls, model produced a final text answer
       if (!assistantMsg.tool_calls?.length) {
         const reply = assistantMsg.content?.trim() ?? "I wasn't able to generate a response.";
         return NextResponse.json({ reply });

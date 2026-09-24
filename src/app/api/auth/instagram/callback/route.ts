@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
     if (upsertErr?.code === "PGRST204" || upsertErr?.code === "42703") {
       // migration_v39.sql hasn't run yet -- fall back without the new
       // expiry column rather than losing the connection entirely.
-      console.warn("[instagram/callback] instagram_token_expires_at column missing — run migration_v39.sql. Retrying without it.");
+      console.warn("[instagram/callback] instagram_token_expires_at column missing, run migration_v39.sql. Retrying without it.");
       await admin.from("tenant_config").upsert(
         {
           tenant_id: tenant.id,

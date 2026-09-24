@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-const SLUG_RE    = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;  // 3–50 chars
+const SLUG_RE    = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;  // 3 to 50 chars
 
 // ── GET /api/website/settings?websiteId=xxx ──────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
 // ── PUT /api/website/settings ─────────────────────────────────────────────────
 // Handles: name, slug.
-// NEVER handles domain or domain_status — those go through /api/website/domain
+// NEVER handles domain or domain_status, those go through /api/website/domain
 // (POST to save, GET to verify, DELETE to remove). Any code that writes
 // domain_status here would silently reset "verified" → "pending" on every save.
 export async function PUT(req: NextRequest) {
@@ -49,7 +49,7 @@ export async function PUT(req: NextRequest) {
     slug?:              string;
     embedAiAssistant?:  boolean;
     isPublished?:       boolean;
-    // domain is intentionally omitted — use /api/website/domain
+    // domain is intentionally omitted, use /api/website/domain
   };
 
   const supabase = createSupabaseServerClient();
@@ -102,7 +102,7 @@ export async function PUT(req: NextRequest) {
     updates.slug = slug;
   }
 
-  // AI assistant embed toggle — lets a tenant turn the widget on/off after
+  // AI assistant embed toggle, lets a tenant turn the widget on/off after
   // publish (e.g. they said "not now" during the build flow and changed
   // their mind, or want to pause it). Read at serve time by site/[tenantId]/route.ts.
   if (typeof body.embedAiAssistant === "boolean") {
@@ -248,8 +248,8 @@ export async function DELETE(req: NextRequest) {
     .eq("id", websiteId);
 
   if (deleteErr?.code === "PGRST204") {
-    console.error("[website/settings] websites.deleted_at column missing — run the pending migration. Refusing to hard-delete instead.");
-    return NextResponse.json({ error: "Delete isn't available yet — a pending database update is needed. Please try again shortly." }, { status: 500 });
+    console.error("[website/settings] websites.deleted_at column missing, run the pending migration. Refusing to hard-delete instead.");
+    return NextResponse.json({ error: "Delete isn't available yet, a pending database update is needed. Please try again shortly." }, { status: 500 });
   }
   if (deleteErr) {
     console.error("[website/settings] soft-delete error:", deleteErr.message);

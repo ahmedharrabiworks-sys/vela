@@ -1,5 +1,5 @@
 /**
- * WhatsApp Cloud API — send a text message on behalf of a tenant.
+ * WhatsApp Cloud API, send a text message on behalf of a tenant.
  * Uses Graph API v22.0+ (v20.0 sunsets Sep 2026; always use v22.0 or higher for new work).
  *
  * Called by: src/app/api/webhooks/whatsapp/route.ts
@@ -36,7 +36,7 @@ export async function sendWhatsAppMessage(
       code: data.error?.code,
       message: data.error?.message,
       phoneNumberId,
-      // Partial recipient for logs — don't log full phone number
+      // Partial recipient for logs, don't log full phone number
       recipientPrefix: to.slice(0, 5) + "…",
     });
     throw new Error(`WhatsApp send failed (${res.status})`);

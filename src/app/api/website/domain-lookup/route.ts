@@ -8,7 +8,7 @@ type AdminClient = any;
 
 // GET /api/website/domain-lookup?hostname=www.example.com
 // Returns { slug } for a custom domain so middleware can rewrite to /site/[slug].
-// Called by middleware — no auth required (read-only, slug is non-sensitive).
+// Called by middleware, no auth required (read-only, slug is non-sensitive).
 // Looks up websites.domain directly (source of truth for custom domains).
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const admin = createSupabaseAdmin() as AdminClient;
 
   // Find a published site whose custom domain matches and has been verified.
-  // domain_status must be 'verified' — pending/failed domains are not served.
+  // domain_status must be 'verified', pending/failed domains are not served.
   const { data: site } = await admin
     .from("websites")
     .select("slug, id")

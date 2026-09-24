@@ -1,12 +1,12 @@
-// Mission Control — on-demand employee analysis
+// Mission Control, on-demand employee analysis
 // Reads the employee's real signal history, calls GPT to surface honest patterns,
 // writes verified results to employee_insights.
 //
 // Hard Rule 22: every insight/recommendation must cite specific real signal row UUIDs.
-// No fabrication: if no real pattern exists, the result is empty — that is honest.
+// No fabrication: if no real pattern exists, the result is empty, that is honest.
 // Minimum 2 distinct compute runs required to detect any pattern.
 // Recommendations additionally require >= 3 corroborating signal IDs and
-// confidence "medium" or "high" — never from a single reading or low confidence.
+// confidence "medium" or "high", never from a single reading or low confidence.
 
 import OpenAI from "openai";
 
@@ -92,7 +92,7 @@ export async function analyzeEmployee(
       distinctRuns,
       insights: [],
       recommendations: [],
-      message: `Only ${distinctRuns} compute run(s) on record. Analysis requires at least ${MIN_RUNS_FOR_ANALYSIS} distinct runs to detect patterns — run the compute/seed script again to build history.`,
+      message: `Only ${distinctRuns} compute run(s) on record. Analysis requires at least ${MIN_RUNS_FOR_ANALYSIS} distinct runs to detect patterns, run the compute/seed script again to build history.`,
     };
   }
 
@@ -123,9 +123,9 @@ export async function analyzeEmployee(
   const historyBlock = runEntries
     .map(([ts, rows], i) => {
       const lines = rows
-        .map((r) => `  [${r.id}] ${r.signal_name} = ${r.value ?? "null"} — ${r.real_description}`)
+        .map((r) => `  [${r.id}] ${r.signal_name} = ${r.value ?? "null"}, ${r.real_description}`)
         .join("\n");
-      return `Run ${i + 1} — ${ts}\n${lines}`;
+      return `Run ${i + 1}, ${ts}\n${lines}`;
     })
     .join("\n\n");
 
@@ -137,17 +137,17 @@ export async function analyzeEmployee(
   const systemPrompt = `You are an analyst reviewing the operational signal history of an AI employee named "${employeeName}".
 Your task: find real, observable patterns in the timeline data provided.
 
-RULES — non-negotiable:
+RULES, non-negotiable:
 1. An INSIGHT is a checkable pattern, trend, notable value, or change visible in the timeline.
    You MUST cite specific signal row UUIDs (from the [UUID] tags) that support it.
-   Use ONLY UUIDs from the provided data — never invent UUIDs.
+   Use ONLY UUIDs from the provided data, never invent UUIDs.
 2. A RECOMMENDATION requires AT LEAST ${MIN_SIGNALS_FOR_RECOMMENDATION} distinct supporting signal rows and confidence "medium" or "high".
    Never produce a recommendation from a single data point, from inferred values, or with "low" confidence.
    A recommendation without ${MIN_SIGNALS_FOR_RECOMMENDATION}+ real cited signal rows must be omitted entirely.
 3. If no real pattern exists in the data, return empty arrays for both insights and recommendations.
-   An honest empty result is correct — do not invent patterns.
+   An honest empty result is correct, do not invent patterns.
 4. Confidence: "low" = loosely correlated; "medium" = clearly visible in 2+ readings; "high" = consistent across all readings with no contradictory data.
-5. Return ONLY valid JSON — no markdown, no preamble, no explanation outside the JSON structure.
+5. Return ONLY valid JSON, no markdown, no preamble, no explanation outside the JSON structure.
 
 Required JSON schema:
 {
@@ -189,7 +189,7 @@ Analyze the timeline. Produce only evidence-linked insights and recommendations 
       distinctRuns,
       insights: [],
       recommendations: [],
-      message: "Analysis GPT call failed — signal history is valid but analysis could not complete.",
+      message: "Analysis GPT call failed, signal history is valid but analysis could not complete.",
     };
   }
 
@@ -250,7 +250,7 @@ Analyze the timeline. Produce only evidence-linked insights and recommendations 
       .insert(insertRows);
 
     if (insertErr) {
-      // Log but don't crash — still return the analysis results
+      // Log but don't crash, still return the analysis results
       console.error("[analyzeEmployee] employee_insights insert failed:", insertErr.message);
       console.error("  → Run supabase/migration_v16.sql in Supabase SQL Editor if the table doesn't exist yet.");
     }
@@ -265,6 +265,6 @@ Analyze the timeline. Produce only evidence-linked insights and recommendations 
     recommendations: validRecommendations,
     message: allEntries.length > 0
       ? `Found ${validInsights.length} insight(s) and ${validRecommendations.length} recommendation(s) from ${distinctRuns} compute runs.`
-      : `No patterns detected across ${distinctRuns} compute run(s) — this is an honest result, not an error.`,
+      : `No patterns detected across ${distinctRuns} compute run(s), this is an honest result, not an error.`,
   };
 }

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const appSecret = process.env.META_INSTAGRAM_APP_SECRET;
 
   if (!appSecret) {
-    console.error("[instagram/data-deletion] META_INSTAGRAM_APP_SECRET not configured — rejecting request");
+    console.error("[instagram/data-deletion] META_INSTAGRAM_APP_SECRET not configured, rejecting request");
     return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
   }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const payload = parseSignedRequest(signedRequest, appSecret);
   if (!payload) {
-    // Fail closed — an unverifiable request must never be trusted to
+    // Fail closed, an unverifiable request must never be trusted to
     // delete real tenant data.
     return NextResponse.json({ error: "Invalid signed_request" }, { status: 403 });
   }
@@ -80,10 +80,10 @@ export async function POST(req: NextRequest) {
       console.error("[instagram/data-deletion] delete failed:", error.message);
     }
   } else {
-    console.warn("[instagram/data-deletion] Verified request had no user_id — nothing to delete");
+    console.warn("[instagram/data-deletion] Verified request had no user_id, nothing to delete");
   }
 
-  // Real, unique confirmation code — logged (not just invented and thrown
+  // Real, unique confirmation code, logged (not just invented and thrown
   // away) so the status page below can report a genuine, looked-up result
   // instead of always claiming success for any code someone tries.
   const confirmationCode = crypto.randomBytes(8).toString("hex");

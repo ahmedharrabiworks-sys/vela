@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * PATCH /api/conversations/[id]
- * Renames a conversation's display name (customer_name — the same field
+ * Renames a conversation's display name (customer_name, the same field
  * rendered in the conversation list and thread header), OR restores a
  * soft-deleted conversation out of the Recycle Bin (FIX 8, round F).
  * Auth-gated: the conversation's tenant must be owned by the calling user.
@@ -74,10 +74,10 @@ export async function PATCH(
 
 /**
  * DELETE /api/conversations/[id]
- * FIX 8 (round F): soft-deletes by default (sets deleted_at — the
+ * FIX 8 (round F): soft-deletes by default (sets deleted_at, the
  * conversation moves to Settings -> Recycle Bin, fully recoverable). Pass
  * ?hard=true to permanently delete instead (used only by the Recycle Bin's
- * "Delete Permanently" action) — messages.conversation_id is ON DELETE
+ * "Delete Permanently" action), messages.conversation_id is ON DELETE
  * CASCADE, so a single row delete is sufficient for that path.
  * Auth-gated: the conversation's tenant must be owned by the calling user.
  */
@@ -130,7 +130,7 @@ export async function DELETE(
   if (softDeleteErr?.code === "PGRST204" || softDeleteErr?.code === "42703") {
     // migration_v30.sql hasn't run yet -- fall back to the old hard-delete
     // behavior rather than making Delete silently do nothing.
-    console.warn("[conversations/[id]] deleted_at column missing — run migration_v30.sql. Falling back to hard delete.");
+    console.warn("[conversations/[id]] deleted_at column missing, run migration_v30.sql. Falling back to hard delete.");
     const { error: fallbackErr } = await admin.from("conversations").delete().eq("id", params.id);
     if (fallbackErr) {
       console.error("[conversations/[id]] fallback hard delete failed:", fallbackErr.message);

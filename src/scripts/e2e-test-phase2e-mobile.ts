@@ -1,5 +1,5 @@
 /**
- * Phase 2e Mobile Verification — real OpenAI pipeline
+ * Phase 2e Mobile Verification, real OpenAI pipeline
  *
  * Generates 2 actual websites through the full pipeline:
  *   classify → buildFillSystem → GPT fill → enforceTemplate → renderWebsite
@@ -128,11 +128,11 @@ Output ONLY valid JSON.`;
 
 function buildFillSystem(template: SiteTemplate, strategy: DesignStrategy | null): string {
   const templateLines = template.sections.map((ts, i) => {
-    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
+    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL, include ONLY if owner provided real data)";
     const variant = ts.variant ? `, variant: "${ts.variant}"` : "";
     return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
   }).join("\n");
-  const strategyBlock = strategy ? `BUSINESS INTELLIGENCE: subcategory=${strategy.subcategory}, positioning=${strategy.positioning}, brand_personality=${strategy.brand_personality}, visual_mood=${strategy.visual_mood}. Use to calibrate copy tone — never echo in JSON.\n\n` : "";
+  const strategyBlock = strategy ? `BUSINESS INTELLIGENCE: subcategory=${strategy.subcategory}, positioning=${strategy.positioning}, brand_personality=${strategy.brand_personality}, visual_mood=${strategy.visual_mood}. Use to calibrate copy tone, never echo in JSON.\n\n` : "";
   return `${strategyBlock}You are a senior brand copywriter. Produce a complete website JSON spec.
 OUTPUT ONLY valid JSON. No markdown, no explanation.
 
@@ -144,7 +144,7 @@ JSON SHAPE:
   "sections": SectionSpec[]
 }
 
-SECTIONS (fill in this exact order — no additions or removals):
+SECTIONS (fill in this exact order, no additions or removals):
 ${templateLines}
   (last) type: "footer" (REQUIRED)
 
@@ -155,7 +155,7 @@ imageQuery required for: hero, about-story.
 ABSOLUTE RULES:
 1. NEVER invent phone, email, address, or hours.
 2. NEVER add star ratings or fabricated review counts.
-3. NEVER paraphrase owner input — extract intent and write fresh brand copy.`;
+3. NEVER paraphrase owner input, extract intent and write fresh brand copy.`;
 }
 
 // ── Mobile inspection helpers ─────────────────────────────────────────────────
@@ -178,11 +178,11 @@ function extractScriptFromHtml(html: string): string {
 const TEST_CASES = [
   {
     id: "mobile-a-transparent",
-    label: "Test A — Real estate (transparent nav) — Maison Prestige Dubai",
+    label: "Test A, Real estate (transparent nav), Maison Prestige Dubai",
     expectedNavVariant: "transparent",
     expectedFooterVariant: "editorial",
     description: `
-Maison Prestige Real Estate — Dubai, UAE
+Maison Prestige Real Estate, Dubai, UAE
 
 Luxury residential property specialists in Dubai Marina, Palm Jumeirah, and Downtown Dubai.
 Our curated portfolio of premium apartments, villas, and penthouses.
@@ -205,15 +205,15 @@ Office: Dubai Marina Tower, Level 12
   },
   {
     id: "mobile-b-gym-transparent",
-    label: "Test B — Gym bold/energetic (standard nav fallback) — APEX Fight Club",
+    label: "Test B, Gym bold/energetic (standard nav fallback), APEX Fight Club",
     // Note: test's simplified classifier returns category=other for gyms (production classifier
     // is more sophisticated and would return category=gym + bp=bold → transparent nav).
     // expectedNavVariant is "" here because the test classifier reliably returns "other".
-    // Mobile behavior checks are what matter — they pass regardless of variant.
+    // Mobile behavior checks are what matter, they pass regardless of variant.
     expectedNavVariant: "",
     expectedFooterVariant: "",
     description: `
-APEX Fight Club — Manchester | Boxing & Combat Sports
+APEX Fight Club, Manchester | Boxing & Combat Sports
 
 Manchester's most intense combat sports gym. Dark, raw, real.
 Home of 3 regional champions and 1 national title holder in the last 2 years.
@@ -222,14 +222,14 @@ Classes:
 - Boxing fundamentals (all levels)
 - Muay Thai and kickboxing
 - Brazilian Jiu-Jitsu (no-gi + gi)
-- MMA fight prep (6am–10pm daily)
+- MMA fight prep (6am to 10pm daily)
 
 Memberships:
-- Fighter: £89/month — unlimited classes + gym access
-- Competitor: £149/month — all classes + corner coaching + fight prep
+- Fighter: £89/month, unlimited classes + gym access
+- Competitor: £149/month, all classes + corner coaching + fight prep
 
 Phone: 0161 832 5500 | train@apexfightclub.co.uk
-Northern Quarter, Manchester. Mon–Sat 6am–10pm, Sun 9am–6pm.
+Northern Quarter, Manchester. Mon to Sat 6am to 10pm, Sun 9am to 6pm.
 `.trim(),
   },
 ];
@@ -242,10 +242,10 @@ async function runTests() {
   fs.mkdirSync(outDir, { recursive: true });
 
   console.log("\n═════════════════════════════════════════════════════════════════");
-  console.log("  Phase 2e Mobile Nav Verification — Real Pipeline");
+  console.log("  Phase 2e Mobile Nav Verification, Real Pipeline");
   console.log("═════════════════════════════════════════════════════════════════");
   console.log("\nPRE-EXISTING GAP CONFIRMED: No hamburger toggle existed before this");
-  console.log("fix. ws-nav-links was display:none at ≤768px with no toggle — links");
+  console.log("fix. ws-nav-links was display:none at ≤768px with no toggle, links");
   console.log("were permanently unreachable on mobile for ALL nav variants.\n");
 
   const allResults: Array<{ id: string; label: string; pass: boolean; findings: string[] }> = [];
@@ -300,7 +300,7 @@ async function runTests() {
     // Step 5: Enforce template
     enforceTemplate(spec, selectedTemplate);
 
-    // Step 6: Render (no images for this test — nav/footer don't depend on images)
+    // Step 6: Render (no images for this test, nav/footer don't depend on images)
     const html = renderWebsite(spec, {}, undefined, "English");
     const outPath = path.join(outDir, `${tc.id}.html`);
     fs.writeFileSync(outPath, html);
@@ -310,7 +310,7 @@ async function runTests() {
     const js = extractScriptFromHtml(html);
 
     // ── MOBILE CHECK 1: Hamburger button in markup ────────────────────────────
-    // Check markup specifically (not CSS — CSS also contains these strings as class names)
+    // Check markup specifically (not CSS, CSS also contains these strings as class names)
     const hasBurgerMarkup = html.includes('class="ws-nav-burger"');
     const hasBurgerLines = (html.match(/class="ws-nav-burger-line"/g) ?? []).length >= 3;
     const hasBurgerAriaLabel = html.includes('aria-label="Toggle navigation"');
@@ -319,13 +319,13 @@ async function runTests() {
     if (navVariant === "minimal") {
       // Minimal nav: no hamburger expected (no links to show)
       if (!hasBurgerMarkup) {
-        findings.push(`✓ nav-minimal: no hamburger button (correct — no links to toggle)`);
+        findings.push(`✓ nav-minimal: no hamburger button (correct, no links to toggle)`);
       } else {
         findings.push(`⚠ nav-minimal has burger button (unexpected but not harmful)`);
       }
     } else {
       // Standard/transparent: hamburger MUST exist
-      if (!hasBurgerMarkup) { findings.push(`FAIL: ws-nav-burger not found in HTML — links permanently unreachable on mobile`); pass = false; }
+      if (!hasBurgerMarkup) { findings.push(`FAIL: ws-nav-burger not found in HTML, links permanently unreachable on mobile`); pass = false; }
       else findings.push(`✓ HAMBURGER BUTTON: ws-nav-burger present in markup`);
       if (!hasBurgerLines) { findings.push(`FAIL: ws-nav-burger-line elements missing`); pass = false; }
       else findings.push(`✓ 3× ws-nav-burger-line present`);
@@ -352,7 +352,7 @@ async function runTests() {
       else findings.push(`✓ link click auto-closes dropdown`);
     }
 
-    // ── MOBILE CHECK 3: CSS at ≤768px — dropdown not display:none dead end ───
+    // ── MOBILE CHECK 3: CSS at ≤768px, dropdown not display:none dead end ───
     // Check that .ws-nav-links at mobile is a DROPDOWN (positioned), not just hidden
     const hasBurgerShowRule = css.includes(".ws-nav-burger{display:flex}") || css.includes(".ws-nav-burger{display:flex;}");
     const hasDropdownPositioned = css.includes("position:absolute") && css.includes("top:100%");
@@ -362,10 +362,10 @@ async function runTests() {
     if (navVariant !== "minimal") {
       if (!hasBurgerShowRule) { findings.push(`FAIL: .ws-nav-burger{display:flex} rule missing in ≤768px CSS`); pass = false; }
       else findings.push(`✓ CSS ≤768px: .ws-nav-burger shows (display:flex)`);
-      if (!hasDropdownPositioned) { findings.push(`FAIL: nav-links not positioned absolutely — dropdown won't open below nav`); pass = false; }
+      if (!hasDropdownPositioned) { findings.push(`FAIL: nav-links not positioned absolutely, dropdown won't open below nav`); pass = false; }
       else findings.push(`✓ CSS: .ws-nav-links uses position:absolute + top:100% (dropdown below nav bar)`);
-      if (!hasOpenState) { findings.push(`FAIL: .ws-nav--open .ws-nav-links display:flex rule missing — links never become reachable`); pass = false; }
-      else findings.push(`✓ CSS: .ws-nav--open .ws-nav-links{display:flex} — links reachable when open`);
+      if (!hasOpenState) { findings.push(`FAIL: .ws-nav--open .ws-nav-links display:flex rule missing, links never become reachable`); pass = false; }
+      else findings.push(`✓ CSS: .ws-nav--open .ws-nav-links{display:flex}, links reachable when open`);
       if (hasNavLinksHiddenDefault) findings.push(`✓ CSS: .ws-nav-links default hidden (shows only when ws-nav--open)`);
     }
 
@@ -395,14 +395,14 @@ async function runTests() {
       else findings.push(`✓ Scroll JS: ws-nav--scrolled toggled at window.scrollY>60`);
       if (!hasScrolledCss) { findings.push(`FAIL: .ws-nav--scrolled CSS rule missing`); pass = false; }
       else findings.push(`✓ .ws-nav--scrolled CSS rule present (solid bg when scrolled)`);
-      if (!hasTransparentDropdownDark) { findings.push(`⚠ transparent nav mobile dropdown may not have dark bg — white links could be unreadable`); }
+      if (!hasTransparentDropdownDark) { findings.push(`⚠ transparent nav mobile dropdown may not have dark bg, white links could be unreadable`); }
       else findings.push(`✓ Transparent nav mobile dropdown uses var(--footer-bg) (dark bg for white links)`);
     }
 
-    // ── MOBILE CHECK 6: Minimal nav — CTA stays visible ──────────────────────
+    // ── MOBILE CHECK 6: Minimal nav, CTA stays visible ──────────────────────
     if (navVariant === "minimal") {
       const hasMinimalClass = html.includes('class="ws-nav ws-nav--minimal"');
-      // On minimal, the CTA should stay visible — ws-nav-cta class is NOT applied to minimal
+      // On minimal, the CTA should stay visible, ws-nav-cta class is NOT applied to minimal
       // (minimal nav doesn't use ws-nav-cta class, so it's not hidden by the .ws-nav-cta{display:none} mobile rule)
       const minimalCtaHtml = html.match(/<nav class="ws-nav ws-nav--minimal"[\s\S]*?<\/nav>/)?.[0] ?? "";
       const hasCtaInMinimalNav = minimalCtaHtml.includes('ws-btn-accent') && !minimalCtaHtml.includes('ws-nav-cta');
@@ -421,7 +421,7 @@ async function runTests() {
     const navHtml = html.match(/<nav class="ws-nav[^"]*"[\s\S]*?<\/nav>/)?.[0] ?? "";
     const hasFixedWidthNav = /style="[^"]*width:\s*\d{4,}px/.test(navHtml); // e.g. width:1200px inline
     if (hasFixedWidthNav) {
-      findings.push(`FAIL: nav has inline fixed pixel width — risk of horizontal scroll at 375px`);
+      findings.push(`FAIL: nav has inline fixed pixel width, risk of horizontal scroll at 375px`);
       pass = false;
     } else {
       findings.push(`✓ No fixed pixel width on nav (horizontal scroll safe)`);
@@ -437,12 +437,12 @@ async function runTests() {
     allResults.push({ id: tc.id, label: tc.label, pass, findings });
   }
 
-  // ── Test C: Direct render of nav-minimal (no GPT — variant is deterministic) ─
+  // ── Test C: Direct render of nav-minimal (no GPT, variant is deterministic) ─
   // The saas+minimal_luxury classifier condition is fragile in practice
   // (GPT rarely co-assigns both in real pipeline). Test the rendered output
   // directly since renderNav is server-controlled, not GPT-generated.
   console.log(`\n─── mobile-c-minimal-direct ─────────────────────────────────────`);
-  console.log(`Test C — nav-minimal direct render check (no pipeline needed — variant is deterministic)`);
+  console.log(`Test C, nav-minimal direct render check (no pipeline needed, variant is deterministic)`);
   const minimalFindings: string[] = [];
   let minimalPass = true;
 
@@ -465,7 +465,7 @@ async function runTests() {
   // Minimal nav: NO hamburger (no links to toggle)
   const minHasMinimalClass = minHtml.includes('class="ws-nav ws-nav--minimal"');
   // Note: must check for class="ws-nav-burger" in markup, NOT just 'ws-nav-burger' string
-  // (CSS style block also contains this string as a class definition — would be a false positive)
+  // (CSS style block also contains this string as a class definition, would be a false positive)
   const minHasBurger = minHtml.includes('class="ws-nav-burger"');
   // CTA should be present WITHOUT ws-nav-cta class (stays visible on mobile)
   const minNavBlock = minHtml.match(/<nav class="ws-nav ws-nav--minimal"[\s\S]*?<\/nav>/)?.[0] ?? "";
@@ -476,7 +476,7 @@ async function runTests() {
   else minimalFindings.push(`✓ MINIMAL NAV: ws-nav--minimal class applied`);
 
   if (minHasBurger) { minimalFindings.push(`⚠ nav-minimal unexpectedly has hamburger button`); }
-  else minimalFindings.push(`✓ No hamburger button on nav-minimal (correct — no links to toggle)`);
+  else minimalFindings.push(`✓ No hamburger button on nav-minimal (correct, no links to toggle)`);
 
   if (!minHasCta) { minimalFindings.push(`FAIL: ws-btn-accent CTA missing from nav-minimal markup`); minimalPass = false; }
   else minimalFindings.push(`✓ CTA button present in minimal nav markup`);
@@ -496,27 +496,27 @@ async function runTests() {
   else minimalFindings.push(`✓ overflow-x:hidden on body (no horizontal scroll)`);
 
   for (const f of minimalFindings) console.log(`  ${f}`);
-  allResults.push({ id: "mobile-c-minimal-direct", label: "nav-minimal direct render — CTA visible, no burger, compact footer", pass: minimalPass, findings: minimalFindings });
+  allResults.push({ id: "mobile-c-minimal-direct", label: "nav-minimal direct render, CTA visible, no burger, compact footer", pass: minimalPass, findings: minimalFindings });
 
   // ── Summary ───────────────────────────────────────────────────────────────────
 
   console.log("\n\n═════════════════════════════════════════════════════════════════");
-  console.log("  PHASE 2e MOBILE — REAL PIPELINE FINDINGS");
+  console.log("  PHASE 2e MOBILE, REAL PIPELINE FINDINGS");
   console.log("═════════════════════════════════════════════════════════════════");
   let allPass = true;
   for (const r of allResults) {
     const icon = r.pass ? "✅" : "❌";
-    console.log(`\n${icon} ${r.id}: ${r.label.split("—")[1]?.trim() ?? r.label}`);
+    console.log(`\n${icon} ${r.id}: ${r.label.split(", ")[1]?.trim() ?? r.label}`);
     for (const f of r.findings) console.log(`   ${f}`);
     if (!r.pass) allPass = false;
   }
 
-  console.log(`\n\nFINDING — PRE-EXISTING GAP CONFIRMED AND FIXED:`);
+  console.log(`\n\nFINDING, PRE-EXISTING GAP CONFIRMED AND FIXED:`);
   console.log(`Hamburger mechanism was ABSENT before this fix.`);
   console.log(`nav links (standard + transparent) were permanently unreachable`);
-  console.log(`on mobile — display:none with no toggle button or JS handler.`);
-  console.log(`\nKNOWN-GAP — CLASSIFIER: saas+minimal_luxury (nav-minimal) is hard to`);
-  console.log(`trigger in real pipeline — classifier rarely co-assigns category=saas AND`);
+  console.log(`on mobile, display:none with no toggle button or JS handler.`);
+  console.log(`\nKNOWN-GAP, CLASSIFIER: saas+minimal_luxury (nav-minimal) is hard to`);
+  console.log(`trigger in real pipeline, classifier rarely co-assigns category=saas AND`);
   console.log(`bp=minimal_luxury simultaneously. Verified via direct render in Test C.`);
   console.log(`Selection logic tested in e2e-test-phase2e.ts (pure logic, no GPT).`);
   console.log(`\nFIX APPLIED:`);
@@ -532,10 +532,10 @@ async function runTests() {
   console.log(`\n${passCount}/${allResults.length} test cases passed all mobile checks`);
 
   if (!allPass) {
-    console.log("❌ FAILURES FOUND — see details above");
+    console.log("❌ FAILURES FOUND, see details above");
     process.exit(1);
   } else {
-    console.log("✅ ALL MOBILE CHECKS PASSED — Phase 2e mobile nav verified with real pipeline\n");
+    console.log("✅ ALL MOBILE CHECKS PASSED, Phase 2e mobile nav verified with real pipeline\n");
   }
 }
 

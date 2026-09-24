@@ -62,7 +62,7 @@
     "recycleBin": {
       "title": "Recycle Bin",
       "subtitle": "Deleted leads, conversations, and appointments live here until you restore or permanently delete them.",
-      "migrationPending": "Recycle Bin setup is still finishing on the server — deleted items may not appear yet.",
+      "migrationPending": "Recycle Bin setup is still finishing on the server. Deleted items may not appear yet.",
       "empty": "Recycle Bin is empty",
       "emptyHint": "Anything you delete from Leads, Conversations, or Appointments shows up here first.",
       "leads": "Leads",
@@ -500,9 +500,9 @@
     },
     "hero": {
       "badge": "Never Miss Another Lead",
-      "headline1": "The AI Operating System for Qatar Businesses",
+      "headline1": "The AI Operating System for Qatar and the Gulf",
       "headline2": "",
-      "subtext": "Vela answers your customers on WhatsApp, Instagram, and the phone — 24/7. Built for clinics, salons, restaurants, real estate, and gyms across Qatar and the Gulf.",
+      "subtext": "Vela answers your customers on WhatsApp, Instagram, and the phone, 24/7. Built for clinics, salons, restaurants, real estate, and gyms across Qatar and the Gulf.",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
@@ -523,7 +523,6 @@
           "description": "One AI channel. Automated replies, lead capture, and CRM.",
           "cta": "Get Started",
           "features": [
-            "150 voice minutes/month",
             "500 text messages/month",
             "1 channel (phone, Instagram, or WhatsApp)",
             "1 team member",
@@ -539,8 +538,8 @@
           "features": [
             "AI Voice Phone Agent",
             "All 3 channels (phone, Instagram, WhatsApp)",
-            "650 voice minutes/month",
-            "Unlimited text messages",
+            "300 voice minutes/month",
+            "1,500 text messages/month",
             "3 team members",
             "Priority support (24h)",
             "Unlimited AI training edits"
@@ -551,9 +550,10 @@
           "description": "Everything in Pro. Priority routing, 3 websites, and unlimited team.",
           "cta": "Get Started",
           "features": [
-            "1,300 voice minutes/month",
+            "700 voice minutes/month",
             "All 3 channels + priority routing",
             "AI Voice Phone Agent + priority retraining",
+            "3,000 text messages/month",
             "Unlimited team members",
             "Dedicated call + chat support",
             "Done-for-you onboarding"

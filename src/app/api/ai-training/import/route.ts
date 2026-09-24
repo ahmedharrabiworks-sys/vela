@@ -50,7 +50,7 @@ Rules:
 - business.hours: working hours if mentioned, else ""
 - business.address: physical address if found, else ""
 - business.bookingPolicy: cancellation, deposit, walk-in info if found, else ""
-- business.tone: one of "professional" | "friendly" | "luxury" — infer from writing style
+- business.tone: one of "professional" | "friendly" | "luxury", infer from writing style
 - extra: important info not captured above (brand story, unique selling points, team, promotions). Keep concise.
 - If nothing useful found, return empty arrays and empty strings.`;
 
@@ -96,8 +96,8 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const friendly = msg.includes("timeout") ? "The site took too long to respond."
-      : msg.includes("ENOTFOUND") || msg.includes("getaddrinfo") ? "Couldn't reach that address — check the URL."
-      : "Couldn't fetch the page — the site may block automated access.";
+      : msg.includes("ENOTFOUND") || msg.includes("getaddrinfo") ? "Couldn't reach that address, check the URL."
+      : "Couldn't fetch the page, the site may block automated access.";
     return NextResponse.json({ error: friendly }, { status: 422 });
   }
 

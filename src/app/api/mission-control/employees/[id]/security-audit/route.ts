@@ -20,7 +20,7 @@ export async function POST(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  // Confirm this employee is named "Security Agent" — not callable for other employees
+  // Confirm this employee is named "Security Agent", not callable for other employees
   const { data: emp, error: empErr } = await admin
     .from("employees")
     .select("id, name")

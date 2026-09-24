@@ -83,7 +83,7 @@ export default function PhoneMockup() {
   return (
     <div className="relative select-none" style={{ width: W, height: H }}>
 
-      {/* Subtle ambient glow — light and inviting */}
+      {/* Subtle ambient glow, light and inviting */}
       <div
         className="absolute inset-0 -z-10 blur-3xl opacity-20"
         style={{
@@ -92,7 +92,7 @@ export default function PhoneMockup() {
         }}
       />
 
-      {/* ── Phone shell — bright white ── */}
+      {/* ── Phone shell, bright white ── */}
       <div
         className="relative flex flex-col overflow-hidden"
         style={{

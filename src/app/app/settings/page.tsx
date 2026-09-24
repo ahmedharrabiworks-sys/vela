@@ -277,7 +277,7 @@ export default function SettingsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
-  // Fetch usage when billing tab opens (lazy — only runs once per mount)
+  // Fetch usage when billing tab opens (lazy, only runs once per mount)
   useEffect(() => {
     if (section !== "billing" || usage !== null || usageLoading) return;
     setUsageLoading(true);
@@ -411,7 +411,7 @@ export default function SettingsPage() {
   const isSaving = (s: Section) => savingSection === s;
   const isSaved  = (s: Section) => savedSection === s;
 
-  /* Field change helpers — mark section dirty */
+  /* Field change helpers, mark section dirty */
   const biz = (setter: (v: string) => void) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setter(e.target.value); setBusinessDirty(true); };
   const ai = (setter: (v: string) => void) =>
@@ -983,7 +983,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
 
     const missingColumn = (e: { code?: string } | null) => e?.code === "PGRST204" || e?.code === "42703" || e?.code === "PGRST205" || e?.code === "42P01";
     if (missingColumn(leadsRes.error) || missingColumn(convRes.error) || missingColumn(apptRes.error) || missingColumn(websitesRes.error)) {
-      console.warn("[recycle-bin] deleted_at column missing on one or more tables — run migration_v30.sql / the websites migration.");
+      console.warn("[recycle-bin] deleted_at column missing on one or more tables, run migration_v30.sql / the websites migration.");
       setMigrationPending(true);
     }
     setLeads((leadsRes.data ?? []) as BinLead[]);
@@ -999,7 +999,7 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
       rows.forEach((r) => counts.set(r.deleted_at, (counts.get(r.deleted_at) ?? 0) + 1));
       setAssistantBatches(Array.from(counts.entries()).map(([deletedAt, count]) => ({ deletedAt, count })));
     } else if (assistantRes.error) {
-      console.warn("[recycle-bin] assistant_messages table missing — run migration_v31.sql.");
+      console.warn("[recycle-bin] assistant_messages table missing, run migration_v31.sql.");
     }
     setLoading(false);
   }

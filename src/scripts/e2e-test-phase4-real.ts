@@ -1,12 +1,12 @@
 /**
- * Phase 4 Real-Pipeline Verification — GPT imageQuery compliance
+ * Phase 4 Real-Pipeline Verification, GPT imageQuery compliance
  *
  * Static Phase 4 tests confirmed dicts and Part 7 text are correct. This test
  * closes the live-GPT gap: generates 2 real sites through gpt-4o with the new
  * Part 7 instructions and inspects whether GPT actually complied.
  *
- * Test A — Dental clinic explicitly named in Casablanca, Morocco
- * Test B — Real estate agency explicitly named in Marrakech, Morocco
+ * Test A, Dental clinic explicitly named in Casablanca, Morocco
+ * Test B, Real estate agency explicitly named in Marrakech, Morocco
  *
  * For each: print every imageQuery/imageQueries value GPT returned, then check
  * for city/country terms. Prints actual strings regardless of pass/fail.
@@ -79,13 +79,13 @@ function collectQueries(obj: unknown, results: { field: string; value: string }[
 // These are the exact instructions GPT receives. Keep in sync with route.ts PART 7 changes.
 const PART7_RULES = `
 ═══════════════════════════════════════════════════════
-PART 7 — IMAGE QUERY RULES
+PART 7, IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
 imageQuery is an Unsplash search string. Required for: hero, about-story.
-imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3–6 strings).
+imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3 to 6 strings).
 
-BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, NOT where the business is located:
+BUILD SUBJECT-SPECIFIC QUERIES, describe WHAT THE PHOTO SHOWS, NOT where the business is located:
 
 imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 
@@ -117,14 +117,14 @@ EXAMPLES (zero city/country in any query):
 • Property listing  → "contemporary apartment living room natural light minimal architectural"
 • Gym listing       → "gym equipment dumbbell rack weight training detail editorial"
 
-gallery-grid / listings-grid: vary subject, angle, detail — each query must be distinct.
+gallery-grid / listings-grid: vary subject, angle, detail, each query must be distinct.
 
 QUALITY SUFFIX: append one of these to every imageQuery:
   hero/about-story → "bright natural light" or "professional photography" or "editorial minimal"
   gallery/listings → "editorial" or "close-up detail" or "architectural"
 `.trim();
 
-// Minimal system prompt — representative of what production buildFillSystem sends
+// Minimal system prompt, representative of what production buildFillSystem sends
 function buildTestSystemPrompt(category: string): string {
   return `You are a senior brand copywriter. Produce a complete website JSON spec.
 OUTPUT ONLY valid JSON. No markdown, no explanation.
@@ -144,8 +144,8 @@ JSON SHAPE:
 }
 
 SECTIONS (fill in this exact order):
-  1. type: "hero" (REQUIRED) — imageQuery REQUIRED
-  2. type: "about-story" (OPTIONAL) — imageQuery REQUIRED if included
+  1. type: "hero" (REQUIRED), imageQuery REQUIRED
+  2. type: "about-story" (OPTIONAL), imageQuery REQUIRED if included
   3. type: "contact-block" (REQUIRED)
   4. type: "footer" (REQUIRED)
 
@@ -155,13 +155,13 @@ SectionSpec structure (imageQuery MUST be a sibling of content, NOT nested insid
 ${PART7_RULES}
 
 ═══════════════════════════════════════════════════════
-PART 8 — SECTION SCHEMAS
+PART 8, SECTION SCHEMAS
 ═══════════════════════════════════════════════════════
 
-hero — imageQuery REQUIRED:
-{ "eyebrow": "3–5 words", "headline": "5–8 words", "subheadline": "1–2 sentences", "ctaPrimary": "action label" }
+hero, imageQuery REQUIRED:
+{ "eyebrow": "3 to 5 words", "headline": "5 to 8 words", "subheadline": "1 to 2 sentences", "ctaPrimary": "action label" }
 
-about-story — imageQuery REQUIRED if included:
+about-story, imageQuery REQUIRED if included:
 { "eyebrow"?: string, "headline": string, "body": string }
 
 contact-block:
@@ -181,10 +181,10 @@ ABSOLUTE RULES:
 const TEST_CASES = [
   {
     id: "A",
-    label: "Dental clinic — Casablanca, Morocco",
+    label: "Dental clinic, Casablanca, Morocco",
     category: "clinic",
     description: `
-Smile Dental Clinic — Casablanca, Morocco
+Smile Dental Clinic, Casablanca, Morocco
 
 Modern dental clinic located in the heart of Casablanca serving patients across Morocco.
 
@@ -200,15 +200,15 @@ State-of-the-art digital X-ray and panoramic imaging.
 
 Phone: +212 522 123 456 | info@smiledental.ma
 Address: 45 Boulevard Mohammed V, Casablanca 20000
-Hours: Mon–Fri 9am–7pm, Sat 9am–3pm
+Hours: Mon to Fri 9am to 7pm, Sat 9am to 3pm
     `.trim(),
   },
   {
     id: "B",
-    label: "Real estate agency — Marrakech, Morocco",
+    label: "Real estate agency, Marrakech, Morocco",
     category: "realestate",
     description: `
-Palmeraie Properties — Marrakech, Morocco
+Palmeraie Properties, Marrakech, Morocco
 
 Luxury real estate agency specialising in high-end riads, villas, and modern apartments in Marrakech.
 
@@ -228,7 +228,7 @@ Office: 12 Rue de la Liberté, Gueliz, Marrakech
 
 async function runTests() {
   console.log("\n═══════════════════════════════════════════════════════════════");
-  console.log("  Phase 4 Real-Pipeline GPT Compliance — imageQuery audit");
+  console.log("  Phase 4 Real-Pipeline GPT Compliance, imageQuery audit");
   console.log("═══════════════════════════════════════════════════════════════");
   console.log(`\nModel: gpt-4o  |  Tests: ${TEST_CASES.length}  |  City terms checked: ${CITY_TERMS.length}`);
   console.log("Checking whether GPT complies with new Part 7 (VISUAL SUBJECT formula,");
@@ -276,7 +276,7 @@ async function runTests() {
 
     console.log(`\n  Image queries GPT produced (${queries.length} total):`);
     if (queries.length === 0) {
-      console.log("  (none — GPT produced no imageQuery/imageQueries fields)");
+      console.log("  (none, GPT produced no imageQuery/imageQueries fields)");
     } else {
       for (const q of queries) {
         const city = cityInQuery(q.value);
@@ -328,7 +328,7 @@ async function runTests() {
   console.log("═══════════════════════════════════════════════════════════════");
 
   if (failed > 0) {
-    console.error("\n❌ FAILURES DETECTED — see above for actual GPT-produced query strings.");
+    console.error("\n❌ FAILURES DETECTED, see above for actual GPT-produced query strings.");
     console.error("If GPT included city names despite the new Part 7 ABSOLUTE RULE, options are:");
     console.error("  1. Stronger server-side strip: after GPT returns the spec, scan all imageQuery");
     console.error("     fields for known city/country terms and remove them before ensureImageQueries runs.");
@@ -339,7 +339,7 @@ async function runTests() {
     process.exit(1);
   } else {
     console.log("\n✅ GPT complied with Part 7 on both test cases.");
-    console.log("Phase 4 real-pipeline gap is closed — no city/country terms found in GPT-produced queries.");
+    console.log("Phase 4 real-pipeline gap is closed, no city/country terms found in GPT-produced queries.");
   }
 }
 

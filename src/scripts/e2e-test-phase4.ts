@@ -1,5 +1,5 @@
 /**
- * Phase 4 Verification — Image engine rebuild
+ * Phase 4 Verification, Image engine rebuild
  *
  * Checks that all Unsplash query construction in route.ts is:
  *   (A) city/location-free in the server-side fallback dicts
@@ -73,9 +73,9 @@ function hasCity(q: string): string | null {
   return CITY_TERMS.find((c) => lower.includes(c)) ?? null;
 }
 
-// ── Case A: HERO_PHOTO_QUERY — dental clinic in Casablanca ───────────────────
+// ── Case A: HERO_PHOTO_QUERY, dental clinic in Casablanca ───────────────────
 
-console.log("\n══ A: HERO_PHOTO_QUERY — dental clinic (no city, correct subject) ══\n");
+console.log("\n══ A: HERO_PHOTO_QUERY, dental clinic (no city, correct subject) ══\n");
 
 const heroDict = extractDict(routeSource, "HERO_PHOTO_QUERY");
 console.log(`  Extracted ${Object.keys(heroDict).length} entries from HERO_PHOTO_QUERY`);
@@ -109,7 +109,7 @@ check("all HERO_PHOTO_QUERY values are city-free", heroAllClean, heroFailKey);
 
 // ── Case A: ABOUT_PHOTO_QUERY ────────────────────────────────────────────────
 
-console.log("\n══ A (cont): ABOUT_PHOTO_QUERY — dental clinic about section ══\n");
+console.log("\n══ A (cont): ABOUT_PHOTO_QUERY, dental clinic about section ══\n");
 
 const aboutDict = extractDict(routeSource, "ABOUT_PHOTO_QUERY");
 console.log(`  Extracted ${Object.keys(aboutDict).length} entries from ABOUT_PHOTO_QUERY`);
@@ -125,7 +125,7 @@ check("clinic about: contains subject term",
 
 // ── Case B: real estate in Marrakech ─────────────────────────────────────────
 
-console.log("\n══ B: Real estate queries — no Marrakech/Morocco ══\n");
+console.log("\n══ B: Real estate queries, no Marrakech/Morocco ══\n");
 
 const reAbout = aboutDict["realestate"];
 console.log(`  realestate about query: "${reAbout}"`);

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-// Module-level singleton — no React context, no provider needed.
+// Module-level singleton, no React context, no provider needed.
 // Any component can call setBottomSheetOpen(true/false) to signal
 // that a mobile bottom-sheet is open. VelaAssistant hides its bubble
 // while this is true so it doesn't overlap panel content.

@@ -1,5 +1,5 @@
 /**
- * Phase A item 5 — Marketing Tools "AI generation failed" fix
+ * Phase A item 5, Marketing Tools "AI generation failed" fix
  *
  * Root cause: `.catch(() => null)` was chained directly on the return value of
  * `admin.from("marketing_generations").insert({...})`.  Supabase JS v2 query
@@ -22,7 +22,7 @@
  *   (D) DB error is non-fatal: Supabase insert into non-existent table returns
  *       { error } object (never throws), verifying the fixed try/catch handles it
  *   (E) No other Supabase builder .catch() patterns in the codebase
- *       (webhooks/whatsapp + webhooks/instagram have the same latent pattern —
+ *       (webhooks/whatsapp + webhooks/instagram have the same latent pattern, 
  *       reported here; NOT fixed without explicit confirmation)
  *
  * Run: npx tsx --env-file .env.local src/scripts/e2e-test-phase-a5-marketing.ts
@@ -49,7 +49,7 @@ const marketingRoute = fs.readFileSync(
 );
 
 // ── (A) Static: fix is in place ──────────────────────────────────────────────
-console.log("\n══ A: Static — broken .catch() on builder is gone, try/catch in place ══\n");
+console.log("\n══ A: Static, broken .catch() on builder is gone, try/catch in place ══\n");
 
 check("no .catch() directly chained on insert() result",
   !marketingRoute.includes("}).catch(") && !marketingRoute.includes(").catch(() => null)"));
@@ -67,7 +67,7 @@ check("guard comment explaining the .catch() gotcha is present",
   marketingRoute.includes("builders expose") || marketingRoute.includes("Never chain .catch()"));
 
 // ── (B) Root cause demo: .catch() on a thenable-only object throws ────────────
-console.log("\n══ B: Root cause demo — .catch() on thenable-only object throws ══\n");
+console.log("\n══ B: Root cause demo.catch() on thenable-only object throws ══\n");
 
 // Replicate what the Supabase builder looks like: an object with .then() but no .catch()
 function makeFakeBuilder() {
@@ -75,7 +75,7 @@ function makeFakeBuilder() {
     then(onfulfilled: (v: unknown) => unknown) {
       return Promise.resolve({ data: null, error: null }).then(onfulfilled);
     }
-    // .catch is intentionally absent — same as Supabase builder before it is awaited
+    // .catch is intentionally absent, same as Supabase builder before it is awaited
   };
 }
 
@@ -98,10 +98,10 @@ try {
   fakeBuilder.then(() => {/* noop */}).catch(() => {/* noop */});
   thenCatchSafe = true;
 } catch { thenCatchSafe = false; }
-check("builder.then(noop).catch(noop) — the safe fire-and-forget pattern — does NOT throw",
+check("builder.then(noop).catch(noop), the safe fire-and-forget pattern, does NOT throw",
   thenCatchSafe);
 
-// ── (C) Real OpenAI generation — all 3 types ─────────────────────────────────
+// ── (C) Real OpenAI generation, all 3 types ─────────────────────────────────
 async function runLiveChecks() {
   const openaiKey = process.env.OPENAI_API_KEY;
   const sbUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -112,7 +112,7 @@ async function runLiveChecks() {
     return;
   }
 
-  console.log("\n══ C: Real OpenAI generation — social / video / broadcast ══\n");
+  console.log("\n══ C: Real OpenAI generation, social / video / broadcast ══\n");
 
   const openai = new OpenAI({ apiKey: openaiKey });
 
@@ -159,7 +159,7 @@ async function runLiveChecks() {
   }
 
   // ── (D) DB error is non-fatal ───────────────────────────────────────────────
-  console.log("\n══ D: DB error non-fatal — bad table name returns error object (no throw) ══\n");
+  console.log("\n══ D: DB error non-fatal, bad table name returns error object (no throw) ══\n");
 
   const admin = createClient(sbUrl, svcKey, { auth: { persistSession: false } });
 
@@ -172,12 +172,12 @@ async function runLiveChecks() {
   const tableExists = !tableCheckErr || !tableCheckErr.message.includes("does not exist");
   console.log(`  marketing_generations table exists: ${tableExists}`);
   if (!tableExists) {
-    console.log(`  (Table not yet created — migration_v5.sql not run. This is expected.)`);
-    console.log(`  SQL to create: supabase/migration_v5.sql — run in Supabase SQL editor after fixing RLS.`);
+    console.log(`  (Table not yet created, migration_v5.sql not run. This is expected.)`);
+    console.log(`  SQL to create: supabase/migration_v5.sql, run in Supabase SQL editor after fixing RLS.`);
   }
 
   // Simulate the error path: insert into a definitively non-existent table
-  // This proves Supabase returns { error } and never throws — the fix handles this correctly.
+  // This proves Supabase returns { error } and never throws, the fix handles this correctly.
   let gotErrorObject = false;
   let didNotThrow = true;
   try {
@@ -185,7 +185,7 @@ async function runLiveChecks() {
     const result = await (admin as any).from("_vela_test_nonexistent_abc123").insert({
       x: 1,
     });
-    // Supabase returns { data: null, error: {...} } for bad table — never throws
+    // Supabase returns { data: null, error: {...} } for bad table, never throws
     gotErrorObject = result.error != null;
     console.log(`  Supabase insert into bad table → error: "${result.error?.message?.slice(0, 80)}"`);
   } catch (e) {
@@ -196,7 +196,7 @@ async function runLiveChecks() {
   check("Supabase insert into non-existent table returns error object (does not throw)",
     didNotThrow && gotErrorObject);
   check("The fix's try/catch correctly catches the error object (histErr path)",
-    didNotThrow); // if Supabase doesn't throw, the catch(histEx) block never runs — histErr is used instead
+    didNotThrow); // if Supabase doesn't throw, the catch(histEx) block never runs, histErr is used instead
 
   // ── (E) Latent pattern in other routes (reported, not fixed) ─────────────────
   console.log("\n══ E: Other routes with same latent .catch()-on-builder pattern ══\n");
@@ -216,23 +216,23 @@ async function runLiveChecks() {
   const generateSafe =
     !fs.readFileSync(path.join(SRC, "app/api/website/generate/route.ts"), "utf-8")
       .includes("insert({") ||
-    // generate/route.ts uses .then(noop).catch(noop) — safe because .then() returns a real Promise
+    // generate/route.ts uses .then(noop).catch(noop), safe because .then() returns a real Promise
     fs.readFileSync(path.join(SRC, "app/api/website/generate/route.ts"), "utf-8")
       .includes(".then(() => {}).catch(() => {})");
 
   if (whatsappHasBug) {
-    console.log("  ⚠️  LATENT BUG: webhooks/whatsapp/route.ts — same .catch()-on-builder pattern");
+    console.log("  ⚠️  LATENT BUG: webhooks/whatsapp/route.ts, same .catch()-on-builder pattern");
     console.log("       Line 42: admin.from(\"webhook_logs\").insert({...}).catch(() => null)");
     console.log("       Impact: if webhook_logs table is missing, .catch() throws inside POST");
     console.log("       handler with no outer try/catch → 500, potentially breaking Meta webhook ACK.");
-    console.log("       NOT fixed here — awaiting confirmation before touching webhook routes.");
+    console.log("       NOT fixed here, awaiting confirmation before touching webhook routes.");
   }
   if (instagramHasBug) {
-    console.log("  ⚠️  LATENT BUG: webhooks/instagram/route.ts — same .catch()-on-builder pattern");
+    console.log("  ⚠️  LATENT BUG: webhooks/instagram/route.ts, same .catch()-on-builder pattern");
     console.log("       Line 69: admin.from(\"webhook_logs\").insert({...}).catch(() => null)");
     console.log("       Impact: same as whatsapp. Meta requires 200 within 20s; a 500 here");
     console.log("       would cause Meta to retry the webhook and potentially disable the integration.");
-    console.log("       NOT fixed here — awaiting confirmation before touching webhook routes.");
+    console.log("       NOT fixed here, awaiting confirmation before touching webhook routes.");
   }
 
   check("webhooks/whatsapp has latent .catch()-on-builder bug (flagged, not fixed)",

@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem("vela_theme") as Theme | null;
     setTheme(saved ?? "light");
-    // Lock to Vela orange — single brand colour, no switching
+    // Lock to Vela orange, single brand colour, no switching
     document.documentElement.setAttribute("data-theme", "orange");
   }, []);
 
@@ -53,7 +53,7 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-// Stub — colour theme is always orange, switching removed
+// Stub, colour theme is always orange, switching removed
 export function useColorTheme() {
   return { colorTheme: "orange" as const, setColorTheme: (_: string) => {} };
 }

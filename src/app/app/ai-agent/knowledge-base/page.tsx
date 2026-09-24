@@ -118,7 +118,7 @@ export default function KnowledgeBasePage() {
           </p>
         </div>
 
-        {/* Phone Agent Knowledge Base — full-width, editable directly, separate from
+        {/* Phone Agent Knowledge Base, full-width, editable directly, separate from
             the Training interview's knowledge panel. Automatically merged with the
             Training/Magic Import knowledge base wherever the real Phone Agent or the
             internal Assistant build their context -- see src/lib/knowledge-base.ts. */}
@@ -134,7 +134,7 @@ export default function KnowledgeBasePage() {
                 type="text"
                 value={phoneKb.business.hours}
                 onChange={(e) => setPhoneBiz("hours", e.target.value)}
-                placeholder="Mon–Sat 9:00–17:00"
+                placeholder="Mon to Sat 9:00 to 17:00"
                 className={inputClass}
                 style={inputStyle}
               />

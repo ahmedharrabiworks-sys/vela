@@ -21,7 +21,7 @@
 export function stripAiTells(text: string): string {
   return text
     .replace(/\s*--\s*/g, ", ")
-    .replace(/\s*[—–]\s*/g, ", ")
+    .replace(/\s*[—–]\s*/g, ", ") // dash-lint-allow: must literally match em/en dash to strip them
     .replace(/_+/g, " ")
     .replace(/,\s*,/g, ",")
     .replace(/\s{2,}/g, " ")

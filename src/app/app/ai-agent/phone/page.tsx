@@ -89,7 +89,7 @@ export default function PhonePage() {
         {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-          {/* Left — Active number OR provision card — 3/5 */}
+          {/* Left, Active number OR provision card, 3/5 */}
           <div className="lg:col-span-3">
 
             {/* Active number */}
@@ -244,7 +244,7 @@ export default function PhonePage() {
             )}
           </div>
 
-          {/* Right — How it works — 2/5 */}
+          {/* Right, How it works, 2/5 */}
           <div className="lg:col-span-2 rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>How inbound calls work</h2>
             <div className="space-y-4">
@@ -272,7 +272,7 @@ export default function PhonePage() {
           </div>
         </div>
 
-        {/* Technical details — full-width, conditional */}
+        {/* Technical details, full-width, conditional */}
         {state.assistantId && (
           <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>Technical details</h2>

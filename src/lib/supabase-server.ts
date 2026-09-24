@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { type Database } from "./supabase";
 
-/** Server Component / Route Handler client — reads session from cookies */
+/** Server Component / Route Handler client, reads session from cookies */
 export function createSupabaseServerClient() {
   const cookieStore = cookies();
   return createServerClient<Database>(
@@ -20,7 +20,7 @@ export function createSupabaseServerClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Called from a Server Component — cookie mutations are ignored
+            // Called from a Server Component, cookie mutations are ignored
           }
         },
       },
@@ -29,7 +29,7 @@ export function createSupabaseServerClient() {
 }
 
 /**
- * Route Handler client — identical to createSupabaseServerClient but setAll
+ * Route Handler client, identical to createSupabaseServerClient but setAll
  * does NOT catch errors, so refreshed tokens are correctly written back to the
  * browser response. Use this in all Route Handlers (not Server Components).
  */
@@ -77,7 +77,7 @@ function noStoreFetch(input: RequestInfo | URL, init?: RequestInit) {
   return fetch(input, { ...init, cache: "no-store" });
 }
 
-/** Service-role admin client — for trusted server-side operations only */
+/** Service-role admin client, for trusted server-side operations only */
 export function createSupabaseAdmin() {
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

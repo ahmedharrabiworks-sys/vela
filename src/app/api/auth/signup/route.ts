@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     const admin = createSupabaseAdmin();
 
-    // Create user with email_confirm: true — bypasses email confirmation entirely.
+    // Create user with email_confirm: true, bypasses email confirmation entirely.
     // This avoids the Supabase free-tier email rate limit (2/hour) that breaks
     // client-side signUp. Users can log in immediately after creation.
     const { data, error } = await admin.auth.admin.createUser({

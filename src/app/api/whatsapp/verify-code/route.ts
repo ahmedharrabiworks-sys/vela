@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   let verified = false;
 
   if (!accountSid || !authToken || !verifySid) {
-    // Demo mode — accept any 6-digit code
+    // Demo mode, accept any 6-digit code
     verified = /^\d{6}$/.test(code);
   } else {
     try {

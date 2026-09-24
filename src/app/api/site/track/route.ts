@@ -22,7 +22,7 @@ function isRateLimited(ip: string): boolean {
 }
 
 async function hashVisitor(ip: string, ua: string): Promise<string> {
-  // Salted SHA-256 — never stores raw IP or PII, only a one-way hash for unique-visitor counting.
+  // Salted SHA-256, never stores raw IP or PII, only a one-way hash for unique-visitor counting.
   const salt = process.env.VISITOR_HASH_SALT ?? "vela-visitor-v1";
   const data = new TextEncoder().encode(`${salt}:${ip}:${ua}`);
   const buf  = await crypto.subtle.digest("SHA-256", data);

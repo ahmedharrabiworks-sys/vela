@@ -21,12 +21,12 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export async function POST(req: NextRequest) {
-  // Fail closed — VAPI_WEBHOOK_SECRET must be set in production env.
+  // Fail closed, VAPI_WEBHOOK_SECRET must be set in production env.
   // Without it we cannot verify the request is from Vapi; a forged end-of-call-report
   // would insert fake rows into agent_calls and potentially appointments.
   const secret = process.env.VAPI_WEBHOOK_SECRET;
   if (!secret) {
-    console.error("[call-webhook] VAPI_WEBHOOK_SECRET not configured — rejecting request");
+    console.error("[call-webhook] VAPI_WEBHOOK_SECRET not configured, rejecting request");
     return NextResponse.json({ error: "Service misconfigured" }, { status: 401 });
   }
   // Security audit Part 2: upgraded from a plain !== compare to a
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // WhatsApp/Instagram get, current as of when the call starts. A live
     // call is turn-by-turn inside Vapi's own model loop, not round-tripped
     // through this server per message, so this is a call-start snapshot
-    // rather than the per-message deterministic re-check api/ai/reply does —
+    // rather than the per-message deterministic re-check api/ai/reply does, 
     // still real, current data, just refreshed once per call instead of
     // once per turn.
     let bookedSlotsText = "";
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
     const tenantId = searchParams.get("tenantId") ?? null;
 
     if (!tenantId && !phoneNumberId) {
-      return NextResponse.json({ ok: true }); // Can't associate — silently accept
+      return NextResponse.json({ ok: true }); // Can't associate, silently accept
     }
 
     const admin = createSupabaseAdmin() as any;
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
         appointment_booked: appointmentBooked,
       });
     } catch (err: any) {
-      // Don't fail the webhook — Vapi retries on non-200
+      // Don't fail the webhook, Vapi retries on non-200
       console.error("[call-webhook] insert error:", err?.message ?? err);
     }
 
@@ -370,6 +370,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // All other event types — acknowledge silently
+  // All other event types, acknowledge silently
   return NextResponse.json({ ok: true });
 }

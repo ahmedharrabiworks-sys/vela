@@ -55,7 +55,7 @@ export async function GET() {
     }
   } catch { /* unreachable */ }
 
-  // TEMPORARY DIAGNOSTIC — added to pin down why an updated ELEVEN_LABS_API_KEY
+  // TEMPORARY DIAGNOSTIC, added to pin down why an updated ELEVEN_LABS_API_KEY
   // in Vercel wasn't taking effect. Never returns the full key, only presence,
   // length, and the first 4 characters, so the deployed value can be confirmed
   // against what was set in Vercel without exposing the secret. Remove once the
@@ -88,7 +88,7 @@ export async function GET() {
     elevenLabsError = "key_not_set";
   }
 
-  // TEMPORARY DIAGNOSTIC — added while root-causing the Vapi "ejected / Meeting
+  // TEMPORARY DIAGNOSTIC, added while root-causing the Vapi "ejected / Meeting
   // has ended" failure on Training and the generic call failure on Overview, to
   // rule in or out a Vapi account/credit/auth problem as a shared cause. Never
   // returns the full key, only presence, length, and reachability against

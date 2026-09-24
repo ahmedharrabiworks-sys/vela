@@ -9,7 +9,7 @@ const MAX_TRANSCRIPT_LEN = 20_000;
 
 const EXTRACT_SYSTEM = `You are a data extraction assistant. Given a voice call transcript between a business owner and Vela (an AI assistant), extract structured business knowledge.
 
-Return ONLY valid JSON in this exact shape — no markdown, no explanation:
+Return ONLY valid JSON in this exact shape, no markdown, no explanation:
 {
   "services": [{ "name": "", "price": "", "duration": "", "description": "" }],
   "faqs": [],
@@ -28,7 +28,7 @@ Rules:
 - business.hours: working hours / availability if mentioned, else "".
 - business.address: address, location, or service area if mentioned, else "".
 - business.bookingPolicy: cancellation/booking policy if mentioned, else "".
-- business.tone: infer from the owner's language style — "professional", "friendly", or "luxury".
+- business.tone: infer from the owner's language style, "professional", "friendly", or "luxury".
 - extra: put any other important details (business overview, rules/escalation instructions, brand voice notes) as plain text. Keep it concise.
 - If information is not in the transcript, use empty strings. Never invent data.`;
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   // require GPT to format raw text into the structured array.
   const toolCallEntries = Object.entries(toolCallKb).filter(([, v]) => v?.trim());
   const toolCallSection = toolCallEntries.length > 0
-    ? "INTERVIEW TOOL-CALL DATA (authoritative — prefer these over transcript for each field):\n" +
+    ? "INTERVIEW TOOL-CALL DATA (authoritative, prefer these over transcript for each field):\n" +
       toolCallEntries.map(([k, v]) => `${k}: ${v}`).join("\n") + "\n\n"
     : "";
 
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to extract knowledge" }, { status: 500 });
   }
 
-  // Override structured fields with tool-call values — deterministic, not GPT-dependent.
+  // Override structured fields with tool-call values, deterministic, not GPT-dependent.
   // Speech-to-text is noisy; the tool-call data was already normalized by the interview.
   type TypedKb = {
     business?: { hours?: string; address?: string; bookingPolicy?: string; tone?: string };
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
   if (toolCallKb.availability) typedKb.business.hours   = toolCallKb.availability;
   if (toolCallKb.locationArea) typedKb.business.address = toolCallKb.locationArea;
 
-  // businessAndCustomers, rulesEscalation, and brandVoice have no dedicated KB slot —
+  // businessAndCustomers, rulesEscalation, and brandVoice have no dedicated KB slot, 
   // store in extra with markers. training-context reads them back to populate
   // skip/confirm on repeat interviews.
   const extraParts: string[] = [];

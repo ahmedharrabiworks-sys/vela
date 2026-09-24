@@ -1,6 +1,6 @@
-// Mission Control — Security Agent check functions
+// Mission Control, Security Agent check functions
 // Report-only, zero execution authority. Every finding cites real evidence.
-// Each check returns an empty array if no issues found — that is an honest result.
+// Each check returns an empty array if no issues found, that is an honest result.
 // Hard Rule 22 discipline: findings must be traceable to a specific real query result.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,7 +37,7 @@ const TENANT_TABLES_REQUIRING_RLS = [
   "agent_calls", "whatsapp_accounts", "marketing_generations", "webhook_logs",
 ];
 
-// MC tables that are admin-client-only by design — no end-user policies expected
+// MC tables that are admin-client-only by design, no end-user policies expected
 const ADMIN_ONLY_TABLES = [
   "departments", "employees", "employee_signals", "employee_insights",
   "learning_log", "mission_control_access_log",
@@ -46,14 +46,14 @@ const ADMIN_ONLY_TABLES = [
 export async function checkRlsPolicies(admin: AdminClient): Promise<SecurityFinding[]> {
   const findings: SecurityFinding[] = [];
 
-  // pg_policies lives in pg_catalog — PostgREST never exposes that schema.
+  // pg_policies lives in pg_catalog, PostgREST never exposes that schema.
   // get_rls_policies() is a SECURITY DEFINER function in public that wraps the query.
   // Created by migration_v19.sql. If this RPC errors, that migration hasn't been run yet.
   const { data: policies, error } = await admin.rpc("get_rls_policies");
 
   if (error) {
     findings.push({
-      finding: "get_rls_policies() RPC not accessible — migration_v19.sql may not have been run",
+      finding: "get_rls_policies() RPC not accessible, migration_v19.sql may not have been run",
       evidence: `Error ${error.code}: ${error.message}. Run supabase/migration_v19.sql in Supabase SQL Editor to create the SECURITY DEFINER wrapper function.`,
       severity: "warning",
     });
@@ -70,13 +70,13 @@ export async function checkRlsPolicies(admin: AdminClient): Promise<SecurityFind
     tableMap.get(p.tablename)!.push(p);
   }
 
-  // Flag permissive policies with qual = 'true' (all rows to all roles — usually a mistake)
+  // Flag permissive policies with qual = 'true' (all rows to all roles, usually a mistake)
   for (const [table, pols] of tableMap.entries()) {
     for (const pol of pols) {
       if (pol.permissive === "PERMISSIVE" && pol.qual === "true") {
         findings.push({
           finding: `Table "${table}" has a permissive policy with qual = 'true'`,
-          evidence: `Policy: "${pol.policyname}", cmd: ${pol.cmd}, qual: '${pol.qual}' — this allows ALL rows to ALL roles regardless of auth.uid()`,
+          evidence: `Policy: "${pol.policyname}", cmd: ${pol.cmd}, qual: '${pol.qual}', this allows ALL rows to ALL roles regardless of auth.uid()`,
           severity: "critical",
         });
       }
@@ -88,7 +88,7 @@ export async function checkRlsPolicies(admin: AdminClient): Promise<SecurityFind
     if (!tableMap.has(table)) {
       findings.push({
         finding: `Tenant data table "${table}" has no RLS policies`,
-        evidence: `pg_policies returned 0 rows for public.${table} — this table stores per-tenant data and should be row-level secured`,
+        evidence: `pg_policies returned 0 rows for public.${table}, this table stores per-tenant data and should be row-level secured`,
         severity: "critical",
       });
     }
@@ -110,29 +110,29 @@ export async function checkRlsPolicies(admin: AdminClient): Promise<SecurityFind
 // ── Check 2: Webhook fail-open ────────────────────────────────────────────────
 // Checks process.env for each webhook route's required secret.
 // Missing secrets = route could fail open (no signature verification).
-// Severity is "warning" not "critical" — Hard Rule 20: placeholder creds are
+// Severity is "warning" not "critical", Hard Rule 20: placeholder creds are
 // expected until integration day; this check surfaces readiness gaps, not live exploits.
 
 const WEBHOOK_ROUTES = [
   {
     route: "/api/webhooks/instagram",
     vars: ["META_WEBHOOK_VERIFY_TOKEN", "META_APP_SECRET"],
-    description: "Instagram DM webhook — HMAC-SHA256 + verify token challenge",
+    description: "Instagram DM webhook, HMAC-SHA256 + verify token challenge",
   },
   {
     route: "/api/webhooks/whatsapp",
     vars: ["META_WHATSAPP_VERIFY_TOKEN", "META_APP_SECRET"],
-    description: "WhatsApp Meta Cloud API webhook — HMAC-SHA256 + verify token challenge",
+    description: "WhatsApp Meta Cloud API webhook, HMAC-SHA256 + verify token challenge",
   },
   {
     route: "/api/ai-agent/call-webhook",
     vars: ["VAPI_WEBHOOK_SECRET"],
-    description: "Vapi end-of-call webhook — bearer token verification",
+    description: "Vapi end-of-call webhook, bearer token verification",
   },
   {
     route: "/api/whatsapp/webhook (legacy Twilio path)",
     vars: ["TWILIO_AUTH_TOKEN"],
-    description: "Legacy Twilio webhook — HMAC-SHA1 verification",
+    description: "Legacy Twilio webhook, HMAC-SHA1 verification",
   },
 ] as const;
 
@@ -182,7 +182,7 @@ export function checkExposedEnvVars(): SecurityFinding[] {
 
 // ── Check 4: Schema vs known migrations ───────────────────────────────────────
 // These are exactly the tables/columns that caused silent production failures
-// in this session. Querying them directly — if the query errors, the item is absent.
+// in this session. Querying them directly, if the query errors, the item is absent.
 // PGRST205 / 42703 = column not found. 42P01 = table not found.
 
 const SCHEMA_EXPECTATIONS = [
@@ -190,19 +190,19 @@ const SCHEMA_EXPECTATIONS = [
     table: "agent_calls",
     column: null as string | null,
     migration: "migration_v13b.sql",
-    description: "Voice call recording — absence caused all call writes to silently fail (PGRST205 was swallowed by try/catch)",
+    description: "Voice call recording, absence caused all call writes to silently fail (PGRST205 was swallowed by try/catch)",
   },
   {
     table: "tenant_config",
     column: "knowledge_base_updated_at",
     migration: "migration_v13b.sql",
-    description: "KB training timestamp — absence broke at-risk detection and Trainer Agent signals",
+    description: "KB training timestamp, absence broke at-risk detection and Trainer Agent signals",
   },
   {
     table: "whatsapp_accounts",
     column: null as string | null,
     migration: "migration_v9.sql",
-    description: "WhatsApp channel accounts — needed for multi-tenant webhook phone_number_id routing",
+    description: "WhatsApp channel accounts, needed for multi-tenant webhook phone_number_id routing",
   },
 ] as const;
 
@@ -213,7 +213,7 @@ export async function checkSchemaVsMigrations(admin: AdminClient): Promise<Secur
     const selectField = exp.column ?? "id";
     const { error } = await admin.from(exp.table).select(selectField).limit(1);
 
-    if (!error) continue; // present — no finding
+    if (!error) continue; // present, no finding
 
     // PostgREST uses PGRST205 for BOTH "table not found" (when no column is selected)
     // AND "column not found" (when a specific column is selected). Disambiguate by exp.column.
@@ -244,7 +244,7 @@ export async function checkSchemaVsMigrations(admin: AdminClient): Promise<Secur
     } else {
       findings.push({
         finding: `Could not verify ${exp.column ? `"${exp.table}.${exp.column}"` : `table "${exp.table}"`}`,
-        evidence: `Unexpected error ${error.code}: ${error.message} — investigate before assuming schema is correct`,
+        evidence: `Unexpected error ${error.code}: ${error.message}, investigate before assuming schema is correct`,
         severity: "warning",
       });
     }
@@ -255,7 +255,7 @@ export async function checkSchemaVsMigrations(admin: AdminClient): Promise<Secur
 
 // ── runSecurityAudit ──────────────────────────────────────────────────────────
 // Runs all four checks, writes findings to employee_insights, returns full result.
-// Zero-finding categories are included in the result — honest, never omitted.
+// Zero-finding categories are included in the result, honest, never omitted.
 
 const AUDIT_CATEGORIES: Array<{
   name: string;
@@ -264,22 +264,22 @@ const AUDIT_CATEGORIES: Array<{
 }> = [
   {
     name: "rls_policies",
-    description: "RLS policies — every tenant data table should have row-level security configured",
+    description: "RLS policies, every tenant data table should have row-level security configured",
     runCheck: (admin) => checkRlsPolicies(admin),
   },
   {
     name: "webhook_secrets",
-    description: "Webhook fail-open — all webhook routes must have their required secrets set",
+    description: "Webhook fail-open, all webhook routes must have their required secrets set",
     runCheck: () => Promise.resolve(checkWebhookFailOpen()),
   },
   {
     name: "exposed_env_vars",
-    description: "Client-side exposure — no NEXT_PUBLIC_* var should match a sensitive key pattern",
+    description: "Client-side exposure, no NEXT_PUBLIC_* var should match a sensitive key pattern",
     runCheck: () => Promise.resolve(checkExposedEnvVars()),
   },
   {
     name: "schema_drift",
-    description: "Schema vs migrations — known-critical tables and columns must still exist",
+    description: "Schema vs migrations, known-critical tables and columns must still exist",
     runCheck: (admin) => checkSchemaVsMigrations(admin),
   },
 ];
@@ -322,7 +322,7 @@ export async function runSecurityAudit(
   const infoCount = allFindings.filter((f) => f.severity === "info").length;
 
   // Write to employee_insights (kind: 'security_finding').
-  // supporting_signal_ids is intentionally [] — security findings are real-time checks,
+  // supporting_signal_ids is intentionally [], security findings are real-time checks,
   // not derived from employee signal rows. The employee_insights table shape is reused
   // here because it already has the right structure (employeeId, kind, content, confidence).
   // Requires migration_v16.sql + migration_v17.sql to have been run.

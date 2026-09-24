@@ -240,7 +240,7 @@ export async function POST(
         });
       }
     } catch (emailErr) {
-      // Never fail the request — lead is already saved.
+      // Never fail the request, lead is already saved.
       //
       // Narrow improvement (found while diagnosing a real production case):
       // a generic "[submit-form] Resend notification failed: Error: ..."
@@ -262,7 +262,7 @@ export async function POST(
       const isSandboxModeError = /only send testing emails|testing email address|verify a domain/i.test(errStr);
       if (isSandboxModeError) {
         console.error(
-          "[submit-form] EMAIL DELIVERY BLOCKED — Resend account has no verified sending domain " +
+          "[submit-form] EMAIL DELIVERY BLOCKED, Resend account has no verified sending domain " +
           "(still in sandbox mode, which only allows sending to the account's own address). " +
           "Every real customer booking-notification email is silently failing until this is fixed. " +
           "Action needed: verify a sending domain in the Resend dashboard, then set RESEND_FROM_EMAIL " +
@@ -273,7 +273,7 @@ export async function POST(
       }
     }
   } else {
-    console.warn("[submit-form] RESEND_API_KEY not set — skipping email notification");
+    console.warn("[submit-form] RESEND_API_KEY not set, skipping email notification");
   }
 
   return NextResponse.json({ ok: true });
@@ -311,7 +311,7 @@ async function sendFormNotification(p: NotificationParams) {
     body: JSON.stringify({
       from,
       to:      p.ownerEmail,
-      subject: `New booking request — ${p.businessName}`,
+      subject: `New booking request, ${p.businessName}`,
       html: `
         <h2 style="margin:0 0 16px;font-family:sans-serif;">New booking request for <strong>${p.businessName}</strong></h2>
         <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px;">

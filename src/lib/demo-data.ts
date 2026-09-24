@@ -1,4 +1,4 @@
-﻿// ⚠ DEMO ONLY — Real app pages (src/app/app/*) must never import from this file.
+﻿// ⚠ DEMO ONLY, Real app pages (src/app/app/*) must never import from this file.
 
 export const DEMO_PROFILE = {
   name: "Ahmed Dental Clinic",
@@ -94,7 +94,7 @@ export const DEMO_MSG_THREADS: Record<string, DemoMsg[]> = {
   c2: [
     { id: "m1", role: "agent", text: "Hello! How can I help you today?", time: "09:34" },
     { id: "m2", role: "user",  text: "Hi! I've been thinking about getting my teeth whitened", time: "09:34" },
-    { id: "m3", role: "agent", text: "Great choice! We offer professional whitening at Ahmed Dental Clinic. Results last 12–18 months and our team uses the latest techniques. Would you like pricing info?", time: "09:34" },
+    { id: "m3", role: "agent", text: "Great choice! We offer professional whitening at Ahmed Dental Clinic. Results last 12 to 18 months and our team uses the latest techniques. Would you like pricing info?", time: "09:34" },
     { id: "m4", role: "user",  text: "What are your prices for whitening?", time: "09:35" },
   ],
   c3: [
@@ -111,8 +111,8 @@ export const DEMO_MSG_THREADS: Record<string, DemoMsg[]> = {
   c5: [
     { id: "m1", role: "user",  text: "Hi! I’m quite worried about getting a root canal", time: "06:42" },
     { id: "m2", role: "agent", text: "I completely understand! Root canals are actually much more comfortable than most people expect with modern techniques. What specifically concerns you?", time: "06:42" },
-    { id: "m3", role: "user",  text: "Mostly the time — I’m very busy and can’t take too long off.", time: "06:43" },
-    { id: "m4", role: "agent", text: "A typical root canal at our clinic takes 60–90 minutes per session, and most cases need just one visit. Our team works efficiently to respect your schedule!", time: "06:43" },
+    { id: "m3", role: "user",  text: "Mostly the time, I’m very busy and can’t take too long off.", time: "06:43" },
+    { id: "m4", role: "agent", text: "A typical root canal at our clinic takes 60 to 90 minutes per session, and most cases need just one visit. Our team works efficiently to respect your schedule!", time: "06:43" },
     { id: "m5", role: "user",  text: "How long does a root canal take?", time: "06:44" },
   ],
 };
@@ -168,7 +168,7 @@ export const DEMO_CALLS: DemoCall[] = [
       { role: "caller", text: "Thursday morning would be great." },
       { role: "agent",  text: "We have Thursday at 9:00 AM and 10:30 AM available. Which works for you?" },
       { role: "caller", text: "10:30 AM please. And does the cleaning hurt?" },
-      { role: "agent",  text: "Not at all! It’s very comfortable. We use gentle techniques. Booked for Thursday 10:30 AM — see you then!" },
+      { role: "agent",  text: "Not at all! It’s very comfortable. We use gentle techniques. Booked for Thursday 10:30 AM, see you then!" },
     ],
   },
   {
@@ -220,9 +220,9 @@ export const DEMO_CALLS: DemoCall[] = [
     transcript: [
       { role: "agent",  text: "Thank you for calling Ahmed Dental Clinic. How can I help?" },
       { role: "caller", text: "I’ve been told I need a root canal. Can you tell me everything about it?" },
-      { role: "agent",  text: "Of course! A root canal removes infected pulp from inside the tooth. It’s more comfortable than people expect — typically 60–90 minutes and costs from AED 1,800." },
+      { role: "agent",  text: "Of course! A root canal removes infected pulp from inside the tooth. It’s more comfortable than people expect, typically 60 to 90 minutes and costs from AED 1,800." },
       { role: "caller", text: "How many sessions will I need? And what about recovery?" },
-      { role: "agent",  text: "Most cases need just one session. Recovery is mild — some soreness for 2–3 days. For your specific case, let me connect you with Dr. Ahmed directly." },
+      { role: "agent",  text: "Most cases need just one session. Recovery is mild, some soreness for 2 to 3 days. For your specific case, let me connect you with Dr. Ahmed directly." },
     ],
   },
   {
@@ -266,7 +266,7 @@ export const DEMO_KB = {
     { name: "Emergency Visit",  price: "AED 200",        duration: "30 min",     description: "Same-day appointments for dental emergencies" },
   ],
   business: {
-    hours: "Sunday–Thursday: 9:00 AM – 6:00 PM\nFriday: 9:00 AM – 1:00 PM\nSaturday: Closed",
+    hours: "Sunday to Thursday: 9:00 AM, 6:00 PM\nFriday: 9:00 AM, 1:00 PM\nSaturday: Closed",
     address: "Building 5, Business Bay, Dubai, UAE",
     bookingPolicy: "Appointments can be booked online or via WhatsApp. 24-hour cancellation notice required. Late arrivals (15+ min) may need to reschedule.",
     tone: "professional" as const,
@@ -328,16 +328,16 @@ export const DEMO_MARKETING = {
 
 Get your brightest smile this summer with our exclusive offers:
 
-🦷 Dental Cleaning — AED 280 (includes full checkup!)
-✨ Teeth Whitening — AED 1,200 (limited slots available)
+🦷 Dental Cleaning, AED 280 (includes full checkup!)
+✨ Teeth Whitening, AED 1,200 (limited slots available)
 
 Our team uses the latest technology to make your experience as comfortable as possible. Whether it’s a routine cleaning or a total smile makeover, we’ve got you covered! 🌟
 
 📍 Business Bay, Dubai
 📞 Book via WhatsApp or DM us
-⏰ Sun–Thu 9AM–6PM
+⏰ Sun to Thu 9AM to 6PM
 
-Don’t miss out — summer appointments are filling fast! 🌞
+Don’t miss out, summer appointments are filling fast! 🌞
 
 #AhmedDentalClinic #DubaiDentist #SmileGoals #DentalCleaning #TeethWhitening #DubaiHealthcare`,
   },
@@ -350,39 +350,39 @@ You recently asked about our dental services at Ahmed Dental Clinic and we’d l
 
 This month, we have some great availability and a special offer just for you:
 
-✅ Dental Cleaning — AED 280
-✅ Teeth Whitening — AED 1,200
+✅ Dental Cleaning, AED 280
+✅ Teeth Whitening, AED 1,200
 ✅ Free consultation for new patients
 
-Our clinic is in Business Bay, Dubai, and we’re open Sunday–Thursday 9AM–6PM.
+Our clinic is in Business Bay, Dubai, and we’re open Sunday to Thursday 9AM to 6PM.
 
 Reply YES to this message or call +971 4 123 4567 and we’ll get you booked in today! 😊
 
-– The Team at Ahmed Dental Clinic`,
+, The Team at Ahmed Dental Clinic`,
   },
   video: {
     topic: "Why patients love us",
     duration: "60s",
-    result: `🎬 VIDEO SCRIPT — 60 SECONDS
+    result: `🎬 VIDEO SCRIPT, 60 SECONDS
 "Why Dubai Families Choose Ahmed Dental Clinic"
 
-[HOOK — 0:00–0:05]
+[HOOK, 0:00 to 0:05]
 VISUAL: Close-up of a bright, confident smile
 VOICEOVER: "What if going to the dentist didn’t have to be scary?"
 
-[PROBLEM — 0:05–0:15]
+[PROBLEM, 0:05 to 0:15]
 VISUAL: Person looking worried about a dental visit
 VOICEOVER: "Most people put off dental care because they’re worried about pain, cost, or finding a clinic they can trust."
 
-[SOLUTION — 0:15–0:35]
+[SOLUTION, 0:15 to 0:35]
 VISUAL: Welcoming clinic interior, modern equipment, friendly staff
 VOICEOVER: "At Ahmed Dental Clinic in Dubai’s Business Bay, we’ve helped over 4,800 patients with gentle, professional care. Dr. Ahmed Al-Rashid brings 12+ years of experience."
 
-[SOCIAL PROOF — 0:35–0:50]
+[SOCIAL PROOF, 0:35 to 0:50]
 VISUAL: Google review screenshots, patient smiles
-VOICEOVER: "With a 4.9-star rating on Google, our patients keep coming back — and bringing their families."
+VOICEOVER: "With a 4.9-star rating on Google, our patients keep coming back, and bringing their families."
 
-[CTA — 0:50–1:00]
+[CTA, 0:50 to 1:00]
 VISUAL: Clinic logo, WhatsApp QR code
 VOICEOVER: "Book your appointment today via WhatsApp or our website. New patients get a complimentary consultation."
 TEXT: +971 4 123 4567 | Business Bay, Dubai`,
@@ -404,7 +404,7 @@ export const DEMO_WEBSITE_CHAT: DemoWebMsg[] = [
   { role: "user",  text: "Professional dental care for the whole family" },
   { role: "agent", text: "What’s your clinic’s address and phone number?" },
   { role: "user",  text: "Business Bay, Dubai. +971 4 123 4567" },
-  { role: "agent", text: "✅ Your site is ready! I’ve built a professional dental clinic website with your services, location, and contact info. Check the preview on the right — you can publish it with one click!" },
+  { role: "agent", text: "✅ Your site is ready! I’ve built a professional dental clinic website with your services, location, and contact info. Check the preview on the right, you can publish it with one click!" },
 ];
 
 // ── Website HTML snapshot ────────────────────────────────────────────────────

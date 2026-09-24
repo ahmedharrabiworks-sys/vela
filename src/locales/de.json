@@ -62,7 +62,7 @@
     "recycleBin": {
       "title": "Papierkorb",
       "subtitle": "Gelöschte Leads, Unterhaltungen und Termine bleiben hier, bis Sie sie wiederherstellen oder endgültig löschen.",
-      "migrationPending": "Die Einrichtung des Papierkorbs ist auf dem Server noch nicht abgeschlossen — gelöschte Elemente erscheinen möglicherweise noch nicht.",
+      "migrationPending": "Die Einrichtung des Papierkorbs ist auf dem Server noch nicht abgeschlossen. Gelöschte Elemente erscheinen möglicherweise noch nicht.",
       "empty": "Papierkorb ist leer",
       "emptyHint": "Alles, was Sie aus Leads, Unterhaltungen oder Terminen löschen, erscheint zuerst hier.",
       "leads": "Leads",

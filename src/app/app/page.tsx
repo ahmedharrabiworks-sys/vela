@@ -70,7 +70,7 @@ export default function DashboardPage() {
 
     const tenantId = tenant.id as string;
 
-    // Load data in parallel — leads are no longer queried directly here;
+    // Load data in parallel, leads are no longer queried directly here;
     // KPI counts (including leadsToday) come from /api/stats below, which
     // is also the source of truth used by Analytics for consistency.
     // Round M2 FIX 10: both queries below previously had no deleted_at
@@ -100,7 +100,7 @@ export default function DashboardPage() {
         .maybeSingle(),
     ]);
 
-    // KPIs — real "today" command-center view (leads/appointments/messages/
+    // KPIs, real "today" command-center view (leads/appointments/messages/
     // calls today + AI Resolution Rate), sourced from /api/stats (server-side,
     // real queries against leads/appointments/messages/agent_calls/conversations).
     // Round M5 FIX 7: this used to set a hardcoded "0" placeholder for 3 of

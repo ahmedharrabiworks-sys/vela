@@ -1,8 +1,8 @@
 /**
- * Phase A item 3 — Domain "Connected" badge regression prevention
+ * Phase A item 3, Domain "Connected" badge regression prevention
  *
  * Verifies:
- *   (A) Exhaustive domain_status write-site audit — every location in src/ that
+ *   (A) Exhaustive domain_status write-site audit, every location in src/ that
  *       writes domain_status is accounted for and categorised as legitimate or not
  *   (B) settings/route.ts no longer writes domain_status (the false-positive trap)
  *   (C) domain/route.ts GET is the ONLY path that can write "verified"
@@ -59,7 +59,7 @@ const otherRoutes = [
 
 for (const rel of otherRoutes) {
   const src = readSrc(rel);
-  // "write" means the field appears in an update() / insert() / upsert() call —
+  // "write" means the field appears in an update() / insert() / upsert() call, 
   // .select() and type annotations are read-side and do not count.
   // We check for assignment patterns: domain_status: or domain_status =
   const hasWrite =
@@ -68,12 +68,12 @@ for (const rel of otherRoutes) {
     /\.upsert\([^)]*domain_status/.test(src) ||
     /updates\.domain_status\s*=/.test(src) ||
     /domain_status:\s*["']/.test(src.replace(/\/\/.*/g, "")); // strip comments, check literal assignment
-  check(`${rel.split("/").slice(-3).join("/")} — no domain_status write`, !hasWrite,
+  check(`${rel.split("/").slice(-3).join("/")}, no domain_status write`, !hasWrite,
     "unexpected domain_status write found");
 }
 
-// ── (B) settings/route.ts — no domain_status write ───────────────────────────
-console.log("\n══ B: settings/route.ts — false-positive trap removed ══\n");
+// ── (B) settings/route.ts, no domain_status write ───────────────────────────
+console.log("\n══ B: settings/route.ts, false-positive trap removed ══\n");
 
 check("settings route: no updates.domain_status assignment",
   !settingsRoute.includes("updates.domain_status"));
@@ -88,8 +88,8 @@ check("settings route: guard comment present explaining the contract",
 check("settings route: NOTE comment present near update block",
   settingsRoute.includes("domain / domain_status intentionally NOT handled here"));
 
-// ── (C) domain/route.ts — verified write paths ───────────────────────────────
-console.log("\n══ C: domain/route.ts — verified can only be written by GET (Check Status) ══\n");
+// ── (C) domain/route.ts, verified write paths ───────────────────────────────
+console.log("\n══ C: domain/route.ts, verified can only be written by GET (Check Status) ══\n");
 
 // POST handler must write only "pending"
 const postBlock = domainRoute.slice(
@@ -103,7 +103,7 @@ const postBlockCode = postBlock.replace(/\/\/.*/g, "");
 check("domain POST handler: does NOT write 'verified' in code (comments stripped)",
   !postBlockCode.includes(`"verified"`));
 
-// GET handler is the Check Status endpoint — it can write verified/pending/failed
+// GET handler is the Check Status endpoint, it can write verified/pending/failed
 const getBlock = domainRoute.slice(
   domainRoute.indexOf("export async function GET"),
   domainRoute.indexOf("export async function DELETE"),
@@ -125,7 +125,7 @@ check("domain DELETE handler: writes domain_status null (clear on remove)",
 check("domain DELETE handler: does NOT write 'verified'",
   !deleteBlock.includes(`"verified"`));
 
-// ── (D) Frontend badge — reads status value, not domain presence ───────────────
+// ── (D) Frontend badge, reads status value, not domain presence ───────────────
 console.log("\n══ D: Frontend badge reads domainStatus==='verified', not domain presence ══\n");
 
 check(`page.tsx: badge 'Connected' tied to domainStatus === "verified"`,
@@ -146,12 +146,12 @@ check("page.tsx: domain status NOT auto-refreshed on publish panel open (comment
 
 // ── (E) Live Supabase: pending row survives name/slug update ──────────────────
 async function runLiveChecks() {
-  console.log("\n══ E: Live Supabase — domain_status 'pending' survives name/slug-only update ══\n");
+  console.log("\n══ E: Live Supabase, domain_status 'pending' survives name/slug-only update ══\n");
 
   const sbUrl   = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const svcKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sbUrl || !svcKey) {
-    check("env vars present", false, "missing SUPABASE vars — run with --env-file .env.local");
+    check("env vars present", false, "missing SUPABASE vars, run with --env-file .env.local");
     return;
   }
 

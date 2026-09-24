@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // A record check (apex domains — 76.76.21.21 is Vercel's anycast IP)
+    // A record check (apex domains, 76.76.21.21 is Vercel's anycast IP)
     if (!dnsOk) {
       const aRes = await fetch(
         `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`,
@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
         }
       }
     }
-  } catch { /* DNS network error — dnsOk stays false */ }
+  } catch { /* DNS network error, dnsOk stays false */ }
 
   // ── Step 2: server probe (only if DNS resolves to Vercel) ────────────────────
   let probeOk = false;

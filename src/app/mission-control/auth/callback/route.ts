@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   const email = (data.session.user.email ?? "").toLowerCase().trim();
 
   if (!isOwnerEmail(email)) {
-    // Sign out immediately — this identity has no MC access
+    // Sign out immediately, this identity has no MC access
     await supabase.auth.signOut();
     await logMcAttempt({
       email,
@@ -75,13 +75,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Email is on the allowlist — set a short-lived pending cookie and proceed to TOTP
+  // Email is on the allowlist, set a short-lived pending cookie and proceed to TOTP
   const pendingValue = await buildPendingCookie(email);
   cookieStore.set(MC_PENDING_COOKIE, pendingValue, {
     httpOnly: true,
     secure:   process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge:   300, // 5 minutes — must complete TOTP within this window
+    maxAge:   300, // 5 minutes, must complete TOTP within this window
     path:     "/mission-control",
   });
 

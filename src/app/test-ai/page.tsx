@@ -128,7 +128,7 @@ export default function TestAIPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* Left — chat + controls */}
+          {/* Left, chat + controls */}
           <div className="space-y-4">
 
             {/* Tenant selector */}
@@ -239,7 +239,7 @@ export default function TestAIPage() {
             </div>
           </div>
 
-          {/* Right — debug log + info */}
+          {/* Right, debug log + info */}
           <div className="space-y-4">
 
             {/* Info cards */}

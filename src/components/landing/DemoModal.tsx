@@ -604,7 +604,7 @@ export default function DemoModal({ onClose }: Props) {
   };
 
   return (
-    /* Backdrop — click outside closes */
+    /* Backdrop, click outside closes */
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -614,7 +614,7 @@ export default function DemoModal({ onClose }: Props) {
       style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
-      {/* Modal box — click inside does NOT close */}
+      {/* Modal box, click inside does NOT close */}
       <div
         className="relative w-full max-w-[1100px] rounded-2xl overflow-hidden"
         style={{ background: "#07070A", height: "min(620px, 85vh)", minHeight: "480px" }}
@@ -662,7 +662,7 @@ export default function DemoModal({ onClose }: Props) {
           </button>
         </div>
 
-        {/* Slide — click advances */}
+        {/* Slide, click advances */}
         <AnimatePresence mode="wait">
           <motion.div
             key={slide}

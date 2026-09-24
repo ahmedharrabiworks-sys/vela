@@ -6,10 +6,10 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// POST /api/website/restore — restore a specific version as the current draft.
+// POST /api/website/restore, restore a specific version as the current draft.
 // Accepts either:
-//   { websiteId, versionId } — looks up by website_versions table (server-side IDs)
-//   { websiteId, html }      — restores directly from client-provided HTML
+//   { websiteId, versionId }, looks up by website_versions table (server-side IDs)
+//   { websiteId, html }, restores directly from client-provided HTML
 //                              (used for client-generated version cards whose IDs
 //                               are crypto.randomUUID() and don't exist in the table)
 export async function POST(req: NextRequest) {
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (!site) return NextResponse.json({ error: "Website not found" }, { status: 404 });
 
-  // Resolve HTML — try DB lookup first, fall back to body.html
+  // Resolve HTML, try DB lookup first, fall back to body.html
   let htmlToRestore: string | null = null;
 
   if (body.versionId) {

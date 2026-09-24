@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     // Create or update the Vapi assistant
     let assistantId = (cfg as any)?.vapi_assistant_id as string | null ?? null;
     const assistantBody = {
-      name: `${agentName} — ${tenant.business_name || "Business"}`,
+      name: `${agentName}, ${tenant.business_name || "Business"}`,
       model: {
         provider: "openai",
         model: "gpt-4o",
@@ -167,11 +167,11 @@ export async function POST(req: NextRequest) {
     let phoneNumberId = (cfg as any)?.vapi_phone_number_id as string | null ?? null;
 
     if (!phoneNumberId) {
-      // Create phone number with serverUrl for dynamic assistant-request resolution —
+      // Create phone number with serverUrl for dynamic assistant-request resolution, 
       // every inbound call will read fresh settings from Supabase via the webhook.
       const numPayload: Record<string, unknown> = {
         provider: "vapi",
-        name: `${tenant.business_name || "Business"} — Vela`,
+        name: `${tenant.business_name || "Business"}, Vela`,
       };
       if (webhookUrl) {
         numPayload.serverUrl = webhookUrl;
@@ -185,10 +185,10 @@ export async function POST(req: NextRequest) {
       // Upgrade existing phone number to dynamic resolution (best-effort)
       try {
         await vapiRequest(`/phone-number/${phoneNumberId}`, "PATCH", { serverUrl: webhookUrl });
-      } catch { /* ignore — non-fatal */ }
+      } catch { /* ignore, non-fatal */ }
     }
 
-    // Save to tenant_config — upsert so a missing row doesn't cause a silent no-op
+    // Save to tenant_config, upsert so a missing row doesn't cause a silent no-op
     await admin
       .from("tenant_config")
       .upsert(

@@ -166,7 +166,7 @@ export default function DemoAppointmentsPage() {
                         {appt.phone ? (
                           <p className="text-sm text-[#374151] dark:text-[#D1D5DB] whitespace-nowrap font-mono text-xs">{appt.phone}</p>
                         ) : (
-                          <span className="text-xs text-[#D1D5DB] dark:text-[#4B5563]">—</span>
+                          <span className="text-xs text-[#D1D5DB] dark:text-[#4B5563]">, </span>
                         )}
                       </td>
                       {/* Service */}

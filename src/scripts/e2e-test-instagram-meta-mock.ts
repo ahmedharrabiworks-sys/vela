@@ -1,5 +1,5 @@
 /**
- * ⚠️ STALE — DO NOT TRUST A PASSING RESULT FROM THIS FILE ⚠️
+ * ⚠️ STALE, DO NOT TRUST A PASSING RESULT FROM THIS FILE ⚠️
  * Written entirely against the deprecated Facebook Login + linked Page
  * Instagram method (Page id/token, graph.facebook.com/{page-id}/messages,
  * pages_messaging/pages_show_list scopes). That method is now rejected
@@ -15,19 +15,19 @@
  * (nothing else references it), but a real rewrite against the new flow is
  * its own separate task, not done here.
  *
- * Instagram Meta Messaging API — mocked-response test suite
+ * Instagram Meta Messaging API, mocked-response test suite
  *
  * Per Hard Rule 20 (build against placeholder credentials until final integration day):
  * No real Meta API calls are made. All network paths are mocked; all code-path checks
  * are static string analysis against the actual source files.
  *
  * Covers:
- *   A — sendInstagramMessage(): static audit + mocked success + mocked error
- *   B — callback route: Page token stored (not user token), page_id stored, v22.0
- *   C — OAuth scope: pages_messaging present
- *   D — webhook route: reply loop structure, input cap, missing-field skip
- *   E — webhook route: always returns 200 regardless of AI/send failure
- *   F — Env var status: which Instagram env vars are present vs. placeholder
+ *   A, sendInstagramMessage(): static audit + mocked success + mocked error
+ *   B, callback route: Page token stored (not user token), page_id stored, v22.0
+ *   C, OAuth scope: pages_messaging present
+ *   D, webhook route: reply loop structure, input cap, missing-field skip
+ *   E, webhook route: always returns 200 regardless of AI/send failure
+ *   F, Env var status: which Instagram env vars are present vs. placeholder
  *
  * Run: npx tsx --env-file .env.local src/scripts/e2e-test-instagram-meta-mock.ts
  */
@@ -93,10 +93,10 @@ async function sendInstagramMessage(
 async function main() {
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION A — sendInstagramMessage()
+  // SECTION A, sendInstagramMessage()
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  A — sendInstagramMessage() : static audit + mocked paths");
+  console.log("  A, sendInstagramMessage() : static audit + mocked paths");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("A1 uses Graph API v22.0 endpoint",
@@ -114,11 +114,11 @@ async function main() {
   check("A5 body includes recipient.id + message.text shape",
     sendSrc.includes("recipient:") && sendSrc.includes("message:") && sendSrc.includes("recipientId"));
 
-  check("A6 never logs pageToken — only pageId and recipientPrefix",
+  check("A6 never logs pageToken, only pageId and recipientPrefix",
     !sendSrc.includes("pageToken,") && !sendSrc.includes('"pageToken"') &&
     sendSrc.includes("pageId") && sendSrc.includes("recipientPrefix"));
 
-  check("A7 throws on !res.ok — errors not swallowed",
+  check("A7 throws on !res.ok, errors not swallowed",
     sendSrc.includes("throw new Error") && sendSrc.includes("!res.ok"));
 
   // A8: Mocked success path
@@ -184,10 +184,10 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION B — callback route: Page token + page_id + v22.0
+  // SECTION B, callback route: Page token + page_id + v22.0
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  B — callback route: token strategy + page_id + API version");
+  console.log("  B, callback route: token strategy + page_id + API version");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("B1 callback uses v22.0 for all Graph API calls (no v19.0 remaining)",
@@ -214,16 +214,16 @@ async function main() {
     cbSrc.includes("non-expiring") || cbSrc.includes("Page Access Token"));
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION C — OAuth scope: pages_messaging
+  // SECTION C, OAuth scope: pages_messaging
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  C — OAuth scope");
+  console.log("  C, OAuth scope");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("C1 scope includes instagram_manage_messages",
     authSrc.includes("instagram_manage_messages"));
 
-  check("C2 scope includes pages_messaging (new — required for DM send)",
+  check("C2 scope includes pages_messaging (new, required for DM send)",
     authSrc.includes("pages_messaging"));
 
   check("C3 scope includes pages_show_list (needed for /me/accounts)",
@@ -233,10 +233,10 @@ async function main() {
     authSrc.includes("facebook.com") && authSrc.includes("dialog/oauth"));
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION D — webhook route: reply loop structure
+  // SECTION D, webhook route: reply loop structure
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  D — webhook route: reply loop structure");
+  console.log("  D, webhook route: reply loop structure");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("D1 webhook imports sendInstagramMessage",
@@ -276,10 +276,10 @@ async function main() {
     whSrc.includes('"POST"') && whSrc.includes("api/ai/reply"));
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION E — webhook always returns 200
+  // SECTION E, webhook always returns 200
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  E — webhook always returns 200 regardless of failures");
+  console.log("  E, webhook always returns 200 regardless of failures");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("E1 route ends with NextResponse.json({ ok: true })",
@@ -301,13 +301,13 @@ async function main() {
     // Verify: no 'throw' appears after the DM reply loop begins (after tenantId assignment).
     (() => {
       const afterLoop = whSrc.split("if (tenantId)")[1] ?? "";
-      // Only acceptable throw would be inside a catch that we re-throw — there are none here
+      // Only acceptable throw would be inside a catch that we re-throw, there are none here
       // The route should only have console.error + continue inside the loop
       return !afterLoop.includes("throw new") && !afterLoop.includes("throw err");
     })());
 
-  // Mocked 200-guarantee verification — simulate AI error + send error
-  console.log("\n  E6: mocked AI-error path — route must still conceptually return 200\n");
+  // Mocked 200-guarantee verification, simulate AI error + send error
+  console.log("\n  E6: mocked AI-error path, route must still conceptually return 200\n");
   {
     // Replicate the webhook's AI-call error handling logic in isolation
     let continued = false;
@@ -323,10 +323,10 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION F — Env var status
+  // SECTION F, Env var status
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  F — Env var status (placeholder = missing/unset)");
+  console.log("  F, Env var status (placeholder = missing/unset)");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   const envVars: Record<string, string | undefined> = {
@@ -344,15 +344,15 @@ async function main() {
   check("F1 META_APP_ID and META_APP_SECRET share a value (same Meta app for IG + WA)",
     (!!envVars.META_APP_ID && !!envVars.META_APP_SECRET) ||
     (!envVars.META_APP_ID && !envVars.META_APP_SECRET), // both missing is also consistent
-    "Both set or both unset — they must be from the same Meta App");
+    "Both set or both unset, they must be from the same Meta App");
 
   console.log("\n  ⚠️  Env vars needed before Instagram DM replies work in production:");
   console.log("     META_APP_ID, META_APP_SECRET, META_WEBHOOK_VERIFY_TOKEN");
-  console.log("     (META_APP_SECRET shared with WhatsApp — same Meta app)");
+  console.log("     (META_APP_SECRET shared with WhatsApp, same Meta app)");
   console.log("\n  ⚠️  migration_v12.sql must be run in Supabase SQL Editor before deploy activates.");
   console.log("  ⚠️  Pages_messaging permission requires Meta App Review approval.");
   console.log("  ⚠️  Existing tenants who connected Instagram BEFORE this fix must reconnect");
-  console.log("     to get a Page token stored — old rows have a 60-min user token in instagram_access_token.");
+  console.log("     to get a Page token stored, old rows have a 60-min user token in instagram_access_token.");
 
   // ── final summary ─────────────────────────────────────────────────────────
   console.log("\n══════════════════════════════════════════════════════════════");
@@ -360,14 +360,14 @@ async function main() {
   console.log("══════════════════════════════════════════════════════════════\n");
 
   if (failed > 0) {
-    console.error(`❌ ${failed} check(s) failed — see above.`);
+    console.error(`❌ ${failed} check(s) failed, see above.`);
     process.exit(1);
   } else {
     console.log("✅ All checks passed.");
     console.log("   Instagram DM reply code is structurally correct.");
     console.log("   BLOCKED ON (not code issues):");
-    console.log("   1. migration_v12.sql — must be run by Oussama in Supabase SQL Editor");
-    console.log("   2. Meta App Review — pages_messaging requires approval (~1-4 weeks)");
+    console.log("   1. migration_v12.sql, must be run by Oussama in Supabase SQL Editor");
+    console.log("   2. Meta App Review, pages_messaging requires approval (~1-4 weeks)");
     console.log("   3. Existing connected users must reconnect to refresh Page token");
   }
 }

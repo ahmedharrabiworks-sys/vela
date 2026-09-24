@@ -30,7 +30,7 @@ export async function GET(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = createSupabaseAdmin() as any;
 
-    // Verify this tenant actually exists (no IDOR — still controlled via MC allowlist)
+    // Verify this tenant actually exists (no IDOR, still controlled via MC allowlist)
     const { data: tenantRow, error: tenantErr } = await admin
       .from("tenants")
       .select("id, business_name, plan, created_at, industry, city")

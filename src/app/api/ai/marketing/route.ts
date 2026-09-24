@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   const kbSvcs = (kb.services ?? []).filter((s): s is KbService => Boolean(s?.name));
   const svcBlock = kbSvcs.length > 0
-    ? kbSvcs.map((s) => `• ${s.name}${s.price ? ` — ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`).join("\n")
+    ? kbSvcs.map((s) => `• ${s.name}${s.price ? `, ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`).join("\n")
     : (Array.isArray(cfg?.services_json) && (cfg.services_json as unknown[]).length > 0
         ? (cfg.services_json as Array<{ name?: string }>).map((s) => `• ${s.name ?? JSON.stringify(s)}`).join("\n")
         : "");
@@ -63,18 +63,18 @@ export async function POST(req: NextRequest) {
     systemPrompt = `You are an expert social media copywriter for ${tenant.business_name || "a local business"} in ${tenant.industry || "services"}.
 ${businessCtx}
 Write ONE compelling, platform-optimized post. Include relevant hashtags at the end.
-Be specific, authentic, and action-driving. Do not write a list — write one complete post ready to publish.`;
+Be specific, authentic, and action-driving. Do not write a list, write one complete post ready to publish.`;
     userPrompt = `Write a ${tone || "Professional"} ${platform || "Instagram"} post about: ${prompt}`;
 
   } else if (type === "video") {
     systemPrompt = `You are a short-form video script writer for ${tenant.business_name || "a local business"} in ${tenant.industry || "services"}.
 ${businessCtx}
 Format with clearly labeled sections and timestamps:
-[HOOK — 0:00–0:XX] (grab attention instantly)
-[PROBLEM — 0:XX–0:XX] (relate to pain point)
-[SOLUTION — 0:XX–0:XX] (present the business as answer)
-[PROOF — 0:XX–0:XX] (social proof or transformation)
-[CTA — 0:XX–end] (clear call to action)
+[HOOK, 0:00 to 0:XX] (grab attention instantly)
+[PROBLEM, 0:XX to 0:XX] (relate to pain point)
+[SOLUTION, 0:XX to 0:XX] (present the business as answer)
+[PROOF, 0:XX to 0:XX] (social proof or transformation)
+[CTA, 0:XX to end] (clear call to action)
 Make it high-converting and authentic for short-form platforms.`;
     userPrompt = `Write a ${duration || "60s"} video script about: ${prompt}`;
 
@@ -109,9 +109,9 @@ Do NOT include emojis unless they fit naturally.`;
 
     const result = completion.choices[0]?.message?.content ?? "";
 
-    // Save to history — best-effort; DB failure must NOT prevent content reaching the user.
+    // Save to history, best-effort; DB failure must NOT prevent content reaching the user.
     // IMPORTANT: Never chain .catch() directly on a Supabase query builder. Builders expose
-    // .then() but NOT .catch() as a standalone method — calling .catch() on an unresolved
+    // .then() but NOT .catch() as a standalone method, calling .catch() on an unresolved
     // builder throws "builder.catch is not a function", which propagated here as an "OpenAI
     // error" and caused 500s even when generation succeeded. Use try/catch + await instead.
     try {
@@ -136,10 +136,10 @@ Do NOT include emojis unless they fit naturally.`;
         : apiErr.status === 402 ? "insufficient_quota"
         : "unknown");
     const userMsg =
-      errType === "invalid_api_key"    ? "AI configuration error — please contact support." :
-      errType === "insufficient_quota" ? "AI quota exceeded — the site owner needs to top up OpenAI credits." :
-      errType === "rate_limited"       ? "AI is temporarily busy — please try again in a moment." :
-                                         "AI generation failed — please try again.";
+      errType === "invalid_api_key"    ? "AI configuration error, please contact support." :
+      errType === "insufficient_quota" ? "AI quota exceeded, the site owner needs to top up OpenAI credits." :
+      errType === "rate_limited"       ? "AI is temporarily busy, please try again in a moment." :
+                                         "AI generation failed, please try again.";
     console.error("[marketing] OpenAI error:", errType, err instanceof Error ? err.message : err);
     return NextResponse.json({ error: userMsg }, { status: 500 });
   }

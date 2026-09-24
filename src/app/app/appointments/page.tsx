@@ -325,7 +325,7 @@ export default function AppointmentsPage() {
       .is("deleted_at", null)
       .order("datetime", { ascending: true });
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] phone_unconfirmed column missing — run migration_v33.sql. Retrying without it.");
+      console.warn("[appointments] phone_unconfirmed column missing, run migration_v33.sql. Retrying without it.");
       ({ data, error } = await db
         .from("appointments")
         .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
@@ -334,7 +334,7 @@ export default function AppointmentsPage() {
         .order("datetime", { ascending: true }));
     }
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
+      console.warn("[appointments] deleted_at column missing, run migration_v30.sql. Retrying without the filter.");
       ({ data, error } = await db
         .from("appointments")
         .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
@@ -342,7 +342,7 @@ export default function AppointmentsPage() {
         .order("datetime", { ascending: true }));
     }
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] rescheduled column missing — run migration_v29.sql. Retrying without it.");
+      console.warn("[appointments] rescheduled column missing, run migration_v29.sql. Retrying without it.");
       ({ data } = await db
         .from("appointments")
         .select("id, service_name, datetime, status, conversation_id, leads(name, phone, channel)")
@@ -436,7 +436,7 @@ export default function AppointmentsPage() {
     const { error } = await db.from("appointments").update({ datetime: newDatetime, status: "pending", rescheduled: true }).eq("id", id);
     let rescheduledFlagSaved = !error;
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] rescheduled column missing — run migration_v29.sql. Retrying without it.");
+      console.warn("[appointments] rescheduled column missing, run migration_v29.sql. Retrying without it.");
       await db.from("appointments").update({ datetime: newDatetime, status: "pending" }).eq("id", id);
       rescheduledFlagSaved = false;
     }
@@ -626,7 +626,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* Table — always rendered; empty state lives inside */}
+      {/* Table, always rendered; empty state lives inside */}
       {(
         <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
           <div className="overflow-x-auto">

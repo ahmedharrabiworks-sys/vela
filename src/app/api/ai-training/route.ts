@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       try { existing = { ...DEFAULT_KB, ...JSON.parse(cfgRow.knowledge_base as string) }; } catch { /* ignore */ }
     }
     saveKb = {
-      // New data wins — re-training should update the KB, not be silently ignored.
+      // New data wins, re-training should update the KB, not be silently ignored.
       // Guard against overwriting non-empty existing data with an empty new value.
       services: body.services.length > 0 ? body.services : existing.services,
       faqs:     body.faqs.length > 0     ? body.faqs     : existing.faqs,
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
         bookingPolicy: body.business.bookingPolicy || existing.business.bookingPolicy,
         tone:          body.business.tone          || existing.business.tone,
       },
-      // Append new extra to existing rather than replacing — both may have unique content
+      // Append new extra to existing rather than replacing, both may have unique content
       extra: [existing.extra, body.extra].filter(Boolean).join("\n\n") || "",
     };
   }

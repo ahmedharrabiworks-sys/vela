@@ -28,7 +28,7 @@ async function main() {
   // A SELECT that references all v2 columns will fail with
   // "Could not find the 'X' column of 'conversations' in the schema cache"
   // if any column is missing.
-  console.log("CHECK 1 — v2 column existence (ai_enabled, customer_name, last_message_at)");
+  console.log("CHECK 1, v2 column existence (ai_enabled, customer_name, last_message_at)");
   const { data: colCheck, error: colErr } = await admin
     .from("conversations")
     .select("id, lead_id, ai_enabled, customer_name, last_message_at")
@@ -48,7 +48,7 @@ async function main() {
   // On failure we read the error message for "null value in column" to confirm.
   //
   // We need a real tenant_id to satisfy the FK. Grab the first tenant in the DB.
-  console.log("CHECK 2 — conversations.lead_id nullability");
+  console.log("CHECK 2, conversations.lead_id nullability");
 
   const { data: tenant } = await admin
     .from("tenants")
@@ -57,7 +57,7 @@ async function main() {
     .single();
 
   if (!tenant) {
-    console.log("  ⚠️  No tenants found — cannot probe insert. Run again after a tenant exists.");
+    console.log("  ⚠️  No tenants found, cannot probe insert. Run again after a tenant exists.");
     return;
   }
 
@@ -84,7 +84,7 @@ async function main() {
     const msg = insertErr.message ?? "";
     if (msg.includes("null value") && msg.includes("lead_id")) {
       console.log(`  ❌ Insert failed: ${msg}`);
-      console.log("  → lead_id is STILL NOT NULL — migration_v2 DROP NOT NULL never ran.\n");
+      console.log("  → lead_id is STILL NOT NULL, migration_v2 DROP NOT NULL never ran.\n");
       console.log("=== HOTFIX SQL (run in Supabase SQL Editor) ===");
       console.log("  ALTER TABLE conversations ALTER COLUMN lead_id DROP NOT NULL;");
       console.log("  ALTER TABLE appointments  ALTER COLUMN lead_id DROP NOT NULL;");
@@ -97,7 +97,7 @@ async function main() {
       console.log("  → Cannot confirm constraint state from this error.\n");
     }
   } else if (inserted) {
-    console.log("  ✅ Insert with lead_id=null SUCCEEDED — lead_id IS nullable.");
+    console.log("  ✅ Insert with lead_id=null SUCCEEDED, lead_id IS nullable.");
     // Clean up the probe row
     await admin.from("conversations").delete().eq("id", inserted.id);
     console.log("  (Probe row deleted.)\n");
@@ -112,7 +112,7 @@ async function main() {
     console.log("   NOT an active production bug. Phase B item 12 Step 3 can proceed.\n");
   } else if (colErr && insertErr) {
     console.log("❌ migration_v2.sql has NOT run: v2 columns missing AND lead_id is NOT NULL.");
-    console.log("   Run migration_v2.sql in Supabase SQL Editor immediately — the normal");
+    console.log("   Run migration_v2.sql in Supabase SQL Editor immediately, the normal");
     console.log("   widget flow WILL hit this bug (route inserts ai_enabled/customer_name).\n");
   } else if (!colErr && insertErr) {
     console.log("❌ v2 columns exist BUT lead_id is still NOT NULL.");

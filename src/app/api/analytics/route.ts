@@ -34,7 +34,7 @@ export async function GET() {
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
 
-  // Real website-visit time series (site_visits, per-visit rows) — joined
+  // Real website-visit time series (site_visits, per-visit rows), joined
   // via this tenant's website ids. Graceful: an empty/missing table (e.g.
   // migration_v28.sql not yet run) just yields no rows, never an error that
   // breaks the rest of the page.
@@ -69,7 +69,7 @@ export async function GET() {
   if (leadsRes.error) console.error("[analytics] leads query error:", leadsRes.error.message, leadsRes.error.code);
   if (convsRes.error) console.error("[analytics] conversations query error:", convsRes.error.message, convsRes.error.code);
   if (apptsRes.error) console.error("[analytics] appointments query error:", apptsRes.error.message, apptsRes.error.code);
-  if (visitsRes.error) console.error("[analytics] site_visits query error (non-fatal — likely migration_v28.sql pending):", visitsRes.error.message, visitsRes.error.code);
+  if (visitsRes.error) console.error("[analytics] site_visits query error (non-fatal, likely migration_v28.sql pending):", visitsRes.error.message, visitsRes.error.code);
   const websiteVisits = ((configRes.data as Record<string, unknown> | null)?.website_visit_count as number | null) ?? 0;
 
   const leads: { id: string; channel: string | null; created_at: string }[] = leadsRes.data ?? [];
@@ -192,7 +192,7 @@ export async function GET() {
     dailyVisitCounts[date] = (dailyVisitCounts[date] ?? 0) + 1;
   });
 
-  // Channel breakdown (last 90 days) — leads AND conversations per channel,
+  // Channel breakdown (last 90 days), leads AND conversations per channel,
   // matching the reference design's two-column breakdown table.
   //
   // CRITICAL FIX: "Leads" per channel previously came from an independent

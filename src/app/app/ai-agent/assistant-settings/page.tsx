@@ -152,7 +152,7 @@ export default function AssistantSettingsPage() {
         {/* Row 1: Voice (3/5) + Speed (2/5) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-          {/* Voice list — 3/5 */}
+          {/* Voice list, 3/5 */}
           <div className="lg:col-span-3 rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
             <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>Voice</h2>
 
@@ -236,7 +236,7 @@ export default function AssistantSettingsPage() {
             )}
           </div>
 
-          {/* Right — Speed (2/5) */}
+          {/* Right, Speed (2/5) */}
           <div className="lg:col-span-2 flex flex-col gap-5">
 
             {/* Speed card */}
@@ -322,7 +322,7 @@ export default function AssistantSettingsPage() {
               </div>
             </div>
 
-            {/* How it talks — 2×2 grid fits the narrow right column */}
+            {/* How it talks, 2×2 grid fits the narrow right column */}
             <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
               <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>How it talks</h2>
               <div className="grid grid-cols-2 gap-2">

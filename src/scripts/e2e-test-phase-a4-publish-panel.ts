@@ -1,14 +1,14 @@
 /**
- * Phase A item 4 — Publish panel: slug persistence + contact-info check
+ * Phase A item 4, Publish panel: slug persistence + contact-info check
  *
  * Verifies:
- *   (A) handleSaveSettings success branch — always fires setSavedSlug (no `if (data.slug)` skip)
- *   (B) handleSaveSettings success — savedOk flash state wired (green "✓ Saved" feedback)
+ *   (A) handleSaveSettings success branch, always fires setSavedSlug (no `if (data.slug)` skip)
+ *   (B) handleSaveSettings success, savedOk flash state wired (green "✓ Saved" feedback)
  *   (C) handleSwitchProject response type includes `intake` and applies it
- *   (D) specHasContactInfo useMemo — spec sections are the primary source
+ *   (D) specHasContactInfo useMemo, spec sections are the primary source
  *   (E) hasContactInfo prop uses specHasContactInfo, not inline contactInfo state
- *   (F) Live Supabase — slug write + read round-trip (settings PUT)
- *   (G) Real contact-info check — spec with phone/email passes, spec without fails
+ *   (F) Live Supabase, slug write + read round-trip (settings PUT)
+ *   (G) Real contact-info check, spec with phone/email passes, spec without fails
  *
  * Run: npx tsx --env-file .env.local src/scripts/e2e-test-phase-a4-publish-panel.ts
  */
@@ -30,10 +30,10 @@ function check(label: string, condition: boolean, detail?: string) {
 const SRC = path.join(process.cwd(), "src");
 const pageTsx = fs.readFileSync(path.join(SRC, "app/app/website/page.tsx"), "utf-8");
 
-// ── (A) handleSaveSettings — always sets savedSlug on success ─────────────────
+// ── (A) handleSaveSettings, always sets savedSlug on success ─────────────────
 console.log("\n══ A: handleSaveSettings always fires setSavedSlug on success ══\n");
 
-// The old broken pattern used `if (data.slug) { setSavedSlug... }` — if server returned null,
+// The old broken pattern used `if (data.slug) { setSavedSlug... }`, if server returned null,
 // savedSlug was never updated and isDirty stayed true forever (save appeared to do nothing).
 // Fixed: `const confirmedSlug = data.slug || siteSlug; setSavedSlug(confirmedSlug);`
 check("no bare `if (data.slug)` guard before setSavedSlug",
@@ -66,7 +66,7 @@ check("button turns green when savedOk",
 // ── (C) handleSwitchProject: intake in response type + applied ────────────────
 console.log("\n══ C: handleSwitchProject correctly restores contactInfo on project switch ══\n");
 
-// Use unique landmarks to isolate handleSwitchProject — the response type for this
+// Use unique landmarks to isolate handleSwitchProject, the response type for this
 // handler contains `publishedUrl?:` (unique to this block) plus the new `intake?:`.
 // Simple substring checks on the full file are more reliable than block-slicing
 // when multiple `res.json() as {` patterns exist in the file.
@@ -77,7 +77,7 @@ check("intake from switch response applied via setContactInfo",
   pageTsx.includes("if (data.intake) setContactInfo(data.intake)"));
 
 // ── (D) specHasContactInfo useMemo ────────────────────────────────────────────
-console.log("\n══ D: specHasContactInfo — spec is primary, contactInfo state is fallback ══\n");
+console.log("\n══ D: specHasContactInfo, spec is primary, contactInfo state is fallback ══\n");
 
 check("specHasContactInfo useMemo declared",
   pageTsx.includes("const specHasContactInfo = useMemo("));
@@ -99,14 +99,14 @@ check("hasContactInfo prop uses specHasContactInfo (not inline !!(contactInfo.ph
 check("inline !!(contactInfo.phone || contactInfo.email) no longer the prop value",
   !pageTsx.includes("hasContactInfo={!!(contactInfo.phone || contactInfo.email)}"));
 
-// ── (F) Live Supabase — slug persistence round-trip ───────────────────────────
+// ── (F) Live Supabase, slug persistence round-trip ───────────────────────────
 async function runLiveChecks() {
-  console.log("\n══ F: Live Supabase — settings PUT slug persistence round-trip ══\n");
+  console.log("\n══ F: Live Supabase, settings PUT slug persistence round-trip ══\n");
 
   const sbUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sbUrl || !svcKey) {
-    check("env vars present", false, "missing SUPABASE vars — run with --env-file .env.local");
+    check("env vars present", false, "missing SUPABASE vars, run with --env-file .env.local");
     return;
   }
 
@@ -181,8 +181,8 @@ async function runLiveChecks() {
     console.log(`  Cleaned up test row ${testId} ✓`);
   }
 
-  // ── (G) Contact-info check — spec-based logic ────────────────────────────────
-  console.log("\n══ G: Contact-info check — spec with phone/email passes, without fails ══\n");
+  // ── (G) Contact-info check, spec-based logic ────────────────────────────────
+  console.log("\n══ G: Contact-info check, spec with phone/email passes, without fails ══\n");
 
   // Replicate the specHasContactInfo logic from the page (no DOM/React required)
   type SectionSpec = { type: string; content: Record<string, unknown> };

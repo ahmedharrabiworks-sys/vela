@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const admin = createSupabaseAdmin();
 
-    // Idempotent — a duplicate submit (double-click, back/forward) must not
+    // Idempotent, a duplicate submit (double-click, back/forward) must not
     // create a second tenant for the same user.
     const { data: existing } = await admin
       .from("tenants")

@@ -1,15 +1,15 @@
 /**
- * Phase 3 Verification — Design system token audit
+ * Phase 3 Verification, Design system token audit
  *
- * Tests (no OpenAI needed — tests the renderer/buildCss layer directly):
- *  A) Token definitions — :root block contains all 15 new tokens
- *  B) Spacing wires — layout containers use var(--sp-...) not hardcoded px
- *  C) Type wires — base typography classes use var(--fs-...)
- *  D) Color fixes — no rogue #9CA3AF, accent-on-accent elements use var(--accent-fg)
- *  E) Radius fixes — Phase 2b/2c containers use var(--radius) / var(--radius-lg)
- *  F) Intentional exceptions still present — #F59E0B stars, #fff on dark overlays
+ * Tests (no OpenAI needed, tests the renderer/buildCss layer directly):
+ *  A) Token definitions:root block contains all 15 new tokens
+ *  B) Spacing wires, layout containers use var(--sp-...) not hardcoded px
+ *  C) Type wires, base typography classes use var(--fs-...)
+ *  D) Color fixes, no rogue #9CA3AF, accent-on-accent elements use var(--accent-fg)
+ *  E) Radius fixes, Phase 2b/2c containers use var(--radius) / var(--radius-lg)
+ *  F) Intentional exceptions still present, #F59E0B stars, #fff on dark overlays
  *  G) 375px mobile: Phase 2e hamburger still present after buildCss changes
- *  H) Full-pipeline spot check — 3 moods × real renderWebsite call, check all token types
+ *  H) Full-pipeline spot check, 3 moods × real renderWebsite call, check all token types
  *
  * Run: npx tsx --env-file .env.local src/scripts/e2e-test-phase3.ts
  */
@@ -30,11 +30,11 @@ function check(label: string, condition: boolean, detail?: string) {
     console.log(`  ✅ ${label}`);
   } else {
     failed++;
-    console.error(`  ❌ ${label}${detail ? ` — ${detail}` : ""}`);
+    console.error(`  ❌ ${label}${detail ? `, ${detail}` : ""}`);
   }
 }
 
-// ── Minimal test specs (no real content needed — we're testing CSS) ───────────
+// ── Minimal test specs (no real content needed, we're testing CSS) ───────────
 
 function makeSpec(preset: "medical" | "fitness" | "realestate" | "beauty", dark = false): WebsiteSpec {
   return {
@@ -175,7 +175,7 @@ const htmlB = renderWebsite({
 fs.writeFileSync(path.join(OUT_DIR, "b-services.html"), htmlB);
 
 // Key spacing wires from FIX 2
-check("ws-svc-cards uses var(--sp-md) for gap", htmlB.includes("ws-svc-cards{") ? htmlB.includes("gap:var(--sp-md)") : true, "class not present — skip");
+check("ws-svc-cards uses var(--sp-md) for gap", htmlB.includes("ws-svc-cards{") ? htmlB.includes("gap:var(--sp-md)") : true, "class not present, skip");
 check("ws-footer-inner uses var(--sp-xl) for gap", htmlB.includes("gap:var(--sp-xl)") || htmlB.includes(".ws-footer-inner{"));
 check("no hardcoded gap:48px in svc-cards", !htmlB.includes("ws-svc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:48px"));
 check("no hardcoded gap:24px in svc-cards", !htmlB.includes("ws-svc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px"));
@@ -252,7 +252,7 @@ check("transparent nav: has hamburger for mobile", htmlGTrans.includes("ws-nav-b
 
 console.log("\n══ H: Multi-preset rendering (fitness dark + beauty light) ══\n");
 
-// Fitness (dark preset) — accent-fg is #0B0B0B on #E8FF3A
+// Fitness (dark preset), accent-fg is #0B0B0B on #E8FF3A
 const fitTokens = resolveTokens("fitness");
 const htmlFit = renderWebsite(makeSpec("fitness"), fitTokens);
 fs.writeFileSync(path.join(OUT_DIR, "h-fitness-dark.html"), htmlFit);
@@ -272,12 +272,12 @@ check("beauty: --radius-lg is 0px (intentional)", htmlBeauty.includes("--radius-
 check("beauty: spacing tokens still present with zero-radius preset", htmlBeauty.includes("--sp-xl:48px"));
 check("beauty: var(--sp-md) used in grid containers", htmlBeauty.includes("var(--sp-md)"));
 
-// 375px mobile check — look for responsive CSS
+// 375px mobile check, look for responsive CSS
 check("responsive CSS present (<768px rules)", htmlFit.includes("max-width:768px") || htmlFit.includes("max-width:480px"));
 check("fitness: grid collapses at 375px (1fr rule)", htmlFit.includes("grid-template-columns:1fr") || htmlFit.includes("column:1fr"));
 
 // ── Test I: Palette enforcement (coerceDesignDNA logic) ──────────────────────
-// Simulates the sanitizer directly — no OpenAI needed.
+// Simulates the sanitizer directly, no OpenAI needed.
 
 console.log("\n══ I: Palette enforcement (coerceDesignDNA sanitizer) ══\n");
 

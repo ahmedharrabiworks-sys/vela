@@ -1,18 +1,18 @@
 /**
- * Phase A item 6 — AI Trainer interview fixes verification
+ * Phase A item 6, AI Trainer interview fixes verification
  *
  * Fixes verified:
- *   FIX 1 (phone training — vapi-agent-config.ts + training/page.tsx):
+ *   FIX 1 (phone training, vapi-agent-config.ts + training/page.tsx):
  *     - Prices merged into services question (no longer a dead separate question)
  *     - FAQs question added at position 6 (was in enum but never asked)
- *     - Topic keys all match questions 1–7
+ *     - Topic keys all match questions 1 to 7
  *     - RECORD_ANSWER_TOOL enum contains all 7 keys including faqs; no prices key
  *     - buildTrainingSystem() accepts optional context and personalizes wording
  *     - Context injection: shows business context + skip/confirm for known topics
  *     - Fresh tenant (no context): graceful fallback to generic questions
  *     - Progress math: filledCount/7 can reach 100% (all 7 keys now saveable)
  *
- *   FIX 2 (chat interview — assistant/route.ts):
+ *   FIX 2 (chat interview, assistant/route.ts):
  *     - Context variables (ivSvcQ, ivCtxSection, ivExistingSection) in scope
  *     - Personalized services question injected into interviewMode block
  *     - Known business info + existing KB sections present in prompt when set
@@ -44,7 +44,7 @@ function check(label: string, condition: boolean, detail?: string) {
 const SRC = path.join(process.cwd(), "src");
 
 // ── (A) RECORD_ANSWER_TOOL enum ───────────────────────────────────────────────
-console.log("\n══ A: RECORD_ANSWER_TOOL enum — correct keys, no prices ══\n");
+console.log("\n══ A: RECORD_ANSWER_TOOL enum, correct keys, no prices ══\n");
 
 const topicEnum = RECORD_ANSWER_TOOL.function.parameters.properties.topic.enum as string[];
 
@@ -56,11 +56,11 @@ check("enum includes booking",      topicEnum.includes("booking"));
 check("enum includes faqs",         topicEnum.includes("faqs"));
 check("enum includes special",      topicEnum.includes("special"));
 check("enum does NOT include prices", !topicEnum.includes("prices"),
-  "prices was never a real topic key — it was a dead question");
+  "prices was never a real topic key, it was a dead question");
 check("enum has exactly 7 entries", topicEnum.length === 7, `got ${topicEnum.length}`);
 
-// ── (B) buildTrainingSystem() — no context (fresh tenant fallback) ────────────
-console.log("\n══ B: buildTrainingSystem() — no context (fresh tenant) ══\n");
+// ── (B) buildTrainingSystem(), no context (fresh tenant fallback) ────────────
+console.log("\n══ B: buildTrainingSystem(), no context (fresh tenant) ══\n");
 
 const basePrompt = buildTrainingSystem();
 
@@ -91,8 +91,8 @@ for (let i = 1; i <= 7; i++) {
   check(`question ${i} present`, new RegExp(`^${i}\\.`, "m").test(basePrompt));
 }
 
-// ── (C) buildTrainingSystem() — with full context ────────────────────────────
-console.log("\n══ C: buildTrainingSystem() — with context (personalization) ══\n");
+// ── (C) buildTrainingSystem(), with full context ────────────────────────────
+console.log("\n══ C: buildTrainingSystem(), with context (personalization) ══\n");
 
 const ctx: TrainingContext = {
   businessName: "Smile Dental Clinic",
@@ -100,7 +100,7 @@ const ctx: TrainingContext = {
   city:         "Dubai",
   existingKb: {
     services: "Cleaning 150 AED, Whitening 500 AED",
-    hours:    "Mon–Fri 9:00–18:00",
+    hours:    "Mon to Fri 9:00 to 18:00",
   },
 };
 
@@ -124,7 +124,7 @@ check("already-on-file section present",
 check("existing services value in already-on-file",
   ctxPrompt.includes("Cleaning 150 AED, Whitening 500 AED"));
 check("existing hours value in already-on-file",
-  ctxPrompt.includes("Mon–Fri 9:00–18:00"));
+  ctxPrompt.includes("Mon to Fri 9:00 to 18:00"));
 check("confirm instruction present",
   ctxPrompt.includes("still accurate?") || ctxPrompt.includes("still accurate"),
   "GPT must be told to confirm rather than re-ask");
@@ -132,8 +132,8 @@ check("skip instruction references INTERVIEW QUESTIONS",
   ctxPrompt.includes("INTERVIEW QUESTIONS"),
   "GPT must be told to fall back to questions for topics NOT on file");
 
-// ── (D) Context — no existingKb (only business info) ────────────────────────
-console.log("\n══ D: buildTrainingSystem() — context with no existingKb ══\n");
+// ── (D) Context, no existingKb (only business info) ────────────────────────
+console.log("\n══ D: buildTrainingSystem(), context with no existingKb ══\n");
 
 const ctxNoKb: TrainingContext = {
   businessName: "Quick Cuts",
@@ -154,11 +154,11 @@ check("no generic prices question",
   !ctxNoKbPrompt.includes("What do your services cost?"));
 
 // ── (E) Progress math ─────────────────────────────────────────────────────────
-console.log("\n══ E: Progress math — filledCount/7 reaches 100% ══\n");
+console.log("\n══ E: Progress math, filledCount/7 reaches 100% ══\n");
 
 const allSevenTopics = {
   businessType: "dental clinic", services: "Cleaning 150 AED, Whitening 500 AED",
-  hours: "Mon–Fri 9:00–18:00",  location: "Dubai Marina",
+  hours: "Mon to Fri 9:00 to 18:00",  location: "Dubai Marina",
   booking: "Call or WhatsApp",  faqs: "Q: Is it painful? A: No",
   special: "15 years experience, gentle care",
 };
@@ -169,8 +169,8 @@ check("filledCount = 7 when all topics answered", filledCount === 7, `got ${fill
 check("progressPct = 100% when all 7 topics filled", progressPct === 100, `got ${progressPct}%`);
 check("all 7 enum keys map to real questions (none lost)", topicEnum.every(k => Object.keys(allSevenTopics).includes(k)));
 
-// ── (F) Static — assistant/route.ts context injection ────────────────────────
-console.log("\n══ F: assistant/route.ts — interview context variables present ══\n");
+// ── (F) Static, assistant/route.ts context injection ────────────────────────
+console.log("\n══ F: assistant/route.ts, interview context variables present ══\n");
 
 const assistantRoute = fs.readFileSync(
   path.join(SRC, "app/api/ai/assistant/route.ts"), "utf-8"
@@ -203,8 +203,8 @@ check("ivAlreadyEntries uses correct KB field paths (kb.business?.hours)",
   assistantRoute.includes("kb.business?.address") &&
   assistantRoute.includes("kb.business?.bookingPolicy"));
 
-// ── (G) Static — training/page.tsx changes ────────────────────────────────────
-console.log("\n══ G: training/page.tsx — context fetch and pass ══\n");
+// ── (G) Static, training/page.tsx changes ────────────────────────────────────
+console.log("\n══ G: training/page.tsx, context fetch and pass ══\n");
 
 const trainingPage = fs.readFileSync(
   path.join(SRC, "app/app/ai-agent/training/page.tsx"), "utf-8"
@@ -223,8 +223,8 @@ check("context passed to buildTrainingSystem call",
 check("filledCount / 7 unchanged (7 topics still correct)",
   trainingPage.includes("filledCount / 7"));
 
-// ── (H) Static — training-context route exists with correct shape ─────────────
-console.log("\n══ H: training-context route — file exists and shape correct ══\n");
+// ── (H) Static, training-context route exists with correct shape ─────────────
+console.log("\n══ H: training-context route, file exists and shape correct ══\n");
 
 const tcRoutePath = path.join(SRC, "app/api/ai-agent/training-context/route.ts");
 check("training-context route file exists", fs.existsSync(tcRoutePath));
@@ -244,16 +244,16 @@ if (fs.existsSync(tcRoutePath)) {
   check("returns city from tenant", tcRoute.includes("tenant.city"));
 }
 
-// ── (I) Live Supabase — training-context round-trip ──────────────────────────
+// ── (I) Live Supabase, training-context round-trip ──────────────────────────
 async function runLiveChecks() {
   const sbUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sbUrl || !svcKey) {
-    check("env vars present", false, "missing SUPABASE vars — run with --env-file .env.local");
+    check("env vars present", false, "missing SUPABASE vars, run with --env-file .env.local");
     return;
   }
 
-  console.log("\n══ I: Live Supabase — training-context logic round-trip ══\n");
+  console.log("\n══ I: Live Supabase, training-context logic round-trip ══\n");
 
   const admin = createClient(sbUrl, svcKey, { auth: { persistSession: false } });
 
@@ -266,7 +266,7 @@ async function runLiveChecks() {
   if (tenantErr) console.log(`  tenants query error: ${tenantErr.message}`);
 
   if (!tenantRow) {
-    console.log("  No tenants found in DB — skipping live round-trip (expected on fresh/empty DB)");
+    console.log("  No tenants found in DB, skipping live round-trip (expected on fresh/empty DB)");
     check("tenant query ran without error (table accessible)", true);
     return;
   }
@@ -331,13 +331,13 @@ async function runLiveChecks() {
     console.log(`  [Real already-on-file section]\n  ${realPrompt.slice(existStart, existEnd).trim().replace(/\n/g, "\n  ")}\n`);
   }
 
-  const q2Match = realPrompt.match(/2\. Services — Ask: "([^"]+)"/);
+  const q2Match = realPrompt.match(/2\. Services, Ask: "([^"]+)"/);
   check("real Q2 is the merged services+price question",
     !!(q2Match && q2Match[1].toLowerCase().includes("cost")),
     `got: "${q2Match?.[1] ?? "no match"}"`);
   if (q2Match) console.log(`  Q2 (real): "${q2Match[1]}"`);
 
-  const q6Match = realPrompt.match(/6\. FAQs — Ask: "([^"]+)"/);
+  const q6Match = realPrompt.match(/6\. FAQs, Ask: "([^"]+)"/);
   check("real Q6 is the faqs question",
     !!(q6Match && q6Match[1].toLowerCase().includes("ask")),
     `got: "${q6Match?.[1] ?? "no match"}"`);

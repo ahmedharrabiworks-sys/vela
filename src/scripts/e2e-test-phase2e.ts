@@ -1,5 +1,5 @@
 /**
- * Phase 2e verification — nav/footer variant pool
+ * Phase 2e verification, nav/footer variant pool
  *
  * Tests:
  *  A) real_estate → transparent nav + editorial footer
@@ -10,7 +10,7 @@
  *
  * Also verifies rendered HTML structure for each nav/footer variant.
  *
- * No GPT calls needed — selection is purely logic-based.
+ * No GPT calls needed, selection is purely logic-based.
  * HTML structure verified via renderNav/renderFooter directly.
  */
 
@@ -55,7 +55,7 @@ const CASES: Array<{
   expectedFooter: string;
 }> = [
   {
-    label: "A — Real estate (Maison Prestige)",
+    label: "A, Real estate (Maison Prestige)",
     strategy: {
       category: "real_estate",
       subcategory: "luxury_residential",
@@ -69,7 +69,7 @@ const CASES: Array<{
     expectedFooter: "editorial",
   },
   {
-    label: "B — Interior design + elegant (Atelier Forma)",
+    label: "B, Interior design + elegant (Atelier Forma)",
     strategy: {
       category: "interior_design",
       subcategory: "residential",
@@ -83,7 +83,7 @@ const CASES: Array<{
     expectedFooter: "editorial",
   },
   {
-    label: "C — Gym + bold/cinematic (APEX Fight Club)",
+    label: "C, Gym + bold/cinematic (APEX Fight Club)",
     strategy: {
       category: "gym",
       subcategory: "combat_sports",
@@ -97,7 +97,7 @@ const CASES: Array<{
     expectedFooter: "",
   },
   {
-    label: "D — SaaS + minimal_luxury (FlowBase)",
+    label: "D, SaaS + minimal_luxury (FlowBase)",
     strategy: {
       category: "saas",
       subcategory: "productivity",
@@ -111,7 +111,7 @@ const CASES: Array<{
     expectedFooter: "compact",
   },
   {
-    label: "E — Dental + trustworthy (Bright Smile Clinic)",
+    label: "E, Dental + trustworthy (Bright Smile Clinic)",
     strategy: {
       category: "dental",
       subcategory: "general_dentistry",
@@ -128,7 +128,7 @@ const CASES: Array<{
 
 // ── Run selection tests ───────────────────────────────────────────────────────
 let allPassed = true;
-console.log("\n══ Phase 2e — Nav/Footer variant pool selection ══\n");
+console.log("\n══ Phase 2e, Nav/Footer variant pool selection ══\n");
 
 for (const tc of CASES) {
   const nav = selectNavVariant(tc.strategy);
@@ -210,12 +210,12 @@ const footerCompactOk = footerCompact.includes("ws-footer--compact") &&
   footerCompact.includes("FlowBase");
 console.log(`${footerCompactOk ? "✅" : "❌"} footer compact: ws-footer--compact + compact-inner`);
 
-// Mobile 375px — transparent nav hides links at 768px (same as standard via shared class)
+// Mobile 375px, transparent nav hides links at 768px (same as standard via shared class)
 // ws-nav-links is present in transparent variant and will be hidden at ≤768px by the existing media rule
 const navTransHasLinks = navTransparent.includes("ws-nav-links");
 console.log(`${navTransHasLinks ? "✅" : "❌"} nav transparent: ws-nav-links present (mobile: hidden by CSS at ≤768px)`);
 
-// Editorial footer: responsive — verify both grid cols are in the HTML
+// Editorial footer: responsive, verify both grid cols are in the HTML
 const footerEdHasRight = footerEd.includes("ws-footer-ed-right");
 console.log(`${footerEdHasRight ? "✅" : "❌"} footer editorial: ws-footer-ed-right present (mobile: stack via CSS)`);
 
@@ -224,7 +224,7 @@ const footerCompactHasLinks = footerCompact.includes("ws-footer-compact-links");
 console.log(`${footerCompactHasLinks ? "✅" : "❌"} footer compact: ws-footer-compact-links present`);
 
 // Token fix: standard footer uses var(--footer-bg) not hardcoded hex
-// This is in the CSS (website-renderer.ts buildCss), not in the HTML — confirm the rendered
+// This is in the CSS (website-renderer.ts buildCss), not in the HTML, confirm the rendered
 // HTML class doesn't have any inline background-color
 const footerHasNoInlineBg = !footerStd.includes("background:#080E1A") && !footerStd.includes("background:#0D1526");
 console.log(`${footerHasNoInlineBg ? "✅" : "❌"} footer standard: no hardcoded bg in HTML (token via CSS class)`);

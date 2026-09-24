@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { getEmployeeRoster, type EmployeeRow } from "@/lib/mission-control/queries";
 
-// Design tokens — match overview/tenants pages
+// Design tokens, match overview/tenants pages
 const T = {
   bg: "#0a0a0a", bg2: "#111111", bg3: "#1a1a1a",
   border: "#222222", border2: "#2d2d2d",
@@ -44,7 +44,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function SignalPill({ name, value }: { name: string; value: number | null }) {
   const isRate = name.endsWith("_rate") || name.endsWith("_success_rate");
-  const display = value == null ? "—" : isRate ? `${value}%` : String(value);
+  const display = value == null ? ", " : isRate ? `${value}%` : String(value);
   const dimColor = value == null ? T.dim : T.muted;
   return (
     <span style={{ display: "inline-flex", gap: 4, alignItems: "center", marginRight: 8 }}>
@@ -128,7 +128,7 @@ export default async function EmployeesPage() {
                   : null;
                 const latestRelative = latestTs
                   ? new Date(latestTs).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                  : "—";
+                  : ", ";
 
                 return (
                   <tr key={emp.id}>
@@ -144,7 +144,7 @@ export default async function EmployeesPage() {
                       </div>
                     </td>
                     <td style={S.tdMuted}>
-                      {emp.department?.name ?? "—"}
+                      {emp.department?.name ?? ", "}
                     </td>
                     <td style={{ ...S.td, paddingTop: 16 }}>
                       <StatusBadge status={emp.status} />

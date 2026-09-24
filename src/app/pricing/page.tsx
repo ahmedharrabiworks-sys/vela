@@ -6,15 +6,20 @@ const COL_HEADERS = ["Starter", "Pro", "Premium"];
 const PRO_COL = 1;
 
 // Websites, CRM, and Analytics rows removed -- those features are flagged
-// off for this MVP phase (see src/config/features.ts). Rows stay untouched
-// otherwise; re-add when Website Builder/CRM/Analytics come back.
+// off for this MVP phase (see src/config/features.ts). Multi-location row
+// removed entirely, no replacement. Rows stay untouched otherwise; re-add
+// when Website Builder/CRM/Analytics come back.
+// Voice minutes/Text messages match src/lib/pricing.ts and
+// src/lib/plan-config.ts exactly (single source of truth for these
+// numbers). Starter's Voice minutes is now `false`, matching the AI Voice
+// Phone Agent row below it -- Starter has no phone agent, so it never had
+// real voice minutes to offer; the two rows previously disagreed.
 const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
-  { label: "Voice minutes",        values: ["150/mo",           "650/mo",               "1,300/mo"              ] },
-  { label: "Text messages",        values: ["500/mo",           "Unlimited",            "Unlimited"             ] },
+  { label: "Voice minutes",        values: [false,              "300/mo",               "700/mo"                ] },
+  { label: "Text messages",        values: ["500/mo",           "1,500/mo",             "3,000/mo"              ] },
   { label: "Channels",             values: ["1",                "All 3",                "All 3 + priority"      ] },
   { label: "AI Voice Phone Agent", values: [false,              true,                   true                    ] },
   { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited"             ] },
-  { label: "Multi-location",       values: [false,              "2 locations",          "Unlimited"             ] },
   { label: "Team members",         values: ["1",                "3",                    "Unlimited"             ] },
   { label: "AI training",          values: ["Single interview", "Unlimited edits",      "Priority retraining"   ] },
   { label: "Support",              values: ["Email 48h",        "Priority 24h",         "Dedicated call + chat" ] },
@@ -50,7 +55,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-[#F9FAFB]">
       <PublicPageHeader />
 
-      {/* Plan-card selection — the default landing view for any "Upgrade Now" /
+      {/* Plan-card selection, the default landing view for any "Upgrade Now" /
           "Upgrade to Pro" click across the app. Reuses the same component as
           the homepage's #pricing section (same cards, same copy, same links). */}
       <Pricing />
@@ -67,7 +72,7 @@ export default function PricingPage() {
           </p>
         </div>
 
-        {/* Comparison table — horizontally scrollable on mobile */}
+        {/* Comparison table, horizontally scrollable on mobile */}
         <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
           <table className="w-full min-w-[480px] text-sm border-collapse">
             <thead>

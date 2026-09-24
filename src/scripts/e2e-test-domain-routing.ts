@@ -1,5 +1,5 @@
 /**
- * Domain routing verification — Phase A item 2
+ * Domain routing verification, Phase A item 2
  *
  * Verifies:
  *   (A) isCustomDomain logic correctly distinguishes main-app hosts from customer domains
@@ -29,7 +29,7 @@ function check(label: string, condition: boolean, detail?: string) {
   else           { failed++; console.error(`  ❌ ${label}${detail ? `\n       → ${detail}` : ""}`); }
 }
 
-// ── (A) isCustomDomain logic — static assertions ──────────────────────────────
+// ── (A) isCustomDomain logic, static assertions ──────────────────────────────
 console.log("\n══ A: isCustomDomain distinguishes main-app from customer hosts ══\n");
 
 function isCustomDomain(hostname: string, appHost: string): boolean {
@@ -51,7 +51,7 @@ const appHostFromEnv = (process.env.NEXT_PUBLIC_APP_URL ?? "https://velaos.co")
 const PROD_APP_HOST = "tryvela.com";
 console.log(`  appHost from env: "${appHostFromEnv}" (dev may be localhost; production: "${PROD_APP_HOST}")`);
 
-// Production host checks — use PROD_APP_HOST to verify the logic that runs in production
+// Production host checks, use PROD_APP_HOST to verify the logic that runs in production
 check("vela-g8h4.vercel.app → NOT custom (ends .vercel.app)",
   !isCustomDomain("vela-g8h4.vercel.app", PROD_APP_HOST));
 check("vela-g8h4-moz0ueymk-brandlab.vercel.app → NOT custom (ends .vercel.app)",
@@ -80,7 +80,7 @@ check("middleware.ts: no addDomain / projectDomain references",
   !middlewareSource.includes("addDomain") && !middlewareSource.includes("projectDomain"));
 
 // ── (F) Direct Supabase REST, no self-HTTP call ────────────────────────────────
-console.log("\n══ F: Direct Supabase REST — no self-HTTP domain-lookup call ══\n");
+console.log("\n══ F: Direct Supabase REST, no self-HTTP domain-lookup call ══\n");
 
 check("middleware.ts: contains resolveCustomDomain() function",
   middlewareSource.includes("async function resolveCustomDomain("));
@@ -108,23 +108,23 @@ const dlSource = fs.readFileSync(
 check("domain-lookup route: also filters domain_status='verified'",
   dlSource.includes('"verified"') || dlSource.includes("'verified'"));
 
-// ── (B)–(D) Live Supabase row test ────────────────────────────────────────────
+// ── (B) to (D) Live Supabase row test ────────────────────────────────────────────
 async function runLiveChecks() {
-  console.log("\n══ B–D: Real Supabase row — verified / pending / not-found ══\n");
+  console.log("\n══ B to D: Real Supabase row, verified / pending / not-found ══\n");
 
   const sbUrl   = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const svcKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!sbUrl || !svcKey || !anonKey) {
-    console.error("  ⚠️  Env vars missing — run with --env-file .env.local");
+    console.error("  ⚠️  Env vars missing, run with --env-file .env.local");
     check("env vars present", false, "missing SUPABASE vars");
     return;
   }
 
   const admin = createClient(sbUrl, svcKey, { auth: { persistSession: false } });
 
-  // Mirrors resolveCustomDomain() in middleware.ts — uses direct Supabase REST
+  // Mirrors resolveCustomDomain() in middleware.ts, uses direct Supabase REST
   async function queryDomain(hostname: string, statusFilter = "verified"): Promise<string | null> {
     const params =
       `domain=eq.${encodeURIComponent(hostname)}` +
@@ -154,7 +154,7 @@ async function runLiveChecks() {
   const tenantId = (tenantRow as { id: string } | null)?.id ?? null;
 
   if (!tenantId) {
-    console.error("  ⚠️  No tenant rows in DB — cannot test live row insertion");
+    console.error("  ⚠️  No tenant rows in DB, cannot test live row insertion");
     check("tenant found for test row", false, "DB has no tenants yet");
     return;
   }
@@ -193,7 +193,7 @@ async function runLiveChecks() {
       `got ${JSON.stringify(slugVerified)}, expected "${TEST_SLUG}"`);
 
     // (C) Fallback: query with 'pending' filter for same domain → null
-    //     Simulates what happens when a domain is pending/unverified —
+    //     Simulates what happens when a domain is pending/unverified, 
     //     the middleware's `domain_status=eq.verified` filter excludes it.
     const slugPending = await queryDomain(TEST_DOMAIN, "pending");
     check("(C) same domain via pending-filter query → null (fallback path)",

@@ -60,7 +60,7 @@ function VAvatar({ size = 24, mt = false }: { size?: number; mt?: boolean }) {
   );
 }
 
-// Floating launcher icon — recognizable chat bubble so visitors know this opens chat
+// Floating launcher icon, recognizable chat bubble so visitors know this opens chat
 function LauncherIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="relative z-10">
@@ -71,7 +71,7 @@ function LauncherIcon() {
   );
 }
 
-// Panel header icon — white V mark inside the gradient circle
+// Panel header icon, white V mark inside the gradient circle
 function HeaderIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
@@ -484,7 +484,7 @@ export function VelaAssistant() {
 
   return (
     <>
-      {/* Floating button — desktop only. On mobile the owner reaches this
+      {/* Floating button, desktop only. On mobile the owner reaches this
           panel via the dedicated "Vela Assistant" nav entry instead (see
           Sidebar.tsx's mobileOnly item + the vela-open-assistant event
           below): a business owner on mobile is checking analytics/
@@ -523,7 +523,7 @@ export function VelaAssistant() {
           {/* Mobile backdrop */}
           <div className="fixed inset-0 z-[141] bg-black/40 sm:hidden" onClick={() => setOpen(false)} />
 
-          {/* Panel — same end-6 logical-property logic as the launcher
+          {/* Panel, same end-6 logical-property logic as the launcher
               button above, so the panel opens from the same side the button
               visually sits on in both LTR and RTL. */}
           <div
@@ -531,7 +531,7 @@ export function VelaAssistant() {
             className="fixed z-[142] inset-0 sm:inset-auto sm:end-6 sm:bottom-[88px] sm:w-96 bg-white sm:rounded-2xl shadow-2xl flex flex-col border border-[#E5E7EB] overflow-hidden"
             style={{ maxHeight: "calc(100vh - 120px)", minHeight: "400px" }}
           >
-            {/* Header — white background so logo and text have proper contrast */}
+            {/* Header, white background so logo and text have proper contrast */}
             <div className="flex items-center justify-between px-4 py-3.5 shrink-0 bg-white border-b border-[#F3F4F6]">
               <div className="flex items-center gap-2.5">
                 <div
@@ -565,7 +565,7 @@ export function VelaAssistant() {
               </div>
             </div>
 
-            {/* Quick actions — shown before first user message */}
+            {/* Quick actions, shown before first user message */}
             {messages.filter((m) => m.role === "user").length === 0 && (
               <div className="px-3 py-2.5 border-b border-[#F3F4F6] shrink-0 bg-[#FAFAFA]">
                 <p className="text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2 font-semibold px-0.5">{t("velaAssistant.quickQuestionsLabel")}</p>
@@ -653,7 +653,7 @@ export function VelaAssistant() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Language chips — shown before first user message */}
+            {/* Language chips, shown before first user message */}
             {messages.filter((m) => m.role === "user").length === 0 && (
               <div className="px-3 pt-2.5 pb-1 border-t border-[#F3F4F6] shrink-0 bg-white">
                 <p className="text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-wider mb-1.5">Reply in</p>

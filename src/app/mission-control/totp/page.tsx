@@ -11,7 +11,7 @@ export default async function McTotpPage({
   const pendingValue = cookieStore.get("mc_totp_pending")?.value;
   const email = pendingValue ? await verifyPendingCookie(pendingValue) : null;
 
-  // No valid pending cookie — the OAuth step was skipped or expired
+  // No valid pending cookie, the OAuth step was skipped or expired
   if (!email) {
     redirect("/mission-control/login?error=session_expired");
   }

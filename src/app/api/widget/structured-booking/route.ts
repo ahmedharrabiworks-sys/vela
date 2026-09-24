@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// Round M4 FIX 7 — structured intake box submission handler.
+// Round M4 FIX 7, structured intake box submission handler.
 //
 // Distinct from submit-form/route.ts (the plain HTML booking-form path,
 // which always creates a "pending" appointment with no real availability

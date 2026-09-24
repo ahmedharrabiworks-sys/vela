@@ -409,7 +409,7 @@ export default function AITrainingPage() {
         </button>
       </div>
 
-      {/* AI Score card — real ring + real per-section checklist */}
+      {/* AI Score card, real ring + real per-section checklist */}
       <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
         <ProgressRing pct={pct} scoreLabel={t("aiTraining.aiScore")} statusLabel={statusLabel} />
         <div className="flex items-center gap-4 flex-wrap">
@@ -532,7 +532,7 @@ export default function AITrainingPage() {
         )}
       </div>
 
-      {/* ── Requested services — real customer requests for services not yet
+      {/* ── Requested services, real customer requests for services not yet
           trained (Round M6 FIX 6b). Own the price prompt: name comes
           straight from the customer's own request, price is the one real
           field the AI doesn't have. ── */}
@@ -591,7 +591,7 @@ export default function AITrainingPage() {
         </div>
       )}
 
-      {/* ── Segment tabs — underline style, not pill buttons ── */}
+      {/* ── Segment tabs, underline style, not pill buttons ── */}
       <div className="flex gap-5 border-b border-[#E5E7EB] dark:border-[#2A2A32] mb-0 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {TABS.map((tab) => {
           const badge = tabBadge[tab];
@@ -795,7 +795,7 @@ export default function AITrainingPage() {
         )}
       </div>
 
-      {/* Footer bar — auto-save note left, explicit Save right (same real
+      {/* Footer bar, auto-save note left, explicit Save right (same real
           save path as the header's Save Changes button and auto-save). */}
       <div className="flex items-center justify-between gap-3 mt-4 px-1">
         <p className="text-xs text-[#9CA3AF]">Changes auto-save after 2 seconds</p>

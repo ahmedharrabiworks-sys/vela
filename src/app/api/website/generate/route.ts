@@ -74,7 +74,7 @@ async function completeJsonSpec(
   }
 
   if (truncated) {
-    console.error(`[website/generate] ${label}: first attempt truncated/malformed (finish_reason=${choice?.finish_reason}) — retrying once with max_tokens=${JSON_SPEC_RETRY_MAX_TOKENS}`);
+    console.error(`[website/generate] ${label}: first attempt truncated/malformed (finish_reason=${choice?.finish_reason}), retrying once with max_tokens=${JSON_SPEC_RETRY_MAX_TOKENS}`);
     choice = await attempt(JSON_SPEC_RETRY_MAX_TOKENS);
     if (choice?.finish_reason === "length") {
       throw new Error(`${label}: GPT output truncated even after retry at max_tokens=${JSON_SPEC_RETRY_MAX_TOKENS}`);
@@ -120,7 +120,7 @@ async function tryUnsplash(query: string, usedUrls: Set<string>, minWidth = 1200
     const qualifying = results.filter((r) => r.width >= minWidth && r.width >= r.height);
     const pool = qualifying.length ? qualifying : results;
 
-    // Prefer results that have a description — no-description results are usually
+    // Prefer results that have a description, no-description results are usually
     // abstract textures, gradients, or plain-color backgrounds
     const described = pool.filter((r) => r.description || r.alt_description);
     const finalPool = described.length >= 3 ? described : pool;
@@ -146,7 +146,7 @@ async function tryUnsplash(query: string, usedUrls: Set<string>, minWidth = 1200
 async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>, minWidth = 1200): Promise<string | null> {
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (!key) {
-    console.warn("[website] UNSPLASH_ACCESS_KEY not set — skipping image fetch");
+    console.warn("[website] UNSPLASH_ACCESS_KEY not set, skipping image fetch");
     return null;
   }
 
@@ -158,7 +158,7 @@ async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>, minWidth
     const simplified = words.slice(0, 3).join(" ");
     const result2 = await tryUnsplash(simplified, usedUrls, minWidth);
     if (result2) {
-      console.warn(`[website] primary "${query}" failed — used simplified "${simplified}"`);
+      console.warn(`[website] primary "${query}" failed, used simplified "${simplified}"`);
       return result2;
     }
   }
@@ -167,7 +167,7 @@ async function fetchUnsplashPhoto(query: string, usedUrls: Set<string>, minWidth
   if (lastWord && lastWord !== words[0]) {
     const result3 = await tryUnsplash(lastWord, usedUrls, minWidth);
     if (result3) {
-      console.warn(`[website] simplified failed — used single-word "${lastWord}"`);
+      console.warn(`[website] simplified failed, used single-word "${lastWord}"`);
       return result3;
     }
   }
@@ -361,7 +361,7 @@ async function classifyUploadedImage(
         content: [
           {
             type: "text",
-            text: 'Reply with ONE word — the website section this image suits best:\n"logo" = a standalone brand mark, wordmark, or icon logo, usually simple graphics or text on a plain or transparent background, not a photograph\n"hero" = a real photograph of a building, storefront, product, or scene\n"about" = single person (owner/professional portrait)\n"team" = group of people or staff\n"gallery" = food, dishes, products, work samples\nOne word only.',
+            text: 'Reply with ONE word, the website section this image suits best:\n"logo" = a standalone brand mark, wordmark, or icon logo, usually simple graphics or text on a plain or transparent background, not a photograph\n"hero" = a real photograph of a building, storefront, product, or scene\n"about" = single person (owner/professional portrait)\n"team" = group of people or staff\n"gallery" = food, dishes, products, work samples\nOne word only.',
           },
           { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}`, detail: "low" } },
         ],
@@ -376,7 +376,7 @@ async function classifyUploadedImage(
 }
 
 // ── Per-category image query tables (Phase 4: subject-first, zero city/location) ─
-// Values are FULL Unsplash queries — no businessType prefix, no city concatenation.
+// Values are FULL Unsplash queries, no businessType prefix, no city concatenation.
 const HERO_PHOTO_QUERY: Record<string, string> = {
   // legacy preset keys (resolved via CATEGORY_TO_PRESET)
   hotel:      "luxury hotel exterior pool architecture golden hour editorial",
@@ -385,7 +385,7 @@ const HERO_PHOTO_QUERY: Record<string, string> = {
   beauty:     "luxury salon spa interior warm natural light elegant minimal",
   realestate: "luxury villa exterior architecture daylight clean modern editorial",
   restaurant: "elegant restaurant dining room warm candlelight ambiance editorial",
-  // v2 category keys (more specific than mapped preset — checked first)
+  // v2 category keys (more specific than mapped preset, checked first)
   clinic:     "modern dental clinic treatment room bright clean white minimal",
   gym:        "premium training facility open floor cinematic dramatic lighting",
   salon:      "high-end hair salon interior warm light elegant minimal",
@@ -492,7 +492,7 @@ const TREATMENT_QUERIES = [
 
 // ── Map v2 category → gallery query preset key ────────────────────────────────
 // FIX 2: "hospitality"/"retail"/"professional" are templateCategory values
-// (from classifyWithDesignStrategy — see DESCRIPTION_HERO_QUERY_PATTERNS
+// (from classifyWithDesignStrategy, see DESCRIPTION_HERO_QUERY_PATTERNS
 // comment above for the full root-cause explanation) that were previously
 // absent from this dict entirely, silently falling through to stylePreset's
 // "realestate" default regardless of the actual business.
@@ -611,9 +611,9 @@ function buildItemImageQuery(itemTitle: string | undefined, businessType: string
   const title = String(itemTitle ?? "").trim();
   if (!title) return `${businessType} product detail close-up editorial minimal`.replace(/\s+/g, " ").trim();
   // Strip price/currency artifacts a title field might carry
-  // ("Coffee Subscription — from $25") and parenthetical asides.
+  // ("Coffee Subscription - from $25") and parenthetical asides.
   const cleanTitle = title
-    .replace(/[-–—]\s*(from\s*)?[$€£]\s*\d+.*$/i, "")
+    .replace(/[-–—]\s*(from\s*)?[$€£]\s*\d+.*$/i, "") // dash-lint-allow: must accept a real en/em dash typed by the owner
     .replace(/\(.*?\)/g, "")
     .trim();
   return `${cleanTitle} ${businessType} close-up editorial natural light`.replace(/\s+/g, " ").trim();
@@ -673,7 +673,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
     for (const s of spec.sections) {
       const eyebrow = s.content?.eyebrow;
       if (typeof eyebrow === "string") {
-        // e.g. "Tunis, Tunisia" or "Dubai Marina · Gym" — take the first comma/dot separated location word
+        // e.g. "Tunis, Tunisia" or "Dubai Marina · Gym", take the first comma/dot separated location word
         const locMatch = eyebrow.match(/·\s*([A-Za-z][a-zA-Z\s]{2,24})|,\s*([A-Za-z][a-zA-Z\s]{2,24})/);
         if (locMatch) { effectiveCity = (locMatch[1] ?? locMatch[2] ?? "").trim(); break; }
       }
@@ -712,7 +712,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
   // unrelated hospital surgery/IV-drip photo. Root cause: rawCategory here
   // is always the COARSE 5-value templateCategory ("medical" for every
   // dental/doctor/physio/dermatology/pharmacy/optician business alike --
-  // see the classifier's own "medical — dental, doctor, physio..." vocab
+  // see the classifier's own "medical, dental, doctor, physio..." vocab
   // list), so PRESET_GALLERY_QUERIES["medical"] and
   // ABOUT_PHOTO_QUERY["medical"] are shared across ALL of those sub-types
   // and include generic entries ("clean white corridor light minimal
@@ -740,7 +740,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
   for (let i = 0; i < spec.sections.length; i++) {
     const s = spec.sections[i];
 
-    // Hero: ALWAYS override — subject-first query, zero city/businessType prefix.
+    // Hero: ALWAYS override, subject-first query, zero city/businessType prefix.
     // Description-pattern match checked FIRST (see comment above
     // DESCRIPTION_HERO_QUERY_PATTERNS) -- it is category-vocabulary-agnostic,
     // so it works correctly even when rawCategory doesn't exist in either
@@ -775,7 +775,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Gallery grid sections: ensure 6 imageQueries — subject-first, no businessType prefix
+    // Gallery grid sections: ensure 6 imageQueries, subject-first, no businessType prefix
     if (MULTI_GALLERY_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       if (!qs.length) {
@@ -817,7 +817,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Product grid: ensure imageQueries — same per-item-title rule as above.
+    // Product grid: ensure imageQueries, same per-item-title rule as above.
     if (MULTI_PRODUCT_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const items = Array.isArray(s.content?.items) ? (s.content.items as { title?: string }[]) : [];
@@ -830,7 +830,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Feature showcase: ensure imageQueries — same per-item-title rule as above.
+    // Feature showcase: ensure imageQueries, same per-item-title rule as above.
     if (MULTI_SHOWCASE_TYPES.has(s.type)) {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const items = Array.isArray(s.content?.items) ? (s.content.items as { title?: string }[]) : [];
@@ -843,7 +843,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Phase 2c: property-listings-grid — 1 imageQuery per listing (no city)
+    // Phase 2c: property-listings-grid, 1 imageQuery per listing (no city)
     if (s.type === "property-listings-grid") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const listings = Array.isArray(s.content?.listings) ? (s.content.listings as unknown[]) : [];
@@ -856,7 +856,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Phase 2c: treatment-gallery — 1 imageQuery per service, built from that
+    // Phase 2c: treatment-gallery, 1 imageQuery per service, built from that
     // service's own real name (e.g. "Teeth Whitening") first; the dedicated
     // TREATMENT_QUERIES pool is only used when a service has no usable title.
     if (s.type === "treatment-gallery") {
@@ -870,7 +870,7 @@ function ensureImageQueries(spec: WebsiteSpec, industry: string, city: string, f
       }
     }
 
-    // Phase 2c: portfolio-grid — 1 imageQuery per project (no city)
+    // Phase 2c: portfolio-grid, 1 imageQuery per project (no city)
     if (s.type === "portfolio-grid") {
       const qs = getImageQueries(s as { imageQueries?: string[]; content?: Record<string, unknown> });
       const projects = Array.isArray(s.content?.projects) ? (s.content.projects as unknown[]) : [];
@@ -979,7 +979,7 @@ const MOOD_DEFAULT_DNA: Record<string, Partial<DesignDNA>> = {
   "tech-sharp":       { headingFont: "Space Grotesk",    bodyFont: "Inter", palette: { bg: "#F6F7FB",  text: "#15161C", accent: "#7C3AED", muted: "#64748B" }, isDark: false },
   "dark-premium":     { headingFont: "Playfair Display", bodyFont: "Inter", palette: { bg: "#F5EFE3",  text: "#1C1710", accent: "#B8860B", muted: "#857D72" }, isDark: false },
 };
-// Approved accent set — mirrors Part 5 of buildFillSystem. GPT must pick from this list;
+// Approved accent set, mirrors Part 5 of buildFillSystem. GPT must pick from this list;
 // any other hex (including user-requested "hot pink" etc.) falls back to a mood variant.
 const APPROVED_ACCENTS = new Set([
   "#8B6347","#A0522D","#C4793D","#9C6E3F",  // earthy/warm
@@ -1049,7 +1049,7 @@ function coerceDesignDNA(raw: unknown, accentSeed = ""): DesignDNA {
 const VALID_PRESETS: PresetName[] = [
   // Current 6-preset system
   "hotel", "medical", "fitness", "beauty", "realestate", "restaurant",
-  // Legacy names — resolveTokens maps them to the 6 new presets
+  // Legacy names, resolveTokens maps them to the 6 new presets
   "editorial-luxury", "minimal-warm", "saas-sharp", "estate-elegant", "clinical-bright",
   "editorial", "bold", "clean", "clinical",
 ];
@@ -1081,7 +1081,7 @@ type DesignStrategy = {
   target_audience:   string;
 };
 
-// ── Hero pool — per category, ordered preferred → fallback ───────────────────
+// ── Hero pool, per category, ordered preferred → fallback ───────────────────
 const HERO_POOL: Record<string, string[]> = {
   real_estate:     ["full-image", "re-split", "search-first", "editorial", "property-first"],
   dental:          ["trust-focused", "booking-focused", "clinical-premium"],
@@ -1136,12 +1136,12 @@ function selectHeroVariant(strategy: DesignStrategy, data: HeroAvailableData): s
     if (v === "cinematic-dark"     && (bp === "bold" || bp === "energetic"))            s += 2;
     if (v === "energy-driven"      && bp === "energetic")                               s += 1;
     if (v === "membership-focused" && cg === "sell_membership" && data.hasPricingData)  s += 3;
-    // Interior design — portfolio-first gets +4 when data confirmed, beating editorial's max of 3
+    // Interior design, portfolio-first gets +4 when data confirmed, beating editorial's max of 3
     if (v === "luxury-showcase"  && positioning === "premium")                          s += 2;
     if (v === "portfolio-first"  && cg === "showcase_portfolio" && data.hasPortfolioImgs) s += 4;
     if (v === "portfolio-first"  && data.hasPortfolioImgs && cg !== "showcase_portfolio") s += 2;
     return s;
-    // NOTE: no duplicate editorial rule here — editorial scores come only from the RE block above
+    // NOTE: no duplicate editorial rule here, editorial scores come only from the RE block above
   };
 
   const ranked = [...eligible].sort((a, b) => score(b) - score(a));
@@ -1192,21 +1192,21 @@ async function classifyWithDesignStrategy(
 {
   "template_category": one of: medical | hospitality | retail | saas | professional,
   "category": one of: real_estate | dental | gym | interior_design | restaurant | hotel | spa | legal | saas | ecommerce | other,
-    CATEGORY RULE — use "ecommerce" ONLY when the business primarily sells physical products online with a cart/checkout flow (e.g. an online clothing store, a dropshipping site). Any business that serves customers in person or provides a service — including bakeries, cafés, salons, florists, studios, clinics not in the named list — must be "other".
+    CATEGORY RULE, use "ecommerce" ONLY when the business primarily sells physical products online with a cart/checkout flow (e.g. an online clothing store, a dropshipping site). Any business that serves customers in person or provides a service, including bakeries, cafés, salons, florists, studios, clinics not in the named list, must be "other".
   "subcategory": "specific niche e.g. 'luxury residential sales', 'orthodontics', 'boutique strength studio', 'residential interior design'",
   "positioning": one of: premium | mid_market | affordable,
   "brand_personality": one of: elegant | bold | energetic | trustworthy | playful | minimal_luxury,
   "conversion_goal": one of: book_appointment | generate_leads | showcase_portfolio | sell_membership | request_valuation,
-  "visual_mood": "2–4 words e.g. 'warm editorial calm', 'dark industrial intensity', 'bright clinical trust'",
+  "visual_mood": "2 to 4 words e.g. 'warm editorial calm', 'dark industrial intensity', 'bright clinical trust'",
   "target_audience": "1 short sentence describing who this business's site must convince"
 }
 
 template_category mapping:
-  medical — dental, doctor, physio, dermatology, health, pharmacy, optician
-  hospitality — hotel, restaurant, café, bar, catering, lodging, fine dining
-  retail — e-commerce, shop, boutique, cosmetics, accessories, product-selling
-  saas — software, SaaS, digital platform, app, tech startup, digital agency
-  professional — law, real estate, accountant, consultant, architect, interior design, gym, yoga, spa, trainer
+  medical, dental, doctor, physio, dermatology, health, pharmacy, optician
+  hospitality, hotel, restaurant, café, bar, catering, lodging, fine dining
+  retail, e-commerce, shop, boutique, cosmetics, accessories, product-selling
+  saas, software, SaaS, digital platform, app, tech startup, digital agency
+  professional, law, real estate, accountant, consultant, architect, interior design, gym, yoga, spa, trainer
 
 Derive EVERY field from the actual description. Never invent facts. Output ONLY valid JSON, no markdown.`;
 
@@ -1268,7 +1268,7 @@ function enforceTemplate(spec: WebsiteSpec, template: SiteTemplate): void {
 
     if (!match) {
       if (ts.required) {
-        // Required section GPT omitted — add empty stub so renderer still fires
+        // Required section GPT omitted, add empty stub so renderer still fires
         result.push({ type: ts.type, ...(ts.variant ? { variant: ts.variant } : {}), content: {} } as WebsiteSpec["sections"][0]);
       }
       continue;
@@ -1357,7 +1357,7 @@ function selectTrustComponents(
   const pool = TRUST_CONV_POOL[strategy.category];
   if (!pool) return { trustType: null, conversionType: null };
 
-  // Data-availability gates — a component is only eligible if its required data is present
+  // Data-availability gates, a component is only eligible if its required data is present
   const trustGated = new Set<string>();
   if (!data.hasAgentContact)            trustGated.add("agent-card");
   if (!data.hasPressQuote)              trustGated.add("press-quote-band");
@@ -1413,7 +1413,7 @@ function verifyTrustComponents(spec: WebsiteSpec): void {
     if (!rule) return true; // no skip rule → keep
     const skip = rule(s.content as Record<string, unknown>);
     if (skip) {
-      console.warn(`[website/generate] verifyTrustComponents: removing ${s.type} — required data missing`);
+      console.warn(`[website/generate] verifyTrustComponents: removing ${s.type}, required data missing`);
     }
     return !skip;
   });
@@ -1423,19 +1423,19 @@ function verifyTrustComponents(spec: WebsiteSpec): void {
 const HERO_VARIANT_SCHEMAS: Record<string, string> = {
   "re-split":
     `hero content for "re-split": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "stats"?: [{ "value": string, "label": string }] — ONLY real statistics the owner stated; max 3 items; omit if none }`,
+  "stats"?: [{ "value": string, "label": string }], ONLY real statistics the owner stated; max 3 items; omit if none }`,
   "trust-focused":
     `hero content for "trust-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "badges"?: [{ "value": "15+", "label": "Years Experience" }] — ONLY real stats (years, patients, awards); max 4; omit if no real data }`,
+  "badges"?: [{ "value": "15+", "label": "Years Experience" }], ONLY real stats (years, patients, awards); max 4; omit if no real data }`,
   "booking-focused":
     `hero content for "booking-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary",
-  "services"?: string[] — service names for the dropdown; omit or leave [] if not specified }`,
+  "services"?: string[], service names for the dropdown; omit or leave [] if not specified }`,
   "membership-focused":
     `hero content for "membership-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "tiers"?: [{ "name": string, "price": string, "period"?: string }] — ONLY real pricing the owner stated; max 3; omit if no real prices }`,
+  "tiers"?: [{ "name": string, "price": string, "period"?: string }], ONLY real pricing the owner stated; max 3; omit if no real prices }`,
   "property-first":
     `hero content for "property-first": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "property"?: { "title"?: string, "price"?: string, "beds"?: string, "baths"?: string, "sqft"?: string } — ONLY real listing data; omit fields not stated }`,
+  "property"?: { "title"?: string, "price"?: string, "beds"?: string, "baths"?: string, "sqft"?: string }, ONLY real listing data; omit fields not stated }`,
   "portfolio-first":
     `hero content for "portfolio-first": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"? }
 imageQueries REQUIRED at section level (3 strings for the image grid).`,
@@ -1447,13 +1447,13 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
     `"comparison-table" section content: { "eyebrow"?, "headline", "subheadline"?,
   "rows": [{ "feature": string, "ours": string, "theirs"?: string }] }
   RULES: Only include rows where you can state what "ours" genuinely offers from the description.
-  "theirs" is optional — only populate if the description explicitly contrasts with a competitor.
+  "theirs" is optional, only populate if the description explicitly contrasts with a competitor.
   Max 6 rows. Never invent competitor data.`,
 
   "agent-card":
     `"agent-card" section content: { "name": string, "title"?: string, "phone"?: string, "email"?: string, "bio"?: string }
   RULES: Use only real agent name, phone, email, and title stated in the description.
-  Bio must be 1–2 sentences drawn from real stated details — never invented.
+  Bio must be 1 to 2 sentences drawn from real stated details, never invented.
   Omit any contact field not explicitly provided.`,
 
   "press-quote-band":
@@ -1465,42 +1465,42 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
     `"trainer-showcase" section content: { "eyebrow"?, "headline"?,
   "trainers": [{ "name": string, "specialty"?: string, "bio"?: string }] }
   RULES: Only include trainers whose names were actually stated in the description. Max 6.
-  specialty and bio must come from real stated information — never invent them.`,
+  specialty and bio must come from real stated information, never invent them.`,
 
   "trust-badges-band":
     `"trust-badges-band" section content: { "eyebrow"?, "headline"?,
   "badges": [{ "value": string, "label": string }] }
   RULES: Only use real statistics, years, certifications, or counts stated in the description.
-  Prefer numeric values when available — e.g. "18+" / "Years in Practice", "12,000+" / "Patients Treated", "480+" / "Google Reviews".
-  Use certification/award names only when no numeric alternative exists — e.g. "Board-Certified" / "UAE Dental Association".
+  Prefer numeric values when available, e.g. "18+" / "Years in Practice", "12,000+" / "Patients Treated", "480+" / "Google Reviews".
+  Use certification/award names only when no numeric alternative exists, e.g. "Board-Certified" / "UAE Dental Association".
   Never invent numbers. Each badge must be independently verifiable from the input. Max 5.`,
 
   "multi-step-form":
     `"multi-step-form" section content: { "headline"?, "step1Headline"?, "step2Headline"?,
   "services"?: string[], "submitLabel"?: string }
-  RULES: services array is optional — only include service names actually listed in the description. Max 12.
+  RULES: services array is optional, only include service names actually listed in the description. Max 12.
   step1Headline defaults to "Your Details", step2Headline defaults to "Your Request".`,
 
   "appointment-form":
     `"appointment-form" section content: { "eyebrow"?, "headline"?,
   "services": string[], "submitLabel"?: string }
   RULES: services array is REQUIRED. Only list services explicitly named in the description. Max 12.
-  If no services are named, output services: [] — the section will be suppressed server-side.`,
+  If no services are named, output services: [], the section will be suppressed server-side.`,
 
   "valuation-form":
     `"valuation-form" section content: { "eyebrow"?, "headline"?, "subheadline"?, "submitLabel"?: string }
-  RULES: All fields are standard form labels — write compelling copy for eyebrow/headline/subheadline only.
+  RULES: All fields are standard form labels, write compelling copy for eyebrow/headline/subheadline only.
   Do not invent property data or agent details in this section.`,
 
   "membership-form":
     `"membership-form" section content: { "eyebrow"?, "headline"?,
   "tiers": [{ "name": string, "price": string, "period"?: string }], "submitLabel"?: string }
   RULES: tiers is REQUIRED. Only include membership tiers with REAL prices stated in the description.
-  Never invent prices. If no real prices exist, output tiers: [] — the section will be suppressed.`,
+  Never invent prices. If no real prices exist, output tiers: [], the section will be suppressed.`,
 };
 
 // ── Phase 2c: Showcase component pool ────────────────────────────────────────
-// One showcase type per category — only fires when real data is available
+// One showcase type per category, only fires when real data is available
 const SHOWCASE_POOL: Record<string, string> = {
   real_estate:     "property-listings-grid",
   dental:          "treatment-gallery",
@@ -1541,11 +1541,11 @@ function selectShowcaseComponent(
   const showcaseType = SHOWCASE_POOL[strategy.category];
   if (!showcaseType) return null;
 
-  // Strict data gates — no data, no showcase
+  // Strict data gates, no data, no showcase
   if (showcaseType === "property-listings-grid" && !available.hasRealListings)       return null;
   if (showcaseType === "portfolio-grid"          && !available.hasMultipleProjects)   return null;
   if (showcaseType === "membership-plans-display" && !available.hasTierDetails)       return null;
-  // treatment-gallery: no extract-level gate — dental always has treatments;
+  // treatment-gallery: no extract-level gate, dental always has treatments;
   // verifyShowcaseComponents() enforces the post-GPT check on services array
 
   return showcaseType;
@@ -1557,17 +1557,17 @@ function verifyShowcaseComponents(spec: WebsiteSpec): void {
     const c = s.content as Record<string, unknown>;
     if (s.type === "property-listings-grid") {
       const ok = Array.isArray(c.listings) && (c.listings as unknown[]).length >= 1;
-      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing property-listings-grid — no listings");
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing property-listings-grid, no listings");
       return ok;
     }
     if (s.type === "treatment-gallery") {
       const ok = Array.isArray(c.services) && (c.services as unknown[]).length >= 1;
-      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing treatment-gallery — no services");
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing treatment-gallery, no services");
       return ok;
     }
     if (s.type === "portfolio-grid") {
       const ok = Array.isArray(c.projects) && (c.projects as unknown[]).length >= 2;
-      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing portfolio-grid — fewer than 2 projects");
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing portfolio-grid, fewer than 2 projects");
       return ok;
     }
     if (s.type === "membership-plans-display") {
@@ -1576,7 +1576,7 @@ function verifyShowcaseComponents(spec: WebsiteSpec): void {
         const tier = t as Record<string, unknown>;
         return Array.isArray(tier.features) && (tier.features as unknown[]).length >= 1;
       });
-      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing membership-plans-display — no tier feature details");
+      if (!ok) console.warn("[website/generate] verifyShowcaseComponents: removing membership-plans-display, no tier feature details");
       return ok;
     }
     return true;
@@ -1591,14 +1591,14 @@ const SHOWCASE_COMPONENT_SCHEMAS: Record<string, string> = {
   RULES: ONLY include real properties described by the owner. Max 6 listings.
   title: the property's name or identifier (e.g. "Marina View Penthouse", "3BR Villa Palm Jumeirah").
   bedrooms/bathrooms/area: only from real stated specs. price: ONLY if owner stated a real asking price.
-  badge: optional label ("New Listing", "Featured") — only if meaningful and real. Never invent specs or prices.
+  badge: optional label ("New Listing", "Featured"), only if meaningful and real. Never invent specs or prices.
   imageQueries REQUIRED at section level (1 per listing, matching listings count, e.g. ["luxury villa Dubai editorial", ...]).`,
 
   "treatment-gallery":
     `"treatment-gallery" section content: { "eyebrow"?, "headline"?, "subheadline"?,
   "services": [{ "title": string, "description"?: string, "duration"?: string, "price"?: string }] }
   RULES: Use real treatment/procedure names. Max 8. Description in patient-friendly language from real details.
-  duration and price: ONLY from real stated data — never invent.
+  duration and price: ONLY from real stated data, never invent.
   imageQueries at section level are optional (1 per service for photo cards).`,
 
   "portfolio-grid":
@@ -1606,29 +1606,29 @@ const SHOWCASE_COMPONENT_SCHEMAS: Record<string, string> = {
   "projects": [{ "title": string, "category"?: string, "description"?: string, "location"?: string, "year"?: string }] }
   RULES: ONLY include real projects the owner named or described. MINIMUM 2 required; if fewer than 2 are real, output projects: [].
   title: the project name (e.g. "Palm Heights Penthouse", "The Grove Restaurant").
-  category: project type (e.g. "Residential", "Commercial", "Hospitality") — derived from context.
-  description: 1 sentence about the design approach from real stated details — never fabricate.
+  category: project type (e.g. "Residential", "Commercial", "Hospitality"), derived from context.
+  description: 1 sentence about the design approach from real stated details, never fabricate.
   location, year: only if stated.
   imageQueries REQUIRED at section level (1 per project, matching projects count).`,
 
   "membership-plans-display":
     `"membership-plans-display" section content: { "eyebrow"?, "headline", "subheadline"?,
-  "tiers": [{ "name": string, "price": string, "period"?: string, "features": string[] × 4–8, "highlighted"?: boolean, "badge"?: string }] }
+  "tiers": [{ "name": string, "price": string, "period"?: string, "features": string[] × 4 to 8, "highlighted"?: boolean, "badge"?: string }] }
   RULES: Each tier MUST have a "features" array listing specific inclusions. This is what differentiates this from the pricing strip.
   features: list what is INCLUDED (e.g. "Unlimited group classes", "2 guest passes/month", "Locker access", "Personal trainer session (1/month)").
-  ONLY include real stated inclusions — never invent features. price: ONLY from real stated data.
+  ONLY include real stated inclusions, never invent features. price: ONLY from real stated data.
   highlighted: true for exactly ONE tier (the featured plan). badge: label for highlighted tier (default "Most Popular").
-  If no real feature inclusions are stated, output features: [] for each tier — section will be suppressed server-side.`,
+  If no real feature inclusions are stated, output features: [] for each tier, section will be suppressed server-side.`,
 };
 
-// ── Phase 2d — Content component pool ─────────────────────────────────────────
+// ── Phase 2d, Content component pool ─────────────────────────────────────────
 
 type ContentAvailableData = {
   hasRealTestimonialQuote: boolean;
 };
 
 function extractContentAvailableData(description: string): ContentAvailableData {
-  // Double-quoted text with 20+ chars — indicates a real customer quote in the description
+  // Double-quoted text with 20+ chars, indicates a real customer quote in the description
   return {
     hasRealTestimonialQuote: /”[^”]{20,}”/.test(description),
   };
@@ -1668,7 +1668,7 @@ function selectFaqVariant(strategy: DesignStrategy | null): string {
   return "";
 }
 
-// Phase 2e — nav/footer variant pool
+// Phase 2e, nav/footer variant pool
 
 function selectNavVariant(strategy: DesignStrategy | null): string {
   if (!strategy) return "";
@@ -1694,28 +1694,28 @@ function selectFooterVariant(strategy: DesignStrategy | null): string {
 }
 
 // FIX 4: two modes. REAL mode (a genuine quote was detected in the
-// conversation) works exactly as before — verbatim quote + sourceEvidence,
+// conversation) works exactly as before, verbatim quote + sourceEvidence,
 // server-verified. EXAMPLE mode (no real quote available) is new: GPT writes
 // clearly generic, template-style placeholder content and sets "example":
-// true, which the renderer uses to show a visible "Example — edit with a
+// true, which the renderer uses to show a visible "Example, edit with a
 // real review" tag. This is the same convention real template marketplaces
-// use for demo content — never presented as a verified claim.
+// use for demo content, never presented as a verified claim.
 const TESTIMONIAL_COMPONENT_SCHEMAS: Record<string, string> = {
   "testimonial-single-quote":
 `"testimonial-single-quote" section content: { "quote": string, "name"?: string, "role"?: string, "sourceEvidence"?: string, "example"?: boolean }
 IF A REAL CUSTOMER QUOTE EXISTS IN THE DESCRIPTION:
-  "quote": the EXACT verbatim text from the owner's description — never paraphrase or improve it.
-  "sourceEvidence": a 10–40 character substring copied verbatim from the description that proves the quote is real. Server-side: if sourceEvidence is not found in the description, this section falls back to example mode.
+  "quote": the EXACT verbatim text from the owner's description, never paraphrase or improve it.
+  "sourceEvidence": a 10 to 40 character substring copied verbatim from the description that proves the quote is real. Server-side: if sourceEvidence is not found in the description, this section falls back to example mode.
   "name"/"role": ONLY if explicitly stated alongside the quote. Omit if not stated. Do NOT set "example".
 IF NO REAL CUSTOMER QUOTE EXISTS (the common case):
-  Set "example": true. Write ONE short, generic, obviously-template-style quote (1 sentence, positive but non-specific — no invented specific numbers, dates, or outcomes), e.g. "Working with [business name] was a great experience from start to finish."
-  "name": omit, or use a generic placeholder like "Happy Customer" — never invent a specific-sounding real name.
+  Set "example": true. Write ONE short, generic, obviously-template-style quote (1 sentence, positive but non-specific, no invented specific numbers, dates, or outcomes), e.g. "Working with [business name] was a great experience from start to finish."
+  "name": omit, or use a generic placeholder like "Happy Customer", never invent a specific-sounding real name.
   Do NOT include "sourceEvidence" in example mode.`,
 
   "testimonial-grid":
 `"testimonial-grid" section content: { "eyebrow"?: string, "headline"?: string, "items": [{ "quote": string, "name"?: string, "role"?: string, "sourceEvidence"?: string }], "example"?: boolean }
-IF REAL CUSTOMER QUOTES EXIST IN THE DESCRIPTION: each item needs "quote" = exact verbatim text, "sourceEvidence" = 10–40 char verbatim substring from description. "name"/"role" only if explicitly stated. Do NOT set "example".
-IF NO REAL CUSTOMER QUOTES EXIST (the common case): set "example": true at the section level. Write 2–3 short, generic, obviously-template-style quotes (positive but non-specific — no invented numbers, dates, or outcomes). "name": omit, or use varied generic placeholders like "Happy Customer" — never invent specific-sounding real names. Do NOT include "sourceEvidence" on any item in example mode.`,
+IF REAL CUSTOMER QUOTES EXIST IN THE DESCRIPTION: each item needs "quote" = exact verbatim text, "sourceEvidence" = 10 to 40 char verbatim substring from description. "name"/"role" only if explicitly stated. Do NOT set "example".
+IF NO REAL CUSTOMER QUOTES EXIST (the common case): set "example": true at the section level. Write 2 to 3 short, generic, obviously-template-style quotes (positive but non-specific, no invented numbers, dates, or outcomes). "name": omit, or use varied generic placeholders like "Happy Customer", never invent specific-sounding real names. Do NOT include "sourceEvidence" on any item in example mode.`,
 };
 
 function verifyContentComponents(spec: WebsiteSpec, description: string): void {
@@ -1724,7 +1724,7 @@ function verifyContentComponents(spec: WebsiteSpec, description: string): void {
     if (s.type === "testimonial-single-quote") {
       const c = s.content as { quote?: string; sourceEvidence?: string; example?: boolean };
       if (!c.quote || String(c.quote).trim() === "") {
-        console.warn(`[website/generate] verifyContentComponents: removing testimonial-single-quote — empty quote`);
+        console.warn(`[website/generate] verifyContentComponents: removing testimonial-single-quote, empty quote`);
         return false;
       }
       const evidence = String(c.sourceEvidence ?? "").trim();
@@ -1732,7 +1732,7 @@ function verifyContentComponents(spec: WebsiteSpec, description: string): void {
       // A claimed-real quote must actually verify; if it doesn't, downgrade to
       // example mode rather than discarding a perfectly fine placeholder quote.
       if (claimsReal && !(evidence.length >= 8 && descLower.includes(evidence.toLowerCase()))) {
-        console.warn(`[website/generate] verifyContentComponents: testimonial-single-quote sourceEvidence "${evidence}" not found — downgrading to example mode`);
+        console.warn(`[website/generate] verifyContentComponents: testimonial-single-quote sourceEvidence "${evidence}" not found, downgrading to example mode`);
         c.example = true;
         delete c.sourceEvidence;
       }
@@ -1744,7 +1744,7 @@ function verifyContentComponents(spec: WebsiteSpec, description: string): void {
       if (c.example) {
         // Example mode: no sourceEvidence verification needed, just non-empty quotes.
         if (items.length === 0) {
-          console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid — no example items`);
+          console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid, no example items`);
           return false;
         }
         c.items = items.map((item) => { const it = item as { sourceEvidence?: string }; delete it.sourceEvidence; return item; });
@@ -1755,7 +1755,7 @@ function verifyContentComponents(spec: WebsiteSpec, description: string): void {
         return evidence.length >= 8 && descLower.includes(evidence.toLowerCase());
       });
       if (verified.length === 0) {
-        console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid — no verified items`);
+        console.warn(`[website/generate] verifyContentComponents: removing testimonial-grid, no verified items`);
         return false;
       }
       c.items = verified;
@@ -1779,11 +1779,11 @@ function buildFillSystem(
   noPhotoMode = false,
 ): string {
   const langLine = language && language.toLowerCase() !== "english"
-    ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
+    ? `LANGUAGE: ALL website copy, every headline, subheadline, button label, body paragraph, form placeholder, and footer text, MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
     : "";
 
   const strategyBlock = strategy ? `═══════════════════════════════════════════════════════
-PART 0 — BUSINESS INTELLIGENCE (grounding context — do NOT echo this in JSON output)
+PART 0, BUSINESS INTELLIGENCE (grounding context, do NOT echo this in JSON output)
 ═══════════════════════════════════════════════════════
 Subcategory:       ${strategy.subcategory}
 Positioning:       ${strategy.positioning.replace(/_/g, " ")}
@@ -1792,12 +1792,12 @@ Conversion goal:   ${strategy.conversion_goal.replace(/_/g, " ")}
 Visual mood:       ${strategy.visual_mood}
 Target audience:   ${strategy.target_audience}
 
-Use these insights to calibrate copy tone, CTA wording, and section emphasis. They are context only — never include this block or its field names in your JSON output.
+Use these insights to calibrate copy tone, CTA wording, and section emphasis. They are context only, never include this block or its field names in your JSON output.
 
 ` : "";
 
   const templateLines = template.sections.map((ts, i) => {
-    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
+    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL, include ONLY if owner provided real data)";
     const variant = ts.variant ? `, variant: "${ts.variant}"` : "";
     return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
   }).join("\n");
@@ -1807,12 +1807,12 @@ Use these insights to calibrate copy tone, CTA wording, and section emphasis. Th
 STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
 ═══════════════════════════════════════════════════════
-PART 1 — COPYWRITING STANDARDS (read before writing a single word)
+PART 1, COPYWRITING STANDARDS (read before writing a single word)
 ═══════════════════════════════════════════════════════
 
 The owner's description is RAW MATERIAL. It is NEVER source text to rephrase. Extract intent and write FRESH brand copy.
 
-BAD COPY PATTERNS — never write:
+BAD COPY PATTERNS, never write:
 ✗ "Quality service you can trust"  ✗ "We are committed to excellence"
 ✗ "Professional team with years of experience"  ✗ "Welcome to [business name]"
 ✗ Section headings: "Our Services" / "About Us" / "Why Choose Us" / "Contact Us"
@@ -1820,10 +1820,10 @@ BAD COPY PATTERNS — never write:
 GOOD COPY PATTERNS:
 ✓ Lead with the customer's problem or desire  ✓ Use specific numbers, materials, real details
 ✓ Active voice. Present tense. Short sentences for headlines.
-✓ Section headlines that read like editorial titles — "Precision, Start to Finish" not "Our Services"
+✓ Section headlines that read like editorial titles, "Precision, Start to Finish" not "Our Services"
 
 ═══════════════════════════════════════════════════════
-PART 2 — JSON ROOT SHAPE
+PART 2, JSON ROOT SHAPE
 ═══════════════════════════════════════════════════════
 
 {
@@ -1840,35 +1840,35 @@ PART 2 — JSON ROOT SHAPE
 }
 
 ═══════════════════════════════════════════════════════
-PART 3 — DESIGN MOODS (choose ONE for designDNA.mood)
+PART 3, DESIGN MOODS (choose ONE for designDNA.mood)
 ═══════════════════════════════════════════════════════
 
-Every mood below is BRIGHT — a warm or neutral near-white background is the
+Every mood below is BRIGHT, a warm or neutral near-white background is the
 site's primary look. There is no dark/black default: the only dark element
 any site ever gets is the footer, which the renderer already handles on its
-own. Never set isDark: true and never propose a black/near-black bg — always
+own. Never set isDark: true and never propose a black/near-black bg, always
 copy the exact bg/text/muted hex values below for the mood you pick.
 
-"editorial-luxury" — Serif headings, off-white body, gold/champagne accent, cinematic. USE: boutique hotel, luxury salon, fine dining, real estate.
+"editorial-luxury", Serif headings, off-white body, gold/champagne accent, cinematic. USE: boutique hotel, luxury salon, fine dining, real estate.
   Palette: bg #FAF8F5 · text #1A1A1A · muted #857D72 · isDark: false
 
-"clinical-bright" — All-sans heavy headings, pure white, clinical blue accent, trust-first. USE: dental clinic, medical practice, physio.
+"clinical-bright", All-sans heavy headings, pure white, clinical blue accent, trust-first. USE: dental clinic, medical practice, physio.
   Palette: bg #FFFFFF · text #0A2540 · muted #64748B · isDark: false
 
-"bold-energetic" — Heavy compressed headings (uppercase), warm off-white bg, vivid punchy accent for contrast. USE: gym, sports brand, nightlife, automotive.
+"bold-energetic", Heavy compressed headings (uppercase), warm off-white bg, vivid punchy accent for contrast. USE: gym, sports brand, nightlife, automotive.
   Palette: bg #FAF9F5 · text #161513 · muted #6B6862 · isDark: false
 
-"warm-minimal" — Light-weight serif heading, warm off-white, muted earth accent, extreme whitespace. USE: spa, yoga, organic café, salon.
+"warm-minimal", Light-weight serif heading, warm off-white, muted earth accent, extreme whitespace. USE: spa, yoga, organic café, salon.
   Palette: bg #F7F5F0 · text #3A3730 · muted #6B705C · isDark: false
 
-"tech-sharp" — Geometric sans heading (600-700w), cool near-white bg, bold violet/indigo accent for contrast. USE: SaaS, tech startup, digital agency.
+"tech-sharp", Geometric sans heading (600-700w), cool near-white bg, bold violet/indigo accent for contrast. USE: SaaS, tech startup, digital agency.
   Palette: bg #F6F7FB · text #15161C · muted #64748B · isDark: false
 
-"dark-premium" — Delicate serif headings (400w), warm ivory bg, warm gold accent. USE: premium hotel, high fashion, exclusive membership.
+"dark-premium", Delicate serif headings (400w), warm ivory bg, warm gold accent. USE: premium hotel, high fashion, exclusive membership.
   Palette: bg #F5EFE3 · text #1C1710 · muted #857D72 · isDark: false
 
 ═══════════════════════════════════════════════════════
-PART 4 — FONTS (ONLY these names are valid)
+PART 4, FONTS (ONLY these names are valid)
 ═══════════════════════════════════════════════════════
 
 headingFont and bodyFont MUST be one of:
@@ -1884,7 +1884,7 @@ PAIRING GUIDE:
   dark-premium     → heading: "Playfair Display", body: "Inter"
 
 ═══════════════════════════════════════════════════════
-PART 5 — PALETTE RULES
+PART 5, PALETTE RULES
 ═══════════════════════════════════════════════════════
 
 accent MUST be from this approved list ONLY. Never invent a hex code outside this table.
@@ -1898,7 +1898,7 @@ CLINICAL:       #0070C9 · #0EA5E9 · #0891B2 · #0284C7
 WELLNESS:       #16A34A · #059669 · #0D9488 · #15803D
 
 ═══════════════════════════════════════════════════════
-PART 6 — FIXED SECTION STRUCTURE (YOU MUST FOLLOW THIS EXACTLY)
+PART 6, FIXED SECTION STRUCTURE (YOU MUST FOLLOW THIS EXACTLY)
 ═══════════════════════════════════════════════════════
 
 The section list, order, and variants below are FIXED. Your ONLY job is to write content for each section.
@@ -1906,13 +1906,13 @@ The section list, order, and variants below are FIXED. Your ONLY job is to write
 ‼ DO NOT add sections not listed below.
 ‼ DO NOT remove REQUIRED sections.
 ‼ DO NOT change the order.
-‼ DO NOT change the variant values — they are already set.
+‼ DO NOT change the variant values, they are already set.
 
 SECTIONS (in this exact order):
 ${templateLines}
   (last) type: "footer" (REQUIRED)
 
-OPTIONAL SECTIONS — include ONLY if the owner provided real data:
+OPTIONAL SECTIONS, include ONLY if the owner provided real data:
   team-grid    → only if owner named real staff members
   stats-band   → only if owner stated real statistics (numbers)
   logo-strip   → only if owner named real companies or clients
@@ -1925,25 +1925,25 @@ SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT 
 { "type": string, "variant": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
 
 ═══════════════════════════════════════════════════════
-PART 7 — IMAGE QUERY RULES
+PART 7, IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner explicitly asked for a photo-free, typography-only design.
+${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE, the owner explicitly asked for a photo-free, typography-only design.
 Do NOT write an imageQuery or imageQueries field on ANY section, ever.
 Choose hero variant "minimal-stacked" (no image). Never choose gallery-grid, listings-grid with photos, product-grid, or feature-showcase if it depends on photography.
-Build the design instead around strong typography, the site's color palette, and icons (see the icon list in PART 8). This is a real, polished design choice the owner asked for — not a fallback. Use stats-band, feature-grid, logo-strip, and text-led sections to carry visual interest instead of photos.` : `imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
-imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3–6), product-grid (4–8), feature-showcase (3–4).
-DEFAULT BEHAVIOR: this owner has no photos of their own, which means every section needs a real, working imageQuery/imageQueries — do not skip or leave any required field empty just because there's no upload.
+Build the design instead around strong typography, the site's color palette, and icons (see the icon list in PART 8). This is a real, polished design choice the owner asked for, not a fallback. Use stats-band, feature-grid, logo-strip, and text-led sections to carry visual interest instead of photos.` : `imageQuery is an Unsplash search string. Required for: hero (unless minimal-stacked variant), about-story.
+imageQueries (array) required for: gallery-grid (6 strings), listings-grid (3 to 6), product-grid (4 to 8), feature-showcase (3 to 4).
+DEFAULT BEHAVIOR: this owner has no photos of their own, which means every section needs a real, working imageQuery/imageQueries, do not skip or leave any required field empty just because there's no upload.
 
-${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, not where the business is:
+${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES, describe WHAT THE PHOTO SHOWS, not where the business is:
 imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 NEVER include city names, country names, or region names in any image query.
 
-CRITICAL — use the OWNER'S SPECIFIC business type from their own description, never just the broad category, and NEVER a mismatched subject from a different industry:
+CRITICAL, use the OWNER'S SPECIFIC business type from their own description, never just the broad category, and NEVER a mismatched subject from a different industry:
   BAD  (too generic): "medical clinic" / "gallery" / "hero image"
-  BAD  (mismatched — real bug seen in production): a villa exterior or a random bathroom/living-room interior on a DENTAL clinic site; a locked/closed storefront on any site
+  BAD  (mismatched, real bug seen in production): a villa exterior or a random bathroom/living-room interior on a DENTAL clinic site; a locked/closed storefront on any site
   GOOD (specific and accurate):     "modern dental clinic reception interior" / "pediatric dental waiting room bright colorful"
-If the owner said what kind of dental clinic, gym, restaurant, café, or salon this is (cosmetic, pediatric, CrossFit, Italian, specialty coffee, bridal, etc.), that specific word belongs in the query — not just the generic bucket. Every query must describe a subject that could genuinely belong to THIS business, never to an unrelated industry.
+If the owner said what kind of dental clinic, gym, restaurant, café, or salon this is (cosmetic, pediatric, CrossFit, Italian, specialty coffee, bridal, etc.), that specific word belongs in the query, not just the generic bucket. Every query must describe a subject that could genuinely belong to THIS business, never to an unrelated industry.
 
 VISUAL SUBJECT = the specific physical thing in the photo:
 • dental/clinic → "bright dental clinic reception" / "dental treatment room clean modern" / "smiling patient dental checkup" / "orthodontic equipment close-up"
@@ -1967,170 +1967,170 @@ EXAMPLES (no city or country):
   Gallery item (dental) → "teeth whitening treatment close-up clinical bright editorial"
   Gallery item (coffee shop) → "coffee beans roasted close-up warm editorial"
   Property listing → "apartment living room natural light minimal architectural"
-gallery/listings/products: vary subject, angle, detail — each query must be distinct.
+gallery/listings/products: vary subject, angle, detail, each query must be distinct.
 ` : `BUILD FROM OWNER'S SPECIFICS:
-Extract visual details from description. Build 4–6 word queries: specific subject + detail + quality.
+Extract visual details from description. Build 4 to 6 word queries: specific subject + detail + quality.
 NEVER include city/country/region names.`}
 QUALITY SUFFIX: hero/about-story → "bright natural light" or "editorial minimal". gallery/listings → "editorial" or "close-up detail".`}
 
 ═══════════════════════════════════════════════════════
-PART 8 — CONTENT SCHEMAS PER SECTION TYPE
+PART 8, CONTENT SCHEMAS PER SECTION TYPE
 ═══════════════════════════════════════════════════════
 
-hero — imageQuery REQUIRED (unless variant is "minimal-stacked"):
-{ "eyebrow": "3–5 words", "headline": "5–8 words punchy", "subheadline": "1–2 sentences", "ctaPrimary": "action label", "ctaSecondary"?: string }
+hero, imageQuery REQUIRED (unless variant is "minimal-stacked"):
+{ "eyebrow": "3 to 5 words", "headline": "5 to 8 words punchy", "subheadline": "1 to 2 sentences", "ctaPrimary": "action label", "ctaSecondary"?: string }
 
 feature-grid:
-{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "icon": string, "title": string, "description": string }] × 3–6 }
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "icon": string, "title": string, "description": string }] × 3 to 6 }
 icon values: check | star | shield | briefcase | heart | leaf | clock | plus | home | dumbbell | scissors | chef | tooth
 
 pricing-tiers:
-{ "eyebrow"?: string, "headline": string, "tiers": [{ "name": string, "price": string, "period": string, "features": string[] × 4–6, "ctaText": string, "highlighted": boolean }] × 2–4 }
+{ "eyebrow"?: string, "headline": string, "tiers": [{ "name": string, "price": string, "period": string, "features": string[] × 4 to 6, "ctaText": string, "highlighted": boolean }] × 2 to 4 }
 Only ONE tier should have "highlighted": true.
 
 service-list:
-{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description"?: string, "price"?: string }] × 4–10 }
+{ "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description"?: string, "price"?: string }] × 4 to 10 }
 
-gallery-grid — imageQueries REQUIRED (6 strings at section level):
+gallery-grid, imageQueries REQUIRED (6 strings at section level):
 { "eyebrow"?: string, "headline": string }
 
-listings-grid — imageQueries REQUIRED (3–6 strings at section level):
+listings-grid, imageQueries REQUIRED (3 to 6 strings at section level):
 { "eyebrow"?: string, "headline": string, "items": [{ "title": string, "subtitle"?: string, "description"?: string, "price"?: string }] }
 
-about-story — imageQuery REQUIRED:
-{ "eyebrow"?: string, "headline": string, "body": string, "bullets"?: [{ "title": string, "text": string }] × 2–4, "ctaText"?: string }
+about-story, imageQuery REQUIRED:
+{ "eyebrow"?: string, "headline": string, "body": string, "bullets"?: [{ "title": string, "text": string }] × 2 to 4, "ctaText"?: string }
 
 team-grid:
 { "eyebrow"?: string, "headline": string, "members": [{ "name": string, "role": string, "bio"?: string }] }
 Only real staff the owner named.
 
 stats-band:
-{ "items": [{ "value": string, "label": string }] × 3–5 }
+{ "items": [{ "value": string, "label": string }] × 3 to 5 }
 ONLY real statistics. Never invent numbers.
 
 process-steps:
-{ "eyebrow"?: string, "headline": string, "steps": [{ "title": string, "description": string }] × 3–5 }
+{ "eyebrow"?: string, "headline": string, "steps": [{ "title": string, "description": string }] × 3 to 5 }
 
 faq-accordion:
-{ "eyebrow"?: string, "headline": string, "items": [{ "q": string, "a": string }] × 5–8 }
+{ "eyebrow"?: string, "headline": string, "items": [{ "q": string, "a": string }] × 5 to 8 }
 
 cta-band:
 { "headline": string, "sub"?: string, "ctaText": string }
 
 contact-block:
 { "eyebrow"?: string, "headline": string, "subheadline"?: string,
-  "phone": string (ONLY from real contact info — else omit),
-  "email": string (ONLY from real contact info — else omit),
-  "address": string (ONLY from real contact info — else omit),
-  "hours": string (ONLY from real contact info — else omit),
-  "ctaText": string, "services"?: string[] × 3–6 }
+  "phone": string (ONLY from real contact info, else omit),
+  "email": string (ONLY from real contact info, else omit),
+  "address": string (ONLY from real contact info, else omit),
+  "hours": string (ONLY from real contact info, else omit),
+  "ctaText": string, "services"?: string[] × 3 to 6 }
 
 logo-strip:
 { "headline"?: string, "names": string[] }
 
-product-grid — imageQueries REQUIRED (4–8 strings at section level):
+product-grid, imageQueries REQUIRED (4 to 8 strings at section level):
 { "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description"?: string, "price"?: string, "badge"?: string }] }
 
-feature-showcase — imageQueries REQUIRED (3–4 strings at section level):
+feature-showcase, imageQueries REQUIRED (3 to 4 strings at section level):
 { "eyebrow"?: string, "headline": string, "items": [{ "title": string, "description": string, "cta"?: string }] }
 
 footer:
-{ "tagline": string, "links": string[] × 4–5,
+{ "tagline": string, "links": string[] × 4 to 5,
   "phone"?: string, "email"?: string, "address"?: string, "copyright": string }
 
 ${contactBlock
   ? `═══════════════════════════════════════════════════════
-REAL CONTACT INFO — copy these values EXACTLY into contact-block + footer:
+REAL CONTACT INFO, copy these values EXACTLY into contact-block + footer:
 ${contactBlock}
 ═══════════════════════════════════════════════════════`
   : `CONTACT INFO: None provided. DO NOT include phone, email, address, or hours anywhere in the spec.`}
 
 ${heroVariant && HERO_VARIANT_SCHEMAS[heroVariant] ? `═══════════════════════════════════════════════════════
-PART 9 — HERO VARIANT SCHEMA OVERRIDE
+PART 9, HERO VARIANT SCHEMA OVERRIDE
 ═══════════════════════════════════════════════════════
 The hero section uses variant "${heroVariant}". Write its content using this exact schema:
 ${HERO_VARIANT_SCHEMAS[heroVariant]}
 For all other sections use schemas from PART 8.
 ` : ""}${trustComponents && trustComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 10 — TRUST + CONVERSION SECTION SCHEMAS
+PART 10, TRUST + CONVERSION SECTION SCHEMAS
 ═══════════════════════════════════════════════════════
-The following trust/conversion sections have been added to the template. Write their content using EXACTLY these schemas. These sections appear in the sections array at the positions you see in the template. FABRICATION RULE: these sections exist specifically to build trust — a fabricated trust signal is worse than a missing one. If you cannot populate required fields from real stated data, output empty arrays or omit optional fields.
+The following trust/conversion sections have been added to the template. Write their content using EXACTLY these schemas. These sections appear in the sections array at the positions you see in the template. FABRICATION RULE: these sections exist specifically to build trust, a fabricated trust signal is worse than a missing one. If you cannot populate required fields from real stated data, output empty arrays or omit optional fields.
 ${trustComponents.map((type) => TRUST_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}${showcaseComponents && showcaseComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 11 — SHOWCASE SECTION SCHEMA
+PART 11, SHOWCASE SECTION SCHEMA
 ═══════════════════════════════════════════════════════
-The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data — fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays — the section will be suppressed server-side.
+The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data, fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays, the section will be suppressed server-side.
 ${showcaseComponents.map((type) => SHOWCASE_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}${contentComponents && contentComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 12 — TESTIMONIAL SECTION SCHEMA
+PART 12, TESTIMONIAL SECTION SCHEMA
 ═══════════════════════════════════════════════════════
-A testimonials section is included by default. Check the owner's description for a real quoted customer statement FIRST — if one exists, use real mode (verbatim quote + sourceEvidence). If none exists (the common case), use example mode (clearly generic placeholder content, "example": true) — see the per-mode rules below. Never blend the two: a section is either fully real (every quote verified) or fully example.
+A testimonials section is included by default. Check the owner's description for a real quoted customer statement FIRST, if one exists, use real mode (verbatim quote + sourceEvidence). If none exists (the common case), use example mode (clearly generic placeholder content, "example": true), see the per-mode rules below. Never blend the two: a section is either fully real (every quote verified) or fully example.
 ${contentComponents.map((type) => TESTIMONIAL_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
-ABSOLUTE RULES — NEVER VIOLATE
+ABSOLUTE RULES, NEVER VIOLATE
 ═══════════════════════════════════════════════════════
 1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
-2. Testimonials follow Part 12 exactly — real mode requires a genuine quote + verifiable sourceEvidence; anything else MUST be marked "example": true with generic, non-specific placeholder content. Never present invented content as if it were a real, verified review.
-3. stats-band: real numbers when the owner stated them. When no real statistics exist, still include the section with clearly plausible example numbers for this business type and set "example": true — never present them as verified.
+2. Testimonials follow Part 12 exactly, real mode requires a genuine quote + verifiable sourceEvidence; anything else MUST be marked "example": true with generic, non-specific placeholder content. Never present invented content as if it were a real, verified review.
+3. stats-band: real numbers when the owner stated them. When no real statistics exist, still include the section with clearly plausible example numbers for this business type and set "example": true, never present them as verified.
 4. NEVER invent team member names.
-5. NEVER paraphrase the owner's input as copy — extract intent and write fresh.
+5. NEVER paraphrase the owner's input as copy, extract intent and write fresh.
 6. NEVER use generic headings: "Our Services", "About Us", "Why Choose Us", "Contact Us".
 7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.
 8. NEVER invent commercial promises unless the owner explicitly stated them.
-9. Footer tagline MUST be specific to this business — never a placeholder phrase.
-10. NEVER use an em dash (—), en dash (–), or double-hyphen (--) anywhere in generated copy. Use a period, comma, or a plain hyphen instead.`;
+9. Footer tagline MUST be specific to this business, never a placeholder phrase.
+10. NEVER use an em dash (), en dash ( to ), or double-hyphen (--) anywhere in generated copy. Use a period, comma, or a plain hyphen instead.`;
 }
 
 // ── System prompt (v2: section-based composition with designDNA) ──────────────
 function buildSystem(contactBlock: string, language = "English", hasOwnerPhoto = true, noPhotoMode = false): string {
   const langLine = language && language.toLowerCase() !== "english"
-    ? `LANGUAGE: ALL website copy — every headline, subheadline, button label, body paragraph, form placeholder, and footer text — MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
+    ? `LANGUAGE: ALL website copy, every headline, subheadline, button label, body paragraph, form placeholder, and footer text, MUST be written in ${language}. Do not write a single word of content in English unless the business name itself is English.\n\n`
     : "";
   return `${langLine}You are a senior brand copywriter and web strategist at a premium agency. Your job: analyze a business, then produce a complete website spec as JSON.
 
 STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
 ═══════════════════════════════════════════════════════
-PART 1 — COPYWRITING STANDARDS (read before writing a single word)
+PART 1, COPYWRITING STANDARDS (read before writing a single word)
 ═══════════════════════════════════════════════════════
 
-The owner's description is RAW MATERIAL — intelligence about their business. It is NEVER source text to rephrase.
+The owner's description is RAW MATERIAL, intelligence about their business. It is NEVER source text to rephrase.
 
 YOUR JOB: Read the description. Understand what this business actually does, what its customers care about, and what makes it genuinely worth choosing. Then write FRESH copy that a premium brand's in-house marketing team would be proud of.
 
-TONE MODELS — study these:
+TONE MODELS, study these:
 • compass.com: "Real estate, elevated." Confident, specific, human. Never corporate-speak.
 • studio-mcgee.com: "Design is personal." Warm authority. Every line sounds considered, not generated.
 • f45training.com: "Train. Together." Bold, direct, energetic. Sentences are short and hit hard.
 
-BEFORE (bad — paraphrasing owner input):
+BEFORE (bad, paraphrasing owner input):
 Owner wrote: "every treatment room has a ceiling screen so patients can watch Netflix during procedures"
 BAD headline: "Watch Your Favorite Shows During Your Treatment"
-REASON: this is a verbatim reword of the owner's sentence. It doesn't position the business — it transcribes it.
+REASON: this is a verbatim reword of the owner's sentence. It doesn't position the business, it transcribes it.
 
-AFTER (good — brand copywriting):
+AFTER (good, brand copywriting):
 GOOD headline: "Dentistry That Actually Doesn't Feel Like Dentistry"
 GOOD subheadline: "We've redesigned every detail of the patient experience, from same-day digital scans to ceiling screens in every chair."
 REASON: Speaks to the customer's emotion first, then anchors in specific details.
 
-BAD COPY PATTERNS — never write these:
-✗ "Quality service you can trust" — generic cliché
-✗ "We are committed to excellence" — corporate filler
-✗ "Professional team with years of experience" — says nothing specific
-✗ "We offer a wide range of services" — describes every business ever
-✗ "Welcome to [business name]" as a headline — wasted opportunity
+BAD COPY PATTERNS, never write these:
+✗ "Quality service you can trust", generic cliché
+✗ "We are committed to excellence", corporate filler
+✗ "Professional team with years of experience", says nothing specific
+✗ "We offer a wide range of services", describes every business ever
+✗ "Welcome to [business name]" as a headline, wasted opportunity
 ✗ Section headings like "Our Services", "About Us", "Why Choose Us", "Contact Us"
 
 GOOD COPY PATTERNS:
 ✓ Lead with the customer's problem or desire, then your solution
-✓ Use specific numbers, materials, techniques — real details make copy credible
+✓ Use specific numbers, materials, techniques, real details make copy credible
 ✓ Active voice. Present tense. Short sentences for headlines.
 ✓ Section headlines that read like editorial titles:
   BAD: "Our Services" / GOOD: "Precision, Start to Finish"
   BAD: "About Us" / GOOD: "Built Different From Day One"
 
 ═══════════════════════════════════════════════════════
-PART 2 — JSON ROOT SHAPE
+PART 2, JSON ROOT SHAPE
 ═══════════════════════════════════════════════════════
 
 {
@@ -2147,35 +2147,35 @@ PART 2 — JSON ROOT SHAPE
 }
 
 ═══════════════════════════════════════════════════════
-PART 3 — DESIGN MOODS (choose ONE for designDNA.mood)
+PART 3, DESIGN MOODS (choose ONE for designDNA.mood)
 ═══════════════════════════════════════════════════════
 
-Every mood below is BRIGHT — a warm or neutral near-white background is the
+Every mood below is BRIGHT, a warm or neutral near-white background is the
 site's primary look. There is no dark/black default: the only dark element
 any site ever gets is the footer, which the renderer already handles on its
-own. Never set isDark: true and never propose a black/near-black bg — always
+own. Never set isDark: true and never propose a black/near-black bg, always
 copy the exact bg/text/muted hex values below for the mood you pick.
 
-"editorial-luxury" — Serif headings, off-white/warm body, gold/champagne accent, zero radius, generous whitespace. Cinematic, unhurried. USE FOR: boutique hotel, luxury salon, fine dining, jewellery, fashion boutique, real estate, interior design, legal firm.
+"editorial-luxury", Serif headings, off-white/warm body, gold/champagne accent, zero radius, generous whitespace. Cinematic, unhurried. USE FOR: boutique hotel, luxury salon, fine dining, jewellery, fashion boutique, real estate, interior design, legal firm.
   Palette guide: bg #FAF8F5 · text #1A1A1A · muted #857D72 · isDark: false
 
-"clinical-bright" — All-sans heavy headings, pure white, clinical blue accent, rounded corners (10px+), icon circles. Trust-first, airy. USE FOR: dental clinic, medical practice, physio, dermatology, health centre, vet.
+"clinical-bright", All-sans heavy headings, pure white, clinical blue accent, rounded corners (10px+), icon circles. Trust-first, airy. USE FOR: dental clinic, medical practice, physio, dermatology, health centre, vet.
   Palette guide: bg #FFFFFF · text #0A2540 · muted #64748B · isDark: false
 
-"bold-energetic" — Heavy compressed headings (uppercase), warm off-white bg, vivid/acid accent for contrast. High energy. USE FOR: gym, CrossFit, martial arts, sports brand, nightlife, automotive, streetwear.
+"bold-energetic", Heavy compressed headings (uppercase), warm off-white bg, vivid/acid accent for contrast. High energy. USE FOR: gym, CrossFit, martial arts, sports brand, nightlife, automotive, streetwear.
   Palette guide: bg #FAF9F5 · text #161513 · muted #6B6862 · isDark: false
 
-"warm-minimal" — Light-weight serif or optical-variable heading, warm off-white, muted earth accent, extreme whitespace, no radius. Tactile, quiet luxury. USE FOR: spa, yoga studio, organic café, bakery, florist, holistic wellness, artisan food, hair salon (soft/organic).
+"warm-minimal", Light-weight serif or optical-variable heading, warm off-white, muted earth accent, extreme whitespace, no radius. Tactile, quiet luxury. USE FOR: spa, yoga studio, organic café, bakery, florist, holistic wellness, artisan food, hair salon (soft/organic).
   Palette guide: bg #F7F5F0 · text #3A3730 · muted #6B705C · isDark: false
 
-"tech-sharp" — Geometric sans heading (600-700w), cool near-white bg, bold violet/indigo accent for contrast, subtle glows, tight spacing. Precise, forward-looking. USE FOR: SaaS, tech startup, digital agency, co-working, ed-tech, modern ecommerce.
+"tech-sharp", Geometric sans heading (600-700w), cool near-white bg, bold violet/indigo accent for contrast, subtle glows, tight spacing. Precise, forward-looking. USE FOR: SaaS, tech startup, digital agency, co-working, ed-tech, modern ecommerce.
   Palette guide: bg #F6F7FB · text #15161C · muted #64748B · isDark: false
 
-"dark-premium" — Delicate serif headings (400w), warm ivory bg, warm gold accent, maximum negative space. Cinematic, refined luxury. USE FOR: premium hotel, fine dining (evening), high fashion, exclusive membership.
+"dark-premium", Delicate serif headings (400w), warm ivory bg, warm gold accent, maximum negative space. Cinematic, refined luxury. USE FOR: premium hotel, fine dining (evening), high fashion, exclusive membership.
   Palette guide: bg #F5EFE3 · text #1C1710 · muted #857D72 · isDark: false
 
 ═══════════════════════════════════════════════════════
-PART 4 — FONTS (ONLY these names are valid)
+PART 4, FONTS (ONLY these names are valid)
 ═══════════════════════════════════════════════════════
 
 headingFont and bodyFont MUST be one of:
@@ -2198,7 +2198,7 @@ PAIRING GUIDE:
   dark-premium     → heading: "Playfair Display", body: "Inter"
 
 ═══════════════════════════════════════════════════════
-PART 5 — PALETTE RULES
+PART 5, PALETTE RULES
 ═══════════════════════════════════════════════════════
 
 accent MUST be from this list ONLY. Never invent a hex code outside this table.
@@ -2227,77 +2227,77 @@ WELLNESS / NATURE (yoga, holistic health, organic cafés, wellness retreats):
 If the owner mentions a brand color (e.g. "our logo is green"), pick the closest hex from the table above.
 
 ═══════════════════════════════════════════════════════
-PART 6 — LAYOUT VARIANTS (REQUIRED — always specify a variant)
+PART 6, LAYOUT VARIANTS (REQUIRED, always specify a variant)
 ═══════════════════════════════════════════════════════
 
 Every section has a "variant" field. You MUST set it. Two sites in the same category MUST NOT use the same variant set. Pick variants that suit the business's personality.
 
 hero variants (type = "hero"):
-  "centered-overlay"  — full-bleed image bg, centered overlay text (cinematic; hotel, restaurant, salon, gym)
-  "split-left"        — text left, real photo right, light/dark bg (trust-building; clinic, legal, education)
-  "split-right"       — photo left, text right, mirrored (editorial; realestate, agency, boutique)
-  "editorial-offset"  — oversized headline top-left, image bottom-right, asymmetric whitespace (luxury, fashion, design)
-  "minimal-stacked"   — no image, gradient glow, dark bg (saas, tech, agency — USE "hero-minimal" type for this)
+  "centered-overlay", full-bleed image bg, centered overlay text (cinematic; hotel, restaurant, salon, gym)
+  "split-left", text left, real photo right, light/dark bg (trust-building; clinic, legal, education)
+  "split-right", photo left, text right, mirrored (editorial; realestate, agency, boutique)
+  "editorial-offset", oversized headline top-left, image bottom-right, asymmetric whitespace (luxury, fashion, design)
+  "minimal-stacked", no image, gradient glow, dark bg (saas, tech, agency, USE "hero-minimal" type for this)
 
 feature-grid variants:
-  "three-cards"       — default icon grid (saas features, clinic services)
-  "alternating-rows"  — each feature is a full-width row, alternating sides (agency, consultancy)
-  "numbered-list"     — vertical numbered big figures (law, finance, process-driven)
-  "asymmetric-bento"  — first card large, rest smaller (modern saas, agency)
+  "three-cards", default icon grid (saas features, clinic services)
+  "alternating-rows", each feature is a full-width row, alternating sides (agency, consultancy)
+  "numbered-list", vertical numbered big figures (law, finance, process-driven)
+  "asymmetric-bento", first card large, rest smaller (modern saas, agency)
 
 service-list variants:
-  "editorial-rows"    — horizontal lines, name left / price right (salon, restaurant, spa)
-  "two-column"        — two-column grid of list items (clinic treatments, legal services)
-  "bordered-cards"    — card grid with hover border (gym classes, education courses)
+  "editorial-rows", horizontal lines, name left / price right (salon, restaurant, spa)
+  "two-column", two-column grid of list items (clinic treatments, legal services)
+  "bordered-cards", card grid with hover border (gym classes, education courses)
 
 listings-grid variants:
-  "uniform-grid"      — equal-size cards grid (hotel rooms, menu items)
-  "masonry"           — varying heights, editorial feel (portfolio, boutique hotel)
-  "wide-rows"         — full-width alternating image+text rows (luxury real estate, flagship products)
+  "uniform-grid", equal-size cards grid (hotel rooms, menu items)
+  "masonry", varying heights, editorial feel (portfolio, boutique hotel)
+  "wide-rows", full-width alternating image+text rows (luxury real estate, flagship products)
 
 pricing-tiers variants:
-  "cards-row"         — horizontal cards, one highlighted (saas, gym)
-  "comparison-table"  — feature comparison table (saas, education plans)
-  "single-highlight"  — one large featured tier, smaller secondary options (premium services)
+  "cards-row", horizontal cards, one highlighted (saas, gym)
+  "comparison-table", feature comparison table (saas, education plans)
+  "single-highlight", one large featured tier, smaller secondary options (premium services)
 
 contact-block variants:
-  "split-form"        — left col = heading + contact details, right col = form (default when contact info exists)
-  "centered-form"     — centered heading, horizontal contact details row, centered form (minimal info)
+  "split-form", left col = heading + contact details, right col = form (default when contact info exists)
+  "centered-form", centered heading, horizontal contact details row, centered form (minimal info)
 
 gallery-grid variants:
-  "uniform"           — 3-col equal grid (hotel, restaurant, beauty)
-  "masonry"           — varying heights, editorial (portfolio, design studio, boutique)
-  "full-bleed-strip"  — horizontal scrollable strip (fashion, food, lifestyle)
+  "uniform", 3-col equal grid (hotel, restaurant, beauty)
+  "masonry", varying heights, editorial (portfolio, design studio, boutique)
+  "full-bleed-strip", horizontal scrollable strip (fashion, food, lifestyle)
 
 VARIANT DIVERSITY RULE: If generating multiple sites in the same category, vary the variants. Never use the same combination twice for the same category.
 
 ═══════════════════════════════════════════════════════
-PART 7 — SECTION TYPES + FREE COMPOSITION
+PART 7, SECTION TYPES + FREE COMPOSITION
 ═══════════════════════════════════════════════════════
 
 You choose sections freely to fit the business. MANDATORY: one hero (first) + contact-block (last before footer) + footer.
 
-HERO: Use type "hero" with a variant field (see Part 6). DO NOT use hero-fullbleed, hero-split, hero-minimal as types anymore — use type "hero" with the correct variant.
+HERO: Use type "hero" with a variant field (see Part 6). DO NOT use hero-fullbleed, hero-split, hero-minimal as types anymore, use type "hero" with the correct variant.
 
 OTHER AVAILABLE TYPES:
-  "feature-grid"      — icon+title+description cards. USE: saas features, clinic services, agency capabilities, gym benefits
-  "pricing-tiers"     — pricing cards, one highlighted. USE: saas, gym membership, education plans
-  "service-list"      — service rows with optional price. USE: salon menu, clinic treatments, legal services
-  "gallery-grid"      — photo grid. USE: hotel, restaurant, salon, bakery, portfolio. Requires imageQueries (6 strings).
-  "listings-grid"     — image cards with title/price. USE: hotel rooms, restaurant dishes, real estate. Requires imageQueries (3–6).
-  "about-story"       — text + image: founding story, specific and human. USE: any business with a real story.
-  "team-grid"         — team member cards. USE: clinic, law firm, agency. ONLY if owner named real staff.
-  "stats-band"        — large stat numbers. ONLY if owner provided REAL statistics. NEVER invent.
-  "process-steps"     — numbered steps. USE: agency workflow, legal, medical journey, buying process.
-  "faq-accordion"     — Q&A. USE: clinic, legal, saas. Omit for gyms, restaurants, hotels.
-  "cta-band"          — dark CTA band. USE: saas, gym, agency. Place before contact-block.
-  "contact-block"     — contact form + optional details. ALWAYS last section before footer. MANDATORY.
-  "logo-strip"        — "Trusted by" brand names row. ONLY if owner named real companies/clients.
-  "product-grid"      — product cards with image, name, price, enquire button. USE: ecommerce, boutique. Requires imageQueries (4–8).
-  "feature-showcase"  — alternating big image + text rows. USE: saas, agency, boutique. Requires imageQueries (3–4).
-  "integration-grid"  — integration/tool tiles. USE: saas only.
+  "feature-grid", icon+title+description cards. USE: saas features, clinic services, agency capabilities, gym benefits
+  "pricing-tiers", pricing cards, one highlighted. USE: saas, gym membership, education plans
+  "service-list", service rows with optional price. USE: salon menu, clinic treatments, legal services
+  "gallery-grid", photo grid. USE: hotel, restaurant, salon, bakery, portfolio. Requires imageQueries (6 strings).
+  "listings-grid", image cards with title/price. USE: hotel rooms, restaurant dishes, real estate. Requires imageQueries (3 to 6).
+  "about-story", text + image: founding story, specific and human. USE: any business with a real story.
+  "team-grid", team member cards. USE: clinic, law firm, agency. ONLY if owner named real staff.
+  "stats-band", large stat numbers. ONLY if owner provided REAL statistics. NEVER invent.
+  "process-steps", numbered steps. USE: agency workflow, legal, medical journey, buying process.
+  "faq-accordion", Q&A. USE: clinic, legal, saas. Omit for gyms, restaurants, hotels.
+  "cta-band", dark CTA band. USE: saas, gym, agency. Place before contact-block.
+  "contact-block", contact form + optional details. ALWAYS last section before footer. MANDATORY.
+  "logo-strip", "Trusted by" brand names row. ONLY if owner named real companies/clients.
+  "product-grid", product cards with image, name, price, enquire button. USE: ecommerce, boutique. Requires imageQueries (4 to 8).
+  "feature-showcase", alternating big image + text rows. USE: saas, agency, boutique. Requires imageQueries (3 to 4).
+  "integration-grid", integration/tool tiles. USE: saas only.
 
-COMPOSITION BY CATEGORY (adapt freely — these are patterns, not rules):
+COMPOSITION BY CATEGORY (adapt freely, these are patterns, not rules):
 
 saas → hero (minimal-stacked or split-left) → logo-strip (if data) → feature-grid → feature-showcase → pricing-tiers → integration-grid (if relevant) → faq-accordion → cta-band → contact-block
 SAAS RULES: NEVER include booking form with date/time. NEVER include address. Contact-block must use centered-form variant.
@@ -2319,22 +2319,22 @@ SectionSpec structure (imageQuery/imageQueries MUST be siblings of content, NOT 
 { "type": string, "variant": string, "imageQuery"?: string, "imageQueries"?: string[], "content": object }
 
 ═══════════════════════════════════════════════════════
-PART 7 — IMAGE QUERY RULES
+PART 7, IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 
-${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE — the owner explicitly asked for a photo-free, typography-only design.
+${noPhotoMode ? `NO PHOTOGRAPHY ON THIS SITE, the owner explicitly asked for a photo-free, typography-only design.
 Do NOT write an imageQuery or imageQueries field on ANY section, ever.
 Do NOT include gallery-grid, or any section whose entire value depends on photography.
-Build the design around strong typography, the site's color palette, and icons instead. This is a real, polished design choice the owner asked for, not a fallback.` : `imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3–6 imageQueries).
-DEFAULT BEHAVIOR: this owner has no photos of their own, which means every section needs a real, working imageQuery/imageQueries — do not skip or leave any required field empty just because there's no upload.
+Build the design around strong typography, the site's color palette, and icons instead. This is a real, polished design choice the owner asked for, not a fallback.` : `imageQuery is an Unsplash search string. Required for: hero-fullbleed, hero-split, about-story, gallery-grid (6 imageQueries), listings-grid (3 to 6 imageQueries).
+DEFAULT BEHAVIOR: this owner has no photos of their own, which means every section needs a real, working imageQuery/imageQueries, do not skip or leave any required field empty just because there's no upload.
 
-${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES — describe WHAT THE PHOTO SHOWS, NOT where the business is located:
+${!hasOwnerPhoto ? `BUILD SUBJECT-SPECIFIC QUERIES, describe WHAT THE PHOTO SHOWS, NOT where the business is located:
 
 imageQuery = [VISUAL SUBJECT] [AESTHETIC/MOOD] [QUALITY SUFFIX]
 
 ABSOLUTE RULE: NEVER include city names, country names, or region names in any image query.
 The query describes what appears in the photo, not where the business operates. NEVER a
-mismatched subject from a different industry — no villa exterior or random bathroom/living-room
+mismatched subject from a different industry, no villa exterior or random bathroom/living-room
 interior on a dental clinic site, no locked/closed storefront on any site.
 
 VISUAL SUBJECT = the specific physical thing the photo shows:
@@ -2349,7 +2349,7 @@ VISUAL SUBJECT = the specific physical thing the photo shows:
 • legal → "law firm boardroom dark wood bookshelf" / "attorney office professional editorial"
 • saas/agency → "modern office open workspace bright airy" / "team collaboration studio natural light"
 
-AESTHETIC/MOOD (match to the site mood — all moods are bright; never "dark"/"moody" as the dominant look):
+AESTHETIC/MOOD (match to the site mood, all moods are bright; never "dark"/"moody" as the dominant look):
   editorial-luxury / warm-minimal / dark-premium → "warm editorial" / "natural light" / "minimal clean"
   bold-energetic → "high energy" / "dynamic" / "bright contrast"
   tech-sharp → "clean modern" / "bright minimal" / "precise"
@@ -2368,11 +2368,11 @@ EXAMPLES (zero city/country in any query):
 • Property listing  → "contemporary apartment living room natural light minimal architectural"
 • Gym listing       → "gym equipment dumbbell rack weight training detail editorial"
 
-gallery-grid / listings-grid: vary subject, angle, detail — each query must be distinct.
+gallery-grid / listings-grid: vary subject, angle, detail, each query must be distinct.
 
 ` : `PROCESS:
 1. Extract concrete visual details from owner's description: equipment, materials, ambience, unique features
-2. Build a 4–6 word query: specific subject + aesthetic detail + quality — NEVER city/country/region.
+2. Build a 4 to 6 word query: specific subject + aesthetic detail + quality, NEVER city/country/region.
 3. Self-test: "Could this query pull a street scene or location photo?" → If yes, make it more subject-specific.
 
 EXAMPLES:
@@ -2380,94 +2380,94 @@ EXAMPLES:
 • Gym (HIIT, warehouse, orange lights) → "hiit group fitness warehouse orange lighting dynamic"
 • Restaurant (open fire, exposed brick) → "restaurant open fire grill exposed brick warm dining"
 `}
-gallery-grid / listings-grid imageQueries: all queries MUST be distinct — vary subject, angle, detail, moment.
+gallery-grid / listings-grid imageQueries: all queries MUST be distinct, vary subject, angle, detail, moment.
 
 QUALITY SUFFIX: append one of these to every imageQuery:
   hero/about-story → "bright natural light" or "professional photography" or "editorial minimal"
   gallery/listings → "editorial" or "close-up detail" or "product shot clean background"`}
 
 ═══════════════════════════════════════════════════════
-PART 8 — CONTENT SCHEMAS PER SECTION TYPE
+PART 8, CONTENT SCHEMAS PER SECTION TYPE
 ═══════════════════════════════════════════════════════
 
-hero-fullbleed / hero-split / hero-minimal — imageQuery REQUIRED (except hero-minimal):
-{ "eyebrow": "3–5 words · city or tagline", "headline": "5–8 words punchy brand voice", "subheadline": "1–2 sentences specific and human", "ctaPrimary": "action label", "ctaSecondary"?: "secondary label" }
+hero-fullbleed / hero-split / hero-minimal, imageQuery REQUIRED (except hero-minimal):
+{ "eyebrow": "3 to 5 words · city or tagline", "headline": "5 to 8 words punchy brand voice", "subheadline": "1 to 2 sentences specific and human", "ctaPrimary": "action label", "ctaSecondary"?: "secondary label" }
 
-feature-grid — no imageQuery:
-{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "icon": string, "title": string, "description": string }] × 3–6 }
+feature-grid, no imageQuery:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "icon": string, "title": string, "description": string }] × 3 to 6 }
 icon values: check | star | shield | briefcase | heart | leaf | clock | plus | home | dumbbell | scissors | chef | tooth
 
-pricing-tiers — no imageQuery:
-{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "tiers": [{ "name": string, "price": string, "period": "month"|"year"|"session"|"visit", "features": string[] × 4–6, "ctaText": string, "highlighted": boolean }] × 2–4 }
+pricing-tiers, no imageQuery:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "tiers": [{ "name": string, "price": string, "period": "month"|"year"|"session"|"visit", "features": string[] × 4 to 6, "ctaText": string, "highlighted": boolean }] × 2 to 4 }
 Only ONE tier should have "highlighted": true.
 
-service-list — no imageQuery:
-{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "title": string, "description"?: string, "price"?: string }] × 4–10 }
+service-list, no imageQuery:
+{ "eyebrow"?: string, "headline": string, "subheadline"?: string, "items": [{ "title": string, "description"?: string, "price"?: string }] × 4 to 10 }
 Omit price if the owner hasn't provided pricing.
 
-gallery-grid — imageQueries REQUIRED (6 strings at section level):
+gallery-grid, imageQueries REQUIRED (6 strings at section level):
 { "eyebrow"?: string, "headline": string }
 
-listings-grid — imageQueries REQUIRED (3–6 strings at section level):
+listings-grid, imageQueries REQUIRED (3 to 6 strings at section level):
 { "eyebrow"?: string, "headline": string, "items": [{ "title": string, "subtitle"?: string, "description"?: string, "price"?: string }] × same count as imageQueries }
 Omit price if not provided by owner.
 
-about-story — imageQuery REQUIRED:
-{ "eyebrow"?: string, "headline": string (editorial title), "body": string (2 sentences, brand voice, specific), "bullets"?: [{ "title": string, "text": string }] × 2–4, "ctaText"?: string }
+about-story, imageQuery REQUIRED:
+{ "eyebrow"?: string, "headline": string (editorial title), "body": string (2 sentences, brand voice, specific), "bullets"?: [{ "title": string, "text": string }] × 2 to 4, "ctaText"?: string }
 
-team-grid — no imageQuery:
-{ "eyebrow"?: string, "headline": string, "members": [{ "name": string, "role": string, "bio"?: string }] × 3–4 }
+team-grid, no imageQuery:
+{ "eyebrow"?: string, "headline": string, "members": [{ "name": string, "role": string, "bio"?: string }] × 3 to 4 }
 Only include real team members mentioned by the owner. Never invent names.
 
-stats-band — no imageQuery:
-{ "items": [{ "value": string, "label": string }] × 3–5 }
+stats-band, no imageQuery:
+{ "items": [{ "value": string, "label": string }] × 3 to 5 }
 ONLY include if owner has provided REAL statistics. Never invent numbers.
 
-process-steps — no imageQuery:
-{ "eyebrow"?: string, "headline": string, "steps": [{ "title": string, "description": string }] × 3–5 }
+process-steps, no imageQuery:
+{ "eyebrow"?: string, "headline": string, "steps": [{ "title": string, "description": string }] × 3 to 5 }
 
-faq-accordion — no imageQuery:
-{ "eyebrow"?: string, "headline": string, "items": [{ "q": string, "a": string }] × 5–8 }
+faq-accordion, no imageQuery:
+{ "eyebrow"?: string, "headline": string, "items": [{ "q": string, "a": string }] × 5 to 8 }
 
-cta-band — no imageQuery:
-{ "headline": string (punchy 6–10 words), "sub"?: string, "ctaText": string }
+cta-band, no imageQuery:
+{ "headline": string (punchy 6 to 10 words), "sub"?: string, "ctaText": string }
 
-contact-block — no imageQuery:
+contact-block, no imageQuery:
 {
   "eyebrow"?: string,
   "headline": string,
   "subheadline"?: string,
-  "phone": string (ONLY from REAL CONTACT INFO — else omit entirely),
-  "email": string (ONLY from REAL CONTACT INFO — else omit entirely),
-  "address": string (ONLY from REAL CONTACT INFO — else omit entirely),
-  "hours": string (ONLY from REAL CONTACT INFO — else omit entirely),
+  "phone": string (ONLY from REAL CONTACT INFO, else omit entirely),
+  "email": string (ONLY from REAL CONTACT INFO, else omit entirely),
+  "address": string (ONLY from REAL CONTACT INFO, else omit entirely),
+  "hours": string (ONLY from REAL CONTACT INFO, else omit entirely),
   "ctaText": string,
-  "services"?: string[] × 3–6
+  "services"?: string[] × 3 to 6
 }
 
-footer — no imageQuery:
+footer, no imageQuery:
 {
   "tagline": string (one-line brand summary),
-  "links": string[] × 4–5,
-  "phone": string (ONLY from REAL CONTACT INFO — else omit),
-  "email": string (ONLY from REAL CONTACT INFO — else omit),
-  "address": string (ONLY from REAL CONTACT INFO — else omit),
+  "links": string[] × 4 to 5,
+  "phone": string (ONLY from REAL CONTACT INFO, else omit),
+  "email": string (ONLY from REAL CONTACT INFO, else omit),
+  "address": string (ONLY from REAL CONTACT INFO, else omit),
   "copyright": string
 }
 
 ${contactBlock
   ? `═══════════════════════════════════════════════════════
-REAL CONTACT INFO — copy these values EXACTLY into contact-block + footer:
+REAL CONTACT INFO, copy these values EXACTLY into contact-block + footer:
 ${contactBlock}
 ═══════════════════════════════════════════════════════`
   : `CONTACT INFO: None provided. DO NOT include phone, email, address, or hours anywhere in the spec.`
 }
 
 ═══════════════════════════════════════════════════════
-ABSOLUTE RULES — NEVER VIOLATE
+ABSOLUTE RULES, NEVER VIOLATE
 ═══════════════════════════════════════════════════════
 1. NEVER invent phone numbers, email addresses, physical addresses, or hours. Use only "REAL CONTACT INFO". Never write "555-0100", "info@business.com", "123 Main St", or any placeholder.
-2. NEVER include testimonials or star ratings. If you must mention social proof, do so abstractly in copy — never fabricate quotes or names.
+2. NEVER include testimonials or star ratings. If you must mention social proof, do so abstractly in copy, never fabricate quotes or names.
 3. NEVER include stats-band with invented numbers. Real statistics only, or omit the section entirely.
 4. NEVER invent team member names. Only include team-grid if the owner named real staff.
 5. NEVER paraphrase the owner's input as copy. Extract intent and write fresh brand copy.
@@ -2475,7 +2475,7 @@ ABSOLUTE RULES — NEVER VIOLATE
 7. imageQuery / imageQueries MUST be siblings of content{}, never nested inside it.
 8. NEVER invent commercial promises: no "free trial", "money-back guarantee", "risk-free", "no commitment", "cancel anytime", "discount", "% off", "limited time offer", or delivery/shipping promises unless the owner explicitly stated them.
 9. Footer tagline MUST be specific to this business and its actual offerings. NEVER write generic phrases like "professional services in your city", "[category name] services", "serving [city]", or any placeholder. Write a real one-line brand summary.
-10. NEVER use an em dash (—), en dash (–), or double-hyphen (--) anywhere in generated copy. Use a period, comma, or a plain hyphen instead.`;
+10. NEVER use an em dash (), en dash ( to ), or double-hyphen (--) anywhere in generated copy. Use a period, comma, or a plain hyphen instead.`;
 }
 
 // ── Classify message: revision command vs. conversational question ─────────────
@@ -2492,7 +2492,7 @@ Decide:
 - If the user wants to CHANGE something on the site (redesign, update copy, change colors/fonts, add/remove sections, make it darker/lighter/more modern, etc.) → respond: { "action": "revise" }
 - If the user is asking a QUESTION or having a CONVERSATION (why a color was chosen, what font was used, design suggestions, how the builder works, small talk, etc.) → respond: { "action": "chat", "reply": "YOUR REPLY" }
 
-For "chat" replies: be warm and helpful. Reference specific aspects of the site from the spec. Keep it concise (2–4 sentences). If relevant, suggest a specific edit they could try. Never use an em dash (—), en dash (–), or double-hyphen (--) in the reply — use a period, comma, or plain hyphen instead.
+For "chat" replies: be warm and helpful. Reference specific aspects of the site from the spec. Keep it concise (2 to 4 sentences). If relevant, suggest a specific edit they could try. Never use an em dash (), en dash ( to ), or double-hyphen (--) in the reply, use a period, comma, or plain hyphen instead.
 
 Respond ONLY with valid JSON.`;
 
@@ -2524,7 +2524,7 @@ Respond ONLY with valid JSON.`;
 
 function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string {
   const noPhotoNote = hasOwnerPhoto ? "" :
-    "\nNO OWNER PHOTOS: When regenerating imageQuery values, use atmospheric/abstract queries — never identifiable business-specific shots (no specific interiors, storefronts, or team-at-location). Use the same atmospheric-query rule as original generation.";
+    "\nNO OWNER PHOTOS: When regenerating imageQuery values, use atmospheric/abstract queries, never identifiable business-specific shots (no specific interiors, storefronts, or team-at-location). Use the same atmospheric-query rule as original generation.";
   // FIX 1 (round 2): this revision path was the actual source of the reported
   // Gallery bug -- any change requested after the first successful generation
   // (e.g. "add a gallery") comes through here, and it previously had no
@@ -2542,7 +2542,7 @@ function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string 
   // being rewritten as part of the requested change.
   const imageInstruction = noPhotoMode
     ? `IMAGES: This site has NO photography and the owner did not ask for stock photos. Do NOT add imageQuery or imageQueries to any section. Do NOT add gallery-grid or any section that depends on photography. If the existing spec has imageQuery/imageQueries fields, remove them. Use typography, color, and icons instead.`
-    : `IMAGE QUERIES — DO NOT CHANGE UNLESS ASKED: Copy every section's existing imageQuery/imageQueries through UNCHANGED by default. Only write a new imageQuery/imageQueries value for a section if EITHER (a) the change request specifically concerns images/photos (e.g. "change the photo", "add more images", "use a different hero picture"), OR (b) you are rewriting that section's entire content as the requested change (e.g. the request replaces what that section is about, not just a wording tweak) and the old image query no longer matches the new content. A section the owner did not mention, and whose content you are not rewriting, MUST keep its exact existing imageQuery/imageQueries value — do not "refresh" or "improve" it as a side effect.${noPhotoNote}`;
+    : `IMAGE QUERIES, DO NOT CHANGE UNLESS ASKED: Copy every section's existing imageQuery/imageQueries through UNCHANGED by default. Only write a new imageQuery/imageQueries value for a section if EITHER (a) the change request specifically concerns images/photos (e.g. "change the photo", "add more images", "use a different hero picture"), OR (b) you are rewriting that section's entire content as the requested change (e.g. the request replaces what that section is about, not just a wording tweak) and the old image query no longer matches the new content. A section the owner did not mention, and whose content you are not rewriting, MUST keep its exact existing imageQuery/imageQueries value, do not "refresh" or "improve" it as a side effect.${noPhotoNote}`;
   // Round L FIX 5: the round-5 fix above only ever addressed imageQuery
   // drift via a prompt instruction -- confirmed live that the SAME class of
   // bug still happens for other fields (an unrelated section's text or
@@ -2557,44 +2557,44 @@ function buildReviseSystem(hasOwnerPhoto: boolean, noPhotoMode = false): string 
   // whether it drifted through this instruction or not, no untouched
   // section can ever end up different, because it defers to the code check, not just the prompt.
   return `You are editing a website JSON spec. Apply ONLY the requested change. Return the complete updated JSON.
-STRICT: Output ONLY valid JSON — no markdown, no explanation, no code fences.
+STRICT: Output ONLY valid JSON, no markdown, no explanation, no code fences.
 ABSOLUTE: Never invent contact information. Never add testimonials. Preserve all real contact info from the existing spec.
-CONTENT RULES: Never invent commercial terms the owner did not state — no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided. Never use an em dash (—), en dash (–), or double-hyphen (--) anywhere in copy — use a period, comma, or plain hyphen instead.
+CONTENT RULES: Never invent commercial terms the owner did not state, no discount percentages, prices, "Start Free Trial", "Book Now", "24/7", "best in [city]", limited-time offers, or similar promises. Only use terms the owner explicitly provided. Never use an em dash (), en dash ( to ), or double-hyphen (--) anywhere in copy, use a period, comma, or plain hyphen instead.
 ${imageInstruction}
-SCOPE — MANDATORY: the "Current spec" sections array is 0-indexed. Determine exactly which section index(es) the requested change actually concerns (usually just one). Copy every OTHER section through with byte-for-byte identical content, imageQuery/imageQueries, and every other field -- do not paraphrase, "improve", reformat, or refresh anything in a section the request did not name or clearly imply. In your JSON response, include a top-level "touchedSectionIndices" array listing ONLY the 0-based index/indices of the section(s) you actually changed (e.g. "touchedSectionIndices": [2]). If you are adding or removing a section (changing the array length), still list the indices of any EXISTING sections whose content you intentionally changed, if any -- an empty array means every existing section's content is unchanged from the current spec.`;
+SCOPE, MANDATORY: the "Current spec" sections array is 0-indexed. Determine exactly which section index(es) the requested change actually concerns (usually just one). Copy every OTHER section through with byte-for-byte identical content, imageQuery/imageQueries, and every other field -- do not paraphrase, "improve", reformat, or refresh anything in a section the request did not name or clearly imply. In your JSON response, include a top-level "touchedSectionIndices" array listing ONLY the 0-based index/indices of the section(s) you actually changed (e.g. "touchedSectionIndices": [2]). If you are adding or removing a section (changing the array length), still list the indices of any EXISTING sections whose content you intentionally changed, if any -- an empty array means every existing section's content is unchanged from the current spec.`;
 }
 
 // ── Conversational intake: DECISION only (ask vs generate) ───────────────────
 const INTAKE_DECISION_SYSTEM = `You are deciding whether to ask ONE clarifying question before building a website, or whether you already have enough to proceed.
 
-Respond ONLY with valid JSON — exactly one of:
+Respond ONLY with valid JSON, exactly one of:
   { "action": "ask", "question": "..." }   ← ask ONE question when a required field is missing
   { "action": "generate" }                 ← ONLY when ALL five fields are genuinely satisfied
 
-REQUIRED FIELDS — collect in this exact order, one question per turn:
+REQUIRED FIELDS, collect in this exact order, one question per turn:
 
-1. LANGUAGE — "Which language should your website be in? (English, Arabic, French, Spanish…)"
+1. LANGUAGE, "Which language should your website be in? (English, Arabic, French, Spanish…)"
    Skip ONLY if: (a) context says "LANGUAGE ALREADY SELECTED via UI", OR
                  (b) the user's messages explicitly name a language (e.g. "in Arabic", "en français"), OR
                  (c) the user is writing in a non-English language (their message language IS the answer).
 
-2. BUSINESS NAME — Ask always: "What's your business called?" Never insert a business type into this question.
+2. BUSINESS NAME, Ask always: "What's your business called?" Never insert a business type into this question.
    Skip ONLY if: a specific business name (proper noun) is already stated in the conversation.
 
-3. WHAT THEY OFFER — their specific services, menu items, specialties, or products
+3. WHAT THEY OFFER, their specific services, menu items, specialties, or products
    Skip ONLY if: the owner has explicitly described their offerings in the conversation (e.g. listed services, menu, products).
-   Do NOT skip based on business category alone — even "coffee shop", "café", "hair salon", "gym", "restaurant", or "bakery" benefit from knowing specific offerings (specialty drinks, menu, class types, treatment menu, etc.). The category name is never enough.
+   Do NOT skip based on business category alone, even "coffee shop", "café", "hair salon", "gym", "restaurant", or "bakery" benefit from knowing specific offerings (specialty drinks, menu, class types, treatment menu, etc.). The category name is never enough.
    The ONLY exceptions where category alone is sufficient: "dentist / dental clinic" or "pharmacy" (services are identical everywhere).
 
-4. LOCATION + CONTACT — city or neighbourhood AND a phone number or email address
+4. LOCATION + CONTACT, city or neighbourhood AND a phone number or email address
    Ask in one natural question covering BOTH: e.g. "Where are you located, and how can customers reach you? (city + a phone number or email)"
    Skip ONLY if: BOTH a location (city or neighbourhood) AND at least one contact method (phone or email) are already stated in the conversation.
-   City alone without contact does NOT satisfy this — still ask.
-   Phone/email alone without city does NOT satisfy this — still ask.
+   City alone without contact does NOT satisfy this, still ask.
+   Phone/email alone without city does NOT satisfy this, still ask.
    Exception: if user explicitly says "skip", "no", or "I'll add it later" for either part, that satisfies this field.
 
-5. PHOTOS (optional — ask only ONCE, after fields 1–4 are satisfied):
-   Ask exactly: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I'll use professional stock photography that matches your business — just let me know if you'd rather have a clean, photo-free design instead."
+5. PHOTOS (optional, ask only ONCE, after fields 1 to 4 are satisfied):
+   Ask exactly: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I'll use professional stock photography that matches your business, just let me know if you'd rather have a clean, photo-free design instead."
    Skip if: context says "IMAGE ALREADY ATTACHED", OR photos were already discussed or offered in the conversation.
    After this question is asked once (even if unanswered), OR if user says "no" / "skip" / "just build it" / "use stock" → respond { "action": "generate" }.
 
@@ -2631,10 +2631,10 @@ async function checkNeedsMoreInfo(
   // Tell the intake the known context flags so GPT can skip appropriately.
   const contextLines = [
     languageChosen
-      ? `LANGUAGE ALREADY SELECTED via UI: "${chosenLanguage}" — skip the language question.`
+      ? `LANGUAGE ALREADY SELECTED via UI: "${chosenLanguage}", skip the language question.`
       : "",
     imageBase64
-      ? "IMAGE ALREADY ATTACHED by user — skip the photos question (field 5)."
+      ? "IMAGE ALREADY ATTACHED by user, skip the photos question (field 5)."
       : "",
     currentUserMessage ? `User's latest message: ${currentUserMessage}` : "",
   ].filter(Boolean).join("\n");
@@ -2882,7 +2882,7 @@ function resolveNoPhotoMode(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any;
 
-// ── Plan-level website limits — reads from the single source of truth ────────
+// ── Plan-level website limits, reads from the single source of truth ────────
 // PLAN_CONFIG is imported from plan-config.ts; do NOT maintain a separate dict.
 const PLAN_WEBSITE_LIMITS = PLAN_CONFIG as Record<string, { websites: number }>;
 
@@ -2996,7 +2996,7 @@ export async function POST(req: NextRequest) {
     let extractedContact: { phone?: string; email?: string } = {};
     let fullContextText = msgText; // overwritten with accumulated history in initial-generate path
     let designStrategy: DesignStrategy | null = null;
-    // Phase 2e — nav/footer variants (default to standard; overridden in initial-generate path)
+    // Phase 2e, nav/footer variants (default to standard; overridden in initial-generate path)
     let selectedNavVariant = "";
     let selectedFooterVariant = "";
     // Round L FIX 5 (part 2): set only in the edit-mode revise branch below,
@@ -3168,7 +3168,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ question });
       }
 
-      // ── Ready to generate — concatenate ALL user answers from every turn ───
+      // ── Ready to generate, concatenate ALL user answers from every turn ───
       const fullDescription = buildAccumulatedDescription(priorChat, msgText);
       fullContextText = fullDescription; // use for image query city extraction
       // noPhotoMode is computed once, up front, from the full request (see top
@@ -3195,7 +3195,7 @@ export async function POST(req: NextRequest) {
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenant?.id ?? "");
 
-      // Hero pool selection — pick the best variant for this business before GPT runs
+      // Hero pool selection, pick the best variant for this business before GPT runs
       const heroAvailableData = extractHeroAvailableData(fullDescription);
       const selectedHeroVariant = selectHeroVariant(designStrategy, heroAvailableData);
 
@@ -3216,7 +3216,7 @@ export async function POST(req: NextRequest) {
       const selectedTestimonialType = selectTestimonialComponent(designStrategy, contentAvailableData);
       const selectedGalleryVariant = selectGalleryVariant(designStrategy);
       const selectedFaqVariant = selectFaqVariant(designStrategy);
-      // Phase 2e — nav/footer variant pool
+      // Phase 2e, nav/footer variant pool
       selectedNavVariant = selectNavVariant(designStrategy);
       selectedFooterVariant = selectFooterVariant(designStrategy);
       console.log(`[website/generate] contentPool: testimonial=${selectedTestimonialType ?? "none"} galleryVariant=${selectedGalleryVariant} faqVariant=${selectedFaqVariant || "default"}`);
@@ -3297,7 +3297,7 @@ export async function POST(req: NextRequest) {
         selectedTemplate = { ...selectedTemplate, sections: patchedSections };
       }
 
-      console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} heroVariant=${selectedHeroVariant ?? "template-default"} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || "–"}${s.required ? "" : "?"}`).join(", ")}]`);
+      console.log(`[website/generate] classify=${templateCategory} template=${selectedTemplate.id} heroVariant=${selectedHeroVariant ?? "template-default"} sections=[${selectedTemplate.sections.map((s) => `${s.type}/${s.variant || " to "}${s.required ? "" : "?"}`).join(", ")}]`);
 
       // Step 2: fill content within fixed template structure
       const userContent = buildUserContent("", "", "", fullDescription, effectiveLanguage);
@@ -3328,7 +3328,7 @@ export async function POST(req: NextRequest) {
       verifyShowcaseComponents(spec);
       // Phase 2d: remove testimonial sections where sourceEvidence doesn't match description
       verifyContentComponents(spec, fullDescription);
-      console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || "–"}`).join(", ")}]`);
+      console.log(`[website/generate] enforced sections=[${spec.sections.map((s) => `${s.type}/${(s as { variant?: string }).variant || " to "}`).join(", ")}]`);
     }
 
     // Strip any testimonials or stats-band with fabricated data that slipped through
@@ -3357,9 +3357,9 @@ export async function POST(req: NextRequest) {
     const HERO_TYPES_ALL = ["hero", "hero-fullbleed", "hero-split", "hero-minimal"];
     const CONTACT_TYPES_ALL = ["booking", "contact-block"];
 
-    // Guarantee hero — covers both v1 and v2 hero types
+    // Guarantee hero, covers both v1 and v2 hero types
     if (!spec.sections.some((s) => HERO_TYPES_ALL.includes(s.type))) {
-      // Omit subheadline when we have no real data — never render placeholder text
+      // Omit subheadline when we have no real data, never render placeholder text
       const heroSub = (industry && city) ? `${industry} in ${city}.` : (industry || null);
       spec.sections.unshift({
         type: "hero-fullbleed",
@@ -3378,12 +3378,12 @@ export async function POST(req: NextRequest) {
       const effPhone   = extractedContact.phone   || contactInfo?.phone;
       const effEmail   = extractedContact.email   || contactInfo?.email;
       const effAddress = contactInfo?.address;
-      // Build a specific tagline from real data only — never use placeholder phrases
+      // Build a specific tagline from real data only, never use placeholder phrases
       const taglineParts = [spec.businessName || businessName, industry].filter(Boolean);
       spec.sections.push({
         type: "footer",
         content: {
-          tagline: taglineParts.join(" — "),
+          tagline: taglineParts.join(", "),
           ...(effPhone   ? { phone:   effPhone }   : {}),
           ...(effEmail   ? { email:   effEmail }   : {}),
           ...(effAddress ? { address: effAddress } : {}),
@@ -3391,7 +3391,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Guarantee contact section exists — covers both v1 "booking" and v2 "contact-block"
+    // Guarantee contact section exists, covers both v1 "booking" and v2 "contact-block"
     if (!spec.sections.some((s) => CONTACT_TYPES_ALL.includes(s.type))) {
       // Insert before footer
       const footerIdx = spec.sections.findIndex((s) => s.type === "footer");
@@ -3539,7 +3539,7 @@ export async function POST(req: NextRequest) {
 
       const sites = (existingSites ?? []) as { id: string; slug: string; name: string; is_published: boolean }[];
 
-      // FIX 2: UUID slug pattern — re-derive if slug is missing or UUID-shaped
+      // FIX 2: UUID slug pattern, re-derive if slug is missing or UUID-shaped
       const slugIsUuid = (slug: string) =>
         !slug || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
 
@@ -3556,7 +3556,7 @@ export async function POST(req: NextRequest) {
 
       if (!websiteId) {
         // For revisions without a websiteId (edge case), fall back to the existing site.
-        // For new generates (isGenerate=true), always create a fresh website — never reuse.
+        // For new generates (isGenerate=true), always create a fresh website, never reuse.
         if (!isGenerate) {
           const first = sites[0];
           if (first) {
@@ -3567,7 +3567,7 @@ export async function POST(req: NextRequest) {
           }
         }
         if (!websiteId) {
-          // Creating a brand-new website — check plan limit
+          // Creating a brand-new website, check plan limit
           const planId = (tenant?.plan as string | undefined) ?? "starter";
           const limit  = PLAN_WEBSITE_LIMITS[planId]?.websites ?? 0;
           if (sites.length >= limit) {
@@ -3602,7 +3602,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Phase 2e — stamp nav/footer variant pool selections onto spec before render
+    // Phase 2e, stamp nav/footer variant pool selections onto spec before render
     spec.navVariant    = selectedNavVariant;
     spec.footerVariant = selectedFooterVariant;
 
@@ -3638,7 +3638,7 @@ export async function POST(req: NextRequest) {
         })
         .eq("id", websiteId);
       if (draftErr) {
-        console.error("[website/generate] draft save FAILED — aborting request:", draftErr.code, draftErr.message);
+        console.error("[website/generate] draft save FAILED, aborting request:", draftErr.code, draftErr.message);
         return NextResponse.json(
           { error: "Failed to save your website. Please try again." },
           { status: 500 }
@@ -3708,7 +3708,7 @@ export async function POST(req: NextRequest) {
       html, websiteId, slug: siteSlug, name: siteName, isPublished: siteIsPublished,
       ...(Object.keys(extractedContact).length > 0 ? { intake: extractedContact } : {}),
       ...(imageInsertFailed ? {
-        reply: "I updated the site, but I wasn't able to find a matching photo just now (the image search didn't return a usable result). Everything else went through — try asking again in a moment, or describe the photo you want differently.",
+        reply: "I updated the site, but I wasn't able to find a matching photo just now (the image search didn't return a usable result). Everything else went through, try asking again in a moment, or describe the photo you want differently.",
       } : {}),
     });
   } catch (err) {
@@ -3728,22 +3728,22 @@ export async function POST(req: NextRequest) {
       apiErr.status === 402 ? "insufficient_quota" : "unknown"
     );
     const userMsg =
-      errType === "invalid_api_key"    ? "AI configuration error — please contact support." :
-      errType === "insufficient_quota" ? "AI quota exceeded — please top up OpenAI credits." :
-      errType === "rate_limited"       ? "AI is temporarily busy — please try again in a moment." :
-                                         "Website generation temporarily unavailable — please try again.";
+      errType === "invalid_api_key"    ? "AI configuration error, please contact support." :
+      errType === "insufficient_quota" ? "AI quota exceeded, please top up OpenAI credits." :
+      errType === "rate_limited"       ? "AI is temporarily busy, please try again in a moment." :
+                                         "Website generation temporarily unavailable, please try again.";
     return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }
 
 function buildUserContent(businessName: string, industry: string, city: string, msgText: string, language = "English"): string {
-  // User's description is the authoritative source — profile fields are fallback hints only.
+  // User's description is the authoritative source, profile fields are fallback hints only.
   // By putting the description first, GPT extracts brand/type/location from what the user
   // actually said rather than from stale account-profile metadata.
   return [
     language && language.toLowerCase() !== "english" ? `Site language: ${language}` : "",
     `Owner's description:\n${msgText}`,
-    businessName ? `Business name (account profile — use only if not already clear from description): ${businessName}` : "",
+    businessName ? `Business name (account profile, use only if not already clear from description): ${businessName}` : "",
     industry ? `Industry (account profile): ${industry}` : "",
     city ? `City (account profile): ${city}` : "",
   ].filter(Boolean).join("\n");

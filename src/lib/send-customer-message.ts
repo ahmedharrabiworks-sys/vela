@@ -68,14 +68,14 @@ export async function sendCustomerMessage(
       .eq("is_active", true)
       .maybeSingle();
     if (!wa?.phone_number_id || !wa?.access_token) {
-      return { ok: true, channelError: "WhatsApp account not connected — message saved to history only." };
+      return { ok: true, channelError: "WhatsApp account not connected, message saved to history only." };
     }
     let customerPhone: string | null = null;
     if (conv.lead_id) {
       const { data: lead } = await admin.from("leads").select("phone").eq("id", conv.lead_id).maybeSingle();
       customerPhone = (lead as { phone: string | null } | null)?.phone ?? null;
     }
-    if (!customerPhone) return { ok: true, channelError: "Customer phone number not on file — message saved to history only." };
+    if (!customerPhone) return { ok: true, channelError: "Customer phone number not on file, message saved to history only." };
     try {
       await sendWhatsAppMessage(wa.phone_number_id, wa.access_token, customerPhone, text.trim());
     } catch (err) {
@@ -94,9 +94,9 @@ export async function sendCustomerMessage(
     type CfgRow = { instagram_page_id?: string | null; instagram_access_token?: string | null };
     const pageId = (cfg as CfgRow | null)?.instagram_page_id;
     const pageToken = (cfg as CfgRow | null)?.instagram_access_token;
-    if (!pageId || !pageToken) return { ok: true, channelError: "Instagram not connected — message saved to history only." };
+    if (!pageId || !pageToken) return { ok: true, channelError: "Instagram not connected, message saved to history only." };
     const recipientId = conv.customer_name as string | null;
-    if (!recipientId) return { ok: true, channelError: "Customer Instagram ID not available — message saved to history only." };
+    if (!recipientId) return { ok: true, channelError: "Customer Instagram ID not available, message saved to history only." };
     try {
       await sendInstagramMessage(pageId, pageToken, recipientId, text.trim());
     } catch (err) {

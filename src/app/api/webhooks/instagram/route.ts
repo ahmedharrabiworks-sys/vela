@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const token     = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  // Fail closed — hardcoded fallback removed; META_WEBHOOK_VERIFY_TOKEN must be set in env.
+  // Fail closed, hardcoded fallback removed; META_WEBHOOK_VERIFY_TOKEN must be set in env.
   // Without it this endpoint cannot safely validate Meta's challenge request.
   const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
   if (!verifyToken) {
@@ -27,13 +27,13 @@ export async function GET(req: NextRequest) {
 
 // ── Rejected-request log rate limiter ───────────────────────────────────────
 // Diagnostic round: signature verification now accepts either of two real
-// Meta app secrets (see POST below), and every attempt — including rejected
-// ones — is logged so a real Meta delivery vs. a misconfigured/forged one
+// Meta app secrets (see POST below), and every attempt, including rejected
+// ones, is logged so a real Meta delivery vs. a misconfigured/forged one
 // can be told apart from real evidence instead of guessing. Rejected
 // requests are cheap to spam (no secret required to hit the endpoint), so
-// only REJECTED-outcome inserts are capped by IP — real, signature-verified
+// only REJECTED-outcome inserts are capped by IP, real, signature-verified
 // events always log. Same in-memory per-IP pattern already used throughout
-// this codebase (site/track/route.ts, ai/reply/route.ts) — no shared
+// this codebase (site/track/route.ts, ai/reply/route.ts), no shared
 // rate-limit module exists to import.
 const REJECT_LOG_RATE_MAP = new Map<string, { count: number; windowStart: number }>();
 const REJECT_LOG_RATE_LIMIT = 20;
@@ -66,17 +66,17 @@ type WebhookOutcome =
   | "handled_ok";
 
 // webhook_logs' real columns (migration_v5.sql): id, tenant_id, channel,
-// event_type, payload (JSONB), processed, created_at — no dedicated
+// event_type, payload (JSONB), processed, created_at, no dedicated
 // "outcome" column exists, so outcome metadata is stored inside payload
-// (per this round's instruction: never invent schema, ask instead — a
+// (per this round's instruction: never invent schema, ask instead, a
 // jsonb column already covers this, so no migration is needed).
 //
-// Best-effort — wrapped so a logging failure can never change the HTTP
+// Best-effort, wrapped so a logging failure can never change the HTTP
 // response Meta receives or block it. Rejected outcomes store metadata
 // ONLY, never the raw request body/payload (nothing to leak: an unverified
 // request's "payload" isn't trustworthy anyway). Accepted/handled outcomes
 // store no more message content than the code already stored before this
-// fix — the full verified Meta payload, same as today, with the outcome
+// fix, the full verified Meta payload, same as today, with the outcome
 // metadata merged alongside it.
 async function logWebhookAttempt(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,7 +100,7 @@ async function logWebhookAttempt(
   );
 
   if (isRejected && isRejectLogRateLimited(opts.ip)) {
-    console.log(`[ig-webhook] rejected-log suppressed — IP rate limit reached`);
+    console.log(`[ig-webhook] rejected-log suppressed, IP rate limit reached`);
     return;
   }
 
@@ -138,15 +138,15 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  // ── Signature verification — accepts EITHER of our two real Meta app
+  // ── Signature verification, accepts EITHER of our two real Meta app
   // secrets, fail closed ────────────────────────────────────────────────────
   // Diagnostic finding this round: Instagram Business Login lives under a
   // dedicated Meta App (META_INSTAGRAM_APP_ID/SECRET), separate from the
   // general app used for WhatsApp (META_APP_ID/SECRET, confirmed via a live
   // Graph API /{app-id}/subscriptions call to have ONLY a
-  // whatsapp_business_account subscription — no "instagram" object at all).
+  // whatsapp_business_account subscription, no "instagram" object at all).
   // Whichever app actually owns the "instagram" object's webhook config in
-  // Meta's dashboard is the one whose secret signs real incoming events —
+  // Meta's dashboard is the one whose secret signs real incoming events, 
   // this route no longer assumes it's META_APP_SECRET. Never logs which
   // secret value matched, only a label ("main" | "instagram").
   const candidates: { label: "main" | "instagram"; secret: string }[] = [];
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
   if (process.env.META_INSTAGRAM_APP_SECRET) candidates.push({ label: "instagram", secret: process.env.META_INSTAGRAM_APP_SECRET });
 
   if (candidates.length === 0) {
-    console.error("[webhook/instagram POST] No signing secrets configured (META_APP_SECRET / META_INSTAGRAM_APP_SECRET) — rejecting request");
+    console.error("[webhook/instagram POST] No signing secrets configured (META_APP_SECRET / META_INSTAGRAM_APP_SECRET), rejecting request");
     await logWebhookAttempt(admin, {
       outcome: "rejected_no_secrets", matchedSecret: null, object: null,
       entryIds: [], changeFieldsOrMessagingSeen: [], bodyLength: body.length, tenantId: null, ip,
@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
     payload = JSON.parse(body);
   } catch {
     // Unreachable without already knowing a real secret (signature above is
-    // already verified at this point) — not part of the rejected_* taxonomy
+    // already verified at this point), not part of the rejected_* taxonomy
     // since it isn't an auth failure. Response unchanged from before this fix.
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── DM reply loop ─────────────────────────────────────────────────────────────
-  // Errors at each step are isolated — they must never prevent the 200 ACK to Meta.
+  // Errors at each step are isolated, they must never prevent the 200 ACK to Meta.
   if (tenantId) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 
@@ -253,10 +253,10 @@ export async function POST(req: NextRequest) {
         const msgId    = msg?.message?.mid;
 
         if (!senderId || !msgText) continue;
-        if (msgText.length > 2000) continue; // input cap — Hard Rule 2
+        if (msgText.length > 2000) continue; // input cap, Hard Rule 2
 
         // CRITICAL FIX (duplicate messages): same root cause and fix as
-        // webhooks/whatsapp — see webhook-idempotency.ts. mid is Meta's
+        // webhooks/whatsapp, see webhook-idempotency.ts. mid is Meta's
         // own unique message id for this DM.
         if (msgId && isDuplicateWebhookMessage(`ig:${msgId}`)) {
           console.warn("[webhook/instagram] Skipping duplicate delivery of message:", msgId);
@@ -285,12 +285,12 @@ export async function POST(req: NextRequest) {
         if (!aiReply) continue;
 
         if (!igUserId || !igAccessToken) {
-          // Credentials missing — tenant connected under the old Facebook-
+          // Credentials missing, tenant connected under the old Facebook-
           // Page-based method (or before this rebuild), so there's no
           // Instagram Business Login token stored. They must reconnect
           // Instagram to get a real Instagram User access token.
           console.warn("[webhook/instagram] Missing Instagram Business Login credentials for tenant", tenantId,
-            "— user must reconnect Instagram");
+            ", user must reconnect Instagram");
           continue;
         }
 
@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Log this verified attempt — FIX 2 ───────────────────────────────────────
+  // ── Log this verified attempt, FIX 2 ───────────────────────────────────────
   const outcome: WebhookOutcome = tenantId ? "handled_ok" : anyMessagingSeen ? "handled_no_tenant" : "accepted";
   await logWebhookAttempt(admin, {
     outcome, matchedSecret, object, entryIds, changeFieldsOrMessagingSeen,

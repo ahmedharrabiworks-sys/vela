@@ -146,8 +146,8 @@ export default function TrainingPage() {
 
   useEffect(() => {
     // Voice/speed come from the phone agent settings (owner hears what callers hear).
-    // Language comes from the owner's personal assistant settings — same source as
-    // the Overview page — so Training and Overview always match on language.
+    // Language comes from the owner's personal assistant settings, same source as
+    // the Overview page, so Training and Overview always match on language.
     // The phone agent settings default language to "en", which would lock training
     // to English even when the owner has set Arabic in their Assistant Settings.
     Promise.all([
@@ -575,11 +575,11 @@ export default function TrainingPage() {
         {/* Main 2-col grid */}
         <div className="grid md:grid-cols-5 gap-5 md:min-h-[560px]">
 
-          {/* LEFT: unified card — waveform + controls + transcript + typed input (2/5) */}
+          {/* LEFT: unified card, waveform + controls + transcript + typed input (2/5) */}
           <div className="md:col-span-2 flex flex-col">
             <div className="rounded-2xl border flex flex-col flex-1 h-full" style={{ background: cardBg, borderColor: border }}>
 
-              {/* Call status header — same pattern as the Overview "Talk to Vela" panel */}
+              {/* Call status header, same pattern as the Overview "Talk to Vela" panel */}
               <div className="flex flex-col gap-3 px-5 pt-5 pb-5 border-b shrink-0" style={{ borderColor: border }}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -599,7 +599,7 @@ export default function TrainingPage() {
                   }}/>
                 </div>
 
-                {/* Waveform — 5 bars, volume-driven when active, same as Overview */}
+                {/* Waveform, 5 bars, volume-driven when active, same as Overview */}
                 <div className="flex items-end justify-center gap-[5px]" style={{ height: 32 }}>
                   {BAR_BASES.map((b, i) => (
                     <div key={i} ref={el => { barRefs.current[i] = el; }}
@@ -776,7 +776,7 @@ export default function TrainingPage() {
                 )}
               </div>
 
-              {/* Typed input — always visible, active when call is live */}
+              {/* Typed input, always visible, active when call is live */}
               <div className="px-4 py-3 border-t shrink-0" style={{ borderColor: border }}>
                 <div className="flex gap-2">
                   <input
@@ -803,11 +803,11 @@ export default function TrainingPage() {
             </div>
           </div>
 
-          {/* RIGHT: Business Knowledge panel (3/5 — the centerpiece) */}
+          {/* RIGHT: Business Knowledge panel (3/5, the centerpiece) */}
           <div className="md:col-span-3 flex flex-col">
             <div className="rounded-2xl border flex flex-col flex-1 h-full" style={{ background: cardBg, borderColor: border }}>
 
-              {/* Panel header — 4xl counter as emotional anchor */}
+              {/* Panel header, 4xl counter as emotional anchor */}
               <div className="px-6 py-5 border-b shrink-0" style={{ borderColor: border }}>
                 <div className="flex items-end justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -849,7 +849,7 @@ export default function TrainingPage() {
                 </div>
               </div>
 
-              {/* Knowledge cards — flex-1 fills remaining panel height */}
+              {/* Knowledge cards, flex-1 fills remaining panel height */}
               <div className="p-5 flex-1 overflow-y-auto">
                 {status === "idle" && (
                   <div className="space-y-2">
@@ -985,7 +985,7 @@ export default function TrainingPage() {
           </div>
         </div>
 
-        {/* Additional Information — optional Magic Import-style upload */}
+        {/* Additional Information, optional Magic Import-style upload */}
         <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
           <p className="text-sm font-semibold" style={{ color: textPrimary }}>Additional Information</p>
           <p className="text-xs mt-1 mb-4 leading-relaxed" style={{ color: textMuted }}>

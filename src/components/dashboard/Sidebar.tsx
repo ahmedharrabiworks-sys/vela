@@ -72,7 +72,7 @@ const NAV = [
         <path d="M15 10.5a1.5 1.5 0 01-1.5 1.5H5.25L2.25 15V4.5A1.5 1.5 0 013.75 3h9.75A1.5 1.5 0 0115 4.5v6z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
       </svg>
     ),
-    // badge is real (needs-attention conversations count), set dynamically below — never a static placeholder
+    // badge is real (needs-attention conversations count), set dynamically below, never a static placeholder
   },
   {
     labelKey: "nav.leads",

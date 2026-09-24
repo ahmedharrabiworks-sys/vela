@@ -30,7 +30,7 @@ const TEST_CASES: Array<{
     expectedShowcase: "property-listings-grid",
     expectedReason: "Bedroom counts + AED prices present → hasRealListings=true",
     description: `
-Marina Realty Dubai — Palm Jumeirah & Dubai Marina luxury property specialists.
+Marina Realty Dubai, Palm Jumeirah & Dubai Marina luxury property specialists.
 
 Current listings:
 - 3-bedroom apartment, Dubai Marina, 2,100 sqft, AED 2.8M (full sea view, pool floor)
@@ -41,7 +41,7 @@ Current listings:
 
 James Wilson, Senior Property Consultant, 12 years Dubai real estate experience.
 Phone: +971 4 887 5500 | Email: james@marinarealty.ae
-Office: DMCC Cluster A, JLT, Dubai. Open daily 9am–7pm.
+Office: DMCC Cluster A, JLT, Dubai. Open daily 9am to 7pm.
 `.trim(),
   },
   {
@@ -50,7 +50,7 @@ Office: DMCC Cluster A, JLT, Dubai. Open daily 9am–7pm.
     expectedShowcase: null,
     expectedReason: "No bedroom/price signals → hasRealListings=false → showcase suppressed",
     description: `
-Sunrise Properties — Abu Dhabi property consultancy.
+Sunrise Properties, Abu Dhabi property consultancy.
 
 We help clients find their ideal homes and investment properties across UAE's
 premium neighborhoods. Trusted advisors to families and investors since 2018.
@@ -62,19 +62,19 @@ Phone: +971 2 555 1234 | Email: hello@sunriseproperties.ae
   },
   {
     id: "dental-with-services",
-    label: "dental WITH real services (always eligible — post-GPT verify)",
+    label: "dental WITH real services (always eligible, post-GPT verify)",
     expectedShowcase: "treatment-gallery",
     expectedReason: "Dental always triggers treatment-gallery; post-GPT verifyShowcaseComponents checks services array",
     description: `
-ClearView Dental Clinic — Canary Wharf, London.
+ClearView Dental Clinic, Canary Wharf, London.
 
 Modern cosmetic and family dentistry in the heart of London's financial district.
 Treatments we offer:
 - Invisalign clear aligners (3 months from £1,999)
-- Professional teeth whitening — in-chair 1 hour from £299, take-home kit from £149
-- Dental implants — single tooth from £2,500; full-arch All-on-4 from £12,000
-- Porcelain veneers — from £899 per tooth
-- Composite bonding — from £250 per tooth
+- Professional teeth whitening, in-chair 1 hour from £299, take-home kit from £149
+- Dental implants, single tooth from £2,500; full-arch All-on-4 from £12,000
+- Porcelain veneers, from £899 per tooth
+- Composite bonding, from £250 per tooth
 - Root canal treatment
 - Periodontal (gum) therapy
 - Routine checkups, scale & polish, X-rays
@@ -84,16 +84,16 @@ Dr. James Chen BDS (implants & oral surgery, 10 years).
 
 Phone: +44 20 7946 0321 | Email: hello@clearviewdental.co.uk
 Address: 1 Canada Square, Canary Wharf, London E14 5AB
-Hours: Monday–Saturday 8am–7pm
+Hours: Monday to Saturday 8am to 7pm
 `.trim(),
   },
   {
     id: "dental-sparse",
-    label: "dental WITHOUT real services (sparse description — tests post-GPT verify)",
+    label: "dental WITHOUT real services (sparse description, tests post-GPT verify)",
     expectedShowcase: "treatment-gallery (may be removed post-GPT if no services populated)",
     expectedReason: "No services named; FABRICATION RULE should produce services:[]; verifyShowcaseComponents removes it",
     description: `
-Smile Care Dental — a friendly local dental practice.
+Smile Care Dental, a friendly local dental practice.
 We believe everyone deserves a healthy smile and gentle care.
 Our welcoming team is here to help you feel at ease.
 Book a consultation today.
@@ -105,7 +105,7 @@ Book a consultation today.
     expectedShowcase: "portfolio-grid",
     expectedReason: "4 completion verbs (designed, delivered, transformed, renovated) → hasMultipleProjects=true",
     description: `
-Studio Nomad Interior Design — Dubai & Abu Dhabi.
+Studio Nomad Interior Design, Dubai & Abu Dhabi.
 
 We transform residential and commercial spaces into considered environments.
 
@@ -126,7 +126,7 @@ Phone: +971 50 234 5678 | Email: sophia@studionomad.ae
     expectedShowcase: null,
     expectedReason: "No completion verbs, no portfolio language → hasMultipleProjects=false → showcase suppressed",
     description: `
-Modern Home Interiors — Dubai interior decoration studio.
+Modern Home Interiors, Dubai interior decoration studio.
 
 We help you choose colors, furniture layouts, and soft furnishings that create
 a beautiful, livable space. Whether you have a blank canvas or need a refresh,
@@ -142,7 +142,7 @@ Phone: +971 4 211 8899
     expectedShowcase: "membership-plans-display",
     expectedReason: "Tier names (Basic/Pro/Elite) + inclusions (classes, guest pass, locker, personal trainer) → hasTierDetails=true",
     description: `
-IronCore Fitness Club — Abu Dhabi, UAE.
+IronCore Fitness Club, Abu Dhabi, UAE.
 
 Premium gym facility, 2,500 sqm, state-of-the-art equipment.
 
@@ -155,7 +155,7 @@ Membership tiers:
 
 Certified trainers: Coach Khalid (strength & conditioning), Coach Priya (HIIT & yoga).
 Phone: +971 2 444 7788 | Email: info@ironcore.ae
-Address: Nation Towers Podium, Abu Dhabi. Open 6am–11pm daily.
+Address: Nation Towers Podium, Abu Dhabi. Open 6am to 11pm daily.
 `.trim(),
   },
   {
@@ -164,13 +164,13 @@ Address: Nation Towers Podium, Abu Dhabi. Open 6am–11pm daily.
     expectedShowcase: null,
     expectedReason: "No tier names or inclusion keywords → hasTierDetails=false → showcase suppressed",
     description: `
-FitLife Gym — Dubai gym for all fitness levels.
+FitLife Gym, Dubai gym for all fitness levels.
 
 Great equipment, great vibes. We have cardio machines, free weights, and
 group fitness classes for all levels. Our friendly staff will help you
 get started on your fitness journey.
 
-Come try us for free — your first week is on us.
+Come try us for free, your first week is on us.
 Phone: +971 4 321 9988 | Email: hello@fitlife.ae
 `.trim(),
   },
@@ -251,17 +251,17 @@ function verifyShowcaseComponents(spec: WebsiteSpec): void {
     const c = s.content as Record<string, unknown>;
     if (s.type === "property-listings-grid") {
       const ok = Array.isArray(c.listings) && (c.listings as unknown[]).length >= 1;
-      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing property-listings-grid — no listings");
+      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing property-listings-grid, no listings");
       return ok;
     }
     if (s.type === "treatment-gallery") {
       const ok = Array.isArray(c.services) && (c.services as unknown[]).length >= 1;
-      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing treatment-gallery — no services");
+      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing treatment-gallery, no services");
       return ok;
     }
     if (s.type === "portfolio-grid") {
       const ok = Array.isArray(c.projects) && (c.projects as unknown[]).length >= 2;
-      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing portfolio-grid — fewer than 2 projects");
+      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing portfolio-grid, fewer than 2 projects");
       return ok;
     }
     if (s.type === "membership-plans-display") {
@@ -270,7 +270,7 @@ function verifyShowcaseComponents(spec: WebsiteSpec): void {
         const tier = t as Record<string, unknown>;
         return Array.isArray(tier.features) && (tier.features as unknown[]).length >= 1;
       });
-      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing membership-plans-display — no tier feature details");
+      if (!ok) console.warn("  ⚠ verifyShowcaseComponents: removing membership-plans-display, no tier feature details");
       return ok;
     }
     return true;
@@ -296,19 +296,19 @@ const TRUST_CONV_POOL: Record<string, { trust: string[]; conversion: string[] }>
 const HERO_VARIANT_SCHEMAS: Record<string, string> = {
   "re-split":
     `hero content for "re-split": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "stats"?: [{ "value": string, "label": string }] — ONLY real statistics; max 3; omit if none }`,
+  "stats"?: [{ "value": string, "label": string }], ONLY real statistics; max 3; omit if none }`,
   "trust-focused":
     `hero content for "trust-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "badges"?: [{ "value": "15+", "label": "Years Experience" }] — ONLY real stats; max 4; omit if no real data }`,
+  "badges"?: [{ "value": "15+", "label": "Years Experience" }], ONLY real stats; max 4; omit if no real data }`,
   "booking-focused":
     `hero content for "booking-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary",
-  "services"?: string[] — dropdown options; omit or leave [] if not specified }`,
+  "services"?: string[], dropdown options; omit or leave [] if not specified }`,
   "membership-focused":
     `hero content for "membership-focused": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "tiers"?: [{ "name": string, "price": string, "period"?: string }] — ONLY real pricing; max 3; omit if no real prices }`,
+  "tiers"?: [{ "name": string, "price": string, "period"?: string }], ONLY real pricing; max 3; omit if no real prices }`,
   "property-first":
     `hero content for "property-first": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?,
-  "property"?: { "title"?: string, "price"?: string, "beds"?: string, "baths"?: string, "sqft"?: string } — ONLY real listing data }`,
+  "property"?: { "title"?: string, "price"?: string, "beds"?: string, "baths"?: string, "sqft"?: string }, ONLY real listing data }`,
   "portfolio-first":
     `hero content for "portfolio-first": { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"? }
 imageQueries REQUIRED at section level (3 strings for the image grid).`,
@@ -337,7 +337,7 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
     `"appointment-form" section content: { "eyebrow"?, "headline"?,
   "services": string[], "submitLabel"?: string }
   RULES: services REQUIRED. Only list services explicitly named in the description. Max 12.
-  If no services named, output services: [] — section will be suppressed server-side.`,
+  If no services named, output services: [], section will be suppressed server-side.`,
   "valuation-form":
     `"valuation-form" section content: { "eyebrow"?, "headline"?, "subheadline"?, "submitLabel"?: string }
   RULES: Write compelling copy for eyebrow/headline/subheadline only. Do not invent property data.`,
@@ -348,7 +348,7 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
   "multi-step-form":
     `"multi-step-form" section content: { "headline"?, "step1Headline"?, "step2Headline"?,
   "services"?: string[], "submitLabel"?: string }
-  RULES: services optional — only include service names actually listed. Max 12.`,
+  RULES: services optional, only include service names actually listed. Max 12.`,
 };
 
 const SHOWCASE_COMPONENT_SCHEMAS: Record<string, string> = {
@@ -358,31 +358,31 @@ const SHOWCASE_COMPONENT_SCHEMAS: Record<string, string> = {
   RULES: ONLY include real properties described by the owner. Max 6 listings.
   title: the property's name or identifier (e.g. "Marina View Penthouse", "3BR Villa Palm Jumeirah").
   bedrooms/bathrooms/area: only from real stated specs. price: ONLY if owner stated a real asking price.
-  badge: optional label ("New Listing", "Featured") — only if meaningful and real. Never invent specs or prices.
+  badge: optional label ("New Listing", "Featured"), only if meaningful and real. Never invent specs or prices.
   imageQueries REQUIRED at section level (1 per listing, e.g. ["luxury villa Dubai editorial", ...]).`,
   "treatment-gallery":
     `"treatment-gallery" section content: { "eyebrow"?, "headline"?, "subheadline"?,
   "services": [{ "title": string, "description"?: string, "duration"?: string, "price"?: string }] }
   RULES: Use real treatment/procedure names. Max 8. Description in patient-friendly language from real details.
-  duration and price: ONLY from real stated data — never invent.
-  If no real treatments can be listed, output services: [] — section will be suppressed server-side.
+  duration and price: ONLY from real stated data, never invent.
+  If no real treatments can be listed, output services: [], section will be suppressed server-side.
   imageQueries at section level are optional (1 per service for photo cards).`,
   "portfolio-grid":
     `"portfolio-grid" section content: { "eyebrow"?, "headline",
   "projects": [{ "title": string, "category"?: string, "description"?: string, "location"?: string, "year"?: string }] }
   RULES: ONLY include real projects the owner named or described. MINIMUM 2 required; if fewer than 2 are real, output projects: [].
   title: the project name. category: project type (e.g. "Residential", "Commercial").
-  description: 1 sentence about the design approach from real stated details — never fabricate.
+  description: 1 sentence about the design approach from real stated details, never fabricate.
   location, year: only if stated.
   imageQueries REQUIRED at section level (1 per project, matching projects count).`,
   "membership-plans-display":
     `"membership-plans-display" section content: { "eyebrow"?, "headline", "subheadline"?,
-  "tiers": [{ "name": string, "price": string, "period"?: string, "features": string[] × 4–8, "highlighted"?: boolean, "badge"?: string }] }
+  "tiers": [{ "name": string, "price": string, "period"?: string, "features": string[] × 4 to 8, "highlighted"?: boolean, "badge"?: string }] }
   RULES: Each tier MUST have a "features" array listing specific inclusions.
   features: list what is INCLUDED (e.g. "Unlimited group classes", "2 guest passes/month", "Locker access").
-  ONLY include real stated inclusions — never invent features. price: ONLY from real stated data.
+  ONLY include real stated inclusions, never invent features. price: ONLY from real stated data.
   highlighted: true for exactly ONE tier (the featured plan). badge: label for highlighted tier (default "Most Popular").
-  If no real feature inclusions are stated, output features: [] for each tier — section will be suppressed server-side.`,
+  If no real feature inclusions are stated, output features: [] for each tier, section will be suppressed server-side.`,
 };
 
 // ── Data extraction ───────────────────────────────────────────────────────────
@@ -508,7 +508,7 @@ function verifyTrustComponents(spec: WebsiteSpec): void {
     const rule = OPTIONAL_SKIP_RULES[s.type];
     if (!rule) return true;
     const skip = rule(s.content as Record<string, unknown>);
-    if (skip) console.warn(`  ⚠ verifyTrustComponents: removing ${s.type} — required data missing`);
+    if (skip) console.warn(`  ⚠ verifyTrustComponents: removing ${s.type}, required data missing`);
     return !skip;
   });
 }
@@ -529,10 +529,10 @@ async function classifyWithDesignStrategy(
   "positioning": one of: premium | mid_market | affordable,
   "brand_personality": one of: elegant | bold | energetic | trustworthy | playful | minimal_luxury,
   "conversion_goal": one of: book_appointment | generate_leads | showcase_portfolio | sell_membership | request_valuation,
-  "visual_mood": "2–4 words",
+  "visual_mood": "2 to 4 words",
   "target_audience": "1 short sentence"
 }
-template_category mapping: medical — dental, doctor, physio; hospitality — hotel, restaurant; retail — e-commerce; saas — software; professional — law, real estate, gym, interior design.
+template_category mapping: medical, dental, doctor, physio; hospitality, hotel, restaurant; retail, e-commerce; saas, software; professional, law, real estate, gym, interior design.
 Output ONLY valid JSON.`;
   const fallback: DesignStrategy = {
     category: fallbackCategory, subcategory: fallbackCategory, positioning: "premium",
@@ -562,7 +562,7 @@ Output ONLY valid JSON.`;
   } catch { return { templateCategory: "professional", strategy: fallback }; }
 }
 
-// ── buildFillSystem (Phase 2c — extended) ────────────────────────────────────
+// ── buildFillSystem (Phase 2c, extended) ────────────────────────────────────
 
 function buildFillSystem(
   template: SiteTemplate,
@@ -573,13 +573,13 @@ function buildFillSystem(
   showcaseComponents: string[] | null,
 ): string {
   const templateLines = template.sections.map((ts, i) => {
-    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
+    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL, include ONLY if owner provided real data)";
     const variant = ts.variant ? `, variant: "${ts.variant}"` : "";
     return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
   }).join("\n");
 
   const strategyBlock = strategy ? `═══════════════════════════════════════════════════════
-PART 0 — BUSINESS INTELLIGENCE
+PART 0, BUSINESS INTELLIGENCE
 ═══════════════════════════════════════════════════════
 Subcategory:       ${strategy.subcategory}
 Positioning:       ${strategy.positioning.replace(/_/g, " ")}
@@ -596,15 +596,15 @@ Use these to calibrate copy tone. Never echo in JSON output.
 STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
 ═══════════════════════════════════════════════════════
-PART 1 — COPYWRITING STANDARDS
+PART 1, COPYWRITING STANDARDS
 ═══════════════════════════════════════════════════════
-Write FRESH brand copy — not paraphrases of the owner's input.
+Write FRESH brand copy, not paraphrases of the owner's input.
 BAD: "Quality service you can trust" / "Welcome to [Name]" / "Our Services"
 GOOD: Lead with customer benefit, use specific numbers, active voice, short sentences.
-Section headlines must be editorial — "Precision You Can Feel" not "About Us".
+Section headlines must be editorial, "Precision You Can Feel" not "About Us".
 
 ═══════════════════════════════════════════════════════
-PART 2 — JSON ROOT SHAPE
+PART 2, JSON ROOT SHAPE
 ═══════════════════════════════════════════════════════
 {
   "businessName": string,
@@ -620,17 +620,17 @@ PART 2 — JSON ROOT SHAPE
 }
 
 ═══════════════════════════════════════════════════════
-PART 3 — DESIGN MOODS
+PART 3, DESIGN MOODS
 ═══════════════════════════════════════════════════════
-"editorial-luxury"  — Serif headings, off-white, gold accent. Use: real estate, interior design, boutique hotel.
-"clinical-bright"   — Inter, white bg, navy text, blue accent. Use: dental, medical.
-"bold-energetic"    — Bold sans-serif, dark bg, vivid accent. Use: gym, fitness.
-"warm-minimal"      — Warm neutrals, terracotta/sage accent. Use: spa, wellness, café.
-"tech-sharp"        — Geometric sans, near-black/white, electric accent. Use: saas, agency.
-"dark-premium"      — Very dark bg, gold/copper accent. Use: premium gym, nightlife, premium real estate.
+"editorial-luxury", Serif headings, off-white, gold accent. Use: real estate, interior design, boutique hotel.
+"clinical-bright", Inter, white bg, navy text, blue accent. Use: dental, medical.
+"bold-energetic", Bold sans-serif, dark bg, vivid accent. Use: gym, fitness.
+"warm-minimal", Warm neutrals, terracotta/sage accent. Use: spa, wellness, café.
+"tech-sharp", Geometric sans, near-black/white, electric accent. Use: saas, agency.
+"dark-premium", Very dark bg, gold/copper accent. Use: premium gym, nightlife, premium real estate.
 
 ═══════════════════════════════════════════════════════
-PART 4 — FIXED SECTION STRUCTURE
+PART 4, FIXED SECTION STRUCTURE
 ═══════════════════════════════════════════════════════
 ‼ WRITE CONTENT FOR EXACTLY THESE SECTIONS IN THIS ORDER. No additions, no removals.
 SECTIONS:
@@ -641,29 +641,29 @@ SectionSpec: { "type": string, "variant": string, "imageQuery"?: string, "imageQ
 imageQuery/imageQueries MUST be siblings of content{}, never nested inside it.
 
 ═══════════════════════════════════════════════════════
-PART 5 — IMAGE QUERY RULES
+PART 5, IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 imageQuery required for: hero, about-story.
 imageQueries (array) required for: gallery-grid (6 strings), portfolio-first hero (3 strings).
-Format: "luxury villa Dubai Marina editorial photography" — specific, not abstract.
+Format: "luxury villa Dubai Marina editorial photography", specific, not abstract.
 
 ═══════════════════════════════════════════════════════
-PART 6 — CONTENT SCHEMAS
+PART 6, CONTENT SCHEMAS
 ═══════════════════════════════════════════════════════
 
 hero: { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"? }
 
-about-story: { "eyebrow"?, "headline", "body", "bullets"?: [{ "title", "text" }] × 2–4, "ctaText"?: string }
+about-story: { "eyebrow"?, "headline", "body", "bullets"?: [{ "title", "text" }] × 2 to 4, "ctaText"?: string }
 
-service-list: { "eyebrow"?, "headline", "items": [{ "title", "description"?, "price"? }] × 4–10 }
+service-list: { "eyebrow"?, "headline", "items": [{ "title", "description"?, "price"? }] × 4 to 10 }
 
-process-steps: { "eyebrow"?, "headline", "steps": [{ "number": string, "title": string, "description": string }] × 3–5 }
+process-steps: { "eyebrow"?, "headline", "steps": [{ "number": string, "title": string, "description": string }] × 3 to 5 }
 
-team-grid: { "eyebrow"?, "headline", "members": [{ "name", "role", "bio"? }] } — ONLY real named staff
+team-grid: { "eyebrow"?, "headline", "members": [{ "name", "role", "bio"? }] }, ONLY real named staff
 
-stats-band: { "items": [{ "value", "label" }] × 3–5 } — ONLY real statistics
+stats-band: { "items": [{ "value", "label" }] × 3 to 5 }, ONLY real statistics
 
-faq-accordion: { "eyebrow"?, "headline", "items": [{ "q", "a" }] × 5–8 }
+faq-accordion: { "eyebrow"?, "headline", "items": [{ "q", "a" }] × 5 to 8 }
 
 listings-grid: { "eyebrow"?, "headline", "items": [{ "title", "price"?, "location"?, "description"? }] }
 
@@ -674,31 +674,31 @@ contact-block: { "eyebrow"?, "headline", "subheadline"?,
   "hours"?: string (ONLY from real contact info),
   "ctaText": string }
 
-footer: { "tagline", "links": string[] × 4–5, "phone"?, "email"?, "address"?, "copyright" }
+footer: { "tagline", "links": string[] × 4 to 5, "phone"?, "email"?, "address"?, "copyright" }
 
 ${contactBlock ? `═══════════════════════════════════════════════════════
-REAL CONTACT INFO — copy these values EXACTLY:
+REAL CONTACT INFO, copy these values EXACTLY:
 ${contactBlock}
 ═══════════════════════════════════════════════════════` : "CONTACT INFO: None provided. Omit phone/email/address/hours."}
 
 ${heroVariant && HERO_VARIANT_SCHEMAS[heroVariant] ? `═══════════════════════════════════════════════════════
-PART 7 — HERO VARIANT SCHEMA OVERRIDE
+PART 7, HERO VARIANT SCHEMA OVERRIDE
 ═══════════════════════════════════════════════════════
 Hero uses variant "${heroVariant}". Use this exact schema:
 ${HERO_VARIANT_SCHEMAS[heroVariant]}
 ` : ""}${trustComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 8 — TRUST + CONVERSION SECTION SCHEMAS
+PART 8, TRUST + CONVERSION SECTION SCHEMAS
 ═══════════════════════════════════════════════════════
 These trust/conversion sections appear in the template. Write their content using EXACTLY these schemas.
-FABRICATION RULE: these build trust — fabricated signals are worse than missing ones. Use empty arrays if real data absent.
+FABRICATION RULE: these build trust, fabricated signals are worse than missing ones. Use empty arrays if real data absent.
 ${trustComponents.map((type) => TRUST_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}${showcaseComponents && showcaseComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 11 — SHOWCASE SECTION SCHEMA
+PART 11, SHOWCASE SECTION SCHEMA
 ═══════════════════════════════════════════════════════
-The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data — fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays — the section will be suppressed server-side.
+The following category-specific showcase section has been added to the template. Write its content using EXACTLY this schema. FABRICATION RULE: this section showcases real work and real data, fabricated listings, treatments, portfolio projects, or tier inclusions are worse than a missing section. If you cannot populate required fields from real stated data, output empty arrays, the section will be suppressed server-side.
 ${showcaseComponents.map((type) => SHOWCASE_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
-ABSOLUTE RULES — NEVER VIOLATE
+ABSOLUTE RULES, NEVER VIOLATE
 ═══════════════════════════════════════════════════════
 1. NEVER invent phone numbers, email addresses, physical addresses, or hours.
 2. NEVER include testimonials or star ratings.
@@ -707,7 +707,7 @@ ABSOLUTE RULES — NEVER VIOLATE
 5. NEVER use generic headings: "Our Services" / "About Us" / "Why Choose Us".
 6. imageQuery/imageQueries MUST be siblings of content{}, NOT nested inside it.
 7. NEVER invent commercial promises not stated by the owner.
-8. Footer tagline must be specific to this business — never a placeholder.`;
+8. Footer tagline must be specific to this business, never a placeholder.`;
 }
 
 // ── Unsplash image fetcher ────────────────────────────────────────────────────
@@ -784,7 +784,7 @@ function extractContactBlock(description: string): string {
 
 async function runTest(openai: OpenAI, tc: typeof TEST_CASES[0], index: number): Promise<void> {
   console.log(`\n${"═".repeat(66)}`);
-  console.log(`  TEST ${index + 1}/8 — ${tc.id}`);
+  console.log(`  TEST ${index + 1}/8, ${tc.id}`);
   console.log(`  ${tc.label}`);
   console.log(`${"═".repeat(66)}`);
   console.log(`  Expected: showcase=${tc.expectedShowcase ?? "NONE"}`);
@@ -821,7 +821,7 @@ async function runTest(openai: OpenAI, tc: typeof TEST_CASES[0], index: number):
   console.log(`    showcase:     ${selectedShowcase ?? "NONE (suppressed by extract gate)"}`);
 
   const matchesExpected = selectedShowcase === (tc.expectedShowcase ?? null);
-  console.log(`    ✓ Matches expected: ${matchesExpected ? "YES" : "⚠ NO — check gate logic"}`);
+  console.log(`    ✓ Matches expected: ${matchesExpected ? "YES" : "⚠ NO, check gate logic"}`);
 
   // Step 4: Build patched template
   const baseTemplate = selectTemplate(templateCategory);
@@ -897,7 +897,7 @@ async function runTest(openai: OpenAI, tc: typeof TEST_CASES[0], index: number):
 
   console.log(`\n  ▶ Post-verify showcase:`);
   if (!selectedShowcase) {
-    console.log(`    Showcase not selected (extract gate) — section absent ✓`);
+    console.log(`    Showcase not selected (extract gate), section absent ✓`);
   } else if (hasShowcase) {
     const c = showcaseSec!.content as Record<string, unknown>;
     const itemsKey = selectedShowcase === "property-listings-grid" ? "listings"
@@ -939,10 +939,10 @@ async function runTest(openai: OpenAI, tc: typeof TEST_CASES[0], index: number):
 
 async function main() {
   console.log("\n╔══════════════════════════════════════════════════════════════════╗");
-  console.log("║  Phase 2c End-to-End Test — Showcase Pool (8 cases)            ║");
+  console.log("║  Phase 2c End-to-End Test, Showcase Pool (8 cases)            ║");
   console.log("╚══════════════════════════════════════════════════════════════════╝");
 
-  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set — run with: npx tsx --env-file .env.local");
+  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set, run with: npx tsx --env-file .env.local");
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

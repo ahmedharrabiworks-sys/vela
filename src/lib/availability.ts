@@ -51,7 +51,7 @@ export interface ServiceDuration {
  * blocks booking, it just uses the same safe default this whole system
  * already relied on.
  *
- * FIX 1 (round O): a service with a RANGE duration ("1 – 2 Hours") must
+ * FIX 1 (round O): a service with a RANGE duration ("1, 2 Hours") must
  * resolve to the MAX end, never the min -- the appointment could genuinely
  * run the full range, and the blocking window has to assume the worst
  * case. The range branch below is matched and resolved explicitly (both
@@ -62,9 +62,9 @@ export interface ServiceDuration {
 export function parseDurationMinutes(text: string | null | undefined): number | null {
   if (!text) return null;
   const s = text.trim().toLowerCase();
-  // Range: "1-2 hours", "1 – 2 hours", "30-45 min", "1 to 2 hours" -- one
-  // unit word applying to both numbers. Always take the MAX end.
-  let m = s.match(/(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/);
+  // Range: "1-2 hours", "30-45 min", "1 to 2 hours" -- one unit word
+  // applying to both numbers. Always take the MAX end.
+  let m = s.match(/(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/); // dash-lint-allow: must accept a real en/em dash typed by the customer
   if (m) {
     const max = Math.max(parseFloat(m[1]), parseFloat(m[2]));
     return Math.round(max * (/^h/.test(m[3]) ? 60 : 1));
@@ -287,19 +287,19 @@ export function formatAvailabilityDirective(result: AvailabilityResult): string 
   const requestedLabel = fmt(result.requested);
 
   if (!result.conflict) {
-    return `\n\nREAL-TIME AVAILABILITY CHECK (already run by the system for this exact message — current as of right now):
+    return `\n\nREAL-TIME AVAILABILITY CHECK (already run by the system for this exact message, current as of right now):
 Requested time: ${requestedLabel}
-Result: AVAILABLE — no conflicting appointment found in the real schedule.
-Still confirm it falls within working hours above before finalizing. If it does, confirm the slot immediately in your reply and move to finalize the booking (collect any missing required detail such as name/phone/service, then confirm with "Booked ✓"). Do NOT say "let me check and get back to you" — the check is already done.`;
+Result: AVAILABLE, no conflicting appointment found in the real schedule.
+Still confirm it falls within working hours above before finalizing. If it does, confirm the slot immediately in your reply and move to finalize the booking (collect any missing required detail such as name/phone/service, then confirm with "Booked ✓"). Do NOT say "let me check and get back to you", the check is already done.`;
   }
 
   const altText = result.alternatives.length > 0
     ? result.alternatives.map(fmt).join("; ")
-    : "none found nearby — offer to check a different day";
+    : "none found nearby, offer to check a different day";
 
-  return `\n\nREAL-TIME AVAILABILITY CHECK (already run by the system for this exact message — current as of right now):
+  return `\n\nREAL-TIME AVAILABILITY CHECK (already run by the system for this exact message, current as of right now):
 Requested time: ${requestedLabel}
-Result: NOT AVAILABLE — conflicts with an existing booking${result.conflictingSlot?.service_name ? ` (${result.conflictingSlot.service_name})` : ""} at that time.
+Result: NOT AVAILABLE, conflicts with an existing booking${result.conflictingSlot?.service_name ? ` (${result.conflictingSlot.service_name})` : ""} at that time.
 Real alternative times that ARE free: ${altText}
-State clearly in your reply that this exact time is taken, then offer these specific alternatives. Do NOT say "let me check and get back to you" — the check is already done.`;
+State clearly in your reply that this exact time is taken, then offer these specific alternatives. Do NOT say "let me check and get back to you", the check is already done.`;
 }

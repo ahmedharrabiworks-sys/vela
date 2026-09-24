@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const appSecret = process.env.META_INSTAGRAM_APP_SECRET;
   if (!appSecret) {
-    console.error("[instagram/deauthorize] META_INSTAGRAM_APP_SECRET not configured — rejecting request");
+    console.error("[instagram/deauthorize] META_INSTAGRAM_APP_SECRET not configured, rejecting request");
     return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
   }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const payload = parseSignedRequest(signedRequest, appSecret);
   if (!payload) {
-    // Fail closed — an unverifiable request must never be trusted to touch
+    // Fail closed, an unverifiable request must never be trusted to touch
     // real tenant data, same posture as every other signature check here.
     return NextResponse.json({ error: "Invalid signed_request" }, { status: 403 });
   }
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const admin = createSupabaseAdmin() as any;
     // instagram_business_id is the exact column the Instagram OAuth callback
     // (auth/instagram/callback/route.ts) stores this same Instagram-scoped
-    // user_id in — matching the real identifier space, not a guess.
+    // user_id in, matching the real identifier space, not a guess.
     const clearFields: Record<string, unknown> = {
       instagram_connected: false,
       instagram_username: "",
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     };
     const { error } = await admin.from("tenant_config").update(clearFields).eq("instagram_business_id", userId);
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      // migration_v39.sql (instagram_token_expires_at) hasn't run yet —
+      // migration_v39.sql (instagram_token_expires_at) hasn't run yet, 
       // retry without it rather than losing the disconnect entirely.
       delete clearFields.instagram_token_expires_at;
       await admin.from("tenant_config").update(clearFields).eq("instagram_business_id", userId);
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       console.error("[instagram/deauthorize] update failed:", error.message);
     }
   } else {
-    console.warn("[instagram/deauthorize] Verified request had no user_id — nothing to disconnect");
+    console.warn("[instagram/deauthorize] Verified request had no user_id, nothing to disconnect");
   }
 
   return NextResponse.json({ ok: true });

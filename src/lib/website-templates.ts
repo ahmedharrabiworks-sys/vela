@@ -1,4 +1,4 @@
-// Template library — defines section structure only. No colours, fonts, or copy.
+// Template library, defines section structure only. No colours, fonts, or copy.
 // GPT fills content; the generator enforces structure server-side.
 
 export type TemplateSection = {
@@ -225,7 +225,7 @@ export const OPTIONAL_SKIP_RULES: Record<string, (content: Record<string, unknow
   "pricing-tiers":    (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
   "product-grid":     (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
   "listings-grid":    (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
-  // Phase 2b — trust & conversion pool sections
+  // Phase 2b, trust & conversion pool sections
   "comparison-table":  (c) => !Array.isArray(c.rows)     || (c.rows     as unknown[]).length < 1,
   "agent-card":        (c) => !c.name                    || String(c.name).trim() === "",
   "press-quote-band":  (c) => !c.quote                   || String(c.quote).trim() === "",
@@ -233,12 +233,12 @@ export const OPTIONAL_SKIP_RULES: Record<string, (content: Record<string, unknow
   "trust-badges-band": (c) => !Array.isArray(c.badges)   || (c.badges   as unknown[]).length < 1,
   "appointment-form":  (c) => !Array.isArray(c.services) || (c.services as unknown[]).length < 1,
   "membership-form":   (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
-  // Phase 2c — showcase pool
+  // Phase 2c, showcase pool
   "property-listings-grid":   (c) => !Array.isArray(c.listings) || (c.listings as unknown[]).length < 1,
   "treatment-gallery":         (c) => !Array.isArray(c.services) || (c.services as unknown[]).length < 1,
   "portfolio-grid":            (c) => !Array.isArray(c.projects) || (c.projects as unknown[]).length < 2,
   "membership-plans-display":  (c) => !Array.isArray(c.tiers)    || (c.tiers    as unknown[]).length < 1,
-  // Phase 2d — content pool
+  // Phase 2d, content pool
   "testimonial-single-quote":  (c) => !c.quote                   || String(c.quote).trim() === "",
   "testimonial-grid":          (c) => !Array.isArray(c.items)    || (c.items    as unknown[]).length < 1,
 };

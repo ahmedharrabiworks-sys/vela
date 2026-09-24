@@ -1,4 +1,4 @@
-// Round M2 — direct-function verification for FIX 1(regex logic)/3/5/6.
+// Round M2, direct-function verification for FIX 1(regex logic)/3/5/6.
 // Calls the REAL exported functions from website-renderer.ts /
 // website-sections.ts directly (no Next.js runtime, no OpenAI calls).
 // Run: npx tsx src/scripts/round-m2-verify-no-api.ts
@@ -7,7 +7,7 @@ import { stripMarkdownFormatting } from "../lib/text-clean";
 
 let pass = 0, fail = 0;
 function check(label: string, cond: boolean) {
-  console.log(`${cond ? "PASS" : "FAIL"} — ${label}`);
+  console.log(`${cond ? "PASS" : "FAIL"}, ${label}`);
   if (cond) pass++; else fail++;
 }
 
@@ -51,7 +51,7 @@ function check(label: string, cond: boolean) {
     !extractNoPhotoOptOut("Please use professional stock photography that matches the business, no need for my own photos"));
   // A second real phrasing hit live (bootstrap script's own wording).
   check("FIXED: 'use professional stock photography...no custom images needed' no longer opts out",
-    !extractNoPhotoOptOut("Please use professional stock photography — no custom images needed."));
+    !extractNoPhotoOptOut("Please use professional stock photography, no custom images needed."));
   // Genuine opt-outs must still work (regression check on the fix itself).
   check("REGRESSION GUARD: 'no, I don't want stock photos, keep it text-only' still opts out",
     extractNoPhotoOptOut("No, I don't want stock photos, keep it text-only."));
@@ -84,7 +84,7 @@ function check(label: string, cond: boolean) {
 
 // ── FIX 5: stray markdown/AI-tell characters must be stripped from generated copy ──
 {
-  const dirty = "We are the **best** in town — visit `our site` for #1 service. __Guaranteed__.";
+  const dirty = "We are the **best** in town, visit `our site` for #1 service. __Guaranteed__.";
   const clean = stripMarkdownFormatting(dirty);
   check("stripMarkdownFormatting removes ** bold markers", !clean.includes("**"));
   check("stripMarkdownFormatting removes backticks", !clean.includes("`"));

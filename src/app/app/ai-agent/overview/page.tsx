@@ -55,7 +55,7 @@ function CircleRing({ value, size = 64, isDark }: { value: number; size?: number
   );
 }
 
-/* Smooth line/area chart with hover tooltip — hand-rolled SVG (no charting
+/* Smooth line/area chart with hover tooltip, hand-rolled SVG (no charting
    library is installed in this project; matches this file's existing
    hand-rolled CircleRing pattern rather than adding a new dependency). */
 function LineChart({ data, isDark }: { data: number[]; isDark: boolean }) {
@@ -252,7 +252,7 @@ export default function OverviewPage() {
   const micCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t } = useI18n();
 
-  /* Volume bars (DOM-direct) — 5 bars */
+  /* Volume bars (DOM-direct), 5 bars */
   const barRefs   = useRef<(HTMLDivElement | null)[]>([]);
   const BAR_BASES = [0.4, 0.7, 1.0, 0.7, 0.4];
 
@@ -384,7 +384,7 @@ You have read-only access to the owner's live account data. Help them understand
 Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
 
 ## OPENING
-Your first sentence MUST name the business: "${businessName}". Example: "Hi, I'm Vela, your business advisor for ${businessName} — what can I help with?" Open immediately, one sentence, then wait for their question. You speak first. Vary your exact wording every session. Never open with "مرحبا" or any other fixed phrase two sessions in a row.
+Your first sentence MUST name the business: "${businessName}". Example: "Hi, I'm Vela, your business advisor for ${businessName}, what can I help with?" Open immediately, one sentence, then wait for their question. You speak first. Vary your exact wording every session. Never open with "مرحبا" or any other fixed phrase two sessions in a row.
 
 ## LANGUAGE
 ${langInstruction}
@@ -649,7 +649,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               </div>
             </div>
 
-            {/* Recent calls — larger, richer list; each row opens the full transcript */}
+            {/* Recent calls, larger, richer list; each row opens the full transcript */}
             <div className="rounded-2xl border p-4" style={{ background: cardBg, borderColor: border }}>
               <div className="flex items-center gap-2 mb-2.5">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)" }}>
@@ -760,7 +760,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                   }}/>
                 </div>
 
-                {/* Waveform bars — 5 bars, volume-driven when active */}
+                {/* Waveform bars, 5 bars, volume-driven when active */}
                 <div className="flex items-end justify-center gap-[5px] mb-3" style={{ height: 32 }}>
                   {BAR_BASES.map((b, i) => (
                     <div key={i} ref={el => { barRefs.current[i] = el; }}

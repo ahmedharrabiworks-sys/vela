@@ -1,12 +1,12 @@
 /**
- * Phase 5b Verification — Border, shadow, and per-element spacing controls
+ * Phase 5b Verification, Border, shadow, and per-element spacing controls
  *
- * CHECK 1  — EDIT_SCRIPT source: all new DOM, state, functions present in page.tsx
- * CHECK 1b — Parent handlers: vela-border, vela-shadow, vela-el-spacing exist + correct shape
- * CHECK 2  — Spec round-trip: _sectionBorders, _sectionShadows, _sectionSpacing (element keys)
+ * CHECK 1, EDIT_SCRIPT source: all new DOM, state, functions present in page.tsx
+ * CHECK 1b, Parent handlers: vela-border, vela-shadow, vela-el-spacing exist + correct shape
+ * CHECK 2, Spec round-trip: _sectionBorders, _sectionShadows, _sectionSpacing (element keys)
  *             all survive renderWebsite → HTML comment → extractSpec
- * CHECK 3  — 375px: no new controls add horizontal overflow
- * CHECK 4  — Phase 5a regression: spacing controls unchanged
+ * CHECK 3, 375px: no new controls add horizontal overflow
+ * CHECK 4, Phase 5a regression: spacing controls unchanged
  *
  * Run: npx tsx --env-file .env.local src/scripts/e2e-test-phase5b.ts
  */
@@ -36,7 +36,7 @@ function extractSpec(html: string): WebsiteSpec | null {
 }
 
 // ── CHECK 1: EDIT_SCRIPT source ────────────────────────────────────────────────
-console.log("\n══ CHECK 1: EDIT_SCRIPT — new DOM/state/functions ══\n");
+console.log("\n══ CHECK 1: EDIT_SCRIPT, new DOM/state/functions ══\n");
 
 // panel CSS
 check("#ve-panel has max-height:80vh",
@@ -48,7 +48,7 @@ check("SHADOW_VALS array defined with 4 entries",
 
 // Border DOM
 check("bdrWGrp mkGrp('Border'...) created",
-  pageSource.includes("var bdrWGrp=mkGrp('Border',[{lbl:'—',val:''},{lbl:'1px',val:'1px'},{lbl:'2px',val:'2px'}]);"));
+  pageSource.includes("var bdrWGrp=mkGrp('Border',[{lbl:', ',val:''},{lbl:'1px',val:'1px'},{lbl:'2px',val:'2px'}]);"));
 check("bdrClrInp color input created",
   pageSource.includes("var bdrClrInp=document.createElement('input');bdrClrInp.type='color';"));
 check("bdrReset button created",
@@ -56,7 +56,7 @@ check("bdrReset button created",
 
 // Shadow DOM
 check("shdGrp mkGrp('Shadow'...) with SHADOW_VALS refs",
-  pageSource.includes("var shdGrp=mkGrp('Shadow',[{lbl:'—',val:SHADOW_VALS[0]},{lbl:'Low',val:SHADOW_VALS[1]},{lbl:'Med',val:SHADOW_VALS[2]},{lbl:'High',val:SHADOW_VALS[3]}]);"));
+  pageSource.includes("var shdGrp=mkGrp('Shadow',[{lbl:', ',val:SHADOW_VALS[0]},{lbl:'Low',val:SHADOW_VALS[1]},{lbl:'Med',val:SHADOW_VALS[2]},{lbl:'High',val:SHADOW_VALS[3]}]);"));
 
 // El-spacing DOM
 check("elTopGrp mkGrp('El ↑'...) created",
@@ -136,7 +136,7 @@ check("_sectionShadows re-apply block exists",
   pageSource.includes("if(st.boxShadow!==undefined)sec.style.boxShadow=st.boxShadow;"));
 
 // ── CHECK 1b: parent handlers ──────────────────────────────────────────────────
-console.log("\n══ CHECK 1b: parent handlers — vela-border, vela-shadow, vela-el-spacing ══\n");
+console.log("\n══ CHECK 1b: parent handlers, vela-border, vela-shadow, vela-el-spacing ══\n");
 
 check("vela-border handler exists",
   pageSource.includes('if (msgType === "vela-border")'));
@@ -222,7 +222,7 @@ const testSpec: WebsiteSpec = {
   // Phase 5a: section-level spacing (regression)
   _sectionSpacing: {
     "0": { paddingTop: "48px", paddingBottom: "32px" },
-    // Phase 5b FIX 3: element-level spacing (new — uses si_type keys)
+    // Phase 5b FIX 3: element-level spacing (new, uses si_type keys)
     "0_heading": { marginTop: "16px", marginBottom: "8px" },
     "0_cta":     { marginTop: "24px" },
   },
@@ -291,20 +291,20 @@ if (renderedHtml) {
   }
 }
 
-// ── CHECK 3: 375px — no new controls cause horizontal overflow ─────────────────
-console.log("\n══ CHECK 3: 375px — overflow safety for border/shadow/element spacing ══\n");
+// ── CHECK 3: 375px, no new controls cause horizontal overflow ─────────────────
+console.log("\n══ CHECK 3: 375px, overflow safety for border/shadow/element spacing ══\n");
 
-// FIX 1 — border: applied as sec.style.border (shorthand, all sides). On a block-level
+// FIX 1, border: applied as sec.style.border (shorthand, all sides). On a block-level
 //   section that's already width:100%, a uniform border insets visually within the
 //   existing flow box. With box-sizing:border-box (standard in tailwind/reset), the
-//   declared width absorbs the border — no overflow. Even with content-box, a 1-2px
+//   declared width absorbs the border, no overflow. Even with content-box, a 1-2px
 //   border on a 100%-width element pushes width by 2-4px, well within typical viewports.
-check("EDIT_SCRIPT sets sec.style.border (shorthand — not left/right independently)",
+check("EDIT_SCRIPT sets sec.style.border (shorthand, not left/right independently)",
   pageSource.includes("if(sec)sec.style.border=border;") &&
   !pageSource.includes("sec.style.borderLeft") &&
   !pageSource.includes("sec.style.borderRight"));
 
-// FIX 2 — box-shadow: does NOT participate in layout flow. Per CSS spec, box-shadow
+// FIX 2, box-shadow: does NOT participate in layout flow. Per CSS spec, box-shadow
 //   is outside normal flow and is clipped to the overflow scroll area of the stacking
 //   context. It cannot push content or cause scrollWidth to increase.
 check("SHADOW_VALS contains no horizontal-only shadow offset that could push layout",
@@ -321,7 +321,7 @@ check("SHADOW_VALS contains no horizontal-only shadow offset that could push lay
     return matches.length === 3; // 3 non-empty entries, all start with x=0
   })());
 
-// FIX 3 — element-level spacing: marginTop/Bottom are block-axis only.
+// FIX 3, element-level spacing: marginTop/Bottom are block-axis only.
 //   Same reasoning as Phase 5a paddingTop/Bottom.
 check("element spacing sets marginTop/Bottom only (not marginLeft/Right)",
   pageSource.includes("curEl.style.marginTop=v;") &&
@@ -345,11 +345,11 @@ check("element re-apply block uses 'eli' variable to avoid variable collision",
 // ── CHECK 4: Phase 5a regression ───────────────────────────────────────────────
 console.log("\n══ CHECK 4: Phase 5a regression ══\n");
 
-check("psp() still exists (section spacing postMessage — unchanged)",
+check("psp() still exists (section spacing postMessage, unchanged)",
   pageSource.includes("function psp(si,top,bot){parent.postMessage({type:'vela-spacing'"));
-check("topGrp still wired (section padding-top — unchanged)",
+check("topGrp still wired (section padding-top, unchanged)",
   pageSource.includes("curTop=v;setActive(topGrp.btns,v);psp(curSi,curTop,curBot);pos();"));
-check("botGrp still wired (section padding-bottom — unchanged)",
+check("botGrp still wired (section padding-bottom, unchanged)",
   pageSource.includes("curBot=v;setActive(botGrp.btns,v);psp(curSi,curTop,curBot);pos();"));
 check("vela-spacing parent handler unchanged",
   pageSource.includes('if (msgType === "vela-spacing")') &&

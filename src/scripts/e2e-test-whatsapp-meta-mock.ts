@@ -1,5 +1,5 @@
 /**
- * WhatsApp Meta Cloud API — mocked-response test suite
+ * WhatsApp Meta Cloud API, mocked-response test suite
  *
  * Per Hard Rule 20 (build against placeholder credentials until final integration
  * day): since META_APP_ID/META_APP_SECRET/META_WHATSAPP_VERIFY_TOKEN are still
@@ -7,13 +7,13 @@
  * API responses shaped like Meta's documented schemas.
  *
  * Covers:
- *   A — sendWhatsAppMessage(): static audit + success path + Meta-error path
- *   B — callback route: business logic flow + fail-closed at every step +
+ *   A, sendWhatsAppMessage(): static audit + success path + Meta-error path
+ *   B, callback route: business logic flow + fail-closed at every step +
  *       PARTIAL WRITE AUDIT (step 7 vs step 8 sequencing)
- *   C — webhook route: HMAC-SHA256 verification (valid / tampered / missing)
- *   D — webhook route: phone_number_id routing (match / no-match) — live Supabase
- *   E — Env var status: which WhatsApp vars are set vs. still placeholder
- *   F — Connected-state guarantee: confirm no tenant is falsely marked connected
+ *   C, webhook route: HMAC-SHA256 verification (valid / tampered / missing)
+ *   D, webhook route: phone_number_id routing (match / no-match), live Supabase
+ *   E, Env var status: which WhatsApp vars are set vs. still placeholder
+ *   F, Connected-state guarantee: confirm no tenant is falsely marked connected
  *
  * Run: npx tsx --env-file .env.local src/scripts/e2e-test-whatsapp-meta-mock.ts
  */
@@ -104,10 +104,10 @@ function makeCallbackFlow(fetchMock: (url: string) => MockFetchResponse) {
       errors.push("subscription_failed"); return { errors, dbWritesCalled };
     }
 
-    // Step 7: DB write — whatsapp_accounts upsert (has error check in real code)
+    // Step 7: DB write, whatsapp_accounts upsert (has error check in real code)
     dbWritesCalled++;
 
-    // Step 8: DB write — tenant_config upsert (NO error check in real code — documented below)
+    // Step 8: DB write, tenant_config upsert (NO error check in real code, documented below)
     dbWritesCalled++;
 
     return { errors, dbWritesCalled, phoneNumber: phoneData.display_phone_number ?? null };
@@ -121,10 +121,10 @@ function makeCallbackFlow(fetchMock: (url: string) => MockFetchResponse) {
 async function main() {
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION A — sendWhatsAppMessage()
+  // SECTION A, sendWhatsAppMessage()
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  A — sendWhatsAppMessage() : static audit + mocked paths");
+  console.log("  A, sendWhatsAppMessage() : static audit + mocked paths");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("A1 uses Graph API v22.0 endpoint",
@@ -139,11 +139,11 @@ async function main() {
   check("A1 body includes messaging_product: whatsapp",
     sendSrc.includes("messaging_product") && sendSrc.includes("whatsapp"));
 
-  check("A1 never logs access_token — only recipientPrefix and phoneNumberId",
+  check("A1 never logs access_token, only recipientPrefix and phoneNumberId",
     !sendSrc.includes("accessToken,\n") && !sendSrc.includes('"accessToken"') &&
     sendSrc.includes("recipientPrefix") && sendSrc.includes("phoneNumberId"));
 
-  check("A1 throws on !res.ok — errors are not swallowed",
+  check("A1 throws on !res.ok, errors are not swallowed",
     sendSrc.includes("throw new Error") && sendSrc.includes("!res.ok"));
 
   // A2: Mocked success path
@@ -212,10 +212,10 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION B — Callback route: business logic + partial write audit
+  // SECTION B, Callback route: business logic + partial write audit
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  B — Callback route: business logic + partial write audit");
+  console.log("  B, Callback route: business logic + partial write audit");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   // B1: Env check happens before first API call
@@ -240,7 +240,7 @@ async function main() {
   // B3: Subscription checked before DB writes
   check("B3 subscription failure check comes BEFORE whatsapp_accounts upsert in source",
     (() => {
-      // Use the actual DB call string — "whatsapp_accounts" also appears in comments earlier in the file
+      // Use the actual DB call string, "whatsapp_accounts" also appears in comments earlier in the file
       const subCheckIdx = cbSrc.indexOf("!subscribeData.success");
       const dbWriteIdx  = cbSrc.indexOf('.from("whatsapp_accounts")');
       return subCheckIdx > 0 && dbWriteIdx > 0 && subCheckIdx < dbWriteIdx;
@@ -265,16 +265,16 @@ async function main() {
   const afterTcUpsert = tcUpsertIdx > 0 ? cbSrc.slice(tcUpsertIdx, tcUpsertIdx + 300) : "";
   const step8HasGuard = /if\s*\(/.test(afterTcUpsert) || afterTcUpsert.includes("tcErr");
 
-  check("B4 step 8 (tenant_config) has NO error check — known behavior (documented)",
+  check("B4 step 8 (tenant_config) has NO error check, known behavior (documented)",
     !step8HasGuard,
     step8HasGuard
-      ? "unexpected: step 8 now has an error check — update this test"
+      ? "unexpected: step 8 now has an error check, update this test"
       : "If step 8 fails silently: whatsapp_accounts active row exists, tenant_config.whatsapp_connected stays false. " +
         "Webhook WOULD route to tenant; UI would show 'Not connected' after reload. " +
         "This is a UX inconsistency, not a security issue. Supabase upserts rarely fail."
   );
 
-  check("B4 step 8 result is discarded — not assigned to a variable",
+  check("B4 step 8 result is discarded, not assigned to a variable",
     (() => {
       const assignmentIdx = cbSrc.indexOf('const {');
       const tcIdx = cbSrc.lastIndexOf('.from("tenant_config")');
@@ -285,7 +285,7 @@ async function main() {
       return !betweenTcAndReturn.includes("const {") && !betweenTcAndReturn.includes("let {");
     })());
 
-  // B5: Mock — token exchange fails → no downstream API calls, no DB writes
+  // B5: Mock, token exchange fails → no downstream API calls, no DB writes
   console.log("\n  B5-B8: mocked failure at each step\n");
   {
     const runFlow = makeCallbackFlow((url) => {
@@ -299,7 +299,7 @@ async function main() {
       `errors: ${result.errors.join(",")}, dbWrites: ${result.dbWritesCalled}`);
   }
 
-  // B6: Mock — phone validation fails → no subscription, no DB writes
+  // B6: Mock, phone validation fails → no subscription, no DB writes
   {
     const runFlow = makeCallbackFlow((url) => {
       if (url.includes("oauth/access_token"))
@@ -314,7 +314,7 @@ async function main() {
       `errors: ${result.errors.join(",")}, dbWrites: ${result.dbWritesCalled}`);
   }
 
-  // B7: Mock — subscription fails → no DB writes
+  // B7: Mock, subscription fails → no DB writes
   {
     const runFlow = makeCallbackFlow((url) => {
       if (url.includes("oauth/access_token"))
@@ -331,7 +331,7 @@ async function main() {
       `errors: ${result.errors.join(",")}, dbWrites: ${result.dbWritesCalled}`);
   }
 
-  // B8: Mock — happy path with Meta's documented response shapes → both DB writes reached
+  // B8: Mock, happy path with Meta's documented response shapes → both DB writes reached
   {
     const runFlow = makeCallbackFlow((url) => {
       if (url.includes("oauth/access_token"))
@@ -352,19 +352,19 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION C — Webhook: HMAC-SHA256 signature verification
+  // SECTION C, Webhook: HMAC-SHA256 signature verification
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  C — Webhook: HMAC-SHA256 signature verification");
+  console.log("  C, Webhook: HMAC-SHA256 signature verification");
   console.log("══════════════════════════════════════════════════════════════\n");
 
-  check("C1 uses crypto.createHmac('sha256') — not sha1",
+  check("C1 uses crypto.createHmac('sha256'), not sha1",
     whSrc.includes('"sha256"') && !whSrc.includes('"sha1"'));
 
   check("C1 reads x-hub-signature-256 header (Meta's standard)",
     whSrc.includes("x-hub-signature-256"));
 
-  check("C2 returns 500 when META_APP_SECRET absent — fail-closed",
+  check("C2 returns 500 when META_APP_SECRET absent, fail-closed",
     whSrc.includes("META_APP_SECRET") &&
     whSrc.includes("Service misconfigured") &&
     whSrc.includes("status: 500"));
@@ -373,7 +373,7 @@ async function main() {
     whSrc.includes("Missing signature") && whSrc.includes("status: 403"));
 
   check("C7 GET handler uses META_WHATSAPP_VERIFY_TOKEN (not the Instagram META_WEBHOOK_VERIFY_TOKEN)",
-    // The docstring explains the distinction by naming both tokens — only check that
+    // The docstring explains the distinction by naming both tokens, only check that
     // actual code (process.env.) only reads META_WHATSAPP_VERIFY_TOKEN
     whSrc.includes('process.env.META_WHATSAPP_VERIFY_TOKEN') &&
     !whSrc.includes('process.env.META_WEBHOOK_VERIFY_TOKEN'));
@@ -388,7 +388,7 @@ async function main() {
     })());
 
   // C4-C6: HMAC logic tests with test secret
-  console.log("\n  C4-C6: HMAC logic (test secret only — never touches real META_APP_SECRET)\n");
+  console.log("\n  C4-C6: HMAC logic (test secret only, never touches real META_APP_SECRET)\n");
   {
     const TEST_SECRET = "test-app-secret-for-e2e-whatsapp-mock";
     const TEST_BODY   = JSON.stringify({
@@ -432,18 +432,18 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION D — Webhook: phone_number_id routing (live Supabase)
+  // SECTION D, Webhook: phone_number_id routing (live Supabase)
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  D — Webhook: phone_number_id routing (live Supabase DB)");
+  console.log("  D, Webhook: phone_number_id routing (live Supabase DB)");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   check("D1 routing filters WHERE is_active=true (not just phone_number_id equality)",
     whSrc.includes("is_active") && whSrc.includes("true"));
 
-  check("D2 no-match case logs warning and continues — no 4xx that would cause Meta retries",
+  check("D2 no-match case logs warning and continues, no 4xx that would cause Meta retries",
     // The no-match block uses `continue` (not a return), so Meta never sees a 4xx for unknown phone IDs.
-    // The file does have status:400 for invalid JSON / bad signature at other points — that's correct.
+    // The file does have status:400 for invalid JSON / bad signature at other points, that's correct.
     (() => {
       const noMatchIdx = whSrc.indexOf("No active account for phone_number_id");
       if (noMatchIdx < 0) return false;
@@ -489,9 +489,9 @@ async function main() {
         tableCheckErr.code === "42P01" ||
         tableCheckErr.code === "PGRST204"
       )) {
-        console.log("  ℹ️  whatsapp_accounts table absent — migration_v9.sql not yet run (expected).");
-        console.log("      Live DB routing tests D3-D5 skipped — will run once migration is executed.\n");
-        check("D3 migration_v9.sql pending — whatsapp_accounts table correctly absent (expected state)",
+        console.log("  ℹ️  whatsapp_accounts table absent, migration_v9.sql not yet run (expected).");
+        console.log("      Live DB routing tests D3-D5 skipped, will run once migration is executed.\n");
+        check("D3 migration_v9.sql pending, whatsapp_accounts table correctly absent (expected state)",
           true);
       } else {
         // Insert test row
@@ -541,17 +541,17 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION E — Env var status
+  // SECTION E, Env var status
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  E — Env var status (WhatsApp integration)");
+  console.log("  E, Env var status (WhatsApp integration)");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   const ENV_VARS = [
-    { name: "META_APP_ID",                                note: "shared with Instagram — set in Vercel (may already exist from Instagram setup)" },
-    { name: "META_APP_SECRET",                            note: "shared with Instagram — triggers HMAC verification in both webhooks" },
-    { name: "META_WHATSAPP_VERIFY_TOKEN",                 note: "WhatsApp-only — DIFFERENT from META_WEBHOOK_VERIFY_TOKEN for Instagram" },
-    { name: "NEXT_PUBLIC_META_APP_ID",                    note: "same value as META_APP_ID but public — needed for FB.init on client" },
+    { name: "META_APP_ID",                                note: "shared with Instagram, set in Vercel (may already exist from Instagram setup)" },
+    { name: "META_APP_SECRET",                            note: "shared with Instagram, triggers HMAC verification in both webhooks" },
+    { name: "META_WHATSAPP_VERIFY_TOKEN",                 note: "WhatsApp-only, DIFFERENT from META_WEBHOOK_VERIFY_TOKEN for Instagram" },
+    { name: "NEXT_PUBLIC_META_APP_ID",                    note: "same value as META_APP_ID but public, needed for FB.init on client" },
     { name: "NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID", note: "from Meta App dashboard → WhatsApp → Embedded Signup config" },
   ];
 
@@ -566,15 +566,15 @@ async function main() {
   }
   console.log("");
 
-  check("E all 5 WhatsApp env vars are currently PLACEHOLDER (expected — Meta App Review pending)",
+  check("E all 5 WhatsApp env vars are currently PLACEHOLDER (expected, Meta App Review pending)",
     placeholderVars.length === 5,
-    `${5 - placeholderVars.length}/5 already set — only ${placeholderVars.join(", ")} still placeholder`);
+    `${5 - placeholderVars.length}/5 already set, only ${placeholderVars.join(", ")} still placeholder`);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECTION F — Connected-state guarantee
+  // SECTION F, Connected-state guarantee
   // ═══════════════════════════════════════════════════════════════════════════
   console.log("\n══════════════════════════════════════════════════════════════");
-  console.log("  F — Connected-state guarantee: no tenant falsely connected");
+  console.log("  F, Connected-state guarantee: no tenant falsely connected");
   console.log("══════════════════════════════════════════════════════════════\n");
 
   if (!sbUrl || !svcKey) {
@@ -599,7 +599,7 @@ async function main() {
       .eq("is_active", true);
 
     if (accErr && (accErr.message?.includes("does not exist") || accErr.code === "42P01")) {
-      console.log("  ℹ️  whatsapp_accounts table absent — migration_v9.sql not yet run (expected)");
+      console.log("  ℹ️  whatsapp_accounts table absent, migration_v9.sql not yet run (expected)");
       check("F whatsapp_accounts table absent → migration_v9.sql still pending (expected)", true);
     } else {
       check("F whatsapp_accounts query succeeded", !accErr, accErr?.message);
@@ -625,12 +625,12 @@ async function main() {
   console.log(`  Total: ${totalChecks}  |  Passed: ${passed}  |  Failed: ${failed}\n`);
 
   if (failed > 0) {
-    console.error(`  ❌ ${failed} check(s) FAILED — see above for details\n`);
+    console.error(`  ❌ ${failed} check(s) FAILED, see above for details\n`);
   } else {
     console.log(`  ✅ All ${passed} checks passed.\n`);
   }
 
-  console.log("  Env vars still PLACEHOLDER — add to Vercel before final integration day:");
+  console.log("  Env vars still PLACEHOLDER, add to Vercel before final integration day:");
   for (const v of ENV_VARS) {
     if (!process.env[v.name]) {
       console.log(`    • ${v.name}`);

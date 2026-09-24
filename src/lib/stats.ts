@@ -46,12 +46,12 @@ export interface DashboardStats {
   conversationsThisWeek: number;
   conversationsChange: ChangeInfo;
   needsHumanCount: number;
-  // Today's real counts — command-center view (Dashboard redesign)
+  // Today's real counts, command-center view (Dashboard redesign)
   leadsToday: number;
   appointmentsToday: number;
   messagesToday: number;
   callsToday: number;
-  // AI Resolution Rate — real percentage of conversations the AI handled
+  // AI Resolution Rate, real percentage of conversations the AI handled
   // without ever needing a human handoff (see computeAiResolutionRate below
   // for the exact definition). null when there's no real data yet (honest
   // zero-state, never a fabricated 0% or 100%).

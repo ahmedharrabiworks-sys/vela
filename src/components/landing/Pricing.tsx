@@ -19,14 +19,14 @@ export const INHERIT_LINE: Record<string, string> = {
 };
 
 // Indices into the already-filtered (included-only) features array to show on the card.
-// Recomputed after the Marketing/CRM/Analytics/Website Builder bullets were
-// removed from src/lib/pricing.ts (MVP scope-down, Phase 2) -- these must
-// stay in sync with that file's included-feature order.
+// Recomputed for the real pricing numbers set in Phase 4 (src/lib/pricing.ts) --
+// these must stay in sync with that file's included-feature order.
+// Starter: 4 bullets (all of them, tier only has 4 included features).
 // Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
 export const CARD_INDICES: Record<string, number[]> = {
-  starter: [0, 2, 3, 4],
+  starter: [0, 1, 2, 3],
   pro:     [0, 1, 2, 6],
-  premium: [0, 2, 3, 4, 5],
+  premium: [0, 2, 3, 4, 6],
 };
 
 export default function Pricing() {
@@ -66,7 +66,7 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* Cards — glow hugs the card row bounding box */}
+        {/* Cards, glow hugs the card row bounding box */}
         <div className="relative max-w-[900px] mx-auto">
           <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
             style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.22)", filter: "blur(60px)", zIndex: 0 }} />

@@ -52,7 +52,7 @@ export async function GET() {
     .limit(200);
 
   if (isMissingTable(error)) {
-    console.warn("[assistant/messages] assistant_messages table missing — run migration_v31.sql.");
+    console.warn("[assistant/messages] assistant_messages table missing, run migration_v31.sql.");
     return NextResponse.json({ messages: [] });
   }
   if (error) {

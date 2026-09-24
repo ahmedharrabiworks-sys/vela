@@ -5,7 +5,7 @@ export type PresetName =
   | "beauty"
   | "realestate"
   | "restaurant"
-  // Legacy names — stored in older DB specs; resolved in resolveTokens
+  // Legacy names, stored in older DB specs; resolved in resolveTokens
   | "editorial-luxury"
   | "minimal-warm"
   | "saas-sharp"
@@ -57,7 +57,7 @@ export interface DesignTokens {
 
 const BASE: Record<NewPresetName, DesignTokens> = {
 
-  // ── Hotel — ref editionhotels.com ─────────────────────────────────────────
+  // ── Hotel, ref editionhotels.com ─────────────────────────────────────────
   // Playfair Display + Inter. Charcoal #1A1A1A, warm sand #C9A961, off-white
   // #FAF8F5. Full-bleed hero, 35% dark overlay, centered type. Body always light.
   "hotel": {
@@ -89,7 +89,7 @@ const BASE: Record<NewPresetName, DesignTokens> = {
     radiusLg:         "2px",
   },
 
-  // ── Medical — ref forward.com ─────────────────────────────────────────────
+  // ── Medical, ref forward.com ─────────────────────────────────────────────
   // All-Inter, clinical, generous whitespace. White, deep blue #0A2540,
   // accent #2563EB. Split hero. ALWAYS bright, never dark.
   "medical": {
@@ -121,7 +121,7 @@ const BASE: Record<NewPresetName, DesignTokens> = {
     radiusLg:         "18px",
   },
 
-  // ── Fitness — ref equinox.com ─────────────────────────────────────────────
+  // ── Fitness, ref equinox.com ─────────────────────────────────────────────
   // Archivo condensed bold uppercase + Inter body. Near-black #0B0B0B, white,
   // energy accent #E8FF3A. Full-bleed dark hero. DARK throughout.
   "fitness": {
@@ -153,7 +153,7 @@ const BASE: Record<NewPresetName, DesignTokens> = {
     radiusLg:         "8px",
   },
 
-  // ── Beauty — ref aesop.com ────────────────────────────────────────────────
+  // ── Beauty, ref aesop.com ────────────────────────────────────────────────
   // Cormorant Garamond + Inter. Warm off-white #F7F5F0, brown-black #1C1A17,
   // muted olive #6B705C. Heavy whitespace, almost no color. Soft split hero.
   "beauty": {
@@ -185,7 +185,7 @@ const BASE: Record<NewPresetName, DesignTokens> = {
     radiusLg:         "0px",
   },
 
-  // ── Real Estate — ref serhant.com ─────────────────────────────────────────
+  // ── Real Estate, ref serhant.com ─────────────────────────────────────────
   // Playfair Display + Inter. Black, white, gold #B8945F.
   // Full-bleed property hero, centered editorial type.
   "realestate": {
@@ -217,7 +217,7 @@ const BASE: Record<NewPresetName, DesignTokens> = {
     radiusLg:         "2px",
   },
 
-  // ── Restaurant — ref noma.dk ──────────────────────────────────────────────
+  // ── Restaurant, ref noma.dk ──────────────────────────────────────────────
   // Minimal editorial, image-led. Warm cream #F5F1EA, charcoal #211F1C,
   // muted terracotta #A65D45. Playfair Display. Restrained type.
   "restaurant": {

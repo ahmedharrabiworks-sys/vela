@@ -738,7 +738,7 @@ function SceneChannels() {
         </span>
       </div>
 
-      {/* overflow:hidden — 3 cards fit without scrolling */}
+      {/* overflow:hidden, 3 cards fit without scrolling */}
       <div className="flex-1 overflow-hidden px-4 flex flex-col gap-2 pb-3">
         {channels.map((ch, chIdx)=>{
           const isTarget = chIdx===targetIdx;
@@ -1044,7 +1044,7 @@ function SceneAgent() {
         </div>
       </div>
 
-      {/* Recent calls — overflow:hidden, exactly 3 rows, light staggered reveal.
+      {/* Recent calls, overflow:hidden, exactly 3 rows, light staggered reveal.
           Row 0 is clickable in spirit (simulated cursor drives the demo, not
           real pointer events) and gets a highlight tint + ref for the zoom. */}
       <div className="flex-1 overflow-hidden px-4 pb-2">
@@ -1107,7 +1107,7 @@ function SceneAgent() {
         )}
       </AnimatePresence>
 
-      {/* Full call transcript — zooms in from the clicked row's position,
+      {/* Full call transcript, zooms in from the clicked row's position,
           holds, then zooms back out to the Recent Calls list. */}
       <AnimatePresence>
         {showTranscript && (
@@ -1284,7 +1284,7 @@ export default function ProductTourDemo() {
     <section className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
-        {/* Section header — FIX 5+6 applied */}
+        {/* Section header, FIX 5+6 applied */}
         <div className="text-center mb-10 md:mb-14">
           <h2
             className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight"
@@ -1406,7 +1406,7 @@ export default function ProductTourDemo() {
                 <div style={{ width:52 }}/>
               </div>
 
-              {/* Scene area — perspective + overflow:hidden = no scrollbars ever */}
+              {/* Scene area, perspective + overflow:hidden = no scrollbars ever */}
               <div
                 className="relative"
                 style={{ height:480, perspective:1400, perspectiveOrigin:"50% 40%", overflow:"hidden" }}

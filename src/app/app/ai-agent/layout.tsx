@@ -75,10 +75,10 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
           </span>
         </div>
 
-        {/* Agent switcher — two side-by-side cards; single column on mobile */}
+        {/* Agent switcher, two side-by-side cards; single column on mobile */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
 
-          {/* Card A — Vela · Your Assistant */}
+          {/* Card A, Vela · Your Assistant */}
           <button
             onClick={() => router.push("/app/ai-agent/overview")}
             className="flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all hover:opacity-90"
@@ -112,7 +112,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
             </div>
           </button>
 
-          {/* Card B — Your Phone Agent */}
+          {/* Card B, Your Phone Agent */}
           <button
             onClick={() => router.push("/app/ai-agent/training")}
             className="flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all hover:opacity-90"
@@ -146,7 +146,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
           </button>
         </div>
 
-        {/* Contextual tab row — tabs for the active agent only */}
+        {/* Contextual tab row, tabs for the active agent only */}
         <div className="flex items-end overflow-x-auto scrollbar-none" style={{ marginBottom: -1 }}>
           {activeTabs.map((tab) => {
             const active = pathname === tab.href;

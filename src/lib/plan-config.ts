@@ -1,4 +1,4 @@
-// Shared plan limits — no "use client" so this can be imported by both
+// Shared plan limits, no "use client" so this can be imported by both
 // React client components (plans.ts) and server API routes (generate/route.ts).
 // This is the SINGLE SOURCE OF TRUTH for per-plan limits.
 // Prices here must stay in sync with src/lib/pricing.ts.
@@ -10,7 +10,7 @@ export const PLAN_CONFIG = {
     bookingsPerMonth: 50,
     customDomains: 0,
     websites: 0,
-    voiceMinutes: 150,
+    voiceMinutes: 0,
     textMessages: 500,
     teamMembers: 1,
     multiLocation: 0,
@@ -27,8 +27,8 @@ export const PLAN_CONFIG = {
     bookingsPerMonth: Infinity,
     customDomains: 1,
     websites: 1,
-    voiceMinutes: 650,
-    textMessages: Infinity,
+    voiceMinutes: 300,
+    textMessages: 1500,
     teamMembers: 3,
     multiLocation: 2,
     voiceAgent: true,
@@ -44,8 +44,8 @@ export const PLAN_CONFIG = {
     bookingsPerMonth: Infinity,
     customDomains: 3,
     websites: 3,
-    voiceMinutes: 1300,
-    textMessages: Infinity,
+    voiceMinutes: 700,
+    textMessages: 3000,
     teamMembers: Infinity,
     multiLocation: Infinity,
     voiceAgent: true,

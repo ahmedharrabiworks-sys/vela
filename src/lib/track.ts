@@ -33,5 +33,5 @@ export async function track(
       event_type: eventType,
       metadata: metadata ?? {},
     });
-  } catch { /* silently fail — never block UI for tracking */ }
+  } catch { /* silently fail, never block UI for tracking */ }
 }

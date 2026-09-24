@@ -300,7 +300,7 @@ export default function DashboardPageUI({
           shared edge, closer to a real split view than two floating boxes. */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-10 gap-y-10">
 
-        {/* Conversations — 2 cols */}
+        {/* Conversations, 2 cols */}
         <div className="lg:col-span-2 min-w-0">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-[10.5px] font-medium uppercase tracking-[0.02em] text-[#9CA3AF] dark:text-[#6E6E76]">
@@ -354,7 +354,7 @@ export default function DashboardPageUI({
           )}
         </div>
 
-        {/* Appointments — 3 cols */}
+        {/* Appointments, 3 cols */}
         <div className="lg:col-span-3 min-w-0 lg:border-l lg:border-black/[0.06] lg:dark:border-white/[0.08] lg:pl-10">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-[10.5px] font-medium uppercase tracking-[0.02em] text-[#9CA3AF] dark:text-[#6E6E76]">

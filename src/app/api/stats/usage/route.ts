@@ -4,7 +4,7 @@ import { ensureTenant } from "@/lib/ensure-tenant";
 import { getUsageSummary } from "@/lib/usage";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 
-// Infinity is not valid JSON — callers receive null to mean "unlimited".
+// Infinity is not valid JSON, callers receive null to mean "unlimited".
 function limitOrNull(value: number): number | null {
   return value === Infinity ? null : value;
 }
@@ -17,7 +17,7 @@ export async function GET() {
   try {
     const tenant = await ensureTenant(user.id, user.email, user.user_metadata);
 
-    // ensureTenant returns only id/business_name/industry/city — fetch plan separately
+    // ensureTenant returns only id/business_name/industry/city, fetch plan separately
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const admin = createSupabaseAdmin() as any;
     const { data: tenantRow } = await admin

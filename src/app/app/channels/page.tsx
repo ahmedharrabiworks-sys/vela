@@ -59,7 +59,7 @@ function InstagramModal({ onClose }: { onClose: () => void }) {
   const PERMISSIONS = [
     { label: "Read Instagram DMs", desc: "So Vela AI can see and respond to incoming messages" },
     { label: "Manage messages",    desc: "So Vela AI can send replies on your behalf" },
-    { label: "Comment access",     desc: "Part of Instagram's standard business permissions — comment automation isn't built yet" },
+    { label: "Comment access",     desc: "Part of Instagram's standard business permissions, comment automation isn't built yet" },
   ];
 
   return (
@@ -144,10 +144,10 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
   const [connectedPhone, setConnectedPhone] = useState("");
   const [connectedName, setConnectedName]   = useState("");
 
-  // Load Facebook JS SDK once (idempotent — guarded by element ID check)
+  // Load Facebook JS SDK once (idempotent, guarded by element ID check)
   useEffect(() => {
     if (document.getElementById("facebook-jssdk")) {
-      // SDK already present — init if FB object exists
+      // SDK already present, init if FB object exists
       if (window.FB) {
         window.FB.init({
           appId:   process.env.NEXT_PUBLIC_META_APP_ID ?? "",
@@ -182,7 +182,7 @@ function WhatsAppModal({ onClose, onConnect }: { onClose: () => void; onConnect:
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFacebookLoginResponse = async (response: any) => {
     if (response.status !== "connected" || !response.authResponse?.code) {
-      // User cancelled or denied — quietly return to idle
+      // User cancelled or denied, quietly return to idle
       setStatus("idle");
       return;
     }
@@ -1120,7 +1120,7 @@ function ChannelsPageContent() {
           );
         })}
 
-        {/* Phone Agent channel — deep-links to the existing setup under
+        {/* Phone Agent channel, deep-links to the existing setup under
             AI Agent > Phone Number, never a new connect flow. Status is
             derived from real provisioning + training state (see the fetch
             effect and phoneAgentStatus above), same visual card pattern as
@@ -1204,7 +1204,7 @@ function ChannelsPageContent() {
           )}
         </div>
 
-        {/* Website channel — tied to Website Builder, fully optional.
+        {/* Website channel, tied to Website Builder, fully optional.
             Hidden for this MVP phase (WEBSITE_BUILDER_ENABLED=false) --
             code, state, and handlers below are untouched so re-enabling is
             flipping that flag back on. */}
@@ -1316,7 +1316,7 @@ function ChannelsPageContent() {
             </div>
           )}
 
-          {/* Connect an existing external website — separate, optional, collapsed by default.
+          {/* Connect an existing external website, separate, optional, collapsed by default.
               Also the real target of the "Manage" button above. */}
           <div ref={embedSectionRef} className="mt-4 pt-4 border-t border-[#F3F4F6]">
             <button

@@ -1,10 +1,10 @@
 /**
- * E2E verification: Phase B item 12 Step 4 — /api/stats/usage endpoint.
+ * E2E verification: Phase B item 12 Step 4, /api/stats/usage endpoint.
  * Tests four scenarios:
- *   1 — Unauthenticated: expect 401
- *   2 — Starter tenant: messages.limit = 500, voiceMinutes.limit = 150
- *   3 — Pro/Premium/Custom tenant: messages.limit = null, voiceMinutes.limit = null
- *   4 — Response shape: all required fields present, no Infinity in JSON
+ *   1, Unauthenticated: expect 401
+ *   2, Starter tenant: messages.limit = 500, voiceMinutes.limit = 150
+ *   3, Pro/Premium/Custom tenant: messages.limit = null, voiceMinutes.limit = null
+ *   4, Response shape: all required fields present, no Infinity in JSON
  *
  * Auth strategy: sign in via Supabase auth REST API → get access_token →
  * send it as the sb-* cookie the SSR client reads.
@@ -37,7 +37,7 @@ const cookieName = `sb-${projectRef}-auth-token`;
 const checks: { label: string; pass: boolean; detail?: string }[] = [];
 function check(label: string, pass: boolean, detail?: string) {
   checks.push({ label, pass, detail });
-  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? `, ${detail}` : ""}`);
 }
 
 // Sign in via Supabase auth REST and return a cookie string for use in fetch headers.
@@ -101,7 +101,7 @@ async function callUsageEndpoint(cookie: string | null): Promise<{ status: numbe
 }
 
 async function main() {
-  console.log("=== Phase B item 12 Step 4 — /api/stats/usage E2E ===\n");
+  console.log("=== Phase B item 12 Step 4, /api/stats/usage E2E ===\n");
 
   // ── Scenario 1: Unauthenticated → 401 ─────────────────────────────────
   console.log("--- Scenario 1: Unauthenticated request ---");
@@ -114,7 +114,7 @@ async function main() {
   const cookie = await getSessionCookie(testEmail, testPass);
 
   if (!cookie) {
-    console.error("  ❌ Could not get session cookie — remaining tests skipped.");
+    console.error("  ❌ Could not get session cookie, remaining tests skipped.");
     printSummary(); return;
   }
   console.log("  Session cookie obtained.\n");
@@ -186,7 +186,7 @@ async function main() {
         `endpoint=${body?.messages?.used}, db=${count}`);
     }
   } else {
-    console.log("  (Could not find test user — skipping DB cross-check)");
+    console.log("  (Could not find test user, skipping DB cross-check)");
   }
 
   printSummary();

@@ -200,7 +200,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="h-14 md:h-16 bg-white dark:bg-[#17171C] border-b border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between px-4 md:px-6 shrink-0" style={{ transition: "background 0.2s" }}>
           <div className="flex items-center gap-2 md:gap-3">
 
-            {/* Hamburger — mobile only */}
+            {/* Hamburger, mobile only */}
             <button onClick={() => setSidebarOpen(true)}
               className="md:hidden p-2 -ml-1 rounded-lg text-[#374151] hover:bg-[#F3F4F6] transition-colors"
               aria-label="Open menu">
@@ -209,7 +209,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </svg>
             </button>
 
-            {/* Search — opens command palette */}
+            {/* Search, opens command palette */}
             <button onClick={() => setPaletteOpen(true)}
               className="relative hidden sm:flex items-center gap-2 pl-9 pr-4 py-2 text-sm bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl w-56 lg:w-64 text-[#9CA3AF] hover:border-[#FF6B35]/40 transition-colors text-left">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" width="14" height="14" viewBox="0 0 14 14" fill="none">

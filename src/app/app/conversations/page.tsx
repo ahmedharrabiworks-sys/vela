@@ -128,7 +128,7 @@ export default function ConversationsPage() {
       .is("deleted_at", null)
       .order("last_message_at", { ascending: false });
     if (err?.code === "PGRST204" || err?.code === "42703") {
-      console.warn("[conversations] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
+      console.warn("[conversations] deleted_at column missing, run migration_v30.sql. Retrying without the filter.");
       ({ data, error: err } = await db
         .from("conversations")
         .select("*, needs_human")
@@ -247,7 +247,7 @@ export default function ConversationsPage() {
       );
       if (selected?.id === convId) setSelected((s) => s ? { ...s, needs_human: false } : s);
     } catch {
-      // Silently fail — next refetch will sync
+      // Silently fail, next refetch will sync
     } finally {
       setResolving(null);
     }
@@ -326,7 +326,7 @@ export default function ConversationsPage() {
     setSending(true);
 
     if (selected.ai_enabled) {
-      // Test the AI — simulates a customer message. Marked is_test=true so it never
+      // Test the AI, simulates a customer message. Marked is_test=true so it never
       // affects previews, usage counts, or real AI context history.
       const tempUser: Message = {
         id: `tmp-u-${Date.now()}`,
@@ -368,7 +368,7 @@ export default function ConversationsPage() {
         }
       } catch { /* realtime will sync if available */ }
     } else {
-      // Takeover mode — send real message to the actual customer via their channel.
+      // Takeover mode, send real message to the actual customer via their channel.
       // Optimistic: show message in thread immediately.
       const tempMsg: Message = {
         id: `tmp-t-${Date.now()}`,
@@ -748,13 +748,13 @@ export default function ConversationsPage() {
         )}
       </div>
 
-      {/* Backdrop — clicking outside the ⋯ dropdown closes it */}
+      {/* Backdrop, clicking outside the ⋯ dropdown closes it */}
       {menuOpenId !== null && (
         <div className="fixed inset-0" style={{ zIndex: 199 }}
           onClick={() => { setMenuOpenId(null); setMenuPos(null); }} />
       )}
 
-      {/* ⋯ conversation context menu — fixed position so it escapes list overflow:hidden */}
+      {/* ⋯ conversation context menu, fixed position so it escapes list overflow:hidden */}
       {menuOpenId !== null && menuPos !== null && (() => {
         const mc = conversations.find((c) => c.id === menuOpenId);
         if (!mc) return null;

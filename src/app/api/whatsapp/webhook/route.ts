@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 
 
-// Twilio signature validation — implements the official algorithm documented at
+// Twilio signature validation, implements the official algorithm documented at
 // https://www.twilio.com/docs/usage/webhooks/webhooks-security#validating-signatures-from-twilio
 // Uses HMAC-SHA1 (Twilio's algorithm, not SHA-256).
 // Avoids importing the full twilio SDK for a single utility function.
@@ -21,7 +21,7 @@ function validateTwilioSignature(
   try {
     const a = Buffer.from(computed, "utf8");
     const b = Buffer.from(signature, "utf8");
-    // timingSafeEqual requires same length — unequal lengths = invalid signature
+    // timingSafeEqual requires same length, unequal lengths = invalid signature
     if (a.length !== b.length) return false;
     return crypto.timingSafeEqual(a, b);
   } catch {
@@ -33,18 +33,18 @@ function validateTwilioSignature(
  * POST /api/whatsapp/webhook
  * Twilio sends incoming WhatsApp messages here as application/x-www-form-urlencoded.
  * Flow:
- *  1. Verify Twilio HMAC-SHA1 signature (fail closed — reject if absent or invalid)
+ *  1. Verify Twilio HMAC-SHA1 signature (fail closed, reject if absent or invalid)
  *  2. Parse From/Body from Twilio payload
  *  3. Look up the tenant whose whatsapp_phone matches the "To" number
  *  4. Call /api/ai/reply to generate a response
  *  5. Send the reply back via Twilio Messages API
  */
 export async function POST(req: NextRequest) {
-  // Fail closed — TWILIO_AUTH_TOKEN must be set; without it we cannot verify requests
+  // Fail closed, TWILIO_AUTH_TOKEN must be set; without it we cannot verify requests
   // and must not process any webhook (a forged POST would trigger real AI + DB writes).
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!authToken) {
-    console.error("[whatsapp/webhook] TWILIO_AUTH_TOKEN not configured — rejecting all requests");
+    console.error("[whatsapp/webhook] TWILIO_AUTH_TOKEN not configured, rejecting all requests");
     return new Response("Service misconfigured", { status: 500 });
   }
 
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
   const webhookUrl = `${proto}://${host}/api/whatsapp/webhook`;
 
-  // Parse body ONCE — Twilio signature is computed over the form params
+  // Parse body ONCE, Twilio signature is computed over the form params
   const contentType = req.headers.get("content-type") ?? "";
   const params: Record<string, string> = {};
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   // Reject unsigned or incorrectly signed requests before any processing
   if (!validateTwilioSignature(authToken, twilioSig, webhookUrl, params)) {
-    console.warn("[whatsapp/webhook] Signature validation failed — possible forged request");
+    console.warn("[whatsapp/webhook] Signature validation failed, possible forged request");
     return new Response("Forbidden", { status: 403 });
   }
 

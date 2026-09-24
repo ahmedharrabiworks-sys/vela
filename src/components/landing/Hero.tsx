@@ -44,9 +44,9 @@ export default function Hero() {
         style={{ height: "80px", background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
       />
 
-      {/* ── In-hero nav — scrolls away with the Hero naturally ── */}
+      {/* ── In-hero nav, scrolls away with the Hero naturally ── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
-        {/* Plain <img> — no Next.js Image layout constraints.
+        {/* Plain <img>, no Next.js Image layout constraints.
             !important on height/width overrides Tailwind preflight's img{height:auto}.
             48px mobile / 72px desktop makes logo visually dominant over the nav buttons. */}
         <Link href="/" aria-label="Vela home" className="group shrink-0">
@@ -135,7 +135,7 @@ export default function Hero() {
               </span>
             </motion.div>
 
-            {/* Headline — plain white, no gradient, no decorative treatment */}
+            {/* Headline, plain white, no gradient, no decorative treatment */}
             <motion.h1
               variants={item}
               className="font-inter font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-white"

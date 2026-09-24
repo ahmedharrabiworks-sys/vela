@@ -70,7 +70,7 @@ export interface WebsiteSpec {
   // page.tsx's EDIT_SCRIPT), so a blank image area doesn't leave the text
   // looking awkwardly off to one side.
   _sectionContentAlign?: Record<string, "left" | "center" | "right">;
-  // Phase 2e — nav/footer variant pool
+  // Phase 2e, nav/footer variant pool
   navVariant?: string;
   footerVariant?: string;
 }
@@ -905,7 +905,7 @@ ${serviceCardOverrides}
   .ws-test-grid{grid-template-columns:1fr;}
   .ws-gallery-grid{grid-template-columns:1fr 1fr;gap:10px;}
   .ws-team-grid{grid-template-columns:1fr 1fr;}
-  /* v3 hero variants — 375px / 768px responsive */
+  /* v3 hero variants, 375px / 768px responsive */
   .ws-hero--fi{min-height:80vh;align-items:flex-end;}
   .ws-hero-fi-inner{padding:0 16px 56px;}
   .ws-hero-fi-h{font-size:clamp(2rem,7vw,2.75rem);}
@@ -1510,8 +1510,8 @@ ${serviceCardOverrides}
   .ws-mpdisplay-card{flex:1 1 100%;max-width:100%;}
 }
 
-/* ── Phase 2d — content pool ──────────────────────────────────────────── */
-/* Round 5 FIX 1: the visible "Example — edit with..." tag (added round 3)
+/* ── Phase 2d, content pool ──────────────────────────────────────────── */
+/* Round 5 FIX 1: the visible "Example, edit with..." tag (added round 3)
    was removed per owner feedback -- reads as unnecessary/unprofessional on
    a live site; business owners already understand placeholder content
    needs editing. The underlying content.example boolean flag is untouched
@@ -1755,7 +1755,7 @@ function buildStyleReapplyScript(spec: WebsiteSpec): string {
 // ── Page script (anchor scroll + FAQ + form) ──────────────────────────────────
 const PAGE_SCRIPT = `
 (function(){
-  // Prevent ALL anchor-link clicks from navigating the iframe away — smooth scroll only
+  // Prevent ALL anchor-link clicks from navigating the iframe away, smooth scroll only
   document.addEventListener('click',function(e){
     var node=e.target;
     while(node&&node.tagName!=='A')node=node.parentElement;
@@ -1826,7 +1826,7 @@ function wsSubmitForm(e){
     .then(function(res){
       if(!res.ok){
         if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
-        if(errEl){errEl.textContent=res.body.error||'Something went wrong — please try again.';errEl.style.display='block';}
+        if(errEl){errEl.textContent=res.body.error||'Something went wrong, please try again.';errEl.style.display='block';}
       }else{
         if(form)form.style.display='none';
         if(success)success.style.display='block';
@@ -1834,12 +1834,12 @@ function wsSubmitForm(e){
     })
     .catch(function(){
       if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
-      if(errEl){errEl.textContent='Connection error — please try again.';errEl.style.display='block';}
+      if(errEl){errEl.textContent='Connection error, please try again.';errEl.style.display='block';}
     });
   return false;
 }
 
-/* Phase 2b — generic form block submit (uses .ws-form-block traversal, no hardcoded IDs) */
+/* Phase 2b, generic form block submit (uses .ws-form-block traversal, no hardcoded IDs) */
 function wsFormBlock(e){
   e.preventDefault();
   var form=e.target;
@@ -1871,12 +1871,12 @@ function wsFormBlock(e){
     })
     .catch(function(){
       if(btn){btn.disabled=false;btn.textContent=btn.getAttribute('data-label')||'Submit';}
-      if(errEl){errEl.textContent='Connection error — please try again.';errEl.style.display='block';}
+      if(errEl){errEl.textContent='Connection error, please try again.';errEl.style.display='block';}
     });
   return false;
 }
 
-/* Phase 2b — multi-step form navigation */
+/* Phase 2b, multi-step form navigation */
 function wsMsfNext(){
   var p0=document.getElementById('msf-page-0');
   var p1=document.getElementById('msf-page-1');
@@ -1901,7 +1901,7 @@ function wsMsfBack(){
   if(d0)d0.classList.add('ws-msf-step--on');
 }
 
-/* Phase 2b — membership tier radio toggle */
+/* Phase 2b, membership tier radio toggle */
 function wsMfTier(el){
   var group=el.closest('.ws-mem-tiers');
   if(!group)return;
@@ -1917,7 +1917,7 @@ function wsMfTier(el){
   if(r)r.checked=true;
 }
 
-/* Phase 2e — transparent nav scroll handler */
+/* Phase 2e, transparent nav scroll handler */
 (function(){
   var nav=document.querySelector('.ws-nav--transparent');
   if(!nav)return;
@@ -1926,7 +1926,7 @@ function wsMfTier(el){
   window.addEventListener('scroll',wsNavScroll,{passive:true});
 })();
 
-/* Round M2 FIX 6 — real country-code phone picker on generated forms.
+/* Round M2 FIX 6, real country-code phone picker on generated forms.
    [iso2, name, dial]. Not exhaustive (not the full ~245-region ISO list)
    but covers the large majority of real customers across every region --
    a pragmatic size for an inline script shipped on every page load. */
@@ -2272,7 +2272,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         break;
       }
 
-      // ── Phase 2b — trust & conversion pool ────────────────────────────────
+      // ── Phase 2b, trust & conversion pool ────────────────────────────────
       case "comparison-table": {
         const ct = renderComparisonTable(t, c);
         if (ct) bodyParts.push(addDataVs(ct, i));
@@ -2319,7 +2319,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         break;
       }
 
-      // ── Phase 2c — showcase pool ───────────────────────────────────────
+      // ── Phase 2c, showcase pool ───────────────────────────────────────
       case "property-listings-grid": {
         const plg = renderPropertyListingsGrid(t, c, multiImgs(), v);
         if (plg) bodyParts.push(addDataVs(plg, i));
@@ -2341,7 +2341,7 @@ export function renderWebsite(spec: WebsiteSpec, images: ImageMap, tenantId?: st
         break;
       }
 
-      // ── Phase 2d — content pool ────────────────────────────────────────
+      // ── Phase 2d, content pool ────────────────────────────────────────
       case "testimonial-single-quote": {
         const tsq = renderTestimonialSingleQuote(t, c);
         if (tsq) bodyParts.push(addDataVs(tsq, i));

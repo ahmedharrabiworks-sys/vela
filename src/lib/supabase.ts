@@ -102,7 +102,7 @@ export type Database = {
   };
 };
 
-/** Browser client — use in Client Components */
+/** Browser client, use in Client Components */
 export function createSupabaseBrowserClient() {
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

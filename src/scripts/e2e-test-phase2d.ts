@@ -38,17 +38,17 @@ const TEST_CASES: Array<{
 }> = [
   {
     id: "test-a-real-quote",
-    label: "Test A — Real quoted testimonial → selected & sourceEvidence verified",
+    label: "Test A, Real quoted testimonial → selected & sourceEvidence verified",
     expectedTestimonialType: "testimonial-grid",
     expectedGalleryVariant: "full-bleed-strip",
     expectedFaqVariant: "default",
     expectedReason: "energetic bp → testimonial-grid (premium no longer forces single-quote) + full-bleed-strip gallery (energetic bp)",
     description: `
-FitCore Gym — Dubai Marina | Elite Fitness Club
+FitCore Gym, Dubai Marina | Elite Fitness Club
 
-State-of-the-art 3-floor fitness facility. 18,000 sq ft of training space. Open 6am–11pm daily.
+State-of-the-art 3-floor fitness facility. 18,000 sq ft of training space. Open 6am to 11pm daily.
 
-One of our longest members said: "I've tried six different gyms across Dubai and FitCore is the only one where I actually look forward to every session — the coaching team here is exceptional."
+One of our longest members said: "I've tried six different gyms across Dubai and FitCore is the only one where I actually look forward to every session, the coaching team here is exceptional."
 
 Another review from Ahmed, a verified 2-year member: "The nutrition program completely changed how I approach training. Lost 12kg in 4 months and gained actual strength. Worth every dirham."
 
@@ -65,19 +65,19 @@ Membership tiers:
 - Elite: AED 799/month (unlimited everything + nutrition consultation + priority booking)
 
 Phone: +971 4 887 5500 | Email: info@fitcoredubai.ae
-Marina Walk, Dubai Marina, Dubai. Open 6am–11pm.
+Marina Walk, Dubai Marina, Dubai. Open 6am to 11pm.
 `.trim(),
   },
 
   {
     id: "test-b-no-quote",
-    label: "Test B — Marketing-speak only → testimonial omitted",
+    label: "Test B, Marketing-speak only → testimonial omitted",
     expectedTestimonialType: null,
     expectedGalleryVariant: "uniform",
     expectedFaqVariant: "default",
     expectedReason: "No real quotes → no testimonial. Physio/medical category + trustworthy bp → neither 'legal/saas' nor elegant → default FAQ accordion",
     description: `
-LightTouch Physiotherapy — London Bridge, London
+LightTouch Physiotherapy, London Bridge, London
 
 Premier physiotherapy clinic serving athletes and active professionals in SE1.
 Our highly qualified team delivers evidence-based treatment for all musculoskeletal conditions.
@@ -94,29 +94,29 @@ Our patients love the personalised approach and visible results. 5-star reviews 
 Rated one of London's top physiotherapy providers by several publications.
 
 Book online or call us: +44 20 7921 3344 | hello@lighttouchphysio.co.uk
-Open Mon–Fri 8am–8pm, Sat 9am–5pm.
+Open Mon to Fri 8am to 8pm, Sat 9am to 5pm.
 `.trim(),
   },
 
   {
     id: "test-c-gallery-variants",
-    label: "Test C — Luxury brand → masonry gallery variant",
+    label: "Test C, Luxury brand → masonry gallery variant",
     expectedTestimonialType: "testimonial-single-quote",
     expectedGalleryVariant: "masonry",
     expectedFaqVariant: "two-column",
     expectedReason: "brand_personality=minimal_luxury → masonry gallery + two-column FAQ; real quoted testimonial → testimonial-single-quote (premium positioning)",
     description: `
-Atelier Mounia — Interior Design Studio, Paris & Dubai
+Atelier Mounia, Interior Design Studio, Paris & Dubai
 
 Luxury residential and hospitality interior design. Bespoke environments for discerning clients.
 Founded by Mounia Benali (RIBA Associate, 15 years), completed projects across Europe and the Gulf.
 
 Recent projects:
-- Private Villa, Cap d'Antibes — 4,200 sqm, curated art collection, custom joinery
-- Penthouse, DIFC Dubai — minimal luxury, onyx stone, museum lighting
-- Boutique Hotel, Marrakech — 18 rooms, riad vernacular with contemporary craft
+- Private Villa, Cap d'Antibes, 4,200 sqm, curated art collection, custom joinery
+- Penthouse, DIFC Dubai, minimal luxury, onyx stone, museum lighting
+- Boutique Hotel, Marrakech, 18 rooms, riad vernacular with contemporary craft
 
-One client — a Geneva-based collector — wrote: "Mounia understood the relationship between the art and the architecture better than any designer we had previously worked with. The result is a home that feels like it was always meant to be this way."
+One client, a Geneva-based collector, wrote: "Mounia understood the relationship between the art and the architecture better than any designer we had previously worked with. The result is a home that feels like it was always meant to be this way."
 
 Process: discovery → concept → design development → procurement → installation.
 
@@ -126,7 +126,7 @@ New enquiries: studio@ateliermounia.com | +33 1 42 72 85 10
 
   {
     id: "test-d-faq-facts",
-    label: "Test D — FAQ answers cross-checked against input facts",
+    label: "Test D, FAQ answers cross-checked against input facts",
     expectedTestimonialType: null,
     expectedGalleryVariant: "uniform",
     expectedFaqVariant: "two-column",
@@ -141,7 +141,7 @@ New enquiries: studio@ateliermounia.com | +33 1 42 72 85 10
       "English",
     ],
     description: `
-Al Rashidi Law Firm — Abu Dhabi | UAE Family Law Specialists
+Al Rashidi Law Firm, Abu Dhabi | UAE Family Law Specialists
 
 Boutique family law firm established in Abu Dhabi with 15 years of practice.
 Founding partner Khalid Al Rashidi (LLM London, admitted UAE and DIFC courts).
@@ -154,23 +154,23 @@ Practice areas:
 - Spousal maintenance claims
 
 We serve clients in Arabic and English. Initial consultation is confidential and 1 hour.
-Expatriate clients welcome — familiar with cross-jurisdictional divorce matters.
+Expatriate clients welcome, familiar with cross-jurisdictional divorce matters.
 
 Abu Dhabi city centre office (near ADGM). By appointment only.
 Phone: +971 2 633 1100 | Email: info@alrashidilaw.ae
-Office hours: Sunday–Thursday 9am–6pm.
+Office hours: Sunday to Thursday 9am to 6pm.
 `.trim(),
   },
 
   {
     id: "test-e-bold-gallery",
-    label: "Test E — Bold/energetic brand → full-bleed-strip gallery at 375px",
+    label: "Test E, Bold/energetic brand → full-bleed-strip gallery at 375px",
     expectedTestimonialType: "testimonial-grid",
     expectedGalleryVariant: "full-bleed-strip",
     expectedFaqVariant: "default",
     expectedReason: "bold bp → testimonial-grid (premium no longer forces single-quote) + full-bleed-strip gallery (dark/intense mood). category=other, bp=bold → default FAQ",
     description: `
-APEX Fight Club — Manchester | Boxing & Combat Sports
+APEX Fight Club, Manchester | Boxing & Combat Sports
 
 Manchester's most intense combat sports gym. Dark, raw, real.
 Home of 3 regional champions and 1 national title holder in the last 2 years.
@@ -191,12 +191,12 @@ Memberships:
 - Competitor: £149/month (all classes + corner coaching + fight prep)
 
 Phone: 0161 832 5500 | Email: train@apexfightclub.co.uk
-Northern Quarter, Manchester. Mon–Sat 6am–10pm, Sun 9am–6pm.
+Northern Quarter, Manchester. Mon to Sat 6am to 10pm, Sun 9am to 6pm.
 `.trim(),
   },
 ];
 
-// ── Pool functions (same logic as route.ts — kept in sync) ───────────────────
+// ── Pool functions (same logic as route.ts, kept in sync) ───────────────────
 
 type ContentAvailableData = { hasRealTestimonialQuote: boolean };
 
@@ -355,26 +355,26 @@ async function buildImageMap(spec: WebsiteSpec): Promise<ImageMap> {
   return imageMap;
 }
 
-// ── buildFillSystem (Phase 2d — minimal version for test) ────────────────────
+// ── buildFillSystem (Phase 2d, minimal version for test) ────────────────────
 
 const TESTIMONIAL_COMPONENT_SCHEMAS: Record<string, string> = {
   "testimonial-single-quote": `"testimonial-single-quote" section content: { "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }
-FABRICATION RULE — ABSOLUTE: Fill ONLY from real quoted speech in the description.
-"quote": EXACT verbatim text. "sourceEvidence": 10–40 char verbatim substring from description. "name"/"role": only if stated. If no real quote: output quote: "".`,
+FABRICATION RULE, ABSOLUTE: Fill ONLY from real quoted speech in the description.
+"quote": EXACT verbatim text. "sourceEvidence": 10 to 40 char verbatim substring from description. "name"/"role": only if stated. If no real quote: output quote: "".`,
   "testimonial-grid": `"testimonial-grid" section content: { "eyebrow"?: string, "headline"?: string, "items": [{ "quote": string, "name"?: string, "role"?: string, "sourceEvidence": string }] }
-FABRICATION RULE — ABSOLUTE: items must be real quoted speech only. Each item needs sourceEvidence substring. If fewer than 2 real quotes: output items: []. Max 3 items.`,
+FABRICATION RULE, ABSOLUTE: items must be real quoted speech only. Each item needs sourceEvidence substring. If fewer than 2 real quotes: output items: []. Max 3 items.`,
 };
 
 function buildFillSystem(template: SiteTemplate, strategy: DesignStrategy | null, testimonialType: string | null): string {
   const templateLines = template.sections.map((ts, i) => {
-    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
+    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL, include ONLY if owner provided real data)";
     const variant = ts.variant ? `, variant: "${ts.variant}"` : "";
     return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
   }).join("\n");
 
-  const strategyBlock = strategy ? `BUSINESS INTELLIGENCE: subcategory=${strategy.subcategory}, positioning=${strategy.positioning}, brand_personality=${strategy.brand_personality}, visual_mood=${strategy.visual_mood}. Use to calibrate copy tone — never echo in JSON.\n\n` : "";
+  const strategyBlock = strategy ? `BUSINESS INTELLIGENCE: subcategory=${strategy.subcategory}, positioning=${strategy.positioning}, brand_personality=${strategy.brand_personality}, visual_mood=${strategy.visual_mood}. Use to calibrate copy tone, never echo in JSON.\n\n` : "";
 
-  const testimonialBlock = testimonialType ? `═══ PART 12 — TESTIMONIAL SECTION (HIGHEST FABRICATION RISK) ═══
+  const testimonialBlock = testimonialType ? `═══ PART 12, TESTIMONIAL SECTION (HIGHEST FABRICATION RISK) ═══
 Fill ONLY from real quoted speech in the description:
 ${TESTIMONIAL_COMPONENT_SCHEMAS[testimonialType] ?? ""}
 
@@ -391,7 +391,7 @@ JSON SHAPE:
   "sections": SectionSpec[]
 }
 
-SECTIONS (fill in this exact order — no additions or removals):
+SECTIONS (fill in this exact order, no additions or removals):
 ${templateLines}
   (last) type: "footer" (REQUIRED)
 
@@ -401,9 +401,9 @@ imageQuery required for: hero, about-story. imageQueries (6 strings) required fo
 
 ${testimonialBlock}ABSOLUTE RULES:
 1. NEVER invent phone, email, address, or hours.
-2. NEVER freely add testimonials — when a testimonial section is in the template, fill via Part 12 rules only.
+2. NEVER freely add testimonials, when a testimonial section is in the template, fill via Part 12 rules only.
 3. NEVER add star ratings or fabricated review counts.
-4. NEVER paraphrase owner input — extract intent and write fresh brand copy.`;
+4. NEVER paraphrase owner input, extract intent and write fresh brand copy.`;
 }
 
 // ── Main test runner ──────────────────────────────────────────────────────────
@@ -414,7 +414,7 @@ async function runTests() {
   fs.mkdirSync(outDir, { recursive: true });
 
   console.log("\n═════════════════════════════════════════════════════════════════");
-  console.log("  Phase 2d E2E Tests — Gallery · Testimonials · FAQ Variants");
+  console.log("  Phase 2d E2E Tests, Gallery · Testimonials · FAQ Variants");
   console.log("═════════════════════════════════════════════════════════════════\n");
 
   const results: Array<{ id: string; label: string; pass: boolean; notes: string[] }> = [];
@@ -543,7 +543,7 @@ async function runTests() {
         notes.push(`FAIL: testimonial section should NOT be present (no real quotes in description) but found ${testimonialSection.type}`);
         pass = false;
       } else {
-        notes.push(`✓ no testimonial section (correctly omitted — no real quotes)`);
+        notes.push(`✓ no testimonial section (correctly omitted, no real quotes)`);
       }
     }
 
@@ -620,9 +620,9 @@ async function runTests() {
   const passCount = results.filter((r) => r.pass).length;
   console.log(`\n${passCount}/${results.length} passed`);
   if (allPass) {
-    console.log("✅ ALL TESTS PASSED — Phase 2d verified");
+    console.log("✅ ALL TESTS PASSED, Phase 2d verified");
   } else {
-    console.log("❌ SOME TESTS FAILED — check output above");
+    console.log("❌ SOME TESTS FAILED, check output above");
     process.exit(1);
   }
   console.log(`\nOutput files: ${path.join(process.cwd(), "test-output-phase2d")}/\n`);

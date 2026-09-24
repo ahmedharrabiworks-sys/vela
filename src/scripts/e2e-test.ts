@@ -8,7 +8,7 @@
  */
 
 /**
- * KNOWN GAP — Route parity drift risk
+ * KNOWN GAP, Route parity drift risk
  *
  * This script reimplements the generation pipeline (classify, buildFillSystem,
  * selectHeroVariant, selectTrustComponents, enforceTemplate, etc.) rather than
@@ -16,7 +16,7 @@
  * requires an authenticated session that wasn't available to this test runner.
  *
  * This means future changes to the production route's logic could silently drift
- * from this test's copy without being caught — e.g. a new scoring rule added to
+ * from this test's copy without being caught, e.g. a new scoring rule added to
  * selectHeroVariant in route.ts would not be reflected here unless manually kept
  * in sync.
  *
@@ -26,7 +26,7 @@
  */
 
 /**
- * KNOWN GAP — Mobile screenshot coverage
+ * KNOWN GAP, Mobile screenshot coverage
  *
  * This test verified desktop rendering + trust/conversion data integrity through
  * the real OpenAI/Unsplash pipeline, but did NOT capture a real 375px mobile
@@ -35,7 +35,7 @@
  * TODO: a future validation pass should generate one complete website through the
  * real pipeline and capture both a desktop screenshot and a 375px mobile
  * screenshot, specifically checking responsive behavior of showcase-type sections
- * (galleries, grids, listings) and image loading — not just the form/hero sections
+ * (galleries, grids, listings) and image loading, not just the form/hero sections
  * already covered in Phase 2a/2b.
  */
 
@@ -50,7 +50,7 @@ import {
 
 // ── Test business: rich dental clinic ────────────────────────────────────────
 const TEST_DESCRIPTION = `
-BrightSmile Dental Clinic — Abu Dhabi, UAE
+BrightSmile Dental Clinic, Abu Dhabi, UAE
 
 Premium family and cosmetic dental clinic with 18 years of practice. Over 12,000 patients treated.
 5-star rated with 480+ Google reviews. Board-certified by the UAE Dental Association.
@@ -67,7 +67,7 @@ Services we offer:
 
 Led by Dr. Yasmine Al-Rashid (specialist in cosmetic dentistry, 15 years experience).
 
-Open Monday–Saturday, 9:00 AM – 7:00 PM.
+Open Monday to Saturday, 9:00 AM, 7:00 PM.
 Phone: +971 2 673 8899
 Email: info@brightsmile.ae
 Address: Khalidiyah Mall, Level 1, Abu Dhabi
@@ -114,7 +114,7 @@ const TRUST_CONV_POOL: Record<string, { trust: string[]; conversion: string[] }>
 
 const HERO_VARIANT_SCHEMAS: Record<string, string> = {
   "re-split":        `hero: { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?, "stats"?: [{ "value": string, "label": string }] }`,
-  "trust-focused":   `hero: { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?, "badges"?: [{ "value": "15+", "label": "Years Experience" }] — ONLY real stats; max 4; omit if no real data }`,
+  "trust-focused":   `hero: { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"?, "badges"?: [{ "value": "15+", "label": "Years Experience" }], ONLY real stats; max 4; omit if no real data }`,
   "booking-focused": `hero: { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "services"?: string[] }`,
 };
 
@@ -123,14 +123,14 @@ const TRUST_COMPONENT_SCHEMAS: Record<string, string> = {
     `"trust-badges-band" section content: { "eyebrow"?, "headline"?,
   "badges": [{ "value": string, "label": string }] }
   RULES: Only use real statistics, years, certifications, or counts stated in the description.
-  Prefer numeric values when available — e.g. "18+" / "Years in Practice", "12,000+" / "Patients Treated", "480+" / "Google Reviews".
+  Prefer numeric values when available, e.g. "18+" / "Years in Practice", "12,000+" / "Patients Treated", "480+" / "Google Reviews".
   Use certification/award names only when no numeric alternative exists.
   Never invent numbers. Each badge must be independently verifiable from the input. Max 5.`,
   "appointment-form":
     `"appointment-form" section content: { "eyebrow"?, "headline"?,
   "services": string[], "submitLabel"?: string }
   RULES: services array is REQUIRED. Only list services explicitly named in the description. Max 12.
-  If no services are named, output services: [] — the section will be suppressed server-side.`,
+  If no services are named, output services: [], the section will be suppressed server-side.`,
   "comparison-table":
     `"comparison-table" section content: { "eyebrow"?, "headline", "subheadline"?,
   "rows": [{ "feature": string, "ours": string, "theirs"?: string }] }
@@ -260,7 +260,7 @@ function verifyTrustComponents(spec: WebsiteSpec): void {
     const rule = OPTIONAL_SKIP_RULES[s.type];
     if (!rule) return true;
     const skip = rule(s.content as Record<string, unknown>);
-    if (skip) console.warn(`  ⚠ verifyTrustComponents: removing ${s.type} — required data missing`);
+    if (skip) console.warn(`  ⚠ verifyTrustComponents: removing ${s.type}, required data missing`);
     return !skip;
   });
 }
@@ -279,10 +279,10 @@ async function classifyWithDesignStrategy(
   "positioning": one of: premium | mid_market | affordable,
   "brand_personality": one of: elegant | bold | energetic | trustworthy | playful | minimal_luxury,
   "conversion_goal": one of: book_appointment | generate_leads | showcase_portfolio | sell_membership | request_valuation,
-  "visual_mood": "2–4 words",
+  "visual_mood": "2 to 4 words",
   "target_audience": "1 short sentence"
 }
-template_category mapping: medical — dental, doctor, physio; hospitality — hotel, restaurant; retail — e-commerce; saas — software; professional — law, real estate, gym, interior design.
+template_category mapping: medical, dental, doctor, physio; hospitality, hotel, restaurant; retail, e-commerce; saas, software; professional, law, real estate, gym, interior design.
 Output ONLY valid JSON.`;
   const fallback: DesignStrategy = { category: "dental", subcategory: "cosmetic dentistry", positioning: "premium", brand_personality: "trustworthy", conversion_goal: "book_appointment", visual_mood: "bright clinical trust", target_audience: "Patients seeking premium dental care in Abu Dhabi." };
   try {
@@ -317,13 +317,13 @@ function buildFillSystem(
   trustComponents: string[],
 ): string {
   const templateLines = template.sections.map((ts, i) => {
-    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL — include ONLY if owner provided real data)";
+    const req = ts.required ? "(REQUIRED)" : "(OPTIONAL, include ONLY if owner provided real data)";
     const variant = ts.variant ? `, variant: "${ts.variant}"` : "";
     return `  ${i + 1}. type: "${ts.type}"${variant} ${req}`;
   }).join("\n");
 
   const strategyBlock = strategy ? `═══════════════════════════════════════════════════════
-PART 0 — BUSINESS INTELLIGENCE
+PART 0, BUSINESS INTELLIGENCE
 ═══════════════════════════════════════════════════════
 Subcategory:       ${strategy.subcategory}
 Positioning:       ${strategy.positioning.replace(/_/g, " ")}
@@ -340,15 +340,15 @@ Use these to calibrate copy tone. Never echo in JSON output.
 STRICT OUTPUT RULE: Output ONLY valid JSON. No markdown, no explanation, no code fences.
 
 ═══════════════════════════════════════════════════════
-PART 1 — COPYWRITING STANDARDS
+PART 1, COPYWRITING STANDARDS
 ═══════════════════════════════════════════════════════
-Write FRESH brand copy — not paraphrases of the owner's input.
+Write FRESH brand copy, not paraphrases of the owner's input.
 BAD: "Quality service you can trust" / "Welcome to BrightSmile" / "Our Services"
 GOOD: Lead with patient benefit, use specific numbers, active voice, short sentences.
-Section headlines must be editorial — "Precision You Can Feel" not "About Us".
+Section headlines must be editorial, "Precision You Can Feel" not "About Us".
 
 ═══════════════════════════════════════════════════════
-PART 2 — JSON ROOT SHAPE
+PART 2, JSON ROOT SHAPE
 ═══════════════════════════════════════════════════════
 {
   "businessName": string,
@@ -364,13 +364,13 @@ PART 2 — JSON ROOT SHAPE
 }
 
 ═══════════════════════════════════════════════════════
-PART 3 — DESIGN (use clinical-bright for dental)
+PART 3, DESIGN (use clinical-bright for dental)
 ═══════════════════════════════════════════════════════
 "clinical-bright": bg #FFFFFF · text #0A2540 · muted #64748B · accent #0070C9 · isDark: false
 headingFont: "Inter", bodyFont: "Inter"
 
 ═══════════════════════════════════════════════════════
-PART 4 — FIXED SECTION STRUCTURE
+PART 4, FIXED SECTION STRUCTURE
 ═══════════════════════════════════════════════════════
 ‼ WRITE CONTENT FOR EXACTLY THESE SECTIONS IN THIS ORDER. No additions, no removals.
 SECTIONS:
@@ -383,52 +383,52 @@ SectionSpec: { "type": string, "variant": string, "imageQuery"?: string, "imageQ
 imageQuery/imageQueries MUST be siblings of content{}, never nested inside it.
 
 ═══════════════════════════════════════════════════════
-PART 5 — IMAGE QUERY RULES
+PART 5, IMAGE QUERY RULES
 ═══════════════════════════════════════════════════════
 imageQuery required for: hero, about-story.
 imageQueries (array) required for: gallery-grid (6 strings).
-Format: "dental clinic Abu Dhabi bright clean professional reception" — specific, not abstract.
+Format: "dental clinic Abu Dhabi bright clean professional reception", specific, not abstract.
 
 ═══════════════════════════════════════════════════════
-PART 6 — CONTENT SCHEMAS
+PART 6, CONTENT SCHEMAS
 ═══════════════════════════════════════════════════════
 
 hero: { "eyebrow"?, "headline", "subheadline", "ctaPrimary", "ctaSecondary"? }
 
-about-story: { "eyebrow"?, "headline", "body", "bullets"?: [{ "title", "text" }] × 2–4, "ctaText"?: string }
+about-story: { "eyebrow"?, "headline", "body", "bullets"?: [{ "title", "text" }] × 2 to 4, "ctaText"?: string }
 
-service-list: { "eyebrow"?, "headline", "items": [{ "title", "description"?, "price"? }] × 4–10 }
+service-list: { "eyebrow"?, "headline", "items": [{ "title", "description"?, "price"? }] × 4 to 10 }
 
-team-grid: { "eyebrow"?, "headline", "members": [{ "name", "role", "bio"? }] } — ONLY real named staff
+team-grid: { "eyebrow"?, "headline", "members": [{ "name", "role", "bio"? }] }, ONLY real named staff
 
-stats-band: { "items": [{ "value", "label" }] × 3–5 } — ONLY real statistics
+stats-band: { "items": [{ "value", "label" }] × 3 to 5 }, ONLY real statistics
 
-faq-accordion: { "eyebrow"?, "headline", "items": [{ "q", "a" }] × 5–8 }
+faq-accordion: { "eyebrow"?, "headline", "items": [{ "q", "a" }] × 5 to 8 }
 
 contact-block: { "eyebrow"?, "headline", "subheadline"?,
-  "phone": string (ONLY from real contact info — else omit),
-  "email": string (ONLY from real contact info — else omit),
-  "address": string (ONLY from real contact info — else omit),
-  "hours": string (ONLY from real contact info — else omit),
-  "ctaText", "services"?: string[] × 3–6 }
+  "phone": string (ONLY from real contact info, else omit),
+  "email": string (ONLY from real contact info, else omit),
+  "address": string (ONLY from real contact info, else omit),
+  "hours": string (ONLY from real contact info, else omit),
+  "ctaText", "services"?: string[] × 3 to 6 }
 
-footer: { "tagline", "links": string[] × 4–5, "phone"?, "email"?, "address"?, "copyright" }
+footer: { "tagline", "links": string[] × 4 to 5, "phone"?, "email"?, "address"?, "copyright" }
 
 ${contactBlock ? `═══════════════════════════════════════════════════════
-REAL CONTACT INFO — copy these values EXACTLY:
+REAL CONTACT INFO, copy these values EXACTLY:
 ${contactBlock}
 ═══════════════════════════════════════════════════════` : "CONTACT INFO: None provided. Omit phone/email/address/hours."}
 
 ${heroVariant && HERO_VARIANT_SCHEMAS[heroVariant] ? `═══════════════════════════════════════════════════════
-PART 7 — HERO VARIANT SCHEMA OVERRIDE
+PART 7, HERO VARIANT SCHEMA OVERRIDE
 ═══════════════════════════════════════════════════════
 Hero uses variant "${heroVariant}". Use this exact schema:
 ${HERO_VARIANT_SCHEMAS[heroVariant]}
 ` : ""}${trustComponents.length > 0 ? `═══════════════════════════════════════════════════════
-PART 8 — TRUST + CONVERSION SECTION SCHEMAS
+PART 8, TRUST + CONVERSION SECTION SCHEMAS
 ═══════════════════════════════════════════════════════
 These trust/conversion sections appear in the template. Write their content using EXACTLY these schemas.
-FABRICATION RULE: these build trust — fabricated signals are worse than missing ones. Use empty arrays if real data absent.
+FABRICATION RULE: these build trust, fabricated signals are worse than missing ones. Use empty arrays if real data absent.
 ${trustComponents.map((type) => TRUST_COMPONENT_SCHEMAS[type] ?? "").filter(Boolean).join("\n\n")}
 ` : ""}═══════════════════════════════════════════════════════
 ABSOLUTE RULES
@@ -436,11 +436,11 @@ ABSOLUTE RULES
 1. NEVER invent phone numbers, emails, addresses, or hours.
 2. NEVER include testimonials or star ratings.
 3. NEVER include stats-band with invented numbers.
-4. NEVER invent team member names (Dr. Yasmine Al-Rashid was named — include her).
+4. NEVER invent team member names (Dr. Yasmine Al-Rashid was named, include her).
 5. NEVER use generic headings: "Our Services" / "About Us" / "Why Choose Us".
 6. imageQuery/imageQueries MUST be siblings of content{}, NOT nested inside it.
 7. NEVER invent commercial promises not stated by the owner.
-8. Footer tagline must be specific to BrightSmile — never a placeholder.`;
+8. Footer tagline must be specific to BrightSmile, never a placeholder.`;
 }
 
 // ── Unsplash image fetcher (simplified) ──────────────────────────────────────
@@ -509,10 +509,10 @@ async function fetchSpecImages(spec: WebsiteSpec, usedUrls: Set<string>): Promis
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 async function main() {
   console.log("\n╔══════════════════════════════════════════════════════════════╗");
-  console.log("║  Phase 2b End-to-End Test — BrightSmile Dental Clinic       ║");
+  console.log("║  Phase 2b End-to-End Test, BrightSmile Dental Clinic       ║");
   console.log("╚══════════════════════════════════════════════════════════════╝\n");
 
-  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set — run with: node --env-file .env.local");
+  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set, run with: node --env-file .env.local");
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -564,7 +564,7 @@ async function main() {
 
   // ── Step 4: GPT fill ────────────────────────────────────────────────────────
   console.log("\n▶ Step 3: GPT fill call (gpt-4o)...");
-  const contactBlock = "Phone: +971 2 673 8899\nEmail: info@brightsmile.ae\nAddress: Khalidiyah Mall, Level 1, Abu Dhabi\nHours: Monday–Saturday, 9:00 AM – 7:00 PM";
+  const contactBlock = "Phone: +971 2 673 8899\nEmail: info@brightsmile.ae\nAddress: Khalidiyah Mall, Level 1, Abu Dhabi\nHours: Monday to Saturday, 9:00 AM, 7:00 PM";
   const systemPrompt = buildFillSystem(selectedTemplate, contactBlock, strategy, heroVariant, selectedTrustComponents);
   const userMsg = `Owner's description:\n${TEST_DESCRIPTION}`;
 
@@ -631,7 +631,7 @@ async function main() {
   spec.sections.forEach((s, i) => {
     const v = (s as { variant?: string }).variant;
     const keys = Object.keys(s.content).join(", ");
-    console.log(`  [${i}] ${s.type}${v ? `/${v}` : ""} — content keys: ${keys || "(empty)"}`);
+    console.log(`  [${i}] ${s.type}${v ? `/${v}` : ""}, content keys: ${keys || "(empty)"}`);
   });
 
   // Trust/conversion content audit
@@ -639,7 +639,7 @@ async function main() {
   if (badgesSection) {
     const badges = (badgesSection.content as { badges?: Array<{value: string; label: string}> }).badges ?? [];
     console.log(`\n  trust-badges-band has ${badges.length} badges:`);
-    badges.forEach((b) => console.log(`    • "${b.value}" — ${b.label}`));
+    badges.forEach((b) => console.log(`    • "${b.value}", ${b.label}`));
   }
 
   const apptSection = spec.sections.find((s) => s.type === "appointment-form");

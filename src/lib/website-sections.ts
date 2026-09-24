@@ -165,7 +165,7 @@ export function renderNav(
   return renderNavStandard(businessName, ctaText, navLinks, logoUrl);
 }
 
-// ── Hero — legacy layout variants (v1 backward compat) ────────────────────────
+// ── Hero, legacy layout variants (v1 backward compat) ────────────────────────
 
 function renderHeroBleedBottom(
   t: DesignTokens,
@@ -360,7 +360,7 @@ export function renderAbout(
 </section>`;
 }
 
-// ── Services — preset-aware cards ─────────────────────────────────────────────
+// ── Services, preset-aware cards ─────────────────────────────────────────────
 export function renderServices(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string; price?: string }[] }
@@ -555,7 +555,7 @@ export function renderBooking(
 </section>`;
   }
 
-  // split-form (default when has contact) — left: heading + details, right: form
+  // split-form (default when has contact), left: heading + details, right: form
   return `<section class="ws-section" id="booking">
   <div class="ws-container">
     <div class="ws-booking-inner">
@@ -721,7 +721,7 @@ type HeroContent = {
   subheadline?: string;
   ctaPrimary?: string;
   ctaSecondary?: string;
-  // v3 pool variants — extended fields (all optional; renderers check presence before use)
+  // v3 pool variants, extended fields (all optional; renderers check presence before use)
   stats?:    { value: string; label: string }[];
   badges?:   { value: string; label: string }[];
   tiers?:    { name: string; price: string; period?: string }[];
@@ -729,17 +729,17 @@ type HeroContent = {
   services?: string[];
 };
 
-// 1. hero-fullbleed — centered text over full-bleed image (centered-overlay)
+// 1. hero-fullbleed, centered text over full-bleed image (centered-overlay)
 export function renderHeroFullbleed(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   return renderHeroBleedCenter(t, c, imageUrl);
 }
 
-// 2. hero-split — text left, image right
+// 2. hero-split, text left, image right
 export function renderHeroSplitSection(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   return renderHeroSplit(t, c, imageUrl);
 }
 
-// 3. hero-minimal — no image; gradient radial glow; SaaS / tech / agency
+// 3. hero-minimal, no image; gradient radial glow; SaaS / tech / agency
 export function renderHeroMinimal(t: DesignTokens, c: HeroContent): string {
   // Round 5 FIX 4: headline/subheadline below use t.heading/t.muted (dark
   // text in bright modes) -- t.heroBg is dark, which made this the most
@@ -798,7 +798,7 @@ export function renderHeroVariant(
 
 // ── Hero v3 pool render functions ─────────────────────────────────────────────
 
-// RE-1: full-image — dramatic full-bleed, bottom-anchored text, single CTA
+// RE-1: full-image, dramatic full-bleed, bottom-anchored text, single CTA
 function renderHeroFullImage(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const bg = imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" class="ws-hero-fi-bg-img" alt="${esc(c.headline || "Hero")}" loading="eager" onerror="this.style.display='none'">`
@@ -818,7 +818,7 @@ function renderHeroFullImage(t: DesignTokens, c: HeroContent, imageUrl?: string)
 </section>`;
 }
 
-// RE-2: re-split — 50/50 grid, optional stats row beneath CTAs
+// RE-2: re-split, 50/50 grid, optional stats row beneath CTAs
 function renderHeroReSplit(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const stats = Array.isArray(c.stats) ? (c.stats as { value: string; label: string }[]).slice(0, 3) : [];
   const statsHtml = stats.length ? `
@@ -845,7 +845,7 @@ function renderHeroReSplit(t: DesignTokens, c: HeroContent, imageUrl?: string): 
 </section>`;
 }
 
-// RE-3: search-first — full-bleed + property-type pills + search bar
+// RE-3: search-first, full-bleed + property-type pills + search bar
 function renderHeroSearchFirst(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const bg = imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" class="ws-hero-sf-bg" alt="${esc(c.headline || "Properties")}" loading="eager" onerror="this.style.display='none'">`
@@ -871,7 +871,7 @@ function renderHeroSearchFirst(t: DesignTokens, c: HeroContent, imageUrl?: strin
 </section>`;
 }
 
-// RE-5: property-first — minimal header text, dominant featured listing card
+// RE-5: property-first, minimal header text, dominant featured listing card
 function renderHeroPropertyFirst(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const prop = c.property as { title?: string; price?: string; beds?: string; baths?: string; sqft?: string } | undefined;
   const hasSpec = prop && (prop.beds || prop.baths || prop.sqft);
@@ -905,7 +905,7 @@ function renderHeroPropertyFirst(t: DesignTokens, c: HeroContent, imageUrl?: str
 </section>`;
 }
 
-// Dental-6: trust-focused — photo + headline + optional trust-badge row + CTA
+// Dental-6: trust-focused, photo + headline + optional trust-badge row + CTA
 function renderHeroTrustFocused(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const badges = Array.isArray(c.badges) ? (c.badges as { value: string; label: string }[]).slice(0, 4) : [];
   const badgesHtml = badges.length ? `
@@ -932,7 +932,7 @@ function renderHeroTrustFocused(t: DesignTokens, c: HeroContent, imageUrl?: stri
 </section>`;
 }
 
-// Dental-7: booking-focused — photo panel + mini form that scrolls to main booking
+// Dental-7: booking-focused, photo panel + mini form that scrolls to main booking
 function renderHeroBookingFocused(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const services = Array.isArray(c.services) ? (c.services as string[]).slice(0, 8) : [];
   return `<section class="ws-hero--bof" id="hero" style="background:${t.bg};">
@@ -956,7 +956,7 @@ function renderHeroBookingFocused(t: DesignTokens, c: HeroContent, imageUrl?: st
 </section>`;
 }
 
-// Dental-8: clinical-premium — bright, framed photo, editorial header, clean layout
+// Dental-8: clinical-premium, bright, framed photo, editorial header, clean layout
 function renderHeroClinicalPremium(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   return `<section class="ws-hero--cprem" id="hero" style="background:${t.bg};">
   <div class="ws-container ws-hero-cprem-inner">
@@ -976,7 +976,7 @@ function renderHeroClinicalPremium(t: DesignTokens, c: HeroContent, imageUrl?: s
 </section>`;
 }
 
-// Gym-9: cinematic-dark — full-bleed moody photo, massive all-caps headline
+// Gym-9: cinematic-dark, full-bleed moody photo, massive all-caps headline
 function renderHeroCinematicDark(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const bg = imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" class="ws-hero-cind-bg" alt="${esc(c.headline || "Gym")}" loading="eager" onerror="this.style.display='none'">`
@@ -996,7 +996,7 @@ function renderHeroCinematicDark(t: DesignTokens, c: HeroContent, imageUrl?: str
 </section>`;
 }
 
-// Gym-10: membership-focused — dark bg, tier preview strip (only with real pricing data)
+// Gym-10: membership-focused, dark bg, tier preview strip (only with real pricing data)
 function renderHeroMembershipFocused(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const tiers = Array.isArray(c.tiers) ? (c.tiers as { name: string; price: string; period?: string }[]).slice(0, 3) : [];
   // Round M7 FIX 1: previously rendered nothing when empty -- see the
@@ -1032,7 +1032,7 @@ function renderHeroMembershipFocused(t: DesignTokens, c: HeroContent, imageUrl?:
 </section>`;
 }
 
-// Gym-11: energy-driven — bold text left, angled-clip image right
+// Gym-11: energy-driven, bold text left, angled-clip image right
 function renderHeroEnergyDriven(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   // Round 5 FIX 4: ws-hero-ed-h uses var(--color-heading) (dark text in
   // bright modes) -- t.heroBg is a leftover always-dark value with no
@@ -1053,7 +1053,7 @@ function renderHeroEnergyDriven(t: DesignTokens, c: HeroContent, imageUrl?: stri
 </section>`;
 }
 
-// ID-13: portfolio-first — 3-image asymmetric grid dominates, text secondary below
+// ID-13: portfolio-first, 3-image asymmetric grid dominates, text secondary below
 function renderHeroPortfolioFirst(t: DesignTokens, c: HeroContent, multiImageUrls?: (string | undefined)[]): string {
   const imgs = multiImageUrls ?? [];
   const img0 = imgs[0];
@@ -1087,7 +1087,7 @@ function renderHeroPortfolioFirst(t: DesignTokens, c: HeroContent, multiImageUrl
 </section>`;
 }
 
-// ID-14: luxury-showcase — full-bleed, minimal serif wordmark headline, centered, extreme whitespace
+// ID-14: luxury-showcase, full-bleed, minimal serif wordmark headline, centered, extreme whitespace
 function renderHeroLuxuryShowcase(t: DesignTokens, c: HeroContent, imageUrl?: string): string {
   const bg = imageUrl
     ? `<img data-ws-photo="1" src="${esc(imageUrl)}" class="ws-hero-lux-bg" alt="${esc(c.headline || "Interior Design")}" loading="eager" onerror="this.style.display='none'">`
@@ -1182,7 +1182,7 @@ function renderFeatureGridBento(
 </section>`;
 }
 
-// 4. feature-grid — dispatch on variant
+// 4. feature-grid, dispatch on variant
 export function renderFeatureGrid(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { icon?: string; title?: string; description?: string }[]; variant?: string },
@@ -1246,7 +1246,7 @@ function renderPricingComparisonTable(
             <td class="ws-price-table-feat">${esc(feat)}</td>
             ${tiers.map((tier) => {
               const has = (tier.features ?? []).includes(feat);
-              return `<td class="ws-price-table-cell${tier.highlighted ? " ws-price-table-cell--hi" : ""}">${has ? `<span style="color:${t.accent};">${icon("check", 16)}</span>` : `<span style="color:#D1D5DB;">—</span>`}</td>`;
+              return `<td class="ws-price-table-cell${tier.highlighted ? " ws-price-table-cell--hi" : ""}">${has ? `<span style="color:${t.accent};">${icon("check", 16)}</span>` : `<span style="color:#D1D5DB;">, </span>`}</td>`;
             }).join("")}
           </tr>`).join("")}
         </tbody>
@@ -1297,7 +1297,7 @@ function renderPricingSingleHighlight(
 </section>`;
 }
 
-// 5. pricing-tiers — dispatch on variant
+// 5. pricing-tiers, dispatch on variant
 export function renderPricingTiers(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; tiers?: TierItem[]; variant?: string },
@@ -1386,7 +1386,7 @@ function renderServiceListBorderedCards(
 </section>`;
 }
 
-// 6. service-list — dispatch on variant
+// 6. service-list, dispatch on variant
 export function renderServiceList(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; items?: SvcItem[]; variant?: string },
@@ -1461,7 +1461,7 @@ function renderGalleryFullBleedStrip(
 </section>`;
 }
 
-// 7. gallery-grid — dispatch on variant
+// 7. gallery-grid, dispatch on variant
 export function renderGalleryGrid(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; variant?: string },
@@ -1536,7 +1536,7 @@ function renderListingsWideRows(
 </section>`;
 }
 
-// 8. listings-grid — dispatch on variant
+// 8. listings-grid, dispatch on variant
 export function renderListingsGrid(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; items?: ListingItem[]; variant?: string },
@@ -1571,7 +1571,7 @@ export function renderListingsGrid(
 </section>`;
 }
 
-// 9. about-story — text + optional image
+// 9. about-story, text + optional image
 export function renderAboutStory(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; body?: string; bullets?: { title: string; text: string }[]; ctaText?: string },
@@ -1596,7 +1596,7 @@ export function renderTestimonialsSection(
   return renderTestimonials(t, c);
 }
 
-// 12. stats-band — dark band with large numbers
+// 12. stats-band, dark band with large numbers
 export function renderStatsBand(
   t: DesignTokens,
   c: { items?: { value?: string; label?: string }[]; example?: boolean }
@@ -1640,7 +1640,7 @@ export function renderProcessSteps(
 </section>`;
 }
 
-// 14. faq-accordion — dispatch on variant
+// 14. faq-accordion, dispatch on variant
 function renderFaqTwoColumn(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; items?: { q?: string; a?: string }[] }
@@ -1674,9 +1674,9 @@ export function renderFaqAccordion(
   return renderFaq(t, c);
 }
 
-// ── Phase 2d — Content Component Pool ─────────────────────────────────────────
+// ── Phase 2d, Content Component Pool ─────────────────────────────────────────
 
-// CD-1: testimonial-single-quote — centered large quote for one real customer statement
+// CD-1: testimonial-single-quote, centered large quote for one real customer statement
 export function renderTestimonialSingleQuote(
   _t: DesignTokens,
   c: { quote?: string; name?: string; role?: string; sourceEvidence?: string; example?: boolean }
@@ -1696,7 +1696,7 @@ export function renderTestimonialSingleQuote(
 </section>`;
 }
 
-// CD-2: testimonial-grid — 2–3 side-by-side customer quote cards
+// CD-2: testimonial-grid, 2 to 3 side-by-side customer quote cards
 type TestimonialItem = { quote?: string; name?: string; role?: string; sourceEvidence?: string };
 
 export function renderTestimonialGrid(
@@ -1731,7 +1731,7 @@ export function renderCtaBand(
   return renderCtaBanner(t, c);
 }
 
-// 16. contact-block — contact form + optional contact details; variant dispatch
+// 16. contact-block, contact form + optional contact details; variant dispatch
 export function renderContactBlock(
   t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; phone?: string; email?: string; address?: string; hours?: string; ctaText?: string; services?: string[]; variant?: string },
@@ -1747,7 +1747,7 @@ export function renderContactBlock(
 
 // ── NEW section types ─────────────────────────────────────────────────────────
 
-// 17. logo-strip — "trusted by" brands row (only if owner supplied names)
+// 17. logo-strip, "trusted by" brands row (only if owner supplied names)
 export function renderLogoStrip(
   _t: DesignTokens,
   c: { headline?: string; names?: string[] }
@@ -1764,7 +1764,7 @@ export function renderLogoStrip(
 </section>`;
 }
 
-// 18. product-grid — e-commerce product cards
+// 18. product-grid, e-commerce product cards
 export function renderProductGrid(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { title?: string; description?: string; price?: string; badge?: string }[] },
@@ -1798,7 +1798,7 @@ export function renderProductGrid(
 </section>`;
 }
 
-// 19. feature-showcase — alternating big image + text rows
+// 19. feature-showcase, alternating big image + text rows
 export function renderFeatureShowcase(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; items?: { title?: string; description?: string; cta?: string }[] },
@@ -1828,7 +1828,7 @@ export function renderFeatureShowcase(
 </section>`;
 }
 
-// 20. integration-grid — labelled icon tiles (SaaS)
+// 20. integration-grid, labelled icon tiles (SaaS)
 export function renderIntegrationGrid(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; items?: { name?: string; icon?: string }[] }
@@ -1851,9 +1851,9 @@ export function renderIntegrationGrid(
 </section>`;
 }
 
-// ── Phase 2b — Trust & Conversion Pool ───────────────────────────────────────
+// ── Phase 2b, Trust & Conversion Pool ───────────────────────────────────────
 
-// TC-1: comparison-table — "us vs traditional" feature table
+// TC-1: comparison-table, "us vs traditional" feature table
 // Only renders rows where both feature + ours are present. Never invents competitor data.
 export function renderComparisonTable(
   _t: DesignTokens,
@@ -1880,7 +1880,7 @@ export function renderComparisonTable(
           <tr class="ws-cmp-row">
             <td class="ws-cmp-feat">${esc(r.feature ?? "")}</td>
             <td class="ws-cmp-us">${esc(r.ours ?? "")}</td>
-            <td class="ws-cmp-them">${r.theirs ? esc(r.theirs) : "—"}</td>
+            <td class="ws-cmp-them">${r.theirs ? esc(r.theirs) : ", "}</td>
           </tr>`).join("")}
         </tbody>
       </table>
@@ -1889,7 +1889,7 @@ export function renderComparisonTable(
 </section>`;
 }
 
-// TC-2: agent-card — real estate agent photo + bio + contact (only real provided data)
+// TC-2: agent-card, real estate agent photo + bio + contact (only real provided data)
 export function renderAgentCard(
   _t: DesignTokens,
   c: { name?: string; title?: string; phone?: string; email?: string; bio?: string },
@@ -1919,7 +1919,7 @@ export function renderAgentCard(
 </section>`;
 }
 
-// TC-3: press-quote-band — pull-quote on dark band; only renders if real quote provided
+// TC-3: press-quote-band, pull-quote on dark band; only renders if real quote provided
 export function renderPressQuoteBand(
   t: DesignTokens,
   c: { quote?: string; source?: string; publication?: string }
@@ -1939,7 +1939,7 @@ export function renderPressQuoteBand(
 </section>`;
 }
 
-// TC-4: trainer-showcase — gym staff grid (initials avatars, no images)
+// TC-4: trainer-showcase, gym staff grid (initials avatars, no images)
 export function renderTrainerShowcase(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; trainers?: { name?: string; specialty?: string; bio?: string }[] }
@@ -1966,7 +1966,7 @@ export function renderTrainerShowcase(
 </section>`;
 }
 
-// TC-5: trust-badges-band — standalone badge strip (reuses hasTrustBadges gate)
+// TC-5: trust-badges-band, standalone badge strip (reuses hasTrustBadges gate)
 export function renderTrustBadgesBand(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; badges?: { value?: string; label?: string }[] }
@@ -1997,7 +1997,7 @@ function formBlockOk(title: string, text: string): string {
   </div>`;
 }
 
-// TC-6: multi-step-inquiry-form — 2-step form with progress indicator
+// TC-6: multi-step-inquiry-form, 2-step form with progress indicator
 export function renderMultiStepForm(
   _t: DesignTokens,
   c: { headline?: string; step1Headline?: string; step2Headline?: string; services?: string[]; submitLabel?: string }
@@ -2063,7 +2063,7 @@ export function renderMultiStepForm(
 </section>`;
 }
 
-// TC-7: appointment-booking-block — service + date + contact; requires real service list
+// TC-7: appointment-booking-block, service + date + contact; requires real service list
 export function renderAppointmentForm(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; services?: string[]; submitLabel?: string }
@@ -2119,7 +2119,7 @@ export function renderAppointmentForm(
 </section>`;
 }
 
-// TC-8: valuation-request-form — real estate property details + contact form
+// TC-8: valuation-request-form, real estate property details + contact form
 export function renderValuationForm(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; subheadline?: string; submitLabel?: string }
@@ -2179,9 +2179,9 @@ export function renderValuationForm(
 </section>`;
 }
 
-// ── Phase 2c — Category-Specific Showcase Pool ───────────────────────────────
+// ── Phase 2c, Category-Specific Showcase Pool ───────────────────────────────
 
-// SC-1: property-listings-grid — real estate cards with specs (grid-3col and featured-plus-grid)
+// SC-1: property-listings-grid, real estate cards with specs (grid-3col and featured-plus-grid)
 type PropertyListing = { title?: string; location?: string; bedrooms?: string; bathrooms?: string; area?: string; price?: string; badge?: string };
 
 function renderPropGrid3Col(
@@ -2283,7 +2283,7 @@ export function renderPropertyListingsGrid(
   return renderPropGrid3Col(t, c, listings, images);
 }
 
-// SC-2: treatment-gallery — dental treatment cards (with or without images)
+// SC-2: treatment-gallery, dental treatment cards (with or without images)
 type TreatmentItem = { title?: string; description?: string; duration?: string; price?: string };
 
 export function renderTreatmentGallery(
@@ -2324,7 +2324,7 @@ export function renderTreatmentGallery(
 </section>`;
 }
 
-// SC-3: portfolio-grid — interior design projects (equal-grid and masonry)
+// SC-3: portfolio-grid, interior design projects (equal-grid and masonry)
 type PortfolioProject = { title?: string; category?: string; description?: string; location?: string; year?: string };
 
 function renderPortfolioEqualGrid(
@@ -2396,7 +2396,7 @@ export function renderPortfolioGrid(
   return renderPortfolioEqualGrid(t, c, projects, images);
 }
 
-// SC-4: membership-plans-display — full-featured tier comparison (gym, NOT just price strip)
+// SC-4: membership-plans-display, full-featured tier comparison (gym, NOT just price strip)
 type MembershipDisplayTier = { name?: string; price?: string; period?: string; features?: string[]; highlighted?: boolean; badge?: string };
 
 export function renderMembershipPlansDisplay(
@@ -2436,7 +2436,7 @@ export function renderMembershipPlansDisplay(
 </section>`;
 }
 
-// TC-9: membership-signup-block — tier selector + signup fields (only real pricing tiers)
+// TC-9: membership-signup-block, tier selector + signup fields (only real pricing tiers)
 export function renderMembershipForm(
   _t: DesignTokens,
   c: { eyebrow?: string; headline?: string; tiers?: { name?: string; price?: string; period?: string }[]; submitLabel?: string }

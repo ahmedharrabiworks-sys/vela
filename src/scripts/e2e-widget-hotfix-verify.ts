@@ -20,7 +20,7 @@ const admin = createClient(url, key, { auth: { persistSession: false } });
 const checks: { label: string; pass: boolean; detail?: string }[] = [];
 function check(label: string, pass: boolean, detail?: string) {
   checks.push({ label, pass, detail });
-  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? `, ${detail}` : ""}`);
 }
 
 async function main() {
@@ -45,7 +45,7 @@ async function main() {
   const { count: msgsBefore } = await admin
     .from("messages").select("*", { count: "exact", head: true }).eq("tenant_id", tenantId);
 
-  // ── 3. Send a fresh message — NO conversationId (new visitor) ─────────
+  // ── 3. Send a fresh message, NO conversationId (new visitor) ─────────
   console.log("Sending POST to /api/ai/reply (no conversationId)...");
   const t0 = Date.now();
   const resp = await fetch(`${PROD_URL}/api/ai/reply`, {
@@ -56,7 +56,7 @@ async function main() {
       message: "Hi, what services do you offer?",
       channel: "website",
       customerName: "__e2e_hotfix_verify__",
-      // intentionally NO conversationId — simulates brand-new visitor
+      // intentionally NO conversationId, simulates brand-new visitor
     }),
   });
   const elapsed = Date.now() - t0;
@@ -70,7 +70,7 @@ async function main() {
   check("conversationId returned", typeof body.conversationId === "string", body.conversationId);
 
   if (resp.status !== 200) {
-    console.log("\n❌ Route returned non-200 — aborting row checks. No rows to clean up.");
+    console.log("\n❌ Route returned non-200, aborting row checks. No rows to clean up.");
     printSummary();
     return;
   }

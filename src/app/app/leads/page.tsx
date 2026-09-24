@@ -335,7 +335,7 @@ export default function LeadsPage() {
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[leads] phone_unconfirmed, intent_summary, or deleted_at column missing — run migration_v30.sql / migration_v33.sql / migration_v34.sql. Retrying without phone_unconfirmed/intent_summary.");
+      console.warn("[leads] phone_unconfirmed, intent_summary, or deleted_at column missing, run migration_v30.sql / migration_v33.sql / migration_v34.sql. Retrying without phone_unconfirmed/intent_summary.");
       ({ data, error } = await db
         .from("leads")
         .select("id, name, channel, status, phone, email, form_data, created_at")
@@ -344,7 +344,7 @@ export default function LeadsPage() {
         .order("created_at", { ascending: false }));
     }
     if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[leads] deleted_at column missing — run migration_v30.sql. Retrying without the filter.");
+      console.warn("[leads] deleted_at column missing, run migration_v30.sql. Retrying without the filter.");
       ({ data, error } = await db
         .from("leads")
         .select("id, name, channel, status, phone, email, form_data, created_at")

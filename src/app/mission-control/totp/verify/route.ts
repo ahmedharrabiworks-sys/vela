@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Both factors passed — issue the MC session cookie
+  // Both factors passed, issue the MC session cookie
   const sessionValue = await buildMcSessionCookie(email);
 
   await logMcAttempt({

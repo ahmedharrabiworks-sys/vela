@@ -1,4 +1,4 @@
-// Round M4 — direct-function verification. Zero OpenAI/Unsplash calls, and
+// Round M4, direct-function verification. Zero OpenAI/Unsplash calls, and
 // (per this round's explicit instruction for FIX 7) zero live network calls
 // to the app's own deployed API either -- pure logic replication/inspection,
 // same TEST-01 reasoning as prior rounds' verify scripts.
@@ -7,7 +7,7 @@ import { renderWebsite } from "../lib/website-renderer";
 
 let pass = 0, fail = 0;
 function check(label: string, cond: boolean) {
-  console.log(`${cond ? "PASS" : "FAIL"} — ${label}`);
+  console.log(`${cond ? "PASS" : "FAIL"}, ${label}`);
   if (cond) pass++; else fail++;
 }
 
@@ -15,11 +15,11 @@ function check(label: string, cond: boolean) {
 {
   const isDental = (text: string) => /\b(dental|dentist|orthodont|teeth\s*whitening|cosmetic\s*dentistry|oral\s*health)/i.test(text);
   check("isDental fires on a real dental clinic description",
-    isDental("Smile Bright Dental Clinic — professional dental services in Dubai. We offer general dentistry, teeth whitening, implants."));
+    isDental("Smile Bright Dental Clinic, professional dental services in Dubai. We offer general dentistry, teeth whitening, implants."));
   check("isDental does NOT fire on a generic (non-dental) medical business",
-    !isDental("Downtown Physiotherapy — sports injury rehab and physical therapy in Dubai."));
+    !isDental("Downtown Physiotherapy, sports injury rehab and physical therapy in Dubai."));
   check("isDental fires on 'orthodontist' even without the word dental",
-    isDental("Bright Smiles Orthodontist — braces and Invisalign for teens and adults."));
+    isDental("Bright Smiles Orthodontist, braces and Invisalign for teens and adults."));
 }
 
 // ── FIX 3 (STRAY LINE): the shared app topbar's dark-mode support ──

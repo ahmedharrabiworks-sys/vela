@@ -4,8 +4,8 @@ import { DEFAULT_VOICE_ID, DEFAULT_SPEED, clampSpeed } from "@/lib/vapi-agent-co
 
 export const dynamic = "force-dynamic";
 
-// Short text — less to generate = less latency for preview
-const SAMPLE_TEXT = "Hi, I'm Vela — your AI phone agent. How can I help you today?";
+// Short text, less to generate = less latency for preview
+const SAMPLE_TEXT = "Hi, I'm Vela, your AI phone agent. How can I help you today?";
 
 export async function POST(req: NextRequest) {
   const supabase = createSupabaseServerClient();

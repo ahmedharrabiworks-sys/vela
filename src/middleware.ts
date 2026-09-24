@@ -58,7 +58,7 @@ function getAppHost(): string {
     .toLowerCase();
 }
 
-// Direct Supabase PostgREST query — no Node.js client, fully Edge-compatible.
+// Direct Supabase PostgREST query, no Node.js client, fully Edge-compatible.
 // HARD RULE: NEVER call the Vercel Domains API from here.
 // Only resolves domains that are: is_published=true AND domain_status=verified.
 async function resolveCustomDomain(hostname: string): Promise<string | null> {
@@ -68,7 +68,7 @@ async function resolveCustomDomain(hostname: string): Promise<string | null> {
   if (!sbUrl || !svcKey || !anonKey) return null;
 
   try {
-    // domain_status must be 'verified' — pending/failed/null domains are NOT served.
+    // domain_status must be 'verified', pending/failed/null domains are NOT served.
     const params =
       `domain=eq.${encodeURIComponent(hostname)}` +
       `&is_published=eq.true` +
@@ -128,7 +128,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Domain not in DB, not verified, or site not published → fall through to normal routing.
-    // Do NOT return a 404 page here — let Next.js routing handle it.
+    // Do NOT return a 404 page here, let Next.js routing handle it.
     return NextResponse.next({ request });
   }
 
@@ -195,7 +195,7 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session — keeps the JWT alive on every request.
+  // Refresh session, keeps the JWT alive on every request.
   // PRODUCTION INCIDENT FIX (Aug 28): this call had no timeout -- confirmed
   // live as the real hang point (see withTimeout's own comment above for
   // the full root cause). Bounded to 5s and fails closed to user=null on

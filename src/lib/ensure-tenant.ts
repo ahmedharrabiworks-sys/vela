@@ -176,7 +176,7 @@ export async function ensureTenant(
   }
 
   // Backfill optional columns if they exist in the schema (migration_v2).
-  // Fire-and-forget — does not block or throw if columns are absent.
+  // Fire-and-forget, does not block or throw if columns are absent.
   void admin.from("tenants").update({ industry, city }).eq("id", newTenant.id);
 
   // Create the paired tenant_config row (all columns have DB defaults).

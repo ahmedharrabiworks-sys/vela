@@ -13,7 +13,7 @@ import {
 } from "@/lib/mission-control/queries";
 
 // NOTE: mc_session_verified cookie has path=/mission-control.
-// Browsers will NOT send it to /api/* paths — this route is for server-side
+// Browsers will NOT send it to /api/* paths, this route is for server-side
 // use (Server Components SSR-fetching with forwarded cookies) or direct curl.
 // When a dashboard UI is added, fetch from Server Components, or change the
 // cookie path to "/" (and redeploy totp/verify/route.ts).
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       platformActivity: activity,
       atRisk: {
         tenants: atRisk,
-        note: "Behavioral proxies only — never labeled as churned.",
+        note: "Behavioral proxies only, never labeled as churned.",
       },
     });
   } catch (err) {

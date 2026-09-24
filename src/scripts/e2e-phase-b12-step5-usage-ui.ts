@@ -1,15 +1,15 @@
 /**
- * E2E verification: Phase B item 12 Step 5 — usage meters + upgrade prompt UI.
+ * E2E verification: Phase B item 12 Step 5, usage meters + upgrade prompt UI.
  * Tests the /api/stats/usage endpoint behavior that drives the UI under 3 scenarios:
- *   A — Starter under cap  → normal meters, no warning, no modal trigger
- *   B — Starter at 90%+    → warning banner should appear
- *   C — Starter at 100%    → upgrade modal should trigger + at-cap banner
+ *   A, Starter under cap  → normal meters, no warning, no modal trigger
+ *   B, Starter at 90%+    → warning banner should appear
+ *   C, Starter at 100%    → upgrade modal should trigger + at-cap banner
  * Also tests:
- *   D — Pro/Premium limit  → messages.limit = null (Unlimited text)
- *   E — 375px: response shape unchanged (no overflow risk from data)
+ *   D, Pro/Premium limit  → messages.limit = null (Unlimited text)
+ *   E, 375px: response shape unchanged (no overflow risk from data)
  *
  * Note: this script verifies the data layer. Visual render is described in
- * the report but cannot be screenshot from a Node script — confirmed by
+ * the report but cannot be screenshot from a Node script, confirmed by
  * reading the deployed HTML output from the API that drives the UI.
  *
  * Run:
@@ -40,7 +40,7 @@ const cookieName = `sb-${projectRef}-auth-token`;
 const checks: { label: string; pass: boolean; detail?: string }[] = [];
 function check(label: string, pass: boolean, detail?: string) {
   checks.push({ label, pass, detail });
-  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`  ${pass ? "✅" : "❌"} ${label}${detail ? `, ${detail}` : ""}`);
 }
 
 async function getSessionCookie(): Promise<string | null> {
@@ -78,7 +78,7 @@ async function seedMessages(tenantId: string, count: number, convId: string): Pr
 }
 
 async function main() {
-  console.log("=== Phase B item 12 Step 5 — Usage UI E2E ===\n");
+  console.log("=== Phase B item 12 Step 5, Usage UI E2E ===\n");
 
   const cookie = await getSessionCookie();
   if (!cookie) { console.error("Could not get session"); process.exit(1); }
@@ -155,7 +155,7 @@ async function main() {
   check("B: messages.used < 100% of cap (not yet blocked)", usedB < CAP, `used=${usedB}`);
   console.log("  → UI: warning banner should appear (90%+ banner shown, modal NOT triggered)\n");
 
-  // ── Scenario C: at cap — modal trigger ────────────────────────────────
+  // ── Scenario C: at cap, modal trigger ────────────────────────────────
   const needC = Math.max(0, CAP - usedB);
   console.log(`--- Scenario C: at 100% cap (${CAP} messages) ---`);
   if (needC > 0) {
@@ -171,7 +171,7 @@ async function main() {
   console.log("  → UI: at-cap red banner + upgrade modal auto-triggered on billing tab load\n");
 
   // ── Scenario D: Unlimited (check null limit) ───────────────────────────
-  console.log(`--- Scenario D: Pro plan — null limits ---`);
+  console.log(`--- Scenario D: Pro plan, null limits ---`);
   if (wasNotStarter) {
     // Restore to original plan for this check
     await admin.from("tenants").update({ plan: tenantPlan }).eq("id", tenantId);
@@ -183,14 +183,14 @@ async function main() {
     check("D: Pro/Premium/Custom messages.limit = null", usageD?.messages?.limit === null, String(usageD?.messages?.limit));
     console.log("  → UI: 'Unlimited' text shown, green progress bar track\n");
   } else {
-    console.log("  (Test account is Starter — D confirmed via A)\n");
+    console.log("  (Test account is Starter, D confirmed via A)\n");
   }
 
   // ── Scenario E: response shape safe for 375px ──────────────────────────
   console.log("--- Scenario E: 375px layout safety ---");
   check("E: messages.used is short number (no overflow risk)", usageD?.messages?.used < 1_000_000, `${usageD?.messages?.used}`);
   check("E: periodEnd fits 'Resets MMM D' format", !!usageD?.periodEnd, usageD?.periodEnd?.slice(0, 10));
-  console.log("  → Progress bars use percentage width — safe at any viewport width\n");
+  console.log("  → Progress bars use percentage width, safe at any viewport width\n");
 
   // ── Cleanup ────────────────────────────────────────────────────────────
   if (seededIds.length > 0) {
@@ -220,7 +220,7 @@ function printSummary() {
     console.log("   C: at cap → modal trigger + at-cap banner data present");
     console.log("   D: Pro plan → null limits (Unlimited text)");
     console.log("   E: 375px safe (percentage widths, short date)");
-    console.log("   Phase B item 12 COMPLETE — all 5 steps done.");
+    console.log("   Phase B item 12 COMPLETE, all 5 steps done.");
   } else {
     const failed = checks.filter(c => !c.pass);
     console.log("❌ Failed checks:");

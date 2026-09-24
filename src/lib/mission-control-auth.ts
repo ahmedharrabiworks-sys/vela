@@ -1,8 +1,8 @@
 // ============================================================
-// Mission Control — auth primitives
+// Mission Control, auth primitives
 // HARD RULE 21: OWNER_EMAILS is a hardcoded const in source code.
-// Changing access requires a real code deployment — never a DB row or env var.
-// This file uses only Web Crypto API, btoa/atob, and fetch — fully Edge-compatible.
+// Changing access requires a real code deployment, never a DB row or env var.
+// This file uses only Web Crypto API, btoa/atob, and fetch, fully Edge-compatible.
 // ============================================================
 
 // ── Allowlist ─────────────────────────────────────────────────────────────────
@@ -18,20 +18,20 @@ export function isOwnerEmail(email: string): boolean {
 }
 
 // ── TOTP ──────────────────────────────────────────────────────────────────────
-// Placeholder base32 secret — replace before going live.
+// Placeholder base32 secret, replace before going live.
 // Generate a real secret (run once, store the output here, never in env/DB):
 //   node -e "const {authenticator}=require('otplib');console.log(authenticator.generateSecret())"
-// Never store in env vars or DB — must live here alongside the allowlist.
+// Never store in env vars or DB, must live here alongside the allowlist.
 export const MC_TOTP_SECRET = "JBSWY3DPEHPK3PXP"; // placeholder
 
 // ── Cookie names & TTLs ───────────────────────────────────────────────────────
-// Dedicated to /mission-control — never shared with the main app's sb-xxx-auth-token
+// Dedicated to /mission-control, never shared with the main app's sb-xxx-auth-token
 export const MC_SESSION_COOKIE  = "mc_session_verified";
 export const MC_PENDING_COOKIE  = "mc_totp_pending";
 export const MC_SESSION_TTL_MS  = 8 * 60 * 60 * 1000;   // 8 hours
 export const MC_PENDING_TTL_MS  = 5 * 60 * 1000;         // 5 minutes
 
-// ── HMAC helpers (Web Crypto API — Edge-compatible) ───────────────────────────
+// ── HMAC helpers (Web Crypto API, Edge-compatible) ───────────────────────────
 async function hmacSha256(message: string): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -103,7 +103,7 @@ export async function verifyPendingCookie(value: string): Promise<string | null>
   return data.email;
 }
 
-// ── Audit log (direct Supabase REST — Edge-compatible) ───────────────────────
+// ── Audit log (direct Supabase REST, Edge-compatible) ───────────────────────
 export async function logMcAttempt(params: {
   email: string;
   outcome: "granted" | "denied_not_allowlisted" | "denied_no_session";
@@ -134,6 +134,6 @@ export async function logMcAttempt(params: {
       }),
     });
   } catch {
-    // Logging failure is non-fatal — never block a response for it
+    // Logging failure is non-fatal, never block a response for it
   }
 }

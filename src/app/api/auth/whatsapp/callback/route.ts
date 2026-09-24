@@ -11,15 +11,15 @@ export const dynamic = "force-dynamic";
  *
  * Called by the client after the Embedded Signup v4 popup completes.
  * The FB.login callback (with sessionInfoVersion: 2) provides:
- *   code            — session_info_exchange_token (NOT an access token, must be exchanged)
- *   waba_id         — WhatsApp Business Account ID from authResponse.session_info.waba_id
- *   phone_number_id — from authResponse.session_info.phone_number_id
+ *   code, session_info_exchange_token (NOT an access token, must be exchanged)
+ *   waba_id, WhatsApp Business Account ID from authResponse.session_info.waba_id
+ *   phone_number_id, from authResponse.session_info.phone_number_id
  *
  * Server-to-server flow:
  *   1. Exchange code → Business Integration System User access token (long-lived)
  *   2. Validate phone_number_id + fetch display_phone_number + verified_name from Meta
  *   3. Subscribe WABA to this app's webhook (POST /<waba_id>/subscribed_apps)
- *   4. Write to whatsapp_accounts (upsert on phone_number_id) — fail closed, no partial writes
+ *   4. Write to whatsapp_accounts (upsert on phone_number_id), fail closed, no partial writes
  *   5. Set tenant_config.whatsapp_connected = true + whatsapp_waba_id
  *
  * Returns { ok, phoneNumber, displayName, waba_id, phone_number_id } on success.

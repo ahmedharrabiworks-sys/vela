@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: false,
       notConfigured: true,
-      message: "Twilio not configured yet — add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_VERIFY_SERVICE_SID to your .env.local to send real SMS codes.",
+      message: "Twilio not configured yet, add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_VERIFY_SERVICE_SID to your .env.local to send real SMS codes.",
     });
   }
 

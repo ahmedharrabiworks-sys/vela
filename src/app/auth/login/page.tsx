@@ -96,14 +96,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
 
-      {/* Logo top-left — icon mark only on auth pages */}
+      {/* Logo top-left, icon mark only on auth pages */}
       <div className="absolute top-0 left-0 p-6 z-10">
         <Link href="/">
           <Logo showText={false} />
         </Link>
       </div>
 
-      {/* Platform language selector — top right */}
+      {/* Platform language selector, top right */}
       <div className="absolute top-0 right-0 p-6 z-10">
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline text-xs font-medium text-[#6B7280] whitespace-nowrap">Platform Language:</span>

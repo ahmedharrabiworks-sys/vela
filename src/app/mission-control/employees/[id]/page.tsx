@@ -67,7 +67,7 @@ function fmtDate(iso: string): string {
 }
 
 function formatSignalValue(name: string, value: number | null): string {
-  if (value == null) return "—";
+  if (value == null) return ", ";
   const isRate = name.endsWith("_rate") || name.endsWith("_success_rate");
   return isRate ? `${value}%` : String(value);
 }
@@ -147,7 +147,7 @@ export default async function EmployeeDetailPage({
         </div>
         <div style={S.kv}>
           <div style={S.kvKey}>Safe default</div>
-          <div style={{ ...S.kvVal, color: T.muted }}>{emp.safeDefaultAction ?? "—"}</div>
+          <div style={{ ...S.kvVal, color: T.muted }}>{emp.safeDefaultAction ?? ", "}</div>
         </div>
         <div style={S.kv}>
           <div style={S.kvKey}>Created</div>
@@ -233,7 +233,7 @@ export default async function EmployeeDetailPage({
                     <OutcomeBadge outcome={l.outcome} />
                   </td>
                   <td style={S.td}>{l.conclusion}</td>
-                  <td style={S.tdMuted}>{l.taskRef ?? "—"}</td>
+                  <td style={S.tdMuted}>{l.taskRef ?? ", "}</td>
                   <td style={S.tdSmall}>{fmtDate(l.createdAt)}</td>
                 </tr>
               ))}

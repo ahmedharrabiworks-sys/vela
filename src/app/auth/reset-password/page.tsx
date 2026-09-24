@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
       if (session) {
         setPageState("ready");
       } else {
-        // No session — link is expired or was already used
+        // No session, link is expired or was already used
         setPageState("expired");
       }
     });
@@ -217,7 +217,7 @@ export default function ResetPasswordPage() {
 
         </div>
 
-        {/* Resend note — reset email delivery requires Resend to be configured in Supabase.
+        {/* Resend note, reset email delivery requires Resend to be configured in Supabase.
             Until the Resend integration is active (Phase D item 23), Supabase's built-in
             email provider is used, which may have deliverability issues in production. */}
         {pageState === "ready" && (

@@ -102,7 +102,7 @@ export async function GET(_req: NextRequest) {
 
   const tc = config as Record<string, unknown> | null;
   // When fetching a specific site by ID (project switch), never fall back to the global
-  // tenant_config.website_html — that field belongs to whatever site was last generated
+  // tenant_config.website_html, that field belongs to whatever site was last generated
   // and would show another site's HTML in the preview.
   // FIX 4: fall back to published_html if draft_html is empty. A site can be
   // genuinely published (is_published true, real slug, real published_html)

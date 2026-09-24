@@ -1,4 +1,4 @@
-// Round M3 — direct-function verification for FIX 1 (noPhotoMode recency)
+// Round M3, direct-function verification for FIX 1 (noPhotoMode recency)
 // and FIX 2 (edit-mode click handler / data-ve marker collision).
 // FIX 1's logic is a verbatim copy of the real functions from generate/
 // route.ts (internal, not exported -- route.ts can't be imported standalone,
@@ -10,7 +10,7 @@ import { renderWebsite } from "../lib/website-renderer";
 
 let pass = 0, fail = 0;
 function check(label: string, cond: boolean) {
-  console.log(`${cond ? "PASS" : "FAIL"} — ${label}`);
+  console.log(`${cond ? "PASS" : "FAIL"}, ${label}`);
   if (cond) pass++; else fail++;
 }
 
@@ -79,7 +79,7 @@ function resolveNoPhotoMode(
   const history = [
     { role: "ai", content: "What language should your site be in?" },
     { role: "user", content: "English" },
-    { role: "ai", content: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I'll use professional stock photography that matches your business — just let me know if you'd rather have a clean, photo-free design instead." },
+    { role: "ai", content: "Do you have any photos you would like to use, such as a logo, team photo, or storefront? If not, I'll use professional stock photography that matches your business, just let me know if you'd rather have a clean, photo-free design instead." },
     { role: "user", content: "No thanks, keep it photo-free for now." },
     { role: "ai", content: "Got it. Your website is ready!" },
   ];

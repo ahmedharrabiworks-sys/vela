@@ -1,11 +1,11 @@
-// Mission Control — reusable query functions
+// Mission Control, reusable query functions
 // All functions accept an admin client (service-role) and return plain data.
 // No route logic, no auth checks, no Next.js imports here.
 //
-// LABELING DISCIPLINE (Hard Rule — not optional):
+// LABELING DISCIPLINE (Hard Rule, not optional):
 //   Any figure derived from plan price × tenant count (not actual billing)
 //   must be named/labeled "theoretical*".  Actual revenue (Stripe) is absent
-//   until that integration is live — do not stub with zeros.
+//   until that integration is live, do not stub with zeros.
 
 import { PLAN_CONFIG, type PlanId } from "../plan-config";
 
@@ -47,7 +47,7 @@ export async function getTenantRoster(admin: AdminClient) {
 
 // ── 2. Theoretical MRR ───────────────────────────────────────────────────────
 // "Theoretical" = plan price × active tenant count.
-// Actual revenue requires Stripe — that field is intentionally absent here.
+// Actual revenue requires Stripe, that field is intentionally absent here.
 
 export async function getTheoreticalMRR(admin: AdminClient) {
   const { data, error } = await admin
@@ -78,7 +78,7 @@ export async function getTheoreticalMRR(admin: AdminClient) {
 
 // ── 3. Voice margin ───────────────────────────────────────────────────────────
 // Cost incurred: agent_calls.duration_seconds × $0.12/min.
-// Compared against the tenant's theoretical plan revenue (full plan price —
+// Compared against the tenant's theoretical plan revenue (full plan price, 
 // voice cost is not isolated; this shows how much voice cost each tenant generates).
 
 export async function getVoiceMarginSummary(admin: AdminClient) {
@@ -134,7 +134,7 @@ export async function getTenantEngagement(admin: AdminClient, tenantId: string) 
     admin.from("tenants").select("owner_id").eq("id", tenantId).single(),
     admin
       .from("tenant_config")
-      // whatsapp_waba_id omitted — migration_v9.sql (PENDING); WA status comes from whatsapp_accounts table
+      // whatsapp_waba_id omitted, migration_v9.sql (PENDING); WA status comes from whatsapp_accounts table
       .select("knowledge_base_updated_at, instagram_connected")
       .eq("tenant_id", tenantId)
       .single(),
@@ -254,13 +254,13 @@ export async function getPlatformActivitySummary(admin: AdminClient) {
 }
 
 // ── 7. At-risk tenants (computed fresh, never cached) ─────────────────────────
-// Risk factors (OR logic — any one triggers at-risk status):
-//   no_recent_login  — no Supabase auth sign-in in 14+ days (or never)
-//   kb_never_trained — knowledge_base_updated_at IS NULL
-//   no_recent_calls  — zero agent_calls in the last 30 days
+// Risk factors (OR logic, any one triggers at-risk status):
+//   no_recent_login, no Supabase auth sign-in in 14+ days (or never)
+//   kb_never_trained, knowledge_base_updated_at IS NULL
+//   no_recent_calls, zero agent_calls in the last 30 days
 //
 // These are behavioral proxies ONLY. Label: "At-Risk (behavioral)".
-// Never label as "churned" — that requires a confirmed cancellation event.
+// Never label as "churned", that requires a confirmed cancellation event.
 
 export async function getAtRiskTenants(admin: AdminClient) {
   const now = Date.now();
@@ -322,7 +322,7 @@ export async function getAtRiskTenants(admin: AdminClient) {
         businessName: t.business_name,
         plan: t.plan,
         riskFactors,
-        note: "At-Risk (behavioral proxy only — not confirmed churn)",
+        note: "At-Risk (behavioral proxy only, not confirmed churn)",
       });
     }
   }
@@ -522,22 +522,22 @@ export async function computeWebsiteAgentSignals(
     {
       signalName: "sites_with_draft",
       value: sitesWithDraft,
-      realDescription: "Websites where draft_html IS NOT NULL — proxy for at least one successful generation",
+      realDescription: "Websites where draft_html IS NOT NULL, proxy for at least one successful generation",
     },
     {
       signalName: "published_sites",
       value: publishedSites,
-      realDescription: "Websites where is_published = true — owner explicitly published",
+      realDescription: "Websites where is_published = true, owner explicitly published",
     },
     {
       signalName: "generation_success_rate",
       value: generationSuccessRate,
-      realDescription: "sites_with_draft / total_sites × 100 — all-time generation success rate (%)",
+      realDescription: "sites_with_draft / total_sites × 100, all-time generation success rate (%)",
     },
     {
       signalName: "publish_rate",
       value: publishRate,
-      realDescription: "published_sites / total_sites × 100 — share of created sites that were published (%)",
+      realDescription: "published_sites / total_sites × 100, share of created sites that were published (%)",
     },
   ];
 
@@ -557,10 +557,10 @@ export async function computeWebsiteAgentSignals(
 }
 
 // ── 11. Compute + write Phone Agent signals ───────────────────────────────────
-// Source of truth: agent_calls table — confirmed live with real data in Phase 1
+// Source of truth: agent_calls table, confirmed live with real data in Phase 1
 // (migration_v13b, e2e-agent-calls-verify.mjs 17/17, commit 0ad59bc).
 // Signal window: 90-day recent window + all-time totals.
-// Caveat: Twilio inbound not yet connected (VAPI_WEBHOOK_SECRET placeholder) —
+// Caveat: Twilio inbound not yet connected (VAPI_WEBHOOK_SECRET placeholder), 
 // call volume is low/near-zero in production until final integration day.
 // Hard Rule 22: every trait maps to a named, queryable real signal.
 
@@ -608,27 +608,27 @@ export async function computePhoneAgentSignals(
     {
       signalName: "total_calls",
       value: totalCalls,
-      realDescription: "Total agent_calls rows all time — all inbound/outbound voice calls recorded",
+      realDescription: "Total agent_calls rows all time, all inbound/outbound voice calls recorded",
     },
     {
       signalName: "calls_90d",
       value: calls90d,
-      realDescription: `agent_calls rows in the last ${CALL_WINDOW_DAYS} days — recent call volume`,
+      realDescription: `agent_calls rows in the last ${CALL_WINDOW_DAYS} days, recent call volume`,
     },
     {
       signalName: "tenants_with_calls",
       value: tenantsWithCalls,
-      realDescription: "Distinct tenant_id values in agent_calls — tenants that have made at least one call",
+      realDescription: "Distinct tenant_id values in agent_calls, tenants that have made at least one call",
     },
     {
       signalName: "avg_duration_secs",
       value: avgDurationSecs,
-      realDescription: "Average duration_seconds across all calls with non-null duration — call length proxy",
+      realDescription: "Average duration_seconds across all calls with non-null duration, call length proxy",
     },
     {
       signalName: "total_voice_minutes",
       value: totalVoiceMinutes,
-      realDescription: "Sum of duration_seconds / 60 across all agent_calls — total voice minutes consumed all time",
+      realDescription: "Sum of duration_seconds / 60 across all agent_calls, total voice minutes consumed all time",
     },
   ];
 
@@ -649,7 +649,7 @@ export async function computePhoneAgentSignals(
 
 // ── 13. Compute + write Trainer Agent signals ─────────────────────────────────
 // Source of truth: tenants table (count) + tenant_config.knowledge_base_updated_at
-// (written by save-call/route.ts and ai-training/route.ts on every KB save —
+// (written by save-call/route.ts and ai-training/route.ts on every KB save, 
 // added in migration_v13b, confirmed live July 31, 2026).
 // Hard Rule 22: every trait maps to a named, queryable real signal.
 
@@ -709,22 +709,22 @@ export async function computeTrainerAgentSignals(
     {
       signalName: "tenants_with_kb",
       value: tenantsWithKb,
-      realDescription: "Tenants where knowledge_base_updated_at IS NOT NULL — at least one AI training session completed",
+      realDescription: "Tenants where knowledge_base_updated_at IS NOT NULL, at least one AI training session completed",
     },
     {
       signalName: "kb_trained_rate",
       value: kbTrainedRate,
-      realDescription: "tenants_with_kb / total_tenants × 100 — share of tenants that have completed at least one AI training session (%)",
+      realDescription: "tenants_with_kb / total_tenants × 100, share of tenants that have completed at least one AI training session (%)",
     },
     {
       signalName: "avg_kb_age_days",
       value: avgKbAgeDays,
-      realDescription: "Average days since knowledge_base_updated_at across trained tenants — KB freshness proxy",
+      realDescription: "Average days since knowledge_base_updated_at across trained tenants, KB freshness proxy",
     },
     {
       signalName: "kb_stale_count",
       value: kbStaleCount,
-      realDescription: `Trained tenants where knowledge_base_updated_at is older than ${KB_STALE_DAYS} days — staleness proxy`,
+      realDescription: `Trained tenants where knowledge_base_updated_at is older than ${KB_STALE_DAYS} days, staleness proxy`,
     },
   ];
 
@@ -744,9 +744,9 @@ export async function computeTrainerAgentSignals(
 }
 
 // ── 12. Compute + write Support Agent signals ─────────────────────────────────
-// Source of truth: conversations table — needs_human flag and needs_human_resolved_at.
+// Source of truth: conversations table, needs_human flag and needs_human_resolved_at.
 // Written by /api/conversations/[id]/resolve (sets needs_human=false + resolved_at).
-// Level 0 — observed only. No ticket system, no inbound email, no SLA tracking.
+// Level 0, observed only. No ticket system, no inbound email, no SLA tracking.
 // Hard Rule 22: every trait maps to a named, queryable real signal.
 
 export interface SupportAgentSignalResult {
@@ -803,25 +803,25 @@ export async function computeSupportAgentSignals(
       signalName: "open_escalations_count",
       value: openCount,
       realDescription:
-        "conversations table COUNT WHERE needs_human = true — total open human-handoff requests (all tenants, never reset without explicit resolve)",
+        "conversations table COUNT WHERE needs_human = true, total open human-handoff requests (all tenants, never reset without explicit resolve)",
     },
     {
       signalName: "stale_escalations_count",
       value: staleCount,
       realDescription:
-        "conversations WHERE needs_human = true AND last_message_at < now() - 24h — escalations with no recent activity (aging proxy)",
+        "conversations WHERE needs_human = true AND last_message_at < now() - 24h, escalations with no recent activity (aging proxy)",
     },
     {
       signalName: "tenants_with_escalations",
       value: tenantsWithEscalations,
       realDescription:
-        "COUNT DISTINCT tenant_id WHERE needs_human = true — number of tenants that currently have at least one open escalation",
+        "COUNT DISTINCT tenant_id WHERE needs_human = true, number of tenants that currently have at least one open escalation",
     },
     {
       signalName: "resolved_last_30_days",
       value: resolvedLast30d,
       realDescription:
-        "conversations WHERE needs_human_resolved_at IS NOT NULL AND needs_human_resolved_at >= now() - 30 days — escalations explicitly marked resolved in the last 30 days",
+        "conversations WHERE needs_human_resolved_at IS NOT NULL AND needs_human_resolved_at >= now() - 30 days, escalations explicitly marked resolved in the last 30 days",
     },
   ];
 
@@ -841,11 +841,11 @@ export async function computeSupportAgentSignals(
 }
 
 // ── 14. Compute + write Analytics/Insights Agent signals ─────────────────────
-// Source of truth: getPlatformActivitySummary() — reuses the same four COUNT
+// Source of truth: getPlatformActivitySummary(), reuses the same four COUNT
 // queries already verified in Phase 1 (conversations, leads, appointments,
 // agent_calls, all scoped to the current UTC month).
 // Level 0 capability only: real-data reporting. Correlation-detection and
-// Company-Brain-writing are future tiers — not built, not described here.
+// Company-Brain-writing are future tiers, not built, not described here.
 // Hard Rule 22: every trait maps to a named, queryable real signal.
 
 export interface AnalyticsAgentSignalResult {
@@ -867,27 +867,27 @@ export async function computeAnalyticsAgentSignals(
     {
       signalName: "conversations_this_month",
       value: activity.conversations,
-      realDescription: `conversations table COUNT WHERE created_at >= ${activity.periodStart} — inbound messages this month`,
+      realDescription: `conversations table COUNT WHERE created_at >= ${activity.periodStart}, inbound messages this month`,
     },
     {
       signalName: "leads_this_month",
       value: activity.leads,
-      realDescription: `leads table COUNT WHERE created_at >= ${activity.periodStart} — new leads captured this month`,
+      realDescription: `leads table COUNT WHERE created_at >= ${activity.periodStart}, new leads captured this month`,
     },
     {
       signalName: "appointments_this_month",
       value: activity.appointments,
-      realDescription: `appointments table COUNT WHERE created_at >= ${activity.periodStart} — bookings made this month`,
+      realDescription: `appointments table COUNT WHERE created_at >= ${activity.periodStart}, bookings made this month`,
     },
     {
       signalName: "calls_this_month",
       value: activity.calls,
-      realDescription: `agent_calls table COUNT WHERE created_at >= ${activity.periodStart} — voice calls this month`,
+      realDescription: `agent_calls table COUNT WHERE created_at >= ${activity.periodStart}, voice calls this month`,
     },
     {
       signalName: "total_events_this_month",
       value: totalEvents,
-      realDescription: "Sum of conversations + leads + appointments + calls for the current UTC month — combined platform activity signal",
+      realDescription: "Sum of conversations + leads + appointments + calls for the current UTC month, combined platform activity signal",
     },
   ];
 

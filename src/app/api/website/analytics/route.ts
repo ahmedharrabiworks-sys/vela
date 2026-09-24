@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
   const last7Days  = rows.filter((r) => r.created_at >= sevenDaysAgo).length;
   const last30Days = rows.length;
 
-  // Daily visit counts — fill every day of the last 30 (including zeros for empty days)
+  // Daily visit counts, fill every day of the last 30 (including zeros for empty days)
   const dailyMap: Record<string, number> = {};
   rows.forEach((r) => {
     const d = r.created_at.slice(0, 10);

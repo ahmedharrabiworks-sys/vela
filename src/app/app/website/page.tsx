@@ -249,7 +249,7 @@ clrGrp.appendChild(clrRow);panel.appendChild(clrGrp);
 /* ── Section spacing group ──────────────────────────────────────────────── */
 var _div3=document.createElement('div');_div3.className='vep-divider';panel.appendChild(_div3);
 var SP_VALS=['','16px','32px','48px','64px'];
-var SP_LBLS=['—','S','M','L','XL'];
+var SP_LBLS=[', ','S','M','L','XL'];
 var topGrp=mkGrp('↑ Top',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
 panel.appendChild(topGrp.g);
 var botGrp=mkGrp('↓ Bot',SP_VALS.map(function(v,i){return{lbl:SP_LBLS[i],val:v};}));
@@ -257,7 +257,7 @@ panel.appendChild(botGrp.g);
 /* ── Section border group ──────────────────────────────────────────────── */
 var _div4=document.createElement('div');_div4.className='vep-divider';panel.appendChild(_div4);
 var SHADOW_VALS=['','0 1px 3px rgba(0,0,0,.08)','0 4px 16px rgba(0,0,0,.12)','0 8px 32px rgba(0,0,0,.20)'];
-var bdrWGrp=mkGrp('Border',[{lbl:'—',val:''},{lbl:'1px',val:'1px'},{lbl:'2px',val:'2px'}]);
+var bdrWGrp=mkGrp('Border',[{lbl:', ',val:''},{lbl:'1px',val:'1px'},{lbl:'2px',val:'2px'}]);
 panel.appendChild(bdrWGrp.g);
 var bdrClrGrp=document.createElement('div');bdrClrGrp.className='vep-grp';
 var bdrClrLbl=document.createElement('div');bdrClrLbl.className='vep-lbl';bdrClrLbl.textContent='Border color';bdrClrGrp.appendChild(bdrClrLbl);
@@ -269,7 +269,7 @@ var bdrReset=document.createElement('button');bdrReset.className='vep-btn';bdrRe
 bdrClrRow.appendChild(bdrClrInp);bdrClrRow.appendChild(bdrReset);
 bdrClrGrp.appendChild(bdrClrRow);panel.appendChild(bdrClrGrp);
 /* ── Section shadow group ──────────────────────────────────────────────── */
-var shdGrp=mkGrp('Shadow',[{lbl:'—',val:SHADOW_VALS[0]},{lbl:'Low',val:SHADOW_VALS[1]},{lbl:'Med',val:SHADOW_VALS[2]},{lbl:'High',val:SHADOW_VALS[3]}]);
+var shdGrp=mkGrp('Shadow',[{lbl:', ',val:SHADOW_VALS[0]},{lbl:'Low',val:SHADOW_VALS[1]},{lbl:'Med',val:SHADOW_VALS[2]},{lbl:'High',val:SHADOW_VALS[3]}]);
 panel.appendChild(shdGrp.g);
 /* ── Per-element spacing ────────────────────────────────────────────────── */
 var _div_elsp=document.createElement('div');_div_elsp.className='vep-divider';panel.appendChild(_div_elsp);
@@ -909,7 +909,7 @@ function PublishPanel({
     setTimeout(() => setCopiedRecord(null), 2000);
   };
 
-  // Domain section — shared between step 1 and step 3 settings
+  // Domain section, shared between step 1 and step 3 settings
   // Defined as a render helper (not a React component) so React never unmounts/remounts it on re-render.
   const renderDomainSection = () => (
     <div className="space-y-3">
@@ -946,7 +946,7 @@ function PublishPanel({
               </span>
             </div>
 
-            {/* DNS setup instructions — shown until verified */}
+            {/* DNS setup instructions, shown until verified */}
             {domainStatus !== "verified" && (
               <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] p-3 space-y-2.5">
                 <p className="text-[11px] text-[#6B7280] leading-relaxed">
@@ -1015,7 +1015,7 @@ function PublishPanel({
         )
       )}
 
-      {/* How to connect your domain — step-by-step guide. Vela does NOT
+      {/* How to connect your domain, step-by-step guide. Vela does NOT
           register or provide a domain; the owner buys/owns it themselves at
           any registrar and points it here. */}
       {showDomainGuide && (
@@ -1033,9 +1033,9 @@ function PublishPanel({
                 Vela doesn&apos;t sell or include a domain. You buy and own your own domain from any registrar, then point it at your Vela site with the steps below.
               </p>
               {[
-                { n: 1, title: "Buy a domain", body: "If you don't already own one, register it at any provider you like — GoDaddy, Namecheap, Google Domains, etc." },
+                { n: 1, title: "Buy a domain", body: "If you don't already own one, register it at any provider you like, GoDaddy, Namecheap, Google Domains, etc." },
                 { n: 2, title: "Enter it above", body: "Type your domain into the field above and click Save." },
-                { n: 3, title: "Add two DNS records", body: "In your registrar's DNS settings, add the A record and CNAME record shown above — copy buttons included." },
+                { n: 3, title: "Add two DNS records", body: "In your registrar's DNS settings, add the A record and CNAME record shown above, copy buttons included." },
                 { n: 4, title: "Wait for DNS to propagate", body: "This can take up to 48 hours, though it's often much faster." },
                 { n: 5, title: "Check status", body: "Come back here and click Check Status. Once it says Connected, your domain is live." },
               ].map((step) => (
@@ -1062,7 +1062,7 @@ function PublishPanel({
     </div>
   );
 
-  // Site details form — render helper (not a React component) to avoid re-mount on every keystroke.
+  // Site details form, render helper (not a React component) to avoid re-mount on every keystroke.
   const renderSiteDetailsForm = () => (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -1251,7 +1251,7 @@ function PublishPanel({
               </div>
             )}
 
-            {/* Update Site — always visible */}
+            {/* Update Site, always visible */}
             <div className="space-y-1.5">
               <button
                 onClick={onPublish}
@@ -1747,7 +1747,7 @@ export default function WebsitePage() {
   }, [showPublishPanel]);
 
   // Auto-refresh visit count when publish panel opens.
-  // Domain status is NOT auto-checked here — user must click "Check Status" explicitly
+  // Domain status is NOT auto-checked here, user must click "Check Status" explicitly
   // to avoid showing "Connected" before DNS is actually verified.
   useEffect(() => {
     if (!showPublishPanel) return;
@@ -1797,12 +1797,12 @@ export default function WebsitePage() {
   }, []);
 
   // ── Publish / Update ──────────────────────────────────────────────────────────
-  // Opens/closes the publish panel — never triggers publishing directly.
+  // Opens/closes the publish panel, never triggers publishing directly.
   const handleTogglePanel = useCallback(() => {
     setShowPublishPanel((v) => !v);
   }, []);
 
-  // Does the actual publish API call — called from inside the publish panel.
+  // Does the actual publish API call, called from inside the publish panel.
   const handleDoPublish = useCallback(async () => {
     const currentHtml = htmlRef.current;
     // Round M FIX 3: real root cause of "Done saves, but Live still shows
@@ -2327,10 +2327,10 @@ export default function WebsitePage() {
     setBuilding(true);
 
     try {
-      // isSeparator messages have content:"" — filter them so OpenAI never receives an empty assistant message
+      // isSeparator messages have content:"", filter them so OpenAI never receives an empty assistant message
       const chatToSend = [...msgs, userMsg].filter(m => !m.isBuilding && m.role !== "version" && !m.isSeparator).map(stripImages);
 
-      // Build intake payload — always include language so the server can persist it and
+      // Build intake payload, always include language so the server can persist it and
       // restore it on the next page load (handles cases where user chose language verbally).
       const intakePayload: Record<string, string> = {};
       if (contactInfo.phone)   intakePayload.phone   = contactInfo.phone;
@@ -2531,7 +2531,7 @@ export default function WebsitePage() {
       }
     } catch { /* non-critical */ }
     finally { setEditSaving(false); }
-  // reads refs only — no state deps needed
+  // reads refs only, no state deps needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2837,7 +2837,7 @@ export default function WebsitePage() {
   // When edit mode is ON, inject window.VS_SPEC + the edit script before </body>.
   // Depends on previewHtml (reloads iframe after server save) but intentionally
   // reads editSpecRef.current (not editSpec state) so that mid-edit field changes
-  // do NOT trigger an iframe reload — only the server-returned HTML does.
+  // do NOT trigger an iframe reload, only the server-returned HTML does.
   //
   // Round M7 FIX 2: the visible "jump to hero, then back down" on every edit
   // is real and inherent to how srcDoc reloads work -- a new document always
@@ -2897,7 +2897,7 @@ export default function WebsitePage() {
   // restore, not just panel-driven edits.
   const iframeSrc = editSrcDoc ?? previewHtml;
 
-  // Device preview — real pixel dimensions, no transform scaling
+  // Device preview, real pixel dimensions, no transform scaling
   const _baseW        = device === "tablet" ? 834 : 390;
   const _baseH        = device === "tablet" ? 1194 : 844;
   const iframeW       = (device === "tablet" || device === "phone") ? (rotated ? _baseH : _baseW) : (device === "laptop" ? 1280 : 0);
@@ -2939,7 +2939,7 @@ export default function WebsitePage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
 
-      {/* Header — FIX 6: title is always "Website Builder" (was showing the
+      {/* Header, FIX 6: title is always "Website Builder" (was showing the
           active site's own name instead, which meant the page's identity
           changed depending on which site was selected). A real status
           badge sits next to it instead. */}
@@ -3011,7 +3011,7 @@ export default function WebsitePage() {
             ))}
           </div>
 
-          {/* New Website button — visible on mobile only; desktop uses the sidebar.
+          {/* New Website button, visible on mobile only; desktop uses the sidebar.
               FIX: had no dark: variants at all -- the hover state
               (hover:text-[#374151], a dark slate meant for light
               backgrounds) went nearly invisible against a dark background. */}
@@ -3077,7 +3077,7 @@ export default function WebsitePage() {
       {/* Main layout: sidebar + chat + preview */}
       <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
 
-        {/* SIDEBAR: Sites list (desktop only) — one row per site, Lovable-style */}
+        {/* SIDEBAR: Sites list (desktop only), one row per site, Lovable-style */}
         <div
           className="hidden md:flex flex-col bg-white dark:bg-[#17171C] border-r border-[#EBEBEB] dark:border-[#2A2A32] overflow-hidden shrink-0 relative"
           style={{ width: sidebarWidth }}
@@ -3093,7 +3093,7 @@ export default function WebsitePage() {
             </button>
           </div>
 
-          {/* Scrollable site list — one row per site */}
+          {/* Scrollable site list, one row per site */}
           <div className="flex-1 overflow-y-auto">
 
             {/* Site rows */}
@@ -3141,7 +3141,7 @@ export default function WebsitePage() {
                     </button>
                   )}
 
-                  {/* ⋯ menu trigger — position is captured on click; dropdown renders fixed at page level */}
+                  {/* ⋯ menu trigger, position is captured on click; dropdown renders fixed at page level */}
                   {!isRenaming && (
                     <button
                       onClick={(e) => {
@@ -3203,7 +3203,7 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* Panel tab toggles — Chat / Versions / Analytics */}
+          {/* Panel tab toggles, Chat / Versions / Analytics */}
           {built && (
             <div className="flex items-center justify-between px-4 pt-2.5 pb-0 shrink-0">
               {(showVersionsPanel || showAnalyticsPanel) ? (
@@ -3295,7 +3295,7 @@ export default function WebsitePage() {
             /* ── Chat messages ───────────────────────────────────────────── */
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {msgs.map((msg, i) => {
-                // Session separator — "New website" divider
+                // Session separator, "New website" divider
                 if (msg.isSeparator) {
                   return (
                     <div key={i} className="flex items-center gap-3 py-1">
@@ -3354,7 +3354,7 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* Language picker — only for fresh (not-yet-built) sessions */}
+          {/* Language picker, only for fresh (not-yet-built) sessions */}
           {!built && msgs.filter((m) => m.role === "user").length === 0 && !siteLanguage && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">Choose language</p>
@@ -3369,7 +3369,7 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* AI assistant toggle — only for fresh sessions, after language is picked */}
+          {/* AI assistant toggle, only for fresh sessions, after language is picked */}
           {!built && msgs.filter((m) => m.role === "user").length === 0 && !!siteLanguage && !embedAssistantChosen && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">Add your AI assistant to this website?</p>
@@ -3386,7 +3386,7 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* Quick-start suggestions — only after language + AI assistant choice, before first user message */}
+          {/* Quick-start suggestions, only after language + AI assistant choice, before first user message */}
           {msgs.filter((m) => m.role === "user").length === 0 && !!siteLanguage && embedAssistantChosen && (
             <div className="px-4 pb-2">
               <p className="text-[10px] text-[#9CA3AF] mb-2">{t("website.quickStarts")}</p>
@@ -3484,7 +3484,7 @@ export default function WebsitePage() {
             </div>
             {built && (
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Preview / Code toggle — Settings and History removed */}
+                {/* Preview / Code toggle, Settings and History removed */}
                 <div className="flex items-center gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
                   {(["preview", "code"] as const).map((mode) => (
                     <button key={mode} onClick={() => { setViewMode(mode); if (previewVersionHtml && mode !== "preview") setPreviewVersionHtml(null); }}
@@ -3495,7 +3495,7 @@ export default function WebsitePage() {
                 </div>
                 {viewMode === "preview" && (
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* Edit mode toggle — hidden when previewing a version or during generation */}
+                    {/* Edit mode toggle, hidden when previewing a version or during generation */}
                     {!previewVersionHtml && (
                       <>
                         <button
@@ -3559,7 +3559,7 @@ export default function WebsitePage() {
                         {deviceLabel}
                       </span>
                     )}
-                    {/* Rotate — tablet and phone only */}
+                    {/* Rotate, tablet and phone only */}
                     {(device === "tablet" || device === "phone") && (
                       <button onClick={() => setRotated((r) => !r)} title="Rotate"
                         className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
@@ -3647,7 +3647,7 @@ export default function WebsitePage() {
               </div>
 
             ) : showAnalyticsPanel ? (
-              /* ── Analytics — FIX 7 (round I): tightened to match the main
+              /* ── Analytics, FIX 7 (round I): tightened to match the main
                  Analytics page's actual density (confirmed via live DOM
                  inspection: rounded-xl, p-4, text-2xl values, text-[11px]
                  labels) -- round H's pass over-corrected toward "bigger" and
@@ -3776,7 +3776,7 @@ export default function WebsitePage() {
               </div>
 
             ) : device === "desktop" ? (
-              /* Desktop — full pane width */
+              /* Desktop, full pane width */
               <div className="flex-1 min-h-0 flex overflow-hidden">
                 <iframe
                   key="preview-desktop"
@@ -3789,7 +3789,7 @@ export default function WebsitePage() {
                 />
               </div>
             ) : hasDeviceFrame ? (
-              /* Tablet / Phone — fixed size, device frame, centered on neutral bg */
+              /* Tablet / Phone, fixed size, device frame, centered on neutral bg */
               <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-6">
                 <div
                   className="shrink-0 rounded-[28px] border-[3px] border-[#C7C7CC] dark:border-[#3A3A42] overflow-hidden shadow-xl"
@@ -3808,7 +3808,7 @@ export default function WebsitePage() {
                 </div>
               </div>
             ) : (
-              /* Laptop — 1280px wide, scrollable horizontally, no frame */
+              /* Laptop, 1280px wide, scrollable horizontally, no frame */
               <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-4">
                 <iframe
                   key={`preview-laptop-${iframeW}`}
@@ -3826,7 +3826,7 @@ export default function WebsitePage() {
         </div>
       </div>
 
-      {/* Transparent backdrop — clicking outside the dropdown closes it.
+      {/* Transparent backdrop, clicking outside the dropdown closes it.
           Rendered BELOW the dropdown (z-199) so dropdown buttons receive clicks first. */}
       {menuOpenId !== null && (
         <div
@@ -3836,7 +3836,7 @@ export default function WebsitePage() {
         />
       )}
 
-      {/* ⋯ project context menu — fixed position above backdrop so it escapes sidebar overflow:hidden */}
+      {/* ⋯ project context menu, fixed position above backdrop so it escapes sidebar overflow:hidden */}
       {menuOpenId !== null && menuPos !== null && (() => {
         const mp = projects.find((proj) => proj.id === menuOpenId);
         if (!mp) return null;

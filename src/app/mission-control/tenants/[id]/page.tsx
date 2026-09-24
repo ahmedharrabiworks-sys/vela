@@ -38,7 +38,7 @@ function rel(dateStr: string | null): string {
 }
 
 function fmtDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return ", ";
   return new Date(dateStr).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });
@@ -169,7 +169,7 @@ export default async function TenantDetailPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  // Fetch the tenant row first — if not found, bail early with a clean UI state.
+  // Fetch the tenant row first, if not found, bail early with a clean UI state.
   const { data: tenantRow } = await admin
     .from("tenants")
     .select("id, business_name, plan, created_at, industry, city")
@@ -226,7 +226,7 @@ export default async function TenantDetailPage({
               <PlanBadge plan={tenantRow.plan} />
             </div>
             <p style={{ margin: "6px 0 0", fontSize: "0.78rem", color: T.muted }}>
-              {[tenantRow.industry, tenantRow.city].filter(Boolean).join(" · ") || "—"}
+              {[tenantRow.industry, tenantRow.city].filter(Boolean).join(" · ") || ", "}
               {" · Created "}
               {fmtDate(tenantRow.created_at)}
             </p>
@@ -358,7 +358,7 @@ export default async function TenantDetailPage({
                   {convs.map((c) => (
                     <tr key={c.id} style={{ borderBottom: `1px solid ${T.row}` }}>
                       <td style={{ padding: "8px 8px", fontSize: "0.8rem", textTransform: "capitalize" }}>
-                        {c.channel ?? "—"}
+                        {c.channel ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", textAlign: "right", fontSize: "0.75rem", color: T.muted, whiteSpace: "nowrap" }}>
                         {fmtDate(c.created_at)}
@@ -389,12 +389,12 @@ export default async function TenantDetailPage({
                 <tbody>
                   {leads.map((l) => (
                     <tr key={l.id} style={{ borderBottom: `1px solid ${T.row}` }}>
-                      <td style={{ padding: "8px 8px", fontSize: "0.8rem" }}>{l.name ?? "—"}</td>
+                      <td style={{ padding: "8px 8px", fontSize: "0.8rem" }}>{l.name ?? ", "}</td>
                       <td style={{ padding: "8px 8px", fontSize: "0.75rem", color: T.muted, textTransform: "capitalize" }}>
-                        {l.channel ?? "—"}
+                        {l.channel ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", fontSize: "0.75rem", textTransform: "capitalize" }}>
-                        {l.status ?? "—"}
+                        {l.status ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", textAlign: "right", fontSize: "0.75rem", color: T.muted, whiteSpace: "nowrap" }}>
                         {fmtDate(l.created_at)}
@@ -430,13 +430,13 @@ export default async function TenantDetailPage({
                   {appts.map((a, i) => (
                     <tr key={a.id ?? i} style={{ borderBottom: `1px solid ${T.row}` }}>
                       <td style={{ padding: "8px 8px", fontSize: "0.8rem" }}>
-                        {a.contact_name ?? a.name ?? a.lead_name ?? "—"}
+                        {a.contact_name ?? a.name ?? a.lead_name ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", fontSize: "0.75rem", color: T.muted }}>
-                        {a.service_name ?? a.service ?? a.type ?? "—"}
+                        {a.service_name ?? a.service ?? a.type ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", fontSize: "0.75rem", textTransform: "capitalize" }}>
-                        {a.status ?? "—"}
+                        {a.status ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", textAlign: "right", fontSize: "0.75rem", color: T.muted, whiteSpace: "nowrap" }}>
                         {fmtDate(a.scheduled_at ?? a.created_at)}
@@ -468,10 +468,10 @@ export default async function TenantDetailPage({
                   {calls.map((c) => (
                     <tr key={c.id} style={{ borderBottom: `1px solid ${T.row}` }}>
                       <td style={{ padding: "8px 8px", fontSize: "0.8rem", textTransform: "capitalize" }}>
-                        {c.call_type ?? "—"}
+                        {c.call_type ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", fontSize: "0.75rem", color: T.muted, textTransform: "capitalize" }}>
-                        {c.outcome ?? "—"}
+                        {c.outcome ?? ", "}
                       </td>
                       <td style={{ padding: "8px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.8rem" }}>
                         {fmtDuration(c.duration_seconds)}

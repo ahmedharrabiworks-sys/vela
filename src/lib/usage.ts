@@ -1,4 +1,4 @@
-// Usage helper — server-only (admin client, never imported on the client side).
+// Usage helper, server-only (admin client, never imported on the client side).
 // Returns current-month consumption counts for a tenant.
 // Used by enforcement checks in API routes (ai/reply) and the stats endpoint (Step 4).
 
@@ -20,7 +20,7 @@ export async function getUsageSummary(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
   ).toISOString();
 
-  // AI reply count — assistant rows only, excluding owner test messages
+  // AI reply count, assistant rows only, excluding owner test messages
   const { count: msgCount } = await admin
     .from("messages")
     .select("*", { count: "exact", head: true })
@@ -29,7 +29,7 @@ export async function getUsageSummary(
     .eq("is_test", false)
     .gte("created_at", periodStart);
 
-  // Voice minutes — sum duration_seconds, convert to minutes
+  // Voice minutes, sum duration_seconds, convert to minutes
   const { data: callData } = await admin
     .from("agent_calls")
     .select("duration_seconds")

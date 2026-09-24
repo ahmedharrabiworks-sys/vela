@@ -10,9 +10,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/webhooks/whatsapp
- * Meta webhook verification challenge — same pattern as webhooks/instagram/route.ts.
+ * Meta webhook verification challenge, same pattern as webhooks/instagram/route.ts.
  * Fail-closed: META_WHATSAPP_VERIFY_TOKEN must be set (separate from Instagram's
- * META_WEBHOOK_VERIFY_TOKEN — different verify tokens per webhook endpoint).
+ * META_WEBHOOK_VERIFY_TOKEN, different verify tokens per webhook endpoint).
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
  *      a. Extract phone_number_id from metadata
  *      b. Look up whatsapp_accounts by phone_number_id (is_active=true)
  *      c. For each text message: call /api/ai/reply, send reply via Graph API
- *   3. Always return 200 — never let processing errors cause Meta to retry
+ *   3. Always return 200, never let processing errors cause Meta to retry
  *
  * Multi-tenant routing: phone_number_id is the routing key (unique per account).
  * If no matching account: log silently, return 200 (don't leak tenant existence).
@@ -50,10 +50,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.text();
 
-  // ── Signature verification — fail closed ──────────────────────────────────
+  // ── Signature verification, fail closed ──────────────────────────────────
   const secret = process.env.META_APP_SECRET;
   if (!secret) {
-    console.error("[webhooks/whatsapp POST] META_APP_SECRET not configured — rejecting request");
+    console.error("[webhooks/whatsapp POST] META_APP_SECRET not configured, rejecting request");
     return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
   }
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   const expBuf = Buffer.from(expected);
   const validSig = sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf);
   if (!validSig) {
-    console.warn("[webhooks/whatsapp] Signature validation failed — possible forged request");
+    console.warn("[webhooks/whatsapp] Signature validation failed, possible forged request");
     return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
 
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     messaging_product?: string;
     metadata?: WaMetadata;
     messages?: WaMessage[];
-    statuses?: unknown[];   // delivery/read receipts — skip
+    statuses?: unknown[];   // delivery/read receipts, skip
     contacts?: WaContact[];
   };
 
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (!waAccount) {
-        // No active account — log and skip; don't 4xx (would cause Meta retries)
+        // No active account, log and skip; don't 4xx (would cause Meta retries)
         console.warn("[webhooks/whatsapp] No active account for phone_number_id:", phoneNumberId);
         continue;
       }
@@ -189,13 +189,13 @@ export async function POST(req: NextRequest) {
         try {
           await sendWhatsAppMessage(phoneNumberId, accessToken, from, aiReply);
         } catch (err) {
-          // Log but don't throw — one failed send should not block other messages
+          // Log but don't throw, one failed send should not block other messages
           console.error("[webhooks/whatsapp] Send reply error for tenant", tenantId, ":", err);
         }
       }
     }
   }
 
-  // Always return 200 to Meta — processing errors must never trigger retries
+  // Always return 200 to Meta, processing errors must never trigger retries
   return NextResponse.json({ ok: true });
 }

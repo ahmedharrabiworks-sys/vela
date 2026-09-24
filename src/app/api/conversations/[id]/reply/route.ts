@@ -7,24 +7,24 @@ export const dynamic = "force-dynamic";
 
 /**
  * POST /api/conversations/[id]/reply
- * Owner takeover — saves a real message to DB and delivers it via the conversation's channel.
+ * Owner takeover, saves a real message to DB and delivers it via the conversation's channel.
  * Auth-gated: the conversation must belong to a tenant owned by the calling user.
  *
  * Body: { text: string }
  * Response:
- *   200 { ok: true }                    — message saved and delivered
- *   200 { ok: true, channelError }      — message saved to DB; channel delivery failed (not fatal)
- *   200 { ok: true, channelNote }       — message saved; channel has no delivery mechanism (website)
- *   400 { error }                       — bad request
- *   401 { error }                       — not authenticated
- *   403 { error }                       — not owner
- *   404 { error }                       — conversation not found
- *   500 { error }                       — DB insert failed
+ *   200 { ok: true }, message saved and delivered
+ *   200 { ok: true, channelError }, message saved to DB; channel delivery failed (not fatal)
+ *   200 { ok: true, channelNote }, message saved; channel has no delivery mechanism (website)
+ *   400 { error }, bad request
+ *   401 { error }, not authenticated
+ *   403 { error }, not owner
+ *   404 { error }, conversation not found
+ *   500 { error }, DB insert failed
  *
  * Channel behavior:
- *   whatsapp  — saves to DB + sends via Meta Graph API v22.0 to the customer's phone number
- *   instagram — saves to DB + sends via Meta Graph API v22.0 to the customer's Instagram PSID
- *   website   — saves to DB, widget polling still applies (see below) PLUS a real email to the
+ *   whatsapp, saves to DB + sends via Meta Graph API v22.0 to the customer's phone number
+ *   instagram, saves to DB + sends via Meta Graph API v22.0 to the customer's Instagram PSID
+ *   website, saves to DB, widget polling still applies (see below) PLUS a real email to the
  *               lead's address via Resend when one is on file (round L FIX 6) -- most customers
  *               never reopen the exact widget session, so email is the real delivery path for
  *               this channel now, not just a same-session poll. SMS is NOT wired (no working
@@ -49,7 +49,7 @@ export async function POST(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
-  // Verify ownership — same join pattern as conversations/[id]/resolve
+  // Verify ownership, same join pattern as conversations/[id]/resolve
   const { data: conv, error: convErr } = await admin
     .from("conversations")
     .select("id, tenant_id, channel, customer_name, lead_id, tenants!inner(owner_id, business_name)")
@@ -71,7 +71,7 @@ export async function POST(
   const tenantId = conv.tenant_id as string;
   const channel = conv.channel as string;
 
-  // Save to DB first — DB is source of truth regardless of channel delivery outcome
+  // Save to DB first, DB is source of truth regardless of channel delivery outcome
   // is_owner_reply distinguishes this from a real AI-generated reply (both
   // use role="assistant") -- see migration_v27.sql. Without it, the inbox
   // labeled the owner's own message "Vela AI".
@@ -94,7 +94,7 @@ export async function POST(
     })).error;
 
   if (insertErr?.code === "PGRST204") {
-    console.warn("[conversations/reply] is_owner_reply column missing — run migration_v27.sql. Falling back to insert without it.");
+    console.warn("[conversations/reply] is_owner_reply column missing, run migration_v27.sql. Falling back to insert without it.");
     insertErr = (await admin
       .from("messages")
       .insert({
@@ -212,7 +212,7 @@ export async function POST(
     if (!wa?.phone_number_id || !wa?.access_token) {
       return NextResponse.json({
         ok: true,
-        channelError: "WhatsApp account not connected — message saved to history only.",
+        channelError: "WhatsApp account not connected, message saved to history only.",
       });
     }
 
@@ -230,7 +230,7 @@ export async function POST(
     if (!customerPhone) {
       return NextResponse.json({
         ok: true,
-        channelError: "Customer phone number not on file — message saved to history only.",
+        channelError: "Customer phone number not on file, message saved to history only.",
       });
     }
 
@@ -261,7 +261,7 @@ export async function POST(
     if (!pageId || !pageToken) {
       return NextResponse.json({
         ok: true,
-        channelError: "Instagram not connected — message saved to history only.",
+        channelError: "Instagram not connected, message saved to history only.",
       });
     }
 
@@ -270,7 +270,7 @@ export async function POST(
     if (!recipientId) {
       return NextResponse.json({
         ok: true,
-        channelError: "Customer Instagram ID not available — message saved to history only.",
+        channelError: "Customer Instagram ID not available, message saved to history only.",
       });
     }
 
@@ -287,7 +287,7 @@ export async function POST(
     return NextResponse.json({ ok: true });
   }
 
-  // Unknown channel — message was already saved
+  // Unknown channel, message was already saved
   return NextResponse.json({
     ok: true,
     channelNote: `Message saved. Channel '${channel}' doesn't support outbound replies yet.`,

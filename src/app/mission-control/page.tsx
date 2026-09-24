@@ -30,7 +30,7 @@ function n(v: number) {
   return v.toLocaleString("en-US");
 }
 
-// ── Sub-components (Server Components — no state/effects) ─────────────────────
+// ── Sub-components (Server Components, no state/effects) ─────────────────────
 
 function PlanBadge({ plan }: { plan: string }) {
   const map: Record<string, [string, string]> = {
@@ -175,7 +175,7 @@ export default async function MissionControlHome() {
             Theoretical MRR
           </p>
           <p style={{ margin: "0 0 6px", fontSize: "1.875rem", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-            {mrr ? `$${n(mrr.theoreticalMRR)}` : "—"}
+            {mrr ? `$${n(mrr.theoreticalMRR)}` : ", "}
           </p>
           <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>
             Plan price × tenants. Not actual billing
@@ -188,7 +188,7 @@ export default async function MissionControlHome() {
             Total Tenants
           </p>
           <p style={{ margin: "0 0 6px", fontSize: "1.875rem", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-            {roster ? n(roster.totalCount) : "—"}
+            {roster ? n(roster.totalCount) : ", "}
           </p>
           <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>Active accounts</p>
         </div>
@@ -231,7 +231,7 @@ export default async function MissionControlHome() {
             fontVariantNumeric: "tabular-nums",
             color: atRisk && atRisk.length > 0 ? T.amber : "#f5f5f5",
           }}>
-            {atRisk ? n(atRisk.length) : "—"}
+            {atRisk ? n(atRisk.length) : ", "}
           </p>
           <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>Proxy signals. Never "churned"</p>
         </div>
@@ -441,10 +441,10 @@ export default async function MissionControlHome() {
                       <PlanBadge plan={t.plan} />
                     </td>
                     <td style={{ padding: "10px 8px", fontSize: "0.8rem", color: T.muted }}>
-                      {t.industry ?? "—"}
+                      {t.industry ?? ", "}
                     </td>
                     <td style={{ padding: "10px 8px", fontSize: "0.8rem", color: T.muted }}>
-                      {t.city ?? "—"}
+                      {t.city ?? ", "}
                     </td>
                     <td style={{ padding: "10px 8px", fontSize: "0.8rem", color: T.muted, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                       {new Date(t.created_at).toLocaleDateString("en-US", {

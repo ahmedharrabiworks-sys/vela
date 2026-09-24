@@ -1,9 +1,9 @@
 /**
- * Webhook logging fix — whatsapp + instagram routes
+ * Webhook logging fix, whatsapp + instagram routes
  *
  * Same root cause as Phase A5 (marketing route): .catch() chained directly on an
  * unresolved Supabase query builder. Builders expose .then() but NOT .catch() as a
- * standalone method — calling .catch() on the unresolved builder throws immediately.
+ * standalone method, calling .catch() on the unresolved builder throws immediately.
  * In a webhook POST handler with no outer try/catch this returns 500 to Meta instead
  * of the required 200, risking retries or integration suspension.
  *
@@ -13,7 +13,7 @@
  * Verifies:
  *   (A) Static: .catch()-on-builder gone from both routes; try/catch + await in place
  *   (B) Root cause: same thenable-only demo as Phase A5 (reference, not re-derived)
- *   (C) webhook_logs insert round-trip (real Supabase — table present or graceful miss)
+ *   (C) webhook_logs insert round-trip (real Supabase, table present or graceful miss)
  *   (D) Failure path: bad table → { error } object returned, handler logic continues to 200
  *   (E) Logic integrity: only the logging block changed; response/processing untouched
  *   (F) Final sweep: no remaining .catch()-on-unresolved-builder patterns anywhere in src/
@@ -41,7 +41,7 @@ const whatsappRoute  = fs.readFileSync(path.join(SRC, "app/api/webhooks/whatsapp
 const instagramRoute = fs.readFileSync(path.join(SRC, "app/api/webhooks/instagram/route.ts"), "utf-8");
 
 // ── (A) Static: fix in place for both routes ──────────────────────────────────
-console.log("\n══ A: Static — broken .catch() on builder gone, try/catch in place ══\n");
+console.log("\n══ A: Static, broken .catch() on builder gone, try/catch in place ══\n");
 
 // WhatsApp
 check("whatsapp: no .catch() directly on webhook_logs insert",
@@ -72,14 +72,14 @@ check("instagram: return NextResponse.json({ ok: true }) unchanged",
   instagramRoute.includes("return NextResponse.json({ ok: true })"));
 
 // ── (B) Root cause reference ──────────────────────────────────────────────────
-console.log("\n══ B: Root cause — same thenable-only demo as Phase A5 ══\n");
+console.log("\n══ B: Root cause, same thenable-only demo as Phase A5 ══\n");
 
 function makeFakeBuilder() {
   return {
     then(onfulfilled: (v: unknown) => unknown) {
       return Promise.resolve({ data: null, error: null }).then(onfulfilled);
     }
-    // .catch intentionally absent — same as Supabase builder before it is awaited
+    // .catch intentionally absent, same as Supabase builder before it is awaited
   };
 }
 
@@ -106,7 +106,7 @@ async function runLiveChecks() {
   const sbUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!sbUrl || !svcKey) {
-    check("env vars present", false, "missing SUPABASE vars — run with --env-file .env.local");
+    check("env vars present", false, "missing SUPABASE vars, run with --env-file .env.local");
     return;
   }
 
@@ -159,16 +159,16 @@ async function runLiveChecks() {
       check("inserted row processed=false", false, "insert failed");
     }
   } else {
-    console.log(`  Skipping round-trip test (table missing or no tenant) — this is expected if migration_v5.sql not yet run`);
+    console.log(`  Skipping round-trip test (table missing or no tenant), this is expected if migration_v5.sql not yet run`);
     console.log(`  SQL to create: see supabase/migration_v5.sql`);
     check("webhook_logs table exists (or gracefully absent)", true);
-    check("graceful miss — Supabase returns error object, does not throw", tableErr != null || !tableExists);
+    check("graceful miss, Supabase returns error object, does not throw", tableErr != null || !tableExists);
     check("route handles gracefully (non-fatal pattern in place)", true);
-    check("inserted row has correct channel", true, "skipped — table absent");
+    check("inserted row has correct channel", true, "skipped, table absent");
   }
 
   // ── (D) Failure path: bad table → error object, not throw ────────────────────
-  console.log("\n══ D: Failure path — bad table returns error object, never throws ══\n");
+  console.log("\n══ D: Failure path, bad table returns error object, never throws ══\n");
 
   let didNotThrow = true;
   let gotErrorObject = false;
@@ -197,8 +197,8 @@ async function runLiveChecks() {
       channel: "test",
     });
     if (logErr) {
-      // This is what the fixed route does — logs but does not re-throw
-      console.log(`  logErr caught: "${String(logErr.message ?? "").slice(0, 60)}" — handler continues`);
+      // This is what the fixed route does, logs but does not re-throw
+      console.log(`  logErr caught: "${String(logErr.message ?? "").slice(0, 60)}", handler continues`);
     }
     handlerWouldReturn200 = true; // execution reaches here → handler returns 200
   } catch {
@@ -208,10 +208,10 @@ async function runLiveChecks() {
     handlerWouldReturn200);
 
   // ── (E) Logic integrity: processing logic unchanged ───────────────────────────
-  console.log("\n══ E: Logic integrity — only logging block changed ══\n");
+  console.log("\n══ E: Logic integrity, only logging block changed ══\n");
 
   // WhatsApp: payload parsing, tenant lookup, and response are untouched
-  check("whatsapp: HMAC/body parsing logic absent (correct — whatsapp uses form parsing)",
+  check("whatsapp: HMAC/body parsing logic absent (correct, whatsapp uses form parsing)",
     !whatsappRoute.includes("createHmac")); // WhatsApp uses form-encoded, not HMAC
   check("whatsapp: payload parsing (form + JSON) still present",
     whatsappRoute.includes("application/x-www-form-urlencoded") &&
@@ -232,11 +232,11 @@ async function runLiveChecks() {
     instagramRoute.includes("hub.mode") && instagramRoute.includes("hub.verify_token"));
 
   // ── (F) Final sweep: no remaining .catch()-on-builder in API routes ─────────
-  console.log("\n══ F: Final sweep — no .catch()-on-unresolved-builder in src/app/api/ ══\n");
+  console.log("\n══ F: Final sweep, no .catch()-on-unresolved-builder in src/app/api/ ══\n");
 
-  // Scope: src/app/api/ only — that's where Supabase admin clients are used.
-  // Client pages use fetch() which returns native Promises — .catch() on those is safe.
-  // Test scripts contain string literals and demo code — also excluded.
+  // Scope: src/app/api/ only, that's where Supabase admin clients are used.
+  // Client pages use fetch() which returns native Promises.catch() on those is safe.
+  // Test scripts contain string literals and demo code, also excluded.
   //
   // Dangerous pattern: }).catch( on a line that does NOT also have .then( before it
   // (if .then( precedes .catch( on the same chain, execution already returned a native
@@ -271,7 +271,7 @@ async function runLiveChecks() {
 
   if (dangerous.length === 0) {
     check("no .catch()-on-unresolved-builder remaining in src/app/api/", true);
-    console.log("  All clear — the dangerous pattern is fully eliminated from all API routes.");
+    console.log("  All clear, the dangerous pattern is fully eliminated from all API routes.");
   } else {
     check("no .catch()-on-unresolved-builder remaining in src/app/api/",
       false,
