@@ -1,11 +1,13 @@
 // Shared plan limits, no "use client" so this can be imported by both
 // React client components (plans.ts) and server API routes (generate/route.ts).
 // This is the SINGLE SOURCE OF TRUTH for per-plan limits.
-// Prices here must stay in sync with src/lib/pricing.ts.
+// `price` is QAR (the base/display currency, see src/lib/currency.ts) and
+// must stay in sync with the `monthly` field in src/lib/pricing.ts exactly
+// -- both changed together in Phase 5.
 
 export const PLAN_CONFIG = {
   starter: {
-    price: 95,
+    price: 500,
     channels: 1,
     bookingsPerMonth: 50,
     customDomains: 0,
@@ -22,13 +24,13 @@ export const PLAN_CONFIG = {
     support: "email" as const,
   },
   pro: {
-    price: 295,
+    price: 1500,
     channels: 3,
     bookingsPerMonth: Infinity,
     customDomains: 1,
     websites: 1,
-    voiceMinutes: 300,
-    textMessages: 1500,
+    voiceMinutes: 500,
+    textMessages: 2500,
     teamMembers: 3,
     multiLocation: 2,
     voiceAgent: true,
@@ -39,12 +41,12 @@ export const PLAN_CONFIG = {
     support: "liveChat" as const,
   },
   premium: {
-    price: 595,
+    price: 3000,
     channels: 3,
     bookingsPerMonth: Infinity,
     customDomains: 3,
     websites: 3,
-    voiceMinutes: 700,
+    voiceMinutes: 800,
     textMessages: 3000,
     teamMembers: Infinity,
     multiLocation: Infinity,

@@ -8,7 +8,7 @@ import Link from "next/link";
 // original image (not exact pixel values, no source data for them exists).
 const CHECKLIST = [
   { label: "AI Phone Agent", desc: "Never miss a call, day or night." },
-  { label: "Every Channel", desc: "WhatsApp, Instagram, and web chat in one inbox." },
+  { label: "Every Channel", desc: "WhatsApp, Instagram, and Phone in one inbox." },
   { label: "Automation", desc: "Set it up once, let Vela run it." },
 ];
 

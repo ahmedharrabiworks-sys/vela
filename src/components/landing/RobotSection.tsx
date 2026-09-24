@@ -58,22 +58,27 @@ export default function RobotSection() {
               </div>
             </div>
 
-            {/* Robot photo panel -- cropped via background-position to show
-                only the robot (the right ~55% of the original flattened
-                image), never the text that used to be baked in on its
-                left half. */}
-            <div
-              className="order-1 lg:order-2 relative"
-              style={{
-                minHeight: 260,
-                backgroundImage: "url('/assets/robot-section.png')",
-                backgroundSize: "220% auto",
-                backgroundPosition: "right center",
-                backgroundRepeat: "no-repeat",
-              }}
-              role="img"
-              aria-label="Vela AI robot mascot"
-            />
+            {/* Robot photo panel. Stopgap crop fix (Phase 5, FIX 6): the
+                previous background-image version let this panel's height
+                follow the grid row (i.e. the text column's height), so the
+                effective crop shifted with however much text happened to
+                wrap at a given width, sometimes cutting the robot off
+                mid-body. A real <img> with a fixed aspect-ratio and
+                object-fit/object-position makes the crop point stable and
+                predictable regardless of the text column's height.
+                object-position favors the head/shoulders (upper-right of
+                the source image) since that's the recognizable part of the
+                mascot. This is a partial fix pending a proper source asset
+                cropped to just the robot, not a redraw or new image. */}
+            <div className="order-1 lg:order-2 relative overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/assets/robot-section.png"
+                alt="Vela AI robot mascot"
+                className="absolute inset-0 w-full h-full"
+                style={{ objectFit: "cover", objectPosition: "78% 22%" }}
+              />
+            </div>
           </div>
         </div>
       </div>

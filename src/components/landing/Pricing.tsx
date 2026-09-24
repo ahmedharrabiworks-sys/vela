@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
+import { formatPrice, type CurrencyCode } from "@/lib/currency";
+import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -31,6 +33,7 @@ export const CARD_INDICES: Record<string, number[]> = {
 
 export default function Pricing() {
   const [annual, setAnnual] = useState(false);
+  const [currency, setCurrency] = useState<CurrencyCode>("QAR");
   const { t } = useI18n();
 
   return (
@@ -63,6 +66,10 @@ export default function Pricing() {
                 · Save 20%
               </span>
             </button>
+          </div>
+
+          <div className="mt-4">
+            <CurrencyToggle value={currency} onChange={setCurrency} />
           </div>
         </div>
 
@@ -102,9 +109,9 @@ export default function Pricing() {
                     <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                       {t(`landing.pricing.plans.${planKey}.name`)}
                     </p>
-                    <div className="flex items-end gap-1.5 mb-1.5">
-                      <span className="text-5xl font-black text-[#111111] leading-none">
-                        ${price}
+                    <div className="flex items-end gap-1.5 mb-1.5 flex-wrap">
+                      <span className="text-4xl sm:text-5xl font-black text-[#111111] leading-none">
+                        {formatPrice(price, currency)}
                       </span>
                       <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
                     </div>
@@ -113,7 +120,7 @@ export default function Pricing() {
                     </p>
                     {annual && (
                       <p className="text-sm font-medium text-[#FF6B35] mt-1">
-                        {t("landing.pricing.save")} ${(plan.monthly - plan.annual) * 12}/year
+                        {t("landing.pricing.save")} {formatPrice((plan.monthly - plan.annual) * 12, currency)}/year
                       </p>
                     )}
                   </div>

@@ -175,7 +175,7 @@ export default async function MissionControlHome() {
             Theoretical MRR
           </p>
           <p style={{ margin: "0 0 6px", fontSize: "1.875rem", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-            {mrr ? `$${n(mrr.theoreticalMRR)}` : ", "}
+            {mrr ? `${n(mrr.theoreticalMRR)} QAR` : ", "}
           </p>
           <p style={{ margin: 0, fontSize: "0.68rem", color: T.muted }}>
             Plan price × tenants. Not actual billing
@@ -261,8 +261,8 @@ export default async function MissionControlHome() {
                     <tr key={row.plan} style={{ borderBottom: `1px solid ${T.row}` }}>
                       <td style={{ padding: "9px 8px" }}><PlanBadge plan={row.plan} /></td>
                       <td style={{ padding: "9px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.875rem" }}>{row.count}</td>
-                      <td style={{ padding: "9px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.875rem", color: T.muted }}>${n(row.pricePerTenant)}</td>
-                      <td style={{ padding: "9px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.875rem", fontWeight: 600 }}>${n(row.subtotal)}</td>
+                      <td style={{ padding: "9px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.875rem", color: T.muted }}>{n(row.pricePerTenant)} QAR</td>
+                      <td style={{ padding: "9px 8px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: "0.875rem", fontWeight: 600 }}>{n(row.subtotal)} QAR</td>
                     </tr>
                   ))}
                 </tbody>
@@ -272,7 +272,7 @@ export default async function MissionControlHome() {
                       Theoretical Total
                     </td>
                     <td style={{ padding: "10px 8px", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: T.accent }}>
-                      ${n(mrr.theoreticalMRR)}/mo
+                      {n(mrr.theoreticalMRR)} QAR/mo
                     </td>
                   </tr>
                 </tfoot>
@@ -291,9 +291,9 @@ export default async function MissionControlHome() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
                 {(
                   [
-                    ["Voice Minutes",    `${n(voice.aggregate.totalVoiceMinutes)} min`],
-                    ["Voice Cost",       `$${voice.aggregate.totalVoiceCostUSD.toFixed(2)}`],
-                    ["Theoretical MRR",  `$${n(voice.aggregate.totalTheoreticalMRR)}`],
+                    ["Voice Minutes",        `${n(voice.aggregate.totalVoiceMinutes)} min`],
+                    ["Voice Cost (USD)",     `$${voice.aggregate.totalVoiceCostUSD.toFixed(2)}`],
+                    ["Theoretical MRR (QAR)", `${n(voice.aggregate.totalTheoreticalMRR)} QAR`],
                   ] as [string, string][]
                 ).map(([label, val]) => (
                   <div key={label} style={{

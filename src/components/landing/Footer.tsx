@@ -114,7 +114,11 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-[#E5E7EB] pt-8 flex flex-col items-center gap-3 md:flex-row md:justify-between md:gap-4">
-          <p className="text-sm text-[#9CA3AF] text-center md:text-left">{t("landing.footer.copyright")}</p>
+          <p className="text-sm text-[#9CA3AF] text-center md:text-left">
+            {t("landing.footer.copyright")}
+            <span className="mx-1.5">·</span>
+            {t("landing.footer.madeInQatar")}
+          </p>
           <p className="text-sm text-[#9CA3AF] text-center md:text-left">
             {t("landing.footer.slogan1")}{" "}
             <span className="vela-gradient-text font-medium">{t("landing.footer.slogan2")}</span>

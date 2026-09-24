@@ -711,7 +711,7 @@ export default function SettingsPage() {
                     <p className="text-xs text-[#6B7280] mt-0.5">{t("settings.billing.renews")}</p>
                   </div>
                   <span className="text-2xl font-extrabold text-[#FF6B35]">
-                    ${(PLAN_CONFIG as Record<string, { price: number }>)[getProfile()?.plan ?? "starter"]?.price ?? 95}
+                    {((PLAN_CONFIG as Record<string, { price: number }>)[getProfile()?.plan ?? "starter"]?.price ?? 500).toLocaleString()} QAR
                     <span className="text-sm font-medium text-[#6B7280]">/mo</span>
                   </span>
                 </div>

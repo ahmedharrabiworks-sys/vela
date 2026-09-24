@@ -306,15 +306,15 @@ export default async function TenantDetailPage({
         {/* Voice margin for this tenant */}
         <SectionCard title="Voice: This Month">
           <p style={{ margin: "0 0 14px", fontSize: "0.68rem", color: T.muted, fontStyle: "italic" }}>
-            Voice cost ($0.12/min) vs. theoretical plan revenue. Not actual profit margin.
+            Voice cost in USD ($0.12/min) vs. theoretical plan revenue in QAR. Not actual profit margin, different currencies shown side by side.
           </p>
           {voiceRow ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
               {(
                 [
-                  ["Voice Minutes",             `${voiceRow.voiceMinutesUsed} min`],
-                  ["Voice Cost",                `$${voiceRow.voiceCostUSD.toFixed(2)}`],
-                  ["Theoretical Plan Revenue",  `$${voiceRow.theoreticalMRR}/mo`],
+                  ["Voice Minutes",                 `${voiceRow.voiceMinutesUsed} min`],
+                  ["Voice Cost (USD)",              `$${voiceRow.voiceCostUSD.toFixed(2)}`],
+                  ["Theoretical Plan Revenue (QAR)", `${voiceRow.theoreticalMRR} QAR/mo`],
                 ] as [string, string][]
               ).map(([label, val]) => (
                 <div key={label} style={{

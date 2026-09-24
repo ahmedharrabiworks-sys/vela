@@ -8,6 +8,8 @@ import { saveProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { PLANS } from "@/lib/pricing";
 import { TAGLINES, INHERIT_LINE, CARD_INDICES } from "@/components/landing/Pricing";
+import { formatPrice, type CurrencyCode } from "@/lib/currency";
+import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
 import {
   PhoneInput,
   DEFAULT_PHONE_COUNTRY,
@@ -318,6 +320,7 @@ function SignupPageContent() {
   /* Step 3 */
   const [plan, setPlan] = useState("pro");
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [currency, setCurrency] = useState<CurrencyCode>("QAR");
   const [loading, setLoading] = useState(false);
 
   const handleStep2 = (e: React.FormEvent) => {
@@ -675,6 +678,10 @@ function SignupPageContent() {
                   </span>
                 </button>
               </div>
+
+              <div className="mt-4">
+                <CurrencyToggle value={currency} onChange={setCurrency} />
+              </div>
             </div>
 
             {detectedType && (
@@ -720,14 +727,14 @@ function SignupPageContent() {
                       <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${p.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                         {p.name}
                       </p>
-                      <div className="flex items-end gap-1.5 mb-1.5">
-                        <span className="text-4xl font-black text-[#111111] leading-none">${price}</span>
+                      <div className="flex items-end gap-1.5 mb-1.5 flex-wrap">
+                        <span className="text-3xl sm:text-4xl font-black text-[#111111] leading-none">{formatPrice(price, currency)}</span>
                         <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
                       </div>
                       <p className="text-sm text-[#9CA3AF] mt-1">{TAGLINES[planKey]}</p>
                       {billing === "annual" && (
                         <p className="text-sm font-medium text-[#FF6B35] mt-1">
-                          Save ${(p.monthly - p.annual) * 12}/year
+                          Save {formatPrice((p.monthly - p.annual) * 12, currency)}/year
                         </p>
                       )}
                     </div>

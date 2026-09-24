@@ -3,7 +3,9 @@ export interface PlanFeature { text: string; included: boolean }
 export interface Plan {
   id: "starter" | "pro" | "premium" | "custom";
   name: string;
+  /** QAR, the base/display currency -- see src/lib/currency.ts to render in another currency. */
   monthly: number;
+  /** QAR, discounted monthly rate when billed annually. */
   annual: number;
   popular: boolean;
   isCustom?: boolean;
@@ -17,8 +19,8 @@ export const PLANS: Plan[] = [
   {
     id: "starter",
     name: "Starter",
-    monthly: 95,
-    annual: 76,
+    monthly: 500,
+    annual: 400,
     popular: false,
     cta: "Get Started",
     description: "Get your AI agent live on one channel and start handling leads automatically.",
@@ -39,22 +41,22 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    monthly: 295,
-    annual: 236,
+    monthly: 1500,
+    annual: 1200,
     popular: true,
     cta: "Get Started",
     description: "The complete system, AI phone agent, all channels, website, and full CRM.",
     highlightFeatures: [
       "AI Voice Phone Agent",
       "All 3 channels (phone, Instagram, WhatsApp)",
-      "1,500 messages · 300 voice min/mo",
+      "2,500 messages · 500 voice min/mo",
       "Priority support (24h)",
     ],
     features: [
       { text: "AI Voice Phone Agent",                        included: true },
       { text: "All 3 channels (phone, Instagram, WhatsApp)", included: true },
-      { text: "300 voice minutes/month",                     included: true },
-      { text: "1,500 text messages/month",                   included: true },
+      { text: "500 voice minutes/month",                     included: true },
+      { text: "2,500 text messages/month",                   included: true },
       { text: "3 team members",                              included: true },
       { text: "Priority support (24h)",                      included: true },
       { text: "Unlimited AI training edits",                 included: true },
@@ -63,19 +65,19 @@ export const PLANS: Plan[] = [
   {
     id: "premium",
     name: "Premium",
-    monthly: 595,
-    annual: 476,
+    monthly: 3000,
+    annual: 2400,
     popular: false,
     cta: "Get Started",
     description: "For businesses that demand zero compromise, priority everything, 3 websites, unlimited team.",
     highlightFeatures: [
       "All 3 channels + priority routing",
-      "700 voice minutes · 3,000 messages/mo",
+      "800 voice minutes · 3,000 messages/mo",
       "Unlimited team members",
       "Done-for-you onboarding",
     ],
     features: [
-      { text: "700 voice minutes/month",                    included: true },
+      { text: "800 voice minutes/month",                    included: true },
       { text: "All 3 channels + priority routing",          included: true },
       { text: "AI Voice Phone Agent + priority retraining", included: true },
       { text: "3,000 text messages/month",                  included: true },

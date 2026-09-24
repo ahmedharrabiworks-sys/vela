@@ -15,8 +15,8 @@ const PRO_COL = 1;
 // Phone Agent row below it -- Starter has no phone agent, so it never had
 // real voice minutes to offer; the two rows previously disagreed.
 const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
-  { label: "Voice minutes",        values: [false,              "300/mo",               "700/mo"                ] },
-  { label: "Text messages",        values: ["500/mo",           "1,500/mo",             "3,000/mo"              ] },
+  { label: "Voice minutes",        values: [false,              "500/mo",               "800/mo"                ] },
+  { label: "Text messages",        values: ["500/mo",           "2,500/mo",             "3,000/mo"              ] },
   { label: "Channels",             values: ["1",                "All 3",                "All 3 + priority"      ] },
   { label: "AI Voice Phone Agent", values: [false,              true,                   true                    ] },
   { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited"             ] },

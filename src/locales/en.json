@@ -500,9 +500,9 @@
     },
     "hero": {
       "badge": "Never Miss Another Lead",
-      "headline1": "The AI Operating System for Qatar and the Gulf",
+      "headline1": "The AI That Never Clocks Out",
       "headline2": "",
-      "subtext": "Vela answers your customers on WhatsApp, Instagram, and the phone, 24/7. Built for clinics, salons, restaurants, real estate, and gyms across Qatar and the Gulf.",
+      "subtext": "Vela answers your customers on WhatsApp, Instagram, and the phone, 24/7, so you never miss a lead.",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
@@ -538,8 +538,8 @@
           "features": [
             "AI Voice Phone Agent",
             "All 3 channels (phone, Instagram, WhatsApp)",
-            "300 voice minutes/month",
-            "1,500 text messages/month",
+            "500 voice minutes/month",
+            "2,500 text messages/month",
             "3 team members",
             "Priority support (24h)",
             "Unlimited AI training edits"
@@ -550,7 +550,7 @@
           "description": "Everything in Pro. Priority routing, 3 websites, and unlimited team.",
           "cta": "Get Started",
           "features": [
-            "700 voice minutes/month",
+            "800 voice minutes/month",
             "All 3 channels + priority routing",
             "AI Voice Phone Agent + priority retraining",
             "3,000 text messages/month",
@@ -621,7 +621,8 @@
       },
       "copyright": "© 2026 Vela. All rights reserved.",
       "slogan1": "Built for businesses that don't sleep.",
-      "slogan2": "Neither does Vela."
+      "slogan2": "Neither does Vela.",
+      "madeInQatar": "Made in Qatar ❤️"
     }
   },
   "aiAgent": {

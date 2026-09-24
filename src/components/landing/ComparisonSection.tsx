@@ -97,7 +97,7 @@ function CheckBadge() {
   return (
     <span
       className="flex items-center justify-center w-6 h-6 rounded-full shrink-0"
-      style={{ background: "rgba(255,107,53,0.14)" }}
+      style={{ background: "rgba(255,107,53,0.18)" }}
       aria-label="Included"
     >
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -110,7 +110,7 @@ function CheckBadge() {
 export default function ComparisonSection() {
   return (
     <section className="py-10 md:py-14" style={{ background: "linear-gradient(180deg,#1A0800 0%,#2A0F00 100%)" }}>
-      <div className="max-w-3xl mx-auto px-5 md:px-6">
+      <div className="max-w-4xl mx-auto px-5 md:px-6">
 
         {/* Section header */}
         <div className="text-center mb-8 md:mb-10">
@@ -125,23 +125,31 @@ export default function ComparisonSection() {
           </p>
         </div>
 
-        {/* Included list card */}
-        <div className="relative">
-          <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
-            style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.2)", filter: "blur(60px)", zIndex: 0 }} />
-          <div className="relative rounded-2xl overflow-hidden" style={{ background: "#FDF3EA", zIndex: 1 }}>
-            <div className="divide-y divide-black/[0.06]">
-              {INCLUDED_ROWS.map((row) => (
-                <div key={row.label} className="flex items-center justify-between gap-3 px-5 py-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-[#111111] shrink-0">{row.icon}</span>
-                    <span className="text-[#111111] text-sm sm:text-base font-medium">{row.label}</span>
-                  </div>
-                  <CheckBadge />
-                </div>
-              ))}
+        {/* Included list -- dark row cards on the section's own gradient,
+            icon chip + label + check per row, gap-separated (not a flat
+            divided list) so each item reads as its own unit. Same feature
+            content as before (no competitors, no invented prices, no
+            hidden-feature rows), just restyled to match the site's
+            dark/orange language instead of sitting in a light cream card. */}
+        <div className="grid sm:grid-cols-2 gap-3">
+          {INCLUDED_ROWS.map((row) => (
+            <div
+              key={row.label}
+              className="group flex items-center justify-between gap-3 rounded-xl px-4 py-3.5 transition-colors duration-200"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-colors duration-200 group-hover:bg-[rgba(255,107,53,0.18)]"
+                  style={{ background: "rgba(255,107,53,0.12)", color: "#FF6B35" }}
+                >
+                  {row.icon}
+                </span>
+                <span className="text-white/90 text-sm sm:text-base font-medium leading-snug">{row.label}</span>
+              </div>
+              <CheckBadge />
             </div>
-          </div>
+          ))}
         </div>
 
         <div className="text-center mt-8">

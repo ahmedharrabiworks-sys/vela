@@ -33,7 +33,7 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "get_theoretical_mrr",
       description:
-        "Returns theoretical MRR (plan price × active tenant count per tier). NOT actual collected revenue, Stripe is not integrated. Always label this as 'theoretical'.",
+        "Returns theoretical MRR in QAR (plan price × active tenant count per tier, plan prices are QAR, the base currency in src/lib/pricing.ts). NOT actual collected revenue, Stripe is not integrated. Always label this as 'theoretical' and state the figure in QAR, never assume or convert to USD.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -42,7 +42,7 @@ const MC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "get_voice_margin_summary",
       description:
-        "Returns voice minute usage and cost per tenant for the current month. Cost = duration_seconds × $0.12/min (Vapi + ElevenLabs + GPT-4o). Compared against theoretical plan revenue.",
+        "Returns voice minute usage and cost per tenant for the current month. Cost = duration_seconds × $0.12/min (Vapi + ElevenLabs + GPT-4o), a real USD infrastructure cost. Compared against theoretical plan revenue, which is in QAR, a different currency shown side by side, not a computed margin.",
       parameters: { type: "object", properties: {} },
     },
   },
