@@ -132,6 +132,7 @@
     "subtitle": "Verbinden Sie Ihre Messaging-Kanäle. Vela AI antwortet automatisch auf jedem.",
     "connected": "Verbunden",
     "notConnected": "Nicht verbunden",
+    "pending": "Ausstehend",
     "readyToEmbed": "Bereit zur Einbettung",
     "upgradeTitle": "Auf Pro upgraden für mehr Kanäle",
     "upgradeDesc": "Der Starter-Tarif enthält 1 Kanal. Upgraden Sie auf Pro für alle 3.",
@@ -146,6 +147,10 @@
     "website": {
       "name": "Chat-Widget",
       "desc": "Fügen Sie eine KI-Chat-Blase zu jeder Website hinzu"
+    },
+    "phoneAgent": {
+      "name": "Telefonassistent",
+      "desc": "Beantwortet echte Geschäftsanrufe rund um die Uhr, erkennt die Sprache und bucht Termine"
     }
   },
   "analytics": {

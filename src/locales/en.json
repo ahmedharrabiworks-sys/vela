@@ -132,6 +132,7 @@
     "subtitle": "Connect your messaging channels. Vela AI will reply automatically on each.",
     "connected": "Connected",
     "notConnected": "Not connected",
+    "pending": "Pending",
     "upgradeTitle": "Upgrade to Pro for more channels",
     "upgradeDesc": "Starter plan includes 1 channel. Upgrade to connect all 3.",
     "instagram": {
@@ -145,6 +146,10 @@
     "website": {
       "name": "Website",
       "desc": "Add an AI chat bubble to any website"
+    },
+    "phoneAgent": {
+      "name": "Phone Agent",
+      "desc": "Answers real business calls 24/7, detects language, and books appointments"
     }
   },
   "analytics": {

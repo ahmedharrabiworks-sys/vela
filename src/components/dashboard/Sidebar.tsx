@@ -8,6 +8,18 @@ import { getProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { useI18n, LANGUAGES } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
+
+// MVP scope-down: hides the flagged item from the nav entirely (not
+// greyed out) whenever its flag is false. Demo (/demo) is a separate,
+// self-contained sales preview with its own fixture data and is left
+// untouched -- this only ever filters the real app's nav.
+const FLAG_BY_HREF: Record<string, boolean> = {
+  "/app/marketing": MARKETING_ENABLED,
+  "/app/leads": LEADS_CRM_ENABLED,
+  "/app/analytics": ANALYTICS_ENABLED,
+  "/app/website": WEBSITE_BUILDER_ENABLED,
+};
 
 const NAV = [
   {
@@ -480,7 +492,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5 overflow-y-auto">
-        {NAV.map((item) => {
+        {NAV.filter((item) => demoProfile || FLAG_BY_HREF[item.href] !== false).map((item) => {
           const effectiveHref = lk(item.href);
           const active = effectiveHref === pathPrefix ? pathname === pathPrefix : pathname.startsWith(effectiveHref);
           // Real count badge for Conversations (needs-attention), capped at

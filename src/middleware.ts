@@ -6,6 +6,18 @@ import {
   verifyMcSessionCookie,
   logMcAttempt,
 } from "./lib/mission-control-auth";
+import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "./config/features";
+
+// MVP scope-down: a direct URL to a flagged-off page is a gating decision,
+// not a missing page -- redirect to the dashboard instead of rendering or
+// 404ing. The feature's own route/page code is untouched; only reachability
+// is blocked here. Kept in sync with Sidebar's FLAG_BY_HREF.
+const FLAGGED_ROUTE_PREFIXES: { prefix: string; enabled: boolean }[] = [
+  { prefix: "/app/marketing", enabled: MARKETING_ENABLED },
+  { prefix: "/app/leads", enabled: LEADS_CRM_ENABLED },
+  { prefix: "/app/analytics", enabled: ANALYTICS_ENABLED },
+  { prefix: "/app/website", enabled: WEBSITE_BUILDER_ENABLED },
+];
 
 // Per-Edge-instance in-memory cache: hostname → slug, 5 min TTL.
 // Avoids a DB round-trip on every request for known custom domains.
@@ -203,6 +215,16 @@ export async function middleware(request: NextRequest) {
   // Redirect unauthenticated users away from /app
   if (path.startsWith("/app") && !user) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+
+  // MVP scope-down: block direct access to flagged-off pages, even for an
+  // authenticated owner who types/bookmarks the URL. "/app" is the real
+  // dashboard route (there is no separate /app/dashboard page).
+  if (user && path.startsWith("/app")) {
+    const blocked = FLAGGED_ROUTE_PREFIXES.some((r) => !r.enabled && path.startsWith(r.prefix));
+    if (blocked) {
+      return NextResponse.redirect(new URL("/app", request.url));
+    }
   }
 
   // Redirect authenticated users away from auth pages -- except a

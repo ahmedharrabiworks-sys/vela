@@ -132,6 +132,7 @@
     "subtitle": "Connectez vos canaux de messagerie. Vela AI répondra automatiquement sur chacun.",
     "connected": "Connecté",
     "notConnected": "Non connecté",
+    "pending": "En attente",
     "readyToEmbed": "Prêt à intégrer",
     "upgradeTitle": "Passez à Pro pour plus de canaux",
     "upgradeDesc": "Le plan Starter inclut 1 canal. Passez à Pro pour connecter les 3.",
@@ -146,6 +147,10 @@
     "website": {
       "name": "Widget de chat",
       "desc": "Ajoutez une bulle de chat IA à n'importe quel site web"
+    },
+    "phoneAgent": {
+      "name": "Agent téléphonique",
+      "desc": "Répond aux appels professionnels 24h/24, détecte la langue et prend les rendez-vous"
     }
   },
   "analytics": {

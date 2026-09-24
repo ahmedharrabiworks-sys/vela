@@ -11,6 +11,7 @@ import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
 // FIX 5 (round P): standardized on the single shared toast component --
 // this file's local copy is now that shared component, moved verbatim.
 import Toast from "@/components/ui/Toast";
+import { WEBSITE_BUILDER_ENABLED } from "@/config/features";
 
 /* ── Modal shell ── */
 function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
@@ -536,6 +537,16 @@ function ChannelsPageContent() {
   const [loading, setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<"instagram" | "whatsapp" | null>(null);
 
+  // Phone Agent channel card: real state pulled from the same endpoints the
+  // AI Agent > Phone Number / Knowledge Base tabs already use -- never a
+  // second, invented tracking field. "Connected" requires both a
+  // provisioned Vapi number (GET /api/ai-agent/phone) AND training being
+  // complete (all 5 knowledge topics present via GET
+  // /api/ai-agent/training-context, the same signal that page's own
+  // progress bar is built from).
+  const [phoneAgent, setPhoneAgent] = useState({ provisioned: false, trainingFilled: 0 });
+  const [phoneAgentLoading, setPhoneAgentLoading] = useState(true);
+
   // FIX 2 (round F): per-channel AI-behavior config, lazily fetched when
   // the instagram/whatsapp "Manage" modal opens.
   const [aiCfgLoading, setAiCfgLoading]   = useState(false);
@@ -672,6 +683,32 @@ function ChannelsPageContent() {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPhoneAgent() {
+      try {
+        const [phoneRes, ctxRes] = await Promise.all([
+          fetch("/api/ai-agent/phone"),
+          fetch("/api/ai-agent/training-context"),
+        ]);
+        const phoneData = phoneRes.ok
+          ? (await phoneRes.json() as { phoneNumber: string | null })
+          : { phoneNumber: null };
+        const ctxData = ctxRes.ok
+          ? (await ctxRes.json() as { existingKb?: Record<string, string> })
+          : {};
+        if (cancelled) return;
+        setPhoneAgent({
+          provisioned: !!phoneData.phoneNumber,
+          trainingFilled: ctxData.existingKb ? Object.keys(ctxData.existingKb).length : 0,
+        });
+      } catch { /* leave defaults -- reads as "not connected" */ }
+      if (!cancelled) setPhoneAgentLoading(false);
+    }
+    loadPhoneAgent();
+    return () => { cancelled = true; };
+  }, []);
+
   // Signal VelaAssistant bubble to hide on mobile when a modal is open.
   useEffect(() => {
     setBottomSheetOpen(modal !== null);
@@ -734,6 +771,17 @@ function ChannelsPageContent() {
 
   const connectedSocialCount = (channels.instagram.connected ? 1 : 0) + (channels.whatsapp.connected ? 1 : 0);
   const canConnectMore = !isStarter || connectedSocialCount < config.channels;
+
+  // Real, derived (never invented) Phone Agent status -- see the fetch
+  // effect above for where provisioned/trainingFilled come from.
+  const phoneAgentTrainingComplete = phoneAgent.trainingFilled >= 5;
+  const phoneAgentStatus: "locked" | "not_connected" | "pending" | "connected" = !config.voiceAgent
+    ? "locked"
+    : !phoneAgent.provisioned
+    ? "not_connected"
+    : phoneAgentTrainingComplete
+    ? "connected"
+    : "pending";
 
   const handleConnectClick = (ch: "instagram" | "whatsapp") => {
     if (!canConnectMore) {
@@ -842,10 +890,13 @@ function ChannelsPageContent() {
   // supports (Instagram, WhatsApp, Website) is genuinely connected; a
   // partial connection (e.g. 1 of 3) simply doesn't show the banner rather
   // than showing a misleading "All N connected" for a subset.
+  // Website swapped for Phone Agent as the third channel type for this MVP
+  // phase (see FIX 3) -- when Website Builder is re-enabled later, its own
+  // connected state can be folded back in here.
   const connectedChannelNames = [
     channels.instagram.connected ? "Instagram" : null,
     channels.whatsapp.connected ? "WhatsApp" : null,
-    website.published ? "your website" : null,
+    phoneAgentStatus === "connected" ? "your phone agent" : null,
   ].filter((n): n is string => n !== null);
   const allChannelsConnected = connectedChannelNames.length === 3;
 
@@ -1069,7 +1120,95 @@ function ChannelsPageContent() {
           );
         })}
 
-        {/* Website channel — tied to Website Builder, fully optional */}
+        {/* Phone Agent channel — deep-links to the existing setup under
+            AI Agent > Phone Number, never a new connect flow. Status is
+            derived from real provisioning + training state (see the fetch
+            effect and phoneAgentStatus above), same visual card pattern as
+            Instagram/WhatsApp/the (now-flagged-off) Website card. */}
+        <div className="p-5 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
+          {phoneAgentLoading ? (
+            <div className="flex items-center gap-4 w-full animate-pulse">
+              <div className="w-12 h-12 rounded-xl bg-[#F3F4F6]" />
+              <div className="flex-1 space-y-2">
+                <div className="h-2.5 bg-[#F3F4F6] rounded w-28" />
+                <div className="h-2 bg-[#F3F4F6] rounded w-40" />
+              </div>
+              <div className="h-8 w-20 bg-[#F3F4F6] rounded-lg" />
+            </div>
+          ) : (
+            <div className="flex items-start gap-4 flex-wrap">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="white"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-base font-bold text-[#111111] dark:text-white">{t("channels.phoneAgent.name")}</p>
+                  {phoneAgentStatus === "locked" ? (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
+                        <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
+                      </svg>
+                      Pro only
+                    </span>
+                  ) : phoneAgentStatus === "connected" ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
+                      {t("channels.connected")}
+                    </span>
+                  ) : phoneAgentStatus === "pending" ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                      {t("channels.pending")}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#D1D5DB]" />
+                      {t("channels.notConnected")}
+                    </span>
+                  )}
+                </div>
+                {phoneAgentStatus === "pending" && (
+                  <p className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B7280] mt-0.5">
+                    Training {phoneAgent.trainingFilled}/5 complete
+                  </p>
+                )}
+                <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">{t("channels.phoneAgent.desc")}</p>
+              </div>
+
+              {phoneAgentStatus === "locked" ? (
+                <button
+                  onClick={() => { setModal("upgrade"); track("upgrade_clicked", { source: "channels_phone_agent" }); }}
+                  className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
+                >
+                  Upgrade
+                </button>
+              ) : (
+                <Link
+                  href="/app/ai-agent/phone"
+                  className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all whitespace-nowrap ${
+                    phoneAgentStatus === "not_connected"
+                      ? "border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      : "border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                  }`}
+                >
+                  {phoneAgentStatus === "not_connected" ? t("common.connect") : "Manage"}
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Website channel — tied to Website Builder, fully optional.
+            Hidden for this MVP phase (WEBSITE_BUILDER_ENABLED=false) --
+            code, state, and handlers below are untouched so re-enabling is
+            flipping that flag back on. */}
+        {WEBSITE_BUILDER_ENABLED && (
         <div className="p-5 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
           <div className="flex items-start gap-4 flex-wrap">
             <div className="w-12 h-12 rounded-xl bg-[#6366F1] flex items-center justify-center shrink-0">
@@ -1235,6 +1374,7 @@ function ChannelsPageContent() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Round M FIX 12: Website Disconnect confirmation -- destructive
@@ -1242,8 +1382,9 @@ function ChannelsPageContent() {
           confirm step like the reference pattern used elsewhere in the
           app, unlike Instagram/WhatsApp's single-click disconnect (each of
           those only ever affects one channel/account, not a whole list of
-          independent sites). */}
-      {showWebsiteDisconnectConfirm && (
+          independent sites). Hidden with the rest of the Website channel
+          for this MVP phase -- see WEBSITE_BUILDER_ENABLED above. */}
+      {WEBSITE_BUILDER_ENABLED && showWebsiteDisconnectConfirm && (
         <Modal onClose={() => !disconnectingWebsite && setShowWebsiteDisconnectConfirm(false)}>
           <div className="p-6 space-y-4">
             <div>
