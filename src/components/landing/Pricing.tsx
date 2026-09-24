@@ -18,12 +18,15 @@ export const INHERIT_LINE: Record<string, string> = {
   premium: "Everything in Pro, plus:",
 };
 
-// Indices into the already-filtered (included-only) features array to show on the card
+// Indices into the already-filtered (included-only) features array to show on the card.
+// Recomputed after the Marketing/CRM/Analytics/Website Builder bullets were
+// removed from src/lib/pricing.ts (MVP scope-down, Phase 2) -- these must
+// stay in sync with that file's included-feature order.
 // Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
 export const CARD_INDICES: Record<string, number[]> = {
-  starter: [0, 2, 3, 5],
+  starter: [0, 2, 3, 4],
   pro:     [0, 1, 2, 6],
-  premium: [0, 2, 3, 7, 8],
+  premium: [0, 2, 3, 4, 5],
 };
 
 export default function Pricing() {

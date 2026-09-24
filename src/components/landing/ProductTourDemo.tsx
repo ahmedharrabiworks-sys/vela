@@ -6,12 +6,15 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
-const CONV = 0, APPT = 1, CHAN = 2, AGENT = 3, ANALY = 4;
-const SCENE_COUNT = 5;
+/* Analytics dropped (MVP scope-down, Phase 2) -- see src/config/features.ts
+   ANALYTICS_ENABLED. Remaining scenes reflect what a real signed-up user
+   actually sees post-Phase-1. */
+const CONV = 0, APPT = 1, CHAN = 2, AGENT = 3;
+const SCENE_COUNT = 4;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [11800, 9400, 8900, 9200, 4800];
-/* index matches CONV, APPT, CHAN, AGENT, ANALY */
+const SCENE_DURATIONS: number[] = [11800, 9400, 8900, 9200];
+/* index matches CONV, APPT, CHAN, AGENT */
 
 /* ─── Appointments data ─────────────────────────────────────── */
 type ApptRow = {
@@ -55,9 +58,6 @@ const SARA_TRANSCRIPT: { who:"ai"|"caller"; text:string }[] = [
 /* ─── Bar chart ──────────────────────────────────────────────── */
 const BAR_DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const BAR_VALS = [17, 22, 19, 21, 24, 20, 15];
-
-/* ─── Line chart (30-day leads) ─────────────────────────────── */
-const LINE_DATA = [3,5,8,6,4,5,7,8,6,2,3,4,6,7,8,7,5,6,8,7,4,5,6,8,10,9,7,8,11,13];
 
 /* ─── Avatar palette ─────────────────────────────────────────── */
 const AV: Record<string,string> = {
@@ -408,12 +408,17 @@ function SceneAppointments() {
           transition={{ duration:0.8, ease:"easeInOut" }}
         >
           <table style={{ tableLayout:"fixed", width:"100%", borderCollapse:"collapse" }}>
+            {/* SERVICE widened (was 26%) at the expense of CH/TIME (short,
+                fixed-format content that doesn't need as much room) --
+                confirmed via a real 375px render that service names like
+                "Teeth Whitening" were truncating unreadably short before
+                this change. */}
             <colgroup>
-              <col style={{ width:"28%" }} />
               <col style={{ width:"26%" }} />
-              <col style={{ width:"13%" }} />
-              <col style={{ width:"13%" }} />
-              <col style={{ width:"20%" }} />
+              <col style={{ width:"32%" }} />
+              <col style={{ width:"11%" }} />
+              <col style={{ width:"9%" }} />
+              <col style={{ width:"22%" }} />
             </colgroup>
             <thead>
               <tr className="border-b border-[#F3F4F6]">
@@ -1148,140 +1153,6 @@ function SceneAgent() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Scene 5. Analytics
-═══════════════════════════════════════════════════════════════ */
-function SceneAnalytics() {
-  const cW=400, cH=88;
-  const minV=Math.min(...LINE_DATA), maxV=Math.max(...LINE_DATA);
-  const pts = LINE_DATA.map((v,i)=>`${(i/(LINE_DATA.length-1))*cW},${cH-((v-minV)/(maxV-minV))*cH}`);
-  const pathD=`M ${pts.join(" L ")}`;
-  const areaD=`${pathD} L ${cW},${cH} L 0,${cH} Z`;
-  const lastY = cH-((LINE_DATA[LINE_DATA.length-1]-minV)/(maxV-minV))*cH;
-
-  return (
-    <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
-      <div className="flex items-start justify-between px-4 pt-3 pb-2 shrink-0">
-        <div>
-          <h3 className="text-[15px] font-bold text-[#111111] leading-tight">Analytics</h3>
-          <p className="text-[11px] text-[#9CA3AF] mt-0.5">Ahmed Dental Clinic - last 30 days</p>
-        </div>
-        <div className="flex items-center gap-1">
-          {["7d","30d","90d"].map(t=>(
-            <button key={t} className={`text-[10px] px-2 py-1 rounded-lg font-bold ${t==="30d"?"text-white":"text-[#6B7280]"}`}
-              style={t==="30d"?{background:"var(--vela-gradient)"}:{}}>
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Stat cards -- each number counts up from 0, staggered ~120ms apart */}
-      <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
-        {[
-          {label:"Total Leads",   target:167, format:fmtInt,      pct:"+23%"},
-          {label:"Conversations", target:225, format:fmtInt,      pct:"+18%"},
-          {label:"Appts Booked",  target:100, format:fmtInt,      pct:"+31%"},
-          {label:"AI Resolution", target:94,  format:fmtPctWhole, pct:"+2%" },
-        ].map(({label,target,format,pct}, i)=>(
-          <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
-            <div className="flex items-start justify-between gap-1 mb-1">
-              <span className="text-[9px] text-[#9CA3AF] font-medium leading-tight">{label}</span>
-              <span className="text-[9px] font-bold text-green-600 shrink-0">{pct}</span>
-            </div>
-            <p className="text-base font-black text-[#111111] leading-none">
-              <CountUp target={target} format={format} duration={1700} delay={i*180} />
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mx-4 bg-white border border-[#E5E7EB] rounded-xl p-2.5 mb-2 shrink-0">
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[10px] font-semibold text-[#374151]">New Leads over time</p>
-          <div className="flex gap-1">
-            {["Leads","Convs","Appts"].map(t=>(
-              <button key={t} className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${t==="Leads"?"text-white":"text-[#9CA3AF]"}`}
-                style={t==="Leads"?{background:"var(--vela-gradient)"}:{}}>{t}</button>
-            ))}
-          </div>
-        </div>
-        <svg width="100%" height={cH+18} viewBox={`0 0 ${cW} ${cH+18}`} preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="ptLineArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(237,84,38,0.18)"/>
-              <stop offset="100%" stopColor="rgba(237,84,38,0)"/>
-            </linearGradient>
-          </defs>
-          <motion.path
-            d={areaD} fill="url(#ptLineArea)"
-            initial={{ opacity:0 }}
-            animate={{ opacity:1 }}
-            transition={{ duration:0.5, delay:2.1 }}
-          />
-          {/* The line draws itself via pathLength (Framer manages the real
-              stroke-dasharray/dashoffset off the path's actual measured
-              length), not a fade -- reads as the line being traced live. */}
-          <motion.path
-            d={pathD} fill="none" stroke="#ed5426" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-            initial={{ pathLength:0 }}
-            animate={{ pathLength:1 }}
-            transition={{ duration:1.9, delay:0.4, ease:"easeInOut" }}
-          />
-          <motion.circle
-            cx={cW} cy={lastY} r="3.5" fill="#ed5426"
-            initial={{ scale:0, opacity:0 }}
-            animate={{ scale:1, opacity:1 }}
-            transition={{ duration:0.3, delay:2.3, ease:[0.34,1.56,0.64,1] }}
-          />
-          {["/21","6/26","7/1","7/6","7/11","7/16","7/20"].map((lbl,i)=>(
-            <text key={i} x={(i/6)*cW} y={cH+14} textAnchor="middle" fontSize="8" fill="#9CA3AF">{lbl}</text>
-          ))}
-        </svg>
-      </div>
-
-      <div className="mx-4 bg-white border border-[#E5E7EB] rounded-xl p-2.5 flex-1 overflow-hidden">
-        <p className="text-[10px] font-semibold text-[#374151] mb-2">Channel Breakdown</p>
-        <div className="grid grid-cols-4 text-[9px] font-semibold text-[#9CA3AF] uppercase tracking-wide mb-1">
-          <span>Channel</span><span>Leads</span><span>Convs</span><span>Share</span>
-        </div>
-        {[
-          {name:"WhatsApp", color:"#25D366", leads:74, convs:98, pct:44},
-          {name:"Instagram",color:"#E1306C", leads:58, convs:79, pct:35},
-          {name:"Website",  color:"#6366F1", leads:35, convs:48, pct:21},
-        ].map(({name,color,leads,convs,pct}, i)=>(
-          <div key={name} className="grid grid-cols-4 items-center py-1.5 border-t border-[#F3F4F6]">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{background:color}}/>
-              <span className="text-[11px] text-[#374151]">{name}</span>
-            </div>
-            <span className="text-[11px] text-[#374151]">
-              <CountUp target={leads} format={fmtInt} duration={700} delay={2500+i*380} />
-            </span>
-            <span className="text-[11px] text-[#374151]">
-              <CountUp target={convs} format={fmtInt} duration={700} delay={2500+i*380} />
-            </span>
-            <div className="flex items-center gap-1.5">
-              <div className="flex-1 h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background:color }}
-                  initial={{ width:"0%" }}
-                  animate={{ width:`${pct}%` }}
-                  transition={{ duration:0.7, delay:2.5+i*0.38, ease:"easeOut" }}
-                />
-              </div>
-              <span className="text-[10px] text-[#374151] font-semibold">
-                <CountUp target={pct} format={fmtPctWhole} duration={700} delay={2500+i*380} />
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Tour panels: tab row + left content panel per scene ──────
    color is used only for the panel's icon circle + checklist tint
    (kept within Vela's orange/rose palette, varied per scene) --
@@ -1351,22 +1222,6 @@ const TOUR_PANELS = [
       "Transfers complex calls",
     ],
   },
-  {
-    sceneIdx: ANALY,
-    tabLabel: "Analytics",
-    color: "#FF3366",
-    icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 14h14M5 14V9m3 5V6m3 8V4m3 10v-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    headline: "See exactly what's working",
-    subtext: "Full-funnel insights across every channel and touchpoint.",
-    checklist: [
-      "Leads, conversations & bookings",
-      "30-day trend line chart",
-      "Channel-by-channel breakdown",
-      "AI resolution rate tracking",
-      "7d / 30d / 90d ranges",
-      "Full-funnel visibility",
-    ],
-  },
 ] as const;
 
 /* ─── Smooth 3D dissolve transition (shallow angle + fade + scale) */
@@ -1421,7 +1276,6 @@ export default function ProductTourDemo() {
       case APPT:  return <SceneAppointments />;
       case CHAN:  return <SceneChannels />;
       case AGENT: return <SceneAgent />;
-      case ANALY: return <SceneAnalytics />;
       default:      return null;
     }
   }
@@ -1440,7 +1294,7 @@ export default function ProductTourDemo() {
             <span className="vela-gradient-text">and keep it organized for you.</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">
-            Five core screens. Click any card to explore or let the tour run.
+            Four core screens. Click any card to explore or let the tour run.
           </p>
         </div>
 
@@ -1449,12 +1303,15 @@ export default function ProductTourDemo() {
           {/* Left text panel: tab row + icon/headline/subtext/checklist panel + persistent CTA */}
           <div className="order-last lg:order-first flex flex-col lg:pt-2">
 
-            {/* Tab row -- 5 literal-name tabs, text-only, single-accent active
+            {/* Tab row -- 4 literal-name tabs, text-only, single-accent active
                 style (unchanged click-to-jump behavior, now manual-mode --
                 see handleTabClick). Fits on one line at desktop widths via
                 tight padding/font-size; falls back to horizontal scroll only
-                if a narrow desktop width can't fit all 5; wraps freely on
-                mobile where one-line isn't required. */}
+                if a narrow desktop width can't fit all 4; wraps freely on
+                mobile where one-line isn't required. py-2.5 on mobile keeps
+                each pill close to a 44px touch target; lg:py-1.5 keeps the
+                compact desktop density unchanged (mouse pointer, no touch
+                target concern there). */}
             <div className="flex flex-wrap lg:flex-nowrap gap-1.5 mb-6 lg:overflow-x-auto lg:pb-1">
               {TOUR_PANELS.map(p => {
                 const active = scene === p.sceneIdx;
@@ -1462,7 +1319,7 @@ export default function ProductTourDemo() {
                   <button
                     key={p.tabLabel}
                     onClick={() => handleTabClick(p.sceneIdx)}
-                    className="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
+                    className="shrink-0 whitespace-nowrap px-3.5 py-2.5 lg:py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
                     style={{
                       background: active ? "var(--vt-color)" : "#FAFAFA",
                       border:     active ? "1.5px solid var(--vp-color)" : "1.5px solid #F1F5F9",

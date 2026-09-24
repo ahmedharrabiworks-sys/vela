@@ -5,18 +5,18 @@ import Pricing from "@/components/landing/Pricing";
 const COL_HEADERS = ["Starter", "Pro", "Premium"];
 const PRO_COL = 1;
 
+// Websites, CRM, and Analytics rows removed -- those features are flagged
+// off for this MVP phase (see src/config/features.ts). Rows stay untouched
+// otherwise; re-add when Website Builder/CRM/Analytics come back.
 const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
   { label: "Voice minutes",        values: ["150/mo",           "650/mo",               "1,300/mo"              ] },
   { label: "Text messages",        values: ["500/mo",           "Unlimited",            "Unlimited"             ] },
   { label: "Channels",             values: ["1",                "All 3",                "All 3 + priority"      ] },
   { label: "AI Voice Phone Agent", values: [false,              true,                   true                    ] },
   { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited"             ] },
-  { label: "Websites",             values: [false,              "1 + custom domain",    "3 + custom domains"    ] },
   { label: "Multi-location",       values: [false,              "2 locations",          "Unlimited"             ] },
-  { label: "CRM",                  values: ["View-only",        "Full + automation",    "Full + custom pipelines"] },
   { label: "Team members",         values: ["1",                "3",                    "Unlimited"             ] },
   { label: "AI training",          values: ["Single interview", "Unlimited edits",      "Priority retraining"   ] },
-  { label: "Analytics",            values: ["Basic",            "Full funnel",          "Full + exports"        ] },
   { label: "Support",              values: ["Email 48h",        "Priority 24h",         "Dedicated call + chat" ] },
   { label: "Onboarding",           values: ["Self-serve",       "Self-serve + checklist","Done-for-you"         ] },
 ];
