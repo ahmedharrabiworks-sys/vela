@@ -2,18 +2,20 @@
 
 import { useEffect, useRef } from "react";
 
+const INTERACTIVE_SELECTOR = 'a, button, [role="button"], input, textarea, select, label, summary, [onclick]';
+
 /**
  * Simple on-brand custom cursor -- desktop only (pointer:fine + hover:hover).
- * Two parts: a small solid orange dot that snaps exactly to the real cursor
- * position every frame, and a slightly larger ring that trails it via a CSS
- * transition (no JS smoothing/physics needed -- see .vela-cursor-ring in
- * globals.css). The ring tightens and fills on mousedown for a small tap
- * response. Never renders/attaches on touch devices; mounted once for the
- * whole landing page (see src/app/page.tsx).
+ * Redesigned (the dot+trailing-ring version wasn't landing visually): now a
+ * single small solid orange dot that snaps exactly to the real cursor
+ * position every frame, with a subtle scale-up when hovering a clickable
+ * element (buttons/links/inputs) as the only "interaction" cue -- no
+ * separate ring, no trail. pointer-events:none so clicks, hover states, and
+ * text selection all work exactly as if this weren't here. Mounted once for
+ * the whole landing page (see src/app/page.tsx).
  */
 export default function CustomCursor() {
   const dotRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
@@ -26,43 +28,40 @@ export default function CustomCursor() {
     function onMove(e: MouseEvent) {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-        if (dotRef.current) dotRef.current.style.transform = transform;
-        if (ringRef.current) ringRef.current.style.transform = transform;
+        dotRef.current?.style.setProperty("transform", `translate3d(${e.clientX}px, ${e.clientY}px, 0)`);
       });
     }
-    function onDown() { ringRef.current?.classList.add("vela-cursor-active"); }
-    function onUp() { ringRef.current?.classList.remove("vela-cursor-active"); }
-    function onLeaveWindow() {
-      dotRef.current?.style.setProperty("opacity", "0");
-      ringRef.current?.style.setProperty("opacity", "0");
+    function onOver(e: MouseEvent) {
+      const target = e.target as Element | null;
+      if (target?.closest(INTERACTIVE_SELECTOR)) {
+        dotRef.current?.classList.add("vela-cursor-hover");
+      }
     }
-    function onEnterWindow() {
-      dotRef.current?.style.setProperty("opacity", "1");
-      ringRef.current?.style.setProperty("opacity", "1");
+    function onOut(e: MouseEvent) {
+      const target = e.target as Element | null;
+      if (target?.closest(INTERACTIVE_SELECTOR)) {
+        dotRef.current?.classList.remove("vela-cursor-hover");
+      }
     }
+    function onLeaveWindow() { dotRef.current?.style.setProperty("opacity", "0"); }
+    function onEnterWindow() { dotRef.current?.style.setProperty("opacity", "1"); }
 
     document.addEventListener("mousemove", onMove, { passive: true });
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("mouseup", onUp);
+    document.addEventListener("mouseover", onOver, { passive: true });
+    document.addEventListener("mouseout", onOut, { passive: true });
     document.addEventListener("mouseleave", onLeaveWindow);
     document.addEventListener("mouseenter", onEnterWindow);
 
     return () => {
       document.documentElement.classList.remove("vela-custom-cursor");
       document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("mouseover", onOver);
+      document.removeEventListener("mouseout", onOut);
       document.removeEventListener("mouseleave", onLeaveWindow);
       document.removeEventListener("mouseenter", onEnterWindow);
       cancelAnimationFrame(raf);
     };
   }, []);
 
-  return (
-    <>
-      <div ref={ringRef} className="vela-cursor-ring" aria-hidden="true" />
-      <div ref={dotRef} className="vela-cursor-dot" aria-hidden="true" />
-    </>
-  );
+  return <div ref={dotRef} className="vela-cursor-dot" aria-hidden="true" />;
 }

@@ -101,8 +101,12 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 py-16 flex-1 flex items-center">
+      {/* Content -- mobile: top-aligned (not vertically centered) with a
+          tight top gap, so the badge/headline/subtext/CTA sit high on the
+          screen instead of floating in the middle with dead space below.
+          The empty space that leaves at the bottom is intentional, reserved
+          for a future section. Desktop keeps the original centered layout. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 md:pt-16 pb-16 flex-1 flex items-start md:items-center">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}

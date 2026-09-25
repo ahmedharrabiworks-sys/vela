@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import ProblemSection from "@/components/landing/ProblemSection";
 import ProductTourDemo from "@/components/landing/ProductTourDemo";
 import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
@@ -15,6 +16,7 @@ export default function LandingPage() {
           immediately on load (it already has its own on-load stagger
           animation), not wait to be scrolled into view. */}
       <Hero />
+      <Reveal><ProblemSection /></Reveal>
       <Reveal><ProductTourDemo /></Reveal>
       <Reveal><DashboardSection /></Reveal>
       <Reveal><Pricing /></Reveal>

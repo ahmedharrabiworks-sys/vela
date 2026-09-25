@@ -509,6 +509,23 @@
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
     },
+    "problem": {
+      "eyebrow": "Turn conversations into revenue",
+      "headline": "Your AI workforce for the front office.",
+      "headlineHighlight": "Fully staffed, 24/7.",
+      "stats": {
+        "always":       { "value": "24/7",           "label": "Always answering" },
+        "multiLang":    { "value": "Multi-language",  "label": "Speaks their language" },
+        "everyChannel": { "value": "Every Channel",   "label": "Phone, WhatsApp & Instagram" }
+      },
+      "timeline": {
+        "step1": { "title": "Customer reaches out",        "desc": "By phone, DM, or message, hoping for a quick reply." },
+        "step2": { "title": "Your team is busy",            "desc": "Mid-appointment, after hours, or just short-staffed." },
+        "step3": { "title": "Minutes turn into hours",       "desc": "The message sits there, unanswered." },
+        "step4": { "title": "They start looking elsewhere",  "desc": "A competitor picks up first, and the lead is gone." },
+        "step5": { "title": "Vela answers instead",          "desc": "Every time, instantly, so step 4 never happens." }
+      }
+    },
     "tour": {
       "headline1": "Watch Vela handle it all",
       "headlineAccent": "and keep it organized for you.",

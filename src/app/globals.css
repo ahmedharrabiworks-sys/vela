@@ -237,68 +237,57 @@ canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 380px;
-  height: 380px;
-  margin: -190px 0 0 -190px;
+  width: 460px;
+  height: 460px;
+  margin: -230px 0 0 -230px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,107,53,0.10) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 70%);
   animation: ambientDrift 16s ease-in-out infinite;
   will-change: transform, opacity;
 }
 @keyframes ambientDrift {
-  0%   { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.55; }
-  25%  { transform: translate3d(26px, -18px, 0) scale(1.08); opacity: 0.85; }
-  50%  { transform: translate3d(-12px, 22px, 0) scale(0.94); opacity: 0.6; }
-  75%  { transform: translate3d(-22px, -14px, 0) scale(1.05); opacity: 0.78; }
-  100% { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.55; }
+  0%   { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.65; }
+  25%  { transform: translate3d(26px, -18px, 0) scale(1.08); opacity: 1; }
+  50%  { transform: translate3d(-12px, 22px, 0) scale(0.94); opacity: 0.7; }
+  75%  { transform: translate3d(-22px, -14px, 0) scale(1.05); opacity: 0.92; }
+  100% { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.65; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ambient-glow-blob { animation: none; opacity: 0.55; }
+  .ambient-glow-blob { animation: none; opacity: 0.65; }
 }
 
-/* ─── Custom cursor (design pass) — desktop only (pointer:fine + hover:hover,
-   enforced in JS before the "vela-custom-cursor" class is ever added, and
-   re-enforced here as a hard CSS fallback). Two-part: an exact-position dot
-   and a softly-lagging ring (CSS transition on the ring only creates the lag,
-   no spring/physics JS needed). pointer-events:none on both so clicks, hover
-   states, and text selection all work exactly as if this weren't here. ─── */
+/* ─── Custom cursor (design pass, redesigned) — desktop only (pointer:fine +
+   hover:hover, enforced in JS before the "vela-custom-cursor" class is ever
+   added, and re-enforced here as a hard CSS fallback). Single solid dot,
+   exact position, subtle scale-up over clickable elements -- the earlier
+   dot+trailing-ring version read as messy, so the ring is gone entirely.
+   pointer-events:none so clicks, hover states, and text selection all work
+   exactly as if this weren't here. ─── */
 html.vela-custom-cursor,
 html.vela-custom-cursor * {
   cursor: none !important;
 }
-.vela-cursor-dot,
-.vela-cursor-ring {
+.vela-cursor-dot {
   position: fixed;
   top: 0;
   left: 0;
-  pointer-events: none;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
   border-radius: 50%;
+  background: var(--vp-color);
+  pointer-events: none;
   transform: translate3d(-100px, -100px, 0);
+  scale: 1;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, scale 0.18s ease;
   z-index: 2147483647;
 }
-.vela-cursor-dot {
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  background: var(--vp-color);
-}
-.vela-cursor-ring {
-  width: 26px;
-  height: 26px;
-  margin: -13px 0 0 -13px;
-  border: 1.5px solid var(--vp-color);
-  transition: transform 0.12s ease-out, opacity 0.2s ease, width 0.15s ease, height 0.15s ease, margin 0.15s ease, background-color 0.15s ease;
-}
-.vela-cursor-ring.vela-cursor-active {
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  background: var(--vp-10);
+.vela-cursor-dot.vela-cursor-hover {
+  scale: 2.2;
 }
 @media (hover: none), (pointer: coarse) {
-  .vela-cursor-dot, .vela-cursor-ring { display: none !important; }
+  .vela-cursor-dot { display: none !important; }
   html.vela-custom-cursor, html.vela-custom-cursor * { cursor: auto !important; }
 }
 
