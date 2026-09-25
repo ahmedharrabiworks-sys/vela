@@ -4,15 +4,21 @@ import ProductTourDemo from "@/components/landing/ProductTourDemo";
 import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
 import Footer from "@/components/landing/Footer";
+import CustomCursor from "@/components/landing/CustomCursor";
+import Reveal from "@/components/landing/Reveal";
 export default function LandingPage() {
   return (
     <main className="overflow-x-hidden">
+      <CustomCursor />
       <Navbar />
+      {/* Hero is intentionally NOT wrapped in Reveal -- it must be visible
+          immediately on load (it already has its own on-load stagger
+          animation), not wait to be scrolled into view. */}
       <Hero />
-      <ProductTourDemo />
-      <DashboardSection />
-      <Pricing />
-      <Footer />
+      <Reveal><ProductTourDemo /></Reveal>
+      <Reveal><DashboardSection /></Reveal>
+      <Reveal><Pricing /></Reveal>
+      <Reveal><Footer /></Reveal>
     </main>
   );
 }

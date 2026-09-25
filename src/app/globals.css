@@ -229,6 +229,79 @@ canvas {
   word-spacing: normal;
 }
 
+/* ─── Ambient glow (design pass) — one consistent, auto-animated, CSS-only
+   glow used on every homepage section. Centered, small, low-opacity, slow
+   drift/pulse. Identical on desktop and mobile since it never reads pointer
+   position. Replaces the old mouse-tracked CursorSpotlight entirely. ─── */
+.ambient-glow-blob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 380px;
+  height: 380px;
+  margin: -190px 0 0 -190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,107,53,0.10) 0%, transparent 70%);
+  animation: ambientDrift 16s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes ambientDrift {
+  0%   { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.55; }
+  25%  { transform: translate3d(26px, -18px, 0) scale(1.08); opacity: 0.85; }
+  50%  { transform: translate3d(-12px, 22px, 0) scale(0.94); opacity: 0.6; }
+  75%  { transform: translate3d(-22px, -14px, 0) scale(1.05); opacity: 0.78; }
+  100% { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-glow-blob { animation: none; opacity: 0.55; }
+}
+
+/* ─── Custom cursor (design pass) — desktop only (pointer:fine + hover:hover,
+   enforced in JS before the "vela-custom-cursor" class is ever added, and
+   re-enforced here as a hard CSS fallback). Two-part: an exact-position dot
+   and a softly-lagging ring (CSS transition on the ring only creates the lag,
+   no spring/physics JS needed). pointer-events:none on both so clicks, hover
+   states, and text selection all work exactly as if this weren't here. ─── */
+html.vela-custom-cursor,
+html.vela-custom-cursor * {
+  cursor: none !important;
+}
+.vela-cursor-dot,
+.vela-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate3d(-100px, -100px, 0);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2147483647;
+}
+.vela-cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: var(--vp-color);
+}
+.vela-cursor-ring {
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 1.5px solid var(--vp-color);
+  transition: transform 0.12s ease-out, opacity 0.2s ease, width 0.15s ease, height 0.15s ease, margin 0.15s ease, background-color 0.15s ease;
+}
+.vela-cursor-ring.vela-cursor-active {
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  background: var(--vp-10);
+}
+@media (hover: none), (pointer: coarse) {
+  .vela-cursor-dot, .vela-cursor-ring { display: none !important; }
+  html.vela-custom-cursor, html.vela-custom-cursor * { cursor: auto !important; }
+}
+
 /* FIX 4a — Logo wordmark: white in dark mode */
 html.dark .logo-wordmark {
   color: var(--dm-text) !important;

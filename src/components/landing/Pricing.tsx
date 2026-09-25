@@ -6,7 +6,7 @@ import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
-import CursorSpotlight from "@/components/landing/CursorSpotlight";
+import AmbientGlow from "@/components/landing/AmbientGlow";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -42,7 +42,7 @@ export default function Pricing() {
 
   return (
     <section id="pricing" className="relative py-10 md:py-14 bg-white overflow-hidden">
-      <CursorSpotlight size={220} color="rgba(255,107,53,0.07)" />
+      <AmbientGlow />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header -- currency selector pinned to the top end-corner of this
             block on desktop (own corner, not centered/floating below the

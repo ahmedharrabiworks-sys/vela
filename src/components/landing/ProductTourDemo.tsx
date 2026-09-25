@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import AmbientGlow from "@/components/landing/AmbientGlow";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
 /* Analytics dropped (MVP scope-down, Phase 2) -- see src/config/features.ts
@@ -1311,8 +1312,9 @@ export default function ProductTourDemo() {
     // Polish pass #4: fully translated + RTL-correct, dir="ltr" pin from the
     // previous session removed. Every string in this section (and its 4
     // scene mocks) now routes through the i18n system.
-    <section className="py-10 md:py-14 bg-white">
-      <div className="max-w-7xl mx-auto px-5 md:px-6">
+    <section className="relative py-10 md:py-14 bg-white overflow-hidden">
+      <AmbientGlow />
+      <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
 
         {/* Section header, FIX 5+6 applied */}
         <div className="text-center mb-10 md:mb-14">

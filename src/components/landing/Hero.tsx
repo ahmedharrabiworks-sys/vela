@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
-import CursorSpotlight from "@/components/landing/CursorSpotlight";
+import AmbientGlow from "@/components/landing/AmbientGlow";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 
 const container = {
@@ -32,10 +32,9 @@ export default function Hero() {
 
   return (
     <section id="hero-section" className="relative min-h-screen flex flex-col overflow-hidden bg-white">
-      {/* Cursor-following spotlight (FIX 1, polish pass #2) -- replaces the
-          old static 900px fixed glow. Small, subtle, pointer-tracked; a
-          no-op on touch devices. */}
-      <CursorSpotlight />
+      {/* Ambient glow (design pass) -- replaces the old mouse-tracked
+          CursorSpotlight with one consistent, CSS-only, auto-animated glow. */}
+      <AmbientGlow />
 
       {/* In-hero nav, scrolls away with the Hero naturally */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">

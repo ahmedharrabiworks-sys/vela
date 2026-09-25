@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
+import AmbientGlow from "@/components/landing/AmbientGlow";
 
 const SECTIONS = [
   {
@@ -67,8 +68,9 @@ export default function Footer() {
   const { t } = useI18n();
 
   return (
-    <footer className="section-tint">
-      <div className="max-w-7xl mx-auto px-5 md:px-6 py-14 md:py-16">
+    <footer className="relative section-tint overflow-hidden">
+      <AmbientGlow />
+      <div className="relative max-w-7xl mx-auto px-5 md:px-6 py-14 md:py-16" style={{ zIndex: 1 }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-14">
           {/* Brand */}
           <div className="col-span-1 sm:col-span-2 md:col-span-1 flex flex-col items-center sm:items-start">

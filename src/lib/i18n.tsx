@@ -63,15 +63,33 @@ function resolveLocale(saved: string | null): string {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<string>(() => {
-    if (typeof window === "undefined") return "en";
-    return resolveLocale(localStorage.getItem("vela_lang"));
-  });
+  // Root cause of the white-screen-on-mobile bug (confirmed via reproduction
+  // with localStorage pre-seeded to "ar", real React errors #425/#418/#423
+  // on both Chromium and WebKit mobile emulation): this initializer used to
+  // read localStorage synchronously, so a returning Arabic-locale visitor's
+  // very first CLIENT render already differed from the server's always-"en"
+  // render -- a genuine SSR/CSR hydration mismatch, not a mobile-specific
+  // bug per se (it fires on any device with "ar" cached), but it explains
+  // "broken on my phone, fine on desktop" if Arabic had only been tested on
+  // the phone. Always starting at "en" here (matching the server every
+  // time) and applying the saved locale in the effect below -- a normal
+  // post-mount state update, not a hydration diff -- removes the mismatch
+  // entirely. Trade-off: a returning Arabic visitor sees one English frame
+  // before the saved locale kicks in; far safer than an intermittent
+  // hydration crash.
+  const [locale, setLocaleState] = useState<string>("en");
 
   function applyDir(code: string) {
     document.documentElement.setAttribute("dir", code === "ar" ? "rtl" : "ltr");
     document.documentElement.setAttribute("lang", code);
   }
+
+  useEffect(() => {
+    const saved = resolveLocale(localStorage.getItem("vela_lang"));
+    if (saved !== "en") setLocaleState(saved);
+    applyDir(saved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     applyDir(locale);

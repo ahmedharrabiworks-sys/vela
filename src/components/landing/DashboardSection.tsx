@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import CursorSpotlight from "@/components/landing/CursorSpotlight";
+import AmbientGlow from "@/components/landing/AmbientGlow";
 import { useI18n } from "@/lib/i18n";
 
 // Real markup, not an image -- see git history for the old
@@ -139,7 +139,7 @@ export default function DashboardSection() {
     <section className="py-10 md:py-14 bg-white">
       <div className="max-w-6xl mx-auto px-5 md:px-6">
         <div className="relative">
-          <CursorSpotlight size={200} color="rgba(255,107,53,0.07)" />
+          <AmbientGlow />
           <div
             className="relative overflow-hidden rounded-2xl grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8 lg:gap-6 px-6 py-10 sm:px-10 sm:py-12"
             style={{ background: "linear-gradient(135deg,#FFF3E9 0%,#FFE0CC 100%)", zIndex: 1 }}
