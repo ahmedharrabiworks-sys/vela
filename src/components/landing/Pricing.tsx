@@ -42,14 +42,15 @@ export default function Pricing() {
 
   return (
     <section id="pricing" className="relative py-10 md:py-14 bg-white overflow-hidden">
-      <CursorSpotlight size={460} color="rgba(255,107,53,0.10)" />
+      <CursorSpotlight size={220} color="rgba(255,107,53,0.07)" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
-        {/* Header -- currency selector pinned to the top-right of this block
-            on desktop (own corner, not centered/floating below the toggle);
-            mirrors to the top-left in RTL; stays centered underneath on
-            mobile where a corner position would collide with the headline. */}
+        {/* Header -- currency selector pinned to the top end-corner of this
+            block on desktop (own corner, not centered/floating below the
+            toggle) -- `end-0` auto-mirrors to the left in RTL; stays
+            centered underneath on mobile where a corner position would
+            collide with the headline. */}
         <div className="relative text-center mb-8">
-          <div className="hidden sm:block sm:absolute sm:top-0 sm:right-0 rtl:sm:right-auto rtl:sm:left-0">
+          <div className="hidden sm:block sm:absolute sm:top-0 sm:end-0">
             <CurrencyToggle value={currency} onChange={setCurrency} />
           </div>
 

@@ -509,13 +509,6 @@
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
     },
-    "showcase": {
-      "eyebrow": "Real-time, multilingual",
-      "headline1": "One AI.",
-      "headlineAccent": "Endless languages.",
-      "subtext": "Vela replies in your customer's language, instantly, whether that's English, Arabic, Hindi, or beyond.",
-      "cta": "Get Started"
-    },
     "dashboardSection": {
       "headline": "Everything you need to run your business, even while you sleep.",
       "subtext": "We handle every call, message, and lead, so you can focus on the business, not the front desk.",
@@ -536,6 +529,8 @@
       "save": "Save",
       "save20": "Save 20%",
       "seeFullFeature": "See full feature",
+      "showPricesIn": "Show prices in",
+      "approxNote": "Approximate, for reference. Billed in QAR.",
       "mostPopular": "Most Popular",
       "inheritLine": {
         "pro": "Everything in Starter, plus:",

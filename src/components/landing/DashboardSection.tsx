@@ -139,13 +139,13 @@ export default function DashboardSection() {
     <section className="py-10 md:py-14 bg-white">
       <div className="max-w-6xl mx-auto px-5 md:px-6">
         <div className="relative">
-          <CursorSpotlight size={420} color="rgba(255,107,53,0.10)" />
+          <CursorSpotlight size={200} color="rgba(255,107,53,0.07)" />
           <div
             className="relative overflow-hidden rounded-2xl grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8 lg:gap-6 px-6 py-10 sm:px-10 sm:py-12"
             style={{ background: "linear-gradient(135deg,#FFF3E9 0%,#FFE0CC 100%)", zIndex: 1 }}
           >
             {/* Text panel */}
-            <div className="flex flex-col justify-center order-2 lg:order-1 lg:rtl:order-2">
+            <div className="flex flex-col justify-center order-2 lg:order-1">
               <h2 className="font-display font-extrabold text-[24px] sm:text-[30px] lg:text-[32px] text-[#2A1200] leading-tight">
                 {t("landing.dashboardSection.headline")}
               </h2>
@@ -176,7 +176,7 @@ export default function DashboardSection() {
             </div>
 
             {/* Phone mockup panel */}
-            <div className="order-1 lg:order-2 lg:rtl:order-1 flex items-center justify-center">
+            <div className="order-1 lg:order-2 flex items-center justify-center">
               <PhoneMockupDashboard />
             </div>
           </div>

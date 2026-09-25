@@ -71,9 +71,9 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-5 md:px-6 py-14 md:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-14">
           {/* Brand */}
-          <div className="col-span-1 sm:col-span-2 md:col-span-1 flex flex-col items-center sm:items-start sm:rtl:items-end">
+          <div className="col-span-1 sm:col-span-2 md:col-span-1 flex flex-col items-center sm:items-start">
             <Logo showText />
-            <p className="mt-4 text-[#6B7280] text-sm leading-relaxed max-w-[220px] text-center sm:text-left sm:rtl:text-right">
+            <p className="mt-4 text-[#6B7280] text-sm leading-relaxed max-w-[220px] text-center sm:text-start">
               {t("landing.footer.tagline")}
             </p>
             <div className="flex gap-3 mt-6">
@@ -92,11 +92,11 @@ export default function Footer() {
 
           {/* Links */}
           {SECTIONS.map((sec) => (
-            <div key={sec.key} className="flex flex-col items-center sm:items-start sm:rtl:items-end">
+            <div key={sec.key} className="flex flex-col items-center sm:items-start">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-4">
                 {t(`landing.footer.sections.${sec.key}`)}
               </p>
-              <ul className="flex flex-col gap-3 items-center sm:items-start sm:rtl:items-end">
+              <ul className="flex flex-col gap-3 items-center sm:items-start">
                 {sec.links.map(({ key, href }) => (
                   <li key={key}>
                     <Link
@@ -114,12 +114,12 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-[#E5E7EB] pt-8 flex flex-col items-center gap-3 md:flex-row md:justify-between md:gap-4">
-          <p className="text-sm text-[#9CA3AF] text-center md:text-left md:rtl:text-right">
+          <p className="text-sm text-[#9CA3AF] text-center md:text-start">
             {t("landing.footer.copyright")}
             <span className="mx-1.5">·</span>
             {t("landing.footer.madeInQatar")}
           </p>
-          <p className="text-sm text-[#9CA3AF] text-center md:text-left md:rtl:text-right">
+          <p className="text-sm text-[#9CA3AF] text-center md:text-start">
             {t("landing.footer.slogan1")}{" "}
             <span className="vela-gradient-text font-medium">{t("landing.footer.slogan2")}</span>
           </p>

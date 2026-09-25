@@ -48,7 +48,7 @@ export default function Hero() {
             href="/auth/login"
             className="hidden sm:inline-flex text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
           >
-            Log in
+            {t("landing.nav.login")}
           </Link>
           <Link href="/auth/signup" className="hidden sm:inline-flex btn-primary text-sm px-6 py-2.5 justify-center">
             {t("landing.nav.getStarted")}
@@ -74,7 +74,7 @@ export default function Hero() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 right-0 rtl:right-auto rtl:left-0 bottom-0 w-[78vw] max-w-xs bg-white border-l rtl:border-l-0 rtl:border-r border-[#E5E7EB] shadow-2xl flex flex-col px-6 pt-8 pb-10 gap-2">
+          <div className="absolute top-0 end-0 bottom-0 w-[78vw] max-w-xs bg-white border-s border-[#E5E7EB] shadow-2xl flex flex-col px-6 pt-8 pb-10 gap-2">
             <button
               onClick={() => setMobileMenuOpen(false)}
               aria-label="Close menu"
@@ -89,7 +89,7 @@ export default function Hero() {
               onClick={() => setMobileMenuOpen(false)}
               className="text-base font-semibold text-[#111111] px-4 py-3.5 rounded-xl hover:bg-[#F3F4F6] transition-colors"
             >
-              Log in
+              {t("landing.nav.login")}
             </Link>
             <Link
               href="/auth/signup"
@@ -109,7 +109,7 @@ export default function Hero() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-left md:rtl:items-end md:rtl:text-right"
+            className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-start"
           >
             {/* Badge */}
             <motion.div variants={item}>

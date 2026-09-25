@@ -13,8 +13,8 @@ import { useEffect, useRef } from "react";
  * broken/stuck glow.
  */
 export default function CursorSpotlight({
-  size = 380,
-  color = "rgba(255,107,53,0.14)",
+  size = 200,
+  color = "rgba(255,107,53,0.08)",
 }: {
   size?: number;
   color?: string;
