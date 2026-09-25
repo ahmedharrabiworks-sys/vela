@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useI18n } from "@/lib/i18n";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
 /* Analytics dropped (MVP scope-down, Phase 2) -- see src/config/features.ts
@@ -103,25 +104,37 @@ function ChBadge({ ch }: { ch:"WA"|"IG"|"WEB" }) {
 }
 
 function StatusPill({ s }: { s:ApptRow["status"] }) {
+  const { t } = useI18n();
   const m = {
     Confirmed: { dot:"#22C55E", text:"#16A34A", bg:"#F0FDF4" },
     Pending:   { dot:"#F59E0B", text:"#B45309", bg:"#FFFBEB" },
     Cancelled: { dot:"#EF4444", text:"#DC2626", bg:"#FEF2F2" },
   }[s];
+  const label = {
+    Confirmed: t("landing.tour.status.confirmed"),
+    Pending:   t("landing.tour.status.pending"),
+    Cancelled: t("landing.tour.status.cancelled"),
+  }[s];
   return (
     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color:m.text, background:m.bg }}>
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background:m.dot }} />{s}
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background:m.dot }} />{label}
     </span>
   );
 }
 
 function CallPill({ s }: { s:CallRow["status"] }) {
+  const { t } = useI18n();
   const m = {
     Booked:      { text:"#C2410C", bg:"#FFF5F0" },
     Transferred: { text:"#2563EB", bg:"#EFF6FF" },
     Resolved:    { text:"#16A34A", bg:"#F0FDF4" },
   }[s];
-  return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={m}>{s}</span>;
+  const label = {
+    Booked:      t("landing.tour.scenes.agent.callStatus.booked"),
+    Transferred: t("landing.tour.scenes.agent.callStatus.transferred"),
+    Resolved:    t("landing.tour.scenes.agent.callStatus.resolved"),
+  }[s];
+  return <span className="text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={m}>{label}</span>;
 }
 
 function SceneHdr({ title, sub, btn }: { title:string; sub:string; btn:string }) {
@@ -201,6 +214,7 @@ function TypingIndicator({ role }: { role:"ai"|"user" }) {
 }
 
 function SceneConversation() {
+  const { t } = useI18n();
   const [revealed, setRevealed] = useState(0);
   const [typingRole, setTypingRole] = useState<"ai"|"user"|null>(null);
 
@@ -221,7 +235,7 @@ function SceneConversation() {
         <div className="w-px h-4 bg-[#E5E7EB]" />
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-[11px] text-[#6B7280] font-medium">AI Assistant · Online</span>
+          <span className="text-[11px] text-[#6B7280] font-medium">{t("landing.tour.scenes.conversation.assistantOnline")}</span>
         </div>
         <div className="ml-auto flex gap-1">
           {["IG","WA","Web"].map(l=>(
@@ -246,7 +260,7 @@ function SceneConversation() {
               style={msg.role==="user"
                 ? { background:"var(--vela-gradient)", color:"white", borderBottomRightRadius:4 }
                 : { background:"white", color:"#374151", border:"1px solid #E5E7EB", borderBottomLeftRadius:4 }}
-            >{msg.text}</div>
+            >{t(`landing.tour.scenes.conversation.messages.${idx}`)}</div>
             {msg.role==="user" && (
               <div className="mt-0.5 shrink-0"><CustomerAvatar sz={28} /></div>
             )}
@@ -257,7 +271,7 @@ function SceneConversation() {
 
       {/* Input bar */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[#F1F5F9] bg-white shrink-0">
-        <div className="flex-1 h-8 rounded-full flex items-center px-4 text-xs text-[#9CA3AF]" style={{ background:"#F8FAFC", border:"1px solid #E5E7EB" }}>Message...</div>
+        <div className="flex-1 h-8 rounded-full flex items-center px-4 text-xs text-[#9CA3AF]" style={{ background:"#F8FAFC", border:"1px solid #E5E7EB" }}>{t("landing.tour.scenes.conversation.messagePlaceholder")}</div>
         <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background:"var(--vela-gradient)" }}>
           <svg width="12" height="12" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5h10M7.5 2.5l4 4-4 4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
@@ -315,6 +329,8 @@ function pctPosition(el: HTMLElement, stage: HTMLElement) {
    9 zoom back out to the full table, now showing the new time
 ═══════════════════════════════════════════════════════════════ */
 function SceneAppointments() {
+  const { t, locale } = useI18n();
+  const isRTL = locale === "ar";
   const targetIdx = 4; // Khaled Ibrahim, Cavity Filling, starts Pending
   const [step, setStep] = useState<number>(APPT_STEP.PAUSE);
 
@@ -375,11 +391,19 @@ function SceneAppointments() {
 
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
-      <SceneHdr title="Appointments" sub="Today - Jul 21, 2026" btn="+ New Appointment" />
+      <SceneHdr
+        title={t("landing.tour.scenes.appointments.title")}
+        sub={`${t("landing.tour.scenes.appointments.today")} - Jul 21, 2026`}
+        btn={t("landing.tour.scenes.appointments.newAppointmentBtn")}
+      />
 
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-2 px-4 mb-2 shrink-0">
-        {[{val:"10",label:"Today"},{val:"6",label:"Confirmed"},{val:"3",label:"Pending"}].map(({val,label})=>(
+        {[
+          {val:"10",label:t("landing.tour.scenes.appointments.today")},
+          {val:"6",label:t("landing.tour.status.confirmed")},
+          {val:"3",label:t("landing.tour.status.pending")},
+        ].map(({val,label})=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-3 text-center bg-white">
             <p className="text-xl font-black text-[#111111] leading-none">{val}</p>
             <p className="text-[10px] text-[#9CA3AF] mt-1">{label}</p>
@@ -389,7 +413,12 @@ function SceneAppointments() {
 
       {/* Tabs */}
       <div className="flex items-center gap-4 px-4 mb-1 shrink-0">
-        {[{l:"All",n:10,a:true},{l:"Confirmed",n:6},{l:"Pending",n:3},{l:"Cancelled",n:1}].map(({l,n,a})=>(
+        {[
+          {l:t("landing.tour.scenes.appointments.filterAll"),n:10,a:true},
+          {l:t("landing.tour.status.confirmed"),n:6},
+          {l:t("landing.tour.status.pending"),n:3},
+          {l:t("landing.tour.status.cancelled"),n:1},
+        ].map(({l,n,a})=>(
           <button key={l} className={`text-[11px] font-semibold pb-1.5 flex items-center gap-1 border-b-2 ${a?"text-[#ed5426] border-[#ed5426]":"text-[#6B7280] border-transparent"}`}>
             {l}<span className={`text-[10px] ${a?"text-[#ed5426]":"text-[#9CA3AF]"}`}>{n}</span>
           </button>
@@ -422,8 +451,14 @@ function SceneAppointments() {
             </colgroup>
             <thead>
               <tr className="border-b border-[#F3F4F6]">
-                {["NAME","SERVICE","TIME","CH","STATUS"].map(h=>(
-                  <th key={h} className="text-left text-[9px] font-semibold text-[#9CA3AF] px-2 py-2 uppercase tracking-wider">{h}</th>
+                {[
+                  t("landing.tour.scenes.appointments.colName"),
+                  t("landing.tour.scenes.appointments.colService"),
+                  t("landing.tour.scenes.appointments.colTime"),
+                  t("landing.tour.scenes.appointments.colChannel"),
+                  t("landing.tour.scenes.appointments.colStatus"),
+                ].map(h=>(
+                  <th key={h} className="text-start text-[9px] font-semibold text-[#9CA3AF] px-2 py-2 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -528,7 +563,15 @@ function SceneAppointments() {
               The confirmed view gets a touch more width so the single closing
               message has real breathing room instead of competing with a
               second floating badge for the same small space. */}
-          <div className="absolute z-30" style={{ top:iconPos.top, left:iconPos.left, width:panelView==="confirmed"?132:100, transform:"translate(-88%, calc(-100% - 8px))" }}>
+          {/* Anchored via a measured physical `left` percentage (real DOM
+              position, direction-agnostic) plus a translateX that opens the
+              popup away from whichever stage edge the icon actually lands
+              near. In LTR the icon (last/STATUS column) sits near the right
+              edge, so the popup opens leftward (-88%); in RTL the table
+              mirrors and that same icon lands near the LEFT edge instead, so
+              the offset flips to open rightward (-12%) -- otherwise the
+              popup would render mostly off-stage past the left edge. */}
+          <div className="absolute z-30" style={{ top:iconPos.top, left:iconPos.left, width:panelView==="confirmed"?132:100, transform:`translate(${isRTL ? "-12%" : "-88%"}, calc(-100% - 8px))` }}>
             <AnimatePresence>
               {panelView !== "hidden" && (
               <motion.div
@@ -542,10 +585,10 @@ function SceneAppointments() {
                 <AnimatePresence mode="wait">
                   {panelView === "menu" && (
                     <motion.div key="view-menu" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.2}} className="flex flex-col gap-0.5">
-                      <p className="text-[8px] font-semibold text-[#9CA3AF] px-0.5 mb-0.5">Quick actions</p>
-                      <button ref={rescheduleBtnRef} className="text-[9px] font-bold text-white rounded-lg px-1.5 py-1 leading-none" style={{ background:"var(--vela-gradient)" }}>Reschedule</button>
-                      <button className="text-[9px] font-medium text-[#374151] rounded-lg px-1.5 py-1 leading-none border border-[#E5E7EB]">Message</button>
-                      <button className="text-[9px] font-medium text-[#DC2626] rounded-lg px-1.5 py-1 leading-none border border-[#FECACA]">Cancel</button>
+                      <p className="text-[8px] font-semibold text-[#9CA3AF] px-0.5 mb-0.5">{t("landing.tour.scenes.appointments.quickActions")}</p>
+                      <button ref={rescheduleBtnRef} className="text-[9px] font-bold text-white rounded-lg px-1.5 py-1 leading-none" style={{ background:"var(--vela-gradient)" }}>{t("landing.tour.scenes.appointments.reschedule")}</button>
+                      <button className="text-[9px] font-medium text-[#374151] rounded-lg px-1.5 py-1 leading-none border border-[#E5E7EB]">{t("landing.tour.scenes.appointments.message")}</button>
+                      <button className="text-[9px] font-medium text-[#DC2626] rounded-lg px-1.5 py-1 leading-none border border-[#FECACA]">{t("landing.tour.scenes.appointments.cancel")}</button>
                     </motion.div>
                   )}
                   {panelView === "reschedule" && (
@@ -572,7 +615,7 @@ function SceneAppointments() {
                       <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                         <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1.5 5.5l2 2 5-4.5" stroke="#16A34A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      <p className="text-[9px] font-bold text-[#16A34A] leading-snug">Appointment updated</p>
+                      <p className="text-[9px] font-bold text-[#16A34A] leading-snug">{t("landing.tour.scenes.appointments.appointmentUpdated")}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -647,6 +690,7 @@ function CountUp({ target, format, duration=1200, delay=0 }: { target:number; fo
    6 brief pause on the now-all-connected state before the scene ends
 ═══════════════════════════════════════════════════════════════ */
 function SceneChannels() {
+  const { t } = useI18n();
   const targetIdx = 1; // WhatsApp Business, starts Not connected
   const [step, setStep] = useState<number>(CHAN_STEP.PAUSE);
 
@@ -701,14 +745,20 @@ function SceneChannels() {
     {
       iconBg:"linear-gradient(45deg,#833AB4,#FD1D1D,#F77737)",
       icon:<svg viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>,
-      name:"Instagram", handle:"@ahmeddentalclinic",
-      stats:[{val:"312",label:"DMs handled"},{val:"< 1 min",label:"Avg response"}],
+      name:t("landing.tour.scenes.channels.channelNames.instagram"), handle:"@ahmeddentalclinic",
+      stats:[
+        {val:"312",label:t("landing.tour.scenes.channels.statLabels.dmsHandled")},
+        {val:"< 1 min",label:t("landing.tour.scenes.channels.statLabels.avgResponse")},
+      ],
     },
     {
       iconBg:"#25D366",
       icon:<svg viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>,
-      name:"WhatsApp Business", handle:"+971 4 123 4567",
-      stats:[{val:"535",label:"Messages handled"},{val:"47",label:"Bookings via WA"}],
+      name:t("landing.tour.scenes.channels.channelNames.whatsapp"), handle:"+971 4 123 4567",
+      stats:[
+        {val:"535",label:t("landing.tour.scenes.channels.statLabels.messagesHandled")},
+        {val:"47",label:t("landing.tour.scenes.channels.statLabels.bookingsViaWA")},
+      ],
     },
     {
       iconBg:"#6366F1",
@@ -716,14 +766,21 @@ function SceneChannels() {
       // used everywhere else (dashboard Channels page, /demo/channels) --
       // swapped to the exact same outlined chat-bubble path for consistency.
       icon:<svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" width="18" height="18"><path d="M21 10.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-      name:"Website Chat", handle:"ahmeddentalclinic.ae",
-      stats:[{val:"1,240",label:"Website visitors"},{val:"8.3%",label:"Chat conversions"}],
+      name:t("landing.tour.scenes.channels.channelNames.website"), handle:"ahmeddentalclinic.ae",
+      stats:[
+        {val:"1,240",label:t("landing.tour.scenes.channels.statLabels.websiteVisitors")},
+        {val:"8.3%",label:t("landing.tour.scenes.channels.statLabels.chatConversions")},
+      ],
     },
   ];
 
   return (
     <div className="flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
-      <SceneHdr title="Channels" sub="Connected messaging channels" btn="+ Connect" />
+      <SceneHdr
+        title={t("landing.tour.scenes.channels.title")}
+        sub={t("landing.tour.scenes.channels.sub")}
+        btn={t("landing.tour.scenes.channels.connectBtn")}
+      />
 
       <div className="mx-4 mb-2 px-3 py-2 rounded-xl flex items-center gap-2 shrink-0" style={{ background: allConnected?"#F0FDF4":"#FFFBEB", border: allConnected?"1px solid #BBF7D0":"1px solid #FDE68A" }}>
         {allConnected ? (
@@ -733,8 +790,8 @@ function SceneChannels() {
         )}
         <span className="text-[10px] font-medium" style={{ color: allConnected?"#15803D":"#B45309" }}>
           {allConnected
-            ? "All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website."
-            : "2 of 3 channels connected. Connect WhatsApp Business to go fully live."}
+            ? t("landing.tour.scenes.channels.allConnectedMsg")
+            : t("landing.tour.scenes.channels.partialConnectedMsg")}
         </span>
       </div>
 
@@ -768,23 +825,23 @@ function SceneChannels() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[13px] font-bold text-[#111111]">{ch.name}</span>
                       {connected
-                        ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>Connected</span>
-                        : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F3F4F6", color:"#6B7280" }}>Not connected</span>}
+                        ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F0FDF4", color:"#16A34A" }}>{t("landing.tour.status.connected")}</span>
+                        : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:"#F3F4F6", color:"#6B7280" }}>{t("landing.tour.status.notConnected")}</span>}
                     </div>
                     {/* While the target card is not yet connected, its real number has not
                         been entered yet -- showing it here would leak the connect flow's
                         own reveal. It only appears once actually connected. */}
-                    <p className="text-[10px] text-[#9CA3AF] truncate">{isTarget && !connected ? "No number connected yet" : ch.handle}</p>
+                    <p className="text-[10px] text-[#9CA3AF] truncate">{isTarget && !connected ? t("landing.tour.scenes.channels.noNumberYet") : ch.handle}</p>
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0 relative" ref={isTarget ? connectStageRef : undefined}>
                   {connected ? (
                     <>
-                      <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">Manage</button>
-                      <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">Disconnect</button>
+                      <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#E5E7EB] text-[#374151]">{t("landing.tour.scenes.channels.manage")}</button>
+                      <button className="text-[10px] font-medium px-2 py-1 rounded-lg border border-[#FECACA] text-[#DC2626]">{t("landing.tour.scenes.channels.disconnect")}</button>
                     </>
                   ) : (
-                    <button ref={isTarget ? connectBtnRef : undefined} className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background:"var(--vela-gradient)" }}>Connect</button>
+                    <button ref={isTarget ? connectBtnRef : undefined} className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white" style={{ background:"var(--vela-gradient)" }}>{t("landing.tour.scenes.channels.connect")}</button>
                   )}
 
                   {isTarget && (
@@ -859,7 +916,7 @@ function SceneChannels() {
                               <span className="text-[8px] font-mono font-semibold text-[#111111]">{WHATSAPP_NUMBER.slice(0, phoneReveal)}</span>
                               <span className="text-[8px] font-mono text-[#25D366]">|</span>
                             </div>
-                            <p className="text-[10px] font-semibold text-[#374151]">Enter number</p>
+                            <p className="text-[10px] font-semibold text-[#374151]">{t("landing.tour.scenes.channels.enterNumber")}</p>
                           </motion.div>
                         )}
                         {step===CHAN_STEP.FLOW_AUTHORIZE && (
@@ -867,7 +924,7 @@ function SceneChannels() {
                             <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:"#FFF7ED" }}>
                               <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="3" y="6" width="8" height="6" rx="1.3" stroke="#ed5426" strokeWidth="1.3"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#ed5426" strokeWidth="1.3"/></svg>
                             </div>
-                            <p className="text-[10px] font-semibold text-[#374151]">Authorize</p>
+                            <p className="text-[10px] font-semibold text-[#374151]">{t("landing.tour.scenes.channels.authorize")}</p>
                           </motion.div>
                         )}
                         {step===CHAN_STEP.FLOW_CONNECTED && (
@@ -875,7 +932,7 @@ function SceneChannels() {
                             <div className="w-7 h-7 rounded-full flex items-center justify-center bg-green-100">
                               <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="#16A34A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             </div>
-                            <p className="text-[10px] font-bold text-[#16A34A]">Connected!</p>
+                            <p className="text-[10px] font-bold text-[#16A34A]">{t("landing.tour.scenes.channels.connectedExclaim")}</p>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -939,6 +996,7 @@ const AGENT_STEP = {
    4 hold on the transcript, then transition back to the Recent Calls list
 ═══════════════════════════════════════════════════════════════ */
 function SceneAgent() {
+  const { t } = useI18n();
   const maxBar = Math.max(...BAR_VALS);
   const barH = 78, barW = 28, barGap = 36;
   const r = 34;
@@ -976,15 +1034,19 @@ function SceneAgent() {
 
   return (
     <div ref={stageRef} className="relative flex flex-col h-full" style={{ background:"linear-gradient(135deg,white 62%,rgba(237,84,38,0.07) 100%)" }}>
-      <SceneHdr title="AI Phone Agent" sub="Your 24/7 voice AI assistant" btn="Test Voice Agent" />
+      <SceneHdr
+        title={t("landing.tour.scenes.agent.title")}
+        sub={t("landing.tour.scenes.agent.sub")}
+        btn={t("landing.tour.scenes.agent.testVoiceBtn")}
+      />
 
       {/* Stat cards -- each number counts up from 0, staggered ~180ms apart */}
       <div className="grid grid-cols-4 gap-2 px-4 mb-2 shrink-0">
         {[
-          { target:847,  format:fmtInt,       label:"Total Calls"    },
-          { target:94,   format:fmtPctWhole,  label:"Resolved by AI" },
-          { target:154,  format:fmtDuration,  label:"Avg Duration"   },
-          { target:132,  format:fmtInt,       label:"This Week", sub:"+12%" },
+          { target:847,  format:fmtInt,       label:t("landing.tour.scenes.agent.statTotalCalls")    },
+          { target:94,   format:fmtPctWhole,  label:t("landing.tour.scenes.agent.statResolvedByAI") },
+          { target:154,  format:fmtDuration,  label:t("landing.tour.scenes.agent.statAvgDuration")   },
+          { target:132,  format:fmtInt,       label:t("landing.tour.scenes.agent.statThisWeek"), sub:"+12%" },
         ].map(({target,format,label,sub}, i)=>(
           <div key={label} className="border border-[#E5E7EB] rounded-xl p-2 bg-white">
             <p className="text-base font-black text-[#111111] leading-none">
@@ -999,7 +1061,7 @@ function SceneAgent() {
       {/* Charts */}
       <div className="flex gap-2 px-4 mb-2 shrink-0">
         <div className="flex-1 bg-white border border-[#E5E7EB] rounded-xl p-2.5">
-          <p className="text-[10px] font-semibold text-[#374151] mb-1.5">Calls This Week</p>
+          <p className="text-[10px] font-semibold text-[#374151] mb-1.5">{t("landing.tour.scenes.agent.callsThisWeekChart")}</p>
           <svg width="100%" height={barH+16} viewBox={`0 0 ${BAR_DAYS.length*barGap} ${barH+16}`} preserveAspectRatio="none">
             <defs>
               <linearGradient id="ptBarGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1016,7 +1078,7 @@ function SceneAgent() {
                     animate={{ height:bh, y:barH-bh }}
                     transition={{ duration:0.95, delay:0.3+i*0.11, ease:"easeOut" }}
                   />
-                  <text x={i*barGap+4+barW/2} y={barH+13} textAnchor="middle" fontSize="8" fill="#9CA3AF">{BAR_DAYS[i]}</text>
+                  <text x={i*barGap+4+barW/2} y={barH+13} textAnchor="middle" fontSize="8" fill="#9CA3AF">{t(`landing.tour.scenes.agent.barDays.${i}`)}</text>
                 </g>
               );
             })}
@@ -1039,8 +1101,8 @@ function SceneAgent() {
               <CountUp target={94} format={fmtPctWhole} duration={1800} delay={450} />
             </text>
           </svg>
-          <p className="text-[9px] font-semibold text-[#374151] text-center leading-tight mt-0.5">AI Resolution</p>
-          <p className="text-[8px] text-[#9CA3AF] text-center">6% escalated</p>
+          <p className="text-[9px] font-semibold text-[#374151] text-center leading-tight mt-0.5">{t("landing.tour.scenes.agent.aiResolution")}</p>
+          <p className="text-[8px] text-[#9CA3AF] text-center">{t("landing.tour.scenes.agent.escalatedNote")}</p>
         </div>
       </div>
 
@@ -1048,7 +1110,7 @@ function SceneAgent() {
           Row 0 is clickable in spirit (simulated cursor drives the demo, not
           real pointer events) and gets a highlight tint + ref for the zoom. */}
       <div className="flex-1 overflow-hidden px-4 pb-2">
-        <p className="text-[10px] font-bold text-[#374151] mb-1.5">Recent Calls</p>
+        <p className="text-[10px] font-bold text-[#374151] mb-1.5">{t("landing.tour.scenes.agent.recentCalls")}</p>
         <div className="flex flex-col gap-1.5">
           {CALLS.map((call,ci)=>(
             <motion.div
@@ -1073,9 +1135,9 @@ function SceneAgent() {
                     <span className="text-[11px] font-semibold text-[#111111]">{call.name}</span>
                     <CallPill s={call.status} />
                   </div>
-                  {ci===0&&<p className="text-[10px] text-[#9CA3AF] leading-tight line-clamp-2">{call.summary}</p>}
+                  {ci===0&&<p className="text-[10px] text-[#9CA3AF] leading-tight line-clamp-2">{t("landing.tour.scenes.agent.callSummaries.0")}</p>}
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p className="text-[10px] font-bold text-[#374151]">{call.dur}</p>
                   <p className="text-[9px] text-[#9CA3AF]">{call.time}</p>
                 </div>
@@ -1127,7 +1189,7 @@ function SceneAgent() {
                   <span className="text-[12px] font-bold text-[#111111]">{CALLS[0].name}</span>
                   <CallPill s={CALLS[0].status} />
                 </div>
-                <p className="text-[9px] text-[#9CA3AF]">Call transcript - {CALLS[0].dur}</p>
+                <p className="text-[9px] text-[#9CA3AF]">{t("landing.tour.scenes.agent.callTranscriptPrefix")} {CALLS[0].dur}</p>
               </div>
             </div>
             <div className="flex-1 overflow-hidden px-4 py-2.5 flex flex-col gap-1.5">
@@ -1142,7 +1204,7 @@ function SceneAgent() {
                   <span className="text-[9px] font-bold shrink-0" style={{ color: line.who==="ai" ? "#ed5426" : "#374151", width:34 }}>
                     {line.who==="ai" ? "AI:" : "Sara:"}
                   </span>
-                  <span className="text-[10px] text-[#374151] leading-snug">{line.text}</span>
+                  <span className="text-[10px] text-[#374151] leading-snug">{t(`landing.tour.scenes.agent.transcript.${li}`)}</span>
                 </motion.div>
               ))}
             </div>
@@ -1156,73 +1218,37 @@ function SceneAgent() {
 /* ─── Tour panels: tab row + left content panel per scene ──────
    color is used only for the panel's icon circle + checklist tint
    (kept within Vela's orange/rose palette, varied per scene) --
-   the tab row itself keeps the site's single-accent active style. */
+   the tab row itself keeps the site's single-accent active style.
+   `key` maps to landing.tour.tabs.<key> / landing.tour.panels.<key>.* --
+   text itself is fully translated, no hardcoded English left here. */
 const TOUR_PANELS = [
   {
     sceneIdx: CONV,
-    tabLabel: "Conversation",
+    key: "conversation",
     color: "#ed5426",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 10.5a1.5 1.5 0 01-1.5 1.5H5.25L2.5 15V4a1.5 1.5 0 011.5-1.5h10A1.5 1.5 0 0115 4v6.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>,
-    headline: "Never miss a conversation",
-    subtext: "Your AI replies across every channel, day or night.",
-    checklist: [
-      "AI replies 24/7",
-      "Instagram, WhatsApp & Website",
-      "Collects name & contact details",
-      "Books appointments in-chat",
-      "Answers FAQs instantly",
-      "Escalates when needed",
-    ],
   },
   {
     sceneIdx: APPT,
-    tabLabel: "Appointments",
+    key: "appointments",
     color: "#F97316",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/><path d="M2.5 7h13M6 2v3M12 2v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M6.5 10.5l1.5 1.5 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    headline: "Bookings that manage themselves",
-    subtext: "Every appointment tracked, confirmed, and easy to change.",
-    checklist: [
-      "Auto-synced booking calendar",
-      "Confirmed, Pending & Cancelled views",
-      "One-tap reschedule",
-      "Message customers directly",
-      "Cancel with one click",
-      "Every channel in one table",
-    ],
   },
   {
     sceneIdx: CHAN,
-    tabLabel: "Channels",
+    key: "channels",
     color: "#FF6B35",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="4" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="13.5" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="14" cy="9" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M5.7 5.4L12.3 8.1M5.7 12.6L12.3 9.9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>,
-    headline: "One AI, every channel",
-    subtext: "Connect Instagram, WhatsApp, and your website in minutes.",
-    checklist: [
-      "Instagram DMs",
-      "WhatsApp Business",
-      "Website live chat",
-      "One-click connect flow",
-      "Unified inbox, every channel",
-      "Per-channel performance stats",
-    ],
   },
   {
     sceneIdx: AGENT,
-    tabLabel: "AI Agent",
+    key: "agent",
     color: "#9e3819",
     icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5.5A2.5 2.5 0 015.5 3h.5a1 1 0 01.95.684l.9 2.7a1 1 0 01-.273 1.054l-.9.9A9 9 0 009.66 11.32l.9-.9a1 1 0 011.054-.273l2.7.9A1 1 0 0115 12.01V12.5A2.5 2.5 0 0112.5 15C7.253 15 3 10.747 3 5.5z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    headline: "A voice agent that never misses a call",
-    subtext: "Answers every inbound call and books the appointment.",
-    checklist: [
-      "Answers inbound calls 24/7",
-      "Multilingual conversations",
-      "Books appointments by phone",
-      "Full call transcripts",
-      "Call resolution tracking",
-      "Transfers complex calls",
-    ],
   },
 ] as const;
+
+const CHECKLIST_IDX = [0, 1, 2, 3, 4, 5] as const; // every panel has exactly 6 checklist items
 
 /* ─── Smooth 3D dissolve transition (shallow angle + fade + scale) */
 const sceneVariants = {
@@ -1237,6 +1263,7 @@ const sceneVariants = {
    ProductTourDemo. Main export
 ═══════════════════════════════════════════════════════════════ */
 export default function ProductTourDemo() {
+  const { t } = useI18n();
   const [scene, setScene] = useState(0);
   // false = hands-off autoplay (cycles all scenes forward, default).
   // true  = manual mode, entered by clicking a tab: the active scene loops
@@ -1281,13 +1308,10 @@ export default function ProductTourDemo() {
   }
 
   return (
-    // dir="ltr" pinned deliberately (polish pass #2 scope note): this
-    // interactive tour's internal copy/demo conversations are not yet
-    // routed through the i18n system (large surface area -- see report),
-    // so it's pinned LTR to avoid a half-translated/mismatched layout
-    // when the site is set to Arabic, rather than silently rendering
-    // broken-looking RTL-mirrored English content.
-    <section dir="ltr" className="py-10 md:py-14 bg-white">
+    // Polish pass #4: fully translated + RTL-correct, dir="ltr" pin from the
+    // previous session removed. Every string in this section (and its 4
+    // scene mocks) now routes through the i18n system.
+    <section className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
         {/* Section header, FIX 5+6 applied */}
@@ -1296,11 +1320,11 @@ export default function ProductTourDemo() {
             className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight"
             style={{ textWrap:"balance" } as React.CSSProperties}
           >
-            Watch Vela handle it all{" "}
-            <span className="vela-gradient-text">and keep it organized for you.</span>
+            {t("landing.tour.headline1")}{" "}
+            <span className="vela-gradient-text">{t("landing.tour.headlineAccent")}</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">
-            Four core screens. Click any card to explore or let the tour run.
+            {t("landing.tour.subtext")}
           </p>
         </div>
 
@@ -1323,7 +1347,7 @@ export default function ProductTourDemo() {
                 const active = scene === p.sceneIdx;
                 return (
                   <button
-                    key={p.tabLabel}
+                    key={p.key}
                     onClick={() => handleTabClick(p.sceneIdx)}
                     className="shrink-0 whitespace-nowrap px-3.5 py-2.5 lg:py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
                     style={{
@@ -1332,7 +1356,7 @@ export default function ProductTourDemo() {
                       color:      active ? "var(--vp-color)" : "#6B7280",
                     }}
                   >
-                    {p.tabLabel}
+                    {t(`landing.tour.tabs.${p.key}`)}
                   </button>
                 );
               })}
@@ -1358,12 +1382,12 @@ export default function ProductTourDemo() {
                       style={{ background:p.color }}
                     >{p.icon}</div>
                     <h3 className="font-display font-extrabold text-[24px] md:text-[28px] text-[#111111] leading-tight tracking-tight">
-                      {p.headline}
+                      {t(`landing.tour.panels.${p.key}.headline`)}
                     </h3>
-                    <p className="text-[15px] text-[#6B7280] mt-2 leading-relaxed">{p.subtext}</p>
+                    <p className="text-[15px] text-[#6B7280] mt-2 leading-relaxed">{t(`landing.tour.panels.${p.key}.subtext`)}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 mt-5">
-                      {p.checklist.map(item => (
-                        <div key={item} className="flex items-center gap-2">
+                      {CHECKLIST_IDX.map(idx => (
+                        <div key={idx} className="flex items-center gap-2">
                           <span
                             className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
                             style={{ background:`${p.color}1A` }}
@@ -1372,7 +1396,7 @@ export default function ProductTourDemo() {
                               <path d="M1.5 4.5l2 2 4-4" stroke={p.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                           </span>
-                          <span className="text-[13px] text-[#374151] font-medium leading-snug">{item}</span>
+                          <span className="text-[13px] text-[#374151] font-medium leading-snug">{t(`landing.tour.panels.${p.key}.checklist.${idx}`)}</span>
                         </div>
                       ))}
                     </div>
@@ -1385,8 +1409,8 @@ export default function ProductTourDemo() {
               href="/auth/signup"
               className="btn-primary text-sm px-6 py-2.5 justify-center inline-flex items-center gap-2 mt-7 self-start"
             >
-              Get Started
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              {t("landing.nav.getStarted")}
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100">
                 <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
@@ -1401,8 +1425,12 @@ export default function ProductTourDemo() {
                 boxShadow:"0 16px 56px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)",
               }}
             >
-              {/* Window chrome */}
-              <div className="h-9 flex items-center justify-between px-4 border-b border-[#F1F5F9] shrink-0" style={{ background:"#FAFAFA" }}>
+              {/* Window chrome -- pinned dir="ltr": OS-style traffic-light
+                  window controls never mirror with document/app direction
+                  on any real platform, so this bar stays physically LTR
+                  regardless of site locale while the actual app content
+                  below it (each scene) mirrors normally. */}
+              <div dir="ltr" className="h-9 flex items-center justify-between px-4 border-b border-[#F1F5F9] shrink-0" style={{ background:"#FAFAFA" }}>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-[#F87171]"/>
                   <div className="w-3 h-3 rounded-full bg-[#FBBF24]"/>

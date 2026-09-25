@@ -509,6 +509,174 @@
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
     },
+    "tour": {
+      "headline1": "Watch Vela handle it all",
+      "headlineAccent": "and keep it organized for you.",
+      "subtext": "Four core screens. Click any card to explore or let the tour run.",
+      "tabs": {
+        "conversation": "Conversation",
+        "appointments": "Appointments",
+        "channels": "Channels",
+        "agent": "AI Agent"
+      },
+      "panels": {
+        "conversation": {
+          "headline": "Never miss a conversation",
+          "subtext": "Your AI replies across every channel, day or night.",
+          "checklist": [
+            "AI replies 24/7",
+            "Instagram, WhatsApp & Website",
+            "Collects name & contact details",
+            "Books appointments in-chat",
+            "Answers FAQs instantly",
+            "Escalates when needed"
+          ]
+        },
+        "appointments": {
+          "headline": "Bookings that manage themselves",
+          "subtext": "Every appointment tracked, confirmed, and easy to change.",
+          "checklist": [
+            "Auto-synced booking calendar",
+            "Confirmed, Pending & Cancelled views",
+            "One-tap reschedule",
+            "Message customers directly",
+            "Cancel with one click",
+            "Every channel in one table"
+          ]
+        },
+        "channels": {
+          "headline": "One AI, every channel",
+          "subtext": "Connect Instagram, WhatsApp, and your website in minutes.",
+          "checklist": [
+            "Instagram DMs",
+            "WhatsApp Business",
+            "Website live chat",
+            "One-click connect flow",
+            "Unified inbox, every channel",
+            "Per-channel performance stats"
+          ]
+        },
+        "agent": {
+          "headline": "A voice agent that never misses a call",
+          "subtext": "Answers every inbound call and books the appointment.",
+          "checklist": [
+            "Answers inbound calls 24/7",
+            "Multilingual conversations",
+            "Books appointments by phone",
+            "Full call transcripts",
+            "Call resolution tracking",
+            "Transfers complex calls"
+          ]
+        }
+      },
+      "status": {
+        "confirmed": "Confirmed",
+        "pending": "Pending",
+        "cancelled": "Cancelled",
+        "connected": "Connected",
+        "notConnected": "Not connected"
+      },
+      "scenes": {
+        "conversation": {
+          "assistantOnline": "AI Assistant · Online",
+          "messagePlaceholder": "Message...",
+          "messages": [
+            "Hi! I'd like to book a dental cleaning, please",
+            "Of course! Could I get your name?",
+            "Sara Khalid",
+            "Thanks, Sara! What's the best number to reach you?",
+            "055 123 4567",
+            "Got it. What day and time work best for you?",
+            "Is 2 PM next Tuesday free?",
+            "Let me check...",
+            "Yes, 2 PM Tuesday works!",
+            "You're all set! See you Tuesday."
+          ]
+        },
+        "appointments": {
+          "title": "Appointments",
+          "today": "Today",
+          "newAppointmentBtn": "+ New Appointment",
+          "colName": "NAME",
+          "colService": "SERVICE",
+          "colTime": "TIME",
+          "colChannel": "CH",
+          "colStatus": "STATUS",
+          "filterAll": "All",
+          "quickActions": "Quick actions",
+          "reschedule": "Reschedule",
+          "message": "Message",
+          "cancel": "Cancel",
+          "appointmentUpdated": "Appointment updated"
+        },
+        "channels": {
+          "title": "Channels",
+          "sub": "Connected messaging channels",
+          "connectBtn": "+ Connect",
+          "allConnectedMsg": "All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website.",
+          "partialConnectedMsg": "2 of 3 channels connected. Connect WhatsApp Business to go fully live.",
+          "noNumberYet": "No number connected yet",
+          "manage": "Manage",
+          "disconnect": "Disconnect",
+          "connect": "Connect",
+          "enterNumber": "Enter number",
+          "authorize": "Authorize",
+          "connectedExclaim": "Connected!",
+          "channelNames": {
+            "instagram": "Instagram",
+            "whatsapp": "WhatsApp Business",
+            "website": "Website Chat"
+          },
+          "statLabels": {
+            "dmsHandled": "DMs handled",
+            "avgResponse": "Avg response",
+            "messagesHandled": "Messages handled",
+            "bookingsViaWA": "Bookings via WA",
+            "websiteVisitors": "Website visitors",
+            "chatConversions": "Chat conversions"
+          }
+        },
+        "agent": {
+          "title": "AI Phone Agent",
+          "sub": "Your 24/7 voice AI assistant",
+          "testVoiceBtn": "Test Voice Agent",
+          "statTotalCalls": "Total Calls",
+          "statResolvedByAI": "Resolved by AI",
+          "statAvgDuration": "Avg Duration",
+          "statThisWeek": "This Week",
+          "callsThisWeekChart": "Calls This Week",
+          "barDays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          "aiResolution": "AI Resolution",
+          "escalatedNote": "6% escalated",
+          "recentCalls": "Recent Calls",
+          "callTranscriptPrefix": "Call transcript -",
+          "callStatus": {
+            "booked": "Booked",
+            "transferred": "Transferred",
+            "resolved": "Resolved"
+          },
+          "callSummaries": [
+            "Caller booked a dental cleaning for Tuesday at 11:00 AM. Confirmed name and contact details.",
+            "Caller asked about whitening prices and payment plan options. Transferred to billing team.",
+            "Caller booked a cleaning and asked about parking and procedure comfort."
+          ],
+          "transcript": [
+            "Thank you for calling Ahmed Dental Clinic. How can I help today?",
+            "Hi, I'd like to book a cleaning appointment.",
+            "Sure. Can I get your full name, please?",
+            "Sara Khalid.",
+            "Thanks, Sara. What day works best for you?",
+            "Do you have anything on Tuesday?",
+            "Yes, Tuesday at 11:00 AM is open. Does that work?",
+            "That works great.",
+            "Perfect. Is this the best number to reach you?",
+            "Yes, it is.",
+            "You're booked: cleaning on Tuesday at 11:00 AM. A confirmation text is on its way.",
+            "Great, thank you!"
+          ]
+        }
+      }
+    },
     "dashboardSection": {
       "headline": "Everything you need to run your business, even while you sleep.",
       "subtext": "We handle every call, message, and lead, so you can focus on the business, not the front desk.",
