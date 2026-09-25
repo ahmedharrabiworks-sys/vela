@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import CtaButton from "@/components/landing/CtaButton";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
 /* Analytics dropped (MVP scope-down, Phase 2) -- see src/config/features.ts
@@ -1407,15 +1407,7 @@ export default function ProductTourDemo() {
               })()}
             </AnimatePresence>
 
-            <Link
-              href="/auth/signup"
-              className="btn-primary text-sm px-6 py-2.5 justify-center inline-flex items-center gap-2 mt-7 self-start"
-            >
-              {t("landing.nav.getStarted")}
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100">
-                <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
+            <CtaButton size="md" className="mt-7 self-start" />
           </div>
 
           {/* Demo window */}

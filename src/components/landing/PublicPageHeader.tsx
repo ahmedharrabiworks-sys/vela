@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
-import { useI18n } from "@/lib/i18n";
+import CtaButton from "@/components/landing/CtaButton";
 
 export default function PublicPageHeader() {
-  const { t } = useI18n();
   return (
     <div className="w-full max-w-7xl mx-auto px-5 md:px-6 pt-8 pb-3 flex items-center justify-between">
       <Link href="/" aria-label="Vela home">
@@ -18,9 +17,7 @@ export default function PublicPageHeader() {
         >
           Log in
         </Link>
-        <Link href="/auth/signup" className="btn-primary text-sm px-6 py-2.5 justify-center">
-          {t("landing.nav.getStarted")}
-        </Link>
+        <CtaButton size="sm" />
       </div>
     </div>
   );

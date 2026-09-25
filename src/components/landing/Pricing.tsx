@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import CtaButton from "@/components/landing/CtaButton";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -44,16 +45,8 @@ export default function Pricing() {
     <section id="pricing" className="relative py-10 md:py-14 bg-white overflow-hidden">
       <AmbientGlow />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
-        {/* Header -- currency selector pinned to the top end-corner of this
-            block on desktop (own corner, not centered/floating below the
-            toggle) -- `end-0` auto-mirrors to the left in RTL; stays
-            centered underneath on mobile where a corner position would
-            collide with the headline. */}
+        {/* Header */}
         <div className="relative text-center mb-8">
-          <div className="hidden sm:block sm:absolute sm:top-0 sm:end-0">
-            <CurrencyToggle value={currency} onChange={setCurrency} />
-          </div>
-
           <h2 className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight">
             {t("landing.pricing.headline1")}{" "}
             <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
@@ -80,10 +73,6 @@ export default function Pricing() {
               </span>
             </button>
           </div>
-
-          <div className="sm:hidden mt-4 flex justify-center">
-            <CurrencyToggle value={currency} onChange={setCurrency} />
-          </div>
         </div>
 
         {/* See full comparison link -- moved above the cards per FIX 5 */}
@@ -99,8 +88,17 @@ export default function Pricing() {
           </Link>
         </div>
 
-        {/* Cards */}
+        {/* Cards -- currency toggle now sits in normal flow, tucked to the
+            end edge of this same 900px-wide block the cards live in (FIX
+            3), right above the Premium card, instead of floating near the
+            far edge of the much wider header container above. Real layout
+            space (not absolute-positioned), so it can't overlap the "See
+            full feature" line above it. `justify-end` auto-mirrors to the
+            start edge in RTL. */}
         <div className="relative max-w-[900px] mx-auto">
+          <div className="flex justify-center sm:justify-end mb-3">
+            <CurrencyToggle value={currency} onChange={setCurrency} />
+          </div>
           <div className="grid md:grid-cols-3 gap-3.5 md:gap-4 items-stretch" style={{ position: "relative", zIndex: 1 }}>
             {TIER_PLANS.map((plan) => {
               const price = annual ? plan.annual : plan.monthly;
@@ -179,21 +177,11 @@ export default function Pricing() {
                       ))}
                   </ul>
 
-                  <div className="flex flex-col gap-2 w-full">
-                    <Link
-                      href="/auth/signup"
-                      className={`w-full py-3 px-7 rounded-xl font-semibold text-sm transition-all duration-200 text-center ${
-                        plan.popular
-                          ? "btn-primary"
-                          : "border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                      }`}
-                    >
-                      {t(`landing.pricing.plans.${planKey}.cta`)}
-                    </Link>
-                    <p className="text-[11px] text-[#9CA3AF]">
-                      {t("landing.pricing.cancelAnytime")}
-                    </p>
-                  </div>
+                  {/* FIX 1: every tier gets the same shared gradient button
+                      now (popularity is signaled by the badge + border
+                      instead of a different button style). FIX 2: the
+                      "Cancel anytime" line below it is removed entirely. */}
+                  <CtaButton size="md" fullWidth />
                 </div>
               );
             })}

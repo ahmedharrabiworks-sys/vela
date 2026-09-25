@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import CtaButton from "@/components/landing/CtaButton";
 import { useI18n } from "@/lib/i18n";
 
 // Real markup, not an image -- see git history for the old
@@ -169,9 +169,7 @@ export default function DashboardSection() {
               </div>
 
               <div className="mt-7">
-                <Link href="/auth/signup" className="btn-primary whitespace-nowrap text-sm py-3 px-7 sm:text-base sm:py-3.5 sm:px-8 inline-flex">
-                  {t("landing.nav.getStarted")}
-                </Link>
+                <CtaButton size="md" />
               </div>
             </div>
 

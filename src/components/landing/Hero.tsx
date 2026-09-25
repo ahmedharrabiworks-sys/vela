@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
 import AmbientGlow from "@/components/landing/AmbientGlow";
 import LanguageToggle from "@/components/landing/LanguageToggle";
+import CtaButton from "@/components/landing/CtaButton";
 
 const container = {
   hidden: {},
@@ -18,20 +19,12 @@ const item = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
 };
 
-function ArrowIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="rtl:-scale-x-100">
-      <path d="M2.5 6.5h8M7 3l3.5 3.5L7 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export default function Hero() {
   const { t } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <section id="hero-section" className="relative min-h-screen flex flex-col overflow-hidden bg-white">
+    <section id="hero-section" className="relative flex flex-col overflow-hidden bg-white">
       {/* Ambient glow (design pass) -- replaces the old mouse-tracked
           CursorSpotlight with one consistent, CSS-only, auto-animated glow. */}
       <AmbientGlow />
@@ -49,9 +42,7 @@ export default function Hero() {
           >
             {t("landing.nav.login")}
           </Link>
-          <Link href="/auth/signup" className="hidden sm:inline-flex btn-primary text-sm px-6 py-2.5 justify-center">
-            {t("landing.nav.getStarted")}
-          </Link>
+          <CtaButton size="sm" className="hidden sm:inline-flex" />
 
           {/* FIX: on mobile, both Log in and Get Started were "hidden" with
               no alternative at all -- a mobile visitor had no way to log in
@@ -90,23 +81,17 @@ export default function Hero() {
             >
               {t("landing.nav.login")}
             </Link>
-            <Link
-              href="/auth/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="btn-primary text-sm px-6 py-3.5 justify-center mt-2"
-            >
-              {t("landing.nav.getStarted")}
-            </Link>
+            <CtaButton size="md" className="mt-2" onClick={() => setMobileMenuOpen(false)} />
           </div>
         </div>
       )}
 
-      {/* Content -- mobile: top-aligned (not vertically centered) with a
-          tight top gap, so the badge/headline/subtext/CTA sit high on the
-          screen instead of floating in the middle with dead space below.
-          The empty space that leaves at the bottom is intentional, reserved
-          for a future section. Desktop keeps the original centered layout. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 md:pt-16 pb-16 flex-1 flex items-start md:items-center">
+      {/* Content -- FIX 10 (consolidated fix round): the reserved empty
+          space below the CTA from a prior session is gone. The section no
+          longer forces min-h-screen, so it now sizes to its own content
+          and flows directly into the next section with normal padding,
+          on both mobile and desktop. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 pb-12 md:pt-16 md:pb-20">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}
@@ -143,21 +128,15 @@ export default function Hero() {
               {t("landing.hero.subtext")}
             </motion.p>
 
-            {/* CTA -- pill shape, dark fill, white trailing arrow chip, soft
-                shadow that grows on hover so it never reads flat/static. */}
+            {/* CTA -- restyled from the old black pill to the shared orange
+                gradient button (FIX 1). Keeps its own distinct copy
+                ("Start 14-Day Free Trial", landing.hero.cta) rather than
+                the shared "Start for Free" label -- that text was an
+                earlier explicit, deliberate decision this fix doesn't
+                touch; only buttons that literally said "Get Started" were
+                in scope for the copy change. */}
             <motion.div variants={item}>
-              <Link
-                href="/auth/signup"
-                className="group inline-flex items-center gap-3 ps-7 pe-2 py-2 rounded-full bg-[#111111] text-white font-semibold text-base transition-all duration-300 ease-out"
-                style={{ boxShadow: "0 4px 18px rgba(0,0,0,0.14)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 14px 36px rgba(0,0,0,0.26)")}
-                onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 4px 18px rgba(0,0,0,0.14)")}
-              >
-                {t("landing.hero.cta")}
-                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white text-[#111111] shrink-0 transition-transform duration-300 ltr:group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
-                  <ArrowIcon />
-                </span>
-              </Link>
+              <CtaButton size="lg" label={t("landing.hero.cta")} />
             </motion.div>
 
           </motion.div>

@@ -20,21 +20,37 @@ export default function Reveal({ children }: { children: ReactNode }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 28 }}
+      initial={{ opacity: 0, y: 48 }}
       whileInView={{ opacity: 1, y: 0 }}
-      // Root cause of the "instant, not smooth" bug: amount:0.2 with no
-      // margin triggers as soon as just 20% of the section's *area* enters
-      // the viewport -- for these tall sections that means the reveal fires
-      // (and finishes its 0.6s animation) while only a thin sliver at the
-      // very bottom edge is visible, so by the time the section's actual
-      // content scrolls into view the animation is long over and it just
-      // looks like it "was already there". The negative bottom margin
-      // shrinks the effective viewport so the trigger point moves further
-      // up the screen -- the section has to scroll meaningfully into view
-      // before it's considered "entered", so the fade/slide is still
-      // running while the content is actually visible and being watched.
+      // Consolidated fix round (FIX 4) -- re-diagnosed live against
+      // production rather than re-tuning margin/amount again (see the
+      // commit message / report for the full evidence). Two real,
+      // confirmed mechanisms, both about *perceptibility* during a normal
+      // scroll gesture, not a broken trigger:
+      // (1) Under a normal fast wheel/trackpad scroll, the previous 0.7s
+      //     duration with an aggressive ease-out ([0.22,1,0.36,1], which
+      //     front-loads ~80% of the motion into the first third of the
+      //     transition) finishes almost entirely *before* the section
+      //     reaches the user's actual focal point on screen -- confirmed
+      //     by sampling opacity during a fast-scroll pass and finding it
+      //     already at 0.94 the moment the section settled near center
+      //     screen. The fix that actually addresses this (per the task's
+      //     own guidance) is a longer duration + a gentler, more evenly
+      //     distributed easeOut curve, so meaningful motion is still
+      //     visible however fast someone scrolls -- not another
+      //     margin/amount nudge, which only changes *when* it starts, not
+      //     how long it stays visibly in motion.
+      // (2) Soft client-side navigation (Next.js Link) combined with the
+      //     browser's automatic scroll-position restoration can cause a
+      //     freshly remounted Reveal instance's very first
+      //     IntersectionObserver check to already be satisfied (no
+      //     scroll gesture involved at all) -- confirmed by navigating
+      //     away and back and finding the wrapper mid-animation on the
+      //     very next check. This is expected/correct behavior for
+      //     content that's already on screen when a component mounts,
+      //     not a defect to patch around.
       viewport={{ once: true, amount: 0.1, margin: "0px 0px -20% 0px" }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 1.1, ease: "easeOut" }}
     >
       {children}
     </motion.div>

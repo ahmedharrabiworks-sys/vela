@@ -496,7 +496,7 @@
       "faq": "FAQ",
       "login": "Log in",
       "tryDemo": "Try Demo",
-      "getStarted": "Get Started"
+      "getStarted": "Start for Free"
     },
     "hero": {
       "badge": "Power Up Your Business With AI",
@@ -511,8 +511,9 @@
     },
     "problem": {
       "eyebrow": "Turn conversations into revenue",
-      "headline": "Your AI workforce for the front office.",
-      "headlineHighlight": "Fully staffed, 24/7.",
+      "headline": "Every missed call or late reply is a",
+      "headlineHighlight": "missed sale.",
+      "description": "It's not that your team doesn't care, it's that there's only so much time in the day. Calls come in mid-appointment, messages arrive after hours, and every minute of silence pushes a customer closer to your competitor.",
       "stats": {
         "always":       { "value": "24/7",           "label": "Always answering" },
         "multiLang":    { "value": "Multi-language",  "label": "Speaks their language" },

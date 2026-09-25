@@ -28,6 +28,10 @@
   --va-color:  #9e3819;
   --vt-color:  #FFF5F0;
   --vela-gradient:       linear-gradient(135deg, #ed5426, #9e3819);
+  /* Consolidated fix round: dedicated button gradient (darker orange -> lighter
+     orange, smooth 2-stop, NOT the same as --vela-gradient which goes into a
+     dark rose/maroon and is kept as-is for badges/icons/dots elsewhere). */
+  --btn-gradient: linear-gradient(135deg, #C2410C 0%, #FF8A50 100%);
   --vela-gradient-90:    linear-gradient(90deg,  #ed5426, #9e3819);
   --vela-gradient-180:   linear-gradient(180deg, #ed5426, #9e3819);
   --vela-gradient-tint:  linear-gradient(135deg, rgba(237,84,38,0.12), rgba(158,56,25,0.08));
@@ -108,15 +112,22 @@ html.dark body::before { display: none; }
     background-clip: text;
   }
 
+  /* Consolidated fix round (FIX 1): every CTA sitewide now goes through
+     CtaButton.tsx, which composes this class with its own explicit
+     size/padding classes -- no padding/gap/text-size baked in here anymore
+     (every existing call site already carried its own, confirmed by
+     grep before this change, so this is a safe removal, not a silent
+     behavior change). Shape unified to a full pill (rounded-full) to match
+     the hero CTA's existing pill silhouette instead of the old rounded-xl. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200;
-    background: var(--vela-gradient);
-    box-shadow: 0 4px 24px var(--vp-35);
+    @apply inline-flex items-center justify-center font-semibold text-white rounded-full transition-all duration-200;
+    background: var(--btn-gradient);
+    box-shadow: 0 4px 20px rgba(255,107,53,0.30);
   }
   .btn-primary:hover {
     @apply scale-[1.02];
-    filter: brightness(1.08);
-    box-shadow: 0 8px 32px var(--vp-35);
+    filter: brightness(1.06);
+    box-shadow: 0 8px 28px rgba(255,107,53,0.38);
   }
 
   .btn-ghost {
@@ -256,38 +267,22 @@ canvas {
   .ambient-glow-blob { animation: none; opacity: 0.65; }
 }
 
-/* ─── Custom cursor (design pass, redesigned) — desktop only (pointer:fine +
-   hover:hover, enforced in JS before the "vela-custom-cursor" class is ever
-   added, and re-enforced here as a hard CSS fallback). Single solid dot,
-   exact position, subtle scale-up over clickable elements -- the earlier
-   dot+trailing-ring version read as messy, so the ring is gone entirely.
-   pointer-events:none so clicks, hover states, and text selection all work
-   exactly as if this weren't here. ─── */
+/* ─── Custom cursor (consolidated fix round, FIX 9) — desktop only
+   (pointer:fine + hover:hover, enforced in JS before the
+   "vela-custom-cursor" class is ever added, and re-enforced here as a hard
+   CSS fallback). Replaces the dot+scale design entirely: a standard
+   arrow-pointer silhouette (same shape as the default OS cursor, not a
+   novel shape) rendered as an inline SVG data-URI in Vela orange, applied
+   via the native CSS `cursor` property -- no JS mousemove tracking, no
+   positioned overlay element, no possible lag, since the browser renders
+   it natively at the real pointer position every frame for free. Hotspot
+   (3 2) matches the SVG's tip coordinate so clicks register exactly where
+   the visual point is, same as a native arrow cursor. ─── */
 html.vela-custom-cursor,
 html.vela-custom-cursor * {
-  cursor: none !important;
-}
-.vela-cursor-dot {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 10px;
-  height: 10px;
-  margin: -5px 0 0 -5px;
-  border-radius: 50%;
-  background: var(--vp-color);
-  pointer-events: none;
-  transform: translate3d(-100px, -100px, 0);
-  scale: 1;
-  opacity: 0;
-  transition: opacity 0.2s ease, scale 0.18s ease;
-  z-index: 2147483647;
-}
-.vela-cursor-dot.vela-cursor-hover {
-  scale: 2.2;
+  cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMyAyIEwzIDE5LjIgTDcuNiAxNS40IEwxMC44IDIxLjYgTDEzLjQgMjAuMyBMMTAuMyAxNC4yIEwxNi4yIDE0LjIgWiIgZmlsbD0iI0ZGNkIzNSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjMiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==") 3 2, auto !important;
 }
 @media (hover: none), (pointer: coarse) {
-  .vela-cursor-dot { display: none !important; }
   html.vela-custom-cursor, html.vela-custom-cursor * { cursor: auto !important; }
 }
 

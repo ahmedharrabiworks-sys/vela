@@ -16,8 +16,11 @@ export default function LandingPage() {
           immediately on load (it already has its own on-load stagger
           animation), not wait to be scrolled into view. */}
       <Hero />
-      <Reveal><ProblemSection /></Reveal>
+      {/* FIX 6 (consolidated fix round): ProblemSection and ProductTourDemo
+          swapped places -- tour demo now comes right after Hero, Problem
+          section moved after it. */}
       <Reveal><ProductTourDemo /></Reveal>
+      <Reveal><ProblemSection /></Reveal>
       <Reveal><DashboardSection /></Reveal>
       <Reveal><Pricing /></Reveal>
       <Reveal><Footer /></Reveal>
