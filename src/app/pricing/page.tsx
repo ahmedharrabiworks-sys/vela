@@ -63,7 +63,7 @@ export default function PricingPage() {
       <div id="compare" className="max-w-4xl mx-auto px-5 py-10 md:py-14 scroll-mt-6">
         {/* Section title */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-[#111111]">
+          <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-[#111111]">
             Full Plan{" "}
             <span className="vela-gradient-text">Details</span>
           </h1>
@@ -148,7 +148,7 @@ export default function PricingPage() {
 
         {/* FAQ */}
         <div className="mt-16">
-          <h2 className="text-xl font-bold text-[#111111] mb-8">Frequently asked</h2>
+          <h2 className="font-display text-xl font-bold text-[#111111] mb-8">Frequently asked</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {FAQ_ITEMS.map((item) => (
               <div key={item.q} className="bg-white border border-[#E5E7EB] rounded-xl p-5">

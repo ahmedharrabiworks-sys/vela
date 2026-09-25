@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import Logo from "@/components/ui/Logo";
 
 const container = {
   hidden: {},
@@ -15,52 +16,45 @@ const item = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
 };
 
+function ArrowIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M2.5 6.5h8M7 3l3.5 3.5L7 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function Hero() {
   const { t } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <section
-      id="hero-section"
-      className="relative min-h-screen flex flex-col overflow-hidden"
-      style={{
-        background: "#1A0800",
-        backgroundImage: "url('/assets/hero-bg.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      {/* Darkening overlay */}
+    <section id="hero-section" className="relative min-h-screen flex flex-col overflow-hidden bg-white">
+      {/* Soft orange glow behind the content -- same premium-glow language as
+          Pricing/DashboardSection (radial, blurred, low opacity), never a
+          solid dark panel or background image. */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute top-[-10%] left-1/2 pointer-events-none"
         aria-hidden="true"
-        style={{ background: "linear-gradient(to bottom, rgba(10,3,0,0.55) 0%, rgba(10,3,0,0.22) 65%, transparent 94%)" }}
-      />
-      {/* White fade at the bottom edge */}
-      <div
-        className="absolute bottom-0 left-0 right-0 pointer-events-none"
-        aria-hidden="true"
-        style={{ height: "80px", background: "linear-gradient(to bottom, transparent 0%, #ffffff 100%)" }}
+        style={{
+          width: "900px",
+          height: "900px",
+          transform: "translateX(-50%)",
+          borderRadius: "50%",
+          background: "rgba(255,107,53,0.14)",
+          filter: "blur(110px)",
+        }}
       />
 
-      {/* ── In-hero nav, scrolls away with the Hero naturally ── */}
+      {/* In-hero nav, scrolls away with the Hero naturally */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
-        {/* Plain <img>, no Next.js Image layout constraints.
-            !important on height/width overrides Tailwind preflight's img{height:auto}.
-            48px mobile / 72px desktop makes logo visually dominant over the nav buttons. */}
-        <Link href="/" aria-label="Vela home" className="group shrink-0">
-          <img
-            src="/logo-light.png"
-            alt="Vela"
-            className="block !h-12 sm:!h-[72px] !w-auto transition-opacity duration-200 group-hover:opacity-85"
-            style={{ flexShrink: 0 }}
-          />
+        <Link href="/" aria-label="Vela home" className="shrink-0">
+          <Logo showText heightClass="!h-9 sm:!h-14" />
         </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/auth/login"
-            className="hidden sm:inline-flex text-base font-semibold text-white hover:text-white/80 px-5 py-2.5 rounded-lg transition-colors duration-200"
+            className="hidden sm:inline-flex text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
           >
             Log in
           </Link>
@@ -74,7 +68,7 @@ export default function Hero() {
           <button
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open menu"
-            className="sm:hidden w-10 h-10 flex items-center justify-center rounded-lg text-white hover:bg-white/10 transition-colors"
+            className="sm:hidden w-10 h-10 flex items-center justify-center rounded-lg text-[#111111] hover:bg-[#F3F4F6] transition-colors"
           >
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
               <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -83,15 +77,16 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile menu overlay -- white panel, no dark background, per the
+          site-wide "white everywhere" standing rule. */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 right-0 bottom-0 w-[78vw] max-w-xs bg-[#1A0800] border-l border-white/10 flex flex-col px-6 pt-8 pb-10 gap-2">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute top-0 right-0 bottom-0 w-[78vw] max-w-xs bg-white border-l border-[#E5E7EB] shadow-2xl flex flex-col px-6 pt-8 pb-10 gap-2">
             <button
               onClick={() => setMobileMenuOpen(false)}
               aria-label="Close menu"
-              className="self-end w-10 h-10 flex items-center justify-center rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors mb-6"
+              className="self-end w-10 h-10 flex items-center justify-center rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-colors mb-6"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -100,7 +95,7 @@ export default function Hero() {
             <Link
               href="/auth/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-base font-semibold text-white px-4 py-3.5 rounded-xl hover:bg-white/10 transition-colors"
+              className="text-base font-semibold text-[#111111] px-4 py-3.5 rounded-xl hover:bg-[#F3F4F6] transition-colors"
             >
               Log in
             </Link>
@@ -127,37 +122,46 @@ export default function Hero() {
             {/* Badge */}
             <motion.div variants={item}>
               <span
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-widest border border-white/20 text-white"
-                style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)" }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-widest border"
+                style={{ background: "#FFF3EE", borderColor: "rgba(255,107,53,0.25)", color: "#C2410C" }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] animate-pulse" />
                 {t("landing.hero.badge")}
               </span>
             </motion.div>
 
-            {/* Headline, plain white, no gradient, no decorative treatment */}
+            {/* Headline -- black by default, one accent phrase in brand orange */}
             <motion.h1
               variants={item}
-              className="font-inter font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-white"
+              className="font-display font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-[#111111]"
             >
-              {t("landing.hero.headline1")}
+              {t("landing.hero.headline1")}{" "}
+              <span className="vela-gradient-text">{t("landing.hero.headlineAccent")}</span>{" "}
+              {t("landing.hero.headline2")}
             </motion.h1>
 
             {/* Subtext */}
             <motion.p
               variants={item}
-              className="text-white text-base md:text-lg leading-relaxed max-w-[500px] mx-auto md:mx-0"
+              className="text-[#4B5563] text-base md:text-lg leading-relaxed max-w-[520px] mx-auto md:mx-0"
             >
               {t("landing.hero.subtext")}
             </motion.p>
 
-            {/* CTA */}
+            {/* CTA -- pill shape, dark fill, white trailing arrow chip, soft
+                shadow that grows on hover so it never reads flat/static. */}
             <motion.div variants={item}>
-              <Link href="/auth/signup" className="btn-primary text-base px-8 py-3.5 justify-center inline-flex items-center gap-2">
-                {t("landing.nav.getStarted")}
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                  <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+              <Link
+                href="/auth/signup"
+                className="group inline-flex items-center gap-3 pl-7 pr-2 py-2 rounded-full bg-[#111111] text-white font-semibold text-base transition-all duration-300 ease-out"
+                style={{ boxShadow: "0 4px 18px rgba(0,0,0,0.14)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 14px 36px rgba(0,0,0,0.26)")}
+                onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 4px 18px rgba(0,0,0,0.14)")}
+              >
+                {t("landing.hero.cta")}
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white text-[#111111] shrink-0 transition-transform duration-300 group-hover:translate-x-0.5">
+                  <ArrowIcon />
+                </span>
               </Link>
             </motion.div>
 

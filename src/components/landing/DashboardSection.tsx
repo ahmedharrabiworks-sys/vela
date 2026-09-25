@@ -142,7 +142,7 @@ export default function DashboardSection() {
           >
             {/* Text panel */}
             <div className="flex flex-col justify-center order-2 lg:order-1">
-              <h2 className="font-inter font-extrabold text-[24px] sm:text-[30px] lg:text-[32px] text-[#2A1200] leading-tight">
+              <h2 className="font-display font-extrabold text-[24px] sm:text-[30px] lg:text-[32px] text-[#2A1200] leading-tight">
                 Everything you need to run your business, even while you sleep.
               </h2>
               <p className="text-[#6B4A33] text-base mt-3 leading-relaxed max-w-md">

@@ -500,9 +500,11 @@
     },
     "hero": {
       "badge": "Never Miss Another Lead",
-      "headline1": "The AI That Never Clocks Out",
-      "headline2": "",
-      "subtext": "Vela answers your customers on WhatsApp, Instagram, and the phone, 24/7, so you never miss a lead.",
+      "headline1": "The",
+      "headlineAccent": "AI-powered",
+      "headline2": "business operating system",
+      "subtext": "All the tools you need to capture, nurture and close new leads into bookings, sales, reviews and repeat customers!",
+      "cta": "Start 14-Day Free Trial",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"

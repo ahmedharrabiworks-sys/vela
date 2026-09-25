@@ -24,6 +24,7 @@ const config: Config = {
       },
       fontFamily: {
         inter: ["Inter", "sans-serif"],
+        display: ["var(--font-display)", "Inter", "sans-serif"],
       },
       backgroundImage: {
         "vela-gradient": "linear-gradient(135deg, #FF6B35, #FF3366)",

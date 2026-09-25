@@ -1351,7 +1351,7 @@ export default function ProductTourDemo() {
                       className="w-12 h-12 rounded-full flex items-center justify-center mb-4 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:text-white"
                       style={{ background:p.color }}
                     >{p.icon}</div>
-                    <h3 className="font-inter font-extrabold text-[24px] md:text-[28px] text-[#111111] leading-tight tracking-tight">
+                    <h3 className="font-display font-extrabold text-[24px] md:text-[28px] text-[#111111] leading-tight tracking-tight">
                       {p.headline}
                     </h3>
                     <p className="text-[15px] text-[#6B7280] mt-2 leading-relaxed">{p.subtext}</p>

@@ -39,8 +39,15 @@ export default function Pricing() {
   return (
     <section id="pricing" className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
-        {/* Header */}
-        <div className="text-center mb-8">
+        {/* Header -- currency selector pinned to the top-right of this block
+            on desktop (own corner, not centered/floating below the toggle);
+            stays centered underneath on mobile where a corner position would
+            collide with the headline. */}
+        <div className="relative text-center mb-8">
+          <div className="hidden sm:block sm:absolute sm:top-0 sm:right-0">
+            <CurrencyToggle value={currency} onChange={setCurrency} />
+          </div>
+
           <h2 className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight">
             {t("landing.pricing.headline1")}{" "}
             <span className="vela-gradient-text">{t("landing.pricing.headline2")}</span>
@@ -68,23 +75,36 @@ export default function Pricing() {
             </button>
           </div>
 
-          <div className="mt-4">
+          <div className="sm:hidden mt-4 flex justify-center">
             <CurrencyToggle value={currency} onChange={setCurrency} />
           </div>
+        </div>
+
+        {/* See full comparison link -- moved above the cards per FIX 5 */}
+        <div className="text-center mb-5">
+          <Link
+            href="/pricing#compare"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
+          >
+            See full feature
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Link>
         </div>
 
         {/* Cards, glow hugs the card row bounding box */}
         <div className="relative max-w-[900px] mx-auto">
           <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
             style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.22)", filter: "blur(60px)", zIndex: 0 }} />
-          <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch" style={{ position: "relative", zIndex: 1 }}>
+          <div className="grid md:grid-cols-3 gap-3.5 md:gap-4 items-stretch" style={{ position: "relative", zIndex: 1 }}>
             {TIER_PLANS.map((plan) => {
               const price = annual ? plan.annual : plan.monthly;
               const planKey = plan.name.toLowerCase();
               return (
                 <div
                   key={plan.name}
-                  className={`relative rounded-2xl p-6 md:p-11 flex flex-col transition-all duration-300 ${
+                  className={`relative rounded-2xl p-5 md:p-7 flex flex-col transition-all duration-300 ${
                     plan.popular
                       ? "bg-[#FFF8F5] md:scale-[1.02]"
                       : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
@@ -105,15 +125,15 @@ export default function Pricing() {
                   )}
 
                   {/* Tier header */}
-                  <div className="mb-7">
-                    <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                  <div className="mb-5">
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
                       {t(`landing.pricing.plans.${planKey}.name`)}
                     </p>
                     <div className="flex items-end gap-1.5 mb-1.5 flex-wrap">
-                      <span className="text-4xl sm:text-5xl font-black text-[#111111] leading-none">
+                      <span className="text-3xl sm:text-4xl font-black text-[#111111] leading-none">
                         {formatPrice(price, currency)}
                       </span>
-                      <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
+                      <span className="text-sm mb-0.5 text-[#9CA3AF]">/mo</span>
                     </div>
                     <p className="text-sm text-[#9CA3AF] mt-1">
                       {TAGLINES[planKey]}
@@ -126,14 +146,14 @@ export default function Pricing() {
                   </div>
 
                   {/* Feature list with hairline dividers */}
-                  <ul className="flex-1 mb-7 divide-y divide-[#F3F4F6]">
+                  <ul className="flex-1 mb-5 divide-y divide-[#F3F4F6]">
                     {INHERIT_LINE[planKey] && (
-                      <li className="flex items-start gap-3 py-3.5">
-                        <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                      <li className="flex items-start gap-2.5 py-2.5">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                           <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                           <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span className="text-base text-[#374151]">{INHERIT_LINE[planKey]}</span>
+                        <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
                       </li>
                     )}
                     {plan.features.filter(f => f.included)
@@ -143,12 +163,12 @@ export default function Pricing() {
                         return !show || show.includes(originalIdx);
                       })
                       .map(({ originalIdx }) => (
-                        <li key={originalIdx} className="flex items-start gap-3 py-3.5">
-                          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
+                        <li key={originalIdx} className="flex items-start gap-2.5 py-2.5">
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                             <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                             <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                          <span className="text-base text-[#374151]">
+                          <span className="text-sm text-[#374151]">
                             {t(`landing.pricing.plans.${planKey}.features.${originalIdx}`)}
                           </span>
                         </li>
@@ -174,19 +194,6 @@ export default function Pricing() {
               );
             })}
           </div>
-        </div>
-
-        {/* See full comparison link */}
-        <div className="text-center mt-6">
-          <Link
-            href="/pricing#compare"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
-          >
-            See full feature
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
         </div>
 
       </div>
