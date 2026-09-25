@@ -4,6 +4,7 @@ import ProblemSection from "@/components/landing/ProblemSection";
 import ProductTourDemo from "@/components/landing/ProductTourDemo";
 import DashboardSection from "@/components/landing/DashboardSection";
 import Pricing from "@/components/landing/Pricing";
+import ComparisonTable from "@/components/landing/ComparisonTable";
 import Footer from "@/components/landing/Footer";
 import CustomCursor from "@/components/landing/CustomCursor";
 import Reveal from "@/components/landing/Reveal";
@@ -23,6 +24,7 @@ export default function LandingPage() {
       <Reveal><ProblemSection /></Reveal>
       <Reveal><DashboardSection /></Reveal>
       <Reveal><Pricing /></Reveal>
+      <Reveal><ComparisonTable /></Reveal>
       <Reveal><Footer /></Reveal>
     </main>
   );

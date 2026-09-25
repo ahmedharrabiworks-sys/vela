@@ -21,7 +21,7 @@ export default function ProblemSection() {
 
   return (
     <section className="relative py-14 md:py-20 bg-white overflow-hidden">
-      <AmbientGlow />
+      <AmbientGlow pos="end" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: badge + headline + description + stats */}
@@ -73,7 +73,7 @@ export default function ProblemSection() {
           <motion.div
             initial={prefersReducedMotion ? undefined : "hidden"}
             whileInView={prefersReducedMotion ? undefined : "show"}
-            viewport={{ once: true, amount: 0.2 }}
+            viewport={{ once: false, amount: 0.2 }}
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.18, delayChildren: 0.1 } } }}
             className="rounded-3xl border border-[#E5E7EB] bg-white p-8 md:p-10"
             style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.08)" }}
@@ -81,6 +81,14 @@ export default function ProblemSection() {
             <div className="flex flex-col">
               {TIMELINE_KEYS.map((key, i) => {
                 const isLast = i === TIMELINE_KEYS.length - 1;
+                // step4 ("They start looking elsewhere") is the failure
+                // moment in the story -- styled red with an X icon, distinct
+                // from the neutral grey steps 1-3. step5 ("Vela answers
+                // instead") is the resolution -- styled green (success),
+                // replacing its previous orange treatment so the red/green
+                // failure/success contrast reads clearly at a glance.
+                const isFailure = i === 3;
+                const isSuccess = isLast;
                 return (
                   <motion.div
                     key={key}
@@ -94,21 +102,31 @@ export default function ProblemSection() {
                       <span
                         className="rounded-full shrink-0 flex items-center justify-center"
                         style={
-                          isLast
-                            ? { background: "var(--vela-gradient)", width: 32, height: 32, marginInlineStart: -7 }
+                          isSuccess
+                            ? { background: "#16A34A", width: 32, height: 32, marginInlineStart: -7 }
+                            : isFailure
+                            ? { background: "#DC2626", width: 32, height: 32, marginInlineStart: -7 }
                             : { background: "#E5E7EB", width: 16, height: 16 }
                         }
                       >
-                        {isLast && (
+                        {isSuccess && (
                           <svg width="14" height="14" viewBox="0 0 10 10" fill="none">
                             <path d="M1.5 5l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                        {isFailure && (
+                          <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 2l6 6M8 2l-6 6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         )}
                       </span>
                       {!isLast && <span className="w-px flex-1 bg-[#E5E7EB] my-1.5" />}
                     </div>
                     <div className={isLast ? "pb-0" : "pb-8"}>
-                      <p className={`font-bold text-lg leading-snug ${isLast ? "text-[#C2410C]" : "text-[#111111]"}`}>
+                      <p
+                        className="font-bold text-lg leading-snug"
+                        style={{ color: isSuccess ? "#16A34A" : isFailure ? "#DC2626" : "#111111" }}
+                      >
                         {t(`landing.problem.timeline.${key}.title`)}
                       </p>
                       <p className="text-[#6B7280] mt-1.5 leading-relaxed">

@@ -43,7 +43,7 @@ export default function Pricing() {
 
   return (
     <section id="pricing" className="relative py-10 md:py-14 bg-white overflow-hidden">
-      <AmbientGlow />
+      <AmbientGlow pos="end" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header */}
         <div className="relative text-center mb-8">
@@ -75,11 +75,13 @@ export default function Pricing() {
           </div>
         </div>
 
-        {/* See full comparison link -- moved above the cards per FIX 5 */}
+        {/* See full comparison link -- restyled as a real outline pill
+            button (FIX 7, bug-fix + polish round) instead of plain text, so
+            it reads as intentionally clickable. */}
         <div className="text-center mb-5">
           <Link
             href="/pricing#compare"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#374151] bg-white border border-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] rounded-full px-5 py-2.5 transition-colors duration-200"
           >
             {t("landing.pricing.seeFullFeature")}
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="rtl:-scale-x-100">
@@ -126,11 +128,26 @@ export default function Pricing() {
                     </div>
                   )}
 
-                  {/* Tier header */}
-                  <div className="mb-5">
-                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
-                      {t(`landing.pricing.plans.${planKey}.name`)}
-                    </p>
+                  {/* Tier header -- icon badge + name for more visual weight
+                      (FIX 5, bug-fix + polish round). Same price/tagline
+                      content as before, no facts changed. */}
+                  <div className="mb-5 pb-5 border-b border-[#F3F4F6]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: plan.popular ? "var(--vela-gradient)" : "#F3F4F6" }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M7 1l1.8 3.9L13 5.4 9.9 8.2l.8 4.2L7 10.3 3.3 12.4l.8-4.2L1 5.4l4.2-.5z"
+                            fill={plan.popular ? "#fff" : "#9CA3AF"}
+                          />
+                        </svg>
+                      </span>
+                      <p className={`text-xs font-bold uppercase tracking-widest ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                        {t(`landing.pricing.plans.${planKey}.name`)}
+                      </p>
+                    </div>
                     <div className="flex items-end gap-1.5 mb-1.5 flex-wrap">
                       <span className="text-3xl sm:text-4xl font-black text-[#111111] leading-none">
                         {formatPrice(price, currency)}
@@ -147,35 +164,38 @@ export default function Pricing() {
                     )}
                   </div>
 
-                  {/* Feature list with hairline dividers */}
-                  <ul className="flex-1 mb-5 divide-y divide-[#F3F4F6]">
+                  {/* Feature list -- the inherit line is a real structural
+                      boundary in the data (everything below it is new vs.
+                      the tier below), so it's now rendered as its own
+                      labeled group header instead of a bullet, giving the
+                      list a clearer two-tier hierarchy. Checkmarks are now
+                      solid filled circles for more visual weight. */}
+                  <div className="flex-1 mb-5">
                     {INHERIT_LINE[planKey] && (
-                      <li className="flex items-start gap-2.5 py-2.5">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                          <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                          <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <span className="text-sm text-[#374151]">{t(`landing.pricing.inheritLine.${planKey}`)}</span>
-                      </li>
+                      <p className="text-xs font-bold uppercase tracking-wide text-[#9CA3AF] mb-2.5">
+                        {t(`landing.pricing.inheritLine.${planKey}`)}
+                      </p>
                     )}
-                    {plan.features.filter(f => f.included)
-                      .map((feat, originalIdx) => ({ feat, originalIdx }))
-                      .filter(({ originalIdx }) => {
-                        const show = CARD_INDICES[planKey];
-                        return !show || show.includes(originalIdx);
-                      })
-                      .map(({ originalIdx }) => (
-                        <li key={originalIdx} className="flex items-start gap-2.5 py-2.5">
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                            <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                            <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <span className="text-sm text-[#374151]">
-                            {t(`landing.pricing.plans.${planKey}.features.${originalIdx}`)}
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
+                    <ul className="flex flex-col gap-2.5">
+                      {plan.features.filter(f => f.included)
+                        .map((feat, originalIdx) => ({ feat, originalIdx }))
+                        .filter(({ originalIdx }) => {
+                          const show = CARD_INDICES[planKey];
+                          return !show || show.includes(originalIdx);
+                        })
+                        .map(({ originalIdx }) => (
+                          <li key={originalIdx} className="flex items-center gap-2.5">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+                              <circle cx="8" cy="8" r="8" fill="#FF6B35" />
+                              <path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <span className="text-sm font-medium text-[#374151]">
+                              {t(`landing.pricing.plans.${planKey}.features.${originalIdx}`)}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
 
                   {/* FIX 1: every tier gets the same shared gradient button
                       now (popularity is signaled by the badge + border

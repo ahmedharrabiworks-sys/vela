@@ -504,7 +504,7 @@
       "headlineAccent": "Never Miss",
       "headline2": "Another Lead",
       "subtext": "Every missed call, unanswered message, and forgotten follow-up is a customer going somewhere else. Vela makes sure no lead gets left behind.",
-      "cta": "Start 14-Day Free Trial",
+      "cta": "Start for Free",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
@@ -806,6 +806,73 @@
       "headline2": "to slow replies.",
       "subtext": "Billed monthly. Cancel anytime, no questions asked. Be live in 7 days.",
       "whatsapp": "Chat on WhatsApp"
+    },
+    "comparison": {
+      "eyebrow": "The Real Comparison",
+      "headline1": "How Vela actually",
+      "headline2": "compares",
+      "intro": "No hype, just an honest look at your options.",
+      "columns": {
+        "basicBots": "Basic AI Bots",
+        "humanStaff": "Human Staff",
+        "vela": "Vela"
+      },
+      "rows": {
+        "answering": {
+          "label": "Answering calls & messages",
+          "basicBots": "Scripted replies, escalates often",
+          "humanStaff": "Personal, but only when free",
+          "vela": "Understands & replies naturally"
+        },
+        "availability": {
+          "label": "Availability",
+          "basicBots": "24/7",
+          "humanStaff": "Business hours only",
+          "vela": "24/7"
+        },
+        "speed": {
+          "label": "Response speed",
+          "basicBots": "Instant",
+          "humanStaff": "Depends on availability",
+          "vela": "Instant"
+        },
+        "languages": {
+          "label": "Multiple languages",
+          "basicBots": "Usually one language, rigid",
+          "humanStaff": "Only if staff happens to speak it",
+          "vela": "Speaks the customer's language"
+        },
+        "consistency": {
+          "label": "Consistency",
+          "basicBots": "Same every time, but robotic",
+          "humanStaff": "Varies by mood & training",
+          "vela": "Same quality every time"
+        },
+        "scale": {
+          "label": "Handling many at once",
+          "basicBots": "Yes, but breaks down easily",
+          "humanStaff": "One conversation at a time",
+          "vela": "Many conversations at once"
+        },
+        "followup": {
+          "label": "Follow-up & memory",
+          "basicBots": "No memory between chats",
+          "humanStaff": "Only with a reminder system",
+          "vela": "Remembers context, follows up automatically"
+        },
+        "records": {
+          "label": "Records & transcripts",
+          "basicBots": "Rarely logs full context",
+          "humanStaff": "Manual notes, if any",
+          "vela": "Every conversation logged automatically"
+        },
+        "scalingCost": {
+          "label": "Cost to scale up",
+          "basicBots": "Cheap but limited",
+          "humanStaff": "Another hire, another salary",
+          "vela": "One plan, no extra hires"
+        }
+      }
     },
     "footer": {
       "tagline": "One platform. Every tool your business needs.",
