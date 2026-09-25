@@ -499,15 +499,31 @@
       "getStarted": "Get Started"
     },
     "hero": {
-      "badge": "Never Miss Another Lead",
-      "headline1": "The",
-      "headlineAccent": "AI-powered",
-      "headline2": "business operating system",
-      "subtext": "All the tools you need to capture, nurture and close new leads into bookings, sales, reviews and repeat customers!",
+      "badge": "Power Up Your Business With AI",
+      "headline1": "",
+      "headlineAccent": "Never Miss",
+      "headline2": "Another Lead",
+      "subtext": "Every missed call, unanswered message, and forgotten follow-up is a customer going somewhere else. Vela makes sure no lead gets left behind.",
       "cta": "Start 14-Day Free Trial",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
+    },
+    "showcase": {
+      "eyebrow": "Real-time, multilingual",
+      "headline1": "One AI.",
+      "headlineAccent": "Endless languages.",
+      "subtext": "Vela replies in your customer's language, instantly, whether that's English, Arabic, Hindi, or beyond.",
+      "cta": "Get Started"
+    },
+    "dashboardSection": {
+      "headline": "Everything you need to run your business, even while you sleep.",
+      "subtext": "We handle every call, message, and lead, so you can focus on the business, not the front desk.",
+      "checklist": {
+        "aiPhoneAgent": { "label": "AI Phone Agent", "desc": "Never miss a call, day or night." },
+        "everyChannel": { "label": "Every Channel", "desc": "WhatsApp, Instagram, and Phone in one inbox." },
+        "automation":   { "label": "Automation", "desc": "Set it up once, let Vela run it." }
+      }
     },
     "pricing": {
       "headline1": "See Our",
@@ -518,17 +534,24 @@
       "annual": "Annual",
       "billedMonthly": "Billed monthly",
       "save": "Save",
+      "save20": "Save 20%",
+      "seeFullFeature": "See full feature",
       "mostPopular": "Most Popular",
+      "inheritLine": {
+        "pro": "Everything in Starter, plus:",
+        "premium": "Everything in Pro, plus:"
+      },
       "plans": {
         "starter": {
           "name": "Starter",
           "description": "One AI channel. Automated replies, lead capture, and CRM.",
+          "tagline": "For freelancers & solo businesses",
           "cta": "Get Started",
           "features": [
             "500 text messages/month",
             "1 channel (phone, Instagram, or WhatsApp)",
             "1 team member",
-            "Email support (48h)",
+            "Instant support",
             "AI Voice Phone Agent",
             "Follow-up automation"
           ]
@@ -536,6 +559,7 @@
         "pro": {
           "name": "Pro",
           "description": "All channels, phone agent, website, and full CRM.",
+          "tagline": "For growing teams",
           "cta": "Get Started",
           "features": [
             "AI Voice Phone Agent",
@@ -543,13 +567,14 @@
             "500 voice minutes/month",
             "2,500 text messages/month",
             "3 team members",
-            "Priority support (24h)",
+            "Instant support",
             "Unlimited AI training edits"
           ]
         },
         "premium": {
           "name": "Premium",
           "description": "Everything in Pro. Priority routing, 3 websites, and unlimited team.",
+          "tagline": "For pro companies & businesses",
           "cta": "Get Started",
           "features": [
             "800 voice minutes/month",
@@ -557,7 +582,7 @@
             "AI Voice Phone Agent + priority retraining",
             "3,000 text messages/month",
             "Unlimited team members",
-            "Dedicated call + chat support",
+            "Instant support + dedicated account contact",
             "Done-for-you onboarding"
           ]
         }

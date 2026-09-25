@@ -5,6 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
+import CursorSpotlight from "@/components/landing/CursorSpotlight";
+import LanguageToggle from "@/components/landing/LanguageToggle";
 
 const container = {
   hidden: {},
@@ -18,7 +20,7 @@ const item = {
 
 function ArrowIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="rtl:-scale-x-100">
       <path d="M2.5 6.5h8M7 3l3.5 3.5L7 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -30,28 +32,18 @@ export default function Hero() {
 
   return (
     <section id="hero-section" className="relative min-h-screen flex flex-col overflow-hidden bg-white">
-      {/* Soft orange glow behind the content -- same premium-glow language as
-          Pricing/DashboardSection (radial, blurred, low opacity), never a
-          solid dark panel or background image. */}
-      <div
-        className="absolute top-[-10%] left-1/2 pointer-events-none"
-        aria-hidden="true"
-        style={{
-          width: "900px",
-          height: "900px",
-          transform: "translateX(-50%)",
-          borderRadius: "50%",
-          background: "rgba(255,107,53,0.14)",
-          filter: "blur(110px)",
-        }}
-      />
+      {/* Cursor-following spotlight (FIX 1, polish pass #2) -- replaces the
+          old static 900px fixed glow. Small, subtle, pointer-tracked; a
+          no-op on touch devices. */}
+      <CursorSpotlight />
 
       {/* In-hero nav, scrolls away with the Hero naturally */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
         <Link href="/" aria-label="Vela home" className="shrink-0">
           <Logo showText heightClass="!h-9 sm:!h-14" />
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <LanguageToggle />
           <Link
             href="/auth/login"
             className="hidden sm:inline-flex text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
@@ -82,7 +74,7 @@ export default function Hero() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute top-0 right-0 bottom-0 w-[78vw] max-w-xs bg-white border-l border-[#E5E7EB] shadow-2xl flex flex-col px-6 pt-8 pb-10 gap-2">
+          <div className="absolute top-0 right-0 rtl:right-auto rtl:left-0 bottom-0 w-[78vw] max-w-xs bg-white border-l rtl:border-l-0 rtl:border-r border-[#E5E7EB] shadow-2xl flex flex-col px-6 pt-8 pb-10 gap-2">
             <button
               onClick={() => setMobileMenuOpen(false)}
               aria-label="Close menu"
@@ -117,7 +109,7 @@ export default function Hero() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-left"
+            className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-left md:rtl:items-end md:rtl:text-right"
           >
             {/* Badge */}
             <motion.div variants={item}>
@@ -153,13 +145,13 @@ export default function Hero() {
             <motion.div variants={item}>
               <Link
                 href="/auth/signup"
-                className="group inline-flex items-center gap-3 pl-7 pr-2 py-2 rounded-full bg-[#111111] text-white font-semibold text-base transition-all duration-300 ease-out"
+                className="group inline-flex items-center gap-3 ps-7 pe-2 py-2 rounded-full bg-[#111111] text-white font-semibold text-base transition-all duration-300 ease-out"
                 style={{ boxShadow: "0 4px 18px rgba(0,0,0,0.14)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 14px 36px rgba(0,0,0,0.26)")}
                 onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 4px 18px rgba(0,0,0,0.14)")}
               >
                 {t("landing.hero.cta")}
-                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white text-[#111111] shrink-0 transition-transform duration-300 group-hover:translate-x-0.5">
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white text-[#111111] shrink-0 transition-transform duration-300 ltr:group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
                   <ArrowIcon />
                 </span>
               </Link>

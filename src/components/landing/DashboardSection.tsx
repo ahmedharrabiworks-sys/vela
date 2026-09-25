@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import CursorSpotlight from "@/components/landing/CursorSpotlight";
+import { useI18n } from "@/lib/i18n";
 
 // Real markup, not an image -- see git history for the old
 // dashboard-mockup.png version. Same layout/colors/copy as the original
@@ -6,11 +10,11 @@ import Link from "next/link";
 // $12.4K, Unread Messages 9, Appointments 7) -- none invented here. The
 // "This Week's Bookings" bar heights are visually approximated from the
 // original image (not exact pixel values, no source data for them exists).
-const CHECKLIST = [
-  { label: "AI Phone Agent", desc: "Never miss a call, day or night." },
-  { label: "Every Channel", desc: "WhatsApp, Instagram, and Phone in one inbox." },
-  { label: "Automation", desc: "Set it up once, let Vela run it." },
-];
+// Checklist/headline/subtext/CTA are real page copy and route through the
+// site's i18n system (FIX 2, polish pass #2). The tiny in-mockup labels
+// (STATS/ACTIVITY/NAV_ICONS below) stay English -- they're decorative
+// "device screenshot" chrome at 7-9px, not real page content.
+const CHECKLIST_KEYS = ["aiPhoneAgent", "everyChannel", "automation"] as const;
 
 const STATS = [
   { label: "Leads Today", value: "18" },
@@ -130,35 +134,35 @@ function PhoneMockupDashboard() {
 }
 
 export default function DashboardSection() {
+  const { t } = useI18n();
   return (
     <section className="py-10 md:py-14 bg-white">
       <div className="max-w-6xl mx-auto px-5 md:px-6">
         <div className="relative">
-          <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
-            style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.2)", filter: "blur(60px)", zIndex: 0 }} />
+          <CursorSpotlight size={420} color="rgba(255,107,53,0.10)" />
           <div
             className="relative overflow-hidden rounded-2xl grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8 lg:gap-6 px-6 py-10 sm:px-10 sm:py-12"
             style={{ background: "linear-gradient(135deg,#FFF3E9 0%,#FFE0CC 100%)", zIndex: 1 }}
           >
             {/* Text panel */}
-            <div className="flex flex-col justify-center order-2 lg:order-1">
+            <div className="flex flex-col justify-center order-2 lg:order-1 lg:rtl:order-2">
               <h2 className="font-display font-extrabold text-[24px] sm:text-[30px] lg:text-[32px] text-[#2A1200] leading-tight">
-                Everything you need to run your business, even while you sleep.
+                {t("landing.dashboardSection.headline")}
               </h2>
               <p className="text-[#6B4A33] text-base mt-3 leading-relaxed max-w-md">
-                We handle every call, message, and lead, so you can focus on the business, not the front desk.
+                {t("landing.dashboardSection.subtext")}
               </p>
 
               <div className="flex flex-col gap-3 mt-6">
-                {CHECKLIST.map((c) => (
-                  <div key={c.label} className="flex items-start gap-2.5">
+                {CHECKLIST_KEYS.map((key) => (
+                  <div key={key} className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: "#FF6B35" }}>
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                         <path d="M1.5 5l2.5 2.5 4.5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
                     <p className="text-sm sm:text-base text-[#2A1200] leading-snug">
-                      <span className="font-bold">{c.label}:</span> {c.desc}
+                      <span className="font-bold">{t(`landing.dashboardSection.checklist.${key}.label`)}:</span> {t(`landing.dashboardSection.checklist.${key}.desc`)}
                     </p>
                   </div>
                 ))}
@@ -166,13 +170,13 @@ export default function DashboardSection() {
 
               <div className="mt-7">
                 <Link href="/auth/signup" className="btn-primary whitespace-nowrap text-sm py-3 px-7 sm:text-base sm:py-3.5 sm:px-8 inline-flex">
-                  Get Started
+                  {t("landing.nav.getStarted")}
                 </Link>
               </div>
             </div>
 
             {/* Phone mockup panel */}
-            <div className="order-1 lg:order-2 flex items-center justify-center">
+            <div className="order-1 lg:order-2 lg:rtl:order-1 flex items-center justify-center">
               <PhoneMockupDashboard />
             </div>
           </div>

@@ -22,7 +22,7 @@ const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
   { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited"             ] },
   { label: "Team members",         values: ["1",                "3",                    "Unlimited"             ] },
   { label: "AI training",          values: ["Single interview", "Unlimited edits",      "Priority retraining"   ] },
-  { label: "Support",              values: ["Email 48h",        "Priority 24h",         "Dedicated call + chat" ] },
+  { label: "Support",              values: ["Instant support",  "Instant support",      "Instant support + dedicated contact" ] },
   { label: "Onboarding",           values: ["Self-serve",       "Self-serve + checklist","Done-for-you"         ] },
 ];
 

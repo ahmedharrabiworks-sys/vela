@@ -1281,7 +1281,13 @@ export default function ProductTourDemo() {
   }
 
   return (
-    <section className="py-10 md:py-14 bg-white">
+    // dir="ltr" pinned deliberately (polish pass #2 scope note): this
+    // interactive tour's internal copy/demo conversations are not yet
+    // routed through the i18n system (large surface area -- see report),
+    // so it's pinned LTR to avoid a half-translated/mismatched layout
+    // when the site is set to Arabic, rather than silently rendering
+    // broken-looking RTL-mirrored English content.
+    <section dir="ltr" className="py-10 md:py-14 bg-white">
       <div className="max-w-7xl mx-auto px-5 md:px-6">
 
         {/* Section header, FIX 5+6 applied */}

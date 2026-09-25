@@ -6,6 +6,7 @@ import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
+import CursorSpotlight from "@/components/landing/CursorSpotlight";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -25,10 +26,13 @@ export const INHERIT_LINE: Record<string, string> = {
 // these must stay in sync with that file's included-feature order.
 // Starter: 4 bullets (all of them, tier only has 4 included features).
 // Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
+// Polish pass #2 (FIX 6): index 5 is the "Instant support" line on both Pro
+// and Premium -- swapped in for the least load-bearing existing index so
+// support copy is visible on every card, not just Starter's.
 export const CARD_INDICES: Record<string, number[]> = {
   starter: [0, 1, 2, 3],
-  pro:     [0, 1, 2, 6],
-  premium: [0, 2, 3, 4, 6],
+  pro:     [0, 1, 5, 6],
+  premium: [0, 2, 3, 5, 6],
 };
 
 export default function Pricing() {
@@ -37,14 +41,15 @@ export default function Pricing() {
   const { t } = useI18n();
 
   return (
-    <section id="pricing" className="py-10 md:py-14 bg-white">
-      <div className="max-w-7xl mx-auto px-5 md:px-6">
+    <section id="pricing" className="relative py-10 md:py-14 bg-white overflow-hidden">
+      <CursorSpotlight size={460} color="rgba(255,107,53,0.10)" />
+      <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header -- currency selector pinned to the top-right of this block
             on desktop (own corner, not centered/floating below the toggle);
-            stays centered underneath on mobile where a corner position would
-            collide with the headline. */}
+            mirrors to the top-left in RTL; stays centered underneath on
+            mobile where a corner position would collide with the headline. */}
         <div className="relative text-center mb-8">
-          <div className="hidden sm:block sm:absolute sm:top-0 sm:right-0">
+          <div className="hidden sm:block sm:absolute sm:top-0 sm:right-0 rtl:sm:right-auto rtl:sm:left-0">
             <CurrencyToggle value={currency} onChange={setCurrency} />
           </div>
 
@@ -69,8 +74,8 @@ export default function Pricing() {
               }`}
             >
               {t("landing.pricing.annual")}
-              <span className={`ml-1.5 text-xs ${annual ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>
-                · Save 20%
+              <span className={`ms-1.5 text-xs ${annual ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>
+                · {t("landing.pricing.save20")}
               </span>
             </button>
           </div>
@@ -86,17 +91,15 @@ export default function Pricing() {
             href="/pricing#compare"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors"
           >
-            See full feature
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            {t("landing.pricing.seeFullFeature")}
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="rtl:-scale-x-100">
               <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </Link>
         </div>
 
-        {/* Cards, glow hugs the card row bounding box */}
+        {/* Cards */}
         <div className="relative max-w-[900px] mx-auto">
-          <div className="absolute top-1/2 left-1/2 pointer-events-none" aria-hidden="true"
-            style={{ width: "calc(100% + 80px)", height: "calc(100% + 80px)", transform: "translate(-50%,-50%)", borderRadius: "50%", background: "rgba(255,107,53,0.22)", filter: "blur(60px)", zIndex: 0 }} />
           <div className="grid md:grid-cols-3 gap-3.5 md:gap-4 items-stretch" style={{ position: "relative", zIndex: 1 }}>
             {TIER_PLANS.map((plan) => {
               const price = annual ? plan.annual : plan.monthly;
@@ -136,7 +139,7 @@ export default function Pricing() {
                       <span className="text-sm mb-0.5 text-[#9CA3AF]">/mo</span>
                     </div>
                     <p className="text-sm text-[#9CA3AF] mt-1">
-                      {TAGLINES[planKey]}
+                      {t(`landing.pricing.plans.${planKey}.tagline`)}
                     </p>
                     {annual && (
                       <p className="text-sm font-medium text-[#FF6B35] mt-1">
@@ -153,7 +156,7 @@ export default function Pricing() {
                           <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
                           <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                        <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
+                        <span className="text-sm text-[#374151]">{t(`landing.pricing.inheritLine.${planKey}`)}</span>
                       </li>
                     )}
                     {plan.features.filter(f => f.included)
@@ -187,7 +190,7 @@ export default function Pricing() {
                       {t(`landing.pricing.plans.${planKey}.cta`)}
                     </Link>
                     <p className="text-[11px] text-[#9CA3AF]">
-                      Cancel anytime
+                      {t("landing.pricing.cancelAnytime")}
                     </p>
                   </div>
                 </div>

@@ -51,14 +51,15 @@
   --vela-night:   #1A0A00;
   --vela-cream:   #FFF5F0;
   --vela-muted:   #888888;
-  /* global premium background system */
+  /* global premium background system -- FIX 7 (polish pass #2): intensities
+     cut roughly in half sitewide, kept only for texture, not a strong wash. */
   --bg-page:       linear-gradient(160deg, #FFFFFF 0%, #FFF9F5 100%);
-  --bg-orb1:       rgba(237,84,38,0.10);
-  --bg-orb2:       rgba(158,56,25,0.08);
-  --bg-orb3:       rgba(237,84,38,0.06);
-  --bg-orb1-strong: rgba(237,84,38,0.20);
-  --bg-orb2-strong: rgba(158,56,25,0.14);
-  --bg-orb3-light:  rgba(237,84,38,0.08);
+  --bg-orb1:       rgba(237,84,38,0.05);
+  --bg-orb2:       rgba(158,56,25,0.04);
+  --bg-orb3:       rgba(237,84,38,0.03);
+  --bg-orb1-strong: rgba(237,84,38,0.10);
+  --bg-orb2-strong: rgba(158,56,25,0.07);
+  --bg-orb3-light:  rgba(237,84,38,0.04);
 }
 
 
@@ -87,9 +88,9 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 78% 68% at 90% 5%,  var(--bg-orb1-strong) 0%, transparent 60%),
-    radial-gradient(ellipse 65% 58% at 6%  92%,  var(--bg-orb2-strong) 0%, transparent 60%),
-    radial-gradient(ellipse 42% 36% at 52% 52%,  var(--bg-orb3-light)  0%, transparent 55%),
+    radial-gradient(ellipse 60% 52% at 90% 5%,  var(--bg-orb1-strong) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 44% at 6%  92%,  var(--bg-orb2-strong) 0%, transparent 55%),
+    radial-gradient(ellipse 32% 28% at 52% 52%,  var(--bg-orb3-light)  0%, transparent 50%),
     var(--bg-page);
 }
 html.dark body::before { display: none; }

@@ -27,13 +27,13 @@ export const PLANS: Plan[] = [
     highlightFeatures: [
       "1 channel (phone, Instagram, or WhatsApp)",
       "500 text messages/mo",
-      "Email support (48h)",
+      "Instant support",
     ],
     features: [
       { text: "500 text messages/month",                   included: true  },
       { text: "1 channel (phone, Instagram, or WhatsApp)", included: true  },
       { text: "1 team member",                              included: true  },
-      { text: "Email support (48h)",                        included: true  },
+      { text: "Instant support",                            included: true  },
       { text: "AI Voice Phone Agent",                       included: false },
       { text: "Follow-up automation",                       included: false },
     ],
@@ -50,7 +50,7 @@ export const PLANS: Plan[] = [
       "AI Voice Phone Agent",
       "All 3 channels (phone, Instagram, WhatsApp)",
       "2,500 messages · 500 voice min/mo",
-      "Priority support (24h)",
+      "Instant support",
     ],
     features: [
       { text: "AI Voice Phone Agent",                        included: true },
@@ -58,7 +58,7 @@ export const PLANS: Plan[] = [
       { text: "500 voice minutes/month",                     included: true },
       { text: "2,500 text messages/month",                   included: true },
       { text: "3 team members",                              included: true },
-      { text: "Priority support (24h)",                      included: true },
+      { text: "Instant support",                              included: true },
       { text: "Unlimited AI training edits",                 included: true },
     ],
   },
@@ -73,7 +73,7 @@ export const PLANS: Plan[] = [
     highlightFeatures: [
       "All 3 channels + priority routing",
       "800 voice minutes · 3,000 messages/mo",
-      "Unlimited team members",
+      "Instant support + dedicated account contact",
       "Done-for-you onboarding",
     ],
     features: [
@@ -82,7 +82,7 @@ export const PLANS: Plan[] = [
       { text: "AI Voice Phone Agent + priority retraining", included: true },
       { text: "3,000 text messages/month",                  included: true },
       { text: "Unlimited team members",                     included: true },
-      { text: "Dedicated call + chat support",              included: true },
+      { text: "Instant support + dedicated account contact", included: true },
       { text: "Done-for-you onboarding",                    included: true },
     ],
   },
