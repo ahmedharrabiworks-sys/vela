@@ -49,8 +49,10 @@ export default function Hero() {
           CursorSpotlight with one consistent, CSS-only, auto-animated glow. */}
       <AmbientGlow />
 
-      {/* In-hero nav, scrolls away with the Hero naturally */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
+      {/* Desktop nav -- completely unchanged from before the mobile header
+          redesign (bug-fix + polish round #4), just now explicitly scoped to
+          sm+ only since mobile gets its own separate pill header below. */}
+      <div className="hidden sm:flex relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 items-center justify-between shrink-0">
         {/* translateY correction (bug-fix + polish round #3): the logo PNG's
             visible content isn't vertically centered within its own file --
             measured via pixel analysis (opacity-weighted centroid), the
@@ -59,34 +61,58 @@ export default function Hero() {
             the empty space to the top instead). Flexbox `items-center`
             correctly centers the image's bounding BOX, but that leaves the
             visible wordmark sitting lower than sibling text/icons that don't
-            have this asymmetry. Self-relative % transform stays correct at
-            any responsive height (36px mobile / 56px desktop) with no
-            breakpoint-specific values needed. */}
+            have this asymmetry. */}
         <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
-          <Logo showText heightClass="!h-9 sm:!h-14" />
+          <Logo showText heightClass="!h-14" />
         </Link>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-4">
           <LanguageToggle />
           <Link
             href="/auth/login"
-            className="hidden sm:inline-flex text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
+            className="text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
           >
             {t("landing.nav.login")}
           </Link>
-          <CtaButton size="sm" className="hidden sm:inline-flex" />
+          <CtaButton size="sm" />
+        </div>
+      </div>
 
-          {/* FIX: on mobile, both Log in and Get Started were "hidden" with
-              no alternative at all -- a mobile visitor had no way to log in
-              or sign up from the header. Hamburger opens both options. */}
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open menu"
-            className="sm:hidden w-10 h-10 flex items-center justify-center rounded-lg text-[#111111] hover:bg-[#F3F4F6] transition-colors"
-          >
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </button>
+      {/* Mobile-only header (bug-fix + polish round #4) -- single rounded
+          pill matching mobile-header-reference.jpg's soft-container style
+          (grouped elements, clean divider), rebuilt with Vela's own logo/
+          brand colors and Oussama's specified element order: logo, language
+          toggle, hamburger, "Log in" dark pill. Plain flex row with no
+          manual RTL classes -- source order stays logo-first, and the
+          browser mirrors the whole row automatically under dir="rtl" (the
+          established, correct pattern from earlier RTL fixes), so Arabic
+          reads Log-in-first / logo-last without any extra logic. */}
+      <div className="sm:hidden relative z-10 w-full px-5 pt-6 shrink-0">
+        <div className="flex items-center justify-between w-full rounded-full bg-white border border-[#E5E7EB] shadow-sm py-2 ps-4 pe-2">
+          <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
+            <Logo showText={false} size={26} />
+          </Link>
+          <div className="flex items-center gap-2.5">
+            <LanguageToggle />
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+              className="w-8 h-8 flex items-center justify-center rounded-full text-[#111111] hover:bg-[#F3F4F6] transition-colors shrink-0"
+            >
+              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </button>
+            <span className="w-px h-5 bg-[#E5E7EB] shrink-0" />
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center gap-1.5 bg-[#111111] text-white text-sm font-semibold rounded-full ps-4 pe-3.5 py-2 shrink-0"
+            >
+              {t("landing.nav.login")}
+              <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
+                <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -145,7 +171,7 @@ export default function Hero() {
           py-12/py-16 rhythm every other section now uses (section-continuity
           round), so the Hero -> ProductTourDemo gap is consistent with every
           other inter-section gap instead of its own larger one-off value. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 pb-12 md:pt-16 md:pb-16">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 pb-12 md:pt-16 md:pb-16">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}

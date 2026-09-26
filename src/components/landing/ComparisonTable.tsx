@@ -37,11 +37,13 @@ const ROW_KINDS: Record<(typeof ROW_KEYS)[number], { humanStaff: Kind; vela: Kin
   scalingCost:  { humanStaff: "no",      vela: "yes" },
 };
 
-function CellIcon({ kind, accent }: { kind: Kind; accent?: boolean }) {
+function CellIcon({ kind, accent, small }: { kind: Kind; accent?: boolean; small?: boolean }) {
   const color = accent ? "#FF6B35" : kind === "yes" ? "#9CA3AF" : kind === "no" ? "#D1D5DB" : "#B4BAC4";
+  const s = small ? 11 : 16;
+  const mt = small ? "mt-[3px]" : "";
   if (kind === "yes") {
     return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none" className={`shrink-0 ${mt}`}>
         <circle cx="8" cy="8" r="8" fill={accent ? color : "#F3F4F6"} />
         <path d="M5 8l2 2 4-4" stroke={accent ? "white" : "#6B7280"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -49,14 +51,14 @@ function CellIcon({ kind, accent }: { kind: Kind; accent?: boolean }) {
   }
   if (kind === "no") {
     return (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none" className={`shrink-0 ${mt}`}>
         <circle cx="8" cy="8" r="8" fill="#F9FAFB" />
         <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+    <svg width={s} height={s} viewBox="0 0 16 16" fill="none" className={`shrink-0 ${mt}`}>
       <circle cx="8" cy="8" r="8" fill="#F9FAFB" />
       <path d="M5 8h6" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
@@ -129,38 +131,59 @@ export default function ComparisonTable() {
           </table>
         </div>
 
-        {/* Mobile: stacked per-row card, now 2 options per row (Basic AI
-            Bots dropped, bug-fix + polish round #3) -- row label as a
-            header, then Human Staff / Vela listed vertically each with its
-            own icon + full-width label/value. Same data/copy as desktop, no
-            new locale keys. */}
-        <div className="md:hidden flex flex-col gap-3">
-          {ROW_KEYS.map((key) => {
-            const kinds = ROW_KINDS[key];
-            return (
-              <div key={key} className="rounded-2xl border border-[#E5E7EB] bg-white overflow-hidden" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
-                <p className="text-sm font-bold text-[#111111] px-4 pt-4 pb-3">
-                  {t(`landing.comparison.rows.${key}.label`)}
-                </p>
-                <div className="flex flex-col divide-y divide-[#F3F4F6] border-t border-[#F3F4F6]">
-                  <div className="flex items-start gap-2.5 px-4 py-3">
-                    <CellIcon kind={kinds.humanStaff} />
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF]">{t("landing.comparison.columns.humanStaff")}</p>
-                      <p className="text-sm text-[#374151] mt-0.5">{t(`landing.comparison.rows.${key}.humanStaff`)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5 px-4 py-3" style={{ background: "#FFFBF9" }}>
-                    <CellIcon kind={kinds.vela} accent />
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#C2410C]">{t("landing.comparison.columns.vela")}</p>
-                      <p className="text-sm font-semibold text-[#111111] mt-0.5">{t(`landing.comparison.rows.${key}.vela`)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* Mobile: a real compact table (bug-fix + polish round #4),
+            matching comparison-table-reference.png's pattern -- label +
+            both value columns side by side in one row, small text, tight
+            padding, wrapping to multiple lines instead of truncating (same
+            approach the reference itself uses for its longer phrases).
+            Replaces the stacked-card layout from last session, which
+            wasn't the actual requirement. Same data/copy as desktop, no
+            new locale keys. table-fixed keeps column widths predictable;
+            overflow-x-auto on the wrapper is a contained safety net only --
+            in practice the content wraps and fits without needing it. */}
+        <div className="md:hidden overflow-x-auto -mx-5 px-5">
+          <table className="w-full border-collapse rounded-xl overflow-hidden table-fixed" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
+            <colgroup>
+              <col style={{ width: "32%" }} />
+              <col style={{ width: "32%" }} />
+              <col style={{ width: "36%" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th className="bg-white border border-[#E5E7EB] px-1.5 py-2.5" />
+                <th className="text-start bg-white border border-[#E5E7EB] px-1.5 py-2.5">
+                  <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wide">{t("landing.comparison.columns.humanStaff")}</span>
+                </th>
+                <th className="text-start border border-[#FF6B35] px-1.5 py-2.5" style={{ background: "#FFF8F5" }}>
+                  <span className="text-[10px] font-bold text-[#C2410C] uppercase tracking-wide">{t("landing.comparison.columns.vela")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {ROW_KEYS.map((key) => {
+                const kinds = ROW_KINDS[key];
+                return (
+                  <tr key={key}>
+                    <td className="align-top bg-white border border-[#E5E7EB] px-1.5 py-2.5">
+                      <span className="text-[11px] font-semibold text-[#111111] leading-snug">{t(`landing.comparison.rows.${key}.label`)}</span>
+                    </td>
+                    <td className="align-top bg-white border border-[#E5E7EB] px-1.5 py-2.5">
+                      <span className="flex items-start gap-1 text-[11px] text-[#6B7280] leading-snug">
+                        <CellIcon kind={kinds.humanStaff} small />
+                        {t(`landing.comparison.rows.${key}.humanStaff`)}
+                      </span>
+                    </td>
+                    <td className="align-top border border-[#FF6B35] px-1.5 py-2.5" style={{ background: "#FFFBF9" }}>
+                      <span className="flex items-start gap-1 text-[11px] font-semibold text-[#111111] leading-snug">
+                        <CellIcon kind={kinds.vela} accent small />
+                        {t(`landing.comparison.rows.${key}.vela`)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

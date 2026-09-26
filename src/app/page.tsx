@@ -9,7 +9,7 @@ import Footer from "@/components/landing/Footer";
 import Reveal from "@/components/landing/Reveal";
 export default function LandingPage() {
   return (
-    <main className="overflow-x-hidden">
+    <main className="overflow-x-clip">
       <Navbar />
       {/* Hero and ProductTourDemo are intentionally NOT wrapped in Reveal --
           both render fully visible immediately on load, no fade/slide-in.
