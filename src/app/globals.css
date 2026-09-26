@@ -244,6 +244,14 @@ canvas {
    glow used on every homepage section. Centered, small, low-opacity, slow
    drift/pulse. Identical on desktop and mobile since it never reads pointer
    position. Replaces the old mouse-tracked CursorSpotlight entirely. ─── */
+.ambient-glow {
+  /* Perf fix (scroll-jank round): tells the browser this wrapper's paint
+     never escapes its own box (it's already overflow:hidden, contain:paint
+     lets the compositor rely on that guarantee instead of re-checking),
+     isolating the animated blob's repaint/raster region from the rest of
+     the section's content during scroll. */
+  contain: paint;
+}
 .ambient-glow-blob {
   position: absolute;
   top: 50%;
@@ -280,12 +288,22 @@ canvas {
   left: 80%;
   margin: -280px 0 0 -280px;
 }
+/* Perf fix (scroll-jank round): `scale()` dropped from these keyframes.
+   Measured live via a CDP trace during real scrolling on production --
+   scale changes on a transform layer force the compositor to re-rasterize
+   at each new effective resolution (to stay sharp), unlike pure
+   translate3d/opacity which reuse the already-rasterized bitmap at zero
+   raster cost. A controlled A/B (same page, same scroll gesture, only this
+   animation swapped) measured real RasterTask reduction with scale
+   removed. Visual effect is unchanged in substance -- still drifts and
+   pulses in opacity, just without the size breathing, which was the
+   expensive part. */
 @keyframes ambientDrift {
-  0%   { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.65; }
-  25%  { transform: translate3d(26px, -18px, 0) scale(1.08); opacity: 1; }
-  50%  { transform: translate3d(-12px, 22px, 0) scale(0.94); opacity: 0.7; }
-  75%  { transform: translate3d(-22px, -14px, 0) scale(1.05); opacity: 0.92; }
-  100% { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.65; }
+  0%   { transform: translate3d(0, 0, 0);          opacity: 0.65; }
+  25%  { transform: translate3d(26px, -18px, 0); opacity: 1; }
+  50%  { transform: translate3d(-12px, 22px, 0); opacity: 0.7; }
+  75%  { transform: translate3d(-22px, -14px, 0); opacity: 0.92; }
+  100% { transform: translate3d(0, 0, 0);          opacity: 0.65; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ambient-glow-blob { animation: none; opacity: 0.65; }
