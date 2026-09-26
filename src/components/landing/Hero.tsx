@@ -77,42 +77,44 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Mobile-only header (bug-fix + polish round #4) -- single rounded
-          pill matching mobile-header-reference.jpg's soft-container style
-          (grouped elements, clean divider), rebuilt with Vela's own logo/
-          brand colors and Oussama's specified element order: logo, language
-          toggle, hamburger, "Log in" dark pill. Plain flex row with no
-          manual RTL classes -- source order stays logo-first, and the
-          browser mirrors the whole row automatically under dir="rtl" (the
-          established, correct pattern from earlier RTL fixes), so Arabic
-          reads Log-in-first / logo-last without any extra logic. */}
-      <div className="sm:hidden relative z-10 w-full px-5 pt-6 shrink-0">
-        <div className="flex items-center justify-between w-full rounded-full bg-white border border-[#E5E7EB] shadow-sm py-2 ps-4 pe-2">
+      {/* Mobile-only header (bug-fix + polish round #4, tightened #5) --
+          single rounded pill matching mobile-header-reference.jpg's
+          soft-container style, rebuilt with Vela's own logo/brand colors
+          and Oussama's specified element order: logo, language toggle,
+          hamburger, "Log in" pill. Centered as a compact island (no w-full/
+          justify-between -- that was stretching it edge-to-edge and forcing
+          a large logo<->toggle gap via the leftover justify-between slack);
+          now a single flex row with one consistent gap-2 between every
+          element, centered via justify-center on the outer wrapper. Login
+          button reuses the sitewide .btn-primary gradient class instead of
+          a flat dark fill, same pill shape/arrow. Plain flex row, no manual
+          RTL classes -- source order stays logo-first, and the browser
+          mirrors the whole row automatically under dir="rtl". */}
+      <div className="sm:hidden relative z-10 w-full px-5 pt-6 shrink-0 flex justify-center">
+        <div className="inline-flex items-center gap-2 rounded-full bg-white border border-[#E5E7EB] shadow-sm py-1.5 ps-3.5 pe-2">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
-            <Logo showText={false} size={26} />
+            <Logo showText={false} size={24} />
           </Link>
-          <div className="flex items-center gap-2.5">
-            <LanguageToggle />
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Open menu"
-              className="w-8 h-8 flex items-center justify-center rounded-full text-[#111111] hover:bg-[#F3F4F6] transition-colors shrink-0"
-            >
-              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-                <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-            </button>
-            <span className="w-px h-5 bg-[#E5E7EB] shrink-0" />
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-1.5 bg-[#111111] text-white text-sm font-semibold rounded-full ps-4 pe-3.5 py-2 shrink-0"
-            >
-              {t("landing.nav.login")}
-              <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
-                <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-          </div>
+          <LanguageToggle />
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-[#111111] hover:bg-[#F3F4F6] transition-colors shrink-0"
+          >
+            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+              <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <span className="w-px h-5 bg-[#E5E7EB] shrink-0" />
+          <Link
+            href="/auth/login"
+            className="btn-primary gap-1.5 text-sm ps-4 pe-3.5 py-2 shrink-0"
+          >
+            {t("landing.nav.login")}
+            <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
+              <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
         </div>
       </div>
 
@@ -171,7 +173,7 @@ export default function Hero() {
           py-12/py-16 rhythm every other section now uses (section-continuity
           round), so the Hero -> ProductTourDemo gap is consistent with every
           other inter-section gap instead of its own larger one-off value. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 pb-12 md:pt-16 md:pb-16">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-14 pb-12 md:pt-16 md:pb-16">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}
