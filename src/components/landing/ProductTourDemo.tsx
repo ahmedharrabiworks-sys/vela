@@ -1276,12 +1276,35 @@ export default function ProductTourDemo() {
   // relies on to replay its internal timers).
   const [replayTick, setReplayTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Perf fix (bug-fix + polish round #3): this autoplay loop previously ran
+  // forever regardless of scroll position -- confirmed via a live
+  // MutationObserver check on production that the tour kept remounting
+  // scenes (and re-running each scene's full internal timer/rAF
+  // choreography) indefinitely even while scrolled far past it and sitting
+  // idle. That's continuous, unbounded main-thread work competing with
+  // scroll for the entire lifetime of the page view. `isVisible` (a plain
+  // IntersectionObserver, not scroll-tied) gates only the top-level
+  // scene-advance timer below -- once this section leaves the viewport, no
+  // further scene switches/remounts happen, so whatever scene is currently
+  // mounted finishes its own already-scheduled one-shot timers (a few
+  // seconds at most, none of them infinite loops) and then goes fully idle.
+  const [isVisible, setIsVisible] = useState(true);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting), { threshold: 0 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   // Autoplay advances to the next scene after its own duration; manual mode
   // instead replays the same scene (bumps replayTick, scene index unchanged).
-  // Re-registers whenever scene/mode/tick changes.
+  // Re-registers whenever scene/mode/tick/visibility changes.
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (!isVisible) return;
     const duration = SCENE_DURATIONS[scene] ?? 3000;
     timerRef.current = setTimeout(() => {
       if (manualMode) {
@@ -1291,7 +1314,7 @@ export default function ProductTourDemo() {
       }
     }, duration);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [scene, manualMode, replayTick]);
+  }, [scene, manualMode, replayTick, isVisible]);
 
   const handleTabClick = useCallback((idx: number) => {
     setManualMode(true);
@@ -1312,7 +1335,7 @@ export default function ProductTourDemo() {
     // Polish pass #4: fully translated + RTL-correct, dir="ltr" pin from the
     // previous session removed. Every string in this section (and its 4
     // scene mocks) now routes through the i18n system.
-    <section id="how-it-works" className="relative py-10 md:py-14 bg-white overflow-hidden">
+    <section id="how-it-works" ref={sectionRef} className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="start" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
 

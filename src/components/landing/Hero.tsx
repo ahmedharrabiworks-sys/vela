@@ -51,7 +51,18 @@ export default function Hero() {
 
       {/* In-hero nav, scrolls away with the Hero naturally */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 flex items-center justify-between shrink-0">
-        <Link href="/" aria-label="Vela home" className="shrink-0">
+        {/* translateY correction (bug-fix + polish round #3): the logo PNG's
+            visible content isn't vertically centered within its own file --
+            measured via pixel analysis (opacity-weighted centroid), the
+            "Vela" wordmark's visual center sits ~17.5% of the image height
+            below the file's geometric center (the star mark above it pulls
+            the empty space to the top instead). Flexbox `items-center`
+            correctly centers the image's bounding BOX, but that leaves the
+            visible wordmark sitting lower than sibling text/icons that don't
+            have this asymmetry. Self-relative % transform stays correct at
+            any responsive height (36px mobile / 56px desktop) with no
+            breakpoint-specific values needed. */}
+        <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
           <Logo showText heightClass="!h-9 sm:!h-14" />
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
@@ -130,8 +141,11 @@ export default function Hero() {
           space below the CTA from a prior session is gone. The section no
           longer forces min-h-screen, so it now sizes to its own content
           and flows directly into the next section with normal padding,
-          on both mobile and desktop. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 pb-12 md:pt-16 md:pb-20">
+          on both mobile and desktop. Bottom padding matches the shared
+          py-12/py-16 rhythm every other section now uses (section-continuity
+          round), so the Hero -> ProductTourDemo gap is consistent with every
+          other inter-section gap instead of its own larger one-off value. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 pb-12 md:pt-16 md:pb-16">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}

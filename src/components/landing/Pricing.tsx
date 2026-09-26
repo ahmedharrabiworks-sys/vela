@@ -42,7 +42,7 @@ export default function Pricing() {
   const { t } = useI18n();
 
   return (
-    <section id="pricing" className="relative py-10 md:py-14 bg-white overflow-hidden">
+    <section id="pricing" className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="end" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header */}

@@ -248,28 +248,37 @@ canvas {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 860px;
-  height: 860px;
-  margin: -430px 0 0 -430px;
+  width: 560px;
+  height: 560px;
+  margin: -280px 0 0 -280px;
   border-radius: 50%;
-  /* Same peak alpha (0.15) and same falloff (transparent at 70%) as before --
-     only the spread is larger, so brightness/saturation are unchanged. */
-  background: radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 70%);
+  /* Bug fix (section-continuity round): the previous 860px size + 70%
+     falloff + near-edge --start/--end positions combined to get hard-clipped
+     by each section's own `overflow:hidden` on real, measured section
+     heights (Hero 571px, DashboardSection 553px desktop, etc.) -- confirmed
+     via screenshot evidence of a crisp pink-to-white line at multiple
+     section boundaries, not a background-color mismatch (every section is
+     plain white). Smaller size + a much tighter falloff (transparent by
+     45% of the gradient's own radius, instead of 70%) means the visible
+     portion of the glow is fully faded out well within any section's
+     bounds before it can reach an edge, regardless of position. */
+  background: radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 45%);
   animation: ambientDrift 16s ease-in-out infinite;
   will-change: transform, opacity;
 }
-/* Per-section placement variants (FIX 3, bug-fix + polish round) -- keeps
-   the glow from reading as one blob stuck in the exact center of every
-   section; each variant just repositions the same blob toward a corner. */
+/* Per-section placement variants -- keeps the glow from reading as one blob
+   stuck in the exact center of every section; each variant repositions the
+   same blob toward a corner, pulled in from the literal edge (was 14-18%/
+   82-86%) so it stays clear of the clip boundary on short sections too. */
 .ambient-glow-blob--start {
-  top: 18%;
-  left: 14%;
-  margin: -430px 0 0 -430px;
+  top: 22%;
+  left: 20%;
+  margin: -280px 0 0 -280px;
 }
 .ambient-glow-blob--end {
-  top: 82%;
-  left: 86%;
-  margin: -430px 0 0 -430px;
+  top: 78%;
+  left: 80%;
+  margin: -280px 0 0 -280px;
 }
 @keyframes ambientDrift {
   0%   { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.65; }
@@ -280,25 +289,6 @@ canvas {
 }
 @media (prefers-reduced-motion: reduce) {
   .ambient-glow-blob { animation: none; opacity: 0.65; }
-}
-
-/* ─── Custom cursor (consolidated fix round, FIX 9) — desktop only
-   (pointer:fine + hover:hover, enforced in JS before the
-   "vela-custom-cursor" class is ever added, and re-enforced here as a hard
-   CSS fallback). Replaces the dot+scale design entirely: a standard
-   arrow-pointer silhouette (same shape as the default OS cursor, not a
-   novel shape) rendered as an inline SVG data-URI in Vela orange, applied
-   via the native CSS `cursor` property -- no JS mousemove tracking, no
-   positioned overlay element, no possible lag, since the browser renders
-   it natively at the real pointer position every frame for free. Hotspot
-   (3 2) matches the SVG's tip coordinate so clicks register exactly where
-   the visual point is, same as a native arrow cursor. ─── */
-html.vela-custom-cursor,
-html.vela-custom-cursor * {
-  cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMyAyIEwzIDE5LjIgTDcuNiAxNS40IEwxMC44IDIxLjYgTDEzLjQgMjAuMyBMMTAuMyAxNC4yIEwxNi4yIDE0LjIgWiIgZmlsbD0iI0ZGNkIzNSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjMiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==") 3 2, auto !important;
-}
-@media (hover: none), (pointer: coarse) {
-  html.vela-custom-cursor, html.vela-custom-cursor * { cursor: auto !important; }
 }
 
 /* FIX 4a — Logo wordmark: white in dark mode */

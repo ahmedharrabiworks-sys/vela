@@ -20,7 +20,7 @@ export default function ProblemSection() {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <section className="relative py-14 md:py-20 bg-white overflow-hidden">
+    <section className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="end" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">

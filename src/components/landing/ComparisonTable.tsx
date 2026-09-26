@@ -8,10 +8,11 @@ type Kind = "yes" | "no" | "partial";
 // Nine honest, non-exaggerated comparison points. Every "Vela" cell reflects
 // a real, currently-shipped capability (24/7 always-on AI, multilingual
 // replies, follow-up automation, automatic conversation logging -- all real
-// features in src/lib/pricing.ts / src/lib/plan-config.ts). "Basic AI Bots"
-// and "Human Staff" get fair credit where genuinely true (bots are cheap,
-// instant, always-on; humans bring real judgment and rapport) and a fair,
-// defensible downside where true -- nothing invented for either column.
+// features in src/lib/pricing.ts / src/lib/plan-config.ts). "Human Staff"
+// gets fair credit where genuinely true (real judgment, in-person rapport)
+// and a fair, defensible downside where true -- nothing invented.
+// "Basic AI Bots" column removed entirely (bug-fix + polish round #3) --
+// same rows/copy for the remaining two columns, untouched.
 const ROW_KEYS = [
   "answering",
   "availability",
@@ -24,16 +25,16 @@ const ROW_KEYS = [
   "scalingCost",
 ] as const;
 
-const ROW_KINDS: Record<(typeof ROW_KEYS)[number], { basicBots: Kind; humanStaff: Kind; vela: Kind }> = {
-  answering:    { basicBots: "partial", humanStaff: "partial", vela: "yes" },
-  availability: { basicBots: "yes",     humanStaff: "no",      vela: "yes" },
-  speed:        { basicBots: "yes",     humanStaff: "partial", vela: "yes" },
-  languages:    { basicBots: "no",      humanStaff: "partial", vela: "yes" },
-  consistency:  { basicBots: "partial", humanStaff: "no",      vela: "yes" },
-  scale:        { basicBots: "partial", humanStaff: "no",      vela: "yes" },
-  followup:     { basicBots: "no",      humanStaff: "partial", vela: "yes" },
-  records:      { basicBots: "no",      humanStaff: "partial", vela: "yes" },
-  scalingCost:  { basicBots: "yes",     humanStaff: "no",      vela: "yes" },
+const ROW_KINDS: Record<(typeof ROW_KEYS)[number], { humanStaff: Kind; vela: Kind }> = {
+  answering:    { humanStaff: "partial", vela: "yes" },
+  availability: { humanStaff: "no",      vela: "yes" },
+  speed:        { humanStaff: "partial", vela: "yes" },
+  languages:    { humanStaff: "partial", vela: "yes" },
+  consistency:  { humanStaff: "no",      vela: "yes" },
+  scale:        { humanStaff: "no",      vela: "yes" },
+  followup:     { humanStaff: "partial", vela: "yes" },
+  records:      { humanStaff: "partial", vela: "yes" },
+  scalingCost:  { humanStaff: "no",      vela: "yes" },
 };
 
 function CellIcon({ kind, accent }: { kind: Kind; accent?: boolean }) {
@@ -66,7 +67,7 @@ export default function ComparisonTable() {
   const { t } = useI18n();
 
   return (
-    <section className="relative py-14 md:py-20 bg-white overflow-hidden">
+    <section className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="start" />
       <div className="relative max-w-5xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="text-center mb-8 md:mb-10">
@@ -86,15 +87,13 @@ export default function ComparisonTable() {
           </p>
         </div>
 
-        {/* Desktop: unchanged 3-equal-column table, md+ only. */}
+        {/* Desktop: 2-equal-column table (Basic AI Bots column dropped,
+            bug-fix + polish round #3), md+ only. */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse rounded-2xl overflow-hidden" style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.06)" }}>
+          <table className="w-full min-w-[480px] border-collapse rounded-2xl overflow-hidden" style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.06)" }}>
             <thead>
               <tr>
-                <th className="text-start bg-white border border-[#E5E7EB] px-4 py-4 w-[30%]" />
-                <th className="text-start bg-white border border-[#E5E7EB] px-4 py-4">
-                  <span className="text-sm font-bold text-[#6B7280]">{t("landing.comparison.columns.basicBots")}</span>
-                </th>
+                <th className="text-start bg-white border border-[#E5E7EB] px-4 py-4 w-[36%]" />
                 <th className="text-start bg-white border border-[#E5E7EB] px-4 py-4">
                   <span className="text-sm font-bold text-[#6B7280]">{t("landing.comparison.columns.humanStaff")}</span>
                 </th>
@@ -110,12 +109,6 @@ export default function ComparisonTable() {
                   <tr key={key}>
                     <td className="bg-white border border-[#E5E7EB] px-4 py-4">
                       <span className="text-sm font-semibold text-[#111111]">{t(`landing.comparison.rows.${key}.label`)}</span>
-                    </td>
-                    <td className="bg-white border border-[#E5E7EB] px-4 py-4">
-                      <span className="flex items-center gap-2 text-sm text-[#6B7280]">
-                        <CellIcon kind={kinds.basicBots} />
-                        {t(`landing.comparison.rows.${key}.basicBots`)}
-                      </span>
                     </td>
                     <td className="bg-white border border-[#E5E7EB] px-4 py-4">
                       <span className="flex items-center gap-2 text-sm text-[#6B7280]">
@@ -136,12 +129,11 @@ export default function ComparisonTable() {
           </table>
         </div>
 
-        {/* Mobile: the 3-equal-column table cramped/overflowed badly below
-            md (bug-fix + polish round #2). Replaced with a stacked per-row
-            card -- row label as a header, then each of the 3 options listed
-            vertically with its own icon + full-width label/value, so nothing
-            is squeezed into a narrow column or truncated. Same data/copy as
-            desktop, no new locale keys. */}
+        {/* Mobile: stacked per-row card, now 2 options per row (Basic AI
+            Bots dropped, bug-fix + polish round #3) -- row label as a
+            header, then Human Staff / Vela listed vertically each with its
+            own icon + full-width label/value. Same data/copy as desktop, no
+            new locale keys. */}
         <div className="md:hidden flex flex-col gap-3">
           {ROW_KEYS.map((key) => {
             const kinds = ROW_KINDS[key];
@@ -151,13 +143,6 @@ export default function ComparisonTable() {
                   {t(`landing.comparison.rows.${key}.label`)}
                 </p>
                 <div className="flex flex-col divide-y divide-[#F3F4F6] border-t border-[#F3F4F6]">
-                  <div className="flex items-start gap-2.5 px-4 py-3">
-                    <CellIcon kind={kinds.basicBots} />
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF]">{t("landing.comparison.columns.basicBots")}</p>
-                      <p className="text-sm text-[#374151] mt-0.5">{t(`landing.comparison.rows.${key}.basicBots`)}</p>
-                    </div>
-                  </div>
                   <div className="flex items-start gap-2.5 px-4 py-3">
                     <CellIcon kind={kinds.humanStaff} />
                     <div>
