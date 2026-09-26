@@ -25,18 +25,17 @@ export const INHERIT_LINE: Record<string, string> = {
 // Indices into the already-filtered (included-only) features array to show on the card.
 // Recomputed for the real pricing numbers set in Phase 4 (src/lib/pricing.ts) --
 // these must stay in sync with that file's included-feature order.
-// Starter: 4 bullets (all of them, tier only has 4 included features).
-// Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
-// Pricing restructure round: Pro's card now surfaces the tier's new
-// standout differentiators directly (AI Voice Phone Agent, Unlimited text
-// messages, Unlimited team members, Guided onboarding) -- these are the
-// exact features this round changed, and the whole point of the round was
-// making Pro read as the clear standout tier, so they need to be visible on
-// the card itself, not just in the full feature array.
+// Card-enrichment round: Starter now shows all 6 of its real included
+// features (was 4, leaving visible empty space below the card's bottom
+// bullet) -- 2 real facts added from plan-config.ts that weren't
+// surfaced anywhere before (bookingsPerMonth, the single-interview AI
+// training flow already named in /pricing#compare's aiTraining row).
+// Pro and Premium also expanded (6 and 7 bullets respectively) so all
+// three cards read as complete and substantial on their own.
 export const CARD_INDICES: Record<string, number[]> = {
-  starter: [0, 1, 2, 3],
-  pro:     [0, 3, 4, 7],
-  premium: [0, 2, 3, 5, 6],
+  starter: [0, 1, 2, 3, 4, 5],
+  pro:     [0, 2, 3, 4, 5, 7],
+  premium: [0, 1, 2, 3, 4, 5, 6],
 };
 
 export default function Pricing() {

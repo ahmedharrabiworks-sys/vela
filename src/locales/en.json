@@ -729,10 +729,12 @@
           "tagline": "For freelancers & solo businesses",
           "cta": "Get Started",
           "features": [
-            "500 text messages/month",
+            "500 AI-handled text messages/month",
             "1 channel (phone, Instagram, or WhatsApp)",
-            "1 team member",
-            "Instant support",
+            "1 team member with dashboard access",
+            "Up to 50 bookings/month",
+            "Instant AI-powered support, 24/7",
+            "Single AI training interview to get started",
             "AI Voice Phone Agent",
             "Follow-up automation"
           ]
@@ -743,14 +745,14 @@
           "tagline": "For growing teams",
           "cta": "Get Started",
           "features": [
-            "AI Voice Phone Agent",
+            "AI Voice Phone Agent, answers & books calls 24/7",
             "All 3 channels (phone, Instagram, WhatsApp)",
-            "550 voice minutes/month",
-            "Unlimited text messages",
-            "Unlimited team members",
-            "Instant support",
-            "Unlimited AI training edits",
-            "Guided onboarding"
+            "550 voice minutes/month included",
+            "Unlimited AI-handled text messages",
+            "Unlimited team members, no per-seat limits",
+            "Instant AI-powered support, 24/7, plus live chat with our team",
+            "Unlimited AI training edits, retrain anytime",
+            "Guided onboarding, a real walkthrough with our team"
           ]
         },
         "premium": {
@@ -759,13 +761,13 @@
           "tagline": "For pro companies & businesses",
           "cta": "Get Started",
           "features": [
-            "1,000 voice minutes/month",
-            "All 3 channels + priority routing",
+            "1,000 voice minutes/month included",
+            "All 3 channels + priority message routing",
             "AI Voice Phone Agent + priority retraining",
-            "Unlimited text messages",
-            "Unlimited team members",
-            "Instant support + dedicated account contact",
-            "Done-for-you onboarding"
+            "Unlimited AI-handled text messages",
+            "Unlimited team members, no per-seat limits",
+            "Instant AI-powered support, 24/7, plus a dedicated account contact",
+            "Done-for-you onboarding, we set it all up for you"
           ]
         }
       }
@@ -909,9 +911,9 @@
         "languages": {
           "label": "Languages",
           "sublabel": "Languages your AI agent can hold a conversation in",
-          "starter": "1 language",
-          "pro": "Up to 5 languages",
-          "premium": "Unlimited languages"
+          "starter": "Speaks the customer's language, automatically",
+          "pro": "Speaks the customer's language, automatically",
+          "premium": "Speaks the customer's language, automatically"
         },
         "teamMembers": {
           "label": "Team members",
