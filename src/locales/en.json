@@ -745,11 +745,12 @@
           "features": [
             "AI Voice Phone Agent",
             "All 3 channels (phone, Instagram, WhatsApp)",
-            "500 voice minutes/month",
-            "2,500 text messages/month",
-            "3 team members",
+            "550 voice minutes/month",
+            "Unlimited text messages",
+            "Unlimited team members",
             "Instant support",
-            "Unlimited AI training edits"
+            "Unlimited AI training edits",
+            "Guided onboarding"
           ]
         },
         "premium": {
@@ -758,10 +759,10 @@
           "tagline": "For pro companies & businesses",
           "cta": "Get Started",
           "features": [
-            "800 voice minutes/month",
+            "1,000 voice minutes/month",
             "All 3 channels + priority routing",
             "AI Voice Phone Agent + priority retraining",
-            "3,000 text messages/month",
+            "Unlimited text messages",
             "Unlimited team members",
             "Instant support + dedicated account contact",
             "Done-for-you onboarding"
@@ -890,14 +891,14 @@
           "label": "Text messages",
           "sublabel": "AI-handled replies per month across your connected channels",
           "starter": "500 AI-handled replies per month",
-          "pro": "2,500 AI-handled replies per month",
-          "premium": "3,000 AI-handled replies per month"
+          "pro": "Unlimited AI-handled replies",
+          "premium": "Unlimited AI-handled replies"
         },
         "voiceMinutes": {
           "label": "Voice minutes",
           "sublabel": "Inbound call minutes handled by the AI phone agent",
-          "pro": "500 voice minutes per month",
-          "premium": "800 voice minutes per month"
+          "pro": "550 voice minutes per month",
+          "premium": "1,000 voice minutes per month"
         },
         "voiceAgent": {
           "label": "AI Voice Phone Agent",
@@ -916,7 +917,7 @@
           "label": "Team members",
           "sublabel": "People on your team with dashboard access",
           "starter": "1 team member",
-          "pro": "3 team members",
+          "pro": "Unlimited team members",
           "premium": "Unlimited team members"
         },
         "aiTraining": {
@@ -943,7 +944,7 @@
           "label": "Onboarding",
           "sublabel": "How you get set up on Vela",
           "starter": "Self-serve setup",
-          "pro": "Self-serve with a guided checklist",
+          "pro": "Guided onboarding, a real walkthrough with our team",
           "premium": "Done-for-you, we set it up with you"
         }
       }

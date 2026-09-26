@@ -183,15 +183,19 @@ export async function POST(req: NextRequest) {
   // defeat its own purpose. 500/day is a generous multiple of even
   // Starter's full monthly text allowance (500/mo) -- far past anything a
   // real single-tenant customer volume would hit, a clear abuse signal only.
+  // Hoisted so the usage-visibility alert below (pricing restructure round)
+  // can reuse this exact same real count instead of a second query.
+  let dailyCount = 0;
   if (!isTest) {
-    const { count: dailyCount } = await admin
+    const { count } = await admin
       .from("messages")
       .select("*", { count: "exact", head: true })
       .eq("tenant_id", tenantId)
       .eq("role", "assistant")
       .eq("is_test", false)
       .gte("created_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString());
-    if ((dailyCount ?? 0) >= TENANT_DAILY_LIMIT) {
+    dailyCount = count ?? 0;
+    if (dailyCount >= TENANT_DAILY_LIMIT) {
       console.warn(`[ai/reply] RATE LIMIT HIT (per-tenant daily backstop, ${TENANT_DAILY_LIMIT}/24h): tenant=${tenantId} count=${dailyCount}`);
       return gracefulLimitReply(conversationId ?? null, (tenant as { phone?: string }).phone ?? null);
     }
@@ -252,6 +256,39 @@ export async function POST(req: NextRequest) {
       // for visibility.
       console.warn(`[ai/reply] RATE LIMIT HIT (plan message cap, ${msgLimit}/mo): tenant=${tenantId} used=${usage.messagesUsed}`);
       return gracefulLimitReply(conversationId ?? null, (tenant as { phone?: string }).phone ?? null);
+    }
+  }
+
+  // ── Real-time usage-visibility alert (pricing restructure round) ─────────
+  // Pro and Premium text messages are now genuinely uncapped (msgLimit ===
+  // Infinity, see plan-config.ts) -- an explicit decision to observe real
+  // usage/cost before ever setting a number again. With no ceiling, the
+  // safety net has to be VISIBILITY instead: this never blocks, throttles,
+  // or degrades the reply below -- it only logs, using the exact same
+  // console.warn pattern every other signal in this route already uses
+  // (RATE LIMIT HIT above), which is real, already-searchable infrastructure
+  // in Vercel's function logs (Vercel dashboard -> this project -> Logs,
+  // filter for "USAGE ALERT"), not a new system.
+  // Threshold justification: 200 assistant replies in a rolling 24h window,
+  // for Pro/Premium only. Premium's OLD hard cap was 3,000/month (~100/day
+  // average); a genuinely busy real SMB day might reasonably spike to
+  // 150-180. 200 sits just above sustained-busy-day territory (so normal
+  // usage, even a good day, won't trigger noise) while still firing well
+  // before the existing 500/24h hard abuse block above -- a meaningful
+  // early-warning window for a same-day human look, not a crisis-only
+  // signal. Reuses `dailyCount` already queried above (no extra DB round
+  // trip) plus the real monthly figure via getUsageSummary for context.
+  const USAGE_ALERT_DAILY_THRESHOLD = 200;
+  if (!isTest && (planId === "pro" || planId === "premium") && dailyCount >= USAGE_ALERT_DAILY_THRESHOLD) {
+    try {
+      const monthly = await getUsageSummary(admin, tenantId);
+      console.warn(
+        `[ai/reply] USAGE ALERT (unusual daily volume, uncapped plan): tenant=${tenantId} business=${(tenant as { business_name?: string }).business_name ?? "unknown"} plan=${planId} dailyCount=${dailyCount} (threshold ${USAGE_ALERT_DAILY_THRESHOLD}) monthToDate=${monthly.messagesUsed}`
+      );
+    } catch (err) {
+      // Best-effort only -- this is purely observational and must never
+      // affect the actual reply below.
+      console.error("[ai/reply] usage alert logging failed (non-fatal):", err);
     }
   }
 

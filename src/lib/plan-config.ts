@@ -29,9 +29,13 @@ export const PLAN_CONFIG = {
     bookingsPerMonth: Infinity,
     customDomains: 1,
     websites: 1,
-    voiceMinutes: 500,
-    textMessages: 2500,
-    teamMembers: 3,
+    voiceMinutes: 550,
+    // Genuinely unlimited, no enforced cap -- explicit decision (pricing
+    // restructure round): observe real-world usage/cost before ever setting
+    // a number again. Safety net is real-time visibility (see the daily
+    // usage-alert log in api/ai/reply/route.ts), never a block/throttle.
+    textMessages: Infinity,
+    teamMembers: Infinity,
     multiLocation: 2,
     voiceAgent: true,
     analytics: true,
@@ -46,8 +50,9 @@ export const PLAN_CONFIG = {
     bookingsPerMonth: Infinity,
     customDomains: 3,
     websites: 3,
-    voiceMinutes: 800,
-    textMessages: 3000,
+    voiceMinutes: 1000,
+    // Same "genuinely unlimited" decision as Pro above.
+    textMessages: Infinity,
     teamMembers: Infinity,
     multiLocation: Infinity,
     voiceAgent: true,

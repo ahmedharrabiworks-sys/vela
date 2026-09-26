@@ -27,12 +27,15 @@ export const INHERIT_LINE: Record<string, string> = {
 // these must stay in sync with that file's included-feature order.
 // Starter: 4 bullets (all of them, tier only has 4 included features).
 // Pro: 4 bullets + inherit line = 5 rows. Premium: 5 bullets + inherit line = 6 rows (richer tier).
-// Polish pass #2 (FIX 6): index 5 is the "Instant support" line on both Pro
-// and Premium -- swapped in for the least load-bearing existing index so
-// support copy is visible on every card, not just Starter's.
+// Pricing restructure round: Pro's card now surfaces the tier's new
+// standout differentiators directly (AI Voice Phone Agent, Unlimited text
+// messages, Unlimited team members, Guided onboarding) -- these are the
+// exact features this round changed, and the whole point of the round was
+// making Pro read as the clear standout tier, so they need to be visible on
+// the card itself, not just in the full feature array.
 export const CARD_INDICES: Record<string, number[]> = {
   starter: [0, 1, 2, 3],
-  pro:     [0, 1, 5, 6],
+  pro:     [0, 3, 4, 7],
   premium: [0, 2, 3, 5, 6],
 };
 
