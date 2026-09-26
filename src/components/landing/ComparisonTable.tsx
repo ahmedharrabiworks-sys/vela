@@ -86,7 +86,8 @@ export default function ComparisonTable() {
           </p>
         </div>
 
-        <div className="overflow-x-auto -mx-5 px-5 md:mx-0 md:px-0">
+        {/* Desktop: unchanged 3-equal-column table, md+ only. */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse rounded-2xl overflow-hidden" style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.06)" }}>
             <thead>
               <tr>
@@ -133,6 +134,48 @@ export default function ComparisonTable() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile: the 3-equal-column table cramped/overflowed badly below
+            md (bug-fix + polish round #2). Replaced with a stacked per-row
+            card -- row label as a header, then each of the 3 options listed
+            vertically with its own icon + full-width label/value, so nothing
+            is squeezed into a narrow column or truncated. Same data/copy as
+            desktop, no new locale keys. */}
+        <div className="md:hidden flex flex-col gap-3">
+          {ROW_KEYS.map((key) => {
+            const kinds = ROW_KINDS[key];
+            return (
+              <div key={key} className="rounded-2xl border border-[#E5E7EB] bg-white overflow-hidden" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
+                <p className="text-sm font-bold text-[#111111] px-4 pt-4 pb-3">
+                  {t(`landing.comparison.rows.${key}.label`)}
+                </p>
+                <div className="flex flex-col divide-y divide-[#F3F4F6] border-t border-[#F3F4F6]">
+                  <div className="flex items-start gap-2.5 px-4 py-3">
+                    <CellIcon kind={kinds.basicBots} />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF]">{t("landing.comparison.columns.basicBots")}</p>
+                      <p className="text-sm text-[#374151] mt-0.5">{t(`landing.comparison.rows.${key}.basicBots`)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 px-4 py-3">
+                    <CellIcon kind={kinds.humanStaff} />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#9CA3AF]">{t("landing.comparison.columns.humanStaff")}</p>
+                      <p className="text-sm text-[#374151] mt-0.5">{t(`landing.comparison.rows.${key}.humanStaff`)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 px-4 py-3" style={{ background: "#FFFBF9" }}>
+                    <CellIcon kind={kinds.vela} accent />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#C2410C]">{t("landing.comparison.columns.vela")}</p>
+                      <p className="text-sm font-semibold text-[#111111] mt-0.5">{t(`landing.comparison.rows.${key}.vela`)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

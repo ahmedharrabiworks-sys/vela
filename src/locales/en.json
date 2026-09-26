@@ -874,6 +874,90 @@
         }
       }
     },
+    "planCompare": {
+      "title1": "Full Plan",
+      "titleAccent": "Details",
+      "subtitle": "All three plans, every feature, side by side.",
+      "notIncluded": "Not included",
+      "cancelNote": "Cancel anytime",
+      "startFree": "Start for Free",
+      "mostPopular": "Most Popular",
+      "categories": {
+        "channels": "Channels & Messaging",
+        "voice": "Voice & AI Agent",
+        "team": "Team & Training",
+        "support": "Support & Onboarding"
+      },
+      "rows": {
+        "channels": {
+          "label": "Channels",
+          "sublabel": "Where your AI agent can talk to customers",
+          "starter": "1 channel: phone, Instagram, or WhatsApp",
+          "pro": "All 3 channels together: phone, Instagram & WhatsApp",
+          "premium": "All 3 channels with priority message routing"
+        },
+        "textMessages": {
+          "label": "Text messages",
+          "sublabel": "AI-handled replies per month across your connected channels",
+          "starter": "500 AI-handled replies per month",
+          "pro": "2,500 AI-handled replies per month",
+          "premium": "3,000 AI-handled replies per month"
+        },
+        "voiceMinutes": {
+          "label": "Voice minutes",
+          "sublabel": "Inbound call minutes handled by the AI phone agent",
+          "pro": "500 voice minutes per month",
+          "premium": "800 voice minutes per month"
+        },
+        "voiceAgent": {
+          "label": "AI Voice Phone Agent",
+          "sublabel": "A real voice agent that answers calls and books appointments",
+          "pro": "Included, answers calls & books appointments",
+          "premium": "Included, with priority retraining"
+        },
+        "languages": {
+          "label": "Languages",
+          "sublabel": "Languages your AI agent can hold a conversation in",
+          "starter": "1 language",
+          "pro": "Up to 5 languages",
+          "premium": "Unlimited languages"
+        },
+        "teamMembers": {
+          "label": "Team members",
+          "sublabel": "People on your team with dashboard access",
+          "starter": "1 team member",
+          "pro": "3 team members",
+          "premium": "Unlimited team members"
+        },
+        "aiTraining": {
+          "label": "AI training",
+          "sublabel": "How you teach the AI your business's knowledge",
+          "starter": "Single training interview",
+          "pro": "Unlimited training edits, any time",
+          "premium": "Priority retraining, always up to date"
+        },
+        "followUps": {
+          "label": "Follow-up automation",
+          "sublabel": "Automatic follow-ups so a lead never goes cold",
+          "pro": "Included",
+          "premium": "Included"
+        },
+        "support": {
+          "label": "Support",
+          "sublabel": "How you reach the Vela team when you need help",
+          "starter": "Instant support",
+          "pro": "Instant support",
+          "premium": "Instant support + dedicated contact"
+        },
+        "onboarding": {
+          "label": "Onboarding",
+          "sublabel": "How you get set up on Vela",
+          "starter": "Self-serve setup",
+          "pro": "Self-serve with a guided checklist",
+          "premium": "Done-for-you, we set it up with you"
+        }
+      }
+    },
     "footer": {
       "tagline": "One platform. Every tool your business needs.",
       "sections": {

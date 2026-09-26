@@ -22,11 +22,21 @@ const item = {
 // Real destinations only (no "#" dead links) -- reuses the same
 // landing.nav.* keys the rest of the site already uses, so there's no new
 // copy to keep in sync.
+// Bug fix (bug-fix + polish round #2): these previously pointed at anchor
+// ids (#features, #how-it-works, #faq) that don't exist anywhere in the
+// current page composition -- Features/HowItWorks/FAQ components from an
+// earlier site version aren't mounted on the homepage at all (confirmed via
+// DOM inspection, not a click-handler bug). "Features" and "How It Works"
+// now point at the two homepage sections that actually cover that content
+// (DashboardSection's capability checklist, ProductTourDemo's step-by-step
+// walkthrough), each given a real id. "FAQ" has no homepage section to
+// anchor to, so it navigates to the real FAQ section that already exists
+// (unlinked) on the /pricing page.
 const MOBILE_NAV_LINKS = [
   { key: "features", href: "/#features" },
   { key: "howItWorks", href: "/#how-it-works" },
   { key: "pricing", href: "/pricing" },
-  { key: "faq", href: "/#faq" },
+  { key: "faq", href: "/pricing#faq" },
 ] as const;
 
 export default function Hero() {

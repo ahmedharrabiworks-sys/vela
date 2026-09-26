@@ -22,6 +22,20 @@ import type { ReactNode } from "react";
  * native whileInView toggle: animates to `whileInView` on every entry,
  * automatically reverts to `initial` (fades out) on every exit -- no
  * separate exit-state bookkeeping needed.
+ *
+ * Mobile first-load fix (confirmed live on a real 375px/iPhone viewport
+ * against production): the page was NOT stuck loading -- all sections are
+ * present in the DOM immediately (verified: full document height, zero JS
+ * errors). The apparent "only Hero loaded" look was this trigger margin:
+ * on a short mobile viewport, Hero doesn't fill the screen and the very
+ * next section's top edge already pokes into view at zero scroll, but the
+ * old `-20%` bottom margin shrank the effective trigger area enough that it
+ * still needed ~175px of extra scroll before opacity started rising above
+ * 0 -- reading as a blank/broken gap right after Hero. `-8%` shrinks the
+ * trigger area much less, so that same section now starts revealing almost
+ * immediately at load instead of after a scroll-and-a-half. Re-entry/exit
+ * toggle behavior (`once: false`) is untouched by this -- margin only
+ * changes *when* the trigger area's edge sits, not whether it re-fires.
  */
 export default function Reveal({ children }: { children: ReactNode }) {
   const prefersReducedMotion = useReducedMotion();
@@ -34,8 +48,8 @@ export default function Reveal({ children }: { children: ReactNode }) {
     <motion.div
       initial={{ opacity: 0, y: 48 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false, amount: 0.1, margin: "0px 0px -20% 0px" }}
-      transition={{ duration: 1.1, ease: "easeOut" }}
+      viewport={{ once: false, amount: 0.1, margin: "0px 0px -8% 0px" }}
+      transition={{ duration: 0.75, ease: "easeOut" }}
     >
       {children}
     </motion.div>

@@ -1,30 +1,6 @@
-import Link from "next/link";
 import PublicPageHeader from "@/components/landing/PublicPageHeader";
 import Pricing from "@/components/landing/Pricing";
-
-const COL_HEADERS = ["Starter", "Pro", "Premium"];
-const PRO_COL = 1;
-
-// Websites, CRM, and Analytics rows removed -- those features are flagged
-// off for this MVP phase (see src/config/features.ts). Multi-location row
-// removed entirely, no replacement. Rows stay untouched otherwise; re-add
-// when Website Builder/CRM/Analytics come back.
-// Voice minutes/Text messages match src/lib/pricing.ts and
-// src/lib/plan-config.ts exactly (single source of truth for these
-// numbers). Starter's Voice minutes is now `false`, matching the AI Voice
-// Phone Agent row below it -- Starter has no phone agent, so it never had
-// real voice minutes to offer; the two rows previously disagreed.
-const COMPARISON_ROWS: { label: string; values: (string | boolean)[] }[] = [
-  { label: "Voice minutes",        values: [false,              "500/mo",               "800/mo"                ] },
-  { label: "Text messages",        values: ["500/mo",           "2,500/mo",             "3,000/mo"              ] },
-  { label: "Channels",             values: ["1",                "All 3",                "All 3 + priority"      ] },
-  { label: "AI Voice Phone Agent", values: [false,              true,                   true                    ] },
-  { label: "Languages",            values: ["1",                "Up to 5",              "Unlimited"             ] },
-  { label: "Team members",         values: ["1",                "3",                    "Unlimited"             ] },
-  { label: "AI training",          values: ["Single interview", "Unlimited edits",      "Priority retraining"   ] },
-  { label: "Support",              values: ["Instant support",  "Instant support",      "Instant support + dedicated contact" ] },
-  { label: "Onboarding",           values: ["Self-serve",       "Self-serve + checklist","Done-for-you"         ] },
-];
+import PlanComparisonDetailed from "@/components/landing/PlanComparisonDetailed";
 
 const FAQ_ITEMS = [
   {
@@ -61,93 +37,15 @@ export default function PricingPage() {
       <Pricing />
 
       <div id="compare" className="max-w-4xl mx-auto px-5 py-10 md:py-14 scroll-mt-6">
-        {/* Section title */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-[#111111]">
-            Full Plan{" "}
-            <span className="vela-gradient-text">Details</span>
-          </h1>
-          <p className="text-[#6B7280] mt-2">
-            All three plans, every feature, side by side.
-          </p>
-        </div>
-
-        {/* Comparison table, horizontally scrollable on mobile */}
-        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
-          <table className="w-full min-w-[480px] text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-[#E5E7EB]">
-                <th className="text-left py-4 px-5 font-semibold text-[#9CA3AF] text-xs uppercase tracking-wider w-44" />
-                {COL_HEADERS.map((h, i) => (
-                  <th
-                    key={h}
-                    className={`py-4 px-4 text-center font-bold text-xs uppercase tracking-wider ${
-                      i === PRO_COL ? "text-[#FF6B35] bg-[#FF6B35]/5" : "text-[#374151]"
-                    }`}
-                  >
-                    {h}
-                    {i === PRO_COL && (
-                      <span className="block text-[9px] font-semibold normal-case tracking-normal text-[#FF6B35]/70 mt-0.5">
-                        Most Popular
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON_ROWS.map((row, ri) => (
-                <tr
-                  key={row.label}
-                  className={`border-b border-[#F3F4F6] last:border-0 ${ri % 2 === 1 ? "bg-[#FAFAFA]" : "bg-white"}`}
-                >
-                  <td className="py-3.5 px-5 font-medium text-[#374151] whitespace-nowrap">{row.label}</td>
-                  {row.values.map((val, ci) => (
-                    <td
-                      key={ci}
-                      className={`py-3.5 px-4 text-center ${ci === PRO_COL ? "bg-[#FF6B35]/5" : ""}`}
-                    >
-                      {typeof val === "boolean" ? (
-                        val ? (
-                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mx-auto">
-                            <circle cx="9" cy="9" r="8" fill="rgba(255,107,53,0.12)" />
-                            <path
-                              d="M5.5 9l2.5 2.5 4.5-5"
-                              stroke="#FF6B35"
-                              strokeWidth="1.75"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        ) : (
-                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="mx-auto">
-                            <circle cx="9" cy="9" r="8" fill="rgba(0,0,0,0.04)" />
-                            <path d="M6 6l6 6M12 6l-6 6" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" />
-                          </svg>
-                        )
-                      ) : (
-                        <span className={ci === PRO_COL ? "font-semibold text-[#111111]" : "text-[#6B7280]"}>
-                          {val}
-                        </span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* CTA note */}
-        <p className="text-center text-sm text-[#9CA3AF] mt-8">
-          Cancel anytime{" · "}
-          <Link href="/auth/signup" className="text-[#FF6B35] hover:underline font-medium">
-            Start for Free →
-          </Link>
-        </p>
+        {/* Rebuilt as a categorized, detailed comparison (bug-fix + polish
+            round #2) -- grouped under real category headers (Channels &
+            Messaging / Voice & AI Agent / Team & Training / Support &
+            Onboarding) with a longer description per row instead of a bare
+            number. Full EN/AR, see PlanComparisonDetailed.tsx. */}
+        <PlanComparisonDetailed />
 
         {/* FAQ */}
-        <div className="mt-16">
+        <div id="faq" className="mt-16 scroll-mt-6">
           <h2 className="font-display text-xl font-bold text-[#111111] mb-8">Frequently asked</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {FAQ_ITEMS.map((item) => (

@@ -1312,7 +1312,7 @@ export default function ProductTourDemo() {
     // Polish pass #4: fully translated + RTL-correct, dir="ltr" pin from the
     // previous session removed. Every string in this section (and its 4
     // scene mocks) now routes through the i18n system.
-    <section className="relative py-10 md:py-14 bg-white overflow-hidden">
+    <section id="how-it-works" className="relative py-10 md:py-14 bg-white overflow-hidden">
       <AmbientGlow pos="start" />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
 

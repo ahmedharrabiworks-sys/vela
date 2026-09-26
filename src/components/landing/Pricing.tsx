@@ -128,26 +128,12 @@ export default function Pricing() {
                     </div>
                   )}
 
-                  {/* Tier header -- icon badge + name for more visual weight
-                      (FIX 5, bug-fix + polish round). Same price/tagline
-                      content as before, no facts changed. */}
+                  {/* Tier header. Icon badge removed (bug-fix + polish
+                      round #2) -- Oussama's call, cleaner without it. */}
                   <div className="mb-5 pb-5 border-b border-[#F3F4F6]">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span
-                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: plan.popular ? "var(--vela-gradient)" : "#F3F4F6" }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path
-                            d="M7 1l1.8 3.9L13 5.4 9.9 8.2l.8 4.2L7 10.3 3.3 12.4l.8-4.2L1 5.4l4.2-.5z"
-                            fill={plan.popular ? "#fff" : "#9CA3AF"}
-                          />
-                        </svg>
-                      </span>
-                      <p className={`text-xs font-bold uppercase tracking-widest ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
-                        {t(`landing.pricing.plans.${planKey}.name`)}
-                      </p>
-                    </div>
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${plan.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
+                      {t(`landing.pricing.plans.${planKey}.name`)}
+                    </p>
                     <div className="flex items-end gap-1.5 mb-1.5 flex-wrap">
                       <span className="text-3xl sm:text-4xl font-black text-[#111111] leading-none">
                         {formatPrice(price, currency)}
