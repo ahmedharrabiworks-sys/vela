@@ -49,49 +49,79 @@ export default function Hero() {
           CursorSpotlight with one consistent, CSS-only, auto-animated glow. */}
       <AmbientGlow />
 
-      {/* Desktop nav -- completely unchanged from before the mobile header
-          redesign (bug-fix + polish round #4), just now explicitly scoped to
-          sm+ only since mobile gets its own separate pill header below. */}
-      <div className="hidden sm:flex relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-10 items-center justify-between shrink-0">
-        {/* translateY correction (bug-fix + polish round #3): the logo PNG's
-            visible content isn't vertically centered within its own file --
-            measured via pixel analysis (opacity-weighted centroid), the
-            "Vela" wordmark's visual center sits ~17.5% of the image height
-            below the file's geometric center (the star mark above it pulls
-            the empty space to the top instead). Flexbox `items-center`
-            correctly centers the image's bounding BOX, but that leaves the
-            visible wordmark sitting lower than sibling text/icons that don't
-            have this asymmetry. */}
-        <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
-          <Logo showText heightClass="!h-14" />
-        </Link>
-        <div className="flex items-center gap-4">
-          <LanguageToggle />
-          <Link
-            href="/auth/login"
-            className="text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
-          >
-            {t("landing.nav.login")}
+      {/* Desktop nav -- glass-panel round. Positioning confirmed unchanged
+          (relative, in normal document flow) -- verified live against
+          production before this round that it was never fixed/sticky to
+          begin with (scrolled away with the page at scrollY 1500 exactly
+          like any other content), so there was nothing to "un-pin" here;
+          this round's real change is the glass visual treatment below.
+          Wrapped in an actual floating panel now (frosted white,
+          backdrop-blur, soft outer shadow + inner top highlight for a glass
+          bevel edge) instead of sitting bare/transparent over the Hero
+          background -- matches the rounded-pill glass language the mobile
+          header below already establishes. Logo/CTA/link sit as opaque
+          children on top of the panel, so backdrop-blur only softens
+          what's behind the panel (Hero's ambient glow), never the
+          brand-colored content itself. */}
+      <div className="hidden sm:flex relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
+        <div
+          className="w-full flex items-center justify-between rounded-full px-6 py-3 backdrop-blur-xl border border-white/60"
+          style={{
+            background: "rgba(255,255,255,0.65)",
+            boxShadow: "0 8px 32px rgba(17,17,17,0.08), inset 0 1px 0 rgba(255,255,255,0.85)",
+          }}
+        >
+          {/* translateY correction (bug-fix + polish round #3): the logo PNG's
+              visible content isn't vertically centered within its own file --
+              measured via pixel analysis (opacity-weighted centroid), the
+              "Vela" wordmark's visual center sits ~17.5% of the image height
+              below the file's geometric center (the star mark above it pulls
+              the empty space to the top instead). Flexbox `items-center`
+              correctly centers the image's bounding BOX, but that leaves the
+              visible wordmark sitting lower than sibling text/icons that don't
+              have this asymmetry. */}
+          <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
+            <Logo showText heightClass="!h-14" />
           </Link>
-          <CtaButton size="sm" />
+          <div className="flex items-center gap-4">
+            <LanguageToggle />
+            <Link
+              href="/auth/login"
+              className="text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
+            >
+              {t("landing.nav.login")}
+            </Link>
+            <CtaButton size="sm" />
+          </div>
         </div>
       </div>
 
-      {/* Mobile-only header (bug-fix + polish round #4, tightened #5) --
-          single rounded pill matching mobile-header-reference.jpg's
-          soft-container style, rebuilt with Vela's own logo/brand colors
-          and Oussama's specified element order: logo, language toggle,
-          hamburger, "Log in" pill. Centered as a compact island (no w-full/
-          justify-between -- that was stretching it edge-to-edge and forcing
-          a large logo<->toggle gap via the leftover justify-between slack);
-          now a single flex row with one consistent gap-2 between every
-          element, centered via justify-center on the outer wrapper. Login
-          button reuses the sitewide .btn-primary gradient class instead of
-          a flat dark fill, same pill shape/arrow. Plain flex row, no manual
-          RTL classes -- source order stays logo-first, and the browser
-          mirrors the whole row automatically under dir="rtl". */}
+      {/* Mobile-only header (bug-fix + polish round #4, tightened #5,
+          glass round). Single rounded pill matching mobile-header-
+          reference.jpg's soft-container style, rebuilt with Vela's own
+          logo/brand colors and Oussama's specified element order: logo,
+          language toggle, hamburger, "Log in" pill. Centered as a compact
+          island (no w-full/justify-between -- that was stretching it
+          edge-to-edge and forcing a large logo<->toggle gap via the
+          leftover justify-between slack); a single flex row with one
+          consistent gap-2 between every element, centered via
+          justify-center on the outer wrapper. Login button reuses the
+          sitewide .btn-primary gradient class instead of a flat dark fill,
+          same pill shape/arrow. Plain flex row, no manual RTL classes --
+          source order stays logo-first, and the browser mirrors the whole
+          row automatically under dir="rtl". Positioning confirmed already
+          `relative` (never fixed/sticky), unchanged this round. Now the
+          same frosted glass treatment as the desktop panel: translucent
+          white, backdrop-blur, inner top highlight for the glass-bevel
+          edge -- same recipe, same rounded-full shape it already had. */}
       <div className="sm:hidden relative z-10 w-full px-5 pt-6 shrink-0 flex justify-center">
-        <div className="inline-flex items-center gap-2 rounded-full bg-white border border-[#E5E7EB] shadow-sm py-1.5 ps-3.5 pe-2">
+        <div
+          className="inline-flex items-center gap-2 rounded-full backdrop-blur-xl border border-white/60 py-1.5 ps-3.5 pe-2"
+          style={{
+            background: "rgba(255,255,255,0.65)",
+            boxShadow: "0 8px 32px rgba(17,17,17,0.08), inset 0 1px 0 rgba(255,255,255,0.85)",
+          }}
+        >
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
             <Logo showText={false} size={24} />
           </Link>
