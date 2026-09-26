@@ -49,26 +49,28 @@ export default function Hero() {
           CursorSpotlight with one consistent, CSS-only, auto-animated glow. */}
       <AmbientGlow />
 
-      {/* Desktop nav -- glass-panel round. Positioning confirmed unchanged
-          (relative, in normal document flow) -- verified live against
-          production before this round that it was never fixed/sticky to
-          begin with (scrolled away with the page at scrollY 1500 exactly
-          like any other content), so there was nothing to "un-pin" here;
-          this round's real change is the glass visual treatment below.
-          Wrapped in an actual floating panel now (frosted white,
-          backdrop-blur, soft outer shadow + inner top highlight for a glass
-          bevel edge) instead of sitting bare/transparent over the Hero
-          background -- matches the rounded-pill glass language the mobile
-          header below already establishes. Logo/CTA/link sit as opaque
-          children on top of the panel, so backdrop-blur only softens
-          what's behind the panel (Hero's ambient glow), never the
-          brand-colored content itself. */}
-      <div className="hidden sm:flex relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
+      {/* Desktop nav -- fixed/glass round. Reversed last round's "confirmed
+          already relative, leave as-is" -- this round's explicit ask is the
+          opposite: pinned to the viewport top, reachable at all times.
+          `fixed inset-x-0 top-0` (viewport-anchored regardless of Hero's
+          own `relative overflow-hidden` -- fixed positioning only becomes
+          relative to an ancestor when that ancestor has a transform/filter/
+          perspective/will-change set, which Hero does not, so this is not
+          clipped; also already proven safe in this exact DOM by the mobile
+          menu overlay below, which has used `fixed inset-0` as a child of
+          this same section since an earlier round with no clipping issue).
+          z-40, one level below the mobile menu overlay's z-50 so an open
+          menu always layers above the header, never fights it. Lower
+          background opacity than last round (0.55, was 0.65) specifically
+          so the backdrop-blur reads as genuinely see-through against real
+          scrolled content behind it, not a flat near-opaque bar -- see the
+          live scroll screenshot evidence in this round's report. */}
+      <div className="hidden sm:flex fixed top-0 inset-x-0 z-40 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
         <div
           className="w-full flex items-center justify-between rounded-full px-6 py-3 backdrop-blur-xl border border-white/60"
           style={{
-            background: "rgba(255,255,255,0.65)",
-            boxShadow: "0 8px 32px rgba(17,17,17,0.08), inset 0 1px 0 rgba(255,255,255,0.85)",
+            background: "rgba(255,255,255,0.55)",
+            boxShadow: "0 8px 32px rgba(17,17,17,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
           }}
         >
           {/* translateY correction (bug-fix + polish round #3): the logo PNG's
@@ -97,29 +99,30 @@ export default function Hero() {
       </div>
 
       {/* Mobile-only header (bug-fix + polish round #4, tightened #5,
-          glass round). Single rounded pill matching mobile-header-
-          reference.jpg's soft-container style, rebuilt with Vela's own
-          logo/brand colors and Oussama's specified element order: logo,
-          language toggle, hamburger, "Log in" pill. Centered as a compact
-          island (no w-full/justify-between -- that was stretching it
-          edge-to-edge and forcing a large logo<->toggle gap via the
+          glass round, fixed round). Single rounded pill matching mobile-
+          header-reference.jpg's soft-container style, rebuilt with Vela's
+          own logo/brand colors and Oussama's specified element order:
+          logo, language toggle, hamburger, "Log in" pill. Centered as a
+          compact island (no w-full/justify-between -- that was stretching
+          it edge-to-edge and forcing a large logo<->toggle gap via the
           leftover justify-between slack); a single flex row with one
           consistent gap-2 between every element, centered via
           justify-center on the outer wrapper. Login button reuses the
           sitewide .btn-primary gradient class instead of a flat dark fill,
           same pill shape/arrow. Plain flex row, no manual RTL classes --
           source order stays logo-first, and the browser mirrors the whole
-          row automatically under dir="rtl". Positioning confirmed already
-          `relative` (never fixed/sticky), unchanged this round. Now the
-          same frosted glass treatment as the desktop panel: translucent
-          white, backdrop-blur, inner top highlight for the glass-bevel
-          edge -- same recipe, same rounded-full shape it already had. */}
-      <div className="sm:hidden relative z-10 w-full px-5 pt-6 shrink-0 flex justify-center">
+          row automatically under dir="rtl". Now `fixed top-0`, same
+          reasoning/z-index/opacity as the desktop panel above -- see that
+          comment block for the full explanation (viewport-anchored despite
+          Hero's overflow-hidden, z-40 to stay below the menu overlay's
+          z-50, opacity lowered to 0.55 so the blur is genuinely visible
+          against real scrolled content, not a flat bar). */}
+      <div className="sm:hidden fixed top-0 inset-x-0 z-40 w-full px-5 pt-6 shrink-0 flex justify-center">
         <div
           className="inline-flex items-center gap-2 rounded-full backdrop-blur-xl border border-white/60 py-1.5 ps-3.5 pe-2"
           style={{
-            background: "rgba(255,255,255,0.65)",
-            boxShadow: "0 8px 32px rgba(17,17,17,0.08), inset 0 1px 0 rgba(255,255,255,0.85)",
+            background: "rgba(255,255,255,0.55)",
+            boxShadow: "0 8px 32px rgba(17,17,17,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
           }}
         >
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
@@ -202,8 +205,17 @@ export default function Hero() {
           on both mobile and desktop. Bottom padding matches the shared
           py-12/py-16 rhythm every other section now uses (section-continuity
           round), so the Hero -> ProductTourDemo gap is consistent with every
-          other inter-section gap instead of its own larger one-off value. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-14 pb-12 md:pt-16 md:pb-16">
+          other inter-section gap instead of its own larger one-off value.
+          Top padding increased this round (fixed-header round): the header
+          is now `fixed`, removed from document flow entirely, so this
+          spacer is the ONLY thing keeping it from overlapping the badge/
+          headline on load. Measured live: the fixed header's real rendered
+          height is 74px on mobile, 106px on desktop -- these values are
+          that measured height plus the original pt-14/pt-16 breathing room
+          this div already had, so the visual gap below the header looks
+          the same as before, just with real space reserved for the header
+          on top of it now. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[130px] pb-12 md:pt-[170px] md:pb-16">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}
