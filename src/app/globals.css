@@ -309,6 +309,39 @@ canvas {
   .ambient-glow-blob { animation: none; opacity: 0.65; }
 }
 
+/* ─── Sitewide cursor glow (perf-safe reintroduction) ───────────────────────
+   A fixed-size layer positioned purely via `transform: translate3d`, driven
+   by CursorGlow.tsx's single rAF-throttled pointermove listener writing
+   --cx/--cy. Moving a layer via transform is compositor-only -- unlike the
+   background-position approach this would need if the gradient itself moved,
+   which forces a full-layer repaint on every mouse pixel. The gradient is
+   static (baked into the div's background, never recomputed); only its
+   position changes, at zero raster cost. `contain: paint` + `will-change:
+   transform` keep it isolated from the rest of the page's paint/layout.
+   Hidden entirely on touch/coarse-pointer devices (CSS + JS both gate it). */
+.cursor-glow-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 340px;
+  height: 340px;
+  margin: -170px 0 0 -170px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  contain: paint;
+  will-change: transform;
+  background: radial-gradient(circle, rgba(255,138,80,0.14) 0%, rgba(255,138,80,0.05) 45%, transparent 70%);
+  transform: translate3d(var(--cx, 50vw), var(--cy, 50vh), 0);
+  opacity: 0;
+}
+@media (pointer: fine) and (hover: hover) {
+  .cursor-glow-layer { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow-layer { display: none; }
+}
+
 /* FIX 4a — Logo wordmark: white in dark mode */
 html.dark .logo-wordmark {
   color: var(--dm-text) !important;

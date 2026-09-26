@@ -638,7 +638,62 @@
       },
       "copyright": "© 2026 Vela. Tous droits réservés.",
       "slogan1": "Conçu pour les entreprises qui ne dorment jamais.",
-      "slogan2": "Vela non plus."
+      "slogan2": "Vela non plus.",
+      "madeInQatar": "Fabriqué au Qatar ❤️"
+    },
+    "auth": {
+      "tagline": "Ne manquez plus jamais un client.",
+      "taglineBody": "Vela répond à vos clients sur Instagram, WhatsApp et votre site web, 24h/24, pour que vous ne perdiez plus jamais un client à cause d'une réponse tardive.",
+      "login": {
+        "welcomeBack": "Bon retour",
+        "subtitle": "Connectez-vous à votre tableau de bord Vela.",
+        "email": "E-mail",
+        "password": "Mot de passe",
+        "emailPlaceholder": "vous@entreprise.com",
+        "passwordPlaceholder": "********",
+        "forgotPassword": "Mot de passe oublié ?",
+        "signIn": "Se connecter",
+        "signingIn": "Connexion en cours...",
+        "invalidCredentials": "E-mail ou mot de passe invalide. Veuillez réessayer.",
+        "noAccount": "Vous n'avez pas de compte ?",
+        "signUp": "S'inscrire",
+        "resetPassword": "Réinitialiser le mot de passe",
+        "resetSubtitle": "Entrez l'e-mail lié à votre compte et nous vous enverrons un lien de réinitialisation.",
+        "sendResetLink": "Envoyer le lien",
+        "sending": "Envoi en cours...",
+        "backToSignIn": "Retour à la connexion",
+        "couldNotSendReset": "Impossible d'envoyer l'e-mail de réinitialisation. Veuillez réessayer.",
+        "checkEmail": "Vérifiez votre e-mail",
+        "resetSentTo": "Nous avons envoyé un lien de réinitialisation à",
+        "resetSentInstructions": "Cliquez sur le lien dans l'e-mail pour définir un nouveau mot de passe.",
+        "didntReceive": "Vous ne l'avez pas reçu ? Vérifiez vos spams, ou",
+        "tryAgain": "réessayez"
+      },
+      "signup": {
+        "createAccount": "Créez votre compte",
+        "subtitle": "Configurez votre réceptionniste IA en quelques minutes.",
+        "fullName": "Nom complet",
+        "fullNamePlaceholder": "Votre nom complet",
+        "emailAddress": "Adresse e-mail",
+        "passwordMin": "8 caractères minimum",
+        "continue": "Continuer",
+        "alreadyHaveAccount": "Vous avez déjà un compte ?",
+        "signIn": "Se connecter",
+        "termsAgree": "En continuant, vous acceptez nos",
+        "terms": "Conditions",
+        "and": "et",
+        "privacy": "Politique de confidentialité",
+        "emailAlreadyRegistered": "Cet e-mail est déjà enregistré. Essayez de vous connecter à la place.",
+        "couldNotCreateAccount": "Impossible de créer le compte. Veuillez réessayer.",
+        "somethingWentWrong": "Une erreur s'est produite. Veuillez réessayer."
+      },
+      "common": {
+        "orContinueWith": "Ou continuer avec",
+        "continueWithGoogle": "Continuer avec Google",
+        "couldNotStartGoogle": "Impossible de démarrer la connexion Google. Veuillez réessayer.",
+        "showPassword": "Afficher le mot de passe",
+        "hidePassword": "Masquer le mot de passe"
+      }
     }
   },
   "aiAgent": {

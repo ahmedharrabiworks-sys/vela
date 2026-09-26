@@ -975,6 +975,60 @@
       "slogan1": "Built for businesses that don't sleep.",
       "slogan2": "Neither does Vela.",
       "madeInQatar": "Made in Qatar ❤️"
+    },
+    "auth": {
+      "tagline": "Never miss another lead.",
+      "taglineBody": "Vela answers your customers across Instagram, WhatsApp, and your website, 24/7, so you never lose a lead to a slow reply again.",
+      "login": {
+        "welcomeBack": "Welcome back",
+        "subtitle": "Log in to your Vela dashboard.",
+        "email": "Email",
+        "password": "Password",
+        "emailPlaceholder": "you@business.com",
+        "passwordPlaceholder": "********",
+        "forgotPassword": "Forgot password?",
+        "signIn": "Sign in",
+        "signingIn": "Signing in...",
+        "invalidCredentials": "Invalid email or password. Please try again.",
+        "noAccount": "Don't have an account?",
+        "signUp": "Sign up",
+        "resetPassword": "Reset password",
+        "resetSubtitle": "Enter the email linked to your account and we'll send a reset link.",
+        "sendResetLink": "Send reset link",
+        "sending": "Sending...",
+        "backToSignIn": "Back to sign in",
+        "couldNotSendReset": "Could not send reset email. Please try again.",
+        "checkEmail": "Check your email",
+        "resetSentTo": "We've sent a password reset link to",
+        "resetSentInstructions": "Click the link in the email to set a new password.",
+        "didntReceive": "Didn't receive it? Check your spam folder, or",
+        "tryAgain": "try again"
+      },
+      "signup": {
+        "createAccount": "Create your account",
+        "subtitle": "Get your AI receptionist set up in minutes.",
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Your full name",
+        "emailAddress": "Email Address",
+        "passwordMin": "Min. 8 characters",
+        "continue": "Continue",
+        "alreadyHaveAccount": "Already have an account?",
+        "signIn": "Sign in",
+        "termsAgree": "By continuing, you agree to our",
+        "terms": "Terms",
+        "and": "and",
+        "privacy": "Privacy Policy",
+        "emailAlreadyRegistered": "This email is already registered. Try signing in instead.",
+        "couldNotCreateAccount": "Could not create account. Please try again.",
+        "somethingWentWrong": "Something went wrong. Please try again."
+      },
+      "common": {
+        "orContinueWith": "Or continue with",
+        "continueWithGoogle": "Continue with Google",
+        "couldNotStartGoogle": "Could not start Google sign-in. Please try again.",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password"
+      }
     }
   },
   "aiAgent": {

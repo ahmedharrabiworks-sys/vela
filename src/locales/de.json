@@ -638,7 +638,62 @@
       },
       "copyright": "© 2026 Vela. Alle Rechte vorbehalten.",
       "slogan1": "Gebaut für Unternehmen, die niemals schlafen.",
-      "slogan2": "Vela auch nicht."
+      "slogan2": "Vela auch nicht.",
+      "madeInQatar": "Made in Qatar ❤️"
+    },
+    "auth": {
+      "tagline": "Verpassen Sie nie wieder einen Lead.",
+      "taglineBody": "Vela beantwortet Ihre Kunden rund um die Uhr über Instagram, WhatsApp und Ihre Website, damit Sie nie wieder einen Lead durch eine langsame Antwort verlieren.",
+      "login": {
+        "welcomeBack": "Willkommen zurück",
+        "subtitle": "Melden Sie sich bei Ihrem Vela-Dashboard an.",
+        "email": "E-Mail",
+        "password": "Passwort",
+        "emailPlaceholder": "sie@unternehmen.com",
+        "passwordPlaceholder": "********",
+        "forgotPassword": "Passwort vergessen?",
+        "signIn": "Anmelden",
+        "signingIn": "Anmeldung läuft...",
+        "invalidCredentials": "Ungültige E-Mail oder Passwort. Bitte versuchen Sie es erneut.",
+        "noAccount": "Noch kein Konto?",
+        "signUp": "Registrieren",
+        "resetPassword": "Passwort zurücksetzen",
+        "resetSubtitle": "Geben Sie die mit Ihrem Konto verknüpfte E-Mail ein und wir senden Ihnen einen Link.",
+        "sendResetLink": "Link senden",
+        "sending": "Wird gesendet...",
+        "backToSignIn": "Zurück zur Anmeldung",
+        "couldNotSendReset": "E-Mail zum Zurücksetzen konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+        "checkEmail": "Überprüfen Sie Ihre E-Mail",
+        "resetSentTo": "Wir haben einen Link zum Zurücksetzen des Passworts gesendet an",
+        "resetSentInstructions": "Klicken Sie auf den Link in der E-Mail, um ein neues Passwort festzulegen.",
+        "didntReceive": "Nicht erhalten? Überprüfen Sie Ihren Spam-Ordner, oder",
+        "tryAgain": "erneut versuchen"
+      },
+      "signup": {
+        "createAccount": "Konto erstellen",
+        "subtitle": "Richten Sie Ihren KI-Empfangsassistenten in Minuten ein.",
+        "fullName": "Vollständiger Name",
+        "fullNamePlaceholder": "Ihr vollständiger Name",
+        "emailAddress": "E-Mail-Adresse",
+        "passwordMin": "Mind. 8 Zeichen",
+        "continue": "Weiter",
+        "alreadyHaveAccount": "Sie haben bereits ein Konto?",
+        "signIn": "Anmelden",
+        "termsAgree": "Mit der Fortsetzung stimmen Sie unseren",
+        "terms": "Nutzungsbedingungen",
+        "and": "und",
+        "privacy": "Datenschutzrichtlinie zu",
+        "emailAlreadyRegistered": "Diese E-Mail ist bereits registriert. Versuchen Sie sich stattdessen anzumelden.",
+        "couldNotCreateAccount": "Konto konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+        "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      },
+      "common": {
+        "orContinueWith": "Oder fortfahren mit",
+        "continueWithGoogle": "Mit Google fortfahren",
+        "couldNotStartGoogle": "Google-Anmeldung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+        "showPassword": "Passwort anzeigen",
+        "hidePassword": "Passwort verbergen"
+      }
     }
   },
   "aiAgent": {

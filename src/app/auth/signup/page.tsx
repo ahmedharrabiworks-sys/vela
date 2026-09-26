@@ -3,9 +3,9 @@
 import { useState, useMemo, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Logo from "@/components/ui/Logo";
 import { saveProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
+import { useI18n } from "@/lib/i18n";
 import { PLANS } from "@/lib/pricing";
 import { TAGLINES, INHERIT_LINE, CARD_INDICES } from "@/components/landing/Pricing";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
@@ -16,6 +16,16 @@ import {
   findPhoneCountryByName,
   type PhoneCountry,
 } from "@/components/ui/PhoneInput";
+import {
+  AuthPageShell,
+  AuthSplitCard,
+  authInputCls,
+  InputIcon,
+  PersonIcon,
+  MailIcon,
+  LockIcon,
+  GoogleButton,
+} from "@/components/auth/AuthChrome";
 
 /* ── All countries with dial codes ── */
 const COUNTRIES = [
@@ -260,6 +270,7 @@ function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChan
 function SignupPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   // Arrived here from /auth/callback after a first-time Google sign-in with
   // no tenant yet -- skip the email/password step entirely (they already
   // have a real Supabase auth account) and go straight to business info.
@@ -361,7 +372,7 @@ function SignupPageContent() {
         });
 
         if (!res.ok) {
-          setAuthError("Could not finish setting up your account. Please try again.");
+          setAuthError(t("landing.auth.signup.couldNotCreateAccount"));
           setLoading(false);
           return;
         }
@@ -406,9 +417,9 @@ function SignupPageContent() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.error === "already_exists") {
-          setAuthError("This email is already registered. Try signing in instead.");
+          setAuthError(t("landing.auth.signup.emailAlreadyRegistered"));
         } else {
-          setAuthError("Could not create account. Please try again.");
+          setAuthError(t("landing.auth.signup.couldNotCreateAccount"));
         }
         setLoading(false);
         return;
@@ -440,97 +451,135 @@ function SignupPageContent() {
       setStep(4);
       setTimeout(() => router.push("/app/welcome"), 1800);
     } catch {
-      setAuthError("Something went wrong. Please try again.");
+      setAuthError(t("landing.auth.signup.somethingWentWrong"));
       setLoading(false);
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    // Same signInWithOAuth pattern as /auth/login. The existing /auth/callback
+    // route + the isGoogleOnboarding handling above take it from here --
+    // Google returns to /auth/callback, which redirects to
+    // /auth/signup?onboarding=google for a first-time user (no tenant yet),
+    // landing back on this exact component with step 2 pre-selected.
+    setAuthError("");
+    const supabase = getSupabase();
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${appUrl}/auth/callback` },
+    });
+    if (oauthError) {
+      console.error("[Google sign-in] signInWithOAuth failed:", oauthError.message);
+      setAuthError(t("landing.auth.common.couldNotStartGoogle"));
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* V logo top-left */}
-      <div className="absolute top-0 left-0 p-6 z-10">
-        <Link href="/">
-          <Logo showText={false} />
-        </Link>
-      </div>
+    <AuthPageShell>
+      {/* ── Step 1: Account ── */}
+      {step === 1 && (
+        <AuthSplitCard>
+          <h1 className="vela-heading text-2xl text-[#111111] mb-2">{t("landing.auth.signup.createAccount")}</h1>
+          <p className="text-[#6B7280] text-sm mb-7">{t("landing.auth.signup.subtitle")}</p>
 
-      <div className={`relative z-10 w-full transition-all duration-300 ${step === 3 ? "max-w-5xl" : "max-w-lg"}`}>
-
-        {/* ── Step 1: Account ── */}
-        {step === 1 && (
-          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
-            <h1 className="text-xl font-bold text-[#111111] mb-1">Create your account</h1>
-            <p className="text-[#6B7280] text-sm mb-6">Get your AI receptionist set up in minutes.</p>
-
-            <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
-              <div>
-                <label className={labelCls}>Full Name</label>
-                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required className={inputCls} />
+          <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
+            <div>
+              <label className={labelCls}>{t("landing.auth.signup.fullName")}</label>
+              <div className="relative">
+                <InputIcon><PersonIcon /></InputIcon>
+                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("landing.auth.signup.fullNamePlaceholder")} required className={authInputCls} />
               </div>
-              <div>
-                <label className={labelCls}>Email Address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" required className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>{t("landing.auth.signup.emailAddress")}</label>
+              <div className="relative">
+                <InputIcon><MailIcon /></InputIcon>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("landing.auth.login.emailPlaceholder")} required className={authInputCls} />
               </div>
-              <div>
-                <label className={labelCls}>Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
-                    required
-                    minLength={8}
-                    className={`${inputCls} pr-10`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
-                        <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
-                      </svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
-                    )}
-                  </button>
-                </div>
+            </div>
+            <div>
+              <label className={labelCls}>{t("landing.auth.login.password")}</label>
+              <div className="relative">
+                <InputIcon><LockIcon /></InputIcon>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t("landing.auth.signup.passwordMin")}
+                  required
+                  minLength={8}
+                  className={`${authInputCls} pe-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+                  aria-label={showPassword ? t("landing.auth.common.hidePassword") : t("landing.auth.common.showPassword")}
+                >
+                  {showPassword ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
               </div>
-              <button
-                type="submit"
-                className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 transition-all duration-200"
-                style={{ background: "var(--vela-gradient)" }}
-              >
-                Continue →
-              </button>
-            </form>
+            </div>
 
-            <p className="text-center text-sm text-[#6B7280] mt-4 mb-5">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">Sign in</Link>
-            </p>
+            {authError && (
+              <div className="px-4 py-3 rounded-xl text-sm text-red-600 border border-red-200 bg-red-50">
+                {authError}
+              </div>
+            )}
 
-            <p className="text-center text-xs text-[#9CA3AF]">
-              By continuing, you agree to our{" "}
-              <Link href="/terms" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Terms</Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">Privacy Policy</Link>
-            </p>
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 transition-all duration-200"
+              style={{ background: "var(--vela-gradient)" }}
+            >
+              {t("landing.auth.signup.continue")} →
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-[#E5E7EB]" />
+            <span className="text-xs text-[#9CA3AF] font-medium">{t("landing.auth.common.orContinueWith")}</span>
+            <div className="flex-1 h-px bg-[#E5E7EB]" />
           </div>
-        )}
+
+          <GoogleButton onClick={handleGoogleSignIn} label={t("landing.auth.common.continueWithGoogle")} />
+
+          <p className="text-center text-sm text-[#6B7280] mt-6 mb-5">
+            {t("landing.auth.signup.alreadyHaveAccount")}{" "}
+            <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">{t("landing.auth.signup.signIn")}</Link>
+          </p>
+
+          <p className="text-center text-xs text-[#9CA3AF]">
+            {t("landing.auth.signup.termsAgree")}{" "}
+            <Link href="/terms" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">{t("landing.auth.signup.terms")}</Link>{" "}
+            {t("landing.auth.signup.and")}{" "}
+            <Link href="/privacy" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">{t("landing.auth.signup.privacy")}</Link>
+          </p>
+        </AuthSplitCard>
+      )}
+
+      {step !== 1 && (
+      <div className={`relative z-10 w-full transition-all duration-300 ${step === 3 ? "max-w-5xl" : "max-w-lg"}`}>
 
         {/* ── Step 2: Business Info ── */}
         {step === 2 && (
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
-            <h1 className="text-xl font-bold text-[#111111] mb-1">Tell us about your business</h1>
+            <h1 className="vela-heading text-xl text-[#111111] mb-1">Tell us about your business</h1>
             <p className="text-[#6B7280] text-sm mb-7">Vela will personalise everything for you automatically</p>
             <form onSubmit={handleStep2} className="space-y-4">
               <div>
@@ -657,7 +706,7 @@ function SignupPageContent() {
         {step === 3 && (
           <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-10 shadow-card">
             <div className="text-center mb-8">
-              <h1 className="text-xl font-bold text-[#111111] mb-1">Choose your plan</h1>
+              <h1 className="vela-heading text-xl text-[#111111] mb-1">Choose your plan</h1>
               <p className="text-[#6B7280] text-sm mb-5">Cancel anytime</p>
 
               {/* Billing toggle, matches /pricing page */}
@@ -820,7 +869,7 @@ function SignupPageContent() {
                 <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-[#111111] mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
+            <h1 className="vela-heading text-xl text-[#111111] mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
             <p className="text-[#6B7280] text-sm mb-2">Your business is ready on Vela.</p>
             <p className="text-[#9CA3AF] text-xs mb-8">
               Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed {billing === "annual" ? "annually" : "monthly"}, cancel anytime.
@@ -831,7 +880,8 @@ function SignupPageContent() {
           </div>
         )}
       </div>
-    </div>
+      )}
+    </AuthPageShell>
   );
 }
 
