@@ -543,7 +543,7 @@
           "subtext": "Your AI replies across every channel, day or night.",
           "checklist": [
             "AI replies 24/7",
-            "Instagram, WhatsApp & Website",
+            "Instagram, WhatsApp & Phone",
             "Collects name & contact details",
             "Books appointments in-chat",
             "Answers FAQs instantly",
@@ -564,11 +564,11 @@
         },
         "channels": {
           "headline": "One AI, every channel",
-          "subtext": "Connect Instagram, WhatsApp, and your website in minutes.",
+          "subtext": "Connect Instagram, WhatsApp, and your phone line in minutes.",
           "checklist": [
             "Instagram DMs",
             "WhatsApp Business",
-            "Website live chat",
+            "Phone calls",
             "One-click connect flow",
             "Unified inbox, every channel",
             "Per-channel performance stats"
@@ -631,7 +631,7 @@
           "title": "Channels",
           "sub": "Connected messaging channels",
           "connectBtn": "+ Connect",
-          "allConnectedMsg": "All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website.",
+          "allConnectedMsg": "All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and phone.",
           "partialConnectedMsg": "2 of 3 channels connected. Connect WhatsApp Business to go fully live.",
           "noNumberYet": "No number connected yet",
           "manage": "Manage",
@@ -643,15 +643,15 @@
           "channelNames": {
             "instagram": "Instagram",
             "whatsapp": "WhatsApp Business",
-            "website": "Website Chat"
+            "phone": "Phone"
           },
           "statLabels": {
             "dmsHandled": "DMs handled",
             "avgResponse": "Avg response",
             "messagesHandled": "Messages handled",
             "bookingsViaWA": "Bookings via WA",
-            "websiteVisitors": "Website visitors",
-            "chatConversions": "Chat conversions"
+            "callsAnswered": "Calls answered",
+            "answeredByAI": "Answered by AI"
           }
         },
         "agent": {
@@ -974,11 +974,11 @@
       "copyright": "© 2026 Vela. All rights reserved.",
       "slogan1": "Built for businesses that don't sleep.",
       "slogan2": "Neither does Vela.",
-      "madeInQatar": "Made in Qatar ❤️"
+      "madeInQatar": "Made in Qatar"
     },
     "auth": {
       "tagline": "Never miss another lead.",
-      "taglineBody": "Vela answers your customers across Instagram, WhatsApp, and your website, 24/7, so you never lose a lead to a slow reply again.",
+      "taglineBody": "Vela answers your customers across Instagram, WhatsApp, and phone calls, 24/7, so you never lose a lead to a slow reply again.",
       "login": {
         "welcomeBack": "Welcome back",
         "subtitle": "Log in to your Vela dashboard.",
@@ -1020,7 +1020,56 @@
         "privacy": "Privacy Policy",
         "emailAlreadyRegistered": "This email is already registered. Try signing in instead.",
         "couldNotCreateAccount": "Could not create account. Please try again.",
-        "somethingWentWrong": "Something went wrong. Please try again."
+        "somethingWentWrong": "Something went wrong. Please try again.",
+        "step2": {
+          "title": "Tell us about your business",
+          "subtitle": "Vela will personalise everything for you automatically",
+          "companyName": "Company Name",
+          "companyNamePlaceholder": "Your business name",
+          "businessQuestion": "What's your business?",
+          "businessPlaceholder": "e.g. Dental clinic in Doha, Real estate agency, Hair salon...",
+          "detecting": "Detecting business type...",
+          "detected": "Detected:",
+          "aiCouldNotDetect": "AI couldn't auto-detect. Please select your business type:",
+          "selectBusinessType": "Select your business type...",
+          "autoDetectHint": "Vela AI will auto-detect your industry from this description",
+          "country": "Country",
+          "city": "City",
+          "cityPlaceholder": "Doha",
+          "phoneNumber": "Phone Number",
+          "phonePlaceholder": "5555 1234",
+          "back": "Back",
+          "continue": "Continue",
+          "analysing": "Analysing..."
+        },
+        "step3": {
+          "title": "Choose your plan",
+          "cancelAnytime": "Cancel anytime",
+          "monthly": "Monthly",
+          "annual": "Annual",
+          "save20": "Save 20%",
+          "detected": "Detected:",
+          "mostPopular": "Most Popular",
+          "save": "Save",
+          "perYear": "/year",
+          "seeFullPlanDetails": "See full plan details",
+          "back": "Back",
+          "settingUp": "Setting up...",
+          "subscribeNow": "Subscribe Now",
+          "selected": "Selected",
+          "selectPlan": "Select Plan"
+        },
+        "step4": {
+          "welcome": "Welcome",
+          "there": "there",
+          "businessReady": "Your business is ready on Vela.",
+          "planActive1": "Your",
+          "planActive2": "plan is active. Billed",
+          "planActive3": "cancel anytime.",
+          "billingMonthly": "monthly",
+          "billingAnnual": "annually",
+          "setUpAccount": "Set up your account"
+        }
       },
       "common": {
         "orContinueWith": "Or continue with",

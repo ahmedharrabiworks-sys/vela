@@ -160,7 +160,7 @@ const COUNTRIES = [
   { name: "Zimbabwe",              dial: "+263" },
 ];
 
-const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.name === "United Arab Emirates")!;
+const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.name === "Qatar")!;
 
 /* Detect industry from plain-text business description */
 function detectBusinessType(desc: string): string {
@@ -482,10 +482,10 @@ function SignupPageContent() {
       {/* ── Step 1: Account ── */}
       {step === 1 && (
         <AuthSplitCard>
-          <h1 className="vela-heading text-2xl text-[#111111] mb-2">{t("landing.auth.signup.createAccount")}</h1>
-          <p className="text-[#6B7280] text-sm mb-7">{t("landing.auth.signup.subtitle")}</p>
+          <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.signup.createAccount")}</h1>
+          <p className="text-[#6B7280] text-sm mb-4">{t("landing.auth.signup.subtitle")}</p>
 
-          <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-3">
             <div>
               <label className={labelCls}>{t("landing.auth.signup.fullName")}</label>
               <div className="relative">
@@ -551,7 +551,7 @@ function SignupPageContent() {
           </form>
 
           {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
+          <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-[#E5E7EB]" />
             <span className="text-xs text-[#9CA3AF] font-medium">{t("landing.auth.common.orContinueWith")}</span>
             <div className="flex-1 h-px bg-[#E5E7EB]" />
@@ -559,7 +559,7 @@ function SignupPageContent() {
 
           <GoogleButton onClick={handleGoogleSignIn} label={t("landing.auth.common.continueWithGoogle")} />
 
-          <p className="text-center text-sm text-[#6B7280] mt-6 mb-5">
+          <p className="text-center text-sm text-[#6B7280] mt-4 mb-3">
             {t("landing.auth.signup.alreadyHaveAccount")}{" "}
             <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">{t("landing.auth.signup.signIn")}</Link>
           </p>
@@ -578,16 +578,16 @@ function SignupPageContent() {
 
         {/* ── Step 2: Business Info ── */}
         {step === 2 && (
-          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
-            <h1 className="vela-heading text-xl text-[#111111] mb-1">Tell us about your business</h1>
-            <p className="text-[#6B7280] text-sm mb-7">Vela will personalise everything for you automatically</p>
+          <div className="glass rounded-2xl p-6 sm:p-8">
+            <h1 className="vela-heading text-xl text-[#111111] mb-1">{t("landing.auth.signup.step2.title")}</h1>
+            <p className="text-[#6B7280] text-sm mb-5 sm:mb-7">{t("landing.auth.signup.step2.subtitle")}</p>
             <form onSubmit={handleStep2} className="space-y-4">
               <div>
-                <label className={labelCls}>Company Name</label>
-                <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your business name" required className={inputCls} />
+                <label className={labelCls}>{t("landing.auth.signup.step2.companyName")}</label>
+                <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t("landing.auth.signup.step2.companyNamePlaceholder")} required className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>What&apos;s your business?</label>
+                <label className={labelCls}>{t("landing.auth.signup.step2.businessQuestion")}</label>
                 <textarea
                   value={businessDesc}
                   onChange={(e) => {
@@ -613,10 +613,10 @@ function SignupPageContent() {
                       }
                     }, 1000);
                   }}
-                  placeholder="e.g. Dental clinic in Dubai, Real estate agency, Hair salon…"
+                  placeholder={t("landing.auth.signup.step2.businessPlaceholder")}
                   required
-                  rows={3}
-                  className="w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all resize-none"
+                  rows={2}
+                  className="w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all resize-none sm:min-h-[84px]"
                 />
                 {aiDetecting && (
                   <div className="flex items-center gap-2 mt-2">
@@ -624,25 +624,25 @@ function SignupPageContent() {
                       <circle cx="8" cy="8" r="6" stroke="rgba(255,107,53,0.3)" strokeWidth="2"/>
                       <path d="M14 8a6 6 0 0 0-6-6" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
-                    <span className="text-[11px] text-[#6B7280]">Detecting business type…</span>
+                    <span className="text-[11px] text-[#6B7280]">{t("landing.auth.signup.step2.detecting")}</span>
                   </div>
                 )}
                 {detectedType && detectedType !== "Other" && !aiDetecting && (
                   <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] w-fit">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    <span className="text-[11px] text-[#6B7280]">Detected: <span className="text-[#111111] font-semibold">{detectedType}</span></span>
+                    <span className="text-[11px] text-[#6B7280]">{t("landing.auth.signup.step2.detected")} <span className="text-[#111111] font-semibold">{detectedType}</span></span>
                     <button type="button" onClick={() => setDetectedType("")} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-xs ml-0.5">✕</button>
                   </div>
                 )}
                 {!aiDetecting && detectedType === "Other" && (
                   <div className="mt-2">
-                    <p className="text-[10px] text-[#9CA3AF] mb-1.5">AI couldn&apos;t auto-detect. Please select your business type:</p>
+                    <p className="text-[10px] text-[#9CA3AF] mb-1.5">{t("landing.auth.signup.step2.aiCouldNotDetect")}</p>
                     <select
                       value=""
                       onChange={(e) => { if (e.target.value) setDetectedType(e.target.value); }}
                       className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] text-sm focus:outline-none focus:border-[#FF6B35] transition-colors"
                     >
-                      <option value="" disabled>Select your business type…</option>
+                      <option value="" disabled>{t("landing.auth.signup.step2.selectBusinessType")}</option>
                       {BUSINESS_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
@@ -650,22 +650,25 @@ function SignupPageContent() {
                   </div>
                 )}
                 {!aiDetecting && !detectedType && (
-                  <p className="text-[10px] text-[#9CA3AF] mt-1.5">Vela AI will auto-detect your industry from this description</p>
+                  <p className="text-[10px] text-[#9CA3AF] mt-1.5">{t("landing.auth.signup.step2.autoDetectHint")}</p>
                 )}
               </div>
 
-              <div>
-                <label className={labelCls}>Country</label>
-                <CountrySelect value={country} onChange={(c) => setCountry(c)} />
+              {/* Country + City side by side at every width (FIX 7): saves
+                  vertical space on mobile, still comfortable on desktop. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>{t("landing.auth.signup.step2.country")}</label>
+                  <CountrySelect value={country} onChange={(c) => setCountry(c)} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t("landing.auth.signup.step2.city")}</label>
+                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder={t("landing.auth.signup.step2.cityPlaceholder")} required className={inputCls} />
+                </div>
               </div>
 
               <div>
-                <label className={labelCls}>City</label>
-                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Dubai" required className={inputCls} />
-              </div>
-
-              <div>
-                <label className={labelCls}>Phone Number</label>
+                <label className={labelCls}>{t("landing.auth.signup.step2.phoneNumber")}</label>
                 <PhoneInput
                   country={phoneCountry}
                   onCountryChange={(c) => { setPhoneCountry(c); setPhoneCountryTouched(true); }}
@@ -673,6 +676,7 @@ function SignupPageContent() {
                   onChange={setPhone}
                   onValidityChange={(valid, e164) => { setPhoneValid(valid); setPhoneE164(e164); }}
                   forceShowError={phoneSubmitAttempted}
+                  placeholder={t("landing.auth.signup.step2.phonePlaceholder")}
                   required
                 />
               </div>
@@ -681,7 +685,7 @@ function SignupPageContent() {
                 {/* Google onboarding skips step 1 entirely (already authenticated) -- nothing to go back to. */}
                 {!googleFlow && (
                   <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">
-                    Back
+                    {t("landing.auth.signup.step2.back")}
                   </button>
                 )}
                 <button type="submit" disabled={detecting}
@@ -693,9 +697,9 @@ function SignupPageContent() {
                         <circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
                         <path d="M14 8a6 6 0 0 0-6-6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                       </svg>
-                      Analysing…
+                      {t("landing.auth.signup.step2.analysing")}
                     </span>
-                  ) : "Continue →"}
+                  ) : <>{t("landing.auth.signup.step2.continue")} →</>}
                 </button>
               </div>
             </form>
@@ -704,10 +708,10 @@ function SignupPageContent() {
 
         {/* ── Step 3: Plan ── */}
         {step === 3 && (
-          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-10 shadow-card">
+          <div className="glass rounded-2xl p-6 md:p-10">
             <div className="text-center mb-8">
-              <h1 className="vela-heading text-xl text-[#111111] mb-1">Choose your plan</h1>
-              <p className="text-[#6B7280] text-sm mb-5">Cancel anytime</p>
+              <h1 className="vela-heading text-xl text-[#111111] mb-1">{t("landing.auth.signup.step3.title")}</h1>
+              <p className="text-[#6B7280] text-sm mb-5">{t("landing.auth.signup.step3.cancelAnytime")}</p>
 
               {/* Billing toggle, matches /pricing page */}
               <div className="inline-flex items-center p-0.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
@@ -715,15 +719,15 @@ function SignupPageContent() {
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
                     billing === "monthly" ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
                   }`}>
-                  Monthly
+                  {t("landing.auth.signup.step3.monthly")}
                 </button>
                 <button type="button" onClick={() => setBilling("annual")}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
                     billing === "annual" ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
                   }`}>
-                  Annual
+                  {t("landing.auth.signup.step3.annual")}
                   <span className={`ml-1.5 text-xs ${billing === "annual" ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>
-                    · Save 20%
+                    · {t("landing.auth.signup.step3.save20")}
                   </span>
                 </button>
               </div>
@@ -737,7 +741,7 @@ function SignupPageContent() {
               <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] max-w-md mx-auto">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 <p className="text-sm text-[#6B7280]">
-                  Detected: <span className="text-[#111111] font-semibold">{detectedType}</span>
+                  {t("landing.auth.signup.step3.detected")} <span className="text-[#111111] font-semibold">{detectedType}</span>
                 </p>
               </div>
             )}
@@ -766,7 +770,7 @@ function SignupPageContent() {
                       <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                         <span className="px-4 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
                           style={{ background: "var(--vela-gradient)" }}>
-                          Most Popular
+                          {t("landing.auth.signup.step3.mostPopular")}
                         </span>
                       </div>
                     )}
@@ -783,7 +787,7 @@ function SignupPageContent() {
                       <p className="text-sm text-[#9CA3AF] mt-1">{TAGLINES[planKey]}</p>
                       {billing === "annual" && (
                         <p className="text-sm font-medium text-[#FF6B35] mt-1">
-                          Save {formatPrice((p.monthly - p.annual) * 12, currency)}/year
+                          {t("landing.auth.signup.step3.save")} {formatPrice((p.monthly - p.annual) * 12, currency)}{t("landing.auth.signup.step3.perYear")}
                         </p>
                       )}
                     </div>
@@ -820,7 +824,7 @@ function SignupPageContent() {
                     <div className={`w-full py-2 px-6 rounded-xl text-sm font-semibold text-center transition-all ${
                       isSelected ? "bg-[#111111] text-white" : "border border-[#E5E7EB] text-[#374151]"
                     }`}>
-                      {isSelected ? "Selected" : "Select Plan"}
+                      {isSelected ? t("landing.auth.signup.step3.selected") : t("landing.auth.signup.step3.selectPlan")}
                     </div>
                   </button>
                 );
@@ -830,7 +834,7 @@ function SignupPageContent() {
             {/* See full plan details */}
             <div className="text-center mb-6">
               <Link href="/pricing" target="_blank" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors">
-                See full plan details
+                {t("landing.auth.signup.step3.seeFullPlanDetails")}
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                   <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -843,7 +847,7 @@ function SignupPageContent() {
               </div>
             )}
             <div className="flex gap-3 max-w-md mx-auto">
-              <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">Back</button>
+              <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">{t("landing.auth.signup.step3.back")}</button>
               <button onClick={handleStart} disabled={loading}
                 className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-70"
                 style={{ background: "var(--vela-gradient)" }}>
@@ -853,9 +857,9 @@ function SignupPageContent() {
                       <circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
                       <path d="M14 8a6 6 0 0 0-6-6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
-                    Setting up…
+                    {t("landing.auth.signup.step3.settingUp")}
                   </span>
-                ) : "Subscribe Now"}
+                ) : t("landing.auth.signup.step3.subscribeNow")}
               </button>
             </div>
           </div>
@@ -863,19 +867,19 @@ function SignupPageContent() {
 
         {/* ── Step 4: Success ── */}
         {step === 4 && (
-          <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card text-center">
+          <div className="glass rounded-2xl p-8 text-center">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "var(--vela-gradient)" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h1 className="vela-heading text-xl text-[#111111] mb-2">Welcome, {fullName.split(" ")[0] || "there"}!</h1>
-            <p className="text-[#6B7280] text-sm mb-2">Your business is ready on Vela.</p>
+            <h1 className="vela-heading text-xl text-[#111111] mb-2">{t("landing.auth.signup.step4.welcome")}, {fullName.split(" ")[0] || t("landing.auth.signup.step4.there")}!</h1>
+            <p className="text-[#6B7280] text-sm mb-2">{t("landing.auth.signup.step4.businessReady")}</p>
             <p className="text-[#9CA3AF] text-xs mb-8">
-              Your {PLANS.find((p) => p.id === plan)?.name} plan is active. Billed {billing === "annual" ? "annually" : "monthly"}, cancel anytime.
+              {t("landing.auth.signup.step4.planActive1")} {PLANS.find((p) => p.id === plan)?.name} {t("landing.auth.signup.step4.planActive2")} {billing === "annual" ? t("landing.auth.signup.step4.billingAnnual") : t("landing.auth.signup.step4.billingMonthly")}, {t("landing.auth.signup.step4.planActive3")}
             </p>
             <Link href="/app/welcome" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
-              Set up your account →
+              {t("landing.auth.signup.step4.setUpAccount")} →
             </Link>
           </div>
         )}

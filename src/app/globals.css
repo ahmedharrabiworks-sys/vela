@@ -342,6 +342,78 @@ canvas {
   .cursor-glow-layer { display: none; }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Liquid glass system (design pass) — ONE shared surface, reused
+   everywhere a card-like element needs the "liquid glass" treatment.
+   Never hand-roll these values per component; add `.glass` (or
+   `.glass-warm` for highlighted surfaces like the Pro card / Vela
+   table column) plus the component's own `rounded-*` class.
+   `.glass::before` draws the soft gradient edge (white top-left fading
+   to near-transparent bottom-right) via the mask-composite "ring"
+   trick, since a plain `border` can only be a single flat color.
+   `position: relative` is required on `.glass` itself so the ::before
+   ring positions against it, not some further-out ancestor. ═══════ */
+.glass {
+  position: relative;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 107, 53, 0.04),
+    0 8px 32px rgba(232, 90, 40, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.1));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass-warm {
+  background: rgba(255, 244, 238, 0.6);
+}
+/* Mobile: lighter blur radius for compositing performance (standing perf rule). */
+@media (max-width: 768px) {
+  .glass,
+  .glass-warm {
+    backdrop-filter: blur(12px) saturate(170%);
+    -webkit-backdrop-filter: blur(12px) saturate(170%);
+  }
+}
+/* Fallback for browsers without backdrop-filter support -- solid, never broken-looking. */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .glass-warm {
+    background: rgba(255, 255, 255, 0.92);
+  }
+}
+
+/* Ambient orange blobs that sit BEHIND glass surfaces so the blur actually
+   has color to pick up (glass is invisible over pure white). Pre-softened
+   radial gradients, no filter:blur() -- a blurred gradient is free, blur()
+   is not. See src/components/ui/GlassBlobs.tsx for the reusable placement
+   component; these are the two color stops it draws from. */
+.glass-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+.glass-blob--orange {
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.10) 0%, transparent 70%);
+}
+.glass-blob--rose {
+  background: radial-gradient(circle, rgba(255, 51, 102, 0.06) 0%, transparent 70%);
+}
+
 /* FIX 4a — Logo wordmark: white in dark mode */
 html.dark .logo-wordmark {
   color: var(--dm-text) !important;

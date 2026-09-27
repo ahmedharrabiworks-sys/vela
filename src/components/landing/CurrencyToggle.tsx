@@ -22,7 +22,7 @@ export function CurrencyToggle({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value as CurrencyCode)}
-          className="rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-sm font-semibold text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all"
+          className="glass rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all"
         >
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>

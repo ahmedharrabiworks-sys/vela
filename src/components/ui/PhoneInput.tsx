@@ -176,6 +176,7 @@ export interface PhoneInputProps {
   required?: boolean;
   forceShowError?: boolean;
   id?: string;
+  placeholder?: string;
 }
 
 export function PhoneInput({
@@ -187,6 +188,7 @@ export function PhoneInput({
   required = true,
   forceShowError = false,
   id,
+  placeholder = "50 000 0000",
 }: PhoneInputProps) {
   const [touched, setTouched] = useState(false);
 
@@ -211,7 +213,7 @@ export function PhoneInput({
           value={value}
           onChange={(e) => onChange(new AsYouType(country.iso2).input(e.target.value))}
           onBlur={() => setTouched(true)}
-          placeholder="50 000 0000"
+          placeholder={placeholder}
           required={required}
           aria-invalid={showError}
           className={`w-full bg-white border px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:ring-2 transition-all rounded-xl ${

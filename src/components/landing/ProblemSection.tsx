@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import GlassBlobs from "@/components/ui/GlassBlobs";
 
 // Stat callouts: only real, honest, non-fabricated claims -- no invented
 // percentages. "24/7" and the channel list are true and already used
@@ -22,6 +23,7 @@ export default function ProblemSection() {
   return (
     <section className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="end" />
+      <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: badge + headline + description + stats */}
@@ -46,15 +48,17 @@ export default function ProblemSection() {
               {t("landing.problem.description")}
             </p>
 
-            {/* Stat row -- unchanged content, still the same 3 honest callouts */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4 mt-8">
+            {/* Stat row -- unchanged content, still the same 3 honest callouts.
+                Stacks to 1 column below sm (FIX 4): "Multi-language" cannot
+                share a 3-up 375px row with the other two titles at any
+                shared font size without wrapping, so each card gets full
+                row width on mobile instead of a shrunk, hard-to-read size.
+                All 3 titles now share one font-size/weight/line-height and
+                items-stretch (grid default) keeps card heights equal. */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mt-8">
               {STAT_KEYS.map((key) => (
-                <div
-                  key={key}
-                  className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-4 text-center"
-                  style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}
-                >
-                  <p className="font-display font-extrabold text-[#111111] leading-tight" style={{ fontSize: key === "multiLang" ? 16 : 22 }}>
+                <div key={key} className="glass rounded-xl px-3 py-4 text-center flex flex-col justify-center">
+                  <p className="font-display font-extrabold text-lg text-[#111111] leading-tight whitespace-nowrap">
                     {t(`landing.problem.stats.${key}.value`)}
                   </p>
                   <p className="text-[11px] text-[#6B7280] mt-1.5 leading-snug">
@@ -75,8 +79,7 @@ export default function ProblemSection() {
             whileInView={prefersReducedMotion ? undefined : "show"}
             viewport={{ once: false, amount: 0.2 }}
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.18, delayChildren: 0.1 } } }}
-            className="rounded-3xl border border-[#E5E7EB] bg-white p-8 md:p-10"
-            style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.08)" }}
+            className="glass rounded-3xl p-8 md:p-10"
           >
             <div className="flex flex-col">
               {TIMELINE_KEYS.map((key, i) => {

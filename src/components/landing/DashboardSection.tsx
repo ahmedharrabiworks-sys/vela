@@ -1,6 +1,7 @@
 "use client";
 
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 import { useI18n } from "@/lib/i18n";
 
@@ -140,9 +141,10 @@ export default function DashboardSection() {
       <div className="max-w-6xl mx-auto px-5 md:px-6">
         <div className="relative">
           <AmbientGlow pos="start" />
+          <GlassBlobs />
           <div
-            className="relative overflow-hidden rounded-2xl grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8 lg:gap-6 px-6 py-10 sm:px-10 sm:py-12"
-            style={{ background: "linear-gradient(135deg,#FFF3E9 0%,#FFE0CC 100%)", zIndex: 1 }}
+            className="glass glass-warm relative overflow-hidden rounded-2xl grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8 lg:gap-6 px-6 py-10 sm:px-10 sm:py-12"
+            style={{ zIndex: 1 }}
           >
             {/* Text panel */}
             <div className="flex flex-col justify-center order-2 lg:order-1">

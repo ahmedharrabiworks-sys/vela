@@ -49,7 +49,7 @@ export default function PricingPage() {
           <h2 className="font-display text-xl font-bold text-[#111111] mb-8">Frequently asked</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {FAQ_ITEMS.map((item) => (
-              <div key={item.q} className="bg-white border border-[#E5E7EB] rounded-xl p-5">
+              <div key={item.q} className="glass rounded-xl p-5">
                 <p className="font-semibold text-[#111111] text-sm mb-1.5">{item.q}</p>
                 <p className="text-sm text-[#6B7280] leading-relaxed">{item.a}</p>
               </div>

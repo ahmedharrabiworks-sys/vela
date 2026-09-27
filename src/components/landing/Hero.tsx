@@ -66,13 +66,7 @@ export default function Hero() {
           scrolled content behind it, not a flat near-opaque bar -- see the
           live scroll screenshot evidence in this round's report. */}
       <div className="hidden sm:flex fixed top-0 inset-x-0 z-40 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
-        <div
-          className="w-full flex items-center justify-between rounded-full px-6 py-3 backdrop-blur-xl border border-white/60"
-          style={{
-            background: "rgba(255,255,255,0.55)",
-            boxShadow: "0 8px 32px rgba(17,17,17,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
-          }}
-        >
+        <div className="glass w-full flex items-center justify-between rounded-full px-6 py-3">
           {/* translateY correction (bug-fix + polish round #3): the logo PNG's
               visible content isn't vertically centered within its own file --
               measured via pixel analysis (opacity-weighted centroid), the
@@ -118,13 +112,7 @@ export default function Hero() {
           z-50, opacity lowered to 0.55 so the blur is genuinely visible
           against real scrolled content, not a flat bar). */}
       <div className="sm:hidden fixed top-0 inset-x-0 z-40 w-full px-5 pt-6 shrink-0 flex justify-center">
-        <div
-          className="inline-flex items-center gap-2 rounded-full backdrop-blur-xl border border-white/60 py-1.5 ps-3.5 pe-2"
-          style={{
-            background: "rgba(255,255,255,0.55)",
-            boxShadow: "0 8px 32px rgba(17,17,17,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
-          }}
-        >
+        <div className="glass inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
             <Logo showText={false} size={24} />
           </Link>

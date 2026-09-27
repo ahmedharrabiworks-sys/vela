@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
@@ -22,14 +23,14 @@ const SCENE_DURATIONS: number[] = [11800, 9400, 8900, 9200];
 type ApptRow = {
   i: string; name: string;
   service: string; time: string;
-  ch: "WA" | "IG" | "WEB"; status: "Confirmed" | "Pending" | "Cancelled";
+  ch: "WA" | "IG" | "PH"; status: "Confirmed" | "Pending" | "Cancelled";
 };
 const APPTS: ApptRow[] = [
   { i:"SK", name:"Sara Khalid",     service:"Dental Cleaning",  time:"09:00", ch:"WA",  status:"Confirmed" },
   { i:"RM", name:"Rania Mahmoud",   service:"Teeth Whitening",  time:"09:45", ch:"IG",  status:"Confirmed" },
   { i:"MH", name:"Mohammed Hassan", service:"Teeth Whitening",  time:"10:30", ch:"IG",  status:"Confirmed" },
   { i:"LM", name:"Layla Mansouri",  service:"Dental Cleaning",  time:"11:00", ch:"WA",  status:"Confirmed" },
-  { i:"KI", name:"Khaled Ibrahim",  service:"Cavity Filling",   time:"12:00", ch:"WEB", status:"Pending"   },
+  { i:"KI", name:"Khaled Ibrahim",  service:"Cavity Filling",   time:"12:00", ch:"PH",  status:"Pending"   },
   { i:"FN", name:"Fatima Nasser",   service:"Root Canal",       time:"13:30", ch:"IG",  status:"Cancelled" },
 ];
 
@@ -95,11 +96,11 @@ function CustomerAvatar({ sz=28 }: { sz?:number }) {
   );
 }
 
-function ChBadge({ ch }: { ch:"WA"|"IG"|"WEB" }) {
+function ChBadge({ ch }: { ch:"WA"|"IG"|"PH" }) {
   const m = {
-    WA:  { bg:"#DCFCE7", color:"#16A34A" },
-    IG:  { bg:"#FCE7F3", color:"#BE185D" },
-    WEB: { bg:"#DBEAFE", color:"#1D4ED8" },
+    WA: { bg:"#DCFCE7", color:"#16A34A" },
+    IG: { bg:"#FCE7F3", color:"#BE185D" },
+    PH: { bg:"#DBEAFE", color:"#1D4ED8" },
   }[ch];
   return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={m}>{ch}</span>;
 }
@@ -239,7 +240,7 @@ function SceneConversation() {
           <span className="text-[11px] text-[#6B7280] font-medium">{t("landing.tour.scenes.conversation.assistantOnline")}</span>
         </div>
         <div className="ml-auto flex gap-1">
-          {["IG","WA","Web"].map(l=>(
+          {["IG","WA","Phone"].map(l=>(
             <span key={l} className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#F1F5F9] text-[#6B7280] font-semibold border border-[#E5E7EB]">{l}</span>
           ))}
         </div>
@@ -683,7 +684,7 @@ function CountUp({ target, format, duration=1200, delay=0 }: { target:number; fo
    Scene 3. Channels
    overflow:hidden. 3 cards fit comfortably
    Choreography (numbered to match the spec):
-   1 pause: Instagram and Website Chat connected, WhatsApp Business not connected
+   1 pause: Instagram and Phone connected, WhatsApp Business not connected
    2 zoom/highlight on the WhatsApp Business card
    3 cursor clicks its Connect button
    4 illustrative connect flow: Enter number -> Authorize -> Connected!
@@ -762,15 +763,12 @@ function SceneChannels() {
       ],
     },
     {
-      iconBg:"#6366F1",
-      // FIX: was a generic filled inbox-envelope shape, not the same glyph
-      // used everywhere else (dashboard Channels page, /demo/channels) --
-      // swapped to the exact same outlined chat-bubble path for consistency.
-      icon:<svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" width="18" height="18"><path d="M21 10.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-      name:t("landing.tour.scenes.channels.channelNames.website"), handle:"ahmeddentalclinic.ae",
+      iconBg:"#2563EB",
+      icon:<svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" width="18" height="18"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C9.7 21 3 14.3 3 6c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.2 1.1l-2.3 2.3z" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      name:t("landing.tour.scenes.channels.channelNames.phone"), handle:"+971 4 555 0198",
       stats:[
-        {val:"1,240",label:t("landing.tour.scenes.channels.statLabels.websiteVisitors")},
-        {val:"8.3%",label:t("landing.tour.scenes.channels.statLabels.chatConversions")},
+        {val:"186",label:t("landing.tour.scenes.channels.statLabels.callsAnswered")},
+        {val:"94%",label:t("landing.tour.scenes.channels.statLabels.answeredByAI")},
       ],
     },
   ];
@@ -1337,6 +1335,7 @@ export default function ProductTourDemo() {
     // scene mocks) now routes through the i18n system.
     <section id="how-it-works" ref={sectionRef} className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="start" />
+      <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
 
         {/* Section header, FIX 5+6 applied */}
@@ -1367,7 +1366,7 @@ export default function ProductTourDemo() {
                 each pill close to a 44px touch target; lg:py-1.5 keeps the
                 compact desktop density unchanged (mouse pointer, no touch
                 target concern there). */}
-            <div className="flex flex-wrap lg:flex-nowrap gap-1.5 mb-6 lg:overflow-x-auto lg:pb-1">
+            <div className="glass flex flex-wrap lg:flex-nowrap gap-1.5 mb-6 lg:overflow-x-auto rounded-full p-1.5">
               {TOUR_PANELS.map(p => {
                 const active = scene === p.sceneIdx;
                 return (
@@ -1376,8 +1375,8 @@ export default function ProductTourDemo() {
                     onClick={() => handleTabClick(p.sceneIdx)}
                     className="shrink-0 whitespace-nowrap px-3.5 py-2.5 lg:py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
                     style={{
-                      background: active ? "var(--vt-color)" : "#FAFAFA",
-                      border:     active ? "1.5px solid var(--vp-color)" : "1.5px solid #F1F5F9",
+                      background: active ? "white" : "transparent",
+                      border:     active ? "1.5px solid var(--vp-color)" : "1.5px solid transparent",
                       color:      active ? "var(--vp-color)" : "#6B7280",
                     }}
                   >
@@ -1433,15 +1432,14 @@ export default function ProductTourDemo() {
             <CtaButton size="md" className="mt-7 self-start" />
           </div>
 
-          {/* Demo window */}
+          {/* Demo window -- glass sits on the OUTER frame only (a visible
+              padded mat around the window), never on the window's own inner
+              content, which stays fully opaque (each scene renders real
+              opaque UI) so there is nothing to stack backdrop-filter on top
+              of. */}
           <div className="order-first lg:order-last">
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                border:"1.5px solid #E5E7EB",
-                boxShadow:"0 16px 56px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)",
-              }}
-            >
+            <div className="glass rounded-2xl p-2">
+              <div className="rounded-xl overflow-hidden bg-white" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
               {/* Window chrome -- pinned dir="ltr": OS-style traffic-light
                   window controls never mirror with document/app direction
                   on any real platform, so this bar stays physically LTR
@@ -1475,6 +1473,7 @@ export default function ProductTourDemo() {
                     {renderScene(scene)}
                   </motion.div>
                 </AnimatePresence>
+              </div>
               </div>
             </div>
           </div>

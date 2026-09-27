@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
@@ -46,6 +47,7 @@ export default function Pricing() {
   return (
     <section id="pricing" className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="end" />
+      <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header */}
         <div className="relative text-center mb-8">
@@ -110,10 +112,8 @@ export default function Pricing() {
               return (
                 <div
                   key={plan.name}
-                  className={`relative rounded-2xl p-5 md:p-7 flex flex-col transition-all duration-300 ${
-                    plan.popular
-                      ? "bg-[#FFF8F5] md:scale-[1.02]"
-                      : "bg-white border border-[#E5E7EB] shadow-card hover:shadow-card-hover hover:-translate-y-1"
+                  className={`glass relative rounded-2xl p-5 md:p-7 flex flex-col transition-all duration-300 ${
+                    plan.popular ? "glass-warm md:scale-[1.02]" : "hover:-translate-y-1"
                   }`}
                   style={
                     plan.popular

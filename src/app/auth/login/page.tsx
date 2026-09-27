@@ -101,10 +101,10 @@ export default function LoginPage() {
         {/* ── Sign-in form ── */}
         {!forgotMode && (
           <>
-            <h1 className="vela-heading text-2xl text-[#111111] mb-2">{t("landing.auth.login.welcomeBack")}</h1>
-            <p className="text-[#6B7280] text-sm mb-7">{t("landing.auth.login.subtitle")}</p>
+            <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.login.welcomeBack")}</h1>
+            <p className="text-[#6B7280] text-sm mb-4">{t("landing.auth.login.subtitle")}</p>
 
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">
                   {t("landing.auth.login.email")}
@@ -184,7 +184,7 @@ export default function LoginPage() {
             </form>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 my-6">
+            <div className="flex items-center gap-3 my-4">
               <div className="flex-1 h-px bg-[#E5E7EB]" />
               <span className="text-xs text-[#9CA3AF] font-medium">{t("landing.auth.common.orContinueWith")}</span>
               <div className="flex-1 h-px bg-[#E5E7EB]" />
@@ -192,7 +192,7 @@ export default function LoginPage() {
 
             <GoogleButton onClick={handleGoogleSignIn} label={t("landing.auth.common.continueWithGoogle")} />
 
-            <p className="text-center text-sm text-[#6B7280] mt-6">
+            <p className="text-center text-sm text-[#6B7280] mt-4">
               {t("landing.auth.login.noAccount")}{" "}
               <Link href="/auth/signup" className="text-[#FF6B35] font-semibold hover:underline">
                 {t("landing.auth.login.signUp")}
@@ -207,7 +207,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setForgotMode(false); setResetError(""); }}
-              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111111] mb-6 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111111] mb-4 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="rtl:-scale-x-100">
                 <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -215,12 +215,12 @@ export default function LoginPage() {
               {t("landing.auth.login.backToSignIn")}
             </button>
 
-            <h1 className="vela-heading text-2xl text-[#111111] mb-2">{t("landing.auth.login.resetPassword")}</h1>
-            <p className="text-[#6B7280] text-sm mb-7">
+            <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.login.resetPassword")}</h1>
+            <p className="text-[#6B7280] text-sm mb-4">
               {t("landing.auth.login.resetSubtitle")}
             </p>
 
-            <form onSubmit={handleForgotPassword} className="space-y-4">
+            <form onSubmit={handleForgotPassword} className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">
                   {t("landing.auth.login.email")}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import MadeInQatar from "@/components/ui/MadeInQatar";
 
 const SECTIONS = [
   {
@@ -116,10 +117,10 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-[#E5E7EB] pt-8 flex flex-col items-center gap-3 md:flex-row md:justify-between md:gap-4">
-          <p className="text-sm text-[#9CA3AF] text-center md:text-start">
-            {t("landing.footer.copyright")}
-            <span className="mx-1.5">·</span>
-            {t("landing.footer.madeInQatar")}
+          <p className="flex items-center flex-wrap justify-center md:justify-start gap-1.5 text-sm text-[#9CA3AF]">
+            <span>{t("landing.footer.copyright")}</span>
+            <span>·</span>
+            <MadeInQatar />
           </p>
           <p className="text-sm text-[#9CA3AF] text-center md:text-start">
             {t("landing.footer.slogan1")}{" "}

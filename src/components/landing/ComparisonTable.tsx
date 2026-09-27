@@ -2,6 +2,37 @@
 
 import { useI18n } from "@/lib/i18n";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import GlassBlobs from "@/components/ui/GlassBlobs";
+
+/* Complete, closed 4-side orange frame around the Vela column (FIX 5).
+   A single absolutely-positioned overlay spanning header-to-last-row,
+   instead of per-cell borders -- per-cell borders on adjacent columns
+   collide under border-collapse and the shared edge can render whichever
+   neighbor's color wins, which is exactly what left the frame's start
+   edge looking open before this fix. Positioned with CSS logical
+   properties (insetInlineEnd, not right/left) so it tracks the Vela
+   column's real position under both LTR (last column, physically right)
+   and RTL (native table mirroring puts the last DOM column physically
+   left) without any separate RTL-specific styling. Requires the table's
+   colgroup widths to be fixed percentages (table-layout:fixed) so this
+   overlay's width always matches the real column width exactly. */
+function VelaColumnFrame({ width, radius }: { width: string; radius: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute pointer-events-none"
+      style={{
+        top: 0,
+        bottom: 0,
+        insetInlineEnd: 0,
+        width,
+        border: "1.5px solid #FF6B35",
+        borderStartEndRadius: radius,
+        borderEndEndRadius: radius,
+      }}
+    />
+  );
+}
 
 type Kind = "yes" | "no" | "partial";
 
@@ -71,6 +102,7 @@ export default function ComparisonTable() {
   return (
     <section className="relative py-12 md:py-16 bg-white overflow-hidden">
       <AmbientGlow pos="start" />
+      <GlassBlobs />
       <div className="relative max-w-5xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="text-center mb-8 md:mb-10">
           <span
@@ -90,45 +122,55 @@ export default function ComparisonTable() {
         </div>
 
         {/* Desktop: 2-equal-column table (Basic AI Bots column dropped,
-            bug-fix + polish round #3), md+ only. */}
+            bug-fix + polish round #3), md+ only. Fixed colgroup percentages
+            (36/32/32) so VelaColumnFrame's width always matches the real
+            rendered column width exactly. */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full min-w-[480px] border-collapse rounded-2xl overflow-hidden" style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.06)" }}>
-            <thead>
-              <tr>
-                <th className="text-start bg-white border border-[#E5E7EB] px-4 py-4 w-[36%]" />
-                <th className="text-start bg-white border border-[#E5E7EB] px-4 py-4">
-                  <span className="text-sm font-bold text-[#6B7280]">{t("landing.comparison.columns.humanStaff")}</span>
-                </th>
-                <th className="text-start border border-[#FF6B35] px-4 py-4" style={{ background: "#FFF8F5" }}>
-                  <span className="text-sm font-bold text-[#C2410C]">{t("landing.comparison.columns.vela")}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {ROW_KEYS.map((key) => {
-                const kinds = ROW_KINDS[key];
-                return (
-                  <tr key={key}>
-                    <td className="bg-white border border-[#E5E7EB] px-4 py-4">
-                      <span className="text-sm font-semibold text-[#111111]">{t(`landing.comparison.rows.${key}.label`)}</span>
-                    </td>
-                    <td className="bg-white border border-[#E5E7EB] px-4 py-4">
-                      <span className="flex items-center gap-2 text-sm text-[#6B7280]">
-                        <CellIcon kind={kinds.humanStaff} />
-                        {t(`landing.comparison.rows.${key}.humanStaff`)}
-                      </span>
-                    </td>
-                    <td className="border border-[#FF6B35] px-4 py-4" style={{ background: "#FFFBF9" }}>
-                      <span className="flex items-center gap-2 text-sm font-semibold text-[#111111]">
-                        <CellIcon kind={kinds.vela} accent />
-                        {t(`landing.comparison.rows.${key}.vela`)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="glass relative rounded-2xl overflow-hidden">
+            <table className="w-full min-w-[480px] border-collapse table-fixed">
+              <colgroup>
+                <col style={{ width: "36%" }} />
+                <col style={{ width: "32%" }} />
+                <col style={{ width: "32%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className="text-start border border-[#E5E7EB] px-4 py-4" />
+                  <th className="text-start border border-[#E5E7EB] px-4 py-4">
+                    <span className="text-sm font-bold text-[#6B7280]">{t("landing.comparison.columns.humanStaff")}</span>
+                  </th>
+                  <th className="glass-warm text-start px-4 py-4">
+                    <span className="text-sm font-bold text-[#C2410C]">{t("landing.comparison.columns.vela")}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROW_KEYS.map((key) => {
+                  const kinds = ROW_KINDS[key];
+                  return (
+                    <tr key={key}>
+                      <td className="border border-[#E5E7EB] px-4 py-4">
+                        <span className="text-sm font-semibold text-[#111111]">{t(`landing.comparison.rows.${key}.label`)}</span>
+                      </td>
+                      <td className="border border-[#E5E7EB] px-4 py-4">
+                        <span className="flex items-center gap-2 text-sm text-[#6B7280]">
+                          <CellIcon kind={kinds.humanStaff} />
+                          {t(`landing.comparison.rows.${key}.humanStaff`)}
+                        </span>
+                      </td>
+                      <td className="glass-warm px-4 py-4">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-[#111111]">
+                          <CellIcon kind={kinds.vela} accent />
+                          {t(`landing.comparison.rows.${key}.vela`)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <VelaColumnFrame width="32%" radius={16} />
+          </div>
         </div>
 
         {/* Mobile: a real compact table (bug-fix + polish round #4),
@@ -142,48 +184,51 @@ export default function ComparisonTable() {
             overflow-x-auto on the wrapper is a contained safety net only --
             in practice the content wraps and fits without needing it. */}
         <div className="md:hidden overflow-x-auto -mx-5 px-5">
-          <table className="w-full border-collapse rounded-xl overflow-hidden table-fixed" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
-            <colgroup>
-              <col style={{ width: "32%" }} />
-              <col style={{ width: "32%" }} />
-              <col style={{ width: "36%" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="bg-white border border-[#E5E7EB] px-1.5 py-2.5" />
-                <th className="text-start bg-white border border-[#E5E7EB] px-1.5 py-2.5">
-                  <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wide">{t("landing.comparison.columns.humanStaff")}</span>
-                </th>
-                <th className="text-start border border-[#FF6B35] px-1.5 py-2.5" style={{ background: "#FFF8F5" }}>
-                  <span className="text-[10px] font-bold text-[#C2410C] uppercase tracking-wide">{t("landing.comparison.columns.vela")}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {ROW_KEYS.map((key) => {
-                const kinds = ROW_KINDS[key];
-                return (
-                  <tr key={key}>
-                    <td className="align-top bg-white border border-[#E5E7EB] px-1.5 py-2.5">
-                      <span className="text-[11px] font-semibold text-[#111111] leading-snug">{t(`landing.comparison.rows.${key}.label`)}</span>
-                    </td>
-                    <td className="align-top bg-white border border-[#E5E7EB] px-1.5 py-2.5">
-                      <span className="flex items-start gap-1 text-[11px] text-[#6B7280] leading-snug">
-                        <CellIcon kind={kinds.humanStaff} small />
-                        {t(`landing.comparison.rows.${key}.humanStaff`)}
-                      </span>
-                    </td>
-                    <td className="align-top border border-[#FF6B35] px-1.5 py-2.5" style={{ background: "#FFFBF9" }}>
-                      <span className="flex items-start gap-1 text-[11px] font-semibold text-[#111111] leading-snug">
-                        <CellIcon kind={kinds.vela} accent small />
-                        {t(`landing.comparison.rows.${key}.vela`)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="glass relative rounded-xl overflow-hidden">
+            <table className="w-full border-collapse table-fixed">
+              <colgroup>
+                <col style={{ width: "32%" }} />
+                <col style={{ width: "32%" }} />
+                <col style={{ width: "36%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className="border border-[#E5E7EB] px-1.5 py-2.5" />
+                  <th className="text-start border border-[#E5E7EB] px-1.5 py-2.5">
+                    <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wide">{t("landing.comparison.columns.humanStaff")}</span>
+                  </th>
+                  <th className="glass-warm text-start px-1.5 py-2.5">
+                    <span className="text-[10px] font-bold text-[#C2410C] uppercase tracking-wide">{t("landing.comparison.columns.vela")}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ROW_KEYS.map((key) => {
+                  const kinds = ROW_KINDS[key];
+                  return (
+                    <tr key={key}>
+                      <td className="align-top border border-[#E5E7EB] px-1.5 py-2.5">
+                        <span className="text-[11px] font-semibold text-[#111111] leading-snug">{t(`landing.comparison.rows.${key}.label`)}</span>
+                      </td>
+                      <td className="align-top border border-[#E5E7EB] px-1.5 py-2.5">
+                        <span className="flex items-start gap-1 text-[11px] text-[#6B7280] leading-snug">
+                          <CellIcon kind={kinds.humanStaff} small />
+                          {t(`landing.comparison.rows.${key}.humanStaff`)}
+                        </span>
+                      </td>
+                      <td className="glass-warm align-top px-1.5 py-2.5">
+                        <span className="flex items-start gap-1 text-[11px] font-semibold text-[#111111] leading-snug">
+                          <CellIcon kind={kinds.vela} accent small />
+                          {t(`landing.comparison.rows.${key}.vela`)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <VelaColumnFrame width="36%" radius={12} />
+          </div>
         </div>
       </div>
     </section>

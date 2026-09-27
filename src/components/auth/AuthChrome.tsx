@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
-import QatarFlag from "@/components/ui/QatarFlag";
+import MadeInQatar from "@/components/ui/MadeInQatar";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 import AmbientGlow from "@/components/landing/AmbientGlow";
+import GlassBlobs from "@/components/ui/GlassBlobs";
 import { useI18n } from "@/lib/i18n";
 
 export const authInputCls =
@@ -71,31 +72,27 @@ export function GoogleButton({ onClick, label }: { onClick: () => void; label: s
 }
 
 export function AuthPageShell({ children }: { children: React.ReactNode }) {
-  const { t } = useI18n();
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 pt-20 pb-10 sm:py-10 relative overflow-hidden">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 pt-14 pb-6 sm:py-10 relative overflow-hidden">
       <AmbientGlow pos="start" />
       <AmbientGlow pos="end" />
+      <GlassBlobs />
 
-      <div className="absolute top-0 start-0 p-6 z-10">
+      <div className="absolute top-0 start-0 p-4 sm:p-6 z-10">
         <Link href="/">
           <Logo showText={false} />
         </Link>
       </div>
 
-      <div className="absolute top-0 end-0 p-6 z-10">
+      <div className="absolute top-0 end-0 p-4 sm:p-6 z-10">
         <LanguageToggle />
       </div>
 
       <div className="relative z-10 w-full flex flex-col items-center">
         {children}
 
-        <div className="flex items-center justify-center gap-2 mt-8">
-          <span className="text-xs text-[#9CA3AF] font-medium">{t("landing.footer.madeInQatar")}</span>
-          <QatarFlag
-            className="w-5 h-auto rounded-[1.5px]"
-            style={{ filter: "drop-shadow(0 0 4px rgba(138,21,56,0.55)) drop-shadow(0 0 9px rgba(138,21,56,0.3))" }}
-          />
+        <div className="mt-4 sm:mt-8">
+          <MadeInQatar />
         </div>
       </div>
     </div>
@@ -109,32 +106,47 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
  * Liquid-glass treatment on the outer card (translucent white + blur +
  * soft border/shadow), same recipe as the site header.
  */
+/** All-white brand mark for the orange decorative panel -- the shared
+    Logo component's light variant is a PNG asset whose mark isn't pure
+    white, which read as "orange-on-orange, nearly invisible" against the
+    gradient. This is a dedicated inline SVG, guaranteed pure white, used
+    only in this one high-contrast context. ~2x the size of the old PNG
+    wordmark, tight gap to the headline so they read as one lockup. */
+function BrandMarkWhite() {
+  return (
+    <div className="flex items-center gap-2 mb-2 md:mb-2.5">
+      <svg width="28" height="28" viewBox="0 0 36 36" className="md:w-9 md:h-9" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M5 7L18 28L31 7" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <circle cx="18" cy="30" r="2.5" fill="white" />
+      </svg>
+      <span className="font-display font-bold text-white leading-none text-2xl md:text-[32px]">Vela</span>
+    </div>
+  );
+}
+
 export function AuthSplitCard({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
   return (
-    <div
-      className="w-full max-w-4xl rounded-[28px] overflow-hidden grid md:grid-cols-[42%_1fr] border border-white/60"
-      style={{
-        background: "rgba(255,255,255,0.55)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        boxShadow: "0 8px 40px rgba(17,17,17,0.12), inset 0 1px 0 rgba(255,255,255,0.85)",
-      }}
-    >
-      {/* Decorative panel */}
+    <div className="glass w-full max-w-4xl rounded-[28px] overflow-hidden grid md:grid-cols-[42%_1fr]">
+      {/* Decorative panel -- glass FINISH on top of the opaque gradient
+          (not the glass surface itself, which needs something translucent
+          behind it): a soft white top-edge highlight + a faint inner
+          border so it reads as tinted glass over the gradient, not a flat
+          color block, plus the existing soft translucent circles. */}
       <div
-        className="relative overflow-hidden px-7 py-8 md:p-10 flex flex-col justify-center min-h-[132px] md:min-h-[420px]"
-        style={{ background: "var(--vela-gradient)" }}
+        className="relative overflow-hidden px-6 py-6 md:p-10 flex flex-col justify-center min-h-[104px] md:min-h-[420px]"
+        style={{
+          background: "var(--vela-gradient)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), inset 0 0 0 1px rgba(255,255,255,0.25)",
+        }}
       >
         <div aria-hidden="true" className="absolute -bottom-16 -start-10 w-56 h-56 rounded-full bg-white/10" />
         <div aria-hidden="true" className="absolute top-1/3 end-[-3.5rem] w-32 h-32 rounded-full bg-white/10" />
         <div aria-hidden="true" className="absolute -top-10 start-1/3 w-24 h-24 rounded-full bg-white/[0.08] hidden md:block" />
 
         <div className="relative">
-          <div className="hidden md:block mb-6">
-            <Logo showText light />
-          </div>
-          <h2 className="vela-heading text-xl md:text-[28px] text-white leading-tight mb-2 md:mb-3">
+          <BrandMarkWhite />
+          <h2 className="vela-heading text-lg md:text-[28px] text-white leading-tight mb-1.5 md:mb-3">
             {t("landing.auth.tagline")}
           </h2>
           <p className="hidden md:block text-white/80 text-sm leading-relaxed max-w-[280px]">
@@ -143,8 +155,10 @@ export function AuthSplitCard({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Form panel */}
-      <div className="bg-white/70 px-6 py-8 sm:px-10 sm:py-10">{children}</div>
+      {/* Form panel -- plain (non-blur) translucent wash for text contrast;
+          the outer .glass on the card already supplies the blur, so this
+          stays a flat color layer, never a second backdrop-filter. */}
+      <div className="bg-white/70 px-6 py-6 sm:px-10 sm:py-10">{children}</div>
     </div>
   );
 }
