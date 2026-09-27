@@ -77,7 +77,7 @@ export default function Hero() {
               visible wordmark sitting lower than sibling text/icons that don't
               have this asymmetry. */}
           <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
-            <Logo showText heightClass="!h-14" />
+            <Logo size="md" />
           </Link>
           <div className="flex items-center gap-4">
             <LanguageToggle />
@@ -114,7 +114,7 @@ export default function Hero() {
       <div className="sm:hidden fixed top-0 inset-x-0 z-40 w-full px-5 pt-6 shrink-0 flex justify-center">
         <div className="glass inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
-            <Logo showText={false} size={24} />
+            <Logo markOnly size="sm" />
           </Link>
           <LanguageToggle />
           <button

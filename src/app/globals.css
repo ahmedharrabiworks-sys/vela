@@ -76,7 +76,7 @@ html {
 }
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-poppins), "Poppins", sans-serif;
   color: var(--vela-night);
   background: transparent;
   -webkit-font-smoothing: antialiased;
@@ -101,8 +101,13 @@ html.dark body::before { display: none; }
 
 @layer components {
   .vela-heading {
-    @apply font-display font-bold tracking-tightest leading-none;
-    letter-spacing: -0.04em;
+    /* Brand-font round: Poppins has much tighter natural spacing than the
+       old Bricolage Grotesque display font did -- the old -0.04em
+       (tracking-tightest) reads as visibly cramped/broken on Poppins at
+       large sizes, so this is dialed back to a slight, not aggressive,
+       tighten. */
+    @apply font-display font-bold leading-none;
+    letter-spacing: -0.02em;
   }
 
   .vela-gradient-text {

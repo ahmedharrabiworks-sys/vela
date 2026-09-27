@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
-import Wordmark from "@/components/ui/Wordmark";
 import MadeInQatar from "@/components/ui/MadeInQatar";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 import AmbientGlow from "@/components/landing/AmbientGlow";
@@ -112,7 +111,7 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
 
       <div className="absolute top-0 start-0 p-4 sm:p-6 z-10">
         <Link href="/">
-          <Logo showText={false} />
+          <Logo markOnly size="md" />
         </Link>
       </div>
 
@@ -149,8 +148,8 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
  * The outer wrapper still clips both to the card's rounded corners via
  * plain `overflow-hidden` + `rounded-[28px]` -- no glass classes on it.
  */
-function BrandWordmark({ className = "" }: { className?: string }) {
-  return <Wordmark light className={className} />;
+function BrandLogo({ size = "lg", className = "" }: { size?: "sm" | "md" | "lg"; className?: string }) {
+  return <Logo variant="white" size={size} className={className} />;
 }
 
 export function AuthSplitCard({
@@ -192,18 +191,18 @@ export function AuthSplitCard({
           <div aria-hidden="true" className={`absolute top-1/3 end-[-3.5rem] w-32 h-32 rounded-full bg-white/10 ${slim ? "hidden md:block" : ""}`} />
           <div aria-hidden="true" className="absolute -top-10 start-1/3 w-24 h-24 rounded-full bg-white/[0.08] hidden md:block" />
 
-          {/* Slim mobile banner: wordmark (start) + step label (end), row
+          {/* Slim mobile banner: logo (start) + step label (end), row
               layout, no headline/body -- md:hidden, replaced by the full
               content block below on desktop. */}
           {slim && (
             <div className="relative flex md:hidden items-center justify-between h-16">
-              <BrandWordmark className="text-xl" />
+              <BrandLogo size="md" />
               <span className="text-xs font-semibold text-white/85">{stepLabel}</span>
             </div>
           )}
 
           <div className={`relative ${slim ? "hidden md:block" : ""}`}>
-            <BrandWordmark className={slim ? "text-[40px] mb-5" : "text-[28px] md:text-[40px] mb-5"} />
+            <BrandLogo size="lg" className="mb-5" />
             <h2 className="vela-heading text-lg md:text-[28px] text-white leading-tight mb-1.5 md:mb-3">
               {headline}
             </h2>

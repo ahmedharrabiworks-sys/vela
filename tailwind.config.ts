@@ -23,17 +23,18 @@ const config: Config = {
         vt: "var(--vt-color)",
       },
       fontFamily: {
-        // FIX 9 (auth-system follow-up round): Inter is now the single
-        // brand font. Overriding the DEFAULT `sans` key (not just the
-        // custom `inter` key) means plain `font-sans` -- used by the
-        // shared Wordmark component and anywhere else that never
-        // explicitly opted into a different family -- resolves to Inter
-        // instead of Tailwind's default system-ui stack. `inter` is kept
-        // as an explicit alias for existing call sites (e.g. body's
-        // font-inter class) so nothing has to be renamed.
-        sans: ["var(--font-inter)", "Inter", "sans-serif"],
-        inter: ["var(--font-inter)", "Inter", "sans-serif"],
-        display: ["var(--font-display)", "Inter", "sans-serif"],
+        // Brand-font round: Poppins is the ONE Latin font sitewide,
+        // identified as the closest match to the real logo's wordmark
+        // (see layout.tsx's comment + verification/font-match*.png).
+        // `sans`, `inter`, and `display` all resolve to the same variable
+        // on purpose -- Bricolage Grotesque (display) and Inter (sans/
+        // inter) are both gone, but keeping these three key NAMES means
+        // the many existing font-inter/font-display call sites across
+        // landing/pricing/auth components don't need touching; they
+        // already render Poppins now without any class renaming.
+        sans: ["var(--font-poppins)", "Poppins", "sans-serif"],
+        inter: ["var(--font-poppins)", "Poppins", "sans-serif"],
+        display: ["var(--font-poppins)", "Poppins", "sans-serif"],
       },
       backgroundImage: {
         "vela-gradient": "linear-gradient(135deg, #FF6B35, #FF3366)",

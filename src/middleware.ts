@@ -8,6 +8,17 @@ import {
 } from "./lib/mission-control-auth";
 import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "./config/features";
 
+// Exact-or-child match for the "/app" dashboard prefix. A plain
+// path.startsWith("/app") is a real bug: it also matches any OTHER path
+// that merely starts with those 4 characters, like "/apple-icon.png" (the
+// real one this caught live -- Next.js's file-based apple-touch-icon route
+// was being redirected to /auth/login by the auth gate below, since
+// "/apple-icon.png".startsWith("/app") is true). Every "/app" prefix check
+// in this file goes through this helper instead of the raw string method.
+function isAppPath(path: string): boolean {
+  return path === "/app" || path.startsWith("/app/");
+}
+
 // MVP scope-down: a direct URL to a flagged-off page is a gating decision,
 // not a missing page -- redirect to the dashboard instead of rendering or
 // 404ing. The feature's own route/page code is untouched; only reachability
@@ -168,7 +179,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Auth middleware (primary domain only) ─────────────────────────────────────
-  if (!path.startsWith("/app") && !path.startsWith("/auth/")) {
+  if (!isAppPath(path) && !path.startsWith("/auth/")) {
     return NextResponse.next({ request });
   }
 
@@ -213,14 +224,14 @@ export async function middleware(request: NextRequest) {
   );
 
   // Redirect unauthenticated users away from /app
-  if (path.startsWith("/app") && !user) {
+  if (isAppPath(path) && !user) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
   }
 
   // MVP scope-down: block direct access to flagged-off pages, even for an
   // authenticated owner who types/bookmarks the URL. "/app" is the real
   // dashboard route (there is no separate /app/dashboard page).
-  if (user && path.startsWith("/app")) {
+  if (user && isAppPath(path)) {
     const blocked = FLAGGED_ROUTE_PREFIXES.some((r) => !r.enabled && path.startsWith(r.prefix));
     if (blocked) {
       return NextResponse.redirect(new URL("/app", request.url));
