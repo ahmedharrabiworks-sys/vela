@@ -173,7 +173,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProfile }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, langName, setLocale } = useI18n();
+  const { t, langName, setLocale, locale } = useI18n();
 
   const { theme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
@@ -409,39 +409,56 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
 
   // agentCollapseRef kept for potential future use
 
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
         setShowLangMenu(false);
+        setConfirmingLogout(false);
       }
     }
-    if (dropdownOpen) document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+        setShowLangMenu(false);
+        setConfirmingLogout(false);
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleOutside);
+      document.addEventListener("keydown", handleEscape);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [dropdownOpen]);
 
   const handleLogout = async () => {
     setDropdownOpen(false);
+    setConfirmingLogout(false);
     if (demoProfile) {
       router.push("/auth/signup");
       return;
     }
     try {
-      const supabase = getSupabase();
-      await supabase.auth.signOut();
-    } catch { /* ignore */ }
+      // Server-side sign out (FIX 5, auth-system follow-up round) --
+      // authoritatively clears the sb-* cookies on the response rather than
+      // relying on the browser client's own local session state.
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch { /* ignore -- hard navigation below still clears client state */ }
     // FIX 1 (bug list): router.push() is a soft, client-side transition --
-    // it can land on "/" while Next.js's client Router Cache still holds a
-    // prefetched page (e.g. /auth/signup) fetched while the old session
-    // cookie was still valid, or before signOut()'s cookie write has been
-    // picked up by a subsequent client-side navigation. That's the real
-    // cause of "logout, then click the signup CTA, and land back in /app":
-    // middleware only re-checks auth on the request it actually sees, and a
-    // stale cached client-side navigation can skip that fresh check. A hard
-    // navigation forces a real new request for everything that follows --
-    // no prefetch cache, no router cache, middleware evaluates the real,
-    // now-cleared cookie from scratch.
-    window.location.href = "/";
+    // it can land on a stale page while Next.js's client Router Cache still
+    // holds a prefetched page fetched while the old session cookie was
+    // still valid, or before the logout route's cookie write has been
+    // picked up by a subsequent client-side navigation. A hard navigation
+    // forces a real new request for everything that follows -- no prefetch
+    // cache, no router cache, middleware evaluates the real, now-cleared
+    // cookie from scratch. Target is /auth/login directly (not "/") per
+    // FIX 5's explicit spec.
+    window.location.href = "/auth/login";
   };
 
   const selectLanguage = (lang: string) => {
@@ -461,7 +478,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     <aside
       dir="ltr"
       className={`
-        flex flex-col h-screen shrink-0
+        flex flex-col h-dvh shrink-0
         fixed inset-y-0 left-0 md:relative md:inset-auto
         z-50 md:z-auto
         bg-white border-r border-[#E5E7EB]
@@ -581,38 +598,75 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
         })}
       </nav>
 
-      {/* Upgrade CTA */}
-      {!collapsed && !isPremium && (
-        <div className="p-3 border-t border-[#E5E7EB]">
-          <div className="rounded-xl p-4 bg-white border border-[#FF6B35]">
-            <p className="text-xs font-bold text-[#111111] mb-1">{t("sidebar.upgradePremium")}</p>
-            <p className="text-[10px] text-[#6B7280] mb-3">{t("sidebar.unlockFeatures")}</p>
-            <Link href="/pricing" onClick={onClose} className="block text-center text-xs font-bold py-2 rounded-lg text-white" style={{ background: "var(--vela-gradient)" }}>
-              {t("sidebar.upgradeNow")}
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* User area with dropdown */}
-      <div ref={dropRef} className="relative border-t border-[#E5E7EB]">
+      {/* Account pill -- pinned footer, nav scrolls independently above it
+          (FIX 5, auth-system follow-up round). Replaces the old standing
+          "Upgrade to Premium" card entirely; upgrade now lives as one row
+          inside the menu below instead of a permanent card eating vertical
+          space. safe-area padding + h-dvh on the <aside> above together fix
+          the real root cause of the old mobile bug: iOS Safari's dynamic
+          toolbar shrinks the ACTUAL visible viewport below h-screen's
+          (100vh, largest-possible) height, pushing this footer out of
+          reach -- h-dvh tracks the real visible height instead. */}
+      <div ref={dropRef} className="relative border-t border-[#E5E7EB] pb-[env(safe-area-inset-bottom)]">
+        {/* Mobile backdrop for the bottom sheet -- desktop popover has none. */}
         {dropdownOpen && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-[#E5E7EB] shadow-2xl z-50 overflow-hidden">
-            {/* User info */}
-            <div className="px-4 py-3.5 border-b border-[#F3F4F6]">
-              <p className="text-sm font-semibold text-[#111111] truncate">{displayName}</p>
-              {displayEmail && <p className="text-xs text-[#6B7280] truncate mt-0.5">{displayEmail}</p>}
-              <span className="mt-2 inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "var(--vp-10)", color: "var(--vp-color)" }}>
+          <div className="md:hidden fixed inset-0 bg-black/40 z-[55]" onClick={() => { setDropdownOpen(false); setShowLangMenu(false); setConfirmingLogout(false); }} aria-hidden="true" />
+        )}
+
+        {dropdownOpen && (
+          <div
+            dir={locale === "ar" ? "rtl" : "ltr"}
+            className="
+              bg-white border-[#E5E7EB] shadow-2xl overflow-hidden
+              fixed inset-x-0 bottom-0 z-[60] rounded-t-2xl border-t
+              pb-[env(safe-area-inset-bottom)]
+              md:absolute md:inset-x-auto md:bottom-full md:left-3 md:right-3 md:mb-2 md:rounded-2xl md:border md:pb-0
+            "
+            role="menu"
+          >
+            {/* Mobile sheet grabber */}
+            <div className="md:hidden flex justify-center pt-2.5 pb-1">
+              <div className="w-9 h-1 rounded-full bg-[#E5E7EB]" />
+            </div>
+
+            {/* Account header */}
+            <div className="px-4 py-3.5 border-b border-[#F3F4F6] flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                style={{ background: "var(--vela-gradient)" }}
+              >
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[#111111] truncate">{displayName}</p>
+                {displayEmail && <p className="text-xs text-[#6B7280] truncate mt-0.5">{displayEmail}</p>}
+              </div>
+              <span className="shrink-0 inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "var(--vp-10)", color: "var(--vp-color)" }}>
                 {planLabel}
               </span>
             </div>
 
             <div className="py-1">
+              {!isPremium && (
+                <Link
+                  href="/pricing"
+                  onClick={() => { setDropdownOpen(false); onClose(); }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#FF6B35] hover:bg-[#FFF5F0] transition-colors"
+                  role="menuitem"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  {t("sidebar.upgradePlan")}
+                </Link>
+              )}
+
               {/* Settings */}
               <Link
                 href={lk("/app/settings")}
                 onClick={() => { setDropdownOpen(false); onClose(); }}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors"
+                role="menuitem"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-[#9CA3AF]">
                   <circle cx="7" cy="7" r="1.75" stroke="currentColor" strokeWidth="1.2"/>
@@ -625,6 +679,8 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
                 className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors"
+                role="menuitem"
+                aria-expanded={showLangMenu}
               >
                 <span className="flex items-center gap-3">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-[#9CA3AF]">
@@ -658,52 +714,45 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
                   ))}
                 </div>
               )}
-
-              {/* View all plans */}
-              <Link
-                href="/pricing"
-                onClick={() => { setDropdownOpen(false); onClose(); }}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-[#9CA3AF]">
-                  <path d="M7 1.5L8.5 5.25 12.5 5.5 9.75 7.75l1 4.25L7 9.75 3.25 12l1-4.25L1.5 5.5 5.5 5.25z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-                </svg>
-                {t("sidebar.viewAllPlans")}
-              </Link>
             </div>
 
             <div className="h-px bg-[#F3F4F6]" />
 
             <div className="py-1">
-              {!isPremium && (
-                <Link
-                  href="/pricing"
-                  onClick={() => { setDropdownOpen(false); onClose(); }}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#FF6B35] hover:bg-[#FFF5F0] transition-colors"
+              {!confirmingLogout ? (
+                <button
+                  onClick={() => (demoProfile ? handleLogout() : setConfirmingLogout(true))}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${demoProfile ? "text-[#FF6B35] font-semibold hover:bg-[#FFF5F0]" : "text-red-500 hover:bg-red-50"}`}
+                  role="menuitem"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2M9.5 10l3-3-3-3M12.5 7H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  {t("sidebar.upgradePlan")}
-                </Link>
+                  {demoProfile ? "Create Free Account →" : t("sidebar.logout")}
+                </button>
+              ) : (
+                <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+                  <span className="text-sm text-[#374151]">{t("sidebar.logoutConfirm")}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setConfirmingLogout(false)} className="text-xs font-semibold text-[#6B7280] hover:text-[#111111] px-2 py-1">
+                      {t("sidebar.cancel")}
+                    </button>
+                    <button onClick={handleLogout} className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg px-3 py-1.5 transition-colors">
+                      {t("sidebar.logout")}
+                    </button>
+                  </div>
+                </div>
               )}
-              <button
-                onClick={handleLogout}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${demoProfile ? "text-[#FF6B35] font-semibold hover:bg-[#FFF5F0]" : "text-red-500 hover:bg-red-50"}`}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2M9.5 10l3-3-3-3M12.5 7H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                {demoProfile ? "Create Free Account →" : t("sidebar.logout")}
-              </button>
             </div>
           </div>
         )}
 
-        {/* User button */}
+        {/* Account pill trigger */}
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
           className={`w-full flex items-center gap-3 p-3 transition-all ${dropdownOpen ? "bg-[#FFF5F0]" : "hover:bg-[#F9FAFB]"} ${collapsed ? "md:justify-center" : ""}`}
+          aria-haspopup="menu"
+          aria-expanded={dropdownOpen}
         >
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"

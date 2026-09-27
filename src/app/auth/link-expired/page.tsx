@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import {
   AuthPageShell,
@@ -11,13 +12,17 @@ import {
   MailIcon,
 } from "@/components/auth/AuthChrome";
 
-// Reached from /auth/callback when a confirmation link's code exchange
-// fails -- either a genuinely expired/already-used link, or the PKCE
-// cross-device case (link opened on a different browser/device than the
-// one signup started on). Both look identical from here, so both get the
-// same friendly retry instead of a raw error.
-export default function LinkExpiredPage() {
+// Reached from /auth/confirm when a one-tap link's token_hash verification
+// fails -- either a genuinely expired/already-used code, or one that was
+// simply mistyped/exceeded its attempts. `type` (forwarded by /auth/confirm)
+// decides which resend endpoint applies: a recovery link resends a
+// password-reset code (/api/auth/forgot-password), anything else resends a
+// signup confirmation code (/api/auth/resend-confirmation).
+function LinkExpiredContent() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const isRecovery = searchParams.get("type") === "recovery";
+
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -26,7 +31,7 @@ export default function LinkExpiredPage() {
     e.preventDefault();
     setSending(true);
     try {
-      await fetch("/api/auth/resend-confirmation", {
+      await fetch(isRecovery ? "/api/auth/forgot-password" : "/api/auth/resend-confirmation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -80,7 +85,7 @@ export default function LinkExpiredPage() {
                 className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 disabled:opacity-70"
                 style={{ background: "var(--vela-gradient)" }}
               >
-                {sending ? t("landing.auth.checkEmail.sending") : t("landing.auth.linkExpired.sendNewLink")}
+                {sending ? t("landing.auth.checkEmail.sending") : t("landing.auth.linkExpired.sendNewCode")}
               </button>
             </form>
           ) : (
@@ -97,5 +102,13 @@ export default function LinkExpiredPage() {
         </div>
       </AuthSplitCard>
     </AuthPageShell>
+  );
+}
+
+export default function LinkExpiredPage() {
+  return (
+    <Suspense fallback={null}>
+      <LinkExpiredContent />
+    </Suspense>
   );
 }

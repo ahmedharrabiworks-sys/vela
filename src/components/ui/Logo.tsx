@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import Wordmark from "./Wordmark";
 
 interface LogoProps {
   showText?: boolean;
@@ -18,29 +19,29 @@ interface LogoProps {
   heightClass?: string;
 }
 
-// Light-background wordmark (/assets/logo-full.png)  →  34px mobile / 44px desktop
+// Icon height for the combined icon+wordmark render → 34px mobile / 44px desktop.
 const LIGHT_BG_H = "h-[34px] sm:h-11";
-// Dark-background wordmark (/logo-light.png)          →  34px mobile / 44px desktop (matches LIGHT_BG_H)
 const DARK_BG_H  = "h-[34px] sm:h-11";
+// Wordmark text size paired with the icon heights above -- proportioned so
+// "Vela"'s cap-height roughly matches the icon's visual weight next to it
+// (same relationship the old baked-PNG logo had between its icon and text).
+const WORDMARK_TEXT = "text-2xl sm:text-[28px]";
+// heightClass overrides (e.g. Hero's "!h-14") pair with a larger fixed size --
+// same 34/44 -> 24/28 ratio scaled up.
+const WORDMARK_TEXT_LG = "text-[38px]";
 
 export default function Logo({ showText = true, light = false, size, heightClass }: LogoProps) {
   if (showText) {
-    // light=true  → white wordmark on dark backgrounds  → /logo-light.png
-    // light=false → dark wordmark on light backgrounds  → /assets/logo-full.png
-    const src = light ? "/logo-light.png" : "/assets/logo-full.png";
-    const H   = heightClass ?? (light ? DARK_BG_H : LIGHT_BG_H);
+    // light=true  → white wordmark on dark backgrounds
+    // light=false → brand-orange wordmark on light backgrounds
+    const H = heightClass ?? (light ? DARK_BG_H : LIGHT_BG_H);
+    const textSize = heightClass ? WORDMARK_TEXT_LG : WORDMARK_TEXT;
     return (
-      <div className="flex items-center group cursor-pointer">
-        <Image
-          src={src}
-          alt="Vela"
-          height={light ? 40 : 44}
-          width={160}
-          className={`${H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`}
-          style={{ maxWidth: "160px" }}
-          priority
-          unoptimized
-        />
+      <div className="flex items-center gap-2 group cursor-pointer">
+        <span className={`${H} shrink-0 flex items-center transition-transform duration-300 group-hover:scale-110`}>
+          <LogoMark light={light} bare className="h-full w-auto" />
+        </span>
+        <Wordmark light={light} className={`${textSize} transition-opacity duration-200 group-hover:opacity-85`} />
       </div>
     );
   }
@@ -49,59 +50,59 @@ export default function Logo({ showText = true, light = false, size, heightClass
   return <LogoMark size={size} light={light} />;
 }
 
-function LogoMark({ size, light = false }: { size?: number; light?: boolean }) {
+function LogoMark({ size, light = false, className, bare = false }: { size?: number; light?: boolean; className?: string; bare?: boolean }) {
   const [failed, setFailed] = useState(false);
   const hasExplicit = size !== undefined;
-  const imgStyle = hasExplicit ? { width: size, height: size } : undefined;
-  const imgClass = hasExplicit
-    ? "object-contain transition-opacity duration-200 group-hover:opacity-85"
-    : `${DARK_BG_H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`;
+  const imgStyle = hasExplicit && !className ? { width: size, height: size } : undefined;
+  const imgClass =
+    className ??
+    (hasExplicit
+      ? "object-contain transition-opacity duration-200 group-hover:opacity-85"
+      : `${DARK_BG_H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`);
 
-  if (!failed) {
-    return (
-      <div className="flex items-center group cursor-pointer">
-        <Image
-          src="/assets/logo-mark.png"
-          alt="Vela"
-          width={size ?? 40}
-          height={size ?? 40}
-          className={imgClass}
-          style={imgStyle}
-          onError={() => setFailed(true)}
-          priority
-          unoptimized
-        />
-      </div>
-    );
-  }
-
-  // SVG fallback when logo-mark.png is absent
-  return (
-    <div className="flex items-center group cursor-pointer">
-      <svg
-        width={size}
-        height={size}
-        className={hasExplicit ? "transition-transform duration-300 group-hover:scale-110" : `${DARK_BG_H} w-auto transition-transform duration-300 group-hover:scale-110`}
-        viewBox="0 0 36 36"
+  // bare=true (used inside Logo's combined icon+Wordmark render, which
+  // already provides its own outer flex/group wrapper) skips the redundant
+  // inner wrapper div so hover/group state isn't duplicated.
+  const content = !failed ? (
+    <Image
+      src="/assets/logo-mark.png"
+      alt="Vela"
+      width={size ?? 40}
+      height={size ?? 40}
+      className={imgClass}
+      style={imgStyle}
+      onError={() => setFailed(true)}
+      priority
+      unoptimized
+    />
+  ) : (
+    // SVG fallback when logo-mark.png is absent
+    <svg
+      width={className ? undefined : size}
+      height={className ? undefined : size}
+      className={className ?? (hasExplicit ? "transition-transform duration-300 group-hover:scale-110" : `${DARK_BG_H} w-auto transition-transform duration-300 group-hover:scale-110`)}
+      viewBox="0 0 36 36"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient id="vela-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--vp-color)" />
+          <stop offset="100%" stopColor="var(--va-color)" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M5 7L18 28L31 7"
+        stroke={light ? "white" : "url(#vela-logo-grad)"}
+        strokeWidth="4.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <linearGradient id="vela-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="var(--vp-color)" />
-            <stop offset="100%" stopColor="var(--va-color)" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M5 7L18 28L31 7"
-          stroke={light ? "white" : "url(#vela-logo-grad)"}
-          strokeWidth="4.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-        <circle cx="18" cy="30" r="2.5" fill={light ? "white" : "url(#vela-logo-grad)"} />
-      </svg>
-    </div>
+      />
+      <circle cx="18" cy="30" r="2.5" fill={light ? "white" : "url(#vela-logo-grad)"} />
+    </svg>
   );
+
+  if (bare) return content;
+  return <div className="flex items-center group cursor-pointer">{content}</div>;
 }

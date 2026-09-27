@@ -1,64 +1,96 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase-server";
-import { normalizeEmail, isValidEmailSyntax } from "@/lib/auth/email";
-import { isRateLimited, getClientIp, isBodyTooLarge } from "@/lib/auth/rate-limit";
+import { checkEmailServerSide } from "@/lib/auth/email-server";
+import { getClientIp, isBodyTooLarge } from "@/lib/auth/rate-limit";
+import { rateHit, getEmailAccountStatus } from "@/lib/auth/rate-limit-db";
 
-// Always returns the exact same generic response regardless of whether
-// the email exists, belongs to a Google-only account, or is malformed
-// past basic syntax -- FIX 5's explicit no-enumeration requirement.
-// Supabase's own resetPasswordForEmail already behaves this way (it does
-// not reveal whether the email is registered), this route's job is
-// mainly the rate limiting Supabase itself doesn't enforce for us.
+// Oussama's explicit call (auth-system follow-up round, FIX 2): forgot-
+// password no longer stays silent about whether an email has an account --
+// it tells the visitor directly: no account, Google-only, unconfirmed, or
+// a real reset in progress. This is a deliberate reversal of the previous
+// round's strict no-enumeration posture for this route specifically, not a
+// regression. Falls back to the OLD fully-generic behavior (status:
+// "generic", always attempt the send) when the DB status lookup is
+// unavailable -- see getEmailAccountStatus's own fail-safe comment.
 const FORGOT_EMAIL_LIMIT = 3;
-const FORGOT_EMAIL_WINDOW_MS = 60 * 60_000;
-const FORGOT_IP_LIMIT = 10;
-const FORGOT_IP_WINDOW_MS = 60 * 60_000;
-const RESEND_COOLDOWN_MS = 55_000;
+const FORGOT_EMAIL_WINDOW_S = 60 * 60;
+const FORGOT_IP_LIMIT = 5;
+const FORGOT_IP_WINDOW_S = 60 * 60;
+const RESEND_COOLDOWN_S = 55;
 
-const GENERIC_RESPONSE = { success: true } as const;
+export type ForgotPasswordStatus = "none" | "google_only" | "unconfirmed" | "password" | "generic";
 
 export async function POST(req: Request) {
   try {
     if (isBodyTooLarge(req, 2_000)) {
-      return NextResponse.json(GENERIC_RESPONSE);
+      return NextResponse.json({ status: "generic" satisfies ForgotPasswordStatus });
     }
+
     const ip = getClientIp(req);
-    if (isRateLimited(`forgot:ip:${ip}`, FORGOT_IP_LIMIT, FORGOT_IP_WINDOW_MS)) {
+    const ipHit = await rateHit(`forgot:ip:${ip}`, FORGOT_IP_LIMIT, FORGOT_IP_WINDOW_S);
+    if (!ipHit.allowed) {
       console.warn(`[forgot-password] IP rate limit hit: ${ip}`);
-      // Even the rate-limit response stays generic to the client --
-      // returning 429 here would itself leak information (confirms
-      // "someone is hammering this specific email"), so this still
-      // returns the same 200 shape; the real protection is that no email
-      // actually gets sent once the limiter trips.
-      return NextResponse.json(GENERIC_RESPONSE);
+      // Stays generic even on a rate-limit trip -- a 429 here would itself
+      // leak "someone is hammering this specific email." No email is
+      // actually sent once the limiter trips; the client just sees the
+      // same neutral state as a real send.
+      return NextResponse.json({ status: "generic" satisfies ForgotPasswordStatus });
     }
 
     const body = await req.json().catch(() => ({}));
     const rawEmail = (body as Record<string, unknown>).email;
-    if (typeof rawEmail !== "string" || !isValidEmailSyntax(rawEmail)) {
-      return NextResponse.json(GENERIC_RESPONSE);
+    if (typeof rawEmail !== "string") {
+      return NextResponse.json({ status: "generic" satisfies ForgotPasswordStatus });
     }
-    const email = normalizeEmail(rawEmail);
 
-    const cooldownHit = isRateLimited(`forgot:cooldown:${email}`, 1, RESEND_COOLDOWN_MS);
-    const emailLimitHit = isRateLimited(`forgot:email:${email}`, FORGOT_EMAIL_LIMIT, FORGOT_EMAIL_WINDOW_MS);
+    const emailCheck = await checkEmailServerSide(rawEmail);
+    if (!emailCheck.ok) {
+      // Syntactically invalid, disposable, or no-MX -- none of these can
+      // ever have a real Vela account (signup itself blocks them), so
+      // "none" is factually accurate here, not just a fallback.
+      return NextResponse.json({ status: "none" satisfies ForgotPasswordStatus });
+    }
+    const email = emailCheck.email;
 
-    if (!cooldownHit && !emailLimitHit) {
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://velaos.co").replace(/\/$/, "");
-      const supabase = createSupabaseRouteHandlerClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${appUrl}/auth/reset-password`,
+    const cooldownHit = await rateHit(`forgot:cooldown:${email}`, 1, RESEND_COOLDOWN_S);
+    const emailHit = await rateHit(`forgot:email:${email}`, FORGOT_EMAIL_LIMIT, FORGOT_EMAIL_WINDOW_S);
+    if (!cooldownHit.allowed || !emailHit.allowed) {
+      console.warn(`[forgot-password] rate limited: email=${email} cooldown=${!cooldownHit.allowed} hourly=${!emailHit.allowed}`);
+      // Same neutral response as a real send -- see the IP branch's comment.
+      return NextResponse.json({ status: "generic" satisfies ForgotPasswordStatus });
+    }
+
+    const status = await getEmailAccountStatus(email);
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://velaos.co").replace(/\/$/, "");
+    const supabase = createSupabaseRouteHandlerClient();
+
+    if (status === "none") {
+      return NextResponse.json({ status: "none" satisfies ForgotPasswordStatus });
+    }
+    if (status === "google_only") {
+      return NextResponse.json({ status: "google_only" satisfies ForgotPasswordStatus });
+    }
+    if (status === "unconfirmed") {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${appUrl}/auth/confirm` },
       });
-      if (error) {
-        console.warn("[forgot-password] resetPasswordForEmail error (masked to client):", error.message);
-      }
-    } else {
-      console.warn(`[forgot-password] rate limited: email=${email} cooldown=${cooldownHit} hourly=${emailLimitHit}`);
+      if (error) console.warn("[forgot-password] resend for unconfirmed account failed:", error.message);
+      return NextResponse.json({ status: "unconfirmed" satisfies ForgotPasswordStatus });
     }
 
-    return NextResponse.json(GENERIC_RESPONSE);
+    // status === "password", or null (DB lookup unavailable) -- either way
+    // a real reset code/link is the correct thing to send.
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${appUrl}/auth/confirm`,
+    });
+    if (error) {
+      console.warn("[forgot-password] resetPasswordForEmail error (masked to client):", error.message);
+    }
+    return NextResponse.json({ status: (status === "password" ? "password" : "generic") satisfies ForgotPasswordStatus });
   } catch (err) {
     console.error("[forgot-password] unexpected error:", err);
-    return NextResponse.json(GENERIC_RESPONSE);
+    return NextResponse.json({ status: "generic" satisfies ForgotPasswordStatus });
   }
 }

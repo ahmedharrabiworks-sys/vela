@@ -42,6 +42,8 @@
     "viewAllPlans": "View all plans",
     "upgradePlan": "Upgrade Plan",
     "logout": "Log out",
+    "logoutConfirm": "Log out of Vela?",
+    "cancel": "Cancel",
     "plans": {
       "starter": "Starter Plan",
       "pro": "Pro Plan",
@@ -1009,11 +1011,14 @@
       },
       "forgotPassword": {
         "panelHeadline": "Get back in.",
-        "panelBody": "We'll send a link to reset your password and get you straight back to your dashboard.",
+        "panelBody": "We'll send a code to reset your password and get you straight back to your dashboard.",
         "title": "Reset your password",
-        "subtitle": "Enter the email linked to your account and we'll send a reset link.",
+        "subtitle": "Enter the email linked to your account and we'll send a code.",
         "checkEmailTitle": "Check your email",
-        "genericSent": "If an account exists for this email, we've sent a link to reset your password."
+        "genericSent": "If an account exists for this email, we've sent a code to reset your password.",
+        "noAccount": "We couldn't find a Vela account with this email. Check for typos or create an account.",
+        "createAccount": "Create an account",
+        "googleOnly": "This account signs in with Google."
       },
       "resetPassword": {
         "panelHeadline": "Choose a new password.",
@@ -1035,23 +1040,29 @@
       },
       "checkEmail": {
         "panelHeadline": "Almost there.",
-        "panelBody": "One click and your AI receptionist is ready to train.",
-        "title": "Check your email",
-        "sentTo": "We sent a link to",
+        "panelBody": "One code and your AI receptionist is ready to train.",
+        "title": "Enter your code",
+        "sentTo": "We sent a 6-digit code to",
         "openGmail": "Open Gmail",
         "openOutlook": "Open Outlook",
-        "resend": "Resend email",
+        "resend": "Resend code",
         "resendIn": "Resend in",
         "sending": "Sending...",
+        "verifying": "Verifying...",
+        "wrongCode": "Wrong code,",
+        "triesLeft": "tries left",
+        "tooManyAttempts": "Too many attempts, try again in",
+        "minutes": "minutes",
         "wrongEmail": "Wrong email? Go back"
       },
       "linkExpired": {
         "panelHeadline": "Almost there.",
-        "panelBody": "Request a fresh link and you'll be back in seconds.",
+        "panelBody": "Request a fresh code and you'll be back in seconds.",
         "title": "This link has expired",
-        "subtitle": "Confirmation links only work once and expire after a while. Enter your email and we'll send a new one.",
+        "subtitle": "Confirmation codes only work once and expire after a while. Enter your email and we'll send a new one.",
         "sendNewLink": "Send a new link",
-        "sentConfirmation": "If an account exists for this email, we've sent a new confirmation link."
+        "sendNewCode": "Send a new code",
+        "sentConfirmation": "If an account exists for this email, we've sent a new code."
       },
       "password": {
         "ruleLength": "At least 10 characters",
@@ -1088,6 +1099,9 @@
         "and": "and",
         "privacy": "Privacy Policy",
         "emailAlreadyRegistered": "This email is already registered. Try signing in instead.",
+        "emailExistsPassword": "This email already has a Vela account.",
+        "emailExistsGoogle": "This email already has a Vela account that signs in with Google.",
+        "signInInstead": "Sign in instead",
         "couldNotCreateAccount": "Could not create account. Please try again.",
         "somethingWentWrong": "Something went wrong. Please try again.",
         "error": {

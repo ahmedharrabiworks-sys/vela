@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseRouteHandlerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 
-// Supabase OAuth (Google) AND the real email-confirmation link (once
-// Custom SMTP + supabase.auth.signUp() replaced the old email_confirm:
-// true bypass) both redirect here with ?code=... -- this exchanges that
-// PKCE code for a real session (writing the sb-* cookies to the
-// response) before sending the user onward. Without this exchange,
-// /app's middleware sees no session and bounces back to /auth/login
-// empty-handed.
+// OAuth-only now (Google sign-in redirects here with ?code=...). Email
+// confirmation, password recovery, email change, and magic links all moved
+// to /auth/confirm (token_hash based -- works cross-device, which this
+// PKCE ?code= exchange never did: the code_verifier cookie it needs is
+// only ever present on the same browser/device that started the request).
+// This exchanges the OAuth code for a real session (writing the sb-*
+// cookies to the response) before sending the user onward. Without this
+// exchange, /app's middleware sees no session and bounces back to
+// /auth/login empty-handed.
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
 

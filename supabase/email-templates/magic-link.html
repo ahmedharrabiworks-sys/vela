@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>Your Vela sign-in link</title>
+<title>Your Vela sign-in code</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0; padding:0; background-color:#F3F4F6;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F3F4F6; padding:32px 16px;">
@@ -15,36 +16,51 @@
 
         <tr>
           <td align="center" style="padding:32px 32px 0 32px;">
-            <span style="font-family:Arial, Helvetica, sans-serif; font-size:22px; font-weight:700; color:#E8552B;">Vela</span>
+            <span style="font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:22px; font-weight:800; letter-spacing:-0.03em; color:#E8552B;">Vela</span>
           </td>
         </tr>
 
         <!-- English -->
         <tr>
-          <td style="padding:24px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif;">
-            <h1 style="margin:0 0 12px 0; font-size:20px; line-height:28px; color:#111111; font-weight:700;">Your sign-in link</h1>
-            <p style="margin:0 0 20px 0; font-size:15px; line-height:24px; color:#374151;">
-              Click the button below to sign in to your Vela dashboard. This link is only valid for a short time.
+          <td style="padding:24px 32px 4px 32px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <h1 style="margin:0 0 8px 0; font-size:20px; line-height:28px; color:#111111; font-weight:700;">Your sign-in code</h1>
+            <p style="margin:0; font-size:15px; line-height:24px; color:#374151;">
+              Enter this code to sign in to your Vela dashboard.
             </p>
           </td>
         </tr>
+
+        <!-- Code hero -->
         <tr>
-          <td align="center" style="padding:0 32px 24px 32px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <td align="center" style="padding:20px 32px 6px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF5F0; border-radius:14px;">
               <tr>
-                <td align="center" bgcolor="#E8552B" style="border-radius:10px;">
-                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:10px;">Sign in to Vela</a>
+                <td style="padding:20px 36px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:32px; font-weight:800; letter-spacing:8px; color:#E8552B;">
+                  {{ .Token }}
                 </td>
               </tr>
             </table>
           </td>
         </tr>
         <tr>
-          <td style="padding:0 32px 32px 32px; font-family:Arial, Helvetica, sans-serif;">
-            <p style="margin:0 0 12px 0; font-size:13px; line-height:20px; color:#9CA3AF;">
-              If the button doesn't work, paste this link into your browser:<br>
-              <a href="{{ .ConfirmationURL }}" style="color:#E8552B; word-break:break-all;">{{ .ConfirmationURL }}</a>
-            </p>
+          <td align="center" style="padding:10px 32px 22px 32px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <p style="margin:0; font-size:13px; color:#9CA3AF;">Expires in 15 minutes</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:0 32px 20px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" bgcolor="#E8552B" style="border-radius:10px;">
+                  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink" target="_blank" style="display:inline-block; padding:12px 28px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:10px;">Or confirm with one tap</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
             <p style="margin:0; font-size:13px; line-height:20px; color:#9CA3AF;">
               Didn't request this? You can safely ignore this email.
             </p>
@@ -55,30 +71,42 @@
 
         <!-- Arabic -->
         <tr>
-          <td dir="rtl" style="padding:32px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif; text-align:right;">
-            <h1 style="margin:0 0 12px 0; font-size:20px; line-height:32px; color:#111111; font-weight:700;">رابط تسجيل الدخول الخاص بك</h1>
-            <p style="margin:0 0 20px 0; font-size:15px; line-height:28px; color:#374151;">
-              انقر على الزر أدناه لتسجيل الدخول إلى لوحة تحكم فيلا. هذا الرابط صالح لفترة قصيرة فقط.
+          <td dir="rtl" style="padding:32px 32px 4px 32px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; text-align:right;">
+            <h1 style="margin:0 0 8px 0; font-size:20px; line-height:32px; color:#111111; font-weight:700;">رمز تسجيل الدخول الخاص بك</h1>
+            <p style="margin:0; font-size:15px; line-height:28px; color:#374151;">
+              أدخل هذا الرمز لتسجيل الدخول إلى لوحة تحكم <bdi dir="ltr">Vela</bdi>.
             </p>
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding:0 32px 24px 32px;">
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <td align="center" style="padding:20px 32px 6px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF5F0; border-radius:14px;">
               <tr>
-                <td align="center" bgcolor="#E8552B" style="border-radius:10px;">
-                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:10px;">تسجيل الدخول إلى فيلا</a>
+                <td style="padding:20px 36px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:32px; font-weight:800; letter-spacing:8px; color:#E8552B;">
+                  {{ .Token }}
                 </td>
               </tr>
             </table>
           </td>
         </tr>
         <tr>
-          <td dir="rtl" style="padding:0 32px 32px 32px; font-family:Arial, Helvetica, sans-serif; text-align:right;">
-            <p style="margin:0 0 12px 0; font-size:13px; line-height:22px; color:#9CA3AF;">
-              إذا لم يعمل الزر، انسخ هذا الرابط والصقه في متصفحك:<br>
-              <a href="{{ .ConfirmationURL }}" style="color:#E8552B; word-break:break-all;">{{ .ConfirmationURL }}</a>
-            </p>
+          <td align="center" style="padding:10px 32px 22px 32px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <p style="margin:0; font-size:13px; color:#9CA3AF;">تنتهي الصلاحية خلال 15 دقيقة</p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 32px 20px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" bgcolor="#E8552B" style="border-radius:10px;">
+                  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink" target="_blank" style="display:inline-block; padding:12px 28px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:10px;">أو أكّد بنقرة واحدة</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td dir="rtl" style="padding:0 32px 32px 32px; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; text-align:right;">
             <p style="margin:0; font-size:13px; line-height:22px; color:#9CA3AF;">
               لم تطلب هذا؟ يمكنك تجاهل هذه الرسالة بأمان.
             </p>
@@ -87,10 +115,8 @@
 
         <!-- Footer -->
         <tr>
-          <td style="padding:20px 32px 28px 32px; background-color:#F9FAFB; font-family:Arial, Helvetica, sans-serif;" align="center">
-            <p style="margin:0 0 6px 0; font-size:12px; color:#9CA3AF;">Made in Qatar</p>
-            <p style="margin:0; font-size:12px; color:#9CA3AF;">Need help? <a href="mailto:support@velaos.co" style="color:#9CA3AF;">support@velaos.co</a></p>
-            <p style="margin:8px 0 0 0; font-size:11px; color:#C1C7D0;">{{ .SiteURL }}</p>
+          <td style="padding:20px 32px 28px 32px; background-color:#F9FAFB; font-family:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;" align="center">
+            <p style="margin:0; font-size:12px; color:#9CA3AF;">Made in Qatar</p>
           </td>
         </tr>
 

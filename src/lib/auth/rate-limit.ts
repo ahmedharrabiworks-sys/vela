@@ -22,6 +22,13 @@ export function isRateLimited(key: string, limit: number, windowMs: number): boo
   return false;
 }
 
+/** Read-only peek at a bucket's current count, for "X tries left" style UX
+    in the DB-backed limiter's fallback path (rate-limit-db.ts). Never used
+    for the actual allow/deny decision -- that's always isRateLimited(). */
+export function peekAttemptCount(key: string): number {
+  return buckets.get(key)?.count ?? 0;
+}
+
 export function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
   return (forwarded ? forwarded.split(",")[0] : req.headers.get("x-real-ip") ?? "unknown").trim();

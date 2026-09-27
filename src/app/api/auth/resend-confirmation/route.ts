@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase-server";
 import { normalizeEmail, isValidEmailSyntax } from "@/lib/auth/email";
-import { isRateLimited, getClientIp, isBodyTooLarge } from "@/lib/auth/rate-limit";
+import { getClientIp, isBodyTooLarge } from "@/lib/auth/rate-limit";
+import { rateHit } from "@/lib/auth/rate-limit-db";
 
 // Wraps supabase.auth.resend({type:"signup"}) server-side so the 60s
 // cooldown shown in the UI is actually enforced (a client can't be
 // trusted to self-limit) rather than merely displayed. Same generic
 // response regardless of whether the email is real/registered/already
-// confirmed -- no enumeration signal here either.
-const RESEND_COOLDOWN_MS = 55_000; // slightly under the UI's 60s countdown
+// confirmed -- no enumeration signal here either. Rate limiting is now
+// DB-backed (durable across cold starts) via rate-limit-db.ts, per FIX 1.
+const RESEND_COOLDOWN_S = 55; // slightly under the UI's 60s countdown
 const RESEND_HOURLY_LIMIT = 5;
-const RESEND_HOURLY_WINDOW_MS = 60 * 60_000;
+const RESEND_HOURLY_WINDOW_S = 60 * 60;
 
 export async function POST(req: Request) {
   try {
@@ -18,7 +20,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     }
     const ip = getClientIp(req);
-    if (isRateLimited(`resend:ip:${ip}`, 20, RESEND_HOURLY_WINDOW_MS)) {
+    const ipHit = await rateHit(`resend:ip:${ip}`, 20, RESEND_HOURLY_WINDOW_S);
+    if (!ipHit.allowed) {
       return NextResponse.json({ error: "too_many_requests" }, { status: 429 });
     }
 
@@ -29,10 +32,12 @@ export async function POST(req: Request) {
     }
     const email = normalizeEmail(rawEmail);
 
-    if (isRateLimited(`resend:cooldown:${email}`, 1, RESEND_COOLDOWN_MS)) {
+    const cooldownHit = await rateHit(`resend:cooldown:${email}`, 1, RESEND_COOLDOWN_S);
+    if (!cooldownHit.allowed) {
       return NextResponse.json({ error: "too_many_requests" }, { status: 429 });
     }
-    if (isRateLimited(`resend:hourly:${email}`, RESEND_HOURLY_LIMIT, RESEND_HOURLY_WINDOW_MS)) {
+    const hourlyHit = await rateHit(`resend:hourly:${email}`, RESEND_HOURLY_LIMIT, RESEND_HOURLY_WINDOW_S);
+    if (!hourlyHit.allowed) {
       return NextResponse.json({ error: "too_many_requests" }, { status: 429 });
     }
 
@@ -41,7 +46,7 @@ export async function POST(req: Request) {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
-      options: { emailRedirectTo: `${appUrl}/auth/callback` },
+      options: { emailRedirectTo: `${appUrl}/auth/confirm` },
     });
 
     if (error) {

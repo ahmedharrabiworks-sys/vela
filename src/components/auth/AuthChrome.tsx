@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
+import Wordmark from "@/components/ui/Wordmark";
 import MadeInQatar from "@/components/ui/MadeInQatar";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 import AmbientGlow from "@/components/landing/AmbientGlow";
@@ -149,11 +150,7 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
  * plain `overflow-hidden` + `rounded-[28px]` -- no glass classes on it.
  */
 function BrandWordmark({ className = "" }: { className?: string }) {
-  return (
-    <p className={`font-sans font-extrabold tracking-tight text-white leading-none ${className}`}>
-      Vela
-    </p>
-  );
+  return <Wordmark light className={className} />;
 }
 
 export function AuthSplitCard({

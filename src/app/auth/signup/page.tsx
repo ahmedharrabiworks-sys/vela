@@ -27,6 +27,7 @@ import {
 } from "@/components/auth/AuthChrome";
 import PlanPickerStep from "@/components/auth/PlanPickerStep";
 import { PasswordChecklist, usePasswordCheck } from "@/components/auth/PasswordChecklist";
+import OtpCodeInput from "@/components/auth/OtpCodeInput";
 import { suggestEmailTypoFix } from "@/lib/auth/email";
 
 const RESEND_COOLDOWN_S = 60;
@@ -305,10 +306,14 @@ function SignupPageContent() {
   const [companyName, setCompanyName] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
-  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [awaitingCode, setAwaitingCode] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
   const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [emailExists, setEmailExists] = useState<"password" | "google" | null>(null);
+  const [codeValue, setCodeValue] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [verifyingCode, setVerifyingCode] = useState(false);
 
   const passwordCheck = usePasswordCheck(password, { email, fullName });
   const emailTypoFix = useMemo(() => suggestEmailTypoFix(email), [email]);
@@ -469,6 +474,7 @@ function SignupPageContent() {
     e.preventDefault();
     setPasswordTouched(true);
     setAuthError("");
+    setEmailExists(null);
     if (!passwordCheck.valid) return;
 
     setSignupLoading(true);
@@ -481,6 +487,11 @@ function SignupPageContent() {
       const body = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (body.error === "email_exists") {
+          setEmailExists(body.provider === "google" ? "google" : "password");
+          setSignupLoading(false);
+          return;
+        }
         const errorMap: Record<string, string> = {
           invalid_name: t("landing.auth.signup.error.invalidName"),
           invalid_email: t("landing.auth.signup.error.invalidEmail"),
@@ -498,8 +509,10 @@ function SignupPageContent() {
       }
 
       setSignupLoading(false);
-      if (body.needsEmailConfirmation) {
-        setAwaitingConfirmation(true);
+      if (body.needsCode) {
+        setAwaitingCode(true);
+        setCodeValue("");
+        setCodeError("");
         startResendCooldown();
       } else {
         // "Confirm email" is off -- /api/auth/signup's response already
@@ -512,6 +525,42 @@ function SignupPageContent() {
     } catch {
       setAuthError(t("landing.auth.signup.somethingWentWrong"));
       setSignupLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (code: string) => {
+    setVerifyingCode(true);
+    setCodeError("");
+    try {
+      const res = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code, type: "signup" }),
+      });
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (body.error === "too_many_attempts") {
+          setCodeError(`${t("landing.auth.checkEmail.tooManyAttempts")} ${body.minutes} ${t("landing.auth.checkEmail.minutes")}`);
+        } else if (body.error === "wrong_code") {
+          setCodeError(`${t("landing.auth.checkEmail.wrongCode")} ${body.remaining} ${t("landing.auth.checkEmail.triesLeft")}`);
+        } else {
+          setCodeError(t("landing.auth.signup.somethingWentWrong"));
+        }
+        setCodeValue("");
+        setVerifyingCode(false);
+        return;
+      }
+
+      // Session cookies are now set (verifyOtp via the Route Handler client) --
+      // same entry point the Google/email-confirmed return path uses.
+      setVerifyingCode(false);
+      setPostAuthFlow(true);
+      setStep(2);
+    } catch {
+      setCodeError(t("landing.auth.signup.somethingWentWrong"));
+      setCodeValue("");
+      setVerifyingCode(false);
     }
   };
 
@@ -539,7 +588,7 @@ function SignupPageContent() {
   return (
     <AuthPageShell>
       {/* ── Step 1: Account ── */}
-      {step === 1 && !awaitingConfirmation && (
+      {step === 1 && !awaitingCode && (
         <AuthSplitCard>
           <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.signup.createAccount")}</h1>
           <p className="text-[#6B7280] text-sm mb-4">{t("landing.auth.signup.subtitle")}</p>
@@ -611,6 +660,15 @@ function SignupPageContent() {
               </div>
             )}
 
+            {emailExists && (
+              <div className="px-4 py-3 rounded-xl text-sm text-[#374151] border border-[#FDE68A] bg-[#FFFBEB]">
+                {emailExists === "google" ? t("landing.auth.signup.emailExistsGoogle") : t("landing.auth.signup.emailExistsPassword")}{" "}
+                <Link href="/auth/login" className="text-[#FF6B35] font-semibold hover:underline">
+                  {t("landing.auth.signup.signInInstead")}
+                </Link>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={signupLoading || (passwordTouched && password.length > 0 && !passwordCheck.valid)}
@@ -644,8 +702,8 @@ function SignupPageContent() {
         </AuthSplitCard>
       )}
 
-      {/* ── Step 1b: Check your email (real confirmation required) ── */}
-      {step === 1 && awaitingConfirmation && (
+      {/* ── Step 1b: Enter the code (real confirmation required) ── */}
+      {step === 1 && awaitingCode && (
         <AuthSplitCard
           panelHeadline={t("landing.auth.checkEmail.panelHeadline")}
           panelBody={t("landing.auth.checkEmail.panelBody")}
@@ -662,30 +720,26 @@ function SignupPageContent() {
               {t("landing.auth.checkEmail.sentTo")} <span className="text-[#111111] font-semibold">{maskEmail(email)}</span>
             </p>
 
-            <div className="flex gap-3 mb-4">
-              <a
-                href="https://mail.google.com/mail/u/0/#inbox"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="input-glass flex-1 py-3 rounded-xl font-semibold text-sm text-[#374151] transition-all text-center"
-              >
-                {t("landing.auth.checkEmail.openGmail")}
-              </a>
-              <a
-                href="https://outlook.live.com/mail/0/inbox"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="input-glass flex-1 py-3 rounded-xl font-semibold text-sm text-[#374151] transition-all text-center"
-              >
-                {t("landing.auth.checkEmail.openOutlook")}
-              </a>
-            </div>
+            <OtpCodeInput
+              value={codeValue}
+              onChange={(v) => { setCodeValue(v); setCodeError(""); }}
+              onComplete={handleVerifyCode}
+              disabled={verifyingCode}
+              error={!!codeError}
+            />
+
+            {codeError && (
+              <p className="text-sm text-red-600 mt-3">{codeError}</p>
+            )}
+            {verifyingCode && (
+              <p className="text-sm text-[#6B7280] mt-3">{t("landing.auth.checkEmail.verifying")}</p>
+            )}
 
             <button
               type="button"
               onClick={handleResendConfirmation}
               disabled={resendCooldown > 0 || resending}
-              className="text-sm font-semibold text-[#FF6B35] disabled:text-[#9CA3AF] transition-colors"
+              className="text-sm font-semibold text-[#FF6B35] disabled:text-[#9CA3AF] transition-colors mt-5"
             >
               {resendCooldown > 0
                 ? `${t("landing.auth.checkEmail.resendIn")} ${resendCooldown}s`
@@ -695,7 +749,7 @@ function SignupPageContent() {
             <p className="text-sm text-[#6B7280] mt-5">
               <button
                 type="button"
-                onClick={() => { setAwaitingConfirmation(false); }}
+                onClick={() => { setAwaitingCode(false); setCodeValue(""); setCodeError(""); }}
                 className="text-[#6B7280] hover:underline"
               >
                 {t("landing.auth.checkEmail.wrongEmail")}

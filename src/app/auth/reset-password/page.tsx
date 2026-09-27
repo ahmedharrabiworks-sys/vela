@@ -30,6 +30,10 @@ export default function ResetPasswordPage() {
   const [touched, setTouched] = useState(false);
 
   const passwordCheck = usePasswordCheck(password);
+  // Only shown once BOTH fields actually have content -- not on every
+  // keystroke while confirm is still empty (FIX 6: a single error surface,
+  // this one lives under the confirm field itself, not the shared red box).
+  const mismatch = password.length > 0 && confirm.length > 0 && password !== confirm;
 
   useEffect(() => {
     // Supabase picks up the recovery code/token from the URL automatically
@@ -48,14 +52,10 @@ export default function ResetPasswordPage() {
     setTouched(true);
     setError("");
 
-    if (!passwordCheck.valid) {
-      setError(t(`landing.auth.password.error.${passwordCheck.firstError}`));
-      return;
-    }
-    if (password !== confirm) {
-      setError(t("landing.auth.resetPassword.mismatch"));
-      return;
-    }
+    // Both of these already have their own inline surface (PasswordChecklist's
+    // own error line, and the mismatch message under the confirm field) --
+    // the shared red box below is reserved for genuine server errors only.
+    if (!passwordCheck.valid || mismatch) return;
 
     setLoading(true);
     const supabase = getSupabase();
@@ -109,7 +109,7 @@ export default function ResetPasswordPage() {
               href="/auth/forgot-password"
               className="input-glass block w-full py-3 rounded-xl font-semibold text-sm text-center text-[#374151] transition-all"
             >
-              {t("landing.auth.linkExpired.sendNewLink")}
+              {t("landing.auth.linkExpired.sendNewCode")}
             </Link>
           </>
         )}
@@ -192,6 +192,9 @@ export default function ResetPasswordPage() {
                     )}
                   </button>
                 </div>
+                {mismatch && (
+                  <p className="text-[11px] text-red-600 mt-1.5">{t("landing.auth.resetPassword.mismatch")}</p>
+                )}
               </div>
 
               {error && (
@@ -202,7 +205,7 @@ export default function ResetPasswordPage() {
 
               <button
                 type="submit"
-                disabled={loading || (touched && !passwordCheck.valid)}
+                disabled={loading || (touched && (!passwordCheck.valid || mismatch))}
                 className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 disabled:opacity-60"
                 style={{ background: "var(--vela-gradient)" }}
               >

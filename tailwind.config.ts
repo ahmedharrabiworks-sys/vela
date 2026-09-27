@@ -23,7 +23,16 @@ const config: Config = {
         vt: "var(--vt-color)",
       },
       fontFamily: {
-        inter: ["Inter", "sans-serif"],
+        // FIX 9 (auth-system follow-up round): Inter is now the single
+        // brand font. Overriding the DEFAULT `sans` key (not just the
+        // custom `inter` key) means plain `font-sans` -- used by the
+        // shared Wordmark component and anywhere else that never
+        // explicitly opted into a different family -- resolves to Inter
+        // instead of Tailwind's default system-ui stack. `inter` is kept
+        // as an explicit alias for existing call sites (e.g. body's
+        // font-inter class) so nothing has to be renamed.
+        sans: ["var(--font-inter)", "Inter", "sans-serif"],
+        inter: ["var(--font-inter)", "Inter", "sans-serif"],
         display: ["var(--font-display)", "Inter", "sans-serif"],
       },
       backgroundImage: {

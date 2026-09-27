@@ -21,7 +21,10 @@ mkdirSync(outDir, { recursive: true });
 const sampleVars = {
   "{{ .ConfirmationURL }}": "https://velaos.co/auth/callback?code=sample-preview-code",
   "{{ .Email }}": "oussama@example.com",
+  "{{ .NewEmail }}": "oussama.new@example.com",
   "{{ .SiteURL }}": "https://velaos.co",
+  "{{ .Token }}": "482913",
+  "{{ .TokenHash }}": "sample-preview-token-hash",
 };
 
 const browser = await chromium.launch();
