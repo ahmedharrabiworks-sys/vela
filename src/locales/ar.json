@@ -876,6 +876,7 @@
       "cancelNote": "إلغاء في أي وقت",
       "startFree": "ابدأ مجاناً",
       "mostPopular": "الأكثر شيوعاً",
+      "choosePrefix": "اختر",
       "categories": {
         "channels": "القنوات والمراسلة",
         "voice": "الصوت ووكيل الذكاء الاصطناعي",
@@ -1058,7 +1059,8 @@
           "settingUp": "جارٍ الإعداد...",
           "subscribeNow": "اشترك الآن",
           "selected": "محدَّدة",
-          "selectPlan": "اختر الباقة"
+          "selectPlan": "اختر الباقة",
+          "closeModal": "إغلاق تفاصيل الباقة"
         },
         "step4": {
           "welcome": "أهلاً بك",

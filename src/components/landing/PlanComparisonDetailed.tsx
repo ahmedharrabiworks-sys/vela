@@ -66,7 +66,18 @@ function CellIcon({ included }: { included: boolean }) {
   );
 }
 
-export default function PlanComparisonDetailed() {
+export default function PlanComparisonDetailed({
+  onChoosePlan,
+}: {
+  /** When provided, each column header gets a "Choose <plan>" button that
+      calls back with the plan id instead of the table linking out to
+      /auth/signup at the bottom -- used when this component is reused
+      inside the signup flow's plan-details modal, where navigating away
+      would lose the signup wizard's in-progress step 1/2 data. Default
+      (/pricing page) usage is unaffected: no prop, same table + link as
+      before. */
+  onChoosePlan?: (planId: string) => void;
+}) {
   const { t } = useI18n();
 
   return (
@@ -97,6 +108,16 @@ export default function PlanComparisonDetailed() {
                     <span className="block text-[9px] font-semibold normal-case tracking-normal text-[#FF6B35]/70 mt-0.5">
                       {t("landing.planCompare.mostPopular")}
                     </span>
+                  )}
+                  {onChoosePlan && (
+                    <button
+                      type="button"
+                      onClick={() => onChoosePlan(key)}
+                      className="mt-2 block w-full rounded-lg px-2 py-1.5 text-[10px] font-bold normal-case tracking-normal text-white transition-opacity hover:opacity-90"
+                      style={{ background: "var(--vela-gradient)" }}
+                    >
+                      {t("landing.planCompare.choosePrefix")} {t(`landing.pricing.plans.${key}.name`)}
+                    </button>
                   )}
                 </th>
               ))}
@@ -142,10 +163,14 @@ export default function PlanComparisonDetailed() {
 
       <p className="text-center text-sm text-[#9CA3AF] mt-8">
         {t("landing.planCompare.cancelNote")}
-        {" · "}
-        <Link href="/auth/signup" className="text-[#FF6B35] hover:underline font-medium">
-          {t("landing.planCompare.startFree")} <span className="rtl:-scale-x-100 inline-block">→</span>
-        </Link>
+        {!onChoosePlan && (
+          <>
+            {" · "}
+            <Link href="/auth/signup" className="text-[#FF6B35] hover:underline font-medium">
+              {t("landing.planCompare.startFree")} <span className="rtl:-scale-x-100 inline-block">→</span>
+            </Link>
+          </>
+        )}
       </p>
     </>
   );

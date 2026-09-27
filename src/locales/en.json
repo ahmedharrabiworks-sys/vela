@@ -875,6 +875,7 @@
       "cancelNote": "Cancel anytime",
       "startFree": "Start for Free",
       "mostPopular": "Most Popular",
+      "choosePrefix": "Choose",
       "categories": {
         "channels": "Channels & Messaging",
         "voice": "Voice & AI Agent",
@@ -1057,7 +1058,8 @@
           "settingUp": "Setting up...",
           "subscribeNow": "Subscribe Now",
           "selected": "Selected",
-          "selectPlan": "Select Plan"
+          "selectPlan": "Select Plan",
+          "closeModal": "Close plan details"
         },
         "step4": {
           "welcome": "Welcome",

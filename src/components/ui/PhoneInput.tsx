@@ -86,11 +86,13 @@ export function isValidPhoneForCountry(country: PhoneCountry, nationalNumber: st
    pattern (search box, scrollable list, hover states) as the business
    Country picker in signup -- adapted to show a flag + compact dial code. */
 function PhoneCountrySelect({
+  glass = false,
   value,
   onChange,
 }: {
   value: PhoneCountry;
   onChange: (c: PhoneCountry) => void;
+  glass?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -120,7 +122,9 @@ function PhoneCountrySelect({
       <button
         type="button"
         onClick={() => { setOpen(!open); setQuery(""); }}
-        className="flex items-center gap-1.5 h-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-3 text-sm text-[#111111] focus:outline-none focus:border-[#FF6B35] transition-all whitespace-nowrap"
+        className={`flex items-center gap-1.5 h-full rounded-xl px-3 text-sm text-[#111111] transition-all whitespace-nowrap ${
+          glass ? "input-glass" : "bg-[#F9FAFB] border border-[#E5E7EB] focus:outline-none focus:border-[#FF6B35]"
+        }`}
         aria-label="Select country code"
       >
         <span>{flagEmoji(value.iso2)}</span>
@@ -177,6 +181,11 @@ export interface PhoneInputProps {
   forceShowError?: boolean;
   id?: string;
   placeholder?: string;
+  /** Auth-pages-only opt-in: renders the country pill and number input with
+      the shared .input-glass treatment instead of the default flat grey/
+      white styling. Other call sites (Settings, the widget chat client)
+      don't pass this and keep their exact current look. */
+  glass?: boolean;
 }
 
 export function PhoneInput({
@@ -189,6 +198,7 @@ export function PhoneInput({
   forceShowError = false,
   id,
   placeholder = "50 000 0000",
+  glass = false,
 }: PhoneInputProps) {
   const [touched, setTouched] = useState(false);
 
@@ -205,7 +215,7 @@ export function PhoneInput({
   return (
     <div>
       <div className="flex gap-2">
-        <PhoneCountrySelect value={country} onChange={onCountryChange} />
+        <PhoneCountrySelect value={country} onChange={onCountryChange} glass={glass} />
         <input
           id={id}
           type="tel"
@@ -216,11 +226,17 @@ export function PhoneInput({
           placeholder={placeholder}
           required={required}
           aria-invalid={showError}
-          className={`w-full bg-white border px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:ring-2 transition-all rounded-xl ${
-            showError
-              ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-              : "border-[#E5E7EB] focus:border-[#FF6B35] focus:ring-[#FF6B35]/20"
-          }`}
+          className={
+            glass
+              ? `input-glass w-full px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] transition-all rounded-xl ${
+                  showError ? "!border-red-400" : ""
+                }`
+              : `w-full bg-white border px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:ring-2 transition-all rounded-xl ${
+                  showError
+                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
+                    : "border-[#E5E7EB] focus:border-[#FF6B35] focus:ring-[#FF6B35]/20"
+                }`
+          }
         />
       </div>
       {showError && (

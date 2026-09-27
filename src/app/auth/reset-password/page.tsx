@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { getSupabase } from "@/lib/supabase";
+import { AuthBlobs } from "@/components/auth/AuthChrome";
 
 type PageState = "loading" | "ready" | "success" | "expired";
 
@@ -62,7 +63,7 @@ export default function ResetPasswordPage() {
   };
 
   const inputCls =
-    "w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
+    "input-glass w-full px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] transition-all";
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
@@ -73,7 +74,10 @@ export default function ResetPasswordPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-card">
+        <div className="relative">
+        <AuthBlobs />
+        <div className="glass-auth rounded-2xl">
+        <div className="glass-auth-content p-8">
 
           {/* ── Loading ── */}
           {pageState === "loading" && (
@@ -98,7 +102,7 @@ export default function ResetPasswordPage() {
               </p>
               <Link
                 href="/auth/login"
-                className="block w-full py-3 rounded-xl font-semibold text-sm text-center border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+                className="input-glass block w-full py-3 rounded-xl font-semibold text-sm text-center text-[#374151] hover:text-[#FF6B35] transition-all"
               >
                 Back to sign in
               </Link>
@@ -215,6 +219,8 @@ export default function ResetPasswordPage() {
             </>
           )}
 
+        </div>
+        </div>
         </div>
 
         {/* Resend note, reset email delivery requires Resend to be configured in Supabase.

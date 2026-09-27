@@ -282,7 +282,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setForgotMode(false); setResetSent(false); }}
-              className="w-full py-3 rounded-xl font-semibold text-sm border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+              className="input-glass w-full py-3 rounded-xl font-semibold text-sm text-[#374151] hover:text-[#FF6B35] transition-all"
             >
               {t("landing.auth.login.backToSignIn")}
             </button>

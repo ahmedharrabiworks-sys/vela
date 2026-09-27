@@ -27,7 +27,7 @@ export default function MadeInQatar({ className = "" }: { className?: string }) 
     <span className={`inline-flex items-center gap-1.5 ${className}`} style={{ fontSize: 13, color: "#6B6B70" }}>
       <span>{t("landing.footer.madeInQatar")}</span>
       <HeartIcon size={12} />
-      <QatarFlag heightPx={14} />
+      <QatarFlag heightPx={16} />
     </span>
   );
 }

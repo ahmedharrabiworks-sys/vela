@@ -10,9 +10,14 @@ import { useI18n } from "@/lib/i18n";
 export function CurrencyToggle({
   value,
   onChange,
+  glass = false,
 }: {
   value: CurrencyCode;
   onChange: (c: CurrencyCode) => void;
+  /** Auth-pages-only opt-in: the stronger .input-glass treatment instead
+      of the landing's plain .glass. Other call sites (landing Pricing)
+      don't pass this and keep their exact current look. */
+  glass?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -22,7 +27,9 @@ export function CurrencyToggle({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value as CurrencyCode)}
-          className="glass rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all"
+          className={`rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[#111111] transition-all ${
+            glass ? "input-glass" : "glass focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20"
+          }`}
         >
           {CURRENCIES.map((c) => (
             <option key={c.code} value={c.code}>

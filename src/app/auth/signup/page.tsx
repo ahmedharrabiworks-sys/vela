@@ -7,9 +7,7 @@ import { saveProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { useI18n } from "@/lib/i18n";
 import { PLANS } from "@/lib/pricing";
-import { TAGLINES, INHERIT_LINE, CARD_INDICES } from "@/components/landing/Pricing";
-import { formatPrice, type CurrencyCode } from "@/lib/currency";
-import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
+import { type CurrencyCode } from "@/lib/currency";
 import {
   PhoneInput,
   DEFAULT_PHONE_COUNTRY,
@@ -19,13 +17,16 @@ import {
 import {
   AuthPageShell,
   AuthSplitCard,
+  AuthBlobs,
   authInputCls,
+  authPlainInputCls,
   InputIcon,
   PersonIcon,
   MailIcon,
   LockIcon,
   GoogleButton,
 } from "@/components/auth/AuthChrome";
+import PlanPickerStep from "@/components/auth/PlanPickerStep";
 
 /* ── All countries with dial codes ── */
 const COUNTRIES = [
@@ -203,7 +204,7 @@ const BUSINESS_CATEGORIES = [
 ];
 
 
-const inputCls = "w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all";
+const inputCls = authPlainInputCls;
 const labelCls = "text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5";
 
 /* Searchable country dropdown */
@@ -231,7 +232,7 @@ function CountrySelect({ value, onChange }: { value: typeof COUNTRIES[0]; onChan
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => { setOpen(!open); setQuery(""); }}
-        className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all flex items-center justify-between text-left">
+        className="input-glass w-full rounded-xl px-4 py-3 text-sm text-[#111111] transition-all flex items-center justify-between text-left">
         <span className="truncate">{value.name}</span>
         <div className="flex items-center gap-2 shrink-0 ml-2">
           <span className="text-[#9CA3AF] text-xs font-mono">{value.dial}</span>
@@ -574,14 +575,17 @@ function SignupPageContent() {
       )}
 
       {step !== 1 && (
-      <div className={`relative z-10 w-full transition-all duration-300 ${step === 3 ? "max-w-5xl" : "max-w-lg"}`}>
+      <div className="relative z-10 w-full max-w-lg transition-all duration-300">
 
         {/* ── Step 2: Business Info ── */}
         {step === 2 && (
-          <div className="glass rounded-2xl p-6 sm:p-8">
+          <div className="relative">
+            <AuthBlobs />
+            <div className="glass-auth rounded-2xl">
+            <div className="glass-auth-content p-6 sm:p-8">
             <h1 className="vela-heading text-xl text-[#111111] mb-1">{t("landing.auth.signup.step2.title")}</h1>
-            <p className="text-[#6B7280] text-sm mb-5 sm:mb-7">{t("landing.auth.signup.step2.subtitle")}</p>
-            <form onSubmit={handleStep2} className="space-y-4">
+            <p className="text-[#6B7280] text-sm mb-4 sm:mb-5">{t("landing.auth.signup.step2.subtitle")}</p>
+            <form onSubmit={handleStep2} className="space-y-3">
               <div>
                 <label className={labelCls}>{t("landing.auth.signup.step2.companyName")}</label>
                 <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t("landing.auth.signup.step2.companyNamePlaceholder")} required className={inputCls} />
@@ -616,7 +620,7 @@ function SignupPageContent() {
                   placeholder={t("landing.auth.signup.step2.businessPlaceholder")}
                   required
                   rows={2}
-                  className="w-full bg-white border border-[#E5E7EB] px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all resize-none sm:min-h-[84px]"
+                  className="input-glass w-full px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] transition-all resize-none sm:min-h-[84px]"
                 />
                 {aiDetecting && (
                   <div className="flex items-center gap-2 mt-2">
@@ -628,8 +632,11 @@ function SignupPageContent() {
                   </div>
                 )}
                 {detectedType && detectedType !== "Other" && !aiDetecting && (
-                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] w-fit">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5 5.5-5" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <div className="input-glass flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full w-fit">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+                      <circle cx="7" cy="7" r="7" fill="#FF6B35" />
+                      <path d="M4 7l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                     <span className="text-[11px] text-[#6B7280]">{t("landing.auth.signup.step2.detected")} <span className="text-[#111111] font-semibold">{detectedType}</span></span>
                     <button type="button" onClick={() => setDetectedType("")} className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors text-xs ml-0.5">✕</button>
                   </div>
@@ -640,7 +647,7 @@ function SignupPageContent() {
                     <select
                       value=""
                       onChange={(e) => { if (e.target.value) setDetectedType(e.target.value); }}
-                      className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] text-sm focus:outline-none focus:border-[#FF6B35] transition-colors"
+                      className="input-glass w-full rounded-xl px-4 py-3 text-[#111111] transition-colors"
                     >
                       <option value="" disabled>{t("landing.auth.signup.step2.selectBusinessType")}</option>
                       {BUSINESS_CATEGORIES.map((cat) => (
@@ -678,13 +685,14 @@ function SignupPageContent() {
                   forceShowError={phoneSubmitAttempted}
                   placeholder={t("landing.auth.signup.step2.phonePlaceholder")}
                   required
+                  glass
                 />
               </div>
 
               <div className="flex gap-3 pt-1">
                 {/* Google onboarding skips step 1 entirely (already authenticated) -- nothing to go back to. */}
                 {!googleFlow && (
-                  <button type="button" onClick={() => setStep(1)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">
+                  <button type="button" onClick={() => setStep(1)} className="input-glass flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] transition-colors">
                     {t("landing.auth.signup.step2.back")}
                   </button>
                 )}
@@ -703,171 +711,33 @@ function SignupPageContent() {
                 </button>
               </div>
             </form>
+            </div>
+            </div>
           </div>
         )}
 
-        {/* ── Step 3: Plan ── */}
+        {/* ── Step 3: Plan (compact redesign, see PlanPickerStep.tsx) ── */}
         {step === 3 && (
-          <div className="glass rounded-2xl p-6 md:p-10">
-            <div className="text-center mb-8">
-              <h1 className="vela-heading text-xl text-[#111111] mb-1">{t("landing.auth.signup.step3.title")}</h1>
-              <p className="text-[#6B7280] text-sm mb-5">{t("landing.auth.signup.step3.cancelAnytime")}</p>
-
-              {/* Billing toggle, matches /pricing page */}
-              <div className="inline-flex items-center p-0.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
-                <button type="button" onClick={() => setBilling("monthly")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
-                    billing === "monthly" ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
-                  }`}>
-                  {t("landing.auth.signup.step3.monthly")}
-                </button>
-                <button type="button" onClick={() => setBilling("annual")}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150 ${
-                    billing === "annual" ? "bg-white shadow-sm text-[#111111]" : "text-[#9CA3AF] hover:text-[#6B7280]"
-                  }`}>
-                  {t("landing.auth.signup.step3.annual")}
-                  <span className={`ml-1.5 text-xs ${billing === "annual" ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>
-                    · {t("landing.auth.signup.step3.save20")}
-                  </span>
-                </button>
-              </div>
-
-              <div className="mt-4">
-                <CurrencyToggle value={currency} onChange={setCurrency} />
-              </div>
-            </div>
-
-            {detectedType && (
-              <div className="flex items-center justify-center gap-2.5 px-4 py-3 mb-7 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] max-w-md mx-auto">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <p className="text-sm text-[#6B7280]">
-                  {t("landing.auth.signup.step3.detected")} <span className="text-[#111111] font-semibold">{detectedType}</span>
-                </p>
-              </div>
-            )}
-
-            {/* Cards, same style as /pricing page */}
-            <div className="grid md:grid-cols-3 gap-4 md:gap-5 items-stretch mb-4">
-              {PLANS.filter((p) => !p.isCustom).map((p) => {
-                const isSelected = plan === p.id;
-                const price = billing === "annual" ? p.annual : p.monthly;
-                const planKey = p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPlan(p.id)}
-                    className={`relative rounded-2xl p-5 md:p-6 flex flex-col text-left transition-all duration-300 w-full ${
-                      p.popular ? "bg-white md:scale-[1.02] mt-4 md:mt-0" : "bg-white"
-                    }`}
-                    style={
-                      isSelected
-                        ? { border: "2px solid #FF6B35", boxShadow: "0 8px 32px rgba(255,107,53,0.12)" }
-                        : { border: "1px solid #E5E7EB" }
-                    }
-                  >
-                    {p.popular && (
-                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                        <span className="px-4 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
-                          style={{ background: "var(--vela-gradient)" }}>
-                          {t("landing.auth.signup.step3.mostPopular")}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Tier header */}
-                    <div className="mb-4">
-                      <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${p.popular ? "text-[#FF6B35]" : "text-[#9CA3AF]"}`}>
-                        {p.name}
-                      </p>
-                      <div className="flex items-end gap-1.5 mb-1.5 flex-wrap">
-                        <span className="text-3xl sm:text-4xl font-black text-[#111111] leading-none">{formatPrice(price, currency)}</span>
-                        <span className="text-base mb-1 text-[#9CA3AF]">/mo</span>
-                      </div>
-                      <p className="text-sm text-[#9CA3AF] mt-1">{TAGLINES[planKey]}</p>
-                      {billing === "annual" && (
-                        <p className="text-sm font-medium text-[#FF6B35] mt-1">
-                          {t("landing.auth.signup.step3.save")} {formatPrice((p.monthly - p.annual) * 12, currency)}{t("landing.auth.signup.step3.perYear")}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Feature list, top-line bullets only, matching /pricing page */}
-                    <ul className="flex-1 mb-4 divide-y divide-[#F3F4F6]">
-                      {INHERIT_LINE[planKey] && (
-                        <li className="flex items-start gap-3 py-2">
-                          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                            <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                            <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <span className="text-sm text-[#374151]">{INHERIT_LINE[planKey]}</span>
-                        </li>
-                      )}
-                      {p.features.filter(f => f.included)
-                        .map((feat, originalIdx) => ({ feat, originalIdx }))
-                        .filter(({ originalIdx }) => {
-                          const show = CARD_INDICES[planKey];
-                          return !show || show.includes(originalIdx);
-                        })
-                        .map(({ feat, originalIdx }) => (
-                          <li key={originalIdx} className="flex items-start gap-3 py-2">
-                            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
-                              <circle cx="8" cy="8" r="7" fill="var(--vp-12)" />
-                              <path d="M5 8l2 2 4-4" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            <span className="text-sm text-[#374151]">{feat.text}</span>
-                          </li>
-                        ))
-                      }
-                    </ul>
-
-                    <div className={`w-full py-2 px-6 rounded-xl text-sm font-semibold text-center transition-all ${
-                      isSelected ? "bg-[#111111] text-white" : "border border-[#E5E7EB] text-[#374151]"
-                    }`}>
-                      {isSelected ? t("landing.auth.signup.step3.selected") : t("landing.auth.signup.step3.selectPlan")}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* See full plan details */}
-            <div className="text-center mb-6">
-              <Link href="/pricing" target="_blank" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9CA3AF] hover:text-[#FF6B35] transition-colors">
-                {t("landing.auth.signup.step3.seeFullPlanDetails")}
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M2.5 6.5h8M7 4l3 2.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </Link>
-            </div>
-
-            {authError && (
-              <div className="mb-4 max-w-md mx-auto px-4 py-3 rounded-xl text-sm text-red-600 border border-red-200 bg-red-50">
-                {authError}
-              </div>
-            )}
-            <div className="flex gap-3 max-w-md mx-auto">
-              <button onClick={() => setStep(2)} className="flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB] hover:border-[#D1D5DB] transition-colors">{t("landing.auth.signup.step3.back")}</button>
-              <button onClick={handleStart} disabled={loading}
-                className="flex-[2] py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-70"
-                style={{ background: "var(--vela-gradient)" }}>
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 16 16" fill="none">
-                      <circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.3)" strokeWidth="2"/>
-                      <path d="M14 8a6 6 0 0 0-6-6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    {t("landing.auth.signup.step3.settingUp")}
-                  </span>
-                ) : t("landing.auth.signup.step3.subscribeNow")}
-              </button>
-            </div>
-          </div>
+          <PlanPickerStep
+            plan={plan}
+            setPlan={setPlan}
+            billing={billing}
+            setBilling={setBilling}
+            currency={currency}
+            setCurrency={setCurrency}
+            loading={loading}
+            authError={authError}
+            onBack={() => setStep(2)}
+            onSubmit={handleStart}
+          />
         )}
 
         {/* ── Step 4: Success ── */}
         {step === 4 && (
-          <div className="glass rounded-2xl p-8 text-center">
+          <div className="relative">
+            <AuthBlobs />
+            <div className="glass-auth rounded-2xl">
+            <div className="glass-auth-content p-8 text-center">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "var(--vela-gradient)" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -881,6 +751,8 @@ function SignupPageContent() {
             <Link href="/app/welcome" className="block w-full py-3.5 rounded-xl font-semibold text-white text-sm text-center hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
               {t("landing.auth.signup.step4.setUpAccount")} →
             </Link>
+            </div>
+            </div>
           </div>
         )}
       </div>
