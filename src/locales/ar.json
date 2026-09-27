@@ -1042,7 +1042,10 @@
           "phonePlaceholder": "5555 1234",
           "back": "رجوع",
           "continue": "متابعة",
-          "analysing": "جارٍ التحليل..."
+          "analysing": "جارٍ التحليل...",
+          "panelHeadline": "مصمَّم حول عملك.",
+          "panelBody": "يتعلم فيلا خدماتك وساعات عملك وأسعارك ليبدو كل رد وكأنه منك.",
+          "stepIndicator": "الخطوة 2 من 4"
         },
         "step3": {
           "title": "اختر باقتك",
@@ -1057,10 +1060,13 @@
           "seeFullPlanDetails": "عرض تفاصيل الباقات كاملة",
           "back": "رجوع",
           "settingUp": "جارٍ الإعداد...",
-          "subscribeNow": "اشترك الآن",
           "selected": "محدَّدة",
           "selectPlan": "اختر الباقة",
-          "closeModal": "إغلاق تفاصيل الباقة"
+          "closeModal": "إغلاق تفاصيل الباقة",
+          "continueBtn": "متابعة",
+          "panelHeadline": "باقة واحدة. كل قناة.",
+          "panelBody": "إنستغرام وواتساب والمكالمات الهاتفية، بالرد على مدار الساعة. يمكنك الإلغاء في أي وقت.",
+          "stepIndicator": "الخطوة 3 من 4"
         },
         "step4": {
           "welcome": "أهلاً بك",
@@ -1071,7 +1077,10 @@
           "planActive3": "ويمكنك الإلغاء في أي وقت.",
           "billingMonthly": "شهري",
           "billingAnnual": "سنوي",
-          "setUpAccount": "إعداد حسابك"
+          "setUpAccount": "إعداد حسابك",
+          "panelHeadline": "كل شيء جاهز.",
+          "panelBody": "موظف الاستقبال الذكي جاهز الآن للتدريب.",
+          "stepIndicator": "الخطوة 4 من 4"
         }
       },
       "common": {

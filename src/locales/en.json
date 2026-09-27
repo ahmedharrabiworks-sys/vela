@@ -1041,7 +1041,10 @@
           "phonePlaceholder": "5555 1234",
           "back": "Back",
           "continue": "Continue",
-          "analysing": "Analysing..."
+          "analysing": "Analysing...",
+          "panelHeadline": "Built around your business.",
+          "panelBody": "Vela learns your services, hours and prices so every reply sounds like you.",
+          "stepIndicator": "Step 2 of 4"
         },
         "step3": {
           "title": "Choose your plan",
@@ -1056,10 +1059,13 @@
           "seeFullPlanDetails": "See full plan details",
           "back": "Back",
           "settingUp": "Setting up...",
-          "subscribeNow": "Subscribe Now",
           "selected": "Selected",
           "selectPlan": "Select Plan",
-          "closeModal": "Close plan details"
+          "closeModal": "Close plan details",
+          "continueBtn": "Continue",
+          "panelHeadline": "One plan. Every channel.",
+          "panelBody": "Instagram, WhatsApp and phone calls answered 24/7. Cancel anytime.",
+          "stepIndicator": "Step 3 of 4"
         },
         "step4": {
           "welcome": "Welcome",
@@ -1070,7 +1076,10 @@
           "planActive3": "cancel anytime.",
           "billingMonthly": "monthly",
           "billingAnnual": "annually",
-          "setUpAccount": "Set up your account"
+          "setUpAccount": "Set up your account",
+          "panelHeadline": "You're all set.",
+          "panelBody": "Your AI receptionist is ready to train.",
+          "stepIndicator": "Step 4 of 4"
         }
       },
       "common": {

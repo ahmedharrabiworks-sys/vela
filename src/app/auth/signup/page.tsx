@@ -17,7 +17,6 @@ import {
 import {
   AuthPageShell,
   AuthSplitCard,
-  AuthBlobs,
   authInputCls,
   authPlainInputCls,
   InputIcon,
@@ -574,15 +573,13 @@ function SignupPageContent() {
         </AuthSplitCard>
       )}
 
-      {step !== 1 && (
-      <div className="relative z-10 w-full max-w-lg transition-all duration-300">
-
-        {/* ── Step 2: Business Info ── */}
+      {/* ── Step 2: Business Info ── */}
         {step === 2 && (
-          <div className="relative">
-            <AuthBlobs />
-            <div className="glass-auth rounded-2xl">
-            <div className="glass-auth-content p-6 sm:p-8">
+          <AuthSplitCard
+            panelHeadline={t("landing.auth.signup.step2.panelHeadline")}
+            panelBody={t("landing.auth.signup.step2.panelBody")}
+            stepLabel={t("landing.auth.signup.step2.stepIndicator")}
+          >
             <h1 className="vela-heading text-xl text-[#111111] mb-1">{t("landing.auth.signup.step2.title")}</h1>
             <p className="text-[#6B7280] text-sm mb-4 sm:mb-5">{t("landing.auth.signup.step2.subtitle")}</p>
             <form onSubmit={handleStep2} className="space-y-3">
@@ -711,9 +708,7 @@ function SignupPageContent() {
                 </button>
               </div>
             </form>
-            </div>
-            </div>
-          </div>
+          </AuthSplitCard>
         )}
 
         {/* ── Step 3: Plan (compact redesign, see PlanPickerStep.tsx) ── */}
@@ -729,15 +724,20 @@ function SignupPageContent() {
             authError={authError}
             onBack={() => setStep(2)}
             onSubmit={handleStart}
+            panelHeadline={t("landing.auth.signup.step3.panelHeadline")}
+            panelBody={t("landing.auth.signup.step3.panelBody")}
+            stepLabel={t("landing.auth.signup.step3.stepIndicator")}
           />
         )}
 
         {/* ── Step 4: Success ── */}
         {step === 4 && (
-          <div className="relative">
-            <AuthBlobs />
-            <div className="glass-auth rounded-2xl">
-            <div className="glass-auth-content p-8 text-center">
+          <AuthSplitCard
+            panelHeadline={t("landing.auth.signup.step4.panelHeadline")}
+            panelBody={t("landing.auth.signup.step4.panelBody")}
+            stepLabel={t("landing.auth.signup.step4.stepIndicator")}
+          >
+            <div className="text-center">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "var(--vela-gradient)" }}>
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                 <path d="M5 14l6 6 12-12" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -752,11 +752,8 @@ function SignupPageContent() {
               {t("landing.auth.signup.step4.setUpAccount")} →
             </Link>
             </div>
-            </div>
-          </div>
+          </AuthSplitCard>
         )}
-      </div>
-      )}
     </AuthPageShell>
   );
 }

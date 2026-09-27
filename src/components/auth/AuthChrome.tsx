@@ -131,63 +131,95 @@ export function AuthPageShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Split card: decorative gradient panel (brand copy + soft circles) on the
- * start side, white icon-prefixed form panel (children) on the end side.
- * CSS Grid auto-mirrors under dir="rtl" -- no rtl: overrides needed here.
- * Liquid-glass treatment on the outer card (translucent white + blur +
- * soft border/shadow), same recipe as the site header.
+ * Split card: SOLID (fully opaque, no glass/blur/translucency of any kind)
+ * gradient panel on the start side, glass white form panel (children) on
+ * the end side. CSS Grid auto-mirrors under dir="rtl" -- no rtl: overrides
+ * needed here.
+ *
+ * Bug fix (glass-bleed round): .glass-auth used to sit on the OUTER card
+ * (spanning both panels). Its ::after liquid-sheen pseudo-element is
+ * position:absolute with z-index:0, which -- since the orange panel's own
+ * div has no elevated z-index of its own -- painted on top of it in DOM
+ * order (::after is generated as the element's conceptual last child), a
+ * semi-transparent white gradient over vivid orange, which is exactly what
+ * washed the panel out to pale pink. Fix: .glass-auth now lives ONLY on
+ * the form-panel div. The orange panel is a plain opaque sibling with its
+ * own inline gradient and is never touched by any glass pseudo-element.
+ * The outer wrapper still clips both to the card's rounded corners via
+ * plain `overflow-hidden` + `rounded-[28px]` -- no glass classes on it.
  */
-/** White "Vela" wordmark for the orange decorative panel -- no icon mark
-    (removed per design direction: the panel is text-only branding).
-    Inter 800, tight tracking. Left edge aligns with the headline below it
-    since both sit flush in the same unindented block -- no extra markup
-    needed for that beyond not centering either line. 20px gap to the
-    headline (mb-5) so they read as two distinct lines, not a collision. */
-function BrandWordmark() {
+function BrandWordmark({ className = "" }: { className?: string }) {
   return (
-    <p className="font-sans font-extrabold tracking-tight text-white leading-none text-[28px] md:text-[40px] mb-5">
+    <p className={`font-sans font-extrabold tracking-tight text-white leading-none ${className}`}>
       Vela
     </p>
   );
 }
 
-export function AuthSplitCard({ children }: { children: React.ReactNode }) {
+export function AuthSplitCard({
+  children,
+  panelHeadline,
+  panelBody,
+  stepLabel,
+}: {
+  children: React.ReactNode;
+  /** Defaults to the sitewide auth tagline (step 1 / login). Pass a
+      step-specific string for steps 2-4. */
+  panelHeadline?: string;
+  panelBody?: string;
+  /** When provided (e.g. "Step 2 of 4"), the panel switches to the slim
+      64px mobile banner (wordmark + step label, no headline/body on
+      mobile -- there isn't room, and Made in Qatar must stay visible
+      without scrolling). Omit for step 1 / login, which keep the taller
+      mobile banner with the headline visible. Desktop is unaffected
+      either way -- it always shows wordmark + headline + body. */
+  stepLabel?: string;
+}) {
   const { t } = useI18n();
+  const headline = panelHeadline ?? t("landing.auth.tagline");
+  const body = panelBody ?? t("landing.auth.taglineBody");
+  const slim = !!stepLabel;
+
   return (
     <div className="relative w-full max-w-4xl">
       <AuthBlobs />
-      <div className="glass-auth relative rounded-[28px] overflow-hidden grid md:grid-cols-[42%_1fr]">
-        {/* Decorative panel -- glass FINISH on top of the opaque gradient
-            (not the glass surface itself, which needs something translucent
-            behind it): a soft white top-edge highlight + a faint inner
-            border so it reads as tinted glass over the gradient, not a flat
-            color block, plus the existing soft translucent circles. */}
+      <div className="relative rounded-[28px] overflow-hidden grid md:grid-cols-[42%_1fr]">
+        {/* Decorative panel -- fully opaque, no glass. */}
         <div
-          className="relative overflow-hidden px-6 py-6 md:p-10 flex flex-col justify-center min-h-[104px] md:min-h-[420px]"
-          style={{
-            background: "var(--vela-gradient)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35), inset 0 0 0 1px rgba(255,255,255,0.25)",
-          }}
+          className={`relative overflow-hidden px-6 md:p-10 flex flex-col justify-center ${
+            slim ? "h-16 md:h-auto md:min-h-[420px] py-0 md:py-6" : "py-6 md:py-6 min-h-[104px] md:min-h-[420px]"
+          }`}
+          style={{ background: "var(--vela-gradient)" }}
         >
-          <div aria-hidden="true" className="absolute -bottom-16 -start-10 w-56 h-56 rounded-full bg-white/10" />
-          <div aria-hidden="true" className="absolute top-1/3 end-[-3.5rem] w-32 h-32 rounded-full bg-white/10" />
+          <div aria-hidden="true" className={`absolute -bottom-16 -start-10 w-56 h-56 rounded-full bg-white/10 ${slim ? "hidden md:block" : ""}`} />
+          <div aria-hidden="true" className={`absolute top-1/3 end-[-3.5rem] w-32 h-32 rounded-full bg-white/10 ${slim ? "hidden md:block" : ""}`} />
           <div aria-hidden="true" className="absolute -top-10 start-1/3 w-24 h-24 rounded-full bg-white/[0.08] hidden md:block" />
 
-          <div className="relative">
-            <BrandWordmark />
+          {/* Slim mobile banner: wordmark (start) + step label (end), row
+              layout, no headline/body -- md:hidden, replaced by the full
+              content block below on desktop. */}
+          {slim && (
+            <div className="relative flex md:hidden items-center justify-between h-16">
+              <BrandWordmark className="text-xl" />
+              <span className="text-xs font-semibold text-white/85">{stepLabel}</span>
+            </div>
+          )}
+
+          <div className={`relative ${slim ? "hidden md:block" : ""}`}>
+            <BrandWordmark className={slim ? "text-[40px] mb-5" : "text-[28px] md:text-[40px] mb-5"} />
             <h2 className="vela-heading text-lg md:text-[28px] text-white leading-tight mb-1.5 md:mb-3">
-              {t("landing.auth.tagline")}
+              {headline}
             </h2>
             <p className="hidden md:block text-white/80 text-sm leading-relaxed max-w-[280px]">
-              {t("landing.auth.taglineBody")}
+              {body}
             </p>
           </div>
         </div>
 
-        {/* Form panel content sits in its own z-10 wrapper (glass-auth-content)
-            so it paints above the ::after liquid sheen, which is itself
-            position:absolute and would otherwise stack ambiguously. */}
-        <div className="glass-auth-content px-6 py-6 sm:px-10 sm:py-10">{children}</div>
+        {/* Form panel -- the ONLY glass surface on this card. */}
+        <div className="glass-auth">
+          <div className="glass-auth-content px-6 py-6 sm:px-10 sm:py-10">{children}</div>
+        </div>
       </div>
     </div>
   );

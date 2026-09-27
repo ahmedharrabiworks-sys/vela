@@ -7,7 +7,7 @@ import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
 import PlanComparisonDetailed from "@/components/landing/PlanComparisonDetailed";
 import { useI18n } from "@/lib/i18n";
-import { AuthBlobs } from "@/components/auth/AuthChrome";
+import { AuthSplitCard } from "@/components/auth/AuthChrome";
 
 const SELECTABLE_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -115,6 +115,9 @@ export default function PlanPickerStep({
   authError,
   onBack,
   onSubmit,
+  panelHeadline,
+  panelBody,
+  stepLabel,
 }: {
   plan: string;
   setPlan: (id: string) => void;
@@ -126,6 +129,9 @@ export default function PlanPickerStep({
   authError: string;
   onBack: () => void;
   onSubmit: () => void;
+  panelHeadline: string;
+  panelBody: string;
+  stepLabel: string;
 }) {
   const { t } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
@@ -147,10 +153,8 @@ export default function PlanPickerStep({
   };
 
   return (
-    <div className="relative">
-      <AuthBlobs />
-      <div className="glass-auth rounded-2xl">
-        <div className="glass-auth-content p-6 sm:p-8">
+    <>
+      <AuthSplitCard panelHeadline={panelHeadline} panelBody={panelBody} stepLabel={stepLabel}>
           <div className="text-center mb-4">
             <h1 className="vela-heading text-xl text-[#111111] mb-1">{t("landing.auth.signup.step3.title")}</h1>
             <p className="text-[#6B7280] text-sm">{t("landing.auth.signup.step3.cancelAnytime")}</p>
@@ -215,7 +219,7 @@ export default function PlanPickerStep({
                     </span>
                     <div className="min-w-0">
                       <p className="font-bold text-sm text-[#111111]">{p.name}</p>
-                      <p className="text-xs text-[#6B7280] truncate">{TAGLINES[p.id]}</p>
+                      <p className="text-xs text-[#6B7280] leading-snug">{TAGLINES[p.id]}</p>
                     </div>
                   </div>
                   <div className="text-end shrink-0">
@@ -267,12 +271,11 @@ export default function PlanPickerStep({
                   {t("landing.auth.signup.step3.settingUp")}
                 </span>
               ) : (
-                t("landing.auth.signup.step3.subscribeNow")
+                <>{t("landing.auth.signup.step3.continueBtn")} →</>
               )}
             </button>
           </div>
-        </div>
-      </div>
+      </AuthSplitCard>
 
       {modalOpen && (
         <PlanDetailsModal
@@ -284,6 +287,6 @@ export default function PlanPickerStep({
           triggerRef={detailsLinkRef}
         />
       )}
-    </div>
+    </>
   );
 }

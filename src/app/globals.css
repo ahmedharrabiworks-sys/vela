@@ -498,20 +498,28 @@ canvas {
 
 /* Glass form controls for auth pages: inputs, dropdown pills, secondary
    buttons (Back, Continue with Google). font-size pinned to 16px so iOS
-   Safari never auto-zooms on focus (standing mobile requirement). */
+   Safari never auto-zooms on focus (standing mobile requirement).
+   Bug fix (visibility round): the original 0.55 white on 0.85 white border
+   was nearly invisible on top of the already-translucent .glass-auth
+   surface -- field edges couldn't be told apart from the card background
+   at a glance. Darker, more opaque values give every field a real,
+   visible boundary regardless of what's behind the card. */
 .input-glass {
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(20, 20, 30, 0.1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 0 rgba(255, 255, 255, 0.9);
   font-size: 16px;
 }
 .input-glass::placeholder {
   color: #9ca3af;
 }
+.input-glass:hover {
+  border-color: rgba(20, 20, 30, 0.18);
+}
 .input-glass:focus {
   outline: none;
   border-color: #ff6b35;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 2px rgba(255, 107, 53, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(255, 107, 53, 0.18);
 }
 @media (max-width: 768px) {
   .input-glass {
