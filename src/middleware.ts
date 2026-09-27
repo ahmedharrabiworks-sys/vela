@@ -228,9 +228,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages -- except a
-  // first-time Google sign-in with no tenant yet, who must be allowed to
-  // stay on /auth/signup to finish the business-info + plan onboarding
-  // steps (see /auth/callback and /auth/signup?onboarding=google).
+  // first-time sign-in (Google OAuth, or a freshly confirmed email) with no
+  // tenant yet, who must be allowed to stay on /auth/signup to finish the
+  // business-info + plan onboarding steps (see /auth/callback and
+  // /auth/signup?onboarding=1).
   if ((path.startsWith("/auth/login") || path.startsWith("/auth/signup")) && user) {
     if (path.startsWith("/auth/signup")) {
       // Same production-incident hardening as the auth check above --

@@ -26,6 +26,10 @@ import {
   GoogleButton,
 } from "@/components/auth/AuthChrome";
 import PlanPickerStep from "@/components/auth/PlanPickerStep";
+import { PasswordChecklist, usePasswordCheck } from "@/components/auth/PasswordChecklist";
+import { suggestEmailTypoFix } from "@/lib/auth/email";
+
+const RESEND_COOLDOWN_S = 60;
 
 /* ── All countries with dial codes ── */
 const COUNTRIES = [
@@ -162,6 +166,18 @@ const COUNTRIES = [
 
 const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.name === "Qatar")!;
 
+/* "oussama@gmail.com" -> "o***a@gmail.com" */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 1) return email;
+  const local = email.slice(0, at);
+  const domain = email.slice(at);
+  const masked = local.length <= 2
+    ? `${local[0]}*`
+    : `${local[0]}${"*".repeat(Math.min(local.length - 2, 3))}${local[local.length - 1]}`;
+  return `${masked}${domain}`;
+}
+
 /* Detect industry from plain-text business description */
 function detectBusinessType(desc: string): string {
   const d = desc.toLowerCase();
@@ -271,12 +287,14 @@ function SignupPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
-  // Arrived here from /auth/callback after a first-time Google sign-in with
-  // no tenant yet -- skip the email/password step entirely (they already
-  // have a real Supabase auth account) and go straight to business info.
-  const isGoogleOnboarding = searchParams.get("onboarding") === "google";
-  const [step, setStep] = useState(isGoogleOnboarding ? 2 : 1);
-  const [googleFlow, setGoogleFlow] = useState(isGoogleOnboarding);
+  // Arrived here from /auth/callback with a session already active and no
+  // tenant yet -- either a first-time Google sign-in, OR a freshly
+  // email-confirmed signup returning from the confirmation link. Both skip
+  // the email/password step entirely (a real Supabase auth account already
+  // exists either way) and go straight to business info.
+  const isPostAuthOnboarding = searchParams.get("onboarding") === "1";
+  const [step, setStep] = useState(isPostAuthOnboarding ? 2 : 1);
+  const [postAuthFlow, setPostAuthFlow] = useState(isPostAuthOnboarding);
   const [authError, setAuthError] = useState("");
 
   /* Step 1 */
@@ -285,16 +303,56 @@ function SignupPageContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [companyName, setCompanyName] = useState("");
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const passwordCheck = usePasswordCheck(password, { email, fullName });
+  const emailTypoFix = useMemo(() => suggestEmailTypoFix(email), [email]);
 
   useEffect(() => {
-    if (!isGoogleOnboarding) return;
+    return () => { if (resendTimerRef.current) clearInterval(resendTimerRef.current); };
+  }, []);
+
+  const startResendCooldown = () => {
+    setResendCooldown(RESEND_COOLDOWN_S);
+    if (resendTimerRef.current) clearInterval(resendTimerRef.current);
+    resendTimerRef.current = setInterval(() => {
+      setResendCooldown((c) => {
+        if (c <= 1) {
+          if (resendTimerRef.current) clearInterval(resendTimerRef.current);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResendConfirmation = async () => {
+    setResending(true);
+    try {
+      await fetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch { /* generic response either way, nothing to show differently */ }
+    setResending(false);
+    startResendCooldown();
+  };
+
+  useEffect(() => {
+    if (!isPostAuthOnboarding) return;
     (async () => {
       const supabase = getSupabase();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         // Stale/bogus link with no real session behind it -- fall back to
         // normal email/password signup instead of a dead-end step 2.
-        setGoogleFlow(false);
+        setPostAuthFlow(false);
         setStep(1);
         return;
       }
@@ -349,61 +407,22 @@ function SignupPageContent() {
     }, 900);
   };
 
+  // Real account creation (supabase.auth.signUp, server side) now happens
+  // at step 1 submit -- see handleStep1. By the time step 3 is reached, a
+  // real auth session already exists either way (Google OAuth exchange,
+  // email-confirmation-link exchange, or an immediate session from step 1
+  // when "Confirm email" is off), so this only ever needs to create the
+  // tenant row -- same endpoint regardless of which of those three got the
+  // user here, since it only requires "is there an authenticated user".
   const handleStart = async () => {
     setLoading(true);
     setAuthError("");
 
     try {
-      if (googleFlow) {
-        // Already authenticated via Google (session created in /auth/callback) --
-        // no auth user to create, just finish onboarding by creating the tenant.
-        const res = await fetch("/api/auth/complete-google-signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            companyName,
-            businessDesc,
-            detectedType,
-            country: country.name,
-            city,
-            phone: phoneE164 ?? "",
-            plan,
-          }),
-        });
-
-        if (!res.ok) {
-          setAuthError(t("landing.auth.signup.couldNotCreateAccount"));
-          setLoading(false);
-          return;
-        }
-
-        saveProfile({
-          ownerName: fullName,
-          email,
-          businessName: companyName || businessDesc,
-          businessType: detectedType,
-          country: country.name,
-          city,
-          phone: phoneE164 ?? "",
-          plan,
-        });
-        if (detectedType) localStorage.setItem("vela_business_type", detectedType);
-
-        setLoading(false);
-        setStep(4);
-        setTimeout(() => router.push("/app/welcome"), 1800);
-        return;
-      }
-
-      // Server-side creation, uses admin client with email_confirm:true to bypass
-      // the Supabase free-tier email rate limit (2/hour) that breaks client signUp.
-      const res = await fetch("/api/auth/signup", {
+      const res = await fetch("/api/auth/complete-google-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
-          password,
-          fullName,
           companyName,
           businessDesc,
           detectedType,
@@ -415,22 +434,7 @@ function SignupPageContent() {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body.error === "already_exists") {
-          setAuthError(t("landing.auth.signup.emailAlreadyRegistered"));
-        } else {
-          setAuthError(t("landing.auth.signup.couldNotCreateAccount"));
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Account created, sign in immediately (email is already confirmed)
-      const supabase = getSupabase();
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (signInError) {
-        setAuthError("Account created but sign-in failed. Try logging in manually.");
+        setAuthError(t("landing.auth.signup.couldNotCreateAccount"));
         setLoading(false);
         return;
       }
@@ -456,11 +460,66 @@ function SignupPageContent() {
     }
   };
 
+  // Step 1 submit: the ONLY place supabase.auth.signUp() runs (server side,
+  // via /api/auth/signup) -- the client never calls it directly. Branches
+  // on whether Supabase actually required email confirmation (detected from
+  // the response, never hardcoded, since this must work identically whether
+  // Oussama has "Confirm email" on or off).
+  const handleStep1 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordTouched(true);
+    setAuthError("");
+    if (!passwordCheck.valid) return;
+
+    setSignupLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName, email, password }),
+      });
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const errorMap: Record<string, string> = {
+          invalid_name: t("landing.auth.signup.error.invalidName"),
+          invalid_email: t("landing.auth.signup.error.invalidEmail"),
+          disposable_email: t("landing.auth.signup.error.disposableEmail"),
+          invalid_email_domain: t("landing.auth.signup.error.invalidEmailDomain"),
+          too_many_requests: t("landing.auth.signup.error.tooManyRequests"),
+          create_failed: t("landing.auth.signup.couldNotCreateAccount"),
+        };
+        const weakPasswordMsg = body.error === "weak_password"
+          ? t(`landing.auth.password.error.${body.reason}`)
+          : null;
+        setAuthError(weakPasswordMsg || errorMap[body.error] || t("landing.auth.signup.somethingWentWrong"));
+        setSignupLoading(false);
+        return;
+      }
+
+      setSignupLoading(false);
+      if (body.needsEmailConfirmation) {
+        setAwaitingConfirmation(true);
+        startResendCooldown();
+      } else {
+        // "Confirm email" is off -- /api/auth/signup's response already
+        // carried the new session's Set-Cookie headers onto this same-origin
+        // fetch, so the browser is authenticated now. Skip straight to step
+        // 2, same entry point the Google/email-confirmed return path uses.
+        setPostAuthFlow(true);
+        setStep(2);
+      }
+    } catch {
+      setAuthError(t("landing.auth.signup.somethingWentWrong"));
+      setSignupLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     // Same signInWithOAuth pattern as /auth/login. The existing /auth/callback
-    // route + the isGoogleOnboarding handling above take it from here --
+    // route + the isPostAuthOnboarding handling above take it from here --
     // Google returns to /auth/callback, which redirects to
-    // /auth/signup?onboarding=google for a first-time user (no tenant yet),
+    // /auth/signup?onboarding=1 for a first-time user (no tenant yet),
     // landing back on this exact component with step 2 pre-selected.
     setAuthError("");
     const supabase = getSupabase();
@@ -480,17 +539,17 @@ function SignupPageContent() {
   return (
     <AuthPageShell>
       {/* ── Step 1: Account ── */}
-      {step === 1 && (
+      {step === 1 && !awaitingConfirmation && (
         <AuthSplitCard>
           <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.signup.createAccount")}</h1>
           <p className="text-[#6B7280] text-sm mb-4">{t("landing.auth.signup.subtitle")}</p>
 
-          <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-3">
+          <form onSubmit={handleStep1} className="space-y-3">
             <div>
               <label className={labelCls}>{t("landing.auth.signup.fullName")}</label>
               <div className="relative">
                 <InputIcon><PersonIcon /></InputIcon>
-                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("landing.auth.signup.fullNamePlaceholder")} required className={authInputCls} />
+                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("landing.auth.signup.fullNamePlaceholder")} required maxLength={80} className={authInputCls} />
               </div>
             </div>
             <div>
@@ -499,6 +558,15 @@ function SignupPageContent() {
                 <InputIcon><MailIcon /></InputIcon>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("landing.auth.login.emailPlaceholder")} required className={authInputCls} />
               </div>
+              {emailTypoFix && (
+                <button
+                  type="button"
+                  onClick={() => setEmail(emailTypoFix)}
+                  className="text-[11px] text-[#FF6B35] font-medium mt-1.5 hover:underline"
+                >
+                  {t("landing.auth.signup.didYouMean")} {emailTypoFix}?
+                </button>
+              )}
             </div>
             <div>
               <label className={labelCls}>{t("landing.auth.login.password")}</label>
@@ -508,9 +576,10 @@ function SignupPageContent() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setPasswordTouched(true)}
                   placeholder={t("landing.auth.signup.passwordMin")}
                   required
-                  minLength={8}
+                  maxLength={72}
                   className={`${authInputCls} pe-10`}
                 />
                 <button
@@ -533,6 +602,7 @@ function SignupPageContent() {
                   )}
                 </button>
               </div>
+              <PasswordChecklist result={passwordCheck} password={password} />
             </div>
 
             {authError && (
@@ -543,10 +613,11 @@ function SignupPageContent() {
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 transition-all duration-200"
+              disabled={signupLoading || (passwordTouched && password.length > 0 && !passwordCheck.valid)}
+              className="w-full py-3.5 rounded-xl font-semibold text-white text-sm mt-2 transition-all duration-200 disabled:opacity-60"
               style={{ background: "var(--vela-gradient)" }}
             >
-              {t("landing.auth.signup.continue")} →
+              {signupLoading ? t("landing.auth.signup.creatingAccount") : <>{t("landing.auth.signup.continue")} →</>}
             </button>
           </form>
 
@@ -570,6 +641,67 @@ function SignupPageContent() {
             {t("landing.auth.signup.and")}{" "}
             <Link href="/privacy" className="hover:underline" style={{ color: "var(--vp-color)" }} target="_blank">{t("landing.auth.signup.privacy")}</Link>
           </p>
+        </AuthSplitCard>
+      )}
+
+      {/* ── Step 1b: Check your email (real confirmation required) ── */}
+      {step === 1 && awaitingConfirmation && (
+        <AuthSplitCard
+          panelHeadline={t("landing.auth.checkEmail.panelHeadline")}
+          panelBody={t("landing.auth.checkEmail.panelBody")}
+        >
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: "var(--vela-gradient)" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 6.5A2.5 2.5 0 015.5 4h13A2.5 2.5 0 0121 6.5v11a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.5v-11z" stroke="white" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M4 6.5l8 6.5 8-6.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h1 className="vela-heading text-xl text-[#111111] mb-2">{t("landing.auth.checkEmail.title")}</h1>
+            <p className="text-[#6B7280] text-sm mb-6">
+              {t("landing.auth.checkEmail.sentTo")} <span className="text-[#111111] font-semibold">{maskEmail(email)}</span>
+            </p>
+
+            <div className="flex gap-3 mb-4">
+              <a
+                href="https://mail.google.com/mail/u/0/#inbox"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="input-glass flex-1 py-3 rounded-xl font-semibold text-sm text-[#374151] transition-all text-center"
+              >
+                {t("landing.auth.checkEmail.openGmail")}
+              </a>
+              <a
+                href="https://outlook.live.com/mail/0/inbox"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="input-glass flex-1 py-3 rounded-xl font-semibold text-sm text-[#374151] transition-all text-center"
+              >
+                {t("landing.auth.checkEmail.openOutlook")}
+              </a>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resendCooldown > 0 || resending}
+              className="text-sm font-semibold text-[#FF6B35] disabled:text-[#9CA3AF] transition-colors"
+            >
+              {resendCooldown > 0
+                ? `${t("landing.auth.checkEmail.resendIn")} ${resendCooldown}s`
+                : resending ? t("landing.auth.checkEmail.sending") : t("landing.auth.checkEmail.resend")}
+            </button>
+
+            <p className="text-sm text-[#6B7280] mt-5">
+              <button
+                type="button"
+                onClick={() => { setAwaitingConfirmation(false); }}
+                className="text-[#6B7280] hover:underline"
+              >
+                {t("landing.auth.checkEmail.wrongEmail")}
+              </button>
+            </p>
+          </div>
         </AuthSplitCard>
       )}
 
@@ -687,14 +819,14 @@ function SignupPageContent() {
               </div>
 
               <div className="flex gap-3 pt-1">
-                {/* Google onboarding skips step 1 entirely (already authenticated) -- nothing to go back to. */}
-                {!googleFlow && (
+                {/* Post-auth onboarding (Google or email-confirmed) skips step 1 entirely -- nothing to go back to. */}
+                {!postAuthFlow && (
                   <button type="button" onClick={() => setStep(1)} className="input-glass flex-1 py-3.5 rounded-xl text-sm text-[#6B7280] transition-colors">
                     {t("landing.auth.signup.step2.back")}
                   </button>
                 )}
                 <button type="submit" disabled={detecting}
-                  className={`py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-60 ${googleFlow ? "w-full" : "flex-[2]"}`}
+                  className={`py-3.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-60 ${postAuthFlow ? "w-full" : "flex-[2]"}`}
                   style={{ background: "var(--vela-gradient)" }}>
                   {detecting ? (
                     <span className="flex items-center justify-center gap-2">

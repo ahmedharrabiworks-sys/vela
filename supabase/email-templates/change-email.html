@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Confirm your new email for Vela</title>
+</head>
+<body style="margin:0; padding:0; background-color:#F3F4F6;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F3F4F6; padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; width:100%; background-color:#FFFFFF; border-radius:16px; overflow:hidden;">
+
+        <tr>
+          <td align="center" style="padding:32px 32px 0 32px;">
+            <span style="font-family:Arial, Helvetica, sans-serif; font-size:22px; font-weight:700; color:#E8552B;">Vela</span>
+          </td>
+        </tr>
+
+        <!-- English -->
+        <tr>
+          <td style="padding:24px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif;">
+            <h1 style="margin:0 0 12px 0; font-size:20px; line-height:28px; color:#111111; font-weight:700;">Confirm your new email</h1>
+            <p style="margin:0 0 20px 0; font-size:15px; line-height:24px; color:#374151;">
+              You asked to change the email address on your Vela account to <strong>{{ .Email }}</strong>. Confirm the change below.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 32px 24px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" bgcolor="#E8552B" style="border-radius:10px;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:10px;">Confirm new email</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px; font-family:Arial, Helvetica, sans-serif;">
+            <p style="margin:0 0 12px 0; font-size:13px; line-height:20px; color:#9CA3AF;">
+              If the button doesn't work, paste this link into your browser:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#E8552B; word-break:break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+            <p style="margin:0; font-size:13px; line-height:20px; color:#9CA3AF;">
+              Didn't request this? You can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+
+        <tr><td style="border-top:1px solid #E5E7EB;"></td></tr>
+
+        <!-- Arabic -->
+        <tr>
+          <td dir="rtl" style="padding:32px 32px 8px 32px; font-family:Arial, Helvetica, sans-serif; text-align:right;">
+            <h1 style="margin:0 0 12px 0; font-size:20px; line-height:32px; color:#111111; font-weight:700;">أكّد بريدك الإلكتروني الجديد</h1>
+            <p style="margin:0 0 20px 0; font-size:15px; line-height:28px; color:#374151;">
+              طلبت تغيير البريد الإلكتروني لحساب فيلا الخاص بك إلى <strong>{{ .Email }}</strong>. أكّد التغيير أدناه.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 32px 24px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" bgcolor="#E8552B" style="border-radius:10px;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 32px; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:10px;">تأكيد البريد الجديد</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td dir="rtl" style="padding:0 32px 32px 32px; font-family:Arial, Helvetica, sans-serif; text-align:right;">
+            <p style="margin:0 0 12px 0; font-size:13px; line-height:22px; color:#9CA3AF;">
+              إذا لم يعمل الزر، انسخ هذا الرابط والصقه في متصفحك:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#E8552B; word-break:break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+            <p style="margin:0; font-size:13px; line-height:22px; color:#9CA3AF;">
+              لم تطلب هذا؟ يمكنك تجاهل هذه الرسالة بأمان.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px 28px 32px; background-color:#F9FAFB; font-family:Arial, Helvetica, sans-serif;" align="center">
+            <p style="margin:0 0 6px 0; font-size:12px; color:#9CA3AF;">Made in Qatar</p>
+            <p style="margin:0; font-size:12px; color:#9CA3AF;">Need help? <a href="mailto:support@velaos.co" style="color:#9CA3AF;">support@velaos.co</a></p>
+            <p style="margin:8px 0 0 0; font-size:11px; color:#C1C7D0;">{{ .SiteURL }}</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

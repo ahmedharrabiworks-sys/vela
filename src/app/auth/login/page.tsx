@@ -19,36 +19,56 @@ export default function LoginPage() {
   const router = useRouter();
   const { t } = useI18n();
 
-  // ── Login state ──
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
 
-  // ── Forgot-password state ──
-  const [forgotMode, setForgotMode]   = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetSent, setResetSent]     = useState(false);
-  const [resetError, setResetError]   = useState("");
+  // Set when Supabase's own sign-in rejects the attempt specifically
+  // because the account's email was never confirmed -- shown as a
+  // dedicated "confirm your email first" state with a resend action,
+  // instead of the generic invalid-credentials message.
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setUnconfirmed(false);
+    setResent(false);
 
     const supabase = getSupabase();
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
-      setError(t("landing.auth.login.invalidCredentials"));
       setLoading(false);
+      const msg = authError.message?.toLowerCase() ?? "";
+      if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed")) {
+        setUnconfirmed(true);
+        return;
+      }
+      setError(t("landing.auth.login.invalidCredentials"));
       return;
     }
 
     router.push("/app");
     router.refresh();
+  };
+
+  const handleResendConfirmation = async () => {
+    setResending(true);
+    try {
+      await fetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch { /* generic response either way, nothing to show differently */ }
+    setResending(false);
+    setResent(true);
   };
 
   const handleGoogleSignIn = async () => {
@@ -72,34 +92,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetLoading(true);
-    setResetError("");
-
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-      (typeof window !== "undefined" ? window.location.origin : "");
-    const redirectTo = `${appUrl}/auth/reset-password`;
-
-    const supabase = getSupabase();
-    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-
-    setResetLoading(false);
-
-    if (resetErr) {
-      setResetError(t("landing.auth.login.couldNotSendReset"));
-      return;
-    }
-
-    setResetSent(true);
-  };
-
   return (
     <AuthPageShell>
       <AuthSplitCard>
-        {/* ── Sign-in form ── */}
-        {!forgotMode && (
+        {!unconfirmed ? (
           <>
             <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.login.welcomeBack")}</h1>
             <p className="text-[#6B7280] text-sm mb-4">{t("landing.auth.login.subtitle")}</p>
@@ -127,13 +123,9 @@ export default function LoginPage() {
                   <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
                     {t("landing.auth.login.password")}
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => { setForgotMode(true); setResetError(""); setResetSent(false); }}
-                    className="text-xs text-[#FF6B35] hover:underline"
-                  >
+                  <Link href="/auth/forgot-password" className="text-xs text-[#FF6B35] hover:underline">
                     {t("landing.auth.login.forgotPassword")}
-                  </button>
+                  </Link>
                 </div>
                 <div className="relative">
                   <InputIcon><LockIcon /></InputIcon>
@@ -199,90 +191,38 @@ export default function LoginPage() {
               </Link>
             </p>
           </>
-        )}
-
-        {/* ── Forgot password form ── */}
-        {forgotMode && !resetSent && (
+        ) : (
           <>
-            <button
-              type="button"
-              onClick={() => { setForgotMode(false); setResetError(""); }}
-              className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#111111] mb-4 transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="rtl:-scale-x-100">
-                <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {t("landing.auth.login.backToSignIn")}
-            </button>
-
-            <h1 className="vela-heading text-2xl text-[#111111] mb-1">{t("landing.auth.login.resetPassword")}</h1>
-            <p className="text-[#6B7280] text-sm mb-4">
-              {t("landing.auth.login.resetSubtitle")}
-            </p>
-
-            <form onSubmit={handleForgotPassword} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">
-                  {t("landing.auth.login.email")}
-                </label>
-                <div className="relative">
-                  <InputIcon><MailIcon /></InputIcon>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t("landing.auth.login.emailPlaceholder")}
-                    required
-                    className={authInputCls}
-                  />
-                </div>
-              </div>
-
-              {resetError && (
-                <div className="px-4 py-3 rounded-xl text-sm text-red-600 border border-red-200 bg-red-50">
-                  {resetError}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={resetLoading}
-                className="w-full py-3.5 rounded-xl font-semibold text-white text-sm transition-all duration-200 disabled:opacity-70"
-                style={{ background: "var(--vela-gradient)" }}
-              >
-                {resetLoading ? t("landing.auth.login.sending") : t("landing.auth.login.sendResetLink")}
-              </button>
-            </form>
-          </>
-        )}
-
-        {/* ── Reset link sent confirmation ── */}
-        {forgotMode && resetSent && (
-          <>
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-50 border border-green-200 mx-auto mb-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 border border-amber-200 mx-auto mb-6">
               <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M4 11l5 5 9-9" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M11 7v5m0 3.5v.5" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="11" cy="11" r="9" stroke="#F59E0B" strokeWidth="2"/>
               </svg>
             </div>
-            <h2 className="vela-heading text-xl text-[#111111] text-center mb-3">{t("landing.auth.login.checkEmail")}</h2>
+            <h2 className="vela-heading text-xl text-[#111111] text-center mb-3">{t("landing.auth.login.unconfirmedTitle")}</h2>
             <p className="text-[#6B7280] text-sm text-center mb-6">
-              {t("landing.auth.login.resetSentTo")} <span className="font-semibold text-[#374151]">{email}</span>.{" "}
-              {t("landing.auth.login.resetSentInstructions")}
+              {t("landing.auth.login.unconfirmedBody")}
             </p>
-            <p className="text-xs text-[#9CA3AF] text-center mb-6">
-              {t("landing.auth.login.didntReceive")}{" "}
+
+            {resent ? (
+              <p className="text-sm text-[#374151] px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-center mb-4">
+                {t("landing.auth.linkExpired.sentConfirmation")}
+              </p>
+            ) : (
               <button
                 type="button"
-                className="text-[#FF6B35] hover:underline"
-                onClick={() => setResetSent(false)}
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="input-glass w-full py-3 rounded-xl font-semibold text-sm text-[#374151] transition-all mb-4 disabled:opacity-60"
               >
-                {t("landing.auth.login.tryAgain")}
-              </button>.
-            </p>
+                {resending ? t("landing.auth.checkEmail.sending") : t("landing.auth.checkEmail.resend")}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => { setForgotMode(false); setResetSent(false); }}
-              className="input-glass w-full py-3 rounded-xl font-semibold text-sm text-[#374151] hover:text-[#FF6B35] transition-all"
+              onClick={() => { setUnconfirmed(false); setResent(false); }}
+              className="text-center text-sm text-[#6B7280] hover:underline w-full"
             >
               {t("landing.auth.login.backToSignIn")}
             </button>

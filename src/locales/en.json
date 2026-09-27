@@ -1003,7 +1003,73 @@
         "resetSentTo": "We've sent a password reset link to",
         "resetSentInstructions": "Click the link in the email to set a new password.",
         "didntReceive": "Didn't receive it? Check your spam folder, or",
-        "tryAgain": "try again"
+        "tryAgain": "try again",
+        "unconfirmedTitle": "Confirm your email first",
+        "unconfirmedBody": "We sent a confirmation link to your inbox when you signed up. Confirm your email, then come back and sign in."
+      },
+      "forgotPassword": {
+        "panelHeadline": "Get back in.",
+        "panelBody": "We'll send a link to reset your password and get you straight back to your dashboard.",
+        "title": "Reset your password",
+        "subtitle": "Enter the email linked to your account and we'll send a reset link.",
+        "checkEmailTitle": "Check your email",
+        "genericSent": "If an account exists for this email, we've sent a link to reset your password."
+      },
+      "resetPassword": {
+        "panelHeadline": "Choose a new password.",
+        "panelBody": "Pick something strong you haven't used anywhere else.",
+        "verifying": "Verifying your link...",
+        "linkExpiredTitle": "This link has expired",
+        "linkExpiredBody": "Password reset links only work once and expire after a while. Request a new one to continue.",
+        "title": "Set a new password",
+        "subtitle": "Choose a strong password for your account.",
+        "newPassword": "New password",
+        "confirmPassword": "Confirm password",
+        "confirmPlaceholder": "Re-enter your password",
+        "mismatch": "Passwords don't match.",
+        "updateFailed": "Could not update your password. Please try again.",
+        "updateBtn": "Update password",
+        "updating": "Updating...",
+        "successTitle": "Password updated",
+        "successBody": "Taking you to your dashboard..."
+      },
+      "checkEmail": {
+        "panelHeadline": "Almost there.",
+        "panelBody": "One click and your AI receptionist is ready to train.",
+        "title": "Check your email",
+        "sentTo": "We sent a link to",
+        "openGmail": "Open Gmail",
+        "openOutlook": "Open Outlook",
+        "resend": "Resend email",
+        "resendIn": "Resend in",
+        "sending": "Sending...",
+        "wrongEmail": "Wrong email? Go back"
+      },
+      "linkExpired": {
+        "panelHeadline": "Almost there.",
+        "panelBody": "Request a fresh link and you'll be back in seconds.",
+        "title": "This link has expired",
+        "subtitle": "Confirmation links only work once and expire after a while. Enter your email and we'll send a new one.",
+        "sendNewLink": "Send a new link",
+        "sentConfirmation": "If an account exists for this email, we've sent a new confirmation link."
+      },
+      "password": {
+        "ruleLength": "At least 10 characters",
+        "ruleUpper": "One uppercase letter",
+        "ruleLower": "One lowercase letter",
+        "ruleDigit": "One number",
+        "ruleSymbol": "One symbol",
+        "error": {
+          "tooShort": "Too short, use at least 10 characters",
+          "tooLong": "Too long, use 72 characters or fewer",
+          "needsLower": "Add a lowercase letter",
+          "needsUpper": "Add an uppercase letter",
+          "needsDigit": "Add a number",
+          "needsSymbol": "Add a symbol",
+          "tooCommon": "Too common, try something unique",
+          "trivialPattern": "Too predictable, avoid repeats and sequences",
+          "containsIdentity": "Don't use your name or email in your password"
+        }
       },
       "signup": {
         "createAccount": "Create your account",
@@ -1011,8 +1077,10 @@
         "fullName": "Full Name",
         "fullNamePlaceholder": "Your full name",
         "emailAddress": "Email Address",
-        "passwordMin": "Min. 8 characters",
+        "passwordMin": "Min. 10 characters",
         "continue": "Continue",
+        "creatingAccount": "Creating account...",
+        "didYouMean": "Did you mean",
         "alreadyHaveAccount": "Already have an account?",
         "signIn": "Sign in",
         "termsAgree": "By continuing, you agree to our",
@@ -1022,6 +1090,13 @@
         "emailAlreadyRegistered": "This email is already registered. Try signing in instead.",
         "couldNotCreateAccount": "Could not create account. Please try again.",
         "somethingWentWrong": "Something went wrong. Please try again.",
+        "error": {
+          "invalidName": "Enter your full name.",
+          "invalidEmail": "That email address doesn't look right.",
+          "disposableEmail": "Please use a permanent email address, not a temporary one.",
+          "invalidEmailDomain": "This email domain can't receive email.",
+          "tooManyRequests": "Too many attempts. Please try again in a while."
+        },
         "step2": {
           "title": "Tell us about your business",
           "subtitle": "Vela will personalise everything for you automatically",
