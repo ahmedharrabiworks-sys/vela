@@ -23,18 +23,8 @@ const config: Config = {
         vt: "var(--vt-color)",
       },
       fontFamily: {
-        // Brand-font round: Poppins is the ONE Latin font sitewide,
-        // identified as the closest match to the real logo's wordmark
-        // (see layout.tsx's comment + verification/font-match*.png).
-        // `sans`, `inter`, and `display` all resolve to the same variable
-        // on purpose -- Bricolage Grotesque (display) and Inter (sans/
-        // inter) are both gone, but keeping these three key NAMES means
-        // the many existing font-inter/font-display call sites across
-        // landing/pricing/auth components don't need touching; they
-        // already render Poppins now without any class renaming.
-        sans: ["var(--font-poppins)", "Poppins", "sans-serif"],
-        inter: ["var(--font-poppins)", "Poppins", "sans-serif"],
-        display: ["var(--font-poppins)", "Poppins", "sans-serif"],
+        inter: ["Inter", "sans-serif"],
+        display: ["var(--font-display)", "Inter", "sans-serif"],
       },
       backgroundImage: {
         "vela-gradient": "linear-gradient(135deg, #FF6B35, #FF3366)",

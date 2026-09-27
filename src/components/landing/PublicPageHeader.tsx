@@ -8,7 +8,7 @@ export default function PublicPageHeader() {
   return (
     <div className="w-full max-w-7xl mx-auto px-5 md:px-6 pt-8 pb-3 flex items-center justify-between">
       <Link href="/" aria-label="Vela home">
-        <Logo />
+        <Logo showText />
       </Link>
       <div className="flex items-center gap-4">
         <Link

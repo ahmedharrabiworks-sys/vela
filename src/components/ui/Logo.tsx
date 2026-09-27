@@ -1,71 +1,107 @@
+"use client";
+
 import Image from "next/image";
-
-/**
- * The real logo, everywhere (brand-font round, FIX 3). Replaces the
- * previous round's live-rendered Wordmark text component entirely --
- * Oussama's explicit call: the brand uses the actual logo asset, not a
- * font rendering of "Vela", however close the font match is. Two full-
- * logo variants (mark + wordmark) plus a mark-only render for collapsed
- * contexts (sidebar collapsed state, compact mobile headers).
- *
- * Sources: public/brand/logo-color.png (orange mark, dark/orange
- * wordmark -- light backgrounds), public/brand/logo-white.png (mark +
- * wordmark both white -- the orange auth panels / dark backgrounds),
- * public/brand/logo-mark.png (icon only, trimmed, highest-res source
- * available). Built via src/scripts/build-brand-assets.mjs from the
- * best-quality existing source files -- a fresh SVG trace was considered
- * (per the task) and not attempted: the PNG sources are already sharp at
- * every display size this project uses (742x336 / 639x612 shown at a
- * 28-40px display height is 15-20x oversampled), so a hand-traced vector
- * would add risk (subtle shape drift from the real logo) for no visible
- * sharpness gain. Revisit only if the logo is ever needed at poster/print
- * scale, which no current call site does.
- */
-
-const FULL_SRC = {
-  color: "/brand/logo-color.png",
-  white: "/brand/logo-white.png",
-} as const;
-const FULL_DIMS = { width: 742, height: 336 };
-
-const MARK_SRC = "/brand/logo-mark.png";
-const MARK_DIMS = { width: 639, height: 612 };
-
-// Consistent sizes across the site (spec'd sizes, FIX 3):
-// sm = 28px flat (sidebar, mobile-only compact spots)
-// md = 28px mobile / 32px desktop (headers)
-// lg = 30px mobile / 40px desktop (auth panels)
-const SIZE_CLASSES = {
-  sm: "h-7",
-  md: "h-7 sm:h-8",
-  lg: "h-[30px] sm:h-10",
-} as const;
-
-export type LogoVariant = "color" | "white";
-export type LogoSize = "sm" | "md" | "lg";
+import { useState } from "react";
 
 interface LogoProps {
-  variant?: LogoVariant;
-  size?: LogoSize;
-  /** Icon mark only (no wordmark) -- collapsed sidebar, compact mobile capsule. */
-  markOnly?: boolean;
-  className?: string;
+  showText?: boolean;
+  light?: boolean;
+  /**
+   * Only affects icon-only renders (showText=false).
+   * Wordmark height is controlled by CSS classes, not this prop.
+   */
+  size?: number;
+  /**
+   * Override the default responsive height CSS classes for wordmark renders.
+   * Use when a specific context needs a non-standard height (e.g. Hero navbar).
+   */
+  heightClass?: string;
 }
 
-export default function Logo({ variant = "color", size = "md", markOnly = false, className = "" }: LogoProps) {
-  const src = markOnly ? MARK_SRC : FULL_SRC[variant];
-  const dims = markOnly ? MARK_DIMS : FULL_DIMS;
-  const sizeCls = SIZE_CLASSES[size];
+// Light-background wordmark (/assets/logo-full.png)  →  34px mobile / 44px desktop
+const LIGHT_BG_H = "h-[34px] sm:h-11";
+// Dark-background wordmark (/logo-light.png)          →  34px mobile / 44px desktop (matches LIGHT_BG_H)
+const DARK_BG_H  = "h-[34px] sm:h-11";
 
+export default function Logo({ showText = true, light = false, size, heightClass }: LogoProps) {
+  if (showText) {
+    // light=true  → white wordmark on dark backgrounds  → /logo-light.png
+    // light=false → dark wordmark on light backgrounds  → /assets/logo-full.png
+    const src = light ? "/logo-light.png" : "/assets/logo-full.png";
+    const H   = heightClass ?? (light ? DARK_BG_H : LIGHT_BG_H);
+    return (
+      <div className="flex items-center group cursor-pointer">
+        <Image
+          src={src}
+          alt="Vela"
+          height={light ? 40 : 44}
+          width={160}
+          className={`${H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`}
+          style={{ maxWidth: "160px" }}
+          priority
+          unoptimized
+        />
+      </div>
+    );
+  }
+  // Icon-only: use explicit size when provided (e.g. collapsed sidebar at 28px),
+  // otherwise use responsive CSS height.
+  return <LogoMark size={size} light={light} />;
+}
+
+function LogoMark({ size, light = false }: { size?: number; light?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const hasExplicit = size !== undefined;
+  const imgStyle = hasExplicit ? { width: size, height: size } : undefined;
+  const imgClass = hasExplicit
+    ? "object-contain transition-opacity duration-200 group-hover:opacity-85"
+    : `${DARK_BG_H} w-auto object-contain transition-opacity duration-200 group-hover:opacity-85`;
+
+  if (!failed) {
+    return (
+      <div className="flex items-center group cursor-pointer">
+        <Image
+          src="/assets/logo-mark.png"
+          alt="Vela"
+          width={size ?? 40}
+          height={size ?? 40}
+          className={imgClass}
+          style={imgStyle}
+          onError={() => setFailed(true)}
+          priority
+          unoptimized
+        />
+      </div>
+    );
+  }
+
+  // SVG fallback when logo-mark.png is absent
   return (
-    <Image
-      src={src}
-      alt="Vela"
-      width={dims.width}
-      height={dims.height}
-      className={`${sizeCls} w-auto object-contain transition-opacity duration-200 hover:opacity-85 ${className}`}
-      priority
-      unoptimized
-    />
+    <div className="flex items-center group cursor-pointer">
+      <svg
+        width={size}
+        height={size}
+        className={hasExplicit ? "transition-transform duration-300 group-hover:scale-110" : `${DARK_BG_H} w-auto transition-transform duration-300 group-hover:scale-110`}
+        viewBox="0 0 36 36"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="vela-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--vp-color)" />
+            <stop offset="100%" stopColor="var(--va-color)" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M5 7L18 28L31 7"
+          stroke={light ? "white" : "url(#vela-logo-grad)"}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <circle cx="18" cy="30" r="2.5" fill={light ? "white" : "url(#vela-logo-grad)"} />
+      </svg>
+    </div>
   );
 }

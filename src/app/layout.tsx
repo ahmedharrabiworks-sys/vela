@@ -1,30 +1,33 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n";
 import { LastRouteTracker } from "@/lib/last-route";
 import CursorGlow from "@/components/ui/CursorGlow";
 
-// The single brand font (font-match round): identified as the closest
-// available match to the real logo's wordmark lettering (single-story "a",
-// circular geometric "e"/"a" bowls, flat-cut terminals) among the
-// candidates tested in verification/font-match.png and
-// verification/font-match-overlay.png. Questrial's proportions traced
-// marginally closer but it ships as a single weight (400 only) with no
-// bold/semibold cut, which the "600/700 headings, 400 body" requirement
-// needs -- Poppins is the nearest match that actually has the weight
-// range. One font, one variable, used for EVERYTHING Latin: body,
-// headings, buttons, inputs. Bricolage Grotesque and Inter are both gone
-// -- see tailwind.config.ts, where `sans`/`inter`/`display` all now point
-// at this same variable (kept as three key names so the many existing
-// font-inter/font-display call sites across landing/pricing components
-// don't need touching -- they already render the one right font).
-const poppins = Poppins({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-inter",
   display: "swap",
+});
+
+// Display/headline font -- H1/H2s only (via .vela-heading + explicit
+// font-display usages). Body/UI text stays on Inter everywhere. Fallback
+// stack matches Inter's so there's no layout shift while it loads.
+// Polish pass #2: swapped from Space Grotesk (didn't land) to Bricolage
+// Grotesque -- a distinctive, higher-personality display grotesque
+// (irregular jointed letterforms, built-in optical sizing) closer in
+// spirit to Cabinet Grotesk/General Sans than a generic geometric sans.
+// Not self-hosting Cabinet Grotesk/General Sans/Satoshi directly since
+// those are Fontshare-only fonts, not available via next/font/google.
+const displayFont = Bricolage_Grotesque({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+  fallback: ["Inter", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -44,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} scroll-smooth`}>
+    <html lang="en" className={`${inter.variable} ${displayFont.variable} scroll-smooth`}>
       <body className="font-inter antialiased">
         <ThemeProvider>
           <I18nProvider>

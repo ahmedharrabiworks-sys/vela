@@ -491,13 +491,10 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     >
       {/* Logo row */}
       <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-[#E5E7EB] shrink-0">
-        {/* Expanded = full logo (mark + wordmark), collapsed desktop = mark
-            only, per FIX 3. Same theme->variant mapping as before this
-            round (preserved, not re-audited: the sidebar background itself
-            has no dark: variant, a pre-existing, out-of-scope condition). */}
-        {!collapsed && <Link href="/" onClick={onClose}><Logo variant={theme === "dark" ? "white" : "color"} size="sm" /></Link>}
-        {collapsed && <span className="hidden md:block"><Link href="/"><Logo markOnly size="sm" /></Link></span>}
-        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo variant={theme === "dark" ? "white" : "color"} size="sm" /></Link></span>}
+        {/* Wordmark height is controlled by Logo.tsx CSS (32px mobile / 40px desktop) */}
+        {!collapsed && <Link href="/" onClick={onClose}><Logo showText light={theme === "dark"} /></Link>}
+        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} size={28} light={theme === "dark"} /></Link></span>}
+        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText light={theme === "dark"} /></Link></span>}
 
         <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-all" aria-label="Close sidebar">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
