@@ -83,15 +83,13 @@ export default function Hero() {
 
   return (
     <section id="hero-section" className="relative flex flex-col bg-white">
-      {/* Header round: fixed header is now desktop-only (lg and up). Below
-          lg (tablet + mobile share this range), the header lives in normal
-          document flow and scrolls away with the page -- explicit ask this
-          round, reversing the earlier "pinned at all breakpoints" decision.
-          `lg:fixed lg:inset-x-0 lg:top-0` only takes effect once `lg:flex`
-          also makes this element visible; below lg it's `hidden` and
-          therefore never fixed. z-40, one level below the mobile menu
-          overlay's z-50 so an open menu always layers above the header. */}
-      <div className="hidden lg:flex lg:fixed lg:top-0 lg:inset-x-0 z-40 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
+      {/* Header round 2: reversed again, explicit ask -- desktop (lg+) is now
+          NOT fixed, it lives in normal document flow at the top of the page
+          and scrolls away with everything below it. Only `lg:flex` remains
+          (visibility toggle); no `fixed`/`top`/`inset-x`/`z` at this
+          breakpoint since it's no longer removed from flow. The mobile/
+          tablet pill below is the one that's now fixed instead. */}
+      <div className="hidden lg:flex w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
         <div className="glass w-full flex items-center justify-between rounded-full px-6 py-3">
           {/* translateY correction (bug-fix + polish round #3): the logo PNG's
               visible content isn't vertically centered within its own file --
@@ -147,19 +145,25 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Mobile/tablet header -- NOT fixed (header round's explicit ask),
-          flows normally at the top of the page content and scrolls away
-          with everything below it. Visible below lg (was below sm --
-          widened so tablet gets this same non-fixed pill instead of
-          accidentally showing nothing between the old sm/lg boundary).
-          Single rounded pill matching mobile-header-reference.jpg's
-          soft-container style: logo, language toggle, hamburger, "Log in"
-          pill. Centered as a compact island, one consistent gap-2 between
-          every element. Login button reuses the sitewide .btn-primary
-          gradient class. Plain flex row, no manual RTL classes -- source
-          order stays logo-first, the browser mirrors the whole row
-          automatically under dir="rtl". */}
-      <div className="lg:hidden w-full px-5 pt-6 shrink-0 flex justify-center">
+      {/* Mobile/tablet header -- round 2: now fixed instead (explicit ask,
+          reversed from the previous round), always visible while scrolling,
+          below lg. `fixed top-0 inset-x-0 z-40` pins it to the viewport;
+          z-40 stays one level below the mobile menu overlay's z-50 so an
+          open menu always layers above it. Top offset uses
+          max(24px, env(safe-area-inset-top)) instead of a plain pt-6 so the
+          pill clears a notch/Dynamic Island on real phones instead of
+          sitting partly under it, while still getting the normal 24px
+          breathing room on devices with no inset at all. Single rounded
+          pill matching mobile-header-reference.jpg's soft-container style:
+          logo, language toggle, hamburger, "Log in" pill. Centered as a
+          compact island, one consistent gap-2 between every element. Login
+          button reuses the sitewide .btn-primary gradient class. Plain flex
+          row, no manual RTL classes -- source order stays logo-first, the
+          browser mirrors the whole row automatically under dir="rtl". */}
+      <div
+        className="lg:hidden fixed top-0 inset-x-0 z-40 w-full px-5 shrink-0 flex justify-center"
+        style={{ paddingTop: "max(24px, env(safe-area-inset-top))" }}
+      >
         <div className="glass inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
             <Logo showText={false} size={24} />
@@ -252,15 +256,15 @@ export default function Hero() {
       {/* Content -- bottom padding matches the shared py-12/py-16 rhythm
           every other section uses, so the Hero -> "how it works" gap is
           consistent with every other inter-section gap.
-          Top padding (header round): below lg, the header above is now in
-          normal document flow (not fixed), so it already pushes this
-          content down on its own -- only a small breathing-room gap is
-          needed here, not reserved clearance. At lg+, the header IS still
-          `fixed` and removed from flow, so this reserves real space for it
-          (measured live: fixed header's rendered height is ~106px at
-          desktop widths; 170px keeps the same visual gap below it as
-          before this round). */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-8 pb-12 lg:pt-[170px] lg:pb-16">
+          Top padding (header round 2, inverted from before): below lg, the
+          pill above is now `fixed` and removed from flow, so this reserves
+          real space for it (measured live: fixed mobile pill's rendered
+          height is ~82px including its own top offset; 110px keeps a real
+          gap below it, not a tight/overlapping one). At lg+, the header is
+          now in normal document flow (not fixed) and already pushes this
+          content down on its own, so only a small breathing-room gap is
+          needed there. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[110px] pb-12 lg:pt-8 lg:pb-16">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}
