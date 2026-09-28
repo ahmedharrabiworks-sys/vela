@@ -33,11 +33,11 @@ export default function ChannelAiConfigFields({
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-xs font-semibold text-[#374151] dark:text-[#D1D5DB] mb-2">AI response tone for this channel</p>
+        <p className="text-xs font-semibold text-[#374151] mb-2">AI response tone for this channel</p>
         <div className="flex flex-wrap gap-1.5">
           {CHANNEL_AI_TONES.map((v) => (
             <button key={v} type="button" onClick={() => onToneChange(v)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${tone === v ? "text-white" : "bg-[#F9FAFB] dark:bg-[#1E1E24] text-[#6B7280] dark:text-[#9CA3AF] border border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#FF6B35]/40"}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${tone === v ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
               style={tone === v ? { background: "var(--vela-gradient)" } : {}}>
               {v}
             </button>
@@ -45,11 +45,11 @@ export default function ChannelAiConfigFields({
         </div>
       </div>
       <div>
-        <p className="text-xs font-semibold text-[#374151] dark:text-[#D1D5DB] mb-2">Reply language for this channel</p>
+        <p className="text-xs font-semibold text-[#374151] mb-2">Reply language for this channel</p>
         <div className="flex flex-wrap gap-1.5">
           {CHANNEL_AI_LANGUAGES.map((v) => (
             <button key={v} type="button" onClick={() => onLanguageChange(v)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${language === v ? "text-white" : "bg-[#F9FAFB] dark:bg-[#1E1E24] text-[#6B7280] dark:text-[#9CA3AF] border border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#FF6B35]/40"}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${language === v ? "text-white" : "bg-[#F9FAFB] text-[#6B7280] border border-[#E5E7EB] hover:border-[#FF6B35]/40"}`}
               style={language === v ? { background: "var(--vela-gradient)" } : {}}>
               {v}
             </button>
@@ -57,7 +57,7 @@ export default function ChannelAiConfigFields({
         </div>
       </div>
       <div className="flex items-center justify-end gap-3">
-        {saved && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>}
+        {saved && <span className="text-xs text-green-600 font-medium">Saved</span>}
         <button onClick={onSave} disabled={saving}
           className="text-xs font-bold px-4 py-2 rounded-lg text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
           style={{ background: "var(--vela-gradient)" }}>

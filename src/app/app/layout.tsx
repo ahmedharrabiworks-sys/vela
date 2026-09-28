@@ -6,7 +6,6 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import { VelaAssistant } from "@/components/dashboard/VelaAssistant";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { I18nProvider } from "@/lib/i18n";
-import { useTheme } from "@/lib/theme";
 
 /* ── Command palette ── */
 const PALETTE_ITEMS = [
@@ -138,28 +137,6 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ThemeToggle() {
-  const { theme, toggle } = useTheme();
-  return (
-    <button
-      onClick={toggle}
-      className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6B7280] hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 transition-all"
-      aria-label="Toggle dark mode"
-    >
-      {theme === "dark" ? (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-        </svg>
-      ) : (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M13.5 9.4A6 6 0 016.6 2.5a5.5 5.5 0 100 11 6 6 0 006.9-4.1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-        </svg>
-      )}
-    </button>
-  );
-}
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -192,12 +169,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        {/* Round M4 FIX 3: hardcoded bg-white/border-[#E5E7EB] with no dark:
-            variant -- every other surface in the app shell is dark-mode
-            aware, but this topbar (rendered above EVERY /app/* page) stayed
-            plain white in dark mode, showing as a stray white bar at the
-            very top of the page. */}
-        <header className="h-14 md:h-16 bg-white dark:bg-[#17171C] border-b border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between px-4 md:px-6 shrink-0" style={{ transition: "background 0.2s" }}>
+        <header className="h-14 md:h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-2 md:gap-3">
 
             {/* Hamburger, mobile only */}
@@ -222,7 +194,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
-            <ThemeToggle />
             <NotificationBell />
             {/* Mobile search trigger */}
             <button onClick={() => setPaletteOpen(true)}

@@ -7,7 +7,6 @@ import Logo from "@/components/ui/Logo";
 import { getProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { useI18n, LANGUAGES } from "@/lib/i18n";
-import { useTheme } from "@/lib/theme";
 import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
 
 // MVP scope-down: hides the flagged item from the nav entirely (not
@@ -175,7 +174,6 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   const router = useRouter();
   const { t, langName, setLocale, locale } = useI18n();
 
-  const { theme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [displayName, setDisplayName] = useState("Your Account");
   const [displayEmail, setDisplayEmail] = useState("");
@@ -409,21 +407,17 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
 
   // agentCollapseRef kept for potential future use
 
-  const [confirmingLogout, setConfirmingLogout] = useState(false);
-
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
         setShowLangMenu(false);
-        setConfirmingLogout(false);
       }
     }
     function handleEscape(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setDropdownOpen(false);
         setShowLangMenu(false);
-        setConfirmingLogout(false);
       }
     }
     if (dropdownOpen) {
@@ -436,9 +430,13 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     };
   }, [dropdownOpen]);
 
+  // Round "logout redesign": one red button, instant, no confirmation --
+  // the account-menu confirm step ("Log out of Vela? Cancel / Log out")
+  // used to overflow the narrow desktop popover and added a click for
+  // something fully reversible (signing back in costs nothing). Redirect
+  // target changed from /auth/login to "/" per this round's explicit spec.
   const handleLogout = async () => {
     setDropdownOpen(false);
-    setConfirmingLogout(false);
     if (demoProfile) {
       router.push("/auth/signup");
       return;
@@ -449,16 +447,15 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
       // relying on the browser client's own local session state.
       await fetch("/api/auth/logout", { method: "POST" });
     } catch { /* ignore -- hard navigation below still clears client state */ }
-    // FIX 1 (bug list): router.push() is a soft, client-side transition --
-    // it can land on a stale page while Next.js's client Router Cache still
-    // holds a prefetched page fetched while the old session cookie was
-    // still valid, or before the logout route's cookie write has been
-    // picked up by a subsequent client-side navigation. A hard navigation
-    // forces a real new request for everything that follows -- no prefetch
-    // cache, no router cache, middleware evaluates the real, now-cleared
-    // cookie from scratch. Target is /auth/login directly (not "/") per
-    // FIX 5's explicit spec.
-    window.location.href = "/auth/login";
+    // FIX 1 (bug list, historical): router.push() is a soft, client-side
+    // transition -- it can land on a stale page while Next.js's client
+    // Router Cache still holds a prefetched page fetched while the old
+    // session cookie was still valid, or before the logout route's cookie
+    // write has been picked up by a subsequent client-side navigation. A
+    // hard navigation forces a real new request for everything that
+    // follows -- no prefetch cache, no router cache, middleware evaluates
+    // the real, now-cleared cookie from scratch.
+    window.location.href = "/";
   };
 
   const selectLanguage = (lang: string) => {
@@ -492,9 +489,9 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
       {/* Logo row */}
       <div className="h-14 md:h-16 flex items-center justify-between px-4 border-b border-[#E5E7EB] shrink-0">
         {/* Wordmark height is controlled by Logo.tsx CSS (32px mobile / 40px desktop) */}
-        {!collapsed && <Link href="/" onClick={onClose}><Logo showText light={theme === "dark"} /></Link>}
-        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} size={28} light={theme === "dark"} /></Link></span>}
-        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText light={theme === "dark"} /></Link></span>}
+        {!collapsed && <Link href="/" onClick={onClose}><Logo showText /></Link>}
+        {collapsed && <span className="hidden md:block"><Link href="/"><Logo showText={false} size={28} /></Link></span>}
+        {collapsed && <span className="md:hidden"><Link href="/" onClick={onClose}><Logo showText /></Link></span>}
 
         <button onClick={onClose} className="md:hidden p-1.5 rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-all" aria-label="Close sidebar">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -596,6 +593,29 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
             </Link>
           );
         })}
+
+        {/* Log out -- one red button, directly under Settings, no
+            confirmation (signing back in is fully reversible so a confirm
+            step is friction with no real safety value). Not shown for the
+            demo preview, which has no real session to sign out of. */}
+        {!demoProfile && (
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={collapsed ? t("sidebar.logout") : undefined}
+            aria-label={t("sidebar.logout")}
+            className="flex items-center gap-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 text-red-600 hover:bg-red-50 hover:text-red-700"
+            style={{ paddingLeft: "12px", paddingRight: "12px" }}
+          >
+            <span className="shrink-0">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M6.5 15.5h-2.25a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5H6.5M12 12.5l3.5-3.5-3.5-3.5M15.25 9h-9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            {!collapsed && <span className="flex-1 text-left">{t("sidebar.logout")}</span>}
+            {collapsed && <span className="flex-1 md:hidden text-left">{t("sidebar.logout")}</span>}
+          </button>
+        )}
       </nav>
 
       {/* Account pill -- pinned footer, nav scrolls independently above it
@@ -610,18 +630,18 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
       <div ref={dropRef} className="relative border-t border-[#E5E7EB] pb-[env(safe-area-inset-bottom)]">
         {/* Mobile backdrop for the bottom sheet -- desktop popover has none. */}
         {dropdownOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/40 z-[55]" onClick={() => { setDropdownOpen(false); setShowLangMenu(false); setConfirmingLogout(false); }} aria-hidden="true" />
+          <div className="md:hidden fixed inset-0 bg-black/40 z-[55]" onClick={() => { setDropdownOpen(false); setShowLangMenu(false); }} aria-hidden="true" />
         )}
 
         {dropdownOpen && (
           <div
             dir={locale === "ar" ? "rtl" : "ltr"}
-            className="
+            className={`
               bg-white border-[#E5E7EB] shadow-2xl overflow-hidden
               fixed inset-x-0 bottom-0 z-[60] rounded-t-2xl border-t
               pb-[env(safe-area-inset-bottom)]
-              md:absolute md:inset-x-auto md:bottom-full md:left-3 md:right-3 md:mb-2 md:rounded-2xl md:border md:pb-0
-            "
+              md:absolute md:inset-x-auto md:bottom-full ${locale === "ar" ? "md:right-3" : "md:left-3"} md:w-72 md:max-w-[calc(100vw-2rem)] md:mb-2 md:rounded-2xl md:border md:pb-0
+            `}
             role="menu"
           >
             {/* Mobile sheet grabber */}
@@ -716,34 +736,26 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               )}
             </div>
 
-            <div className="h-px bg-[#F3F4F6]" />
-
-            <div className="py-1">
-              {!confirmingLogout ? (
-                <button
-                  onClick={() => (demoProfile ? handleLogout() : setConfirmingLogout(true))}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${demoProfile ? "text-[#FF6B35] font-semibold hover:bg-[#FFF5F0]" : "text-red-500 hover:bg-red-50"}`}
-                  role="menuitem"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2M9.5 10l3-3-3-3M12.5 7H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {demoProfile ? "Create Free Account →" : t("sidebar.logout")}
-                </button>
-              ) : (
-                <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-                  <span className="text-sm text-[#374151]">{t("sidebar.logoutConfirm")}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => setConfirmingLogout(false)} className="text-xs font-semibold text-[#6B7280] hover:text-[#111111] px-2 py-1">
-                      {t("sidebar.cancel")}
-                    </button>
-                    <button onClick={handleLogout} className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg px-3 py-1.5 transition-colors">
-                      {t("sidebar.logout")}
-                    </button>
-                  </div>
+            {/* Demo mode has no real session to log out of -- keeps its own
+                signup CTA here. Real users' Log out now lives as a
+                standalone red nav item under Settings, not in this menu. */}
+            {demoProfile && (
+              <>
+                <div className="h-px bg-[#F3F4F6]" />
+                <div className="py-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-[#FF6B35] font-semibold hover:bg-[#FFF5F0]"
+                    role="menuitem"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M5 12H3a1 1 0 01-1-1V3a1 1 0 011-1h2M9.5 10l3-3-3-3M12.5 7H5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Create Free Account →
+                  </button>
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         )}
 

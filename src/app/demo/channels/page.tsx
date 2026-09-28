@@ -69,8 +69,8 @@ export default function DemoChannelsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">Channels</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Your connected messaging channels</p>
+            <h1 className="text-xl font-bold text-[#111827] ">Channels</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">Your connected messaging channels</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -82,12 +82,12 @@ export default function DemoChannelsPage() {
         </div>
 
         {/* Summary banner */}
-        <div className="bg-[#ECFDF5] dark:bg-[#052E16]/30 border border-[#A7F3D0] dark:border-[#065F46]/50 rounded-xl px-5 py-4 flex items-center gap-3">
+        <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl px-5 py-4 flex items-center gap-3">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <circle cx="9" cy="9" r="8" fill="#16A34A" fillOpacity="0.15"/>
             <path d="M5 9l2.5 2.5 5.5-5" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <p className="text-sm font-semibold text-[#065F46] dark:text-[#34D399]">
+          <p className="text-sm font-semibold text-[#065F46] ">
             All 3 channels connected. Your AI agent is live across Instagram, WhatsApp, and your website
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function DemoChannelsPage() {
         {/* Channel cards */}
         <div className="space-y-4">
           {CHANNELS.map((ch) => (
-            <div key={ch.id} className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden">
+            <div key={ch.id} className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
               <div className="p-5">
                 <div className="flex items-start gap-4">
                   {/* Icon */}
@@ -106,21 +106,21 @@ export default function DemoChannelsPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-base font-bold text-[#111827] dark:text-white">{ch.name}</p>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                      <p className="text-base font-bold text-[#111827] ">{ch.name}</p>
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] ">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
                         Connected
                       </span>
                     </div>
-                    <p className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B7280] mt-0.5">{ch.handle}</p>
-                    <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">{ch.desc}</p>
+                    <p className="text-xs font-mono text-[#9CA3AF] mt-0.5">{ch.handle}</p>
+                    <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">{ch.desc}</p>
                   </div>
 
                   {/* Actions */}
                   <div className="flex flex-col gap-2 shrink-0">
                     <button
                       onClick={() => setShowModal(true)}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
                     >
                       Manage
                     </button>
@@ -134,11 +134,11 @@ export default function DemoChannelsPage() {
                 </div>
 
                 {/* Stats */}
-                <div className="mt-4 pt-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex gap-6 flex-wrap">
+                <div className="mt-4 pt-4 border-t border-[#F3F4F6] flex gap-6 flex-wrap">
                   {ch.stats.map((stat) => (
                     <div key={stat.label}>
-                      <p className="text-base font-bold text-[#111827] dark:text-white">{stat.value}</p>
-                      <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280]">{stat.label}</p>
+                      <p className="text-base font-bold text-[#111827] ">{stat.value}</p>
+                      <p className="text-[11px] text-[#9CA3AF] ">{stat.label}</p>
                     </div>
                   ))}
                 </div>

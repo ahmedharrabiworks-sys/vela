@@ -42,8 +42,6 @@
     "viewAllPlans": "عرض جميع الخطط",
     "upgradePlan": "ترقية الخطة",
     "logout": "تسجيل الخروج",
-    "logoutConfirm": "تسجيل الخروج من Vela؟",
-    "cancel": "إلغاء",
     "plans": {
       "starter": "خطة المبتدئ",
       "pro": "خطة Pro",

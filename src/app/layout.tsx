@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/lib/theme";
 import { I18nProvider } from "@/lib/i18n";
 import { LastRouteTracker } from "@/lib/last-route";
+import { LegacyThemeCleanup } from "@/lib/legacy-theme-cleanup";
 import CursorGlow from "@/components/ui/CursorGlow";
 
 const inter = Inter({
@@ -41,6 +41,14 @@ export const metadata: Metadata = {
   },
 };
 
+// Dark mode has been removed from Vela entirely -- this tells the browser
+// (and OS-level UI it controls: form controls, scrollbars) that the page
+// only ever renders a light UI, so a phone or browser set to system dark
+// mode still shows Vela in light, not an auto-inverted or mismatched theme.
+export const viewport: Viewport = {
+  colorScheme: "light",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,13 +57,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${displayFont.variable} scroll-smooth`}>
       <body className="font-inter antialiased">
-        <ThemeProvider>
-          <I18nProvider>
-            <LastRouteTracker />
-            <CursorGlow />
-            {children}
-          </I18nProvider>
-        </ThemeProvider>
+        <I18nProvider>
+          <LastRouteTracker />
+          <LegacyThemeCleanup />
+          <CursorGlow />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

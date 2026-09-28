@@ -785,14 +785,14 @@ export default function ConversationsPage() {
           asymmetric flex-1/flex-[2] + whitespace-nowrap the reference uses. */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">{t("conversations.deleteConfirmTitle")}</h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">{t("conversations.deleteConfirmBody")}</p>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] ">{t("conversations.deleteConfirmTitle")}</h2>
+            <p className="text-sm text-[#6B7280] leading-relaxed">{t("conversations.deleteConfirmBody")}</p>
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-50 transition-colors">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-50 transition-colors">
                 {t("conversations.cancel")}
               </button>
               <button

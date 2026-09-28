@@ -1,7 +1,11 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
+  // Dark mode has been removed from Vela entirely. Pinned to an unreachable
+  // selector (never "media", which would silently re-enable dark mode via
+  // the OS's prefers-color-scheme) so a stray `dark:` class added later
+  // can never activate, instead of relying only on no code toggling ".dark".
+  darkMode: ["selector", '[data-theme="__dark-mode-disabled__"]'],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",

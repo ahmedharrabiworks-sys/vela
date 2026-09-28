@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
-import { useTheme } from "@/lib/theme";
 import CountUp from "@/components/ui/CountUp";
 import GlassBlobs from "@/components/ui/GlassBlobs";
 
@@ -62,9 +61,9 @@ const CHANNEL_META: Record<ChannelRow["channel"], { color: string; labelKey: str
 
 function TrendPillView({ trend }: { trend: Trend }) {
   if (!trend) return null;
-  const color = trend.direction === "up" ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40"
-    : trend.direction === "down" ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40"
-    : "text-[#6B7280] dark:text-[#9CA3AF] bg-[#F3F4F6] dark:bg-white/5";
+  const color = trend.direction === "up" ? "text-green-600 bg-green-50 "
+    : trend.direction === "down" ? "text-red-600 bg-red-50 "
+    : "text-[#6B7280] bg-[#F3F4F6] ";
   const arrow = trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→";
   const sign = trend.pct > 0 ? "+" : "";
   return (
@@ -80,17 +79,17 @@ function KpiCard({ label, value, suffix, trend, periodLabel, subDim }: {
   return (
     <div className="glass rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wide">{label}</p>
+        <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide">{label}</p>
         <TrendPillView trend={trend} />
       </div>
       {value === null ? (
-        <p className="text-sm text-[#9CA3AF] dark:text-[#6E6E76] py-1.5">{subDim}</p>
+        <p className="text-sm text-[#9CA3AF] py-1.5">{subDim}</p>
       ) : (
-        <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] dark:text-white leading-none tabular-nums">
+        <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums">
           <CountUp value={value} suffix={suffix} />
         </p>
       )}
-      <p className="text-[11px] text-[#9CA3AF] dark:text-[#6E6E76] mt-1.5">{periodLabel}</p>
+      <p className="text-[11px] text-[#9CA3AF] mt-1.5">{periodLabel}</p>
     </div>
   );
 }
@@ -100,9 +99,8 @@ function KpiCard({ label, value, suffix, trend, periodLabel, subDim }: {
 // analytics/page.tsx); this is the "chart library already in the project"
 // referred to, reused/adapted here rather than introducing a new npm dep.
 function LineChart({ data, unitLabel }: { data: SeriesPoint[]; unitLabel: string }) {
-  const { theme } = useTheme();
-  const gridColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
-  const axisTextColor = theme === "dark" ? "#6E6E76" : "#9CA3AF";
+  const gridColor = "#F3F4F6";
+  const axisTextColor = "#9CA3AF";
   const W = 800, H = 160, padX = 8, padTop = 12, padBottom = 24;
   const chartH = H - padTop - padBottom;
   const values = data.map((d) => d.value);
@@ -211,22 +209,22 @@ export default function DashboardPageUI({
         {showKbBanner && !loading && (
           <div className="glass rounded-2xl flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M7 2a3 3 0 0 1 3 3c0 .9-.4 1.7-1 2.3L10.5 12h-7L5 7.3A3 3 0 0 1 4 5a3 3 0 0 1 3-3z" stroke="#D97706" strokeWidth="1.3" strokeLinejoin="round" />
                   <path d="M5.5 12h3" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-[#111111] dark:text-white">{t("dashboard.kbBannerPre")}{kbScore}{t("dashboard.kbBannerPost")}</p>
-                <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] truncate">{t("dashboard.kbBannerSub")}</p>
+                <p className="text-xs font-bold text-[#111111] ">{t("dashboard.kbBannerPre")}{kbScore}{t("dashboard.kbBannerPost")}</p>
+                <p className="text-[11px] text-[#6B7280] truncate">{t("dashboard.kbBannerSub")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Link href={`${basePath}/ai-training`} className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
                 {t("dashboard.trainAI")}
               </Link>
-              <button onClick={onDismissKbBanner} className="p-1.5 text-[#9CA3AF] dark:text-[#6E6E76] hover:text-[#6B7280] dark:hover:text-[#9CA3AF] transition-colors">
+              <button onClick={onDismissKbBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -241,15 +239,15 @@ export default function DashboardPageUI({
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v11M1.5 7h11" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round" /></svg>
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-[#111111] dark:text-white">{t("dashboard.onboardingTitle")}</p>
-                <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] truncate">{t("dashboard.onboardingDesc")}</p>
+                <p className="text-xs font-bold text-[#111111] ">{t("dashboard.onboardingTitle")}</p>
+                <p className="text-[11px] text-[#6B7280] truncate">{t("dashboard.onboardingDesc")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Link href={`${basePath}/welcome`} className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
                 {t("dashboard.continueSetup")}
               </Link>
-              <button onClick={onDismissOnboarding} className="p-1.5 text-[#9CA3AF] dark:text-[#6E6E76] hover:text-[#6B7280] dark:hover:text-[#9CA3AF] transition-colors">
+              <button onClick={onDismissOnboarding} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -259,15 +257,15 @@ export default function DashboardPageUI({
         {/* Header + range toggle */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111111] dark:text-white">{t("dashboardV2.title")}</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">
+            <h1 className="text-xl font-bold text-[#111111] ">{t("dashboardV2.title")}</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">
               {t("dashboardV2.subtitle")}{businessName ? ` ${businessName}` : ""}
             </p>
           </div>
           <div className="glass flex items-center gap-1 rounded-xl p-1">
             {(["7d", "30d", "90d"] as Range[]).map((r) => (
               <button key={r} onClick={() => onRangeChange(r)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "text-white" : "text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "text-white" : "text-[#6B7280] hover:text-[#111111] "}`}
                 style={range === r ? { background: "var(--vela-gradient)" } : undefined}>
                 {r}
               </button>
@@ -282,8 +280,8 @@ export default function DashboardPageUI({
               <circle cx="8" cy="8" r="7" stroke="#DC2626" strokeWidth="1.3" />
               <path d="M8 5v3.5M8 10.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            <p className="text-sm text-red-700 dark:text-red-400 flex-1">{t("dashboardV2.errorMessage")}</p>
-            <button onClick={onRetry} className="text-xs font-bold text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 shrink-0 px-3 py-1.5 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/30 transition-colors">
+            <p className="text-sm text-red-700 flex-1">{t("dashboardV2.errorMessage")}</p>
+            <button onClick={onRetry} className="text-xs font-bold text-red-700 hover:text-red-900 shrink-0 px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-100 transition-colors">
               {t("dashboardV2.retry")}
             </button>
           </div>
@@ -310,7 +308,7 @@ export default function DashboardPageUI({
               <SkeletonCard className="h-[110px]" />
             ) : (
               <div className="glass rounded-2xl p-4 sm:p-5">
-                <p className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wide mb-3">{t("dashboardV2.planUsage")}</p>
+                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-3">{t("dashboardV2.planUsage")}</p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {(["messages", "voiceMinutes"] as const).map((key) => {
                     const u = data!.usage[key];
@@ -319,19 +317,19 @@ export default function DashboardPageUI({
                     return (
                       <div key={key}>
                         <div className="flex items-baseline justify-between mb-1.5">
-                          <span className="text-xs font-medium text-[#374151] dark:text-[#D1D5DB]">{t(`dashboardV2.usage.${key}`)}</span>
-                          <span className="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+                          <span className="text-xs font-medium text-[#374151] ">{t(`dashboardV2.usage.${key}`)}</span>
+                          <span className="text-xs text-[#6B7280] ">
                             {u.limit === null
-                              ? <span className="text-green-600 dark:text-green-400 font-medium">{t("dashboardV2.unlimited")}</span>
-                              : <>{u.used.toLocaleString()} <span className="text-[#9CA3AF] dark:text-[#6E6E76]">/ {u.limit.toLocaleString()}</span></>}
+                              ? <span className="text-green-600 font-medium">{t("dashboardV2.unlimited")}</span>
+                              : <>{u.used.toLocaleString()} <span className="text-[#9CA3AF] ">/ {u.limit.toLocaleString()}</span></>}
                           </span>
                         </div>
                         {u.limit !== null ? (
-                          <div className="h-1.5 rounded-full bg-[#F3F4F6] dark:bg-white/5 overflow-hidden">
+                          <div className="h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
                           </div>
                         ) : (
-                          <div className="h-1.5 rounded-full bg-green-100 dark:bg-green-950/40" />
+                          <div className="h-1.5 rounded-full bg-green-100 " />
                         )}
                       </div>
                     );
@@ -346,11 +344,11 @@ export default function DashboardPageUI({
             ) : (
               <div className="glass rounded-2xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                  <p className="text-sm font-bold text-[#111111] dark:text-white">{t("dashboardV2.activityOverTime")}</p>
-                  <div className="flex items-center gap-1 bg-[#F3F4F6] dark:bg-white/5 rounded-lg p-1">
+                  <p className="text-sm font-bold text-[#111111] ">{t("dashboardV2.activityOverTime")}</p>
+                  <div className="flex items-center gap-1 bg-[#F3F4F6] rounded-lg p-1">
                     {(["conversations", "appointments"] as const).map((s) => (
                       <button key={s} onClick={() => setSeries(s)}
-                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${series === s ? "text-white" : "text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white"}`}
+                        className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${series === s ? "text-white" : "text-[#6B7280] hover:text-[#111111] "}`}
                         style={series === s ? { background: "var(--vela-gradient)" } : undefined}>
                         {t(`dashboardV2.series.${s}`)}
                       </button>
@@ -360,7 +358,7 @@ export default function DashboardPageUI({
                 {!data!.hasAnyDataEver ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <LineChart data={data!.series[series]} unitLabel={t(`dashboardV2.series.${series}`).toLowerCase()} />
-                    <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-2 mb-4">{t("dashboardV2.firstConversationsHint")}</p>
+                    <p className="text-sm text-[#6B7280] mt-2 mb-4">{t("dashboardV2.firstConversationsHint")}</p>
                     {noChannelConnected ? (
                       <Link href={`${basePath}/channels`} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
                         {t("dashboardV2.connectChannel")} →
@@ -382,12 +380,12 @@ export default function DashboardPageUI({
               <SkeletonCard className="h-[220px]" />
             ) : (
               <div className="glass rounded-2xl overflow-hidden">
-                <div className="px-4 sm:px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08]">
-                  <p className="text-sm font-bold text-[#111111] dark:text-white">{t("dashboardV2.channelBreakdown")}</p>
+                <div className="px-4 sm:px-6 py-4 border-b border-black/[0.06] ">
+                  <p className="text-sm font-bold text-[#111111] ">{t("dashboardV2.channelBreakdown")}</p>
                 </div>
                 {!hasAnyChannel ? (
                   <div className="px-6 py-12 text-center">
-                    <p className="text-sm text-[#9CA3AF] dark:text-[#6E6E76]">{t("dashboardV2.noChannelYet")}</p>
+                    <p className="text-sm text-[#9CA3AF] ">{t("dashboardV2.noChannelYet")}</p>
                   </div>
                 ) : (
                   <>
@@ -395,29 +393,29 @@ export default function DashboardPageUI({
                     <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full min-w-[480px]">
                         <thead>
-                          <tr className="border-b border-black/[0.06] dark:border-white/[0.08]">
+                          <tr className="border-b border-black/[0.06] ">
                             {[t("dashboardV2.channel"), t("dashboardV2.kpiConversations"), t("dashboardV2.kpiAppointments"), t("dashboardV2.share")].map((h) => (
-                              <th key={h} className="text-left px-6 py-3 text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6E6E76] uppercase tracking-wider">{h}</th>
+                              <th key={h} className="text-left px-6 py-3 text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {data!.channels.map((row) => (
-                            <tr key={row.channel} className="border-b border-black/[0.04] dark:border-white/[0.05] last:border-none">
+                            <tr key={row.channel} className="border-b border-black/[0.04] last:border-none">
                               <td className="px-6 py-4">
-                                <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111] dark:text-white">
+                                <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111] ">
                                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHANNEL_META[row.channel].color }} />
                                   {t(CHANNEL_META[row.channel].labelKey)}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-sm text-[#374151] dark:text-[#D1D5DB]"><CountUp value={row.conversations} /></td>
-                              <td className="px-6 py-4 text-sm text-[#374151] dark:text-[#D1D5DB]"><CountUp value={row.appointments} /></td>
+                              <td className="px-6 py-4 text-sm text-[#374151] "><CountUp value={row.conversations} /></td>
+                              <td className="px-6 py-4 text-sm text-[#374151] "><CountUp value={row.appointments} /></td>
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-2.5 min-w-[110px]">
-                                  <div className="flex-1 h-1.5 rounded-full bg-[#F3F4F6] dark:bg-white/5 overflow-hidden">
+                                  <div className="flex-1 h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
                                     <div className="h-full rounded-full" style={{ width: `${row.share}%`, background: CHANNEL_META[row.channel].color }} />
                                   </div>
-                                  <span className="text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF] w-8 text-right shrink-0">{row.share}%</span>
+                                  <span className="text-xs font-semibold text-[#6B7280] w-8 text-right shrink-0">{row.share}%</span>
                                 </div>
                               </td>
                             </tr>
@@ -426,29 +424,29 @@ export default function DashboardPageUI({
                       </table>
                     </div>
                     {/* Mobile: stacked rows */}
-                    <div className="sm:hidden divide-y divide-black/[0.06] dark:divide-white/[0.08]">
+                    <div className="sm:hidden divide-y divide-black/[0.06] ">
                       {data!.channels.map((row) => (
                         <div key={row.channel} className="px-4 py-4">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111] dark:text-white">
+                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#111111] ">
                               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CHANNEL_META[row.channel].color }} />
                               {t(CHANNEL_META[row.channel].labelKey)}
                             </span>
-                            <span className="text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF]">{row.share}%</span>
+                            <span className="text-xs font-semibold text-[#6B7280] ">{row.share}%</span>
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-2">
-                            <span>{t("dashboardV2.kpiConversations")}: <span className="font-semibold text-[#111111] dark:text-white">{row.conversations}</span></span>
-                            <span>{t("dashboardV2.kpiAppointments")}: <span className="font-semibold text-[#111111] dark:text-white">{row.appointments}</span></span>
+                          <div className="flex items-center gap-4 text-xs text-[#6B7280] mb-2">
+                            <span>{t("dashboardV2.kpiConversations")}: <span className="font-semibold text-[#111111] ">{row.conversations}</span></span>
+                            <span>{t("dashboardV2.kpiAppointments")}: <span className="font-semibold text-[#111111] ">{row.appointments}</span></span>
                           </div>
-                          <div className="h-1.5 rounded-full bg-[#F3F4F6] dark:bg-white/5 overflow-hidden">
+                          <div className="h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
                             <div className="h-full rounded-full" style={{ width: `${row.share}%`, background: CHANNEL_META[row.channel].color }} />
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="px-4 sm:px-6 py-4 border-t border-black/[0.06] dark:border-white/[0.08] flex justify-end">
+                    <div className="px-4 sm:px-6 py-4 border-t border-black/[0.06] flex justify-end">
                       <button onClick={onExport}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border border-black/[0.08] dark:border-white/[0.1] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors">
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border border-black/[0.08] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors">
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M6 1.5v6M3.5 5.5L6 8l2.5-2.5M2 9.5v1a1 1 0 001 1h6a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>

@@ -71,9 +71,9 @@ export default function DemoConversationsPage() {
 
       <div className="h-[calc(100vh-56px)] flex flex-col">
         {/* Header */}
-        <div className="px-5 pt-5 pb-3 border-b border-[#E5E7EB] dark:border-[#2A2A32] shrink-0">
+        <div className="px-5 pt-5 pb-3 border-b border-[#E5E7EB] shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">Conversations</h1>
+            <h1 className="text-xl font-bold text-[#111827] ">Conversations</h1>
             <button
               onClick={() => setShowModal(true)}
               className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity"
@@ -93,13 +93,13 @@ export default function DemoConversationsPage() {
                   className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                     filter === f
                       ? "text-white"
-                      : "bg-[#F3F4F6] dark:bg-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:bg-[#E5E7EB] dark:hover:bg-[#333340]"
+                      : "bg-[#F3F4F6] text-[#6B7280] hover:bg-[#E5E7EB] "
                   }`}
                   style={filter === f ? { background: "var(--vp-color)" } : undefined}
                 >
                   {filterLabel(f)}
                   {count > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === f ? "bg-white/20" : "bg-[#E5E7EB] dark:bg-[#3A3A48] text-[#6B7280] dark:text-[#9CA3AF]"}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === f ? "bg-white/20" : "bg-[#E5E7EB] text-[#6B7280] "}`}>
                       {count}
                     </span>
                   )}
@@ -112,7 +112,7 @@ export default function DemoConversationsPage() {
         {/* Split panel */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left: conversation list */}
-          <div className="w-[280px] shrink-0 border-r border-[#E5E7EB] dark:border-[#2A2A32] overflow-y-auto">
+          <div className="w-[280px] shrink-0 border-r border-[#E5E7EB] overflow-y-auto">
             {filtered.length === 0 && (
               <p className="text-sm text-[#9CA3AF] text-center pt-12">No conversations</p>
             )}
@@ -120,14 +120,14 @@ export default function DemoConversationsPage() {
               <button
                 key={conv.id}
                 onClick={() => setSelectedId(conv.id)}
-                className={`w-full flex items-start gap-3 px-4 py-3.5 text-left border-b border-[#F3F4F6] dark:border-[#2A2A32] hover:bg-[#FAFAFA] dark:hover:bg-[#1E1E24] transition-colors relative ${
+                className={`w-full flex items-start gap-3 px-4 py-3.5 text-left border-b border-[#F3F4F6] hover:bg-[#FAFAFA] transition-colors relative ${
                   conv.id === selectedId
-                    ? "bg-[#FFF8F5] dark:bg-[#1E1A16] border-l-2 border-l-[#FF6B35] pl-[14px]"
+                    ? "bg-[#FFF8F5] border-l-2 border-l-[#FF6B35] pl-[14px]"
                     : ""
                 }`}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-[#F3F4F6] dark:bg-[#2A2A32] flex items-center justify-center text-xs font-bold text-[#6B7280] dark:text-[#9CA3AF] shrink-0 relative">
+                <div className="w-9 h-9 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#6B7280] shrink-0 relative">
                   {getInitials(conv.customer_name)}
                   <span className="absolute -bottom-0.5 -right-0.5">
                     <ChannelIcon ch={conv.channel} size={13} />
@@ -135,10 +135,10 @@ export default function DemoConversationsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <p className="text-xs font-semibold text-[#111827] dark:text-white truncate">{conv.customer_name}</p>
-                    <span className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280] shrink-0">{conv.time}</span>
+                    <p className="text-xs font-semibold text-[#111827] truncate">{conv.customer_name}</p>
+                    <span className="text-[10px] text-[#9CA3AF] shrink-0">{conv.time}</span>
                   </div>
-                  <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] truncate">{conv.preview}</p>
+                  <p className="text-[11px] text-[#6B7280] truncate">{conv.preview}</p>
                 </div>
                 {conv.isNew && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#FF6B35]" />
@@ -150,29 +150,29 @@ export default function DemoConversationsPage() {
           {/* Right: thread */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Thread header */}
-            <div className="px-5 py-3.5 border-b border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between shrink-0">
+            <div className="px-5 py-3.5 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#F3F4F6] dark:bg-[#2A2A32] flex items-center justify-center text-xs font-bold text-[#6B7280] dark:text-[#9CA3AF]">
+                <div className="w-8 h-8 rounded-full bg-[#F3F4F6] flex items-center justify-center text-xs font-bold text-[#6B7280] ">
                   {getInitials(selected.customer_name)}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#111827] dark:text-white">{selected.customer_name}</p>
+                  <p className="text-sm font-semibold text-[#111827] ">{selected.customer_name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <ChannelIcon ch={selected.channel} size={11} />
-                    <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] capitalize">{selected.channel}</span>
+                    <span className="text-[11px] text-[#9CA3AF] capitalize">{selected.channel}</span>
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => setShowModal(true)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
               >
                 Mark resolved
               </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-[#F9FAFB] dark:bg-[#13131A]">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-[#F9FAFB] ">
               {thread.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   {msg.role === "agent" && (
@@ -187,18 +187,18 @@ export default function DemoConversationsPage() {
                     className={`max-w-[72%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       msg.role === "user"
                         ? "bg-[#FF6B35] text-white rounded-br-sm"
-                        : "bg-white dark:bg-[#1E1E24] text-[#111827] dark:text-white border border-[#E5E7EB] dark:border-[#2A2A32] rounded-bl-sm"
+                        : "bg-white text-[#111827] border border-[#E5E7EB] rounded-bl-sm"
                     }`}
                   >
                     {msg.text}
-                    <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-white/70" : "text-[#9CA3AF] dark:text-[#6B7280]"}`}>{msg.time}</p>
+                    <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-white/70" : "text-[#9CA3AF] "}`}>{msg.time}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Reply input */}
-            <div className="px-5 py-3 border-t border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] shrink-0">
+            <div className="px-5 py-3 border-t border-[#E5E7EB] bg-white shrink-0">
               <div className="flex items-end gap-2">
                 <textarea
                   value={reply}
@@ -206,7 +206,7 @@ export default function DemoConversationsPage() {
                   onFocus={() => setShowModal(true)}
                   placeholder="Type a reply…"
                   rows={2}
-                  className="flex-1 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-3.5 py-2.5 text-sm text-[#111827] dark:text-white bg-[#F9FAFB] dark:bg-[#1E1E24] placeholder:text-[#9CA3AF] focus:outline-none resize-none"
+                  className="flex-1 border border-[#E5E7EB] rounded-xl px-3.5 py-2.5 text-sm text-[#111827] bg-[#F9FAFB] placeholder:text-[#9CA3AF] focus:outline-none resize-none"
                 />
                 <button
                   onClick={() => setShowModal(true)}

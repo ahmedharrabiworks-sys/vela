@@ -1312,18 +1312,18 @@ function RecycleBinSection({ t }: { t: (key: string) => string }) {
           375px. */}
       {deleteConfirmTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] ">
               Delete {deleteConfirmTarget.label} permanently?
             </h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+            <p className="text-sm text-[#6B7280] leading-relaxed">
               This {DELETE_KIND_NOUN[deleteConfirmTarget.kind]} will be permanently erased and cannot be restored from the Recycle Bin afterward.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => setDeleteConfirmTarget(null)}
                 disabled={deletingForever}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors disabled:opacity-50">
                 Cancel
               </button>
               <button

@@ -5,9 +5,9 @@ import { DEMO_APPTS, type DemoAppt } from "@/lib/demo-data";
 import { SignupModal } from "@/app/demo/_components/SignupModal";
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  confirmed: { label: "Confirmed", bg: "bg-[#ECFDF5] dark:bg-[#052E16]/40", text: "text-[#059669] dark:text-[#34D399]", dot: "#16A34A" },
-  pending:   { label: "Pending",   bg: "bg-[#FFFBEB] dark:bg-[#451A03]/40", text: "text-[#D97706] dark:text-[#FCD34D]", dot: "#D97706" },
-  cancelled: { label: "Cancelled", bg: "bg-[#FEF2F2] dark:bg-[#450A0A]/40", text: "text-[#DC2626] dark:text-[#F87171]", dot: "#DC2626" },
+  confirmed: { label: "Confirmed", bg: "bg-[#ECFDF5] ", text: "text-[#059669] ", dot: "#16A34A" },
+  pending:   { label: "Pending",   bg: "bg-[#FFFBEB] ", text: "text-[#D97706] ", dot: "#D97706" },
+  cancelled: { label: "Cancelled", bg: "bg-[#FEF2F2] ", text: "text-[#DC2626] ", dot: "#DC2626" },
 };
 
 const CHANNEL_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -74,8 +74,8 @@ export default function DemoAppointmentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">Appointments</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Today. Jul 21, 2026</p>
+            <h1 className="text-xl font-bold text-[#111827] ">Appointments</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">Today. Jul 21, 2026</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -93,9 +93,9 @@ export default function DemoAppointmentsPage() {
             { label: "Confirmed", value: String(counts.Confirmed) },
             { label: "Pending",   value: String(counts.Pending) },
           ].map((s) => (
-            <div key={s.label} className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-[#111827] dark:text-white">{s.value}</p>
-              <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">{s.label}</p>
+            <div key={s.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-[#111827] ">{s.value}</p>
+              <p className="text-xs text-[#6B7280] mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
@@ -111,10 +111,10 @@ export default function DemoAppointmentsPage() {
               type="text"
               placeholder="Search appointments…"
               onFocus={() => setShowModal(true)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl bg-white dark:bg-[#1E1E24] text-[#111827] dark:text-white placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40 transition-colors"
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-[#E5E7EB] rounded-xl bg-white text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40 transition-colors"
             />
           </div>
-          <div className="flex gap-1 border-b border-[#E5E7EB] dark:border-[#2A2A32] w-full">
+          <div className="flex gap-1 border-b border-[#E5E7EB] w-full">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab}
@@ -122,11 +122,11 @@ export default function DemoAppointmentsPage() {
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
                   filter === tab
                     ? "border-[#FF6B35] text-[#FF6B35]"
-                    : "border-transparent text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#D1D5DB]"
+                    : "border-transparent text-[#6B7280] hover:text-[#374151] "
                 }`}
               >
                 {tab}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === tab ? "bg-[#FF6B35]/15 text-[#FF6B35]" : "bg-[#F3F4F6] dark:bg-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF]"}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === tab ? "bg-[#FF6B35]/15 text-[#FF6B35]" : "bg-[#F3F4F6] text-[#6B7280] "}`}>
                   {counts[tab]}
                 </span>
               </button>
@@ -135,48 +135,48 @@ export default function DemoAppointmentsPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#F3F4F6] dark:border-[#2A2A32]">
+                <tr className="border-b border-[#F3F4F6] ">
                   {["Name", "Phone", "Service", "Date & Time", "Channel", "Status", "Actions"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6B7280] uppercase tracking-wider whitespace-nowrap">
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6] dark:divide-[#2A2A32]">
+              <tbody className="divide-y divide-[#F3F4F6] ">
                 {filtered.map((appt: DemoAppt) => {
                   const sc = STATUS_CONFIG[appt.status] ?? STATUS_CONFIG.pending;
                   return (
-                    <tr key={appt.id} className="hover:bg-[#FAFAFA] dark:hover:bg-[#17171C] transition-colors">
+                    <tr key={appt.id} className="hover:bg-[#FAFAFA] transition-colors">
                       {/* Name */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-[#F3F4F6] dark:bg-[#2A2A32] flex items-center justify-center text-[10px] font-bold text-[#6B7280] dark:text-[#9CA3AF] shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[10px] font-bold text-[#6B7280] shrink-0">
                             {appt.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                           </div>
-                          <p className="text-sm font-medium text-[#111827] dark:text-white whitespace-nowrap">{appt.name}</p>
+                          <p className="text-sm font-medium text-[#111827] whitespace-nowrap">{appt.name}</p>
                         </div>
                       </td>
                       {/* Phone */}
                       <td className="px-4 py-3.5">
                         {appt.phone ? (
-                          <p className="text-sm text-[#374151] dark:text-[#D1D5DB] whitespace-nowrap font-mono text-xs">{appt.phone}</p>
+                          <p className="text-sm text-[#374151] whitespace-nowrap font-mono text-xs">{appt.phone}</p>
                         ) : (
-                          <span className="text-xs text-[#D1D5DB] dark:text-[#4B5563]">, </span>
+                          <span className="text-xs text-[#D1D5DB] ">, </span>
                         )}
                       </td>
                       {/* Service */}
                       <td className="px-4 py-3.5">
-                        <p className="text-sm text-[#374151] dark:text-[#D1D5DB] whitespace-nowrap">{appt.service}</p>
+                        <p className="text-sm text-[#374151] whitespace-nowrap">{appt.service}</p>
                       </td>
                       {/* Date & Time */}
                       <td className="px-4 py-3.5">
-                        <p className="text-sm font-mono font-semibold text-[#111827] dark:text-white">{appt.time}</p>
-                        <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280]">Jul 21</p>
+                        <p className="text-sm font-mono font-semibold text-[#111827] ">{appt.time}</p>
+                        <p className="text-[11px] text-[#9CA3AF] ">Jul 21</p>
                       </td>
                       {/* Channel */}
                       <td className="px-4 py-3.5">
@@ -194,19 +194,19 @@ export default function DemoAppointmentsPage() {
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setShowModal(true)}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
                           >
                             Reschedule
                           </button>
                           <button
                             onClick={() => setShowModal(true)}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={() => setShowModal(true)}
-                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors"
                           >
                             Message
                           </button>
@@ -220,16 +220,16 @@ export default function DemoAppointmentsPage() {
           </div>
 
           {/* Footer summary */}
-          <div className="px-5 py-3 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex items-center justify-between gap-4 flex-wrap">
-            <span className="text-xs text-[#9CA3AF] dark:text-[#6B7280]">
+          <div className="px-5 py-3 border-t border-[#F3F4F6] flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-xs text-[#9CA3AF] ">
               {filtered.length} appointment{filtered.length !== 1 ? "s" : ""} shown
             </span>
             <div className="flex items-center gap-4">
               {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                 <div key={key} className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full" style={{ background: cfg.dot }} />
-                  <span className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">
-                    {cfg.label}: <strong className="text-[#374151] dark:text-[#D1D5DB]">{counts[cfg.label as FilterTab] ?? 0}</strong>
+                  <span className="text-[11px] text-[#6B7280] ">
+                    {cfg.label}: <strong className="text-[#374151] ">{counts[cfg.label as FilterTab] ?? 0}</strong>
                   </span>
                 </div>
               ))}

@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 import { usePlan } from "@/lib/plans";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
-import { useTheme } from "@/lib/theme";
 import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
 // FIX 5 (round P): shared toast used by every delete/recycle-bin action.
 import Toast from "@/components/ui/Toast";
@@ -17,9 +16,8 @@ import type { WebsiteSpec } from "@/lib/website-renderer";
 // zero) -- self-contained here rather than importing that page's local
 // function, so this panel can't regress if Analytics' own chart changes.
 function WebsiteVisitsChart({ data, height = 140 }: { data: { date: string; count: number }[]; height?: number }) {
-  const { theme } = useTheme();
-  const gridColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
-  const axisTextColor = theme === "dark" ? "#6E6E76" : "#9CA3AF";
+  const gridColor = "#F3F4F6";
+  const axisTextColor = "#9CA3AF";
   const W = 800, H = height, padX = 8, padTop = 12, padBottom = 20;
   const chartH = H - padTop - padBottom;
   const counts = data.map((d) => d.count);
@@ -914,7 +912,7 @@ function PublishPanel({
   const renderDomainSection = () => (
     <div className="space-y-3">
       <button onClick={() => setShowDomain((v) => !v)}
-        className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] dark:text-[#9CA3AF] hover:text-[#FF6B35] transition-colors w-full text-left">
+        className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         {customDomain && domainStatus === "verified" ? `Custom domain: ${customDomain}` : "Add custom domain"}
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showDomain ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
@@ -937,10 +935,10 @@ function PublishPanel({
               <span className={`w-2 h-2 rounded-full shrink-0 ${
                 domainStatus === "verified" ? "bg-green-400" :
                 domainStatus === "failed"   ? "bg-red-400"   : "bg-yellow-400"}`} />
-              <span className="text-xs font-semibold text-[#111111] dark:text-white truncate max-w-[140px]">{customDomain}</span>
+              <span className="text-xs font-semibold text-[#111111] truncate max-w-[140px]">{customDomain}</span>
               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                domainStatus === "verified" ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" :
-                domainStatus === "failed"   ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400"     : "bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400"}`}>
+                domainStatus === "verified" ? "bg-green-50 text-green-700 " :
+                domainStatus === "failed"   ? "bg-red-50 text-red-700 "     : "bg-yellow-50 text-yellow-700 "}`}>
                 {domainStatus === "verified" ? "Connected" :
                  domainStatus === "failed"   ? "Failed. Records not found yet" : "Pending. Add DNS records"}
               </span>
@@ -948,7 +946,7 @@ function PublishPanel({
 
             {/* DNS setup instructions, shown until verified */}
             {domainStatus !== "verified" && (
-              <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#F9FAFB] dark:bg-[#1E1E24] p-3 space-y-2.5">
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 space-y-2.5">
                 <p className="text-[11px] text-[#6B7280] leading-relaxed">
                   Go to your domain registrar (GoDaddy, Namecheap, etc.), find DNS settings, and add these two records:
                 </p>
@@ -956,7 +954,7 @@ function PublishPanel({
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0 w-11">A</span>
                   <span className="text-[10px] text-[#9CA3AF] shrink-0 w-7">@</span>
-                  <code className="text-[11px] font-mono text-[#374151] dark:text-[#E5E7EB] flex-1 min-w-0 truncate">76.76.21.21</code>
+                  <code className="text-[11px] font-mono text-[#374151] flex-1 min-w-0 truncate">76.76.21.21</code>
                   <button onClick={() => handleCopyRecord("76.76.21.21")}
                     className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
                     {copiedRecord === "76.76.21.21" ? "Copied" : "Copy"}
@@ -966,7 +964,7 @@ function PublishPanel({
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono font-bold text-[#9CA3AF] shrink-0 w-11">CNAME</span>
                   <span className="text-[10px] text-[#9CA3AF] shrink-0 w-7">www</span>
-                  <code className="text-[11px] font-mono text-[#374151] dark:text-[#E5E7EB] flex-1 min-w-0 truncate">cname.vercel-dns.com</code>
+                  <code className="text-[11px] font-mono text-[#374151] flex-1 min-w-0 truncate">cname.vercel-dns.com</code>
                   <button onClick={() => handleCopyRecord("cname.vercel-dns.com")}
                     className="text-[11px] font-semibold text-[#FF6B35] hover:opacity-80 shrink-0">
                     {copiedRecord === "cname.vercel-dns.com" ? "Copied" : "Copy"}
@@ -986,12 +984,12 @@ function PublishPanel({
             <div className="flex items-center gap-2 flex-wrap">
               {domainStatus !== "verified" && (
                 <button onClick={handleCheckDomain} disabled={checkingDomain}
-                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] disabled:opacity-40 transition-colors">
+                  className="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-40 transition-colors">
                   {checkingDomain ? "Checking…" : "Check Status"}
                 </button>
               )}
               <button onClick={handleRemoveDomain} disabled={removingDomain}
-                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40 transition-colors">
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-40 transition-colors">
                 {removingDomain ? "Removing…" : "Remove domain"}
               </button>
             </div>
@@ -1001,7 +999,7 @@ function PublishPanel({
             <div className="flex items-stretch gap-2">
               <input value={domainInput} onChange={(e) => { setDomainInput(e.target.value); setDomainError(""); }}
                 placeholder="mysalon.com or www.mysalon.com"
-                className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
+                className="flex-1 text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
                 onKeyDown={(e) => { if (e.key === "Enter") handleConnectDomain(); }}
               />
               <button onClick={handleConnectDomain} disabled={connectingDomain || !domainInput.trim()}
@@ -1020,16 +1018,16 @@ function PublishPanel({
           any registrar and points it here. */}
       {showDomainGuide && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDomainGuide(false)}>
-          <div className="bg-white dark:bg-[#17171C] rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6] dark:border-[#2A2A32] sticky top-0 bg-white dark:bg-[#17171C]">
-              <h2 className="text-base font-bold text-[#111111] dark:text-white">How to connect your domain</h2>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#F3F4F6] sticky top-0 bg-white ">
+              <h2 className="text-base font-bold text-[#111111] ">How to connect your domain</h2>
               <button onClick={() => setShowDomainGuide(false)} aria-label="Close"
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors">
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6] transition-colors">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </button>
             </div>
             <div className="p-6 space-y-5">
-              <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+              <p className="text-xs text-[#6B7280] leading-relaxed">
                 Vela doesn&apos;t sell or include a domain. You buy and own your own domain from any registrar, then point it at your Vela site with the steps below.
               </p>
               {[
@@ -1045,8 +1043,8 @@ function PublishPanel({
                     {step.n}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-[#111111] dark:text-white">{step.title}</p>
-                    <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-0.5 leading-relaxed">{step.body}</p>
+                    <p className="text-xs font-semibold text-[#111111] ">{step.title}</p>
+                    <p className="text-[11px] text-[#6B7280] mt-0.5 leading-relaxed">{step.body}</p>
                   </div>
                 </div>
               ))}
@@ -1066,51 +1064,51 @@ function PublishPanel({
   const renderSiteDetailsForm = () => (
     <div className="space-y-3">
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold text-[#374151] dark:text-[#9CA3AF] uppercase tracking-wide">Site Name</label>
+        <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">Site Name</label>
         <input value={siteName} onChange={(e) => setSiteName(e.target.value)}
           placeholder="My Business"
-          className="w-full text-sm px-3 py-2 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
+          className="w-full text-sm px-3 py-2 border border-[#E5E7EB] rounded-lg focus:border-[#FF6B35] focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
         />
       </div>
       <div className="space-y-1">
-        <label className="text-[10px] font-semibold text-[#374151] dark:text-[#9CA3AF] uppercase tracking-wide">URL Slug</label>
-        <div className="flex items-stretch border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg overflow-hidden focus-within:border-[#FF6B35]">
-          <span className="text-[11px] text-[#9CA3AF] bg-[#F9FAFB] dark:bg-[#101014] px-2.5 flex items-center border-r border-[#E5E7EB] dark:border-[#2A2A32] whitespace-nowrap shrink-0">/site/</span>
+        <label className="text-[10px] font-semibold text-[#374151] uppercase tracking-wide">URL Slug</label>
+        <div className="flex items-stretch border border-[#E5E7EB] rounded-lg overflow-hidden focus-within:border-[#FF6B35]">
+          <span className="text-[11px] text-[#9CA3AF] bg-[#F9FAFB] px-2.5 flex items-center border-r border-[#E5E7EB] whitespace-nowrap shrink-0">/site/</span>
           <input value={siteSlug}
             onChange={(e) => { setSiteSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); setSlugError(""); }}
             placeholder="my-business"
-            className="flex-1 text-sm px-3 py-2 focus:outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF]"
+            className="flex-1 text-sm px-3 py-2 focus:outline-none bg-white text-[#111111] placeholder:text-[#9CA3AF]"
           />
         </div>
         {slugError && <p className="text-[11px] text-red-500">{slugError}</p>}
         {siteSlug.length >= 3 && (
           isDirty ? (
-            <p className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280] truncate italic px-0.5">
+            <p className="text-[10px] text-[#9CA3AF] truncate italic px-0.5">
               Will become: {origin}/site/{siteSlug}
             </p>
           ) : (
-            <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-2.5 py-1.5 overflow-hidden">
+            <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 overflow-hidden">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" className="shrink-0"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              <span className="text-[10px] font-mono text-[#6B7280] dark:text-[#9CA3AF] truncate">{origin}/site/{siteSlug}</span>
+              <span className="text-[10px] font-mono text-[#6B7280] truncate">{origin}/site/{siteSlug}</span>
             </div>
           )
         )}
         {isDirty && savedSlug.length >= 3 && (
-          <p className="text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 rounded-lg px-2.5 py-1.5 leading-snug">
+          <p className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-2.5 py-1.5 leading-snug">
             Unsaved. Your site is still at <span className="font-mono">/site/{savedSlug}</span>
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-lg px-3 py-2">
+      <div className="flex items-center gap-2 bg-[#F9FAFB] rounded-lg px-3 py-2">
         <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-        <span className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]"><strong className="text-[#374151] dark:text-[#E5E7EB]">Public</strong>. Anyone with the URL can view</span>
+        <span className="text-[11px] text-[#6B7280] "><strong className="text-[#374151] ">Public</strong>. Anyone with the URL can view</span>
       </div>
       {settingsError && <p className="text-[11px] text-red-500">{settingsError}</p>}
       <button onClick={handleSaveSettings} disabled={savingSettings || !websiteId}
         className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 ${
           savedOk    ? "bg-green-500 text-white" :
           isDirty    ? "bg-[#FF6B35] text-white hover:opacity-90" :
-                       "border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24]"
+                       "border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] "
         }`}>
         {savingSettings ? "Saving…" : savedOk ? "✓ Saved" : isDirty ? "Save" : "Saved"}
       </button>
@@ -1118,20 +1116,20 @@ function PublishPanel({
   );
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-[360px] bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl shadow-xl z-50 overflow-hidden
+    <div className="absolute top-full right-0 mt-2 w-[360px] bg-white border border-[#E5E7EB] rounded-2xl shadow-xl z-50 overflow-hidden
       md:w-[360px]
       max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto max-md:w-full max-md:rounded-b-none max-md:rounded-t-2xl max-md:mt-0">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#F3F4F6] dark:border-[#2A2A32]">
+      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#F3F4F6] ">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full shrink-0 ${isPublished ? "bg-green-400" : "bg-[#9CA3AF]"}`} />
-          <span className="text-sm font-bold text-[#111111] dark:text-white">{isPublished ? "Published" : "Publish your site"}</span>
+          <span className="text-sm font-bold text-[#111111] ">{isPublished ? "Published" : "Publish your site"}</span>
           {visitCount > 0 && (
             <span className="text-[10px] font-medium text-[#9CA3AF] ml-1">{visitCount.toLocaleString()} visitor{visitCount !== 1 ? "s" : ""}</span>
           )}
         </div>
-        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-full text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors text-sm font-bold">×</button>
+        <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-full text-[#9CA3AF] hover:text-[#374151] hover:bg-[#F3F4F6] transition-colors text-sm font-bold">×</button>
       </div>
 
       {/* Step indicator (pre-publish flow only) */}
@@ -1139,12 +1137,12 @@ function PublishPanel({
         <div className="flex items-center px-5 pt-3 pb-1 gap-0">
           {([1, 2, 3] as const).map((s, idx) => (
             <div key={s} className="flex items-center">
-              {idx > 0 && <div className={`w-6 h-px mx-1 ${step >= s ? "bg-[#FF6B35]" : "bg-[#E5E7EB] dark:bg-[#2A2A32]"}`} />}
+              {idx > 0 && <div className={`w-6 h-px mx-1 ${step >= s ? "bg-[#FF6B35]" : "bg-[#E5E7EB] "}`} />}
               <div className="flex items-center gap-1">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step > s ? "bg-[#FF6B35] text-white" : step === s ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#9CA3AF]"}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step > s ? "bg-[#FF6B35] text-white" : step === s ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] text-[#9CA3AF]"}`}>
                   {step > s ? <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> : s}
                 </div>
-                <span className={`text-[10px] font-semibold ${step >= s ? "text-[#374151] dark:text-[#E5E7EB]" : "text-[#9CA3AF]"}`}>
+                <span className={`text-[10px] font-semibold ${step >= s ? "text-[#374151] " : "text-[#9CA3AF]"}`}>
                   {s === 1 ? "Details" : s === 2 ? "Check" : "Go Live"}
                 </span>
               </div>
@@ -1181,7 +1179,7 @@ function PublishPanel({
         {/* ── STEP 2: Pre-publish checks ───────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-4 py-2">
-            <p className="text-xs font-semibold text-[#374151] dark:text-[#E5E7EB]">Pre-publish checks</p>
+            <p className="text-xs font-semibold text-[#374151] ">Pre-publish checks</p>
             <div className="space-y-3">
               {checks.map((c) => (
                 <div key={c.id} className="flex items-start gap-2.5">
@@ -1190,7 +1188,7 @@ function PublishPanel({
                   {c.status === "warn" && <div className="w-4 h-4 rounded-full bg-yellow-100 flex items-center justify-center shrink-0 mt-0.5"><span className="text-yellow-700 text-[8px] font-bold leading-none">!</span></div>}
                   {c.status === "fail" && <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><line x1="2" y1="2" x2="10" y2="10" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/><line x1="10" y1="2" x2="2" y2="10" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/></svg></div>}
                   <div className="flex-1 min-w-0">
-                    <span className={`text-xs ${c.status === "running" ? "text-[#9CA3AF]" : c.status === "fail" ? "text-red-700 dark:text-red-400" : c.status === "warn" ? "text-yellow-700 dark:text-yellow-500" : "text-[#374151] dark:text-[#E5E7EB]"}`}>{c.label}</span>
+                    <span className={`text-xs ${c.status === "running" ? "text-[#9CA3AF]" : c.status === "fail" ? "text-red-700 " : c.status === "warn" ? "text-yellow-700 " : "text-[#374151] "}`}>{c.label}</span>
                     {c.detail && <p className="text-[10px] text-[#9CA3AF] mt-0.5">{c.detail}</p>}
                   </div>
                 </div>
@@ -1199,11 +1197,11 @@ function PublishPanel({
             {!checksRunning && checks.length > 0 && (
               <div className="space-y-3 pt-1">
                 {checks.some(c => c.status === "fail") ? (
-                  <p className="text-[11px] text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">Fix the issues above before publishing.</p>
+                  <p className="text-[11px] text-red-600 bg-red-50 rounded-lg px-3 py-2">Fix the issues above before publishing.</p>
                 ) : (
                   <>
                     {checks.some(c => c.status === "warn") && (
-                      <p className="text-[10px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg px-3 py-2">
+                      <p className="text-[10px] text-yellow-700 bg-yellow-50 rounded-lg px-3 py-2">
                         Some info is missing. Your site will still publish.
                       </p>
                     )}
@@ -1226,12 +1224,12 @@ function PublishPanel({
             {publishedUrl && (
               <div className="space-y-1">
                 <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wide">Your Site</p>
-                <div className="bg-[#F9FAFB] dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-2">
-                  <span className="text-[11px] font-mono text-[#6B7280] dark:text-[#9CA3AF] truncate block">{origin}{publishedUrl}</span>
+                <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
+                  <span className="text-[11px] font-mono text-[#6B7280] truncate block">{origin}{publishedUrl}</span>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={async () => { await copyText(`${origin}${publishedUrl}`); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000); }}
-                    className="flex-1 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#9CA3AF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                    className="flex-1 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
                     {urlCopied ? "Copied!" : "Copy Link"}
                   </button>
                   <a href={`${origin}${publishedUrl}`} target="_blank" rel="noopener noreferrer"
@@ -1266,9 +1264,9 @@ function PublishPanel({
             </div>
 
             {/* Settings accordion */}
-            <div className="border-t border-[#F3F4F6] dark:border-[#2A2A32] pt-3 space-y-3">
+            <div className="border-t border-[#F3F4F6] pt-3 space-y-3">
               <button onClick={() => setShowSettings((v) => !v)}
-                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] dark:text-[#9CA3AF] hover:text-[#FF6B35] transition-colors w-full text-left">
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors w-full text-left">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 Site Settings
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`ml-auto transition-transform ${showSettings ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9"/></svg>
@@ -1297,8 +1295,8 @@ function VersionCard({
   restoring: boolean; previewing: boolean;
 }) {
   return (
-    <div className="ml-8 mr-2 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3 flex items-start gap-3">
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${version.type === "publish" ? "bg-green-100 dark:bg-green-950/40" : "bg-[#F3F4F6] dark:bg-[#17171C]"}`}>
+    <div className="ml-8 mr-2 bg-white border border-[#E5E7EB] rounded-xl p-3 flex items-start gap-3">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${version.type === "publish" ? "bg-green-100 " : "bg-[#F3F4F6] "}`}>
         {version.type === "publish" ? (
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
         ) : (
@@ -1307,8 +1305,8 @@ function VersionCard({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">{version.label}</p>
-          {version.type === "publish" && <span className="text-[9px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 py-0.5 rounded-full shrink-0">Published</span>}
+          <p className="text-[11px] font-semibold text-[#111111] truncate">{version.label}</p>
+          {version.type === "publish" && <span className="text-[9px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full shrink-0">Published</span>}
         </div>
         <p className="text-[10px] text-[#9CA3AF] mt-0.5">{timeAgo(version.created_at)}</p>
       </div>
@@ -1317,7 +1315,7 @@ function VersionCard({
       ) : (
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={() => onPreview(version)} disabled={previewing}
-            className="text-[10px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white disabled:opacity-40 transition-colors">
+            className="text-[10px] font-semibold text-[#6B7280] hover:text-[#111111] disabled:opacity-40 transition-colors">
             Preview
           </button>
           <button onClick={() => onRestore(version)} disabled={restoring}
@@ -2946,14 +2944,14 @@ export default function WebsitePage() {
       <div className="flex items-center justify-between pb-4 shrink-0 flex-wrap gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#111111] dark:text-white">
+            <h1 className="text-xl font-bold text-[#111111] ">
               {t("website.title")}
             </h1>
             {built && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide ${
                 isPublished
-                  ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400"
-                  : "bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#6B7280] dark:text-[#9CA3AF]"
+                  ? "bg-green-50 text-green-700 "
+                  : "bg-[#F3F4F6] text-[#6B7280] "
               }`}>
                 {isPublished ? "PUBLISHED" : "DRAFT"}
               </span>
@@ -2970,7 +2968,7 @@ export default function WebsitePage() {
             <div className="relative">
               <button
                 onClick={() => projects.length > 1 && setShowToolbarSiteMenu((v) => !v)}
-                className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] bg-white dark:bg-[#17171C] transition-colors ${projects.length > 1 ? "hover:border-[#D1D5DB] dark:hover:border-[#3A3A44] cursor-pointer" : "cursor-default"}`}
+                className={`hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] bg-white transition-colors ${projects.length > 1 ? "hover:border-[#D1D5DB] cursor-pointer" : "cursor-default"}`}
               >
                 <span className="max-w-[140px] truncate">{siteName || "Untitled"}</span>
                 {projects.length > 1 && (
@@ -2982,11 +2980,11 @@ export default function WebsitePage() {
               {showToolbarSiteMenu && projects.length > 1 && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowToolbarSiteMenu(false)} />
-                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-48 max-h-64 overflow-y-auto">
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 bg-white border border-[#E5E7EB] rounded-lg shadow-xl py-1 w-48 max-h-64 overflow-y-auto">
                     {projects.map((p) => (
                       <button key={p.id}
                         onClick={() => { setShowToolbarSiteMenu(false); handleSwitchProject(p); }}
-                        className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${p.id === websiteId ? "text-[#FF6B35] font-semibold" : "text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]"}`}>
+                        className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${p.id === websiteId ? "text-[#FF6B35] font-semibold" : "text-[#374151] hover:bg-[#F9FAFB] "}`}>
                         {p.name || "Untitled"}
                       </button>
                     ))}
@@ -3002,22 +3000,19 @@ export default function WebsitePage() {
           )}
 
           {/* Mobile tab toggle */}
-          <div className="flex md:hidden gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
+          <div className="flex md:hidden gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
             {(["chat", "preview"] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-[#FF6B35] text-white" : "text-[#6B7280] dark:text-[#9CA3AF]"}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-[#FF6B35] text-white" : "text-[#6B7280] "}`}>
                 {tab}
               </button>
             ))}
           </div>
 
-          {/* New Website button, visible on mobile only; desktop uses the sidebar.
-              FIX: had no dark: variants at all -- the hover state
-              (hover:text-[#374151], a dark slate meant for light
-              backgrounds) went nearly invisible against a dark background. */}
+          {/* New Website button, visible on mobile only; desktop uses the sidebar. */}
           {built && (
             <button onClick={handleNewWebsite}
-              className="md:hidden text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white hover:border-[#374151] dark:hover:border-[#4B5563] transition-colors">
+              className="md:hidden text-xs font-semibold px-3 py-2 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:text-[#374151] hover:border-[#374151] transition-colors">
               New Website
             </button>
           )}
@@ -3079,14 +3074,14 @@ export default function WebsitePage() {
 
         {/* SIDEBAR: Sites list (desktop only), one row per site, Lovable-style */}
         <div
-          className="hidden md:flex flex-col bg-white dark:bg-[#17171C] border-r border-[#EBEBEB] dark:border-[#2A2A32] overflow-hidden shrink-0 relative"
+          className="hidden md:flex flex-col bg-white border-r border-[#EBEBEB] overflow-hidden shrink-0 relative"
           style={{ width: sidebarWidth }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-2.5 pt-2.5 pb-1.5 shrink-0">
             <span className="text-[9px] font-bold text-[#BBBBBB] uppercase tracking-widest">Sites</span>
             <button onClick={handleNewWebsite} title="New website"
-              className="w-5 h-5 flex items-center justify-center rounded-md text-[#BBBBBB] hover:text-[#374151] dark:hover:text-[#E5E7EB] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors">
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[#BBBBBB] hover:text-[#374151] hover:bg-[#F3F4F6] transition-colors">
               <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
               </svg>
@@ -3104,8 +3099,8 @@ export default function WebsitePage() {
               return (
                 <div
                   key={p.id}
-                  className={`group relative flex items-center transition-colors hover:bg-[#F5F5F5] dark:hover:bg-[#1E1E24] ${
-                    isActive ? "border-l-2 border-[#FF6B35] bg-[#FFF8F6] dark:bg-[#2A1A14]" : "border-l-2 border-transparent"
+                  className={`group relative flex items-center transition-colors hover:bg-[#F5F5F5] ${
+                    isActive ? "border-l-2 border-[#FF6B35] bg-[#FFF8F6] " : "border-l-2 border-transparent"
                   }`}
                   style={{ minHeight: 34 }}
                 >
@@ -3120,7 +3115,7 @@ export default function WebsitePage() {
                           if (e.key === "Escape") setRenamingId(null);
                         }}
                         onBlur={() => handleSaveRename(p.id, renameValue)}
-                        className="w-full text-[11px] px-1.5 py-0.5 border border-[#FF6B35] rounded outline-none bg-white dark:bg-[#1E1E24] text-[#111111] dark:text-white"
+                        className="w-full text-[11px] px-1.5 py-0.5 border border-[#FF6B35] rounded outline-none bg-white text-[#111111] "
                       />
                     </div>
                   ) : (
@@ -3129,7 +3124,7 @@ export default function WebsitePage() {
                       className="flex-1 text-left pl-2.5 pr-1 py-1.5 flex flex-col justify-center min-w-0"
                     >
                       <span className={`text-[13px] leading-tight truncate ${
-                        isActive ? "font-semibold text-[#111111] dark:text-white" : "font-medium text-[#374151] dark:text-[#9CA3AF]"
+                        isActive ? "font-semibold text-[#111111] " : "font-medium text-[#374151] "
                       }`}>
                         {p.name || "Untitled"}
                       </span>
@@ -3154,7 +3149,7 @@ export default function WebsitePage() {
                           setMenuOpenId(p.id);
                         }
                       }}
-                      className="shrink-0 w-5 h-5 mr-1 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded hover:bg-[#E5E7EB] dark:hover:bg-[#2A2A32] transition-all text-[#9CA3AF] hover:text-[#374151] dark:hover:text-white"
+                      className="shrink-0 w-5 h-5 mr-1 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded hover:bg-[#E5E7EB] transition-all text-[#9CA3AF] hover:text-[#374151] "
                     >
                       <svg width="10" height="3" viewBox="0 0 16 4" fill="currentColor">
                         <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="14" cy="2" r="1.5"/>
@@ -3167,7 +3162,7 @@ export default function WebsitePage() {
 
             {projects.length === 0 && (
               <div className="px-3 py-5 text-center">
-                <p className="text-[10px] text-[#BBBBBB] dark:text-[#555]">No sites yet</p>
+                <p className="text-[10px] text-[#BBBBBB] ">No sites yet</p>
               </div>
             )}
           </div>
@@ -3189,7 +3184,7 @@ export default function WebsitePage() {
             preview exactly as they were. */}
         <div
           ref={chatPanelRef}
-          className={`${showAnalyticsPanel ? "hidden" : `${activeTab === "preview" ? "hidden" : "flex"} md:flex`} w-full flex-col bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden shrink-0 relative`}
+          className={`${showAnalyticsPanel ? "hidden" : `${activeTab === "preview" ? "hidden" : "flex"} md:flex`} w-full flex-col bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden shrink-0 relative`}
           style={typeof window !== "undefined" && window.innerWidth >= 768 && !showAnalyticsPanel ? { width: chatWidth } : undefined}
         >
 
@@ -3198,7 +3193,7 @@ export default function WebsitePage() {
               reference/demo), added once here above the chat panel. */}
           {!showVersionsPanel && !showAnalyticsPanel && (
             <div className="px-4 pt-3.5 pb-1 shrink-0">
-              <p className="text-sm font-bold text-[#111111] dark:text-white">Build with AI</p>
+              <p className="text-sm font-bold text-[#111111] ">Build with AI</p>
               <p className="text-[11px] text-[#9CA3AF] mt-0.5">Chat to customize your site</p>
             </div>
           )}
@@ -3209,7 +3204,7 @@ export default function WebsitePage() {
               {(showVersionsPanel || showAnalyticsPanel) ? (
                 <button
                   onClick={() => { setShowVersionsPanel(false); setShowAnalyticsPanel(false); }}
-                  className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] "
                 >
                   ← Chat
                 </button>
@@ -3218,7 +3213,7 @@ export default function WebsitePage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => { setShowVersionsPanel(true); setShowAnalyticsPanel(false); }}
-                    className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+                    className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] "
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -3228,7 +3223,7 @@ export default function WebsitePage() {
                   {isPublished && websiteId && (
                     <button
                       onClick={() => { setShowAnalyticsPanel(true); setShowVersionsPanel(false); setActiveTab("preview"); loadAnalytics(); loadWebsiteAiConfig(); }}
-                      className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#E5E7EB] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24]"
+                      className="flex items-center gap-1.5 text-[10px] font-semibold text-[#9CA3AF] hover:text-[#374151] transition-colors px-2 py-1 rounded-lg hover:bg-[#F3F4F6] "
                     >
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M18 20V10M12 20V4M6 20v-6"/>
@@ -3252,10 +3247,10 @@ export default function WebsitePage() {
                   <div
                     key={v.id}
                     onClick={() => { handlePreviewVersion(v); setShowVersionsPanel(false); }}
-                    className={`flex items-start gap-3 bg-white dark:bg-[#1E1E24] border rounded-xl p-3 transition-colors cursor-pointer ${
+                    className={`flex items-start gap-3 bg-white border rounded-xl p-3 transition-colors cursor-pointer ${
                       previewingVersion === v.id
-                        ? "border-[#FF6B35]/50 bg-[#FFF8F6] dark:bg-[#2A1A14]"
-                        : "border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#FF6B35]/30 hover:bg-[#FFF8F6] dark:hover:bg-[#2A1A14]"
+                        ? "border-[#FF6B35]/50 bg-[#FFF8F6] "
+                        : "border-[#E5E7EB] hover:border-[#FF6B35]/30 hover:bg-[#FFF8F6] "
                     }`}
                   >
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${v.type === "publish" ? "bg-green-100" : "bg-[#F3F4F6]"}`}>
@@ -3266,7 +3261,7 @@ export default function WebsitePage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold text-[#111111] dark:text-white truncate">
+                      <p className="text-[11px] font-semibold text-[#111111] truncate">
                         {i === 0 ? "Current draft" : (v.type === "publish" ? `Published ${timeAgo(v.created_at)}` : v.label)}
                       </p>
                       {v.type !== "publish" && (
@@ -3299,11 +3294,11 @@ export default function WebsitePage() {
                 if (msg.isSeparator) {
                   return (
                     <div key={i} className="flex items-center gap-3 py-1">
-                      <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
-                      <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-full border border-[#E5E7EB] dark:border-[#2A2A32]">
+                      <div className="flex-1 h-px bg-[#E5E7EB] " />
+                      <span className="text-[10px] font-semibold text-[#9CA3AF] shrink-0 px-2 py-1 bg-[#F9FAFB] rounded-full border border-[#E5E7EB] ">
                         New website
                       </span>
-                      <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#2A2A32]" />
+                      <div className="flex-1 h-px bg-[#E5E7EB] " />
                     </div>
                   );
                 }
@@ -3325,13 +3320,13 @@ export default function WebsitePage() {
                       msg.role === "user"
                         ? "bg-[#FF6B35] text-white rounded-tr-sm"
                         : msg.isError
-                        ? "bg-red-50 dark:bg-red-950/40 text-[#991B1B] dark:text-red-400 rounded-tl-sm border border-red-100 dark:border-red-900/50"
-                        : "bg-[#F9FAFB] dark:bg-[#1E1E24] text-[#111111] dark:text-[#E5E7EB] rounded-tl-sm border border-[#F3F4F6] dark:border-[#2A2A32]"
+                        ? "bg-red-50 text-[#991B1B] rounded-tl-sm border border-red-100 "
+                        : "bg-[#F9FAFB] text-[#111111] rounded-tl-sm border border-[#F3F4F6] "
                     } ${msg.isBuilding ? "animate-pulse" : ""}`}>
                       {msg.isBuilding ? (
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
-                          <span className="text-[#6B7280] dark:text-[#9CA3AF]">{msg.content}</span>
+                          <span className="text-[#6B7280] ">{msg.content}</span>
                         </div>
                       ) : (
                         <>
@@ -3361,7 +3356,7 @@ export default function WebsitePage() {
               <div className="flex flex-wrap gap-1.5">
                 {LANGUAGE_OPTIONS.map((lang) => (
                   <button key={lang} onClick={() => handleSelectLanguage(lang)}
-                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
                     {lang}
                   </button>
                 ))}
@@ -3375,11 +3370,11 @@ export default function WebsitePage() {
               <p className="text-[10px] text-[#9CA3AF] mb-2">Add your AI assistant to this website?</p>
               <div className="flex flex-wrap gap-1.5">
                 <button onClick={() => handleSelectEmbedAssistant(true)}
-                  className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                  className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
                   Yes, add it
                 </button>
                 <button onClick={() => handleSelectEmbedAssistant(false)}
-                  className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
+                  className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors font-medium">
                   Not now
                 </button>
               </div>
@@ -3393,7 +3388,7 @@ export default function WebsitePage() {
               <div className="flex flex-wrap gap-1.5">
                 {suggestions.map((s) => (
                   <button key={s} onClick={() => setInput(s)}
-                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#374151] dark:text-[#9CA3AF] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors text-left">
+                    className="text-[10px] px-2.5 py-1.5 bg-[#F3F4F6] text-[#374151] rounded-lg hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] transition-colors text-left">
                     {s}
                   </button>
                 ))}
@@ -3405,9 +3400,9 @@ export default function WebsitePage() {
               (wrong format or too large) -- FIX 3 (round G), matches
               VelaAssistant's equivalent banner. */}
           {attachError && (
-            <div className="mx-3 mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40">
-              <p className="text-[11px] text-[#991B1B] dark:text-red-400 flex-1">{attachError}</p>
-              <button onClick={() => setAttachError(null)} className="text-[#991B1B] dark:text-red-400 hover:opacity-70 shrink-0" aria-label="Dismiss">
+            <div className="mx-3 mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-100 ">
+              <p className="text-[11px] text-[#991B1B] flex-1">{attachError}</p>
+              <button onClick={() => setAttachError(null)} className="text-[#991B1B] hover:opacity-70 shrink-0" aria-label="Dismiss">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </button>
             </div>
@@ -3430,8 +3425,8 @@ export default function WebsitePage() {
           )}
 
           {/* Input bar */}
-          <div className="p-3 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
-            <div className="flex items-end gap-2 bg-[#F9FAFB] dark:bg-[#1E1E24] rounded-xl px-3 py-2.5 border border-[#E5E7EB] dark:border-[#2A2A32] focus-within:border-[#FF6B35]/50 transition-colors">
+          <div className="p-3 border-t border-[#F3F4F6] ">
+            <div className="flex items-end gap-2 bg-[#F9FAFB] rounded-xl px-3 py-2.5 border border-[#E5E7EB] focus-within:border-[#FF6B35]/50 transition-colors">
               <button type="button" onClick={() => fileInputRef.current?.click()}
                 disabled={building || attachedImages.length >= MAX_ATTACH} title="Attach image"
                 className="shrink-0 text-[#9CA3AF] hover:text-[#FF6B35] transition-colors disabled:opacity-40 pb-0.5">
@@ -3443,7 +3438,7 @@ export default function WebsitePage() {
               <textarea ref={chatInputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} onPaste={handleChatPaste}
                 placeholder={built ? "What would you like to change?" : "Tell me about your business…"}
                 rows={1} disabled={building}
-                className="flex-1 bg-transparent text-xs text-[#111111] dark:text-[#E5E7EB] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
+                className="flex-1 bg-transparent text-xs text-[#111111] placeholder:text-[#9CA3AF] resize-none focus:outline-none min-h-[20px] max-h-[80px] disabled:opacity-60"
                 style={{ lineHeight: "1.5" }}
               />
               <button onClick={handleSend} disabled={(!input.trim() && attachedImages.length === 0) || building}
@@ -3485,10 +3480,10 @@ export default function WebsitePage() {
             {built && (
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Preview / Code toggle, Settings and History removed */}
-                <div className="flex items-center gap-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
+                <div className="flex items-center gap-1 bg-white border border-[#E5E7EB] rounded-xl p-1">
                   {(["preview", "code"] as const).map((mode) => (
                     <button key={mode} onClick={() => { setViewMode(mode); if (previewVersionHtml && mode !== "preview") setPreviewVersionHtml(null); }}
-                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${viewMode === mode ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
+                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${viewMode === mode ? "bg-[#111111] text-white " : "text-[#6B7280] hover:text-[#111111] "}`}>
                       {mode === "code" ? "</>" : "Preview"}
                     </button>
                   ))}
@@ -3505,24 +3500,24 @@ export default function WebsitePage() {
                           className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-40 ${
                             editMode
                               ? "bg-[#FF6B35] text-white"
-                              : "bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white"
+                              : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111111] "
                           }`}>
                           {editMode ? "Done" : "Edit"}
                         </button>
                         {editMode && undoStack.length > 0 && (
                           <button onClick={handleUndo} title="Undo last edit"
-                            className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
+                            className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111111] transition-colors">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 7v6h6"/><path d="M3 13C5.5 9 9.5 6 14 6a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 1-6.5-2.7"/></svg>
                           </button>
                         )}
                         {editMode && editSpec?.designDNA?.palette && (
                           <div className="relative">
                             <button onClick={() => setShowColorPanel((p) => !p)} title="Edit colours"
-                              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${showColorPanel ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
+                              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${showColorPanel ? "bg-[#111111] text-white " : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111111] "}`}>
                               Colors
                             </button>
                             {showColorPanel && (
-                              <div className="absolute top-full left-0 mt-1 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl shadow-lg p-3 space-y-2 z-50 min-w-[148px]">
+                              <div className="absolute top-full left-0 mt-1 bg-white border border-[#E5E7EB] rounded-xl shadow-lg p-3 space-y-2 z-50 min-w-[148px]">
                                 {(["accent","bg","text","muted"] as const).filter((k) => (editSpec.designDNA!.palette as Record<string,string>)[k]).map((k) => (
                                   <div key={k} className="flex items-center gap-2">
                                     <input type="color" value={(editSpec.designDNA!.palette as Record<string,string>)[k]}
@@ -3541,11 +3536,11 @@ export default function WebsitePage() {
                       </>
                     )}
                     {/* 4-device selector */}
-                    <div className="flex items-center gap-0.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-1">
+                    <div className="flex items-center gap-0.5 bg-white border border-[#E5E7EB] rounded-xl p-1">
                       {(["desktop", "laptop", "tablet", "phone"] as DevicePreset[]).map((d) => (
                         <button key={d} onClick={() => { setDevice(d); setRotated(false); }}
                           title={d.charAt(0).toUpperCase() + d.slice(1)}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${device === d ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]" : "text-[#6B7280] hover:text-[#111111] dark:hover:text-white"}`}>
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${device === d ? "bg-[#111111] text-white " : "text-[#6B7280] hover:text-[#111111] "}`}>
                           {d === "desktop" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>}
                           {d === "laptop"  && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M1 21h22"/></svg>}
                           {d === "tablet"  && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></svg>}
@@ -3562,13 +3557,13 @@ export default function WebsitePage() {
                     {/* Rotate, tablet and phone only */}
                     {(device === "tablet" || device === "phone") && (
                       <button onClick={() => setRotated((r) => !r)} title="Rotate"
-                        className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
+                        className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111111] transition-colors">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
                       </button>
                     )}
                     {/* Open in new tab */}
                     <button onClick={handleOpenInNewTab} title="Open in new tab"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-[#111111] dark:hover:text-white transition-colors">
+                      className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111111] transition-colors">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     </button>
                   </div>
@@ -3578,16 +3573,16 @@ export default function WebsitePage() {
           </div>
 
           {/* Browser chrome + content */}
-          <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Chrome bar */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F3F4F6] dark:border-[#2A2A32] shrink-0 bg-[#F9FAFB] dark:bg-[#1E1E24]">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F3F4F6] shrink-0 bg-[#F9FAFB] ">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#FF5F57]" />
                 <span className="w-3 h-3 rounded-full bg-[#FEBC2E]" />
                 <span className="w-3 h-3 rounded-full bg-[#28C840]" />
               </div>
               <div className="flex-1 mx-4">
-                <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono truncate">
+                <div className="bg-white border border-[#E5E7EB] rounded-lg px-3 py-1 text-[11px] text-[#9CA3AF] font-mono truncate">
                   {publishedUrl ? `${origin}${publishedUrl}` : "yoursite.velaos.co"}
                 </div>
               </div>
@@ -3595,10 +3590,10 @@ export default function WebsitePage() {
 
             {/* Content area */}
             {building ? (
-              <div className="flex-1 overflow-hidden bg-[#F9FAFB] dark:bg-[#101014] flex flex-col items-center justify-center gap-4 min-h-0">
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex flex-col items-center justify-center gap-4 min-h-0">
                 <div className="w-10 h-10 rounded-full border-[3px] border-[#FF6B35] border-t-transparent animate-spin" />
                 <div className="space-y-1 text-center">
-                  <p className="text-sm font-semibold text-[#111111] dark:text-white">{t("website.building")}</p>
+                  <p className="text-sm font-semibold text-[#111111] ">{t("website.building")}</p>
                   <p className="text-xs text-[#6B7280]">Generating design, real photos, and booking flow…</p>
                 </div>
               </div>
@@ -3614,15 +3609,15 @@ export default function WebsitePage() {
                  from "this site's content is gone." A real skeleton now
                  makes the loading window unambiguous -- it can never be
                  mistaken for an empty/deleted site again. */
-              <div className="flex-1 overflow-hidden bg-[#F9FAFB] dark:bg-[#101014] flex flex-col min-h-0 p-6 gap-4 animate-pulse">
-                <div className="h-40 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded-xl" />
-                <div className="h-4 w-2/3 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded" />
-                <div className="h-4 w-1/2 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded" />
-                <div className="h-24 bg-[#E5E7EB] dark:bg-[#1E1E24] rounded-xl mt-2" />
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex flex-col min-h-0 p-6 gap-4 animate-pulse">
+                <div className="h-40 bg-[#E5E7EB] rounded-xl" />
+                <div className="h-4 w-2/3 bg-[#E5E7EB] rounded" />
+                <div className="h-4 w-1/2 bg-[#E5E7EB] rounded" />
+                <div className="h-24 bg-[#E5E7EB] rounded-xl mt-2" />
               </div>
 
             ) : !built ? (
-              <div className="flex-1 overflow-hidden bg-[#F9FAFB] dark:bg-[#101014] flex items-center justify-center min-h-0">
+              <div className="flex-1 overflow-hidden bg-[#F9FAFB] flex items-center justify-center min-h-0">
                 <div className="text-center space-y-3 max-w-xs p-4">
                   <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#E5E7EB] flex items-center justify-center mx-auto">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -3630,7 +3625,7 @@ export default function WebsitePage() {
                       <path d="M8 21h8M12 18v3" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   </div>
-                  <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Your website preview</p>
+                  <p className="text-sm font-semibold text-[#374151] ">Your website preview</p>
                   <p className="text-xs text-[#9CA3AF]">Describe your business in the chat. I&apos;ll build a premium site with real photos in seconds</p>
                 </div>
               </div>
@@ -3655,46 +3650,46 @@ export default function WebsitePage() {
                  dense. Same content as round H (no rings, full-width chart,
                  Website AI config), just sized like the rest of the app
                  instead of inflated. ─────────────────────────────────── */
-              <div className="flex-1 overflow-y-auto bg-[#F9FAFB] dark:bg-[#101014]">
+              <div className="flex-1 overflow-y-auto bg-[#F9FAFB] ">
                 <div className="w-full p-4 space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <button
                       onClick={() => { setShowAnalyticsPanel(false); setActiveTab("chat"); }}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#111111] dark:hover:text-white transition-colors px-2 py-1 -ml-2 rounded-lg hover:bg-white dark:hover:bg-[#1E1E24]"
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] hover:text-[#111111] transition-colors px-2 py-1 -ml-2 rounded-lg hover:bg-white "
                     >
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2.5L3 6l4.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       Back to editor
                     </button>
                     <button onClick={loadAnalytics} disabled={analyticsLoading}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] text-[#6B7280] dark:text-[#9CA3AF] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] disabled:opacity-40 transition-colors">
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-[#E5E7EB] bg-white text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] disabled:opacity-40 transition-colors">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={analyticsLoading ? "animate-spin" : ""}><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                       {analyticsLoading ? "Refreshing…" : "Refresh"}
                     </button>
                   </div>
 
                   <div>
-                    <h2 className="text-base font-bold text-[#111111] dark:text-white">Analytics</h2>
+                    <h2 className="text-base font-bold text-[#111111] ">Analytics</h2>
                     <p className="text-xs text-[#9CA3AF] mt-0.5">{siteName || "Your site"}</p>
                   </div>
 
                   {!isPublished ? (
-                    <div className="text-center py-10 space-y-1.5 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">
+                    <div className="text-center py-10 space-y-1.5 bg-white border border-[#E5E7EB] rounded-xl">
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round" className="mx-auto"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                      <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">Publish your site to start collecting analytics</p>
+                      <p className="text-sm font-semibold text-[#374151] ">Publish your site to start collecting analytics</p>
                     </div>
                   ) : analyticsLoading ? (
-                    <div className="flex items-center justify-center py-10 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">
+                    <div className="flex items-center justify-center py-10 bg-white border border-[#E5E7EB] rounded-xl">
                       <div className="w-7 h-7 rounded-full border-2 border-[#FF6B35] border-t-transparent animate-spin" />
                     </div>
                   ) : !analyticsData ? (
-                    <p className="text-sm text-[#9CA3AF] text-center py-10 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">Could not load analytics.</p>
+                    <p className="text-sm text-[#9CA3AF] text-center py-10 bg-white border border-[#E5E7EB] rounded-xl">Could not load analytics.</p>
                   ) : (() => {
                     const hasDeviceData = (["desktop", "mobile", "tablet"] as const).some((dev) => analyticsData.deviceSplit[dev] > 0);
                     return (
                       <>
                         {analyticsData.totalVisits === 0 && (
-                          <div className="text-center py-6 space-y-1 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl">
-                            <p className="text-sm font-semibold text-[#374151] dark:text-[#9CA3AF]">No visits yet</p>
+                          <div className="text-center py-6 space-y-1 bg-white border border-[#E5E7EB] rounded-xl">
+                            <p className="text-sm font-semibold text-[#374151] ">No visits yet</p>
                             <p className="text-xs text-[#9CA3AF]">Share your site link to start seeing traffic. The numbers below will fill in as visits come in.</p>
                           </div>
                         )}
@@ -3708,8 +3703,8 @@ export default function WebsitePage() {
                             { label: "Last 7 days",     value: analyticsData.last7Days      },
                             { label: "Last 30 days",    value: analyticsData.last30Days     },
                           ] as { label: string; value: number }[]).map(({ label, value }) => (
-                            <div key={label} className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                              <p className="text-2xl font-bold text-[#111111] dark:text-white tabular-nums leading-none">{value.toLocaleString()}</p>
+                            <div key={label} className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+                              <p className="text-2xl font-bold text-[#111111] tabular-nums leading-none">{value.toLocaleString()}</p>
                               <p className="text-[11px] text-[#9CA3AF] mt-1">{label}</p>
                             </div>
                           ))}
@@ -3720,29 +3715,29 @@ export default function WebsitePage() {
                             full-width and still the tallest element on the
                             page (it's the actual content), just not padded
                             like a hero banner. */}
-                        <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+                        <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <p className="text-sm font-bold text-[#111111] dark:text-white">Daily visits · last 30 days</p>
+                            <p className="text-sm font-bold text-[#111111] ">Daily visits · last 30 days</p>
                             {hasDeviceData && (
                               <div className="hidden sm:flex items-center gap-3">
                                 {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
-                                  <span key={dev} className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">
-                                    {dev} <span className="font-semibold text-[#111111] dark:text-white">{analyticsData.deviceSplit[dev]}%</span>
+                                  <span key={dev} className="text-[11px] text-[#6B7280] capitalize">
+                                    {dev} <span className="font-semibold text-[#111111] ">{analyticsData.deviceSplit[dev]}%</span>
                                   </span>
                                 ))}
                               </div>
                             )}
                           </div>
                           <WebsiteVisitsChart data={analyticsData.dailyVisits} height={180} />
-                          <div className="flex justify-between mt-1 pt-2 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                          <div className="flex justify-between mt-1 pt-2 border-t border-[#F3F4F6] ">
                             <span className="text-[10px] text-[#9CA3AF]">{analyticsData.dailyVisits[0]?.date.slice(5)}</span>
                             <span className="text-[10px] text-[#9CA3AF]">Today</span>
                           </div>
                           {hasDeviceData && (
-                            <div className="flex sm:hidden items-center gap-3 mt-2 pt-2 border-t border-[#F3F4F6] dark:border-[#2A2A32]">
+                            <div className="flex sm:hidden items-center gap-3 mt-2 pt-2 border-t border-[#F3F4F6] ">
                               {(["desktop", "mobile", "tablet"] as const).filter((dev) => analyticsData.deviceSplit[dev] > 0).map((dev) => (
-                                <span key={dev} className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] capitalize">
-                                  {dev} <span className="font-semibold text-[#111111] dark:text-white">{analyticsData.deviceSplit[dev]}%</span>
+                                <span key={dev} className="text-[11px] text-[#6B7280] capitalize">
+                                  {dev} <span className="font-semibold text-[#111111] ">{analyticsData.deviceSplit[dev]}%</span>
                                 </span>
                               ))}
                             </div>
@@ -3757,8 +3752,8 @@ export default function WebsitePage() {
                       WhatsApp's Manage modal, scoped to channel="website"
                       here -- density matched to the rest of this panel. */}
                   {isPublished && (
-                    <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
-                      <p className="text-sm font-bold text-[#111111] dark:text-white mb-0.5">Website chat AI settings</p>
+                    <div className="bg-white border border-[#E5E7EB] rounded-xl p-4">
+                      <p className="text-sm font-bold text-[#111111] mb-0.5">Website chat AI settings</p>
                       <p className="text-[11px] text-[#9CA3AF] mb-3">Controls how Vela AI responds to visitors chatting on this site.</p>
                       <ChannelAiConfigFields
                         loading={websiteAiCfgLoading}
@@ -3790,9 +3785,9 @@ export default function WebsitePage() {
               </div>
             ) : hasDeviceFrame ? (
               /* Tablet / Phone, fixed size, device frame, centered on neutral bg */
-              <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-6">
+              <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] flex justify-center items-start p-6">
                 <div
-                  className="shrink-0 rounded-[28px] border-[3px] border-[#C7C7CC] dark:border-[#3A3A42] overflow-hidden shadow-xl"
+                  className="shrink-0 rounded-[28px] border-[3px] border-[#C7C7CC] overflow-hidden shadow-xl"
                   style={{ width: iframeW, height: iframeH }}
                 >
                   <iframe
@@ -3809,7 +3804,7 @@ export default function WebsitePage() {
               </div>
             ) : (
               /* Laptop, 1280px wide, scrollable horizontally, no frame */
-              <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] dark:bg-[#101014] flex justify-center items-start p-4">
+              <div className="flex-1 min-h-0 overflow-auto bg-[#E8E8EC] flex justify-center items-start p-4">
                 <iframe
                   key={`preview-laptop-${iframeW}`}
                   ref={previewIframeRef}
@@ -3843,11 +3838,11 @@ export default function WebsitePage() {
         return (
           <div
             style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 200 }}
-            className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg shadow-xl py-1 w-32"
+            className="bg-white border border-[#E5E7EB] rounded-lg shadow-xl py-1 w-32"
           >
             <button
               onClick={() => { setMenuOpenId(null); setMenuPos(null); handleSwitchProject(mp); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB] ">
               Edit site
             </button>
             {/* FIX 2 (round O): real per-site connect state, relocated from
@@ -3861,25 +3856,25 @@ export default function WebsitePage() {
             {mp.is_published ? (
               <button
                 onClick={() => handleDisconnectSite(mp)}
-                className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+                className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB] ">
                 Disconnect
               </button>
             ) : mp.hasPublishedBefore ? (
               <button
                 onClick={() => handleReconnectSite(mp)}
                 disabled={reconnectingId === mp.id}
-                className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C] disabled:opacity-50">
+                className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-50">
                 {reconnectingId === mp.id ? "Reconnecting…" : "Reconnect"}
               </button>
             ) : null}
             <button
               onClick={() => { setMenuPos(null); handleStartRename(mp); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#17171C]">
+              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB] ">
               Rename
             </button>
             <button
               onClick={() => { setMenuPos(null); handleDeleteProject(mp); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">
+              className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 hover:bg-red-50 ">
               Delete
             </button>
           </div>
@@ -3894,13 +3889,13 @@ export default function WebsitePage() {
           sites are unaffected. */}
       {disconnectTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] ">
               {config.websites > 1
                 ? `Disconnect "${disconnectTarget.name || "this site"}"?`
                 : "Are you sure you want to disconnect this website?"}
             </h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+            <p className="text-sm text-[#6B7280] leading-relaxed">
               {config.websites > 1
                 ? "This site will go offline until you reconnect it. Your other sites are not affected."
                 : "This will take your site offline. You can reconnect the same site later without rebuilding it."}
@@ -3909,7 +3904,7 @@ export default function WebsitePage() {
               <button
                 onClick={() => setDisconnectTarget(null)}
                 disabled={disconnectingSite}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors disabled:opacity-50">
                 Cancel
               </button>
               <button
@@ -3927,15 +3922,15 @@ export default function WebsitePage() {
       {/* New Website Confirmation Modal */}
       {showNewWebsiteModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">Start a new website?</h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] ">Start a new website?</h2>
+            <p className="text-sm text-[#6B7280] leading-relaxed">
               Your current project will be saved in the sidebar. You can switch back anytime.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => setShowNewWebsiteModal(false)}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
                 Cancel
               </button>
               <button
@@ -3952,17 +3947,17 @@ export default function WebsitePage() {
       {/* Delete Site Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] ">
               Delete &ldquo;{deleteTarget.name ?? "this site"}&rdquo;?
             </h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+            <p className="text-sm text-[#6B7280] leading-relaxed">
               Its published page will go offline. This cannot be undone.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
                 Cancel
               </button>
               <button
@@ -3978,15 +3973,15 @@ export default function WebsitePage() {
       {/* Restore Version Confirmation Modal */}
       {restoreConfirmTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">Restore this version?</h2>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] leading-relaxed">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-[#111111] ">Restore this version?</h2>
+            <p className="text-sm text-[#6B7280] leading-relaxed">
               Restore this version? Your current draft will be replaced by the version from {new Date(restoreConfirmTarget.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} on {new Date(restoreConfirmTarget.created_at).toLocaleDateString()}. You can restore a newer version afterwards.
             </p>
             <div className="flex items-center gap-3 pt-1">
               <button
                 onClick={() => setRestoreConfirmTarget(null)}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
                 Cancel
               </button>
               <button
@@ -4008,9 +4003,9 @@ export default function WebsitePage() {
       {imgEditTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
           onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); setImgReplaceError(""); }}>
-          <div className="bg-white dark:bg-[#17171C] rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-base font-bold text-[#111111] dark:text-white">Replace image</h2>
+            <h2 className="text-base font-bold text-[#111111] ">Replace image</h2>
             {imgEditTarget.src && (
               <img src={imgEditTarget.src} alt="" className="w-full h-32 object-cover rounded-lg" />
             )}
@@ -4018,8 +4013,8 @@ export default function WebsitePage() {
                 shown right here, right when an empty slot is what the owner
                 is looking at, instead of buried in the text-style panel. */}
             {!imgEditTarget.src && (
-              <div className="rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] bg-[#FAFAFA] dark:bg-[#1E1E24] p-3.5 space-y-2.5">
-                <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] p-3.5 space-y-2.5">
+                <p className="text-xs text-[#6B7280] ">
                   No image here yet. You can add one below, or align the text to fill the space instead:
                 </p>
                 <div className="grid grid-cols-3 gap-2">
@@ -4031,7 +4026,7 @@ export default function WebsitePage() {
                         className={`text-xs font-semibold py-2 rounded-lg border transition-colors capitalize ${
                           active
                             ? "text-white border-transparent"
-                            : "bg-white dark:bg-[#17171C] border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F3F4F6] dark:hover:bg-[#26262C]"
+                            : "bg-white border-[#E5E7EB] text-[#374151] hover:bg-[#F3F4F6] "
                         }`}
                         style={active ? { background: "var(--vp-color)" } : undefined}>
                         {align}
@@ -4042,7 +4037,7 @@ export default function WebsitePage() {
               </div>
             )}
             {imgReplaceError && (
-              <p className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">
+              <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 {imgReplaceError}
               </p>
             )}
@@ -4055,7 +4050,7 @@ export default function WebsitePage() {
                   onChange={(e) => setImgSearchQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && imgSearchQuery.trim()) void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { query: imgSearchQuery.trim() }); }}
                   placeholder="e.g. coffee shop interior"
-                  className="flex-1 text-sm border border-[#E5E7EB] dark:border-[#2A2A32] rounded-lg px-3 py-2 bg-white dark:bg-[#111111] text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/40"
+                  className="flex-1 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 bg-white text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/40"
                 />
                 <button
                   onClick={() => { if (imgSearchQuery.trim()) void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { query: imgSearchQuery.trim() }); }}
@@ -4068,7 +4063,7 @@ export default function WebsitePage() {
             </div>
             <div className="flex items-center gap-2">
               <label className="flex-1 cursor-pointer">
-                <span className="block w-full text-center text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                <span className="block w-full text-center text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
                   Upload photo
                 </span>
                 <input type="file" accept="image/*" className="hidden"
@@ -4105,12 +4100,12 @@ export default function WebsitePage() {
               <button
                 onClick={() => void handleImageReplace(imgEditTarget.websiteId, imgEditTarget.vs, imgEditTarget.imgIdx, { remove: true })}
                 disabled={imgSearching}
-                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#6B7280] hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-40">
+                className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-40">
                 Remove
               </button>
             </div>
             <button onClick={() => { setImgEditTarget(null); setImgSearchQuery(""); setImgReplaceError(""); }}
-              className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+              className="w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] transition-colors">
               Cancel
             </button>
           </div>

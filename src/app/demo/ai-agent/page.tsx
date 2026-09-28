@@ -84,8 +84,8 @@ export default function DemoAIAgentPage() {
       <div className="max-w-5xl mx-auto space-y-6 pb-8">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">AI Agent</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Your 24/7 voice & chat AI assistant</p>
+            <h1 className="text-xl font-bold text-[#111827] ">AI Agent</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">Your 24/7 voice & chat AI assistant</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -100,37 +100,37 @@ export default function DemoAIAgentPage() {
         {/* KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {kpis.map((kpi) => (
-            <div key={kpi.label} className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4">
+            <div key={kpi.label} className="bg-white border border-[#E5E7EB] rounded-xl p-4">
               <p className="text-xl mb-0.5">{kpi.icon}</p>
-              <p className="text-2xl font-bold text-[#111827] dark:text-white">{kpi.value}</p>
-              <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-0.5 leading-tight">{kpi.label}</p>
-              <p className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">{kpi.sub}</p>
+              <p className="text-2xl font-bold text-[#111827] ">{kpi.value}</p>
+              <p className="text-[11px] text-[#6B7280] mt-0.5 leading-tight">{kpi.label}</p>
+              <p className="text-[10px] text-[#9CA3AF] mt-1">{kpi.sub}</p>
             </div>
           ))}
         </div>
 
         {/* Chart + ring */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-5">
-            <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB] mb-4">Calls This Week</p>
+          <div className="lg:col-span-2 bg-white border border-[#E5E7EB] rounded-xl p-5">
+            <p className="text-sm font-semibold text-[#374151] mb-4">Calls This Week</p>
             <BarChart />
           </div>
-          <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-5 flex flex-col items-center justify-center gap-4">
+          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 flex flex-col items-center justify-center gap-4">
             <CircleRing value={94} size={80} />
             <div className="text-center">
-              <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB]">AI Resolution Rate</p>
-              <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">6% escalated to human</p>
+              <p className="text-sm font-semibold text-[#374151] ">AI Resolution Rate</p>
+              <p className="text-[11px] text-[#6B7280] mt-0.5">6% escalated to human</p>
             </div>
           </div>
         </div>
 
         {/* Recent calls */}
-        <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F3F4F6] dark:border-[#2A2A32] flex items-center justify-between">
-            <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB]">Recent Calls</p>
+        <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#F3F4F6] flex items-center justify-between">
+            <p className="text-sm font-semibold text-[#374151] ">Recent Calls</p>
             <button onClick={() => setShowModal(true)} className="text-xs font-semibold text-[#FF6B35] hover:underline">View all</button>
           </div>
-          <div className="divide-y divide-[#F3F4F6] dark:divide-[#2A2A32]">
+          <div className="divide-y divide-[#F3F4F6] ">
             {DEMO_CALLS.map((call) => {
               const oc = OUTCOME_CONFIG[call.outcome];
               const isExpanded = expandedId === call.id;
@@ -138,15 +138,15 @@ export default function DemoAIAgentPage() {
                 <div key={call.id}>
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : call.id)}
-                    className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-[#FAFAFA] dark:hover:bg-[#17171C] transition-colors"
+                    className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-[#FAFAFA] transition-colors"
                   >
                     {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-[#F3F4F6] dark:bg-[#2A2A32] flex items-center justify-center text-[10px] font-bold text-[#6B7280] dark:text-[#9CA3AF] shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[10px] font-bold text-[#6B7280] shrink-0">
                       {call.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-[#111827] dark:text-white">{call.name}</p>
+                        <p className="text-sm font-semibold text-[#111827] ">{call.name}</p>
                         <span
                           className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                           style={{ background: oc.bg, color: oc.color }}
@@ -154,11 +154,11 @@ export default function DemoAIAgentPage() {
                           {oc.label}
                         </span>
                       </div>
-                      <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate mt-0.5">{call.summary}</p>
+                      <p className="text-xs text-[#6B7280] truncate mt-0.5">{call.summary}</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B7280]">{call.duration}</span>
-                      <span className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280]">{call.time}</span>
+                      <span className="text-xs font-mono text-[#9CA3AF] ">{call.duration}</span>
+                      <span className="text-[11px] text-[#9CA3AF] ">{call.time}</span>
                       <svg
                         width="12" height="12" viewBox="0 0 12 12" fill="none"
                         className={`text-[#9CA3AF] transition-transform ${isExpanded ? "rotate-180" : ""}`}
@@ -169,20 +169,20 @@ export default function DemoAIAgentPage() {
                   </button>
 
                   {isExpanded && (
-                    <div className="px-5 pb-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] bg-[#FAFAFA] dark:bg-[#17171C]">
+                    <div className="px-5 pb-4 border-t border-[#F3F4F6] bg-[#FAFAFA] ">
                       {call.transcript.length === 0 ? (
                         <p className="text-xs text-[#9CA3AF] pt-3">No transcript available.</p>
                       ) : (
                         <div className="pt-3 space-y-2.5">
                           {call.transcript.map((line, i) => (
                             <div key={i} className={`flex gap-2.5 ${line.role === "caller" ? "flex-row-reverse" : ""}`}>
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${line.role === "agent" ? "text-[#FF6B35]" : "text-[#6B7280] dark:text-[#9CA3AF]"}`}>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${line.role === "agent" ? "text-[#FF6B35]" : "text-[#6B7280] "}`}>
                                 {line.role === "agent" ? "AI" : "Caller"}
                               </span>
                               <p className={`text-xs leading-relaxed rounded-xl px-3 py-2 max-w-[80%] ${
                                 line.role === "agent"
-                                  ? "bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB]"
-                                  : "bg-[#FF6B35]/10 text-[#374151] dark:text-[#D1D5DB]"
+                                  ? "bg-white border border-[#E5E7EB] text-[#374151] "
+                                  : "bg-[#FF6B35]/10 text-[#374151] "
                               }`}>
                                 {line.text}
                               </p>

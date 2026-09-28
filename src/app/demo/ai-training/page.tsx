@@ -25,8 +25,8 @@ function ProgressRing({ pct }: { pct: number }) {
           fontSize="11" fontWeight="700" fill={color}>{pct}%</text>
       </svg>
       <div>
-        <p className="text-sm font-bold text-[#374151] dark:text-[#D1D5DB]">AI Score: Excellent</p>
-        <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280]">Your AI is well-trained</p>
+        <p className="text-sm font-bold text-[#374151] ">AI Score: Excellent</p>
+        <p className="text-[11px] text-[#9CA3AF] ">Your AI is well-trained</p>
       </div>
     </div>
   );
@@ -46,8 +46,8 @@ export default function DemoAITrainingPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">Train Your AI</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Teach your AI about your business</p>
+            <h1 className="text-xl font-bold text-[#111827] ">Train Your AI</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">Teach your AI about your business</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -59,7 +59,7 @@ export default function DemoAITrainingPage() {
         </div>
 
         {/* Score card */}
-        <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap">
           <ProgressRing pct={AI_SCORE} />
           <div className="flex gap-4 flex-wrap">
             {[
@@ -70,7 +70,7 @@ export default function DemoAITrainingPage() {
               { label: "Extra Info", done: true },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-1.5">
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center ${item.done ? "bg-[#ECFDF5]" : "bg-[#F3F4F6] dark:bg-[#2A2A32]"}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center ${item.done ? "bg-[#ECFDF5]" : "bg-[#F3F4F6] "}`}>
                   {item.done ? (
                     <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
                       <path d="M1.5 4.5l2 2 4-4" stroke="#16A34A" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -79,15 +79,15 @@ export default function DemoAITrainingPage() {
                     <span className="w-2 h-2 rounded-full bg-[#9CA3AF]" />
                   )}
                 </span>
-                <span className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF]">{item.label}</span>
+                <span className="text-[11px] text-[#6B7280] ">{item.label}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden">
-          <div className="flex border-b border-[#E5E7EB] dark:border-[#2A2A32]">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="flex border-b border-[#E5E7EB] ">
             {TABS.map((tab) => (
               <button
                 key={tab}
@@ -95,7 +95,7 @@ export default function DemoAITrainingPage() {
                 className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${
                   activeTab === tab
                     ? "border-[#FF6B35] text-[#FF6B35]"
-                    : "border-transparent text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#D1D5DB]"
+                    : "border-transparent text-[#6B7280] hover:text-[#374151] "
                 }`}
               >
                 {tab}
@@ -107,27 +107,27 @@ export default function DemoAITrainingPage() {
             {/* Services tab */}
             {activeTab === "Services" && (
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6B7280] uppercase tracking-wider">Your Service Menu</p>
-                <div className="border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden">
+                <p className="text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Your Service Menu</p>
+                <div className="border border-[#E5E7EB] rounded-xl overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-[#F3F4F6] dark:border-[#2A2A32] bg-[#FAFAFA] dark:bg-[#17171C]">
+                      <tr className="border-b border-[#F3F4F6] bg-[#FAFAFA] ">
                         {["Service", "Price", "Duration", "Description"].map((h) => (
-                          <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-[#9CA3AF] dark:text-[#6B7280] uppercase tracking-wider">{h}</th>
+                          <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#F3F4F6] dark:divide-[#2A2A32]">
+                    <tbody className="divide-y divide-[#F3F4F6] ">
                       {DEMO_KB.services.map((svc, i) => (
-                        <tr key={i} className="hover:bg-[#FAFAFA] dark:hover:bg-[#17171C]">
+                        <tr key={i} className="hover:bg-[#FAFAFA] ">
                           <td className="px-4 py-2.5">
-                            <button onClick={() => setShowModal(true)} className="text-sm font-medium text-[#111827] dark:text-white text-left hover:text-[#FF6B35] transition-colors">
+                            <button onClick={() => setShowModal(true)} className="text-sm font-medium text-[#111827] text-left hover:text-[#FF6B35] transition-colors">
                               {svc.name}
                             </button>
                           </td>
-                          <td className="px-4 py-2.5 text-sm font-semibold text-[#374151] dark:text-[#D1D5DB]">{svc.price}</td>
-                          <td className="px-4 py-2.5 text-sm text-[#6B7280] dark:text-[#9CA3AF]">{svc.duration}</td>
-                          <td className="px-4 py-2.5 text-xs text-[#6B7280] dark:text-[#9CA3AF] max-w-[200px] truncate">{svc.description}</td>
+                          <td className="px-4 py-2.5 text-sm font-semibold text-[#374151] ">{svc.price}</td>
+                          <td className="px-4 py-2.5 text-sm text-[#6B7280] ">{svc.duration}</td>
+                          <td className="px-4 py-2.5 text-xs text-[#6B7280] max-w-[200px] truncate">{svc.description}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -146,37 +146,37 @@ export default function DemoAITrainingPage() {
             {activeTab === "Business Info" && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block mb-1.5">Opening Hours</label>
+                  <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Opening Hours</label>
                   <textarea
                     defaultValue={DEMO_KB.business.hours}
                     onFocus={() => setShowModal(true)}
                     rows={3}
-                    className="w-full border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-4 py-3 text-sm text-[#111827] dark:text-white bg-white dark:bg-[#17171C] focus:outline-none resize-none"
+                    className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111827] bg-white focus:outline-none resize-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block mb-1.5">Address</label>
+                  <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Address</label>
                   <input
                     defaultValue={DEMO_KB.business.address}
                     onFocus={() => setShowModal(true)}
-                    className="w-full border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-4 py-3 text-sm text-[#111827] dark:text-white bg-white dark:bg-[#17171C] focus:outline-none"
+                    className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111827] bg-white focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block mb-1.5">Booking Policy</label>
+                  <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">Booking Policy</label>
                   <textarea
                     defaultValue={DEMO_KB.business.bookingPolicy}
                     onFocus={() => setShowModal(true)}
                     rows={3}
-                    className="w-full border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-4 py-3 text-sm text-[#111827] dark:text-white bg-white dark:bg-[#17171C] focus:outline-none resize-none"
+                    className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111827] bg-white focus:outline-none resize-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block mb-1.5">AI Tone</label>
+                  <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">AI Tone</label>
                   <select
                     defaultValue="professional"
                     onFocus={() => setShowModal(true)}
-                    className="w-full border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-4 py-3 text-sm text-[#111827] dark:text-white bg-white dark:bg-[#17171C] focus:outline-none appearance-none"
+                    className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111827] bg-white focus:outline-none appearance-none"
                   >
                     <option>Professional</option>
                     <option>Friendly</option>
@@ -190,15 +190,15 @@ export default function DemoAITrainingPage() {
             {activeTab === "Extra" && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-[11px] font-semibold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block mb-1.5">
+                  <label className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">
                     Additional Information &amp; FAQs
                   </label>
-                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mb-2">Add anything else your AI should know. FAQs, special instructions, certifications, etc.</p>
+                  <p className="text-[11px] text-[#9CA3AF] mb-2">Add anything else your AI should know. FAQs, special instructions, certifications, etc.</p>
                   <textarea
                     defaultValue={DEMO_KB.extra}
                     onFocus={() => setShowModal(true)}
                     rows={8}
-                    className="w-full border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-4 py-3 text-sm text-[#111827] dark:text-white bg-white dark:bg-[#17171C] focus:outline-none resize-none leading-relaxed"
+                    className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111827] bg-white focus:outline-none resize-none leading-relaxed"
                   />
                 </div>
               </div>
@@ -206,8 +206,8 @@ export default function DemoAITrainingPage() {
           </div>
 
           {/* Footer actions */}
-          <div className="px-5 py-4 border-t border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between bg-[#FAFAFA] dark:bg-[#17171C]">
-            <p className="text-xs text-[#9CA3AF] dark:text-[#6B7280]">Changes auto-save after 2 seconds</p>
+          <div className="px-5 py-4 border-t border-[#E5E7EB] flex items-center justify-between bg-[#FAFAFA] ">
+            <p className="text-xs text-[#9CA3AF] ">Changes auto-save after 2 seconds</p>
             <button
               onClick={() => setShowModal(true)}
               className="text-sm font-semibold px-5 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"

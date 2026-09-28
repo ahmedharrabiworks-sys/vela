@@ -71,8 +71,8 @@ export default function DemoLeadsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">Leads / CRM</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">{leads.length} leads across {STAGES.length} stages</p>
+            <h1 className="text-xl font-bold text-[#111827] ">Leads / CRM</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">{leads.length} leads across {STAGES.length} stages</p>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -80,7 +80,7 @@ export default function DemoLeadsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search leads…"
-              className="border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-3.5 py-2 text-sm bg-white dark:bg-[#1E1E24] text-[#111827] dark:text-white placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 w-44"
+              className="border border-[#E5E7EB] rounded-xl px-3.5 py-2 text-sm bg-white text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 w-44"
             />
             <button
               onClick={() => setShowModal(true)}
@@ -107,7 +107,7 @@ export default function DemoLeadsPage() {
                 <div className="flex items-center justify-between mb-2 px-0.5">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full" style={{ background: stage.color }} />
-                    <span className="text-xs font-semibold text-[#374151] dark:text-[#D1D5DB]">{stage.label}</span>
+                    <span className="text-xs font-semibold text-[#374151] ">{stage.label}</span>
                   </div>
                   <span className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: stage.color }}>
                     {col.length}
@@ -122,7 +122,7 @@ export default function DemoLeadsPage() {
                       draggable
                       onDragStart={() => handleDragStart(lead.id)}
                       onClick={() => setShowModal(true)}
-                      className={`bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-[#FF6B35]/50 hover:shadow-sm transition-all select-none ${dragging === lead.id ? "opacity-50" : ""}`}
+                      className={`bg-white border border-[#E5E7EB] rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-[#FF6B35]/50 hover:shadow-sm transition-all select-none ${dragging === lead.id ? "opacity-50" : ""}`}
                     >
                       <div className="flex items-start gap-2 mb-2">
                         <div
@@ -132,14 +132,14 @@ export default function DemoLeadsPage() {
                           {getInitials(lead.name)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-[#111827] dark:text-white truncate">{lead.name}</p>
-                          <p className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280]">{timeAgo(lead.updated_at)}</p>
+                          <p className="text-xs font-semibold text-[#111827] truncate">{lead.name}</p>
+                          <p className="text-[10px] text-[#9CA3AF] ">{timeAgo(lead.updated_at)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <ChannelBadge ch={lead.channel} />
                         {lead.phone && (
-                          <span className="text-[9px] text-[#9CA3AF] dark:text-[#6B7280] truncate">{lead.phone}</span>
+                          <span className="text-[9px] text-[#9CA3AF] truncate">{lead.phone}</span>
                         )}
                       </div>
                     </div>
@@ -149,7 +149,7 @@ export default function DemoLeadsPage() {
                 {/* Add card ghost */}
                 <button
                   onClick={() => setShowModal(true)}
-                  className="mt-2 w-full py-2 rounded-xl border border-dashed border-[#E5E7EB] dark:border-[#2A2A32] text-[11px] text-[#9CA3AF] dark:text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] transition-colors"
+                  className="mt-2 w-full py-2 rounded-xl border border-dashed border-[#E5E7EB] text-[11px] text-[#9CA3AF] hover:border-[#FF6B35]/40 hover:text-[#FF6B35] transition-colors"
                 >
                   + Add
                 </button>
@@ -158,7 +158,7 @@ export default function DemoLeadsPage() {
           })}
         </div>
 
-        <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] text-center">
+        <p className="text-[11px] text-[#9CA3AF] text-center">
           Drag leads between stages to update their status
         </p>
       </div>

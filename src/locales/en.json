@@ -42,8 +42,6 @@
     "viewAllPlans": "View all plans",
     "upgradePlan": "Upgrade Plan",
     "logout": "Log out",
-    "logoutConfirm": "Log out of Vela?",
-    "cancel": "Cancel",
     "plans": {
       "starter": "Starter Plan",
       "pro": "Pro Plan",

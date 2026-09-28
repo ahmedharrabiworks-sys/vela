@@ -966,10 +966,10 @@ function ChannelsPageContent() {
             {showConnectMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowConnectMenu(false)} />
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl shadow-xl py-1 w-44">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border border-[#E5E7EB] rounded-xl shadow-xl py-1 w-44">
                   {unconnectedChannels.map((c) => (
                     <button key={c.key} onClick={() => { setShowConnectMenu(false); handleConnectClick(c.key); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-[#374151] dark:text-[#E5E7EB] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24] transition-colors">
+                      className="w-full text-left px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors">
                       {c.label}
                     </button>
                   ))}
@@ -982,11 +982,11 @@ function ChannelsPageContent() {
 
       {/* Real success banner -- only when every channel is actually connected */}
       {allChannelsConnected && (
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-green-200 dark:border-green-900/40 bg-green-50 dark:bg-green-950/30">
-          <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-950/50 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-green-200 bg-green-50 ">
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="#16A34A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
-          <p className="text-sm font-semibold text-green-800 dark:text-green-400">
+          <p className="text-sm font-semibold text-green-800 ">
             All 3 channels connected. Your AI agent is live across {connectedChannelNames.join(", ")}.
           </p>
         </div>
@@ -1028,7 +1028,7 @@ function ChannelsPageContent() {
 
           return (
             <div key={ch.key}
-              className={`p-5 rounded-xl bg-white dark:bg-[#17171C] border transition-colors ${isLocked ? "border-[#E5E7EB] dark:border-[#2A2A32] opacity-70" : "border-[#E5E7EB] dark:border-[#2A2A32] hover:border-[#D1D5DB] dark:hover:border-[#3A3A44]"}`}
+              className={`p-5 rounded-xl bg-white border transition-colors ${isLocked ? "border-[#E5E7EB] opacity-70" : "border-[#E5E7EB] hover:border-[#D1D5DB] "}`}
             >
               {loading ? (
                 <div className="flex items-center gap-4 w-full animate-pulse">
@@ -1047,7 +1047,7 @@ function ChannelsPageContent() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-base font-bold text-[#111111] dark:text-white">{ch.name}</p>
+                        <p className="text-base font-bold text-[#111111] ">{ch.name}</p>
                         {isLocked ? (
                           <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -1057,7 +1057,7 @@ function ChannelsPageContent() {
                             Pro only
                           </span>
                         ) : isConnected ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] ">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
                             {t("channels.connected")}
                           </span>
@@ -1068,8 +1068,8 @@ function ChannelsPageContent() {
                           </span>
                         )}
                       </div>
-                      {isConnected && <p className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B7280] mt-0.5">{ch.connectedDesc}</p>}
-                      <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">{ch.desc}</p>
+                      {isConnected && <p className="text-xs font-mono text-[#9CA3AF] mt-0.5">{ch.connectedDesc}</p>}
+                      <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">{ch.desc}</p>
                     </div>
                     {/* Actions -- stacked vertically to match the reference,
                         not side by side. */}
@@ -1077,14 +1077,14 @@ function ChannelsPageContent() {
                       <div className="flex flex-col gap-2 shrink-0">
                         <button
                           onClick={() => setModal(ch.key === "instagram" ? "instagram-settings" : "whatsapp-settings")}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
                         >
                           Manage
                         </button>
                         <button
                           onClick={() => disconnect(ch.key)}
                           disabled={isDisc}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] dark:border-red-900/50 text-[#DC2626] dark:text-red-400 hover:bg-[#FEF2F2] dark:hover:bg-red-950/30 transition-colors whitespace-nowrap disabled:opacity-50"
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors whitespace-nowrap disabled:opacity-50"
                         >
                           {isDisc ? "…" : t("common.disconnect")}
                         </button>
@@ -1094,8 +1094,8 @@ function ChannelsPageContent() {
                         onClick={() => handleConnectClick(ch.key)}
                         className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all ${
                           isLocked
-                            ? "border-[#E5E7EB] dark:border-[#2A2A32] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                            : "border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                            ? "border-[#E5E7EB] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                            : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
                         }`}
                       >
                         {isLocked ? "Upgrade" : t("common.connect")}
@@ -1105,11 +1105,11 @@ function ChannelsPageContent() {
 
                   {/* Real stat pairs -- connected channels only. */}
                   {isConnected && (
-                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex-wrap">
+                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[#F3F4F6] flex-wrap">
                       {stats.map((s) => (
                         <div key={s.label}>
-                          <p className="text-base font-bold text-[#111111] dark:text-white leading-none">{s.value.toLocaleString()}</p>
-                          <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">{s.label}</p>
+                          <p className="text-base font-bold text-[#111111] leading-none">{s.value.toLocaleString()}</p>
+                          <p className="text-[11px] text-[#9CA3AF] mt-1">{s.label}</p>
                         </div>
                       ))}
                     </div>
@@ -1125,7 +1125,7 @@ function ChannelsPageContent() {
             derived from real provisioning + training state (see the fetch
             effect and phoneAgentStatus above), same visual card pattern as
             Instagram/WhatsApp/the (now-flagged-off) Website card. */}
-        <div className="p-5 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
+        <div className="p-5 rounded-xl bg-white border border-[#E5E7EB] ">
           {phoneAgentLoading ? (
             <div className="flex items-center gap-4 w-full animate-pulse">
               <div className="w-12 h-12 rounded-xl bg-[#F3F4F6]" />
@@ -1147,7 +1147,7 @@ function ChannelsPageContent() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-base font-bold text-[#111111] dark:text-white">{t("channels.phoneAgent.name")}</p>
+                  <p className="text-base font-bold text-[#111111] ">{t("channels.phoneAgent.name")}</p>
                   {phoneAgentStatus === "locked" ? (
                     <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -1157,12 +1157,12 @@ function ChannelsPageContent() {
                       Pro only
                     </span>
                   ) : phoneAgentStatus === "connected" ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] ">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
                       {t("channels.connected")}
                     </span>
                   ) : phoneAgentStatus === "pending" ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 ">
                       <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
                       {t("channels.pending")}
                     </span>
@@ -1174,17 +1174,17 @@ function ChannelsPageContent() {
                   )}
                 </div>
                 {phoneAgentStatus === "pending" && (
-                  <p className="text-xs font-mono text-[#9CA3AF] dark:text-[#6B7280] mt-0.5">
+                  <p className="text-xs font-mono text-[#9CA3AF] mt-0.5">
                     Training {phoneAgent.trainingFilled}/5 complete
                   </p>
                 )}
-                <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">{t("channels.phoneAgent.desc")}</p>
+                <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">{t("channels.phoneAgent.desc")}</p>
               </div>
 
               {phoneAgentStatus === "locked" ? (
                 <button
                   onClick={() => { setModal("upgrade"); track("upgrade_clicked", { source: "channels_phone_agent" }); }}
-                  className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
+                  className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
                 >
                   Upgrade
                 </button>
@@ -1193,8 +1193,8 @@ function ChannelsPageContent() {
                   href="/app/ai-agent/phone"
                   className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all whitespace-nowrap ${
                     phoneAgentStatus === "not_connected"
-                      ? "border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                      : "border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      ? "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
+                      : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
                   }`}
                 >
                   {phoneAgentStatus === "not_connected" ? t("common.connect") : "Manage"}
@@ -1209,7 +1209,7 @@ function ChannelsPageContent() {
             code, state, and handlers below are untouched so re-enabling is
             flipping that flag back on. */}
         {WEBSITE_BUILDER_ENABLED && (
-        <div className="p-5 rounded-xl bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32]">
+        <div className="p-5 rounded-xl bg-white border border-[#E5E7EB] ">
           <div className="flex items-start gap-4 flex-wrap">
             <div className="w-12 h-12 rounded-xl bg-[#6366F1] flex items-center justify-center shrink-0">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
@@ -1218,9 +1218,9 @@ function ChannelsPageContent() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-base font-bold text-[#111111] dark:text-white">{t("channels.website.name")}</p>
+                <p className="text-base font-bold text-[#111111] ">{t("channels.website.name")}</p>
                 {website.published ? (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] dark:bg-[#052E16]/40 text-[#059669] dark:text-[#34D399]">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] ">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
                     {t("channels.connected")}
                   </span>
@@ -1232,7 +1232,7 @@ function ChannelsPageContent() {
                 )}
               </div>
               {/* FIX 7 (round D): copy updated to match the reference exactly. */}
-              <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-1.5 leading-relaxed">
+              <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">
                 Chat widget on your website. Live AI conversations with visitors
               </p>
             </div>
@@ -1253,13 +1253,13 @@ function ChannelsPageContent() {
               <div className="flex flex-col gap-2 shrink-0">
                 <Link
                   href="/app/website"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap text-center"
                 >
                   Manage
                 </Link>
                 <button
                   onClick={() => setShowWebsiteDisconnectConfirm(true)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] dark:border-red-900/50 text-[#DC2626] dark:text-red-400 hover:bg-[#FEF2F2] dark:hover:bg-red-950/30 transition-colors whitespace-nowrap"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors whitespace-nowrap"
                 >
                   {t("common.disconnect")}
                 </button>
@@ -1267,7 +1267,7 @@ function ChannelsPageContent() {
             ) : (
               <Link
                 href="/app/website"
-                className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#E5E7EB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
+                className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
               >
                 Connect
               </Link>
@@ -1287,16 +1287,16 @@ function ChannelsPageContent() {
                   -- redundant with the conversion % right next to it. Both
                   counts are tenant-wide aggregates across every connected
                   site, per FIX 2 (round O). */}
-              <div className="flex items-center gap-6 pt-4 border-t border-[#F3F4F6] dark:border-[#2A2A32] flex-wrap">
+              <div className="flex items-center gap-6 pt-4 border-t border-[#F3F4F6] flex-wrap">
                 <div>
-                  <p className="text-base font-bold text-[#111111] dark:text-white leading-none">{website.visits.toLocaleString()}</p>
-                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">Website visitors</p>
+                  <p className="text-base font-bold text-[#111111] leading-none">{website.visits.toLocaleString()}</p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1">Website visitors</p>
                 </div>
                 <div>
-                  <p className="text-base font-bold text-[#111111] dark:text-white leading-none">
+                  <p className="text-base font-bold text-[#111111] leading-none">
                     {website.conversations > 0 ? `${Math.round((website.leads / website.conversations) * 1000) / 10}%` : "0%"}
                   </p>
-                  <p className="text-[11px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">Chat conversions</p>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1">Chat conversions</p>
                 </div>
               </div>
               {/* siteUrl is only ever set when exactly one site is live --
@@ -1307,7 +1307,7 @@ function ChannelsPageContent() {
                   href={website.siteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#374151] dark:text-[#E5E7EB] hover:text-[#FF6B35] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#374151] hover:text-[#FF6B35] transition-colors"
                 >
                   View your site
                   <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M3 8l5-5M3.5 3h4.5v4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>

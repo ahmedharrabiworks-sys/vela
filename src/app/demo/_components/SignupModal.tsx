@@ -11,7 +11,7 @@ export function SignupModal({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-[#1E1E24] rounded-2xl border border-[#E5E7EB] dark:border-[#2A2A32] shadow-2xl p-8 max-w-sm w-full text-center"
+        className="bg-white rounded-2xl border border-[#E5E7EB] shadow-2xl p-8 max-w-sm w-full text-center"
       >
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -22,10 +22,10 @@ export function SignupModal({ onClose }: { onClose: () => void }) {
             <path d="M13 8v4l3 3" stroke="#FF6B35" strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
         </div>
-        <h3 className="text-lg font-bold text-[#111827] dark:text-white mb-2">
+        <h3 className="text-lg font-bold text-[#111827] mb-2">
           Sign up to do this for real
         </h3>
-        <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mb-6 leading-relaxed">
+        <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
           Create a free account to use this feature with your actual business data. No credit card required.
         </p>
         <Link
@@ -37,7 +37,7 @@ export function SignupModal({ onClose }: { onClose: () => void }) {
         </Link>
         <button
           onClick={onClose}
-          className="text-sm text-[#9CA3AF] dark:text-[#6B7280] hover:text-[#6B7280] dark:hover:text-[#9CA3AF] transition-colors"
+          className="text-sm text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
         >
           Continue exploring demo
         </button>

@@ -14,21 +14,21 @@ export default function DemoWebsitePage() {
 
       <div className="h-[calc(100vh-56px)] flex flex-col">
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-bold text-[#111827] dark:text-white">Website Builder</h1>
+            <h1 className="text-lg font-bold text-[#111827] ">Website Builder</h1>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: "var(--vp-color)" }}>
               PUBLISHED
             </span>
           </div>
           <div className="flex items-center gap-2">
             {/* Site selector */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24]">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E5E7EB] bg-white ">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <rect x="1" y="1.5" width="10" height="7" rx="1" stroke="#9CA3AF" strokeWidth="1.2"/>
                 <path d="M4 10.5h4M6 8.5v2" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
-              <span className="text-xs font-semibold text-[#374151] dark:text-[#D1D5DB]">Ahmed Dental Clinic</span>
+              <span className="text-xs font-semibold text-[#374151] ">Ahmed Dental Clinic</span>
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M2.5 4l2.5 2.5 2.5-2.5" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -46,11 +46,11 @@ export default function DemoWebsitePage() {
         {/* Split: chat + preview */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left: chat panel */}
-          <div className="w-[300px] shrink-0 border-r border-[#E5E7EB] dark:border-[#2A2A32] flex flex-col">
+          <div className="w-[300px] shrink-0 border-r border-[#E5E7EB] flex flex-col">
             {/* Chat label */}
-            <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-[#2A2A32] shrink-0">
-              <p className="text-xs font-semibold text-[#374151] dark:text-[#D1D5DB]">Build with AI</p>
-              <p className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280] mt-0.5">Chat to customize your site</p>
+            <div className="px-4 py-3 border-b border-[#E5E7EB] shrink-0">
+              <p className="text-xs font-semibold text-[#374151] ">Build with AI</p>
+              <p className="text-[10px] text-[#9CA3AF] mt-0.5">Chat to customize your site</p>
             </div>
 
             {/* Messages */}
@@ -72,7 +72,7 @@ export default function DemoWebsitePage() {
                     className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
                       msg.role === "user"
                         ? "bg-[#FF6B35] text-white rounded-br-sm"
-                        : "bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] rounded-bl-sm"
+                        : "bg-white border border-[#E5E7EB] text-[#374151] rounded-bl-sm"
                     }`}
                   >
                     {msg.text}
@@ -82,7 +82,7 @@ export default function DemoWebsitePage() {
             </div>
 
             {/* Reply input */}
-            <div className="px-4 py-3 border-t border-[#E5E7EB] dark:border-[#2A2A32] shrink-0">
+            <div className="px-4 py-3 border-t border-[#E5E7EB] shrink-0">
               <div className="flex items-end gap-2">
                 <textarea
                   value={reply}
@@ -90,7 +90,7 @@ export default function DemoWebsitePage() {
                   onFocus={() => setShowModal(true)}
                   placeholder="Ask Vela to change something…"
                   rows={2}
-                  className="flex-1 border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl px-3 py-2 text-xs text-[#111827] dark:text-white bg-[#F9FAFB] dark:bg-[#1E1E24] placeholder:text-[#9CA3AF] focus:outline-none resize-none"
+                  className="flex-1 border border-[#E5E7EB] rounded-xl px-3 py-2 text-xs text-[#111827] bg-[#F9FAFB] placeholder:text-[#9CA3AF] focus:outline-none resize-none"
                 />
                 <button
                   onClick={() => setShowModal(true)}
@@ -106,15 +106,15 @@ export default function DemoWebsitePage() {
           </div>
 
           {/* Right: site preview */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#F3F4F6] dark:bg-[#13131A]">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#F3F4F6] ">
             {/* Preview bar */}
-            <div className="px-4 py-2 border-b border-[#E5E7EB] dark:border-[#2A2A32] flex items-center gap-2 bg-white dark:bg-[#1E1E24] shrink-0">
+            <div className="px-4 py-2 border-b border-[#E5E7EB] flex items-center gap-2 bg-white shrink-0">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-400"/>
                 <span className="w-3 h-3 rounded-full bg-yellow-400"/>
                 <span className="w-3 h-3 rounded-full bg-green-400"/>
               </div>
-              <div className="flex-1 bg-[#F3F4F6] dark:bg-[#17171C] rounded-lg px-3 py-1.5 text-xs text-[#9CA3AF] font-mono text-center">
+              <div className="flex-1 bg-[#F3F4F6] rounded-lg px-3 py-1.5 text-xs text-[#9CA3AF] font-mono text-center">
                 vela.app/site/ahmed-dental-clinic
               </div>
               <button

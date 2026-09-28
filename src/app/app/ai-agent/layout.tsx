@@ -3,9 +3,13 @@
 import { createContext, useContext } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTheme } from "@/lib/theme";
 import { useI18n } from "@/lib/i18n";
 
+// Dark mode has been removed from Vela entirely (see git history). This
+// context is kept only so the AI Agent section's several consumer pages
+// don't each need a separate edit -- isDark is now permanently false, so
+// every "isDark ? darkValue : lightValue" ternary downstream always
+// resolves to its light-mode branch.
 type AgentTheme = { isDark: boolean };
 export const AgentThemeContext = createContext<AgentTheme>({ isDark: false });
 export function useAgentTheme() { return useContext(AgentThemeContext); }
@@ -21,16 +25,15 @@ const PHONE_HREFS = [
 ];
 
 export default function AIAgentLayout({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
   const { t } = useI18n();
-  const isDark = theme === "dark";
+  const isDark = false;
   const pathname = usePathname();
   const router = useRouter();
 
-  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
-  const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
-  const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
-  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
+  const border      = "#E5E7EB";
+  const textMuted   = "#9CA3AF";
+  const textPrimary = "#0F172A";
+  const cardBg      = "#FFFFFF";
 
   const isAssistantSection = pathname === "/app/ai-agent" || ASSISTANT_HREFS.includes(pathname);
   const isPhoneSection     = PHONE_HREFS.includes(pathname);
@@ -69,7 +72,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
           <span className="text-sm font-bold" style={{ color: textPrimary }}>{t("aiAgent.title")}</span>
           <span
             className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0", color: "#FF6B35" }}
+            style={{ background: "#FFF5F0", color: "#FF6B35" }}
           >
             {t("aiAgent.badge")}
           </span>
@@ -83,9 +86,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
             onClick={() => router.push("/app/ai-agent/overview")}
             className="flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all hover:opacity-90"
             style={{
-              background:  isAssistantSection
-                ? (isDark ? "rgba(255,107,53,0.09)" : "#FFF8F5")
-                : cardBg,
+              background:  isAssistantSection ? "#FFF8F5" : cardBg,
               borderColor: isAssistantSection ? "#FF6B35" : border,
             }}
           >
@@ -94,7 +95,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
               style={{
                 background: isAssistantSection
                   ? "linear-gradient(135deg,#FF6B35,#FF3366)"
-                  : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
+                  : "#F3F4F6",
               }}
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -117,9 +118,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
             onClick={() => router.push("/app/ai-agent/training")}
             className="flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all hover:opacity-90"
             style={{
-              background:  isPhoneSection
-                ? (isDark ? "rgba(255,107,53,0.09)" : "#FFF8F5")
-                : cardBg,
+              background:  isPhoneSection ? "#FFF8F5" : cardBg,
               borderColor: isPhoneSection ? "#FF6B35" : border,
             }}
           >
@@ -128,7 +127,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
               style={{
                 background: isPhoneSection
                   ? "linear-gradient(135deg,#FF6B35,#FF3366)"
-                  : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
+                  : "#F3F4F6",
               }}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -161,7 +160,7 @@ export default function AIAgentLayout({ children }: { children: React.ReactNode 
                 {tab.badge && (
                   <span
                     className="text-[8px] font-bold px-1.5 py-0.5 rounded"
-                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textMuted }}
+                    style={{ background: "#F3F4F6", color: textMuted }}
                   >
                     {tab.badge}
                   </span>

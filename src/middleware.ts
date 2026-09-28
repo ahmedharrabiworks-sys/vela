@@ -264,6 +264,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/app", request.url));
   }
 
+  // Logout redesign: without this, the browser's back-forward cache
+  // (bfcache) can restore a fully-rendered /app page straight from memory
+  // after Log out -- no new request, so middleware never re-runs the auth
+  // check above and the stale authenticated page flashes back on screen.
+  // no-store makes every /app page ineligible for bfcache, forcing a real
+  // reload (and therefore a real auth check) on back/forward navigation.
+  if (isAppPath(path)) {
+    response.headers.set("Cache-Control", "no-store, must-revalidate");
+  }
+
   return response;
 }
 

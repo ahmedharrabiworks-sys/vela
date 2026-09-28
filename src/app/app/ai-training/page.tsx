@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { KnowledgeBase } from "@/app/api/ai-training/route";
 import { useI18n } from "@/lib/i18n";
-import { useTheme } from "@/lib/theme";
 
 type ServiceRow  = KnowledgeBase["services"][number];
 type Tab         = "Services" | "Business Info" | "Extra";
@@ -38,14 +37,11 @@ export function computeCompleteness(kb: KnowledgeBase): number {
 }
 
 function ProgressRing({ pct, scoreLabel, statusLabel }: { pct: number; scoreLabel: string; statusLabel: string }) {
-  const { theme } = useTheme();
   const r = 22;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - pct / 100);
   const color = pct >= 80 ? "#16A34A" : pct >= 50 ? "#FF6B35" : "#DC2626";
-  // SVG stroke is a presentation attribute, invisible to the class-based
-  // dark-mode system -- same fix as CircularProgress's track color.
-  const trackColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
+  const trackColor = "#F3F4F6";
   return (
     <div className="flex items-center gap-2.5">
       <svg width="52" height="52" viewBox="0 0 52 52" className="shrink-0">
@@ -59,7 +55,7 @@ function ProgressRing({ pct, scoreLabel, statusLabel }: { pct: number; scoreLabe
           fontSize="11" fontWeight="700" fill={color}>{pct}%</text>
       </svg>
       <div>
-        <p className="text-xs font-bold text-[#374151] dark:text-[#E5E7EB]">{scoreLabel}</p>
+        <p className="text-xs font-bold text-[#374151] ">{scoreLabel}</p>
         <p className="text-[11px] text-[#9CA3AF]">{statusLabel}</p>
       </div>
     </div>
@@ -68,7 +64,7 @@ function ProgressRing({ pct, scoreLabel, statusLabel }: { pct: number; scoreLabe
 
 function ChecklistItem({ label, done }: { label: string; done: boolean }) {
   return (
-    <span className={`flex items-center gap-1.5 text-xs font-medium ${done ? "text-[#374151] dark:text-[#E5E7EB]" : "text-[#D1D5DB] dark:text-[#48484F]"}`}>
+    <span className={`flex items-center gap-1.5 text-xs font-medium ${done ? "text-[#374151] " : "text-[#D1D5DB] "}`}>
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
         <circle cx="6.5" cy="6.5" r="6" stroke={done ? "#16A34A" : "currentColor"} strokeWidth="1.2" fill={done ? "#16A34A" : "none"}/>
         {done && <path d="M4 6.5l1.8 1.8L9.5 4.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>}
@@ -399,7 +395,7 @@ export default function AITrainingPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-xl font-bold text-[#111111] dark:text-white">{t("aiTraining.title")}</h1>
+          <h1 className="text-xl font-bold text-[#111111] ">{t("aiTraining.title")}</h1>
           <p className="text-sm text-[#6B7280] mt-0.5">{t("aiTraining.subtitle")}</p>
         </div>
         <button onClick={saveNow} disabled={saving}
@@ -410,7 +406,7 @@ export default function AITrainingPage() {
       </div>
 
       {/* AI Score card, real ring + real per-section checklist */}
-      <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
         <ProgressRing pct={pct} scoreLabel={t("aiTraining.aiScore")} statusLabel={statusLabel} />
         <div className="flex items-center gap-4 flex-wrap">
           {checklist.map((c) => <ChecklistItem key={c.key} label={c.label} done={c.done} />)}
@@ -455,20 +451,20 @@ export default function AITrainingPage() {
         </p>
 
         {importState === "instagram" && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 rounded-xl">
+          <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#7C3AED" strokeWidth="1.2"/><path d="M7 4v3.5L9 9" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round"/></svg>
-            <p className="text-xs text-purple-700 dark:text-purple-400 flex-1">{t("aiTraining.instagramSoon")}</p>
-            <button onClick={() => { setImportState("idle"); setImportInput(""); }} className="text-purple-300 dark:text-purple-700 hover:text-purple-500 dark:hover:text-purple-400">
+            <p className="text-xs text-purple-700 flex-1">{t("aiTraining.instagramSoon")}</p>
+            <button onClick={() => { setImportState("idle"); setImportInput(""); }} className="text-purple-300 hover:text-purple-500 ">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
           </div>
         )}
 
         {importState === "error" && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-xl">
+          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#DC2626" strokeWidth="1.2"/><path d="M7 4.5v3M7 9.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            <p className="text-xs text-red-700 dark:text-red-400 flex-1">{importError}</p>
-            <button onClick={() => setImportState("idle")} className="text-red-300 dark:text-red-700 hover:text-red-500 dark:hover:text-red-400">
+            <p className="text-xs text-red-700 flex-1">{importError}</p>
+            <button onClick={() => setImportState("idle")} className="text-red-300 hover:text-red-500 ">
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
             </button>
           </div>
@@ -488,7 +484,7 @@ export default function AITrainingPage() {
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">{t("aiTraining.reviewServices")} ({importedKb.services.length})</p>
                   <div className="space-y-1">
                     {importedKb.services.slice(0, 5).map((s, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-1.5">
+                      <div key={i} className="flex items-center justify-between text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
                         <span className="font-semibold text-[#374151]">{s.name}{s.duration ? ` (${s.duration})` : ""}</span>
                         {s.price && <span className="text-[#FF6B35] font-bold">{s.price}</span>}
                       </div>
@@ -501,7 +497,7 @@ export default function AITrainingPage() {
                 <div>
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">{t("aiTraining.reviewExtraInfo")}</p>
                   {importedKb.faqs.length > 0 && (
-                    <div className="text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-1.5 text-[#374151]">
+                    <div className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 text-[#374151]">
                       {importedKb.faqs.length} Q&amp;A pair{importedKb.faqs.length > 1 ? "s" : ""} → will be added to Extra
                     </div>
                   )}
@@ -510,7 +506,7 @@ export default function AITrainingPage() {
               {(importedKb.business.hours || importedKb.business.address) && (
                 <div>
                   <p className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider mb-1.5">{t("aiTraining.reviewBusinessInfo")}</p>
-                  <div className="text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-2 space-y-0.5">
+                  <div className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 space-y-0.5">
                     {importedKb.business.hours && <p><span className="text-[#9CA3AF]">{t("aiTraining.reviewHours")}</span> {importedKb.business.hours}</p>}
                     {importedKb.business.address && <p><span className="text-[#9CA3AF]">{t("aiTraining.reviewAddress")}</span> {importedKb.business.address}</p>}
                   </div>
@@ -537,17 +533,17 @@ export default function AITrainingPage() {
           straight from the customer's own request, price is the one real
           field the AI doesn't have. ── */}
       {pendingRequests.length > 0 && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-amber-100 dark:border-amber-900/30">
-            <p className="text-sm font-bold text-[#111111] dark:text-white">{t("aiTraining.requestedServices.title")}</p>
-            <p className="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">{t("aiTraining.requestedServices.subtitle")}</p>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-amber-100 ">
+            <p className="text-sm font-bold text-[#111111] ">{t("aiTraining.requestedServices.title")}</p>
+            <p className="text-xs text-[#6B7280] mt-0.5">{t("aiTraining.requestedServices.subtitle")}</p>
           </div>
-          <div className="divide-y divide-amber-100 dark:divide-amber-900/30">
+          <div className="divide-y divide-amber-100 ">
             {pendingRequests.map((r) => (
               <div key={r.id} className="px-4 py-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{r.serviceName}</p>
+                    <p className="text-sm font-semibold text-[#111111] truncate">{r.serviceName}</p>
                     <p className="text-xs text-[#9CA3AF] mt-0.5">
                       {r.leadName || t("dashboard.unknown")}{r.leadPhone ? ` · ${r.leadPhone}` : ""}
                     </p>
@@ -555,7 +551,7 @@ export default function AITrainingPage() {
                   {addingId !== r.id && (
                     <div className="flex items-center gap-2 shrink-0">
                       <button onClick={() => dismissRequest(r.id)} disabled={pendingBusy}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg text-[#6B7280] dark:text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#1E1E24] transition-colors disabled:opacity-50">
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] transition-colors disabled:opacity-50">
                         {t("aiTraining.requestedServices.dismiss")}
                       </button>
                       <button onClick={() => { setAddingId(r.id); setAddPrice(""); setAddDuration(""); }} disabled={pendingBusy}
@@ -570,10 +566,10 @@ export default function AITrainingPage() {
                   <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                     <input value={addPrice} onChange={(e) => setAddPrice(e.target.value)}
                       placeholder={t("aiTraining.services.pricePlaceholder")} autoFocus
-                      className="flex-1 min-w-[90px] text-sm border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24] rounded-lg px-3 py-1.5 text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                      className="flex-1 min-w-[90px] text-sm border border-[#E5E7EB] bg-white rounded-lg px-3 py-1.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
                     <input value={addDuration} onChange={(e) => setAddDuration(e.target.value)}
                       placeholder={t("aiTraining.services.durationPlaceholder")}
-                      className="flex-1 min-w-[90px] text-sm border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#1E1E24] rounded-lg px-3 py-1.5 text-[#111111] dark:text-white placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
+                      className="flex-1 min-w-[90px] text-sm border border-[#E5E7EB] bg-white rounded-lg px-3 py-1.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
                     <button onClick={() => confirmAddRequest(r.id)} disabled={pendingBusy || !addPrice.trim() || !addDuration.trim()}
                       className="text-xs font-bold px-3 py-1.5 rounded-lg text-white hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                       style={{ background: "var(--vela-gradient)" }}>
@@ -592,19 +588,19 @@ export default function AITrainingPage() {
       )}
 
       {/* ── Segment tabs, underline style, not pill buttons ── */}
-      <div className="flex gap-5 border-b border-[#E5E7EB] dark:border-[#2A2A32] mb-0 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+      <div className="flex gap-5 border-b border-[#E5E7EB] mb-0 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {TABS.map((tab) => {
           const badge = tabBadge[tab];
           return (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-1 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${
-                activeTab === tab ? "border-[#FF6B35] text-[#111111] dark:text-white" : "border-transparent text-[#6B7280] hover:text-[#374151] dark:hover:text-[#E5E7EB]"
+                activeTab === tab ? "border-[#FF6B35] text-[#111111] " : "border-transparent text-[#6B7280] hover:text-[#374151] "
               }`}
             >
               {t(TAB_KEYS[tab])}
               {badge > 0 && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none ${
-                  activeTab === tab ? "bg-[#FF6B35]/10 text-[#FF6B35]" : "bg-[#F3F4F6] dark:bg-[#1E1E24] text-[#9CA3AF]"
+                  activeTab === tab ? "bg-[#FF6B35]/10 text-[#FF6B35]" : "bg-[#F3F4F6] text-[#9CA3AF]"
                 }`}>{badge > 99 ? "99+" : badge}</span>
               )}
             </button>
@@ -613,7 +609,7 @@ export default function AITrainingPage() {
       </div>
 
       {/* ── Tab content panel ── */}
-      <div className="bg-white dark:bg-[#17171C] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden mt-4">
+      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden mt-4">
 
         {/* SERVICES */}
         {activeTab === "Services" && (
@@ -771,7 +767,7 @@ export default function AITrainingPage() {
               </div>
 
               {uploadStatus === "error" && (
-                <p className="mt-3 text-xs text-red-500 dark:text-red-400">{t("aiTraining.extra.extractionFailed")}</p>
+                <p className="mt-3 text-xs text-red-500 ">{t("aiTraining.extra.extractionFailed")}</p>
               )}
 
               {uploadStatus === "done" && extractedText && (

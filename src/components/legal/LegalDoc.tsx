@@ -21,13 +21,13 @@ function Block({ block, level }: { block: LegalBlock; level: number }) {
   switch (block.type) {
     case "p":
       return (
-        <p className="leading-relaxed text-[#374151] dark:text-[#B9B9C2]">
+        <p className="leading-relaxed text-[#374151] ">
           {block.text}
         </p>
       );
     case "ul":
       return (
-        <ul className="list-disc pl-5 space-y-1.5 leading-relaxed text-[#374151] dark:text-[#B9B9C2]">
+        <ul className="list-disc pl-5 space-y-1.5 leading-relaxed text-[#374151] ">
           {block.items.map((item, i) => (
             <li key={i}>{item}</li>
           ))}
@@ -35,7 +35,7 @@ function Block({ block, level }: { block: LegalBlock; level: number }) {
       );
     case "ol":
       return (
-        <ol className="list-decimal pl-5 space-y-1.5 leading-relaxed text-[#374151] dark:text-[#B9B9C2]">
+        <ol className="list-decimal pl-5 space-y-1.5 leading-relaxed text-[#374151] ">
           {block.items.map((item, i) => (
             <li key={i}>{item}</li>
           ))}
@@ -43,22 +43,22 @@ function Block({ block, level }: { block: LegalBlock; level: number }) {
       );
     case "note":
       return (
-        <div className="rounded-xl border border-[#FDBA74] bg-[#FFF7ED] dark:border-[#7C4A22] dark:bg-[#231708] px-4 py-3">
-          <p className="text-sm leading-relaxed text-[#9A3412] dark:text-[#F4A968]">
+        <div className="rounded-xl border border-[#FDBA74] bg-[#FFF7ED] px-4 py-3">
+          <p className="text-sm leading-relaxed text-[#9A3412] ">
             {block.text}
           </p>
         </div>
       );
     case "table":
       return (
-        <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32]">
+        <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] ">
           <table className="w-full text-sm border-collapse min-w-[560px]">
             <thead>
-              <tr className="bg-[#F9FAFB] dark:bg-[#1E1E24]">
+              <tr className="bg-[#F9FAFB] ">
                 {block.headers.map((h, i) => (
                   <th
                     key={i}
-                    className="text-left font-semibold text-[#111111] dark:text-[#EDEDEF] px-4 py-2.5 border-b border-[#E5E7EB] dark:border-[#2A2A32]"
+                    className="text-left font-semibold text-[#111111] px-4 py-2.5 border-b border-[#E5E7EB] "
                   >
                     {h}
                   </th>
@@ -67,11 +67,11 @@ function Block({ block, level }: { block: LegalBlock; level: number }) {
             </thead>
             <tbody>
               {block.rows.map((row, ri) => (
-                <tr key={ri} className={ri % 2 === 1 ? "bg-[#FAFAFA] dark:bg-[#17171C]" : ""}>
+                <tr key={ri} className={ri % 2 === 1 ? "bg-[#FAFAFA] " : ""}>
                   {row.map((cell, ci) => (
                     <td
                       key={ci}
-                      className="align-top px-4 py-2.5 text-[#374151] dark:text-[#B9B9C2] border-b border-[#F3F4F6] dark:border-[#232329]"
+                      className="align-top px-4 py-2.5 text-[#374151] border-b border-[#F3F4F6] "
                     >
                       {cell}
                     </td>
@@ -85,7 +85,7 @@ function Block({ block, level }: { block: LegalBlock; level: number }) {
     case "sub":
       return (
         <div id={block.id} className="scroll-mt-24 space-y-3">
-          <h3 className="text-base font-semibold text-[#111111] dark:text-[#EDEDEF]">
+          <h3 className="text-base font-semibold text-[#111111] ">
             {block.title}
           </h3>
           <div className="space-y-3">
@@ -118,24 +118,24 @@ export default function LegalDoc({
   return (
     <div id="top" className="w-full max-w-[1180px] mx-auto px-5 md:px-6">
       <div className="mb-8 max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] dark:text-[#6E6E76] mb-3">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-3">
           {eyebrow}
         </p>
         <h1
-          className="text-3xl md:text-4xl font-extrabold text-[#111111] dark:text-[#EDEDEF] mb-3"
+          className="text-3xl md:text-4xl font-extrabold text-[#111111] mb-3"
           style={{ letterSpacing: "-0.03em" }}
         >
           {title}
         </h1>
-        <p className="text-sm text-[#9CA3AF] dark:text-[#6E6E76] mb-4">Last updated: {lastUpdated}</p>
-        <p className="leading-relaxed text-[#374151] dark:text-[#B9B9C2]">{intro}</p>
+        <p className="text-sm text-[#9CA3AF] mb-4">Last updated: {lastUpdated}</p>
+        <p className="leading-relaxed text-[#374151] ">{intro}</p>
       </div>
 
       {/* Mobile contents toggle */}
       <div className="lg:hidden mb-6">
         <button
           onClick={() => setMobileTocOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] text-sm font-semibold text-[#111111] dark:text-[#EDEDEF]"
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-[#E5E7EB] bg-white text-sm font-semibold text-[#111111] "
         >
           Contents
           <svg
@@ -149,14 +149,14 @@ export default function LegalDoc({
           </svg>
         </button>
         {mobileTocOpen && (
-          <nav className="mt-2 p-3 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] bg-white dark:bg-[#17171C] max-h-80 overflow-y-auto">
+          <nav className="mt-2 p-3 rounded-xl border border-[#E5E7EB] bg-white max-h-80 overflow-y-auto">
             <ul className="space-y-0.5">
               {sections.map((s) => (
                 <li key={s.id}>
                   <a
                     href={`#${s.id}`}
                     onClick={() => setMobileTocOpen(false)}
-                    className="block text-sm py-1.5 px-2 rounded-lg text-[#6B7280] dark:text-[#9B9BA3] hover:text-[#111111] dark:hover:text-[#EDEDEF] hover:bg-[#F9FAFB] dark:hover:bg-[#1E1E24]"
+                    className="block text-sm py-1.5 px-2 rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F9FAFB] "
                   >
                     {s.title}
                   </a>
@@ -170,15 +170,15 @@ export default function LegalDoc({
       <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-10 lg:items-start">
         {/* Desktop sticky TOC */}
         <nav className="hidden lg:block sticky top-8 self-start max-h-[calc(100vh-4rem)] overflow-y-auto pb-10">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#9CA3AF] dark:text-[#6E6E76] mb-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#9CA3AF] mb-3">
             Contents
           </p>
-          <ul className="space-y-0.5 border-l border-[#E5E7EB] dark:border-[#2A2A32]">
+          <ul className="space-y-0.5 border-l border-[#E5E7EB] ">
             {sections.map((s) => (
               <li key={s.id}>
                 <a
                   href={`#${s.id}`}
-                  className="block text-[13px] leading-snug py-1.5 pl-3 -ml-px border-l-2 border-transparent text-[#6B7280] dark:text-[#9B9BA3] hover:text-[#111111] dark:hover:text-[#EDEDEF] hover:border-[#FF6B35] transition-colors"
+                  className="block text-[13px] leading-snug py-1.5 pl-3 -ml-px border-l-2 border-transparent text-[#6B7280] hover:text-[#111111] hover:border-[#FF6B35] transition-colors"
                 >
                   {s.title}
                 </a>
@@ -191,7 +191,7 @@ export default function LegalDoc({
         <div className="max-w-[820px] space-y-10 pb-16">
           {sections.map((s) => (
             <section key={s.id} id={s.id} className="scroll-mt-8 space-y-4">
-              <h2 className="text-xl font-bold text-[#111111] dark:text-[#EDEDEF] pb-2 border-b border-[#F3F4F6] dark:border-[#232329]">
+              <h2 className="text-xl font-bold text-[#111111] pb-2 border-b border-[#F3F4F6] ">
                 {s.title}
               </h2>
               <div className="space-y-4">
@@ -202,11 +202,11 @@ export default function LegalDoc({
             </section>
           ))}
 
-          <div className="pt-8 border-t border-[#E5E7EB] dark:border-[#2A2A32] flex items-center justify-between flex-wrap gap-3">
+          <div className="pt-8 border-t border-[#E5E7EB] flex items-center justify-between flex-wrap gap-3">
             <Link href="/" className="text-sm font-medium" style={{ color: "var(--vp-color)" }}>
               ← Back to home
             </Link>
-            <a href="#top" className="text-sm text-[#9CA3AF] dark:text-[#6E6E76] hover:text-[#111111] dark:hover:text-[#EDEDEF]">
+            <a href="#top" className="text-sm text-[#9CA3AF] hover:text-[#111111] ">
               Back to top ↑
             </a>
           </div>

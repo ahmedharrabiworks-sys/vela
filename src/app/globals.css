@@ -73,6 +73,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* Dark mode removed entirely -- pins native UI (form controls, scrollbars)
+     to light rendering even when the OS/browser is set to dark, so nothing
+     auto-inverts or mismatches the app's own (light-only) design. */
+  color-scheme: light;
 }
 
 body {
@@ -97,7 +101,6 @@ body::before {
     radial-gradient(ellipse 32% 28% at 52% 52%,  var(--bg-orb3-light)  0%, transparent 50%),
     var(--bg-page);
 }
-html.dark body::before { display: none; }
 
 @layer components {
   .vela-heading {
@@ -396,22 +399,6 @@ canvas {
   }
 }
 
-/* Dashboard-redesign round: dark-mode glass. Neutral grey, no orange wash
-   (the light-mode ::before ring + inset shadow both carry a faint orange
-   tint that reads fine on white but looks like a color-cast smear on a
-   dark neutral surface) -- background + a flat, subtle white-6% border
-   instead, no ::before ring override needed since it's disabled outright. */
-html.dark .glass,
-html.dark .glass-warm {
-  background: rgba(23, 23, 28, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-html.dark .glass::before,
-html.dark .glass-warm::before {
-  display: none;
-}
-
 /* Ambient orange blobs that sit BEHIND glass surfaces so the blur actually
    has color to pick up (glass is invisible over pure white). Pre-softened
    radial gradients, no filter:blur() -- a blurred gradient is free, blur()
@@ -544,117 +531,6 @@ html.dark .glass-warm::before {
   }
 }
 
-/* FIX 4a — Logo wordmark: white in dark mode */
-html.dark .logo-wordmark {
-  color: var(--dm-text) !important;
-}
-
-
-/* ── Dark mode — neutral grey base (fallback) ── */
-html.dark {
-  color-scheme: dark;
-  --dm-bg:      #101014;
-  --dm-card:    #17171C;
-  --dm-card2:   #1E1E24;
-  --dm-hover:   #26262E;
-  --dm-sidebar: #0C0C0F;
-  --dm-border:  rgba(255,255,255,0.07);
-  --dm-border2: rgba(255,255,255,0.04);
-  --dm-text:    #EDEDEF;
-  --dm-text2:   #9B9BA3;
-  --dm-muted:   #6E6E76;
-  --dm-faint:   #48484F;
-  --dm-orange:  #ed5426;
-  --dm-gradient: linear-gradient(135deg, #ed5426, #9e3819);
-  --dm-glow:    rgba(237, 84, 38, 0.25);
-}
-
-
-html.dark body {
-  background: var(--dm-bg);
-  color: var(--dm-text);
-}
-
-html.dark .section-tint    { background: var(--dm-bg)           !important; }
-html.dark .bg-\[\#F8F9FA\]  { background-color: var(--dm-bg)      !important; }
-html.dark .bg-\[\#F9FAFB\]  { background-color: var(--dm-card2)   !important; }
-html.dark .bg-\[\#FAFAFA\]  { background-color: var(--dm-card2)   !important; }
-html.dark .bg-\[\#F3F4F6\]  { background-color: var(--dm-card2)   !important; }
-html.dark .bg-white          { background-color: var(--dm-card)    !important; }
-html.dark .bg-\[\#1A0A00\]  { background-color: var(--dm-sidebar) !important; }
-html.dark .bg-\[\#111111\]  { background-color: var(--dm-sidebar) !important; }
-html.dark .bg-\[\#111827\]  { background-color: var(--dm-sidebar) !important; }
-
-html.dark .border-\[\#E5E7EB\]     { border-color: var(--dm-border)  !important; }
-html.dark .border-\[\#F3F4F6\]     { border-color: var(--dm-border2) !important; }
-html.dark .border-\[\#D1D5DB\]     { border-color: var(--dm-border)  !important; }
-html.dark .border-\[\#E5E7EB\]\/40 { border-color: var(--dm-border)  !important; }
-html.dark .border-\[#f0e8e0\]      { border-color: var(--dm-border)  !important; }
-
-html.dark .text-\[\#111111\]  { color: var(--dm-text)  !important; }
-html.dark .text-\[\#111827\]  { color: var(--dm-text)  !important; }
-html.dark .text-\[\#1A0A00\]  { color: var(--dm-text)  !important; }
-html.dark .text-\[\#374151\]  { color: var(--dm-text2) !important; }
-html.dark .text-\[\#6B7280\]  { color: var(--dm-muted) !important; }
-html.dark .text-\[\#9CA3AF\]  { color: var(--dm-faint) !important; }
-html.dark .text-\[\#888888\]  { color: var(--dm-faint) !important; }
-
-html.dark .divide-\[\#E5E7EB\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--dm-border)  !important; }
-html.dark .divide-\[\#F9FAFB\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--dm-border2) !important; }
-html.dark .divide-\[\#F3F4F6\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--dm-border2) !important; }
-
-html.dark .hover\:bg-\[\#F9FAFB\]:hover  { background-color: var(--dm-hover)          !important; }
-html.dark .hover\:bg-\[\#FAFAFA\]:hover  { background-color: var(--dm-hover)          !important; }
-html.dark .hover\:bg-\[\#F3F4F6\]:hover  { background-color: var(--dm-hover)          !important; }
-html.dark .hover\:bg-\[\#FFF5F0\]:hover  { background-color: var(--vp-12) !important; }
-
-html.dark .bg-\[\#FFF8F5\]   { background-color: var(--vp-08) !important; }
-html.dark .bg-\[\#FFF3EE\]   { background-color: var(--vp-10) !important; }
-html.dark .bg-\[\#FFF5F0\]   { background-color: var(--vp-10) !important; }
-html.dark .bg-\[\#FFD5C2\]   { background-color: var(--vp-20) !important; }
-html.dark .border-\[\#FFD5C2\] { border-color: var(--vp-25) !important; }
-
-html.dark thead tr { background-color: var(--dm-card2) !important; }
-html.dark kbd { background-color: var(--dm-card2) !important; border-color: var(--dm-border) !important; color: var(--dm-text2) !important; }
-
-/* Locked-feature ("Upgrade to Pro to unlock X") overlay — Analytics,
-   Marketing, and any page using the same pattern. Light wash in light mode;
-   dark elevated wash in dark mode instead of a leftover white tint. The
-   inner card keeps bg-white for light mode but is pinned to the elevated
-   dark surface (#1E1E24) specifically here, not the plain card color every
-   other bg-white element gets, since it's floating above blurred content. */
+/* Locked-feature ("Upgrade to Pro to unlock X") overlay backdrop -- Analytics,
+   Marketing, and any page using the same pattern. */
 .upgrade-lock-backdrop { background: rgba(255,255,255,0.7); }
-html.dark .upgrade-lock-backdrop { background: rgba(16,16,20,0.75) !important; }
-html.dark .bg-white.upgrade-lock-card { background-color: var(--dm-card2) !important; }
-
-html.dark input:not([type="checkbox"]):not([type="radio"]),
-html.dark textarea,
-html.dark select {
-  background-color: var(--dm-card)   !important;
-  color:            var(--dm-text)   !important;
-  border-color:     var(--dm-border) !important;
-}
-html.dark input::placeholder,
-html.dark textarea::placeholder { color: var(--dm-muted) !important; }
-
-html.dark .shadow-card       { box-shadow: 0 4px 24px rgba(0,0,0,0.4) !important; }
-html.dark .shadow-card-hover { box-shadow: 0 12px 48px rgba(0,0,0,0.5) !important; }
-html.dark .shadow-2xl        { box-shadow: 0 24px 64px rgba(0,0,0,0.5) !important; }
-
-html.dark svg line[stroke="#F3F4F6"]  { stroke: rgba(255,255,255,0.06) !important; }
-html.dark svg text[fill="#9CA3AF"]    { fill:   var(--dm-faint) !important; }
-
-html.dark .btn-primary {
-  background: var(--dm-gradient) !important;
-  box-shadow: 0 4px 24px var(--dm-glow) !important;
-}
-html.dark .btn-primary:hover {
-  box-shadow: 0 8px 32px var(--dm-glow) !important;
-}
-html.dark .text-\[\#FF6B35\]    { color: var(--dm-orange) !important; }
-html.dark .text-\[\#FF3366\]    { color: var(--dm-orange) !important; }
-html.dark .bg-\[\#FF6B35\]      { background-color: var(--dm-orange) !important; }
-html.dark .border-\[\#FF6B35\]  { border-color: var(--dm-orange) !important; }
-html.dark .bg-\[\#FF6B35\]\/12  { background-color: var(--vp-10) !important; }
-html.dark .from-\[\#FF6B35\]\/15 { --tw-gradient-from: rgb(var(--vp-rgb) / 0.12) !important; }
-html.dark .to-\[\#FF3366\]\/10   { --tw-gradient-to:   rgb(var(--va-rgb) / 0.08) !important; }

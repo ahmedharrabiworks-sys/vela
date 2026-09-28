@@ -74,11 +74,11 @@ export default function DashboardPreviewClient() {
   const data = { ...VARIANTS[variant], range };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0B0B0D] p-4 sm:p-8">
+    <div className="min-h-screen bg-white p-4 sm:p-8">
       <div className="max-w-6xl mx-auto mb-6 flex items-center gap-2">
         {(Object.keys(VARIANTS) as (keyof typeof VARIANTS)[]).map((v) => (
           <button key={v} onClick={() => setVariant(v)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${variant === v ? "bg-[#FF6B35] text-white border-[#FF6B35]" : "border-[#E5E7EB] text-[#374151] dark:text-[#D1D5DB] dark:border-white/10"}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${variant === v ? "bg-[#FF6B35] text-white border-[#FF6B35]" : "border-[#E5E7EB] text-[#374151] "}`}>
             {v}
           </button>
         ))}

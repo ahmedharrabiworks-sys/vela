@@ -105,18 +105,18 @@ export default function DemoAnalyticsPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-bold text-[#111827] dark:text-white">Analytics</h1>
-            <p className="text-sm text-[#6B7280] dark:text-[#9CA3AF] mt-0.5">Performance overview for Ahmed Dental Clinic</p>
+            <h1 className="text-xl font-bold text-[#111827] ">Analytics</h1>
+            <p className="text-sm text-[#6B7280] mt-0.5">Performance overview for Ahmed Dental Clinic</p>
           </div>
-          <div className="flex items-center gap-1 bg-[#F3F4F6] dark:bg-[#1E1E24] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-[#F3F4F6] rounded-xl p-1">
             {(["7d", "30d", "90d"] as Range[]).map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   range === r
-                    ? "bg-white dark:bg-[#2A2A32] text-[#111827] dark:text-white shadow-sm"
-                    : "text-[#6B7280] dark:text-[#9CA3AF] hover:text-[#374151] dark:hover:text-[#D1D5DB]"
+                    ? "bg-white text-[#111827] shadow-sm"
+                    : "text-[#6B7280] hover:text-[#374151] "
                 }`}
               >
                 {r}
@@ -131,26 +131,26 @@ export default function DemoAnalyticsPage() {
             <button
               key={kpi.label}
               onClick={() => kpi.metric && setMetric(kpi.metric)}
-              className={`bg-white dark:bg-[#1E1E24] border rounded-xl p-4 text-left transition-all hover:shadow-sm ${
+              className={`bg-white border rounded-xl p-4 text-left transition-all hover:shadow-sm ${
                 metric === kpi.metric
                   ? "border-[#FF6B35] ring-1 ring-[#FF6B35]/20"
-                  : "border-[#E5E7EB] dark:border-[#2A2A32]"
+                  : "border-[#E5E7EB] "
               }`}
             >
               <div className="flex items-start justify-between gap-2 mb-1">
-                <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] font-medium leading-snug">{kpi.label}</p>
+                <p className="text-[11px] text-[#6B7280] font-medium leading-snug">{kpi.label}</p>
                 <TrendBadge change={kpi.change} />
               </div>
-              <p className="text-2xl font-bold text-[#111827] dark:text-white">{kpi.value}</p>
-              <p className="text-[10px] text-[#9CA3AF] dark:text-[#6B7280] mt-1">vs last {range}</p>
+              <p className="text-2xl font-bold text-[#111827] ">{kpi.value}</p>
+              <p className="text-[10px] text-[#9CA3AF] mt-1">vs last {range}</p>
             </button>
           ))}
         </div>
 
         {/* Chart */}
-        <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl p-5">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-            <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB]">
+            <p className="text-sm font-semibold text-[#374151] ">
               {metric === "leads" ? "New Leads" : metric === "convs" ? "Conversations" : "Appointments"}
               {" "}over time
             </p>
@@ -160,7 +160,7 @@ export default function DemoAnalyticsPage() {
                   key={m}
                   onClick={() => setMetric(m)}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    metric === m ? "text-white" : "text-[#6B7280] dark:text-[#9CA3AF] hover:bg-[#F3F4F6] dark:hover:bg-[#2A2A32]"
+                    metric === m ? "text-white" : "text-[#6B7280] hover:bg-[#F3F4F6] "
                   }`}
                   style={metric === m ? { background: "var(--vp-color)" } : undefined}
                 >
@@ -173,38 +173,38 @@ export default function DemoAnalyticsPage() {
         </div>
 
         {/* Channel breakdown */}
-        <div className="bg-white dark:bg-[#1E1E24] border border-[#E5E7EB] dark:border-[#2A2A32] rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F3F4F6] dark:border-[#2A2A32]">
-            <p className="text-sm font-semibold text-[#374151] dark:text-[#D1D5DB]">Channel Breakdown</p>
+        <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#F3F4F6] ">
+            <p className="text-sm font-semibold text-[#374151] ">Channel Breakdown</p>
           </div>
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#F3F4F6] dark:border-[#2A2A32]">
+              <tr className="border-b border-[#F3F4F6] ">
                 {["Channel", "Leads", "Conversations", "Share"].map((h) => (
-                  <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6B7280] uppercase tracking-wider">{h}</th>
+                  <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-[#9CA3AF] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F3F4F6] dark:divide-[#2A2A32]">
+            <tbody className="divide-y divide-[#F3F4F6] ">
               {DEMO_ANALYTICS_CHANNELS.map((ch) => {
                 const colors: Record<string, string> = { WhatsApp: "#25D366", Instagram: "#E1306C", Website: "#6B7280" };
                 const color = colors[ch.channel] ?? "#9CA3AF";
                 return (
-                  <tr key={ch.channel} className="hover:bg-[#FAFAFA] dark:hover:bg-[#17171C]">
+                  <tr key={ch.channel} className="hover:bg-[#FAFAFA] ">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
-                        <span className="text-sm font-medium text-[#111827] dark:text-white">{ch.channel}</span>
+                        <span className="text-sm font-medium text-[#111827] ">{ch.channel}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-sm font-semibold text-[#374151] dark:text-[#D1D5DB]">{ch.leads}</td>
-                    <td className="px-5 py-3.5 text-sm text-[#374151] dark:text-[#D1D5DB]">{ch.convs}</td>
+                    <td className="px-5 py-3.5 text-sm font-semibold text-[#374151] ">{ch.leads}</td>
+                    <td className="px-5 py-3.5 text-sm text-[#374151] ">{ch.convs}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-[#F3F4F6] dark:bg-[#2A2A32] rounded-full overflow-hidden">
+                        <div className="flex-1 h-1.5 bg-[#F3F4F6] rounded-full overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${ch.pct}%`, background: color }} />
                         </div>
-                        <span className="text-xs font-semibold text-[#374151] dark:text-[#D1D5DB] w-8 text-right">{ch.pct}%</span>
+                        <span className="text-xs font-semibold text-[#374151] w-8 text-right">{ch.pct}%</span>
                       </div>
                     </td>
                   </tr>
@@ -218,7 +218,7 @@ export default function DemoAnalyticsPage() {
         <div className="flex justify-end">
           <button
             onClick={() => setShowModal(true)}
-            className="text-sm font-semibold px-4 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#2A2A32] text-[#374151] dark:text-[#D1D5DB] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors flex items-center gap-2"
+            className="text-sm font-semibold px-4 py-2 rounded-xl border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors flex items-center gap-2"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M7 2v7M4 6l3 3 3-3M2 11h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>

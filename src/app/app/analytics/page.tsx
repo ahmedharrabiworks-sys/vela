@@ -7,7 +7,6 @@ import { track } from "@/lib/track";
 import { useI18n } from "@/lib/i18n";
 import CountUp from "@/components/ui/CountUp";
 import CircularProgress from "@/components/ui/CircularProgress";
-import { useTheme } from "@/lib/theme";
 
 type Range = "1d" | "7d" | "30d" | "90d";
 type Series = "leads" | "conversations" | "appointments";
@@ -103,15 +102,15 @@ function computeChange(current: number, prior: number): ChangeResult {
 function TrendBadge({ change }: { change: ChangeResult | null }) {
   if (change === null) {
     return (
-      <span className="text-[11px] font-semibold text-[#9CA3AF] dark:text-[#6E6E76]" title="No prior-period data to compare yet">
+      <span className="text-[11px] font-semibold text-[#9CA3AF] " title="No prior-period data to compare yet">
 , 
       </span>
     );
   }
   if ("newCount" in change) {
-    return <span className="text-[11px] font-semibold text-green-600 dark:text-green-400">+{change.newCount} new</span>;
+    return <span className="text-[11px] font-semibold text-green-600 ">+{change.newCount} new</span>;
   }
-  const color = change.pct > 0 ? "text-green-600 dark:text-green-400" : change.pct < 0 ? "text-red-500 dark:text-red-400" : "text-[#9CA3AF] dark:text-[#6E6E76]";
+  const color = change.pct > 0 ? "text-green-600 " : change.pct < 0 ? "text-red-500 " : "text-[#9CA3AF] ";
   const sign = change.pct > 0 ? "+" : "";
   return <span className={`text-[11px] font-semibold ${color}`}>{sign}{change.pct}%</span>;
 }
@@ -145,13 +144,8 @@ function buildLabels(days: number): string[] {
 // container), so cursor position is converted from screen pixels to the
 // 800x140 viewBox coordinate space via the actual rendered bounding rect.
 function LineChart({ data, labels, days, hourly = false, unitLabel }: { data: number[]; labels: string[]; days: number; hourly?: boolean; unitLabel: string }) {
-  const { theme } = useTheme();
-  // SVG stroke/fill are presentation attributes, invisible to the app's
-  // class-based dark-mode system -- gridlines specifically need a real dark
-  // value, since the light-mode near-white (#F3F4F6) reads as unsubtly
-  // BRIGHT against a dark card instead of the intended barely-there effect.
-  const gridColor = theme === "dark" ? "#2A2A32" : "#F3F4F6";
-  const axisTextColor = theme === "dark" ? "#6E6E76" : "#9CA3AF";
+  const gridColor = "#F3F4F6";
+  const axisTextColor = "#9CA3AF";
   const W = 800, H = 140, padX = 8, padTop = 12, padBottom = 24;
   const chartH = H - padTop - padBottom;
   const max = Math.max(...data, 1);
@@ -474,13 +468,13 @@ export default function AnalyticsPage() {
 
         {/* 5xx error */}
         {isPro && fetchError === "5xx" && !loading && (
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/30 mb-5">
+          <div className="flex items-center gap-3 p-4 rounded-xl border border-red-200 bg-red-50 mb-5">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
               <circle cx="8" cy="8" r="7" stroke="#DC2626" strokeWidth="1.3"/>
               <path d="M8 5v3.5M8 10.5v.5" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
-            <p className="text-sm text-red-700 dark:text-red-400 flex-1">We couldn&apos;t load your analytics right now. Tap retry.</p>
-            <button onClick={doFetch} className="text-xs font-bold text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 shrink-0 px-3 py-1.5 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors">
+            <p className="text-sm text-red-700 flex-1">We couldn&apos;t load your analytics right now. Tap retry.</p>
+            <button onClick={doFetch} className="text-xs font-bold text-red-700 hover:text-red-900 shrink-0 px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-100 transition-colors">
               Retry
             </button>
           </div>
