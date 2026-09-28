@@ -1,7 +1,6 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n";
-import AmbientGlow from "@/components/landing/AmbientGlow";
 import GlassBlobs from "@/components/ui/GlassBlobs";
 
 /* Complete, closed 4-side orange frame around the Vela column (FIX 5).
@@ -100,8 +99,7 @@ export default function ComparisonTable() {
   const { t } = useI18n();
 
   return (
-    <section className="relative py-12 md:py-16 bg-white overflow-hidden">
-      <AmbientGlow pos="start" />
+    <section className="relative py-12 md:py-16 bg-white">
       <GlassBlobs />
       <div className="relative max-w-5xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="text-center mb-8 md:mb-10">

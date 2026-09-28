@@ -6,7 +6,6 @@ import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
-import AmbientGlow from "@/components/landing/AmbientGlow";
 import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 
@@ -45,8 +44,7 @@ export default function Pricing() {
   const { t } = useI18n();
 
   return (
-    <section id="pricing" className="relative py-12 md:py-16 bg-white overflow-hidden">
-      <AmbientGlow pos="end" />
+    <section id="pricing" className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
       <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header */}

@@ -312,6 +312,31 @@ canvas {
   .ambient-glow-blob { animation: none; opacity: 0.65; }
 }
 
+/* ─── Business-types strip (landing, between Hero and "how it works") ───
+   Pure transform animation -- translate3d only, GPU-compositable, no
+   layout/paint work per frame. The track renders the list twice back to
+   back and travels exactly -50% of its own (doubled) width, landing
+   pixel-perfect back on the visual start of the second copy -- a seamless
+   loop with no JS-driven reset. Duration picked mid-range of the "40 to
+   60s per loop" spec. */
+.business-strip-track {
+  animation: businessStripScroll 50s linear infinite;
+  will-change: transform;
+}
+@keyframes businessStripScroll {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+/* Hover-to-pause -- desktop only in practice (mobile has no hover), the
+   off-screen pause (IntersectionObserver, see BusinessTypesStrip.tsx)
+   covers the mobile/scroll case. */
+.business-strip:hover .business-strip-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .business-strip-track { animation: none; }
+}
+
 /* ─── Sitewide cursor glow (perf-safe reintroduction) ───────────────────────
    A fixed-size layer positioned purely via `transform: translate3d`, driven
    by CursorGlow.tsx's single rAF-throttled pointermove listener writing

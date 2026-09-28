@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
-import AmbientGlow from "@/components/landing/AmbientGlow";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 import CtaButton from "@/components/landing/CtaButton";
 
@@ -19,53 +18,71 @@ const item = {
   show:   { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
 };
 
-// Real destinations only (no "#" dead links) -- reuses the same
-// landing.nav.* keys the rest of the site already uses, so there's no new
-// copy to keep in sync.
-// Bug fix (bug-fix + polish round #2): these previously pointed at anchor
-// ids (#features, #how-it-works, #faq) that don't exist anywhere in the
-// current page composition -- Features/HowItWorks/FAQ components from an
-// earlier site version aren't mounted on the homepage at all (confirmed via
-// DOM inspection, not a click-handler bug). "Features" and "How It Works"
-// now point at the two homepage sections that actually cover that content
-// (DashboardSection's capability checklist, ProductTourDemo's step-by-step
-// walkthrough), each given a real id. "FAQ" has no homepage section to
-// anchor to, so it navigates to the real FAQ section that already exists
-// (unlinked) on the /pricing page.
-const MOBILE_NAV_LINKS = [
-  { key: "features", href: "/#features" },
-  { key: "howItWorks", href: "/#how-it-works" },
-  { key: "pricing", href: "/pricing" },
-  { key: "faq", href: "/pricing#faq" },
+// Header redesign round: real in-page anchors, all 4 sections now actually
+// mounted on the homepage (Pricing and ProductTourDemo/"how it works"
+// already had stable ids; ProblemSection gained #problem and the new FAQ
+// section ships with #faq -- see those files). Order matches the explicit
+// spec: Pricing, How it works, The problem, FAQ. Shared by both the
+// desktop nav and the mobile hamburger menu below.
+const NAV_LINKS = [
+  { key: "pricing", href: "#pricing" },
+  { key: "howItWorks", href: "#how-it-works" },
+  { key: "problem", href: "#problem" },
+  { key: "faq", href: "#faq" },
 ] as const;
+
+/** Tracks which nav-linked section is currently in view, for the active-link
+    highlight. Plain IntersectionObserver, not scroll-position math -- a thin
+    horizontal band just above the viewport's vertical center is the
+    "trigger zone"; whichever observed section is intersecting it is active.
+    Purely visual state -- the actual scrolling is native browser anchor
+    navigation (html { scroll-behavior: smooth } is already set globally),
+    so this never needs to touch scroll position itself. */
+function useActiveSection(ids: readonly string[]) {
+  const [active, setActive] = useState<string | null>(null);
+
+  useEffect(() => {
+    const elements = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (elements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length === 0) return;
+        const topmost = visible.reduce((a, b) =>
+          a.boundingClientRect.top <= b.boundingClientRect.top ? a : b
+        );
+        setActive(topmost.target.id);
+      },
+      { rootMargin: "-35% 0px -55% 0px", threshold: 0 }
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [ids]);
+
+  return active;
+}
+
+const NAV_IDS = NAV_LINKS.map((l) => l.href.slice(1));
 
 export default function Hero() {
   const { t } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const activeSection = useActiveSection(NAV_IDS);
 
   return (
-    <section id="hero-section" className="relative flex flex-col overflow-hidden bg-white">
-      {/* Ambient glow (design pass) -- replaces the old mouse-tracked
-          CursorSpotlight with one consistent, CSS-only, auto-animated glow. */}
-      <AmbientGlow />
-
-      {/* Desktop nav -- fixed/glass round. Reversed last round's "confirmed
-          already relative, leave as-is" -- this round's explicit ask is the
-          opposite: pinned to the viewport top, reachable at all times.
-          `fixed inset-x-0 top-0` (viewport-anchored regardless of Hero's
-          own `relative overflow-hidden` -- fixed positioning only becomes
-          relative to an ancestor when that ancestor has a transform/filter/
-          perspective/will-change set, which Hero does not, so this is not
-          clipped; also already proven safe in this exact DOM by the mobile
-          menu overlay below, which has used `fixed inset-0` as a child of
-          this same section since an earlier round with no clipping issue).
-          z-40, one level below the mobile menu overlay's z-50 so an open
-          menu always layers above the header, never fights it. Lower
-          background opacity than last round (0.55, was 0.65) specifically
-          so the backdrop-blur reads as genuinely see-through against real
-          scrolled content behind it, not a flat near-opaque bar -- see the
-          live scroll screenshot evidence in this round's report. */}
-      <div className="hidden sm:flex fixed top-0 inset-x-0 z-40 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
+    <section id="hero-section" className="relative flex flex-col bg-white">
+      {/* Header round: fixed header is now desktop-only (lg and up). Below
+          lg (tablet + mobile share this range), the header lives in normal
+          document flow and scrolls away with the page -- explicit ask this
+          round, reversing the earlier "pinned at all breakpoints" decision.
+          `lg:fixed lg:inset-x-0 lg:top-0` only takes effect once `lg:flex`
+          also makes this element visible; below lg it's `hidden` and
+          therefore never fixed. z-40, one level below the mobile menu
+          overlay's z-50 so an open menu always layers above the header. */}
+      <div className="hidden lg:flex lg:fixed lg:top-0 lg:inset-x-0 z-40 w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
         <div className="glass w-full flex items-center justify-between rounded-full px-6 py-3">
           {/* translateY correction (bug-fix + polish round #3): the logo PNG's
               visible content isn't vertically centered within its own file --
@@ -79,6 +96,29 @@ export default function Hero() {
           <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
             <Logo showText heightClass="!h-14" />
           </Link>
+
+          {/* Nav links -- Pricing, How it works, The problem, FAQ. Plain
+              anchors (native browser smooth-scroll, html{scroll-behavior:
+              smooth} is already global) so scrolling and keyboard/Enter
+              activation both work with zero extra JS; only the active-link
+              highlight itself is IntersectionObserver-driven state. */}
+          <nav className="flex items-center gap-1">
+            {NAV_LINKS.map(({ key, href }) => {
+              const isActive = activeSection === href.slice(1);
+              return (
+                <a
+                  key={key}
+                  href={href}
+                  className="px-3.5 py-2 rounded-full text-sm font-semibold transition-colors duration-200"
+                  style={isActive ? { color: "#FF6B35", background: "#FFF3EE" } : { color: "#374151" }}
+                  aria-current={isActive ? "true" : undefined}
+                >
+                  {t(`landing.nav.${key}`)}
+                </a>
+              );
+            })}
+          </nav>
+
           <div className="flex items-center gap-4">
             <LanguageToggle />
             <Link
@@ -92,26 +132,19 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Mobile-only header (bug-fix + polish round #4, tightened #5,
-          glass round, fixed round). Single rounded pill matching mobile-
-          header-reference.jpg's soft-container style, rebuilt with Vela's
-          own logo/brand colors and Oussama's specified element order:
-          logo, language toggle, hamburger, "Log in" pill. Centered as a
-          compact island (no w-full/justify-between -- that was stretching
-          it edge-to-edge and forcing a large logo<->toggle gap via the
-          leftover justify-between slack); a single flex row with one
-          consistent gap-2 between every element, centered via
-          justify-center on the outer wrapper. Login button reuses the
-          sitewide .btn-primary gradient class instead of a flat dark fill,
-          same pill shape/arrow. Plain flex row, no manual RTL classes --
-          source order stays logo-first, and the browser mirrors the whole
-          row automatically under dir="rtl". Now `fixed top-0`, same
-          reasoning/z-index/opacity as the desktop panel above -- see that
-          comment block for the full explanation (viewport-anchored despite
-          Hero's overflow-hidden, z-40 to stay below the menu overlay's
-          z-50, opacity lowered to 0.55 so the blur is genuinely visible
-          against real scrolled content, not a flat bar). */}
-      <div className="sm:hidden fixed top-0 inset-x-0 z-40 w-full px-5 pt-6 shrink-0 flex justify-center">
+      {/* Mobile/tablet header -- NOT fixed (header round's explicit ask),
+          flows normally at the top of the page content and scrolls away
+          with everything below it. Visible below lg (was below sm --
+          widened so tablet gets this same non-fixed pill instead of
+          accidentally showing nothing between the old sm/lg boundary).
+          Single rounded pill matching mobile-header-reference.jpg's
+          soft-container style: logo, language toggle, hamburger, "Log in"
+          pill. Centered as a compact island, one consistent gap-2 between
+          every element. Login button reuses the sitewide .btn-primary
+          gradient class. Plain flex row, no manual RTL classes -- source
+          order stays logo-first, the browser mirrors the whole row
+          automatically under dir="rtl". */}
+      <div className="lg:hidden w-full px-5 pt-6 shrink-0 flex justify-center">
         <div className="glass inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
             <Logo showText={false} size={24} />
@@ -140,13 +173,13 @@ export default function Hero() {
       </div>
 
       {/* Mobile menu overlay -- white panel, no dark background, per the
-          site-wide "white everywhere" standing rule. Redesigned (FIX 4,
-          bug-fix + polish round): real nav links as full-width tappable
-          rows (no dead empty space between items), "Log in" restyled as a
-          full gradient button matching the primary CTA (mobile menu only --
-          desktop nav's plain "Log in" text is untouched). */}
+          site-wide "white everywhere" standing rule. Real nav links as
+          full-width tappable rows, "Log in" restyled as a full gradient
+          button matching the primary CTA (mobile menu only -- desktop
+          nav's plain "Log in" text is untouched). Visible below lg, same
+          range as the trigger pill above. */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenuOpen(false)} />
           <div className="absolute top-0 end-0 bottom-0 w-[80vw] max-w-xs bg-white border-s border-[#E5E7EB] shadow-2xl flex flex-col pt-8 pb-8">
             <button
@@ -160,7 +193,7 @@ export default function Hero() {
             </button>
 
             <nav className="flex flex-col">
-              {MOBILE_NAV_LINKS.map(({ key, href }) => (
+              {NAV_LINKS.map(({ key, href }) => (
                 <Link
                   key={key}
                   href={href}
@@ -186,24 +219,18 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content -- FIX 10 (consolidated fix round): the reserved empty
-          space below the CTA from a prior session is gone. The section no
-          longer forces min-h-screen, so it now sizes to its own content
-          and flows directly into the next section with normal padding,
-          on both mobile and desktop. Bottom padding matches the shared
-          py-12/py-16 rhythm every other section now uses (section-continuity
-          round), so the Hero -> ProductTourDemo gap is consistent with every
-          other inter-section gap instead of its own larger one-off value.
-          Top padding increased this round (fixed-header round): the header
-          is now `fixed`, removed from document flow entirely, so this
-          spacer is the ONLY thing keeping it from overlapping the badge/
-          headline on load. Measured live: the fixed header's real rendered
-          height is 74px on mobile, 106px on desktop -- these values are
-          that measured height plus the original pt-14/pt-16 breathing room
-          this div already had, so the visual gap below the header looks
-          the same as before, just with real space reserved for the header
-          on top of it now. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[130px] pb-12 md:pt-[170px] md:pb-16">
+      {/* Content -- bottom padding matches the shared py-12/py-16 rhythm
+          every other section uses, so the Hero -> business-types-strip gap
+          is consistent with every other inter-section gap.
+          Top padding (header round): below lg, the header above is now in
+          normal document flow (not fixed), so it already pushes this
+          content down on its own -- only a small breathing-room gap is
+          needed here, not reserved clearance. At lg+, the header IS still
+          `fixed` and removed from flow, so this reserves real space for it
+          (measured live: fixed header's rendered height is ~106px at
+          desktop widths; 170px keeps the same visual gap below it as
+          before this round). */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-8 pb-12 lg:pt-[170px] lg:pb-16">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}

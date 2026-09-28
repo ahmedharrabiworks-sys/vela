@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
-import AmbientGlow from "@/components/landing/AmbientGlow";
 import GlassBlobs from "@/components/ui/GlassBlobs";
 
 // Stat callouts: only real, honest, non-fabricated claims -- no invented
@@ -21,8 +20,7 @@ export default function ProblemSection() {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <section className="relative py-12 md:py-16 bg-white overflow-hidden">
-      <AmbientGlow pos="end" />
+    <section id="problem" className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
       <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
