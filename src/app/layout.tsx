@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bricolage_Grotesque } from "next/font/google";
+import { Inter, Bricolage_Grotesque, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 import { LastRouteTracker } from "@/lib/last-route";
@@ -30,6 +30,19 @@ const displayFont = Bricolage_Grotesque({
   fallback: ["Inter", "sans-serif"],
 });
 
+// Hero eyebrow round: used ONLY for the Hero section's eyebrow line ("Power
+// up your business with AI") -- an elegant serif italic accent, deliberately
+// not applied anywhere else on the site. Only ships the one weight/style it
+// needs (400 italic), not the whole family.
+const eyebrowFont = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
+  variable: "--font-eyebrow",
+  display: "swap",
+  fallback: ["Georgia", "serif"],
+});
+
 export const metadata: Metadata = {
   title: "Vela: AI Business Operating System",
   description:
@@ -55,7 +68,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${displayFont.variable} scroll-smooth`}>
+    <html lang="en" className={`${inter.variable} ${displayFont.variable} ${eyebrowFont.variable} scroll-smooth`}>
       <body className="font-inter antialiased">
         <I18nProvider>
           <LastRouteTracker />

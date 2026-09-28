@@ -8,7 +8,7 @@ export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
   const { t } = useI18n();
 
-  const faqs = Array.from({ length: 8 }, (_, i) => ({
+  const faqs = Array.from({ length: 10 }, (_, i) => ({
     q: t(`landing.faq.questions.${i}.q`),
     a: t(`landing.faq.questions.${i}.a`),
   }));

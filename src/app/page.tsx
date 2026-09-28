@@ -1,6 +1,5 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
-import BusinessTypesStrip from "@/components/landing/BusinessTypesStrip";
 import ProblemSection from "@/components/landing/ProblemSection";
 import ProductTourDemo from "@/components/landing/ProductTourDemo";
 import DashboardSection from "@/components/landing/DashboardSection";
@@ -26,7 +25,6 @@ export default function LandingPage() {
           there, not wait to be scrolled into view (bug-fix + polish round
           #3). Every other section below keeps its existing scroll-reveal. */}
       <Hero />
-      <BusinessTypesStrip />
       <ProductTourDemo />
       <Reveal><ProblemSection /></Reveal>
       <Reveal><DashboardSection /></Reveal>

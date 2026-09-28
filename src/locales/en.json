@@ -521,19 +521,21 @@
       "features": "Features",
       "pricing": "Pricing",
       "howItWorks": "How it works",
-      "problem": "The problem",
+      "problem": "Pain",
       "faq": "FAQ",
       "login": "Log in",
       "tryDemo": "Try Demo",
-      "getStarted": "Start for Free"
+      "getStarted": "Start for Free",
+      "openVela": "Open Vela"
     },
     "hero": {
-      "badge": "Power Up Your Business With AI",
+      "badge": "Power up your business with AI",
       "headline1": "",
       "headlineAccent": "Never Miss",
       "headline2": "Another Lead",
       "subtext": "Every missed call, unanswered message, and forgotten follow-up is a customer going somewhere else. Vela makes sure no lead gets left behind.",
       "cta": "Start for Free",
+      "ctaLoggedIn": "Go to your dashboard",
       "watchPreview": "Or watch a 60s preview",
       "trust1": "< 60s reply time",
       "trust2": "Works 24/7"
@@ -807,36 +809,44 @@
       "subtitle": "Short answers. No fluff.",
       "questions": [
         {
-          "q": "How does Vela answer when my team is busy or after hours?",
-          "a": "The AI answers instantly, 24/7, even outside business hours or mid-appointment. It replies using what you trained it on (your services, pricing, hours, and policies) and can book appointments directly into your calendar."
+          "q": "What does Vela actually do?",
+          "a": "Vela is your AI receptionist. It answers your customers on Instagram, WhatsApp and phone calls, day and night, answers their questions using your real prices and services, and books appointments for you."
         },
         {
-          "q": "Which channels does it work with?",
-          "a": "WhatsApp, Instagram DMs, and phone calls. The AI voice agent for phone calls is available on the Pro and Premium plans."
+          "q": "Which languages does Vela speak?",
+          "a": "Any language your customers use, in text and in voice calls. Vela replies in the customer's own language automatically, and switches if they switch."
         },
         {
-          "q": "Which languages does it speak?",
-          "a": "The AI voice agent speaks Arabic, English, French, German, and Spanish. For WhatsApp, Instagram, and website chat, it replies naturally in whatever language your customer writes in."
+          "q": "Which channels can I connect?",
+          "a": "Instagram DMs, WhatsApp Business and phone calls. Starter includes one text channel. Pro and Premium include all channels plus the AI phone agent."
+        },
+        {
+          "q": "How does Vela learn about my business?",
+          "a": "Paste your website link, upload your price list, or answer 5 quick questions. Vela learns your services, prices, hours and policies, and you can update them anytime."
+        },
+        {
+          "q": "Can Vela book appointments?",
+          "a": "Yes. Vela checks the time your customer wants, books it, and every booking shows up in your dashboard instantly."
+        },
+        {
+          "q": "What if a customer needs a real person?",
+          "a": "Vela handles everything it can and flags the conversations that need you. You can step in and reply yourself from your inbox anytime."
         },
         {
           "q": "How long does setup take?",
-          "a": "Most of it takes minutes: connect your channels, then complete one guided interview, by voice or chat, where the AI learns your services, pricing, hours, and policies. No code required."
+          "a": "Connecting a channel takes a few minutes, and training your AI can be done in one sitting. Pro includes guided onboarding and Premium is set up for you by our team."
         },
         {
-          "q": "Do I need a new phone number?",
-          "a": "Vela provisions a dedicated phone number for your AI voice agent, so your existing business number stays free for everything else."
+          "q": "Is there a contract?",
+          "a": "No. Plans are monthly and you can cancel anytime. Annual billing saves 20%."
         },
         {
-          "q": "Is my customers' data safe?",
-          "a": "Yes. Every business's data lives in an isolated, encrypted database with row-level security, so it's never visible to other businesses on the platform. We don't sell or share customer data."
+          "q": "Is my business data safe?",
+          "a": "Your data is kept completely separate from every other business, and only you and your team can see your conversations and customers."
         },
         {
-          "q": "Can I cancel anytime?",
-          "a": "Yes. Cancel anytime directly from your billing settings, no contracts."
-        },
-        {
-          "q": "Does it work for my type of business?",
-          "a": "Vela is built for a wide range of service businesses, clinics, gyms, salons, real estate, restaurants, law firms, and 30+ other types. During setup, the AI is trained specifically on your business, not a generic script."
+          "q": "Does Vela work for my type of business?",
+          "a": "Yes. Clinics, salons, gyms, real estate, restaurants, law firms, car rentals, agencies and 30+ other business types already fit Vela, anywhere in the world."
         }
       ]
     },

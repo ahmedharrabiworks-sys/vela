@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 import CtaButton from "@/components/landing/CtaButton";
+import OpenVelaButton from "@/components/landing/OpenVelaButton";
+import { useLandingSession } from "@/lib/use-landing-session";
 
 const container = {
   hidden: {},
@@ -68,9 +70,16 @@ function useActiveSection(ids: readonly string[]) {
 const NAV_IDS = NAV_LINKS.map((l) => l.href.slice(1));
 
 export default function Hero() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeSection = useActiveSection(NAV_IDS);
+  // Logged-in header round: "loading" renders identically to "out" (the
+  // server-rendered default), so a logged-out visitor -- the common case --
+  // never sees a flash of the wrong header. Only a genuinely logged-in
+  // visitor sees a brief swap once the local session read resolves (no
+  // network call), a few ms after hydration.
+  const session = useLandingSession();
+  const loggedIn = session.status === "in";
 
   return (
     <section id="hero-section" className="relative flex flex-col bg-white">
@@ -121,13 +130,19 @@ export default function Hero() {
 
           <div className="flex items-center gap-4">
             <LanguageToggle />
-            <Link
-              href="/auth/login"
-              className="text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
-            >
-              {t("landing.nav.login")}
-            </Link>
-            <CtaButton size="sm" />
+            {loggedIn ? (
+              <OpenVelaButton size="sm" initials={session.status === "in" ? session.initials : "V"} />
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
+                >
+                  {t("landing.nav.login")}
+                </Link>
+                <CtaButton size="sm" />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -160,15 +175,19 @@ export default function Hero() {
             </svg>
           </button>
           <span className="w-px h-5 bg-[#E5E7EB] shrink-0" />
-          <Link
-            href="/auth/login"
-            className="btn-primary gap-1.5 text-sm ps-4 pe-3.5 py-2 shrink-0"
-          >
-            {t("landing.nav.login")}
-            <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
-              <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
+          {loggedIn ? (
+            <OpenVelaButton size="xs" initials={session.status === "in" ? session.initials : "V"} />
+          ) : (
+            <Link
+              href="/auth/login"
+              className="btn-primary gap-1.5 text-sm ps-4 pe-3.5 py-2 shrink-0"
+            >
+              {t("landing.nav.login")}
+              <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
+                <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -206,22 +225,33 @@ export default function Hero() {
             </nav>
 
             <div className="flex flex-col gap-3 px-6 pt-6 mt-auto">
-              <Link
-                href="/auth/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="btn-primary inline-flex items-center justify-center w-full text-sm px-7 py-3"
-              >
-                {t("landing.nav.login")}
-              </Link>
-              <CtaButton size="md" fullWidth onClick={() => setMobileMenuOpen(false)} />
+              {loggedIn ? (
+                <OpenVelaButton
+                  size="md"
+                  fullWidth
+                  initials={session.status === "in" ? session.initials : "V"}
+                  onClick={() => setMobileMenuOpen(false)}
+                />
+              ) : (
+                <>
+                  <Link
+                    href="/auth/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="btn-primary inline-flex items-center justify-center w-full text-sm px-7 py-3"
+                  >
+                    {t("landing.nav.login")}
+                  </Link>
+                  <CtaButton size="md" fullWidth onClick={() => setMobileMenuOpen(false)} />
+                </>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {/* Content -- bottom padding matches the shared py-12/py-16 rhythm
-          every other section uses, so the Hero -> business-types-strip gap
-          is consistent with every other inter-section gap.
+          every other section uses, so the Hero -> "how it works" gap is
+          consistent with every other inter-section gap.
           Top padding (header round): below lg, the header above is now in
           normal document flow (not fixed), so it already pushes this
           content down on its own -- only a small breathing-room gap is
@@ -238,26 +268,31 @@ export default function Hero() {
             animate="show"
             className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-start"
           >
-            {/* Badge */}
-            <motion.div variants={item}>
-              <span
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-widest border"
-                style={{ background: "#FFF3EE", borderColor: "rgba(255,107,53,0.25)", color: "#C2410C" }}
+            {/* Eyebrow + headline -- grouped as one staggered unit (hero-
+                eyebrow round) so the tight gap between them holds regardless
+                of the looser gap-5/6 the rest of this stack uses. Eyebrow is
+                a plain line of text, not a badge: no border/background/dot/
+                uppercase, elegant serif italic (Instrument Serif, loaded in
+                the root layout and scoped to this one usage only via the
+                --font-eyebrow CSS variable) -- English only. Instrument
+                Serif has no Arabic glyphs (and CSS-synthesized italic reads
+                poorly on Arabic script), so Arabic keeps the site's current
+                default font, upright, same color/size treatment. */}
+            <motion.div variants={item} className="flex flex-col gap-1">
+              <p
+                className={`leading-none text-[18px] md:text-[22px] ${locale === "ar" ? "" : "italic"}`}
+                style={{ fontFamily: locale === "ar" ? undefined : "var(--font-eyebrow)", color: "#E8552B" }}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] animate-pulse" />
                 {t("landing.hero.badge")}
-              </span>
-            </motion.div>
+              </p>
 
-            {/* Headline -- black by default, one accent phrase in brand orange */}
-            <motion.h1
-              variants={item}
-              className="font-display font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-[#111111]"
-            >
-              {t("landing.hero.headline1")}{" "}
-              <span className="vela-gradient-text">{t("landing.hero.headlineAccent")}</span>{" "}
-              {t("landing.hero.headline2")}
-            </motion.h1>
+              {/* Headline -- black by default, one accent phrase in brand orange */}
+              <h1 className="font-display font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-[#111111]">
+                {t("landing.hero.headline1")}{" "}
+                <span className="vela-gradient-text">{t("landing.hero.headlineAccent")}</span>{" "}
+                {t("landing.hero.headline2")}
+              </h1>
+            </motion.div>
 
             {/* Subtext */}
             <motion.p
@@ -267,12 +302,19 @@ export default function Hero() {
               {t("landing.hero.subtext")}
             </motion.p>
 
-            {/* CTA -- shared orange gradient button. Copy now matches every
-                other CTA sitewide ("Start for Free", landing.hero.cta) --
-                the old "Start 14-Day Free Trial" wording promised a trial
-                mechanism that doesn't exist yet (Hard Rule 17). */}
+            {/* CTA -- shared orange gradient button. Copy matches every
+                other CTA sitewide ("Start for Free", landing.hero.cta) for
+                a logged-out visitor -- the old "Start 14-Day Free Trial"
+                wording promised a trial mechanism that doesn't exist yet
+                (Hard Rule 17). A logged-in visitor gets "Go to your
+                dashboard" pointing straight at /app instead (logged-in
+                header round). */}
             <motion.div variants={item}>
-              <CtaButton size="lg" label={t("landing.hero.cta")} />
+              <CtaButton
+                size="lg"
+                href={loggedIn ? "/app" : "/auth/signup"}
+                label={loggedIn ? t("landing.hero.ctaLoggedIn") : t("landing.hero.cta")}
+              />
             </motion.div>
 
           </motion.div>
