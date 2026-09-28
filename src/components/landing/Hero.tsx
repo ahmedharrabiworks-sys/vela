@@ -70,7 +70,7 @@ function useActiveSection(ids: readonly string[]) {
 const NAV_IDS = NAV_LINKS.map((l) => l.href.slice(1));
 
 export default function Hero() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeSection = useActiveSection(NAV_IDS);
   // Logged-in header round: "loading" renders identically to "out" (the
@@ -272,23 +272,33 @@ export default function Hero() {
             animate="show"
             className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-start"
           >
-            {/* Eyebrow + headline -- grouped as one staggered unit (hero-
-                eyebrow round) so the tight gap between them holds regardless
-                of the looser gap-5/6 the rest of this stack uses. Eyebrow is
-                a plain line of text, not a badge: no border/background/dot/
-                uppercase, elegant serif italic (Instrument Serif, loaded in
-                the root layout and scoped to this one usage only via the
-                --font-eyebrow CSS variable) -- English only. Instrument
-                Serif has no Arabic glyphs (and CSS-synthesized italic reads
-                poorly on Arabic script), so Arabic keeps the site's current
-                default font, upright, same color/size treatment. */}
-            <motion.div variants={item} className="flex flex-col gap-1">
-              <p
-                className={`leading-none text-[18px] md:text-[22px] ${locale === "ar" ? "" : "italic"}`}
-                style={{ fontFamily: locale === "ar" ? undefined : "var(--font-eyebrow)", color: "#E8552B" }}
-              >
-                {t("landing.hero.badge")}
-              </p>
+            {/* Eyebrow + headline -- grouped as one staggered unit so the
+                14px gap between them holds regardless of the looser
+                gap-5/6 the rest of this stack uses (hero-eyebrow
+                round 2: replaces the Instrument Serif italic treatment --
+                see layout.tsx, that font is removed entirely). Eyebrow is
+                a short rounded line + label, vertically centered, no
+                badge/border/background. Uses the exact same font-display
+                family as the headline right below it (not a special
+                one-off font) -- in Arabic mode the headline already
+                relies on that family's automatic per-glyph fallback for
+                Arabic script (it has no Arabic glyphs of its own), so the
+                eyebrow inherits the identical, already-proven-correct
+                behavior with no locale branching needed. Flex row order
+                (line first, text second) mirrors automatically under
+                dir="rtl" -- the line lands on the end/right side in
+                Arabic, same as every other automatically-mirrored row
+                elsewhere on this page. */}
+            <motion.div variants={item} className="flex flex-col gap-[14px]">
+              <div className="flex items-center gap-[10px]">
+                <span className="w-[28px] h-[2px] rounded-full shrink-0" style={{ background: "#E8552B" }} aria-hidden="true" />
+                <p
+                  className="font-display font-semibold leading-none text-[15px] md:text-[17px] tracking-[-0.01em]"
+                  style={{ color: "#E8552B" }}
+                >
+                  {t("landing.hero.badge")}
+                </p>
+              </div>
 
               {/* Headline -- black by default, one accent phrase in brand orange */}
               <h1 className="font-display font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-[#111111]">
