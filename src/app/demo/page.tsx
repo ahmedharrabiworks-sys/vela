@@ -1,25 +1,28 @@
 "use client";
 
-import DashboardPageUI from "@/components/dashboard/pages/DashboardPageUI";
-import {
-  DEMO_KPIS, DEMO_CONVS, DEMO_APPTS, DEMO_PROFILE, DEMO_AI_RESOLUTION_RATE,
-  DEMO_NEEDS_HUMAN_COUNT, DEMO_LEAD_PIPELINE, DEMO_ACTIVITY,
-} from "@/lib/demo-data";
+import { useState } from "react";
+import DashboardPageUI, { type Range } from "@/components/dashboard/pages/DashboardPageUI";
+import { DEMO_DASHBOARD_V2 } from "@/lib/demo-data";
 
 export default function DemoDashboard() {
+  const [range, setRange] = useState<Range>("30d");
+
   return (
     <DashboardPageUI
+      data={{ ...DEMO_DASHBOARD_V2, range }}
       loading={false}
-      firstName={DEMO_PROFILE.name.split(" ")[1] ?? "Ahmed"}
-      bName={DEMO_PROFILE.business}
-      kpis={DEMO_KPIS}
-      convs={DEMO_CONVS}
-      appts={DEMO_APPTS}
+      error={false}
+      range={range}
+      onRangeChange={setRange}
+      onRetry={() => {}}
+      onExport={() => {}}
+      businessName={DEMO_DASHBOARD_V2.businessName}
+      showOnboardingBanner={false}
+      onDismissOnboarding={() => {}}
+      showKbBanner={false}
+      kbScore={100}
+      onDismissKbBanner={() => {}}
       basePath="/demo"
-      aiResolutionRate={DEMO_AI_RESOLUTION_RATE}
-      needsHumanCount={DEMO_NEEDS_HUMAN_COUNT}
-      leadPipeline={DEMO_LEAD_PIPELINE}
-      activity={DEMO_ACTIVITY}
     />
   );
 }

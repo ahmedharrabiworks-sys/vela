@@ -1,5 +1,48 @@
 ﻿// ⚠ DEMO ONLY, Real app pages (src/app/app/*) must never import from this file.
 
+import type { DashboardPayload } from "@/components/dashboard/pages/DashboardPageUI";
+
+// Dashboard-redesign round: fixture matching the new /api/dashboard shape,
+// used only by /demo/page.tsx -- the real dashboard (src/app/app/page.tsx)
+// fetches this same shape from /api/dashboard, never from this file.
+function demoSeries(days: number, base: number, spread: number): { bucket: string; label: string; value: number }[] {
+  const pts = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86_400_000);
+    const key = d.toISOString().slice(0, 10);
+    const wave = Math.round(base + Math.sin(i / 3) * spread + (Math.sin(i * 1.7) * spread) / 2);
+    pts.push({ bucket: key, label: key, value: Math.max(0, wave) });
+  }
+  return pts;
+}
+
+export const DEMO_DASHBOARD_V2: DashboardPayload = {
+  businessName: "Ahmed Dental Clinic",
+  range: "30d",
+  kpis: {
+    conversations: { value: 312, previous: 268, trend: { direction: "up", pct: 16 } },
+    appointments: { value: 87, previous: 79, trend: { direction: "up", pct: 10 } },
+    aiResolutionRate: { value: 94, previous: 91, trend: { direction: "up", pct: 3 } },
+    newCustomers: { value: 54, previous: 61, trend: { direction: "down", pct: -11 } },
+  },
+  series: {
+    conversations: demoSeries(30, 10, 4),
+    appointments: demoSeries(30, 3, 2),
+  },
+  channels: [
+    { channel: "whatsapp", conversations: 168, appointments: 46, share: 54 },
+    { channel: "instagram", conversations: 92, appointments: 22, share: 29 },
+    { channel: "phone", conversations: 52, appointments: 19, share: 17 },
+  ],
+  connectedChannels: { whatsapp: true, instagram: true, phone: true },
+  hasAnyDataEver: true,
+  plan: "premium",
+  usage: {
+    messages: { used: 0, limit: null },
+    voiceMinutes: { used: 412, limit: 1000 },
+  },
+};
+
 export const DEMO_PROFILE = {
   name: "Ahmed Dental Clinic",
   initials: "AC",

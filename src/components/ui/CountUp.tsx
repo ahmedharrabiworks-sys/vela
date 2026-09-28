@@ -41,9 +41,9 @@ export function useCountUp(target: number, durationMs = 900): number {
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     const isWithinRevealWindow = Date.now() - mountedAt.current < REVEAL_WINDOW_MS;
-    prevTarget.current = target;
 
     if (reduceMotion) {
+      prevTarget.current = target;
       setValue(target);
       return;
     }
@@ -60,7 +60,22 @@ export function useCountUp(target: number, durationMs = 900): number {
       const progress = Math.min(1, (ts - start) / animDuration);
       const eased = 1 - Math.pow(1 - progress, 3);
       setValue(Math.round(startVal + (target - startVal) * eased));
-      if (progress < 1) raf = requestAnimationFrame(step);
+      if (progress < 1) {
+        raf = requestAnimationFrame(step);
+      } else {
+        // Only commit prevTarget once the animation genuinely finishes.
+        // Committing it immediately on start broke under React Strict
+        // Mode's dev-only double-invoke of effects: the 1st invocation
+        // would mark prevTarget as "done" and get cancelled before a
+        // single frame painted, so the 2nd (surviving) invocation saw
+        // prevTarget already equal to target and skipped animating
+        // entirely -- every counter stuck at 0 in `next dev`, though
+        // production (no double-invoke) was never affected. Deferring
+        // the commit to completion means an early-cancelled run leaves
+        // prevTarget untouched, so the next real invocation still
+        // treats it as a fresh target and actually animates.
+        prevTarget.current = target;
+      }
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
