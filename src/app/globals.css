@@ -373,31 +373,45 @@ canvas {
    CursorGlow.tsx). display:none by default -- the (hover:hover) media
    query is the ONLY thing that turns it on, so it's inert everywhere else
    with zero extra DOM cost.
-   Pre-softened radial-gradient alpha stops (peaking at 0.55, inside the
-   asked 0.5-0.6 range) instead of a separate `opacity` property or any
-   filter:blur() -- same reasoning as .glass-blob above: a blurred/faded
-   gradient is free to paint, filter:blur() and layered opacity are not.
+   Size/intensity round (was too big and too saturated, read as a solid
+   parked orange ball): 600px -> 380px diameter, and a single alpha stop
+   (0.14 at center fading to transparent at 70%) instead of the old
+   two-stop 0.55/0.22 ramp -- a soft warm light, not a ball. No filter:
+   blur() -- same reasoning as .glass-blob above: a pre-softened gradient
+   is free to paint, filter:blur() is not.
+   opacity:0 by default + `.is-visible` toggling it to 1 (CursorGlow.tsx
+   adds/removes the class on pointermove / 2.5s-idle / pointer-leaves-
+   window) is the ONLY opacity ever applied -- never stacked with a
+   second constant opacity on top of the gradient's own alpha, so the
+   visible peak is always exactly the gradient's 0.14, not dimmed
+   further. "No default parked position": opacity:0 already makes it
+   fully invisible pre-first-move; the off-screen translate3d is just a
+   defensive belt-and-suspenders, not the actual hide mechanism.
    Position is top:0/left:0 with a static negative margin (not a second
    transform) so the ONLY thing CursorGlow.tsx's rAF loop ever writes is
    a single translate3d -- one composited property, no layout/paint
-   triggered by pointer movement. will-change:transform is deliberate and
-   bounded: exactly one such element sitewide (see ProductTourDemo's own
-   scene-transition div for the only other one), a known-acceptable cost
-   from the perf round's own audit. */
+   triggered by pointer movement. will-change:transform/opacity is
+   deliberate and bounded: exactly one such element sitewide (see
+   ProductTourDemo's own scene-transition div for the only other one). */
 .cursor-glow-layer {
   display: none;
   position: fixed;
   top: 0;
   left: 0;
-  width: 600px;
-  height: 600px;
-  margin-left: -300px;
-  margin-top: -300px;
+  width: 380px;
+  height: 380px;
+  margin-left: -190px;
+  margin-top: -190px;
   pointer-events: none;
   z-index: 1;
-  background: radial-gradient(circle, rgba(255, 107, 53, 0.55) 0%, rgba(255, 107, 53, 0.22) 40%, rgba(255, 107, 53, 0) 70%);
-  will-change: transform;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.14) 0%, rgba(255, 107, 53, 0) 70%);
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+  will-change: transform, opacity;
   transform: translate3d(-9999px, -9999px, 0);
+}
+.cursor-glow-layer.is-visible {
+  opacity: 1;
 }
 @media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
   .cursor-glow-layer {
