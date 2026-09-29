@@ -366,6 +366,50 @@ canvas {
   background: radial-gradient(circle, rgba(255, 51, 102, 0.06) 0%, transparent 70%);
 }
 
+/* Cursor glow re-add round: a single fixed, pointer-events:none layer,
+   desktop-with-a-real-mouse only (hover:hover + pointer:fine + lg+, so a
+   touch/coarse-pointer device or a narrow viewport never pays for it even
+   if the media query below somehow mismatches JS's own gate in
+   CursorGlow.tsx). display:none by default -- the (hover:hover) media
+   query is the ONLY thing that turns it on, so it's inert everywhere else
+   with zero extra DOM cost.
+   Pre-softened radial-gradient alpha stops (peaking at 0.55, inside the
+   asked 0.5-0.6 range) instead of a separate `opacity` property or any
+   filter:blur() -- same reasoning as .glass-blob above: a blurred/faded
+   gradient is free to paint, filter:blur() and layered opacity are not.
+   Position is top:0/left:0 with a static negative margin (not a second
+   transform) so the ONLY thing CursorGlow.tsx's rAF loop ever writes is
+   a single translate3d -- one composited property, no layout/paint
+   triggered by pointer movement. will-change:transform is deliberate and
+   bounded: exactly one such element sitewide (see ProductTourDemo's own
+   scene-transition div for the only other one), a known-acceptable cost
+   from the perf round's own audit. */
+.cursor-glow-layer {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 600px;
+  height: 600px;
+  margin-left: -300px;
+  margin-top: -300px;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.55) 0%, rgba(255, 107, 53, 0.22) 40%, rgba(255, 107, 53, 0) 70%);
+  will-change: transform;
+  transform: translate3d(-9999px, -9999px, 0);
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
+  .cursor-glow-layer {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow-layer {
+    display: none !important;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Auth-only glass (perf round: static, same as .glass above -- no
    backdrop-filter). Opacity raised from the old 0.42 (which relied on

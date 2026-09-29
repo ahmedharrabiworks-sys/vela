@@ -1,4 +1,5 @@
 import Navbar from "@/components/landing/Navbar";
+import CursorGlow from "@/components/ui/CursorGlow";
 import Hero from "@/components/landing/Hero";
 import ProblemSection from "@/components/landing/ProblemSection";
 import ProductTourDemo from "@/components/landing/ProductTourDemo";
@@ -18,6 +19,10 @@ export default function LandingPage() {
           on this element instead -- one paint, zero extra layers, zero
           per-frame animation cost. See .landing-glow-bg in globals.css. */}
       <Navbar />
+      {/* Cursor glow re-add round: landing-only (not sitewide -- the old
+          one lived in the root layout and ran on every page). Gated to
+          desktop-with-a-real-mouse via CSS + JS, see CursorGlow.tsx. */}
+      <CursorGlow />
       {/* Hero and ProductTourDemo are intentionally NOT wrapped in Reveal --
           both render fully visible immediately on load, no fade/slide-in.
           Hero already has its own on-load stagger animation; ProductTourDemo

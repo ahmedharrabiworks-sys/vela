@@ -82,7 +82,13 @@ export default function Hero() {
   const loggedIn = session.status === "in";
 
   return (
-    <section id="hero-section" className="relative flex flex-col bg-white min-h-[100svh]">
+    <section id="hero-section" className="relative flex flex-col bg-white min-h-[100svh] lg:min-h-0">
+      {/* Phone-only-full-screen-hero round: min-h-[100svh] (full first
+          screen, header included, "how it works" below the fold) is
+          explicitly a phone/tablet thing (Oussama review) -- lg:min-h-0
+          cancels it at lg+, where the section goes back to sizing to its
+          natural content height like every other section. See the content
+          wrapper below for the matching lg:block/lg:pt-8/lg:pb-28 revert. */}
       {/* Header round 2: reversed again, explicit ask -- desktop (lg+) is now
           NOT fixed, it lives in normal document flow at the top of the page
           and scrolls away with everything below it. Only `lg:flex` remains
@@ -265,23 +271,29 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content -- full-screen-hero round: the section itself is
+      {/* Content -- full-screen-hero round: below lg, the section is
           min-h-[100svh] (header included), so on first load only the
-          header + hero are visible everywhere from 375x667 up to 1920x1080
-          -- "how it works" below starts exactly at the fold, no scroll
-          needed to reveal it and no extra gap needed to hide it (the old
-          pb-20/24/28 from the breathing-room round is gone; ProductTourDemo's
-          own pt-12/md:pt-16 is untouched and is now the ONLY gap before it).
-          This wrapper is `flex-1` (the section's flex-col makes it the one
-          growing child -- on mobile the header is `fixed`/out of flow so
-          this wrapper is the sole flex participant and gets the full
-          100svh; on desktop the in-flow header above takes its own height
-          first and this wrapper fills the rest), with two empty flex-grow
-          spacers (55/45) sandwiching the real content block so it sits
-          slightly BELOW center of the remaining space rather than glued to
-          the header or dead-centered. */}
-      <div className="relative z-10 flex-1 flex flex-col w-full max-w-7xl mx-auto px-5 md:px-6">
-        <div aria-hidden="true" style={{ flexGrow: 55 }} />
+          header + hero are visible from 375x667 up to 430x932 -- "how it
+          works" below starts exactly at the fold. This wrapper is
+          `flex-1` (the section's flex-col makes it the one growing child
+          -- below lg the header is `fixed`/out of flow so this wrapper is
+          the sole flex participant and gets the full 100svh), with two
+          empty flex-grow spacers (55/45) sandwiching the real content
+          block so it sits slightly BELOW center of the remaining space
+          rather than glued to the header or dead-centered.
+          Phone-only round: at lg+ this whole mechanism is explicitly
+          switched off (Oussama review -- desktop must show section two
+          normally, like before the full-screen-hero round) --
+          `lg:block` turns the wrapper back into a normal block (its
+          children stop being flex items, so the two spacers below
+          collapse to nothing via `lg:hidden`) and `lg:pt-8 lg:pb-28`
+          restores the exact fixed top/bottom padding the breathing-room
+          round used, before full-screen-hero replaced it. flex-1 itself
+          is left unprefixed -- harmless at lg+ since lg:min-h-0 on the
+          section (above) means there's no forced extra space left for it
+          to grow into. */}
+      <div className="relative z-10 flex-1 flex flex-col lg:block w-full max-w-7xl mx-auto px-5 md:px-6 lg:pt-8 lg:pb-28">
+        <div aria-hidden="true" className="lg:hidden" style={{ flexGrow: 55 }} />
         <div className="max-w-3xl">
           <motion.div
             variants={container}
@@ -366,7 +378,7 @@ export default function Hero() {
 
           </motion.div>
         </div>
-        <div aria-hidden="true" style={{ flexGrow: 45 }} />
+        <div aria-hidden="true" className="lg:hidden" style={{ flexGrow: 45 }} />
       </div>
     </section>
   );
