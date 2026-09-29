@@ -4,7 +4,6 @@ import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import MadeInQatar from "@/components/ui/MadeInQatar";
 import LanguageToggle from "@/components/landing/LanguageToggle";
-import AmbientGlow from "@/components/landing/AmbientGlow";
 import { useI18n } from "@/lib/i18n";
 
 export const authInputCls =
@@ -105,10 +104,10 @@ export function AuthBlobs() {
 
 export function AuthPageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 pt-14 pb-6 sm:py-10 relative overflow-hidden">
-      <AmbientGlow pos="start" />
-      <AmbientGlow pos="end" />
-
+    // Perf round: the two animated <AmbientGlow> instances (each its own
+    // continuously-animated, will-change compositor layer) are replaced by
+    // auth-glow-bg, a single static background-image -- see globals.css.
+    <div className="min-h-screen bg-white auth-glow-bg flex flex-col items-center justify-center px-4 pt-14 pb-6 sm:py-10 relative overflow-hidden">
       <div className="absolute top-0 start-0 p-4 sm:p-6 z-10">
         <Link href="/">
           <Logo showText={false} />

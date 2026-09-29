@@ -243,124 +243,65 @@ canvas {
   word-spacing: normal;
 }
 
-/* ─── Ambient glow (design pass) — one consistent, auto-animated, CSS-only
-   glow used on every homepage section. Centered, small, low-opacity, slow
-   drift/pulse. Identical on desktop and mobile since it never reads pointer
-   position. Replaces the old mouse-tracked CursorSpotlight entirely. ─── */
-.ambient-glow {
-  /* Perf fix (scroll-jank round): tells the browser this wrapper's paint
-     never escapes its own box (it's already overflow:hidden, contain:paint
-     lets the compositor rely on that guarantee instead of re-checking),
-     isolating the animated blob's repaint/raster region from the rest of
-     the section's content during scroll. */
-  contain: paint;
+/* ─── Static ambient glow (perf round) ───────────────────────────────────
+   Replaces the old .ambient-glow-blob system: 7 (landing) or 2 (auth)
+   absolutely-positioned divs, each continuously animated (16s infinite)
+   and each promoted to its own GPU compositor layer via will-change --
+   measured live, 9 such layers existed sitewide, running forever
+   regardless of scroll position or tab visibility. A background-image
+   with one radial-gradient() per former blob, painted directly on the
+   page wrapper, is a single static paint: same connected-glow look
+   (percentage positions still spread the glow down the full scrollable
+   height, same as the old absolutely-positioned blobs did), zero
+   composited layers, zero per-frame animation cost. Opacity (0.13) is
+   the tuned midpoint of the old animation's 0.65-1.0 opacity swing
+   (0.15 base x that range), so the static look reads the same as the
+   old glow's "resting" average rather than its brightest instant. ───── */
+.landing-glow-bg {
+  background-image:
+    radial-gradient(circle 280px at 22% 6%,  rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 82% 20%, rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 12% 36%, rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 78% 52%, rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 18% 68%, rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 80% 84%, rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 30% 96%, rgba(255,107,53,0.13), transparent 45%);
 }
-.ambient-glow-blob {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 560px;
-  height: 560px;
-  margin: -280px 0 0 -280px;
-  border-radius: 50%;
-  /* Bug fix (section-continuity round): the previous 860px size + 70%
-     falloff + near-edge --start/--end positions combined to get hard-clipped
-     by each section's own `overflow:hidden` on real, measured section
-     heights (Hero 571px, DashboardSection 553px desktop, etc.) -- confirmed
-     via screenshot evidence of a crisp pink-to-white line at multiple
-     section boundaries, not a background-color mismatch (every section is
-     plain white). Smaller size + a much tighter falloff (transparent by
-     45% of the gradient's own radius, instead of 70%) means the visible
-     portion of the glow is fully faded out well within any section's
-     bounds before it can reach an edge, regardless of position. */
-  background: radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 45%);
-  animation: ambientDrift 16s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-/* Per-section placement variants -- keeps the glow from reading as one blob
-   stuck in the exact center of every section; each variant repositions the
-   same blob toward a corner, pulled in from the literal edge (was 14-18%/
-   82-86%) so it stays clear of the clip boundary on short sections too. */
-.ambient-glow-blob--start {
-  top: 22%;
-  left: 20%;
-  margin: -280px 0 0 -280px;
-}
-.ambient-glow-blob--end {
-  top: 78%;
-  left: 80%;
-  margin: -280px 0 0 -280px;
-}
-/* Perf fix (scroll-jank round): `scale()` dropped from these keyframes.
-   Measured live via a CDP trace during real scrolling on production --
-   scale changes on a transform layer force the compositor to re-rasterize
-   at each new effective resolution (to stay sharp), unlike pure
-   translate3d/opacity which reuse the already-rasterized bitmap at zero
-   raster cost. A controlled A/B (same page, same scroll gesture, only this
-   animation swapped) measured real RasterTask reduction with scale
-   removed. Visual effect is unchanged in substance -- still drifts and
-   pulses in opacity, just without the size breathing, which was the
-   expensive part. */
-@keyframes ambientDrift {
-  0%   { transform: translate3d(0, 0, 0);          opacity: 0.65; }
-  25%  { transform: translate3d(26px, -18px, 0); opacity: 1; }
-  50%  { transform: translate3d(-12px, 22px, 0); opacity: 0.7; }
-  75%  { transform: translate3d(-22px, -14px, 0); opacity: 0.92; }
-  100% { transform: translate3d(0, 0, 0);          opacity: 0.65; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ambient-glow-blob { animation: none; opacity: 0.65; }
-}
-
-/* ─── Sitewide cursor glow (perf-safe reintroduction) ───────────────────────
-   A fixed-size layer positioned purely via `transform: translate3d`, driven
-   by CursorGlow.tsx's single rAF-throttled pointermove listener writing
-   --cx/--cy. Moving a layer via transform is compositor-only -- unlike the
-   background-position approach this would need if the gradient itself moved,
-   which forces a full-layer repaint on every mouse pixel. The gradient is
-   static (baked into the div's background, never recomputed); only its
-   position changes, at zero raster cost. `contain: paint` + `will-change:
-   transform` keep it isolated from the rest of the page's paint/layout.
-   Hidden entirely on touch/coarse-pointer devices (CSS + JS both gate it). */
-.cursor-glow-layer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 340px;
-  height: 340px;
-  margin: -170px 0 0 -170px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 1;
-  contain: paint;
-  will-change: transform;
-  background: radial-gradient(circle, rgba(255,138,80,0.14) 0%, rgba(255,138,80,0.05) 45%, transparent 70%);
-  transform: translate3d(var(--cx, 50vw), var(--cy, 50vh), 0);
-  opacity: 0;
-}
-@media (pointer: fine) and (hover: hover) {
-  .cursor-glow-layer { opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cursor-glow-layer { display: none; }
+.auth-glow-bg {
+  background-image:
+    radial-gradient(circle 280px at 20% 22%, rgba(255,107,53,0.13), transparent 45%),
+    radial-gradient(circle 280px at 80% 78%, rgba(255,107,53,0.13), transparent 45%);
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Liquid glass system (design pass) — ONE shared surface, reused
-   everywhere a card-like element needs the "liquid glass" treatment.
-   Never hand-roll these values per component; add `.glass` (or
-   `.glass-warm` for highlighted surfaces like the Pro card / Vela
-   table column) plus the component's own `rounded-*` class.
+   "Static glass" system (perf round) — ONE shared surface, reused
+   everywhere a card-like element needs the liquid-glass look. Never
+   hand-roll these values per component; add `.glass` (or `.glass-warm`
+   for highlighted surfaces like the Pro card / Vela table column) plus
+   the component's own `rounded-*` class.
    `.glass::before` draws the soft gradient edge (white top-left fading
    to near-transparent bottom-right) via the mask-composite "ring"
    trick, since a plain `border` can only be a single flat color.
    `position: relative` is required on `.glass` itself so the ::before
-   ring positions against it, not some further-out ancestor. ═══════ */
+   ring positions against it, not some further-out ancestor.
+
+   Perf round: backdrop-filter removed. Real-blur glass forces the
+   compositor to re-rasterize everything behind every glass surface on
+   every scroll frame -- measured live, 25 simultaneously-visible
+   backdrop-filter elements on the landing page alone (3.2M px² total),
+   a real, confirmed contributor to sub-30fps scroll frames. The page
+   background behind these cards is static (soft, slow-drifting orange
+   blobs, not fast-moving content), so a real-time blur was buying
+   nothing a fixed semi-opaque white can't fake: this opacity was tuned
+   by comparing screenshots side by side against the old blurred version
+   over the same background. `backdrop-filter` now lives on exactly two
+   kinds of surface sitewide: the fixed/sticky header pill, and open
+   modals/sheets -- both real, still use it, both are the ONLY places a
+   moving background is actually likely to sit behind the glass at the
+   moment it's visible. */
 .glass {
   position: relative;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(18px) saturate(170%);
-  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.75);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
@@ -381,20 +322,28 @@ canvas {
   pointer-events: none;
 }
 .glass-warm {
-  background: rgba(255, 244, 238, 0.6);
+  background: rgba(255, 246, 240, 0.82);
 }
-/* Mobile: lighter blur radius for compositing performance (standing perf rule). */
+
+/* Real backdrop-filter, kept intentionally -- the fixed/sticky header
+   pill and open modals/sheets are the two surfaces where a genuinely
+   moving background can sit behind the glass at the moment it's seen,
+   so the real blur is worth its cost there. Opt in per-component with
+   `.glass-live`, layered on top of the static `.glass`/`.glass-warm`
+   base classes (not a replacement for them -- keeps the same border/
+   sheen/shadow, only adds the blur back). */
+.glass-live {
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
 @media (max-width: 768px) {
-  .glass,
-  .glass-warm {
+  .glass-live {
     backdrop-filter: blur(12px) saturate(170%);
     -webkit-backdrop-filter: blur(12px) saturate(170%);
   }
 }
-/* Fallback for browsers without backdrop-filter support -- solid, never broken-looking. */
 @supports not (backdrop-filter: blur(1px)) {
-  .glass,
-  .glass-warm {
+  .glass-live {
     background: rgba(255, 255, 255, 0.92);
   }
 }
@@ -418,22 +367,17 @@ canvas {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Auth-only glass (stronger than the landing's .glass) — auth cards
-   float directly over near-white page background with no rich content
-   behind them, so the landing recipe (0.55 white, blur(18px)) reads as a
-   flat white card. This variant is MORE transparent (0.42) with a
-   stronger blur/saturate and is paired with .auth-blob (below), which is
-   sized and positioned to sit partly behind the card's own edges so the
-   blur has real color to pick up. Landing .glass values are untouched.
-   Real content inside a .glass-auth element must be wrapped in a
-   `position:relative; z-index:1` child (or use `.glass-auth-content`) so
-   it paints above the ::after sheen, which is itself position:absolute
-   and would otherwise stack per DOM order, not intent. ═══════ */
+   Auth-only glass (perf round: static, same as .glass above -- no
+   backdrop-filter). Opacity raised from the old 0.42 (which relied on
+   the removed blur to still read as a clean card) to 0.85, tuned against
+   the still-live .auth-blob glow behind it. Real content inside a
+   .glass-auth element must be wrapped in a `position:relative; z-index:1`
+   child (or use `.glass-auth-content`) so it paints above the ::after
+   sheen, which is itself position:absolute and would otherwise stack per
+   DOM order, not intent. ═══════ */
 .glass-auth {
   position: relative;
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(255, 255, 255, 0.85);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 20px 60px rgba(232, 90, 40, 0.12),
@@ -465,17 +409,6 @@ canvas {
 .glass-auth-content {
   position: relative;
   z-index: 1;
-}
-@media (max-width: 768px) {
-  .glass-auth {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-  }
-}
-@supports not (backdrop-filter: blur(1px)) {
-  .glass-auth {
-    background: rgba(255, 255, 255, 0.94);
-  }
 }
 
 /* Blobs sized/positioned to sit partly BEHIND a .glass-auth card's own
@@ -523,12 +456,6 @@ canvas {
   outline: none;
   border-color: #ff6b35;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(255, 107, 53, 0.18);
-}
-@media (max-width: 768px) {
-  .input-glass {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
 }
 
 /* Locked-feature ("Upgrade to Pro to unlock X") overlay backdrop -- Analytics,

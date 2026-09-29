@@ -8,6 +8,7 @@ import { getProfile } from "@/lib/business-profile";
 import { getSupabase } from "@/lib/supabase";
 import { useI18n, LANGUAGES } from "@/lib/i18n";
 import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
+import { fetchNotificationsShared } from "@/lib/notifications-cache";
 
 // MVP scope-down: hides the flagged item from the nav entirely (not
 // greyed out) whenever its flag is false. Demo (/demo) is a separate,
@@ -346,12 +347,8 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
     if (demoProfile) return;
     let cancelled = false;
     const load = async () => {
-      try {
-        const res = await fetch("/api/notifications");
-        if (!res.ok) return;
-        const data = await res.json() as { notifications?: NotificationRow[] };
-        if (!cancelled) setNotifications(data.notifications ?? []);
-      } catch { /* dots just stay off */ }
+      const data = await fetchNotificationsShared();
+      if (!cancelled && data) setNotifications(data.notifications);
     };
     load();
     const interval = setInterval(load, 30_000);

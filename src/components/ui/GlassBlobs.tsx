@@ -1,9 +1,10 @@
 /**
- * 2-3 soft, static orange/rose blobs positioned behind glass surfaces so the
- * backdrop-filter blur has real color to pick up (glass reads as invisible
- * over plain white). Render as the first child of a `position: relative`
- * section, before the glass card(s). No filter:blur() -- see .glass-blob in
- * globals.css for why a pre-softened radial-gradient is used instead.
+ * 2-3 soft, static orange/rose blobs positioned behind glass surfaces, for a
+ * bit of color under the now-static (perf round: no backdrop-filter) .glass
+ * background. Static, no animation, no will-change -- cheap regardless.
+ * Render as the first child of a `position: relative` section, before the
+ * glass card(s). No filter:blur() -- see .glass-blob in globals.css for why
+ * a pre-softened radial-gradient is used instead.
  */
 export default function GlassBlobs({
   variant = "spread",

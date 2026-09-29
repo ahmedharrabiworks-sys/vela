@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getSupabase } from "@/lib/supabase";
 import DashboardPageUI, { type DashboardPayload, type Range } from "@/components/dashboard/pages/DashboardPageUI";
 import { ResumeLastAppRoute } from "@/lib/last-route";
+
+const ALL_RANGES: Range[] = ["7d", "30d", "90d"];
 
 export default function DashboardPage() {
   const [bName, setBName] = useState("");
@@ -16,34 +18,67 @@ export default function DashboardPage() {
   const [kbScore, setKbScore] = useState(100); // default high -> no flash before load
   const [kbBannerDismissed, setKbBannerDismissed] = useState(false);
 
-  const loadDashboard = useCallback(async (r: Range) => {
-    setLoading(true);
-    setError(false);
+  // Perf round: client-side cache keyed by range, so switching the 7d/30d/90d
+  // toggle is instant (<100ms) and never re-shows the loading skeleton for a
+  // range already fetched -- filled once on first load (current range fetched
+  // first and shown immediately, the other two prefetched right after in the
+  // background per FIX 3), then reused for every toggle for the life of the page.
+  const cacheRef = useRef<Partial<Record<Range, DashboardPayload>>>({});
+
+  const fetchRange = useCallback(async (r: Range): Promise<DashboardPayload | null> => {
     try {
       const res = await fetch(`/api/dashboard?range=${r}`);
-      if (!res.ok) { setError(true); setLoading(false); return; }
-      const json = await res.json() as DashboardPayload;
-      setData(json);
-      setBName(json.businessName || "");
+      if (!res.ok) return null;
+      return await res.json() as DashboardPayload;
     } catch (err) {
       console.error("[dashboard] fetch failed:", err);
-      setError(true);
+      return null;
     }
-    setLoading(false);
   }, []);
+
+  const loadDashboard = useCallback(async (r: Range) => {
+    const cached = cacheRef.current[r];
+    if (cached) {
+      // Already fetched (initial load or background prefetch) -- show
+      // instantly, no loading flash, no refetch.
+      setData(cached);
+      setBName(cached.businessName || "");
+      setError(false);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    const json = await fetchRange(r);
+    if (!json) { setError(true); setLoading(false); return; }
+    cacheRef.current[r] = json;
+    setData(json);
+    setBName(json.businessName || "");
+    setLoading(false);
+  }, [fetchRange]);
 
   useEffect(() => {
     setBannerDismissed(localStorage.getItem("vela_onboarding_banner_dismissed") === "true");
     setKbBannerDismissed(localStorage.getItem("vela_training_banner_dismissed") === "true");
     void loadOnboardingAndKb();
-    void loadDashboard(range);
+
+    (async () => {
+      await loadDashboard(range);
+      // Background-prefetch the other two ranges right after the first
+      // paints, so every toggle click after this hits the cache above.
+      const rest = ALL_RANGES.filter((r) => r !== range);
+      for (const r of rest) {
+        const json = await fetchRange(r);
+        if (json) cacheRef.current[r] = json;
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    void loadDashboard(range);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+  const handleRangeChange = useCallback((r: Range) => {
+    setRange(r);
+    void loadDashboard(r);
+  }, [loadDashboard]);
 
   async function loadOnboardingAndKb() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,7 +146,7 @@ export default function DashboardPage() {
         loading={loading}
         error={error}
         range={range}
-        onRangeChange={setRange}
+        onRangeChange={handleRangeChange}
         onRetry={() => loadDashboard(range)}
         onExport={handleExport}
         businessName={bName}

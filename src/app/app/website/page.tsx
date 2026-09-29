@@ -1557,7 +1557,7 @@ export default function WebsitePage() {
     try {
       win.addEventListener("scroll", () => {
         iframeScrollRef.current = win.scrollY;
-      });
+      }, { passive: true });
     } catch { /* sandboxed iframe without same-origin -- scroll tracking degrades to always-top, never a crash */ }
   }, []);
 

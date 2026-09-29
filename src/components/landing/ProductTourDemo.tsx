@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
-import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
@@ -1256,12 +1255,22 @@ const sceneVariants = {
   exit:   { opacity: 0, rotateY: -10, scale: 0.97,
             transition:{ duration: 0.28, ease:[0.55,0,1,0.45] as [number,number,number,number] } },
 };
+// prefers-reduced-motion variant: a plain, quick opacity cross-fade -- no
+// 3D rotateY/scale flip (the actual "motion" reduced-motion visitors are
+// asking to not see), used instead of sceneVariants when the OS/browser
+// preference is set.
+const sceneVariantsReduced = {
+  enter:  { opacity: 0 },
+  center: { opacity: 1, transition: { duration: 0.2 } },
+  exit:   { opacity: 0, transition: { duration: 0.15 } },
+};
 
 /* ═══════════════════════════════════════════════════════════════
    ProductTourDemo. Main export
 ═══════════════════════════════════════════════════════════════ */
 export default function ProductTourDemo() {
   const { t } = useI18n();
+  const prefersReducedMotion = useReducedMotion();
   const [scene, setScene] = useState(0);
   // false = hands-off autoplay (cycles all scenes forward, default).
   // true  = manual mode, entered by clicking a tab: the active scene loops
@@ -1298,10 +1307,14 @@ export default function ProductTourDemo() {
 
   // Autoplay advances to the next scene after its own duration; manual mode
   // instead replays the same scene (bumps replayTick, scene index unchanged).
-  // Re-registers whenever scene/mode/tick/visibility changes.
+  // Re-registers whenever scene/mode/tick/visibility changes. Also gated on
+  // prefers-reduced-motion (perf round): a reduced-motion visitor sees the
+  // first scene, static, with no auto-cycling -- clicking a tab still works
+  // (handleTabClick is independent of this effect), so the feature stays
+  // usable, it just never moves on its own.
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (!isVisible) return;
+    if (!isVisible || prefersReducedMotion) return;
     const duration = SCENE_DURATIONS[scene] ?? 3000;
     timerRef.current = setTimeout(() => {
       if (manualMode) {
@@ -1311,7 +1324,7 @@ export default function ProductTourDemo() {
       }
     }, duration);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [scene, manualMode, replayTick, isVisible]);
+  }, [scene, manualMode, replayTick, isVisible, prefersReducedMotion]);
 
   const handleTabClick = useCallback((idx: number) => {
     setManualMode(true);
@@ -1333,7 +1346,6 @@ export default function ProductTourDemo() {
     // previous session removed. Every string in this section (and its 4
     // scene mocks) now routes through the i18n system.
     <section id="how-it-works" ref={sectionRef} className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
-      <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
 
         {/* Section header, FIX 5+6 applied */}
@@ -1461,12 +1473,12 @@ export default function ProductTourDemo() {
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`${scene}-${replayTick}`}
-                    variants={sceneVariants}
+                    variants={prefersReducedMotion ? sceneVariantsReduced : sceneVariants}
                     initial="enter"
                     animate="center"
                     exit="exit"
                     className="absolute inset-0"
-                    style={{ backfaceVisibility:"hidden", willChange:"transform, opacity" }}
+                    style={prefersReducedMotion ? undefined : { backfaceVisibility:"hidden", willChange:"transform, opacity" }}
                   >
                     {renderScene(scene)}
                   </motion.div>

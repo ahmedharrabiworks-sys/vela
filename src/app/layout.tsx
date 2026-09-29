@@ -4,7 +4,6 @@ import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
 import { LastRouteTracker } from "@/lib/last-route";
 import { LegacyThemeCleanup } from "@/lib/legacy-theme-cleanup";
-import CursorGlow from "@/components/ui/CursorGlow";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,7 +59,6 @@ export default function RootLayout({
         <I18nProvider>
           <LastRouteTracker />
           <LegacyThemeCleanup />
-          <CursorGlow />
           {children}
         </I18nProvider>
       </body>

@@ -1,6 +1,5 @@
 "use client";
 
-import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 import { useI18n } from "@/lib/i18n";
 
@@ -139,7 +138,6 @@ export default function DashboardSection() {
     <section id="features" className="py-12 md:py-16 bg-white">
       <div className="max-w-6xl mx-auto px-5 md:px-6">
         <div className="relative">
-          <GlassBlobs />
           <div
             className="glass glass-warm relative overflow-hidden rounded-2xl grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-8 lg:gap-6 px-6 py-10 sm:px-10 sm:py-12"
             style={{ zIndex: 1 }}

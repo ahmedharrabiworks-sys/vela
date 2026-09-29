@@ -6,7 +6,6 @@ import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
-import GlassBlobs from "@/components/ui/GlassBlobs";
 import CtaButton from "@/components/landing/CtaButton";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
@@ -45,7 +44,6 @@ export default function Pricing() {
 
   return (
     <section id="pricing" className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
-      <GlassBlobs />
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header */}
         <div className="relative text-center mb-8">

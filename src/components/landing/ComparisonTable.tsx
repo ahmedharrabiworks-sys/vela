@@ -1,7 +1,6 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n";
-import GlassBlobs from "@/components/ui/GlassBlobs";
 
 /* Complete, closed 4-side orange frame around the Vela column (FIX 5).
    A single absolutely-positioned overlay spanning header-to-last-row,
@@ -100,7 +99,6 @@ export default function ComparisonTable() {
 
   return (
     <section className="relative py-12 md:py-16 bg-white">
-      <GlassBlobs />
       <div className="relative max-w-5xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="text-center mb-8 md:mb-10">
           <span

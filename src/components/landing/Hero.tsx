@@ -164,7 +164,7 @@ export default function Hero() {
         className="lg:hidden fixed top-0 inset-x-0 z-40 w-full px-5 shrink-0 flex justify-center"
         style={{ paddingTop: "max(24px, env(safe-area-inset-top))" }}
       >
-        <div className="glass inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
+        <div className="glass glass-live inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
             <Logo showText={false} size={24} />
           </Link>
@@ -275,23 +275,24 @@ export default function Hero() {
             {/* Eyebrow + headline -- grouped as one staggered unit so the
                 14px gap between them holds regardless of the looser
                 gap-5/6 the rest of this stack uses (hero-eyebrow
-                round 2: replaces the Instrument Serif italic treatment --
-                see layout.tsx, that font is removed entirely). Eyebrow is
-                a short rounded line + label, vertically centered, no
-                badge/border/background. Uses the exact same font-display
-                family as the headline right below it (not a special
-                one-off font) -- in Arabic mode the headline already
-                relies on that family's automatic per-glyph fallback for
-                Arabic script (it has no Arabic glyphs of its own), so the
-                eyebrow inherits the identical, already-proven-correct
-                behavior with no locale branching needed. Flex row order
-                (line first, text second) mirrors automatically under
-                dir="rtl" -- the line lands on the end/right side in
-                Arabic, same as every other automatically-mirrored row
-                elsewhere on this page. */}
+                round 3: the orange line is removed, text-only label kept
+                at the same font/color/size -- see PR round 2's comment
+                history above for the prior line+text treatment this
+                replaces). Uses the exact same font-display family as the
+                headline right below it (not a special one-off font) -- in
+                Arabic mode the headline already relies on that family's
+                automatic per-glyph fallback for Arabic script (it has no
+                Arabic glyphs of its own), so the eyebrow inherits the
+                identical, already-proven-correct behavior with no locale
+                branching needed. justify-center on mobile (the hero is
+                centered on mobile, and with the line gone this text is no
+                longer implicitly centered by its wrapper's shrink-to-fit
+                width -- see round 3 fix notes), justify-start on desktop;
+                justify-start mirrors automatically to the end/right side
+                under dir="rtl", same as every other automatically-
+                mirrored row elsewhere on this page. */}
             <motion.div variants={item} className="flex flex-col gap-[14px]">
-              <div className="flex items-center gap-[10px]">
-                <span className="w-[28px] h-[2px] rounded-full shrink-0" style={{ background: "#E8552B" }} aria-hidden="true" />
+              <div className="flex items-center justify-center md:justify-start">
                 <p
                   className="font-display font-semibold leading-none text-[15px] md:text-[17px] tracking-[-0.01em]"
                   style={{ color: "#E8552B" }}

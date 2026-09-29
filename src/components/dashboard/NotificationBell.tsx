@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { fmtTimeAgo } from "@/components/dashboard/CallTranscript";
+import { fetchNotificationsShared } from "@/lib/notifications-cache";
 
 interface NotificationRow {
   id: string;
@@ -61,13 +62,11 @@ export function NotificationBell() {
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
   const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notifications");
-      if (!res.ok) return;
-      const data = await res.json() as { notifications: NotificationRow[]; unreadCount: number };
-      setNotifications(data.notifications ?? []);
-      setUnreadCount(data.unreadCount ?? 0);
-    } catch { /* keep last known state */ }
+    const data = await fetchNotificationsShared();
+    if (data) {
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+    }
     setLoading(false);
   }, []);
 

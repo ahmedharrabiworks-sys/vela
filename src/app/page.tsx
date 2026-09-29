@@ -8,15 +8,15 @@ import ComparisonTable from "@/components/landing/ComparisonTable";
 import FAQ from "@/components/landing/FAQ";
 import Footer from "@/components/landing/Footer";
 import Reveal from "@/components/landing/Reveal";
-import PageAmbientField from "@/components/landing/PageAmbientField";
 export default function LandingPage() {
   return (
-    <main className="relative overflow-x-clip">
-      {/* Ambient-glow round: ONE page-level glow layer behind every section
-          instead of each section clipping its own copy -- see
-          PageAmbientField.tsx for why. Must be the first child so it
-          paints behind all real content below it. */}
-      <PageAmbientField />
+    <main className="relative overflow-x-clip landing-glow-bg">
+      {/* Perf round: the old PageAmbientField (7 absolutely-positioned,
+          continuously-animated divs spanning the full page height, each
+          promoted to its own compositor layer via will-change) is gone.
+          Same connected-glow look, now a single static background-image
+          on this element instead -- one paint, zero extra layers, zero
+          per-frame animation cost. See .landing-glow-bg in globals.css. */}
       <Navbar />
       {/* Hero and ProductTourDemo are intentionally NOT wrapped in Reveal --
           both render fully visible immediately on load, no fade/slide-in.
