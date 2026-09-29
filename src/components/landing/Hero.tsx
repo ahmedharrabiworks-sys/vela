@@ -253,28 +253,34 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content -- bottom padding matches the shared py-12/py-16 rhythm
-          every other section uses, so the Hero -> "how it works" gap is
-          consistent with every other inter-section gap.
-          Top padding (header round 2, inverted from before): below lg, the
-          pill above is now `fixed` and removed from flow, so this reserves
-          real space for it (measured live: fixed mobile pill's rendered
-          height is ~82px including its own top offset; 110px keeps a real
-          gap below it, not a tight/overlapping one). At lg+, the header is
-          now in normal document flow (not fixed) and already pushes this
-          content down on its own, so only a small breathing-room gap is
-          needed there. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[110px] pb-12 lg:pt-8 lg:pb-16">
+      {/* Content -- breathing-room round (Aira-reference rhythm: generous
+          vertical space, big bold headline, calm paragraph, clear air
+          before the next section -- copy/colors/badge untouched, only
+          spacing and headline scale changed).
+          Top padding: below lg, the pill above is `fixed` and removed from
+          flow, so this reserves real space for it (fixed mobile pill's
+          rendered height is ~82px including its own top offset) PLUS a
+          real ~64px visual gap below the pill before the eyebrow starts
+          (82+64=146). At lg+, the header is in normal document flow (not
+          fixed) and already pushes this content down on its own, so only a
+          small breathing-room gap is needed there.
+          Bottom padding: was 48px mobile / 64px desktop (matching every
+          other section's py-12/py-16 rhythm) -- too tight against "how it
+          works" below per the Aira-rhythm review. Increased so the real
+          combined gap (this padding + how-it-works' own pt-12/md:pt-16) is
+          >=120px mobile, >=160px desktop -- see ProductTourDemo.tsx's
+          section wrapper, unchanged, for the other half of that gap. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[146px] pb-20 md:pb-24 lg:pt-8 lg:pb-28">
         <div className="max-w-3xl md:mt-8">
           <motion.div
             variants={container}
             initial="hidden"
             animate="show"
-            className="flex flex-col gap-5 md:gap-6 items-center text-center md:items-start md:text-start"
+            className="flex flex-col items-center text-center md:items-start md:text-start"
           >
             {/* Eyebrow + headline -- grouped as one staggered unit so the
-                14px gap between them holds regardless of the looser
-                gap-5/6 the rest of this stack uses (hero-eyebrow
+                20px gap between them holds independently of the explicit
+                mt- spacing the rest of this stack now uses (hero-eyebrow
                 round 3: the orange line is removed, text-only label kept
                 at the same font/color/size -- see PR round 2's comment
                 history above for the prior line+text treatment this
@@ -291,7 +297,7 @@ export default function Hero() {
                 justify-start mirrors automatically to the end/right side
                 under dir="rtl", same as every other automatically-
                 mirrored row elsewhere on this page. */}
-            <motion.div variants={item} className="flex flex-col gap-[14px]">
+            <motion.div variants={item} className="flex flex-col gap-[20px]">
               <div className="flex items-center justify-center md:justify-start">
                 <p
                   className="font-display font-semibold leading-none text-[15px] md:text-[17px] tracking-[-0.01em]"
@@ -301,18 +307,27 @@ export default function Hero() {
                 </p>
               </div>
 
-              {/* Headline -- black by default, one accent phrase in brand orange */}
-              <h1 className="font-display font-bold text-[32px] sm:text-[40px] md:text-[48px] leading-tight text-[#111111]">
+              {/* Headline -- black by default, one accent phrase in brand
+                  orange. Same words/colors/font as before, just bigger and
+                  tighter (Aira-reference scale): 46px mobile up to
+                  70px desktop, leading 1.05, tracking -0.03em, text-balance
+                  for even line breaks so it doesn't wrap to one lonely word
+                  on its own line at narrow widths. */}
+              <h1 className="font-display font-bold text-[46px] sm:text-[50px] md:text-[58px] lg:text-[70px] leading-[1.05] tracking-[-0.03em] text-balance text-[#111111]">
                 {t("landing.hero.headline1")}{" "}
                 <span className="vela-gradient-text">{t("landing.hero.headlineAccent")}</span>{" "}
                 {t("landing.hero.headline2")}
               </h1>
             </motion.div>
 
-            {/* Subtext */}
+            {/* Subtext -- same copy/color, calmer size/line-height/width
+                (18px, 1.6 leading, ~34ch measure) per the Aira-reference
+                rhythm. mt- replaces the old uniform parent `gap` now that
+                headline->paragraph and paragraph->CTA need different
+                values (20/28/40 mobile, 20/32/44 desktop). */}
             <motion.p
               variants={item}
-              className="text-[#4B5563] text-base md:text-lg leading-relaxed max-w-[520px] mx-auto md:mx-0"
+              className="text-[#4B5563] text-[18px] leading-[1.6] max-w-[34ch] mx-auto md:mx-0 mt-[28px] md:mt-[30px] lg:mt-[32px]"
             >
               {t("landing.hero.subtext")}
             </motion.p>
@@ -323,10 +338,13 @@ export default function Hero() {
                 wording promised a trial mechanism that doesn't exist yet
                 (Hard Rule 17). A logged-in visitor gets "Go to your
                 dashboard" pointing straight at /app instead (logged-in
-                header round). */}
-            <motion.div variants={item}>
+                header round). min-h-[56px] on the button itself (not
+                CtaButton's shared size classes -- this is a Hero-only tap
+                target bump, every other CtaButton sitewide is unaffected). */}
+            <motion.div variants={item} className="mt-[40px] md:mt-[42px] lg:mt-[44px]">
               <CtaButton
                 size="lg"
+                className="min-h-[56px]"
                 href={loggedIn ? "/app" : "/auth/signup"}
                 label={loggedIn ? t("landing.hero.ctaLoggedIn") : t("landing.hero.cta")}
               />
