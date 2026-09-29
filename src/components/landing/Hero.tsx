@@ -82,15 +82,18 @@ export default function Hero() {
   const loggedIn = session.status === "in";
 
   return (
-    <section id="hero-section" className="relative flex flex-col bg-white">
+    <section id="hero-section" className="relative flex flex-col bg-white min-h-[100svh]">
       {/* Header round 2: reversed again, explicit ask -- desktop (lg+) is now
           NOT fixed, it lives in normal document flow at the top of the page
           and scrolls away with everything below it. Only `lg:flex` remains
           (visibility toggle); no `fixed`/`top`/`inset-x`/`z` at this
           breakpoint since it's no longer removed from flow. The mobile/
-          tablet pill below is the one that's now fixed instead. */}
+          tablet pill below is the one that's now fixed instead.
+          Full-screen-hero round: py-3->py-4 is a +10% pill height bump
+          (24px->32px vertical padding on top of the unchanged !h-14 logo),
+          per the explicit "desktop navbar height +10%" ask. */}
       <div className="hidden lg:flex w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
-        <div className="glass w-full flex items-center justify-between rounded-full px-6 py-3">
+        <div className="glass w-full flex items-center justify-between rounded-full px-6 py-4">
           {/* translateY correction (bug-fix + polish round #3): the logo PNG's
               visible content isn't vertically centered within its own file --
               measured via pixel analysis (opacity-weighted centroid), the
@@ -116,7 +119,7 @@ export default function Hero() {
                 <a
                   key={key}
                   href={href}
-                  className="px-3.5 py-2 rounded-full text-sm font-semibold transition-colors duration-200"
+                  className="px-3.5 py-2 rounded-full text-base font-semibold transition-colors duration-200"
                   style={isActive ? { color: "#FF6B35", background: "#FFF3EE" } : { color: "#374151" }}
                   aria-current={isActive ? "true" : undefined}
                 >
@@ -150,48 +153,57 @@ export default function Hero() {
           below lg. `fixed top-0 inset-x-0 z-40` pins it to the viewport;
           z-40 stays one level below the mobile menu overlay's z-50 so an
           open menu always layers above it. Top offset uses
-          max(24px, env(safe-area-inset-top)) instead of a plain pt-6 so the
-          pill clears a notch/Dynamic Island on real phones instead of
-          sitting partly under it, while still getting the normal 24px
-          breathing room on devices with no inset at all. Single rounded
-          pill matching mobile-header-reference.jpg's soft-container style:
-          logo, language toggle, hamburger, "Log in" pill. Centered as a
-          compact island, one consistent gap-2 between every element. Login
-          button reuses the sitewide .btn-primary gradient class. Plain flex
-          row, no manual RTL classes -- source order stays logo-first, the
-          browser mirrors the whole row automatically under dir="rtl". */}
+          max(16px, env(safe-area-inset-top)) (bigger-navbar round: was
+          24px) so the pill clears a notch/Dynamic Island on real phones
+          instead of sitting partly under it, while still getting a real
+          16px breathing room on devices with no inset at all.
+          Bigger-navbar round: pill height bumped 52px->64px (h-16),
+          width bumped to ~92% of the viewport (w-[92%] against the
+          wrapper's own w-full/no horizontal padding, so 92% resolves
+          against the true viewport width, not an already-padded
+          container), restructured justify-between (logo alone on the
+          start side, the toggle/hamburger/login cluster on the end side)
+          so the extra width doesn't just sit as dead space -- matches the
+          desktop pill's own logo-vs-actions justify-between pattern.
+          Logo/toggle/hamburger/login all scaled up ~1.2x to match. Login
+          button reuses the sitewide .btn-primary gradient class. Plain
+          flex row, no manual RTL classes -- source order stays logo-first,
+          the browser mirrors the whole row automatically under
+          dir="rtl". */}
       <div
-        className="lg:hidden fixed top-0 inset-x-0 z-40 w-full px-5 shrink-0 flex justify-center"
-        style={{ paddingTop: "max(24px, env(safe-area-inset-top))" }}
+        className="lg:hidden fixed top-0 inset-x-0 z-40 w-full shrink-0 flex justify-center"
+        style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
       >
-        <div className="glass glass-live inline-flex items-center gap-2 rounded-full py-1.5 ps-3.5 pe-2">
+        <div className="glass glass-live flex items-center justify-between rounded-full h-16 w-[92%] px-4">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
-            <Logo showText={false} size={24} />
+            <Logo showText={false} size={30} />
           </Link>
-          <LanguageToggle />
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open menu"
-            className="w-8 h-8 flex items-center justify-center rounded-full text-[#111111] hover:bg-[#F3F4F6] transition-colors shrink-0"
-          >
-            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-              <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </button>
-          <span className="w-px h-5 bg-[#E5E7EB] shrink-0" />
-          {loggedIn ? (
-            <OpenVelaButton size="xs" initials={session.status === "in" ? session.initials : "V"} />
-          ) : (
-            <Link
-              href="/auth/login"
-              className="btn-primary gap-1.5 text-sm ps-4 pe-3.5 py-2 shrink-0"
+          <div className="flex items-center gap-2.5">
+            <LanguageToggle size="lg" />
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open menu"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-[#111111] hover:bg-[#F3F4F6] transition-colors shrink-0"
             >
-              {t("landing.nav.login")}
-              <svg width="13" height="13" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
-                <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
-            </Link>
-          )}
+            </button>
+            <span className="w-px h-6 bg-[#E5E7EB] shrink-0" />
+            {loggedIn ? (
+              <OpenVelaButton size="nav" initials={session.status === "in" ? session.initials : "V"} />
+            ) : (
+              <Link
+                href="/auth/login"
+                className="btn-primary gap-1.5 text-base ps-5 pe-4 py-3 min-h-[48px] shrink-0"
+              >
+                {t("landing.nav.login")}
+                <svg width="14" height="14" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
+                  <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
@@ -253,25 +265,24 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content -- breathing-room round (Aira-reference rhythm: generous
-          vertical space, big bold headline, calm paragraph, clear air
-          before the next section -- copy/colors/badge untouched, only
-          spacing and headline scale changed).
-          Top padding: below lg, the pill above is `fixed` and removed from
-          flow, so this reserves real space for it (fixed mobile pill's
-          rendered height is ~82px including its own top offset) PLUS a
-          real ~64px visual gap below the pill before the eyebrow starts
-          (82+64=146). At lg+, the header is in normal document flow (not
-          fixed) and already pushes this content down on its own, so only a
-          small breathing-room gap is needed there.
-          Bottom padding: was 48px mobile / 64px desktop (matching every
-          other section's py-12/py-16 rhythm) -- too tight against "how it
-          works" below per the Aira-rhythm review. Increased so the real
-          combined gap (this padding + how-it-works' own pt-12/md:pt-16) is
-          >=120px mobile, >=160px desktop -- see ProductTourDemo.tsx's
-          section wrapper, unchanged, for the other half of that gap. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[146px] pb-20 md:pb-24 lg:pt-8 lg:pb-28">
-        <div className="max-w-3xl md:mt-8">
+      {/* Content -- full-screen-hero round: the section itself is
+          min-h-[100svh] (header included), so on first load only the
+          header + hero are visible everywhere from 375x667 up to 1920x1080
+          -- "how it works" below starts exactly at the fold, no scroll
+          needed to reveal it and no extra gap needed to hide it (the old
+          pb-20/24/28 from the breathing-room round is gone; ProductTourDemo's
+          own pt-12/md:pt-16 is untouched and is now the ONLY gap before it).
+          This wrapper is `flex-1` (the section's flex-col makes it the one
+          growing child -- on mobile the header is `fixed`/out of flow so
+          this wrapper is the sole flex participant and gets the full
+          100svh; on desktop the in-flow header above takes its own height
+          first and this wrapper fills the rest), with two empty flex-grow
+          spacers (55/45) sandwiching the real content block so it sits
+          slightly BELOW center of the remaining space rather than glued to
+          the header or dead-centered. */}
+      <div className="relative z-10 flex-1 flex flex-col w-full max-w-7xl mx-auto px-5 md:px-6">
+        <div aria-hidden="true" style={{ flexGrow: 55 }} />
+        <div className="max-w-3xl">
           <motion.div
             variants={container}
             initial="hidden"
@@ -340,8 +351,11 @@ export default function Hero() {
                 dashboard" pointing straight at /app instead (logged-in
                 header round). min-h-[56px] on the button itself (not
                 CtaButton's shared size classes -- this is a Hero-only tap
-                target bump, every other CtaButton sitewide is unaffected). */}
-            <motion.div variants={item} className="mt-[40px] md:mt-[42px] lg:mt-[44px]">
+                target bump, every other CtaButton sitewide is unaffected).
+                mt- is +12px over the breathing-room round's 40/42/44
+                (explicit ask: push the CTA a bit further from the
+                paragraph than last round). */}
+            <motion.div variants={item} className="mt-[52px] md:mt-[54px] lg:mt-[56px]">
               <CtaButton
                 size="lg"
                 className="min-h-[56px]"
@@ -352,6 +366,7 @@ export default function Hero() {
 
           </motion.div>
         </div>
+        <div aria-hidden="true" style={{ flexGrow: 45 }} />
       </div>
     </section>
   );

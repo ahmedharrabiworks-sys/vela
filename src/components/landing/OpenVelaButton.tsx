@@ -7,12 +7,16 @@ const SIZE_CLASSES = {
   xs: "text-sm ps-4 pe-3.5 py-2 gap-1.5",
   sm: "text-sm px-5 py-2.5 gap-1.5",
   md: "text-sm px-6 py-3 gap-2",
+  // Hero mobile-navbar-bigger round: 16px font, 48px min tap height, for
+  // the taller (52px->64px) mobile pill. Additive -- xs/sm/md untouched.
+  nav: "text-base ps-5 pe-4 py-3 min-h-[48px] gap-2",
 } as const;
 
 const AVATAR_SIZE_CLASSES = {
   xs: "w-[18px] h-[18px] text-[8px]",
   sm: "w-5 h-5 text-[9px]",
   md: "w-6 h-6 text-[10px]",
+  nav: "w-6 h-6 text-[10px]",
 } as const;
 
 /**
@@ -53,7 +57,7 @@ export default function OpenVelaButton({
         {initials}
       </span>
       {t("landing.nav.openVela")}
-      <svg width={size === "md" ? 14 : 13} height={size === "md" ? 14 : 13} viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
+      <svg width={size === "md" || size === "nav" ? 14 : 13} height={size === "md" || size === "nav" ? 14 : 13} viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
         <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </Link>
