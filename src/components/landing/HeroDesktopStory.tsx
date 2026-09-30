@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import StoryDevice from "@/components/landing/StoryDevice";
+import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
+import { useAutoplayStep } from "@/lib/useAutoplayStep";
 
 const STEP_COUNT = 3;
 
-function useInView<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { rootMargin: "80px 0px", threshold: 0.15 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, inView] as const;
-}
+// hero-v3 round: how long each step's own animation takes to finish
+// before the 2.5s (3s for the last step) hold, per FIX 2 -- matches the
+// new dramatic-ending timings in StoryDevice.tsx exactly (step 0's red
+// fill finishes ~7.92s, step 1's green fill ~5.92s, step 2's last drop
+// ~2.8s), rounded up, plus the hold.
+const STEP_ANIMATION_END_MS = [8000, 6000, 2800];
+const HOLD_MS = [2500, 2500, 3000];
+const STORY_DURATIONS = STEP_ANIMATION_END_MS.map((end, i) => end + HOLD_MS[i]);
 
 function CheckIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>;
@@ -46,6 +43,9 @@ function StorefrontIcon() {
 function NextArrow() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
 }
+function BackArrow() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>;
+}
 
 /* Per-step floating context cards -- exact copy/colors/positions/delays
    from Main.dc.html. Desktop only (absent from Phone.dc.html). */
@@ -70,8 +70,7 @@ function useCardData() {
 export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   const { t, locale } = useI18n();
   const isRTL = locale === "ar";
-  const [stageRef, inView] = useInView<HTMLDivElement>();
-  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const { sectionRef: stageRef, step, goTo, isVisible, running, resetKey, duration } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS);
   const cardSets = useCardData();
   const cards = cardSets[step];
   const labels = [t("landing.hero.story2.stepLabel0"), t("landing.hero.story2.stepLabel1"), t("landing.hero.story2.stepLabel2")];
@@ -87,7 +86,7 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
         <div style={{ position: "absolute", left: 150, bottom: 6, width: 300, height: 40, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(120,45,15,0.28), rgba(120,45,15,0))" }} aria-hidden="true" />
         <div style={{ transform: `perspective(1600px) rotateY(${tiltY}deg) rotateX(6deg) rotateZ(${tiltZ}deg)` }}>
           <div className="v-float" style={{ width: 300, height: 620 }}>
-            <StoryDevice key={step} step={step} paused={!inView} />
+            <StoryDevice key={step} step={step as 0 | 1 | 2} paused={!isVisible} />
           </div>
         </div>
 
@@ -135,20 +134,36 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
                 type="button"
                 className="v-tab"
                 aria-pressed={active}
-                onClick={() => setStep(i as 0 | 1 | 2)}
-                style={{ padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
+                onClick={() => goTo(i)}
+                style={{ position: "relative", overflow: "hidden", padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
               >
                 {label}
+                {active && <AutoplayProgressBar running={running} durationMs={duration} resetKey={resetKey} />}
               </button>
             );
           })}
         </div>
+        {/* hero-v3 round: Back added alongside the existing round Next
+            button (both call the shared goTo(), which jumps + pauses
+            autoplay for 12s per FIX 2). Back always wraps step-1..-1
+            (0 -> loops to the last step); the last step keeps its
+            existing Next -> "Start for Free" swap, Back still works
+            there to step back to step 1. */}
+        <button
+          type="button"
+          className="v-btn"
+          aria-label={t("landing.hero.story2.backAria")}
+          onClick={() => goTo(step - 1)}
+          style={{ width: 44, height: 44, borderRadius: "50%", background: "#F6EFEA", color: "#17120E", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <BackArrow />
+        </button>
         {!isLast ? (
           <button
             type="button"
             className="v-btn"
             aria-label={t("landing.hero.story2.nextAria")}
-            onClick={() => setStep((s) => (Math.min(s + 1, 2) as 0 | 1 | 2))}
+            onClick={() => goTo(step + 1)}
             style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 12px 24px -10px rgba(232,85,43,0.7)" }}
           >
             <NextArrow />

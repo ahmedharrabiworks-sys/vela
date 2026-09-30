@@ -545,6 +545,8 @@
         "stepLabel2": "Next morning",
         "next": "Next",
         "nextAria": "Next step",
+        "backAria": "Previous step",
+        "howItWorks": "How it works",
         "start": "Start for Free",
         "openVela": "Open Vela",
         "dotAria": "Go to step",

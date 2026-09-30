@@ -100,14 +100,6 @@ function BackChevron() {
   );
 }
 
-function CheckIcon({ size = 15, width = 2.6 }: { size?: number; width?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  );
-}
-
 function LightningIcon({ size = 13 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -259,18 +251,30 @@ function ScreenWithoutVela() {
             <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgPerfectBookMe")}</div>
             <CustomerAvatar />
           </div>
-          <div className="v-pop" style={{ marginTop: "auto", width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 14, background: "#FDECEC", border: "1px solid #F7C9CA", animationDelay: "6.8s" }}>
-            <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", background: "#E5484D", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: "#9B1C20" }}>{t("landing.hero.story2.leadLostTitle")}</span>
-              <span style={{ fontSize: 11.5, color: "#B24A4D" }}>{t("landing.hero.story2.leadLostSubtitle")}</span>
-            </div>
-          </div>
         </div>
         <div style={{ flexShrink: 0, padding: "10px 12px 26px" }}>
           <div style={{ height: 36, borderRadius: 18, background: "#FFFFFF", border: "1px solid #E9E1DB", display: "flex", alignItems: "center", padding: "0 14px", fontSize: 12.5, color: "#A39A94" }}>{t("landing.hero.story2.messagePlaceholder")}</div>
+        </div>
+
+        {/* Dramatic red ending (hero-v3 round) -- replaces the old small
+            "Lead lost" card. A soft fade-in (not a hard cut, reusing .v-in
+            with an overridden duration) to a red fill with a subtle
+            radial highlight, a big white circle with an X drawn via an
+            animated stroke (pathLength=1 normalizes the dash math
+            regardless of the path's real geometry), then the real
+            message fades up. Absolutely covers the whole chat layer
+            (its own containing block, since that layer is itself
+            position:absolute) -- the bubbles underneath stay in the DOM,
+            just visually covered once this fades in. */}
+        <div className="v-in" style={{ position: "absolute", inset: 0, animationDelay: "6.5s", animationDuration: "600ms", background: "radial-gradient(circle at 50% 38%, rgba(255,255,255,0.16), transparent 62%), #E5484D", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, zIndex: 5 }}>
+          <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true">
+            <circle cx="44" cy="44" r="44" fill="#FFFFFF" />
+            <path className="v-stroke-draw" d="M30 30L58 58M58 30L30 58" stroke="#E5484D" strokeWidth="5" strokeLinecap="round" fill="none" pathLength={1} strokeDasharray={1} style={{ animationDelay: "7.0s" }} />
+          </svg>
+          <div className="v-pop" style={{ animationDelay: "7.5s", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF" }}>{t("landing.hero.story2.leadLostTitle")}</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", marginTop: 6 }}>{t("landing.hero.story2.leadLostSubtitle")}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -319,22 +323,32 @@ function ScreenWithVela() {
           <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msg915Please")}</div>
           <CustomerAvatar />
         </div>
-        <div className="v-pop" style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 28, width: "calc(100% - 28px)", boxSizing: "border-box", padding: "11px 12px", borderRadius: 14, background: "#FFFFFF", border: "1px solid #CDEBD8", boxShadow: "0 8px 20px -14px rgba(20,90,50,0.5)", animationDelay: "4.8s" }}>
-          <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", background: "#1F9D55", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CheckIcon size={15} />
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: "#145C33" }}>{t("landing.hero.story2.appointmentBookedTitle")}</span>
-            <span style={{ fontSize: 11.5, color: "#3C7A57" }}>{t("landing.hero.story2.appointmentBookedSubtitle")}</span>
-          </div>
-        </div>
-        <div className="v-pop" style={{ marginTop: "auto", alignSelf: "center", display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "#C2410C", animationDelay: "5.4s" }}>
-          <LightningIcon />
-          {t("landing.hero.story2.answeredIn2Seconds")}
-        </div>
       </div>
       <div style={{ flexShrink: 0, padding: "10px 12px 26px" }}>
         <div style={{ height: 36, borderRadius: 18, background: "#FFFFFF", border: "1px solid #E9E1DB", display: "flex", alignItems: "center", padding: "0 14px", fontSize: 12.5, color: "#A39A94" }}>{t("landing.hero.story2.messagePlaceholder")}</div>
+      </div>
+
+      {/* Dramatic green ending (hero-v3 round) -- replaces the old small
+          "Appointment booked" card + "Answered in 2 seconds" caption.
+          Same fade-in-to-fill + stroke-drawn icon + fade-up text
+          technique as the red ending above, plus a small pill (bolt
+          icon) carrying the "answered in 2 seconds" line instead of a
+          separate caption. */}
+      <div className="v-in" style={{ position: "absolute", inset: 0, animationDelay: "4.5s", animationDuration: "600ms", background: "radial-gradient(circle at 50% 38%, rgba(255,255,255,0.16), transparent 62%), #1F9D55", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, zIndex: 5 }}>
+        <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true">
+          <circle cx="44" cy="44" r="44" fill="#FFFFFF" />
+          <path className="v-stroke-draw" d="M28 45l11 11 21-24" stroke="#1F9D55" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none" pathLength={1} strokeDasharray={1} style={{ animationDelay: "5.0s" }} />
+        </svg>
+        <div className="v-pop" style={{ animationDelay: "5.5s", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF" }}>{t("landing.hero.story2.appointmentBookedTitle")}</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.9)", marginTop: 6 }}>{t("landing.hero.story2.appointmentBookedSubtitle")}</div>
+          </div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, background: "rgba(255,255,255,0.22)", color: "#FFFFFF", fontSize: 12, fontWeight: 600 }}>
+            <LightningIcon size={12} />
+            {t("landing.hero.story2.answeredIn2Seconds")}
+          </span>
+        </div>
       </div>
     </div>
   );

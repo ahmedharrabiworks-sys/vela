@@ -5,6 +5,8 @@ import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import CtaButton from "@/components/landing/CtaButton";
+import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
+import { useAutoplayStep } from "@/lib/useAutoplayStep";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
 /* Analytics dropped (MVP scope-down, Phase 2) -- see src/config/features.ts
@@ -1271,65 +1273,17 @@ const sceneVariantsReduced = {
 export default function ProductTourDemo() {
   const { t } = useI18n();
   const prefersReducedMotion = useReducedMotion();
-  const [scene, setScene] = useState(0);
-  // false = hands-off autoplay (cycles all scenes forward, default).
-  // true  = manual mode, entered by clicking a tab: the active scene loops
-  // in place on repeat instead of advancing, until a different tab is clicked.
-  const [manualMode, setManualMode] = useState(false);
-  // Bumped each time the active scene needs to replay itself in manual mode
-  // (scene index alone doesn't change on a loop, so this feeds the remount
-  // key below to force a fresh mount -- same mechanism every scene already
-  // relies on to replay its internal timers).
-  const [replayTick, setReplayTick] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sectionRef = useRef<HTMLElement>(null);
-
-  // Perf fix (bug-fix + polish round #3): this autoplay loop previously ran
-  // forever regardless of scroll position -- confirmed via a live
-  // MutationObserver check on production that the tour kept remounting
-  // scenes (and re-running each scene's full internal timer/rAF
-  // choreography) indefinitely even while scrolled far past it and sitting
-  // idle. That's continuous, unbounded main-thread work competing with
-  // scroll for the entire lifetime of the page view. `isVisible` (a plain
-  // IntersectionObserver, not scroll-tied) gates only the top-level
-  // scene-advance timer below -- once this section leaves the viewport, no
-  // further scene switches/remounts happen, so whatever scene is currently
-  // mounted finishes its own already-scheduled one-shot timers (a few
-  // seconds at most, none of them infinite loops) and then goes fully idle.
-  const [isVisible, setIsVisible] = useState(true);
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting), { threshold: 0 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  // Autoplay advances to the next scene after its own duration; manual mode
-  // instead replays the same scene (bumps replayTick, scene index unchanged).
-  // Re-registers whenever scene/mode/tick/visibility changes. Also gated on
-  // prefers-reduced-motion (perf round): a reduced-motion visitor sees the
-  // first scene, static, with no auto-cycling -- clicking a tab still works
-  // (handleTabClick is independent of this effect), so the feature stays
-  // usable, it just never moves on its own.
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!isVisible || prefersReducedMotion) return;
-    const duration = SCENE_DURATIONS[scene] ?? 3000;
-    timerRef.current = setTimeout(() => {
-      if (manualMode) {
-        setReplayTick(t => t + 1);
-      } else {
-        setScene(prev => (prev + 1) % SCENE_COUNT);
-      }
-    }, duration);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [scene, manualMode, replayTick, isVisible, prefersReducedMotion]);
-
-  const handleTabClick = useCallback((idx: number) => {
-    setManualMode(true);
-    setScene(idx);
-  }, []);
+  // hero-v3 round: replaced this component's own hand-rolled visibility +
+  // timer + "manual mode loops forever" state machine with the shared
+  // useAutoplayStep hook (also used by the hero story) -- same contract
+  // now sitewide: starts only once >=40% visible (was threshold:0, i.e.
+  // any single visible pixel), a manual tab click jumps + pauses
+  // autoplay for 12s then resumes normal forward advancing (was: locks
+  // onto that scene forever, looping in place, until a different tab is
+  // clicked), and reduced-motion gets the first scene static with no
+  // autoplay (manual tab clicks still work -- goTo doesn't check
+  // reduced-motion).
+  const { sectionRef, step: scene, goTo, running, resetKey, duration } = useAutoplayStep<HTMLElement>(SCENE_COUNT, SCENE_DURATIONS, { visibilityThreshold: 0.4 });
 
   function renderScene(s: number) {
     switch (s) {
@@ -1368,22 +1322,25 @@ export default function ProductTourDemo() {
           <div className="order-last lg:order-first flex flex-col lg:pt-2">
 
             {/* Tab row -- 4 literal-name tabs, text-only, single-accent active
-                style (unchanged click-to-jump behavior, now manual-mode --
-                see handleTabClick). Fits on one line at desktop widths via
-                tight padding/font-size; falls back to horizontal scroll only
-                if a narrow desktop width can't fit all 4; wraps freely on
-                mobile where one-line isn't required. py-2.5 on mobile keeps
-                each pill close to a 44px touch target; lg:py-1.5 keeps the
-                compact desktop density unchanged (mouse pointer, no touch
-                target concern there). */}
+                style. hero-v3 round: goTo() (from useAutoplayStep) jumps +
+                pauses autoplay 12s then resumes, instead of the old
+                "locks onto that scene forever" manual mode. The active
+                tab carries a thin progress-fill bar (AutoplayProgressBar)
+                showing time until the next auto-advance. Fits on one line
+                at desktop widths via tight padding/font-size; falls back
+                to horizontal scroll only if a narrow desktop width can't
+                fit all 4; wraps freely on mobile where one-line isn't
+                required. py-2.5 on mobile keeps each pill close to a 44px
+                touch target; lg:py-1.5 keeps the compact desktop density
+                unchanged (mouse pointer, no touch target concern there). */}
             <div className="glass flex flex-wrap lg:flex-nowrap gap-1.5 mb-6 lg:overflow-x-auto rounded-full p-1.5">
               {TOUR_PANELS.map(p => {
                 const active = scene === p.sceneIdx;
                 return (
                   <button
                     key={p.key}
-                    onClick={() => handleTabClick(p.sceneIdx)}
-                    className="shrink-0 whitespace-nowrap px-3.5 py-2.5 lg:py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
+                    onClick={() => goTo(p.sceneIdx)}
+                    className="relative overflow-hidden shrink-0 whitespace-nowrap px-3.5 py-2.5 lg:py-1.5 rounded-full text-[12px] font-semibold transition-all duration-200"
                     style={{
                       background: active ? "white" : "transparent",
                       border:     active ? "1.5px solid var(--vp-color)" : "1.5px solid transparent",
@@ -1391,6 +1348,7 @@ export default function ProductTourDemo() {
                     }}
                   >
                     {t(`landing.tour.tabs.${p.key}`)}
+                    {active && <AutoplayProgressBar running={running} durationMs={duration} resetKey={resetKey} color="var(--vp-color)" />}
                   </button>
                 );
               })}
@@ -1472,7 +1430,7 @@ export default function ProductTourDemo() {
               >
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={`${scene}-${replayTick}`}
+                    key={scene}
                     variants={prefersReducedMotion ? sceneVariantsReduced : sceneVariants}
                     initial="enter"
                     animate="center"
