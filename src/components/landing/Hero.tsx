@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
@@ -9,6 +10,19 @@ import LanguageToggle from "@/components/landing/LanguageToggle";
 import CtaButton from "@/components/landing/CtaButton";
 import OpenVelaButton from "@/components/landing/OpenVelaButton";
 import { useLandingSession } from "@/lib/use-landing-session";
+
+// Missed-call-story round: lazy, client-only, mobile-only illustration --
+// next/dynamic + ssr:false keeps it out of the initial server render and
+// out of the hero's first-paint JS entirely (a real, separate chunk
+// fetched only once this component mounts), so the hero's own first
+// paint (header/eyebrow/headline/CTA) is never slowed down by it. A
+// fixed-height placeholder (matches the real component's phone-stage
+// footprint) reserves layout space while it loads, so there's no content
+// jump once the real chunk arrives (CLS).
+const MissedCallStory = dynamic(() => import("@/components/landing/MissedCallStory"), {
+  ssr: false,
+  loading: () => <div aria-hidden="true" style={{ height: 560 }} />,
+});
 
 const container = {
   hidden: {},
@@ -271,29 +285,24 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content -- full-screen-hero round: below lg, the section is
-          min-h-[100svh] (header included), so on first load only the
-          header + hero are visible from 375x667 up to 430x932 -- "how it
-          works" below starts exactly at the fold. This wrapper is
-          `flex-1` (the section's flex-col makes it the one growing child
-          -- below lg the header is `fixed`/out of flow so this wrapper is
-          the sole flex participant and gets the full 100svh), with two
-          empty flex-grow spacers (55/45) sandwiching the real content
-          block so it sits slightly BELOW center of the remaining space
-          rather than glued to the header or dead-centered.
-          Phone-only round: at lg+ this whole mechanism is explicitly
-          switched off (Oussama review -- desktop must show section two
-          normally, like before the full-screen-hero round) --
-          `lg:block` turns the wrapper back into a normal block (its
-          children stop being flex items, so the two spacers below
-          collapse to nothing via `lg:hidden`) and `lg:pt-8 lg:pb-28`
-          restores the exact fixed top/bottom padding the breathing-room
-          round used, before full-screen-hero replaced it. flex-1 itself
-          is left unprefixed -- harmless at lg+ since lg:min-h-0 on the
-          section (above) means there's no forced extra space left for it
-          to grow into. */}
-      <div className="relative z-10 flex-1 flex flex-col lg:block w-full max-w-7xl mx-auto px-5 md:px-6 lg:pt-8 lg:pb-28">
-        <div aria-hidden="true" className="lg:hidden" style={{ flexGrow: 55 }} />
+      {/* Content -- missed-call-story round: mobile now carries a whole
+          extra illustration below the CTA, so the hero is no longer
+          short content that should be vertically centered within exactly
+          one screen (that was the prior full-screen-hero round's
+          flex-1 + 55/45-flexGrow-spacer mechanism -- removed, since
+          content now naturally exceeds 100svh by design and centering it
+          would just push the headline off the TOP of the first view).
+          Simple fixed top padding instead, tuned so the header clears
+          the fixed mobile pill (~64px pill + 16px top offset = ~80px
+          bottom edge) with a real ~32px breathing gap below it, and
+          headline + CTA + the top of the phone mockup are visible on
+          first load at 390x844 without scrolling -- the section's own
+          min-h-[100svh] (above) still guarantees at least one full
+          screen even before the lazy story chunk has loaded in.
+          lg:pt-8/lg:pb-28 (desktop) are unchanged from the breathing-room
+          round -- see the section's lg:min-h-0 above for why desktop
+          never used this mobile-only mechanism to begin with. */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[112px] pb-12 lg:pt-8 lg:pb-28">
         <div className="max-w-3xl">
           <motion.div
             variants={container}
@@ -376,9 +385,21 @@ export default function Hero() {
               />
             </motion.div>
 
+            {/* "The missed call story" -- mobile-only (MissedCallStory.tsx
+                is itself lg:hidden internally), 32px under the CTA per
+                spec. motion.div/variants={item} so it stays part of the
+                same on-load stagger as everything above it, rather than
+                popping in separately. */}
+            <motion.div variants={item} className="mt-8 w-full lg:hidden">
+              <MissedCallStory
+                loggedIn={loggedIn}
+                ctaHref={loggedIn ? "/app" : "/auth/signup"}
+                ctaLabel={loggedIn ? t("landing.hero.story.openVela") : t("landing.hero.story.start")}
+              />
+            </motion.div>
+
           </motion.div>
         </div>
-        <div aria-hidden="true" className="lg:hidden" style={{ flexGrow: 45 }} />
       </div>
     </section>
   );
