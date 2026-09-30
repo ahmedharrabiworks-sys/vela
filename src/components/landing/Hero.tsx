@@ -7,21 +7,21 @@ import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import Logo from "@/components/ui/Logo";
 import LanguageToggle from "@/components/landing/LanguageToggle";
-import CtaButton from "@/components/landing/CtaButton";
 import OpenVelaButton from "@/components/landing/OpenVelaButton";
 import { useLandingSession } from "@/lib/use-landing-session";
 
-// Missed-call-story round: lazy, client-only, mobile-only illustration --
-// next/dynamic + ssr:false keeps it out of the initial server render and
-// out of the hero's first-paint JS entirely (a real, separate chunk
-// fetched only once this component mounts), so the hero's own first
-// paint (header/eyebrow/headline/CTA) is never slowed down by it. A
-// fixed-height placeholder (matches the real component's phone-stage
-// footprint) reserves layout space while it loads, so there's no content
-// jump once the real chunk arrives (CLS).
-const MissedCallStory = dynamic(() => import("@/components/landing/MissedCallStory"), {
+// Hero v2 round: lazy, client-only story stages -- next/dynamic +
+// ssr:false keeps both out of the initial server render so the hero's
+// own text (header/eyebrow/headline/CTA) paints first regardless of
+// device. Fixed-height placeholders match each real component's own
+// footprint to avoid a layout jump once the real chunk arrives (CLS).
+const HeroDesktopStory = dynamic(() => import("@/components/landing/HeroDesktopStory"), {
   ssr: false,
-  loading: () => <div aria-hidden="true" style={{ height: 560 }} />,
+  loading: () => <div aria-hidden="true" style={{ width: 580, height: 780 }} />,
+});
+const HeroPhoneStory = dynamic(() => import("@/components/landing/HeroPhoneStory"), {
+  ssr: false,
+  loading: () => <div aria-hidden="true" style={{ height: 700 }} />,
 });
 
 const container = {
@@ -83,6 +83,50 @@ function useActiveSection(ids: readonly string[]) {
 
 const NAV_IDS = NAV_LINKS.map((l) => l.href.slice(1));
 
+function PlayIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: "#E8552B" }}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 8.5l5 3.5-5 3.5z" fill="currentColor" />
+    </svg>
+  );
+}
+function ArrowIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="rtl:-scale-x-100">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+function InstagramIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.8" fill="currentColor" />
+    </svg>
+  );
+}
+function WhatsAppIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-5.1A8.5 8.5 0 1 1 21 11.5z" />
+    </svg>
+  );
+}
+function PhoneIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" />
+    </svg>
+  );
+}
+function ChannelChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 999, background: "#FFF4EE", color: "#9A3412", fontSize: 13, fontWeight: 600 }}>
+      {children}
+    </span>
+  );
+}
+
 export default function Hero() {
   const { t } = useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -94,26 +138,30 @@ export default function Hero() {
   // network call), a few ms after hydration.
   const session = useLandingSession();
   const loggedIn = session.status === "in";
+  const ctaHref = loggedIn ? "/app" : "/auth/signup";
+  const ctaLabel = loggedIn ? t("landing.hero.ctaLoggedIn") : t("landing.hero.cta");
+  const storyCtaLabel = loggedIn ? t("landing.hero.story2.openVela") : t("landing.hero.story2.start");
 
   return (
-    <section id="hero-section" className="relative flex flex-col bg-white min-h-[100svh] lg:min-h-0">
-      {/* Phone-only-full-screen-hero round: min-h-[100svh] (full first
-          screen, header included, "how it works" below the fold) is
-          explicitly a phone/tablet thing (Oussama review) -- lg:min-h-0
-          cancels it at lg+, where the section goes back to sizing to its
-          natural content height like every other section. See the content
-          wrapper below for the matching lg:block/lg:pt-8/lg:pb-28 revert. */}
+    <section id="hero-section" className="relative flex flex-col bg-white">
+      {/* Hero v2 round: the old phone-only min-h-[100svh] full-screen rule
+          is gone entirely (FIX 2, explicit ask) -- the phone hero is
+          content-height now, same as desktop, exactly like the approved
+          spec (reference/Phone.dc.html has no such constraint either). */}
       {/* Header round 2: reversed again, explicit ask -- desktop (lg+) is now
           NOT fixed, it lives in normal document flow at the top of the page
           and scrolls away with everything below it. Only `lg:flex` remains
           (visibility toggle); no `fixed`/`top`/`inset-x`/`z` at this
           breakpoint since it's no longer removed from flow. The mobile/
           tablet pill below is the one that's now fixed instead.
-          Full-screen-hero round: py-3->py-4 is a +10% pill height bump
-          (24px->32px vertical padding on top of the unchanged !h-14 logo),
-          per the explicit "desktop navbar height +10%" ask. */}
-      <div className="hidden lg:flex w-full max-w-7xl mx-auto px-5 md:px-6 pt-6 items-center justify-between shrink-0">
-        <div className="glass w-full flex items-center justify-between rounded-full px-6 py-4">
+          Hero v2 round (FIX 1): "keep the current header component, only
+          match its spacing to the spec" -- container narrowed from
+          max-w-7xl (1280px) to the spec's exact 1180px, pill height set
+          to the spec's exact 68px (was implicit via py-4), padding
+          asymmetric 24px start / 12px end per the spec. Logo/nav/toggle/
+          login/CTA content itself is untouched. */}
+      <div className="hidden lg:flex w-full max-w-[1180px] mx-auto px-5 pt-6 items-center justify-between shrink-0">
+        <div className="glass w-full h-[68px] flex items-center justify-between rounded-full ps-6 pe-3">
           {/* translateY correction (bug-fix + polish round #3): the logo PNG's
               visible content isn't vertically centered within its own file --
               measured via pixel analysis (opacity-weighted centroid), the
@@ -124,7 +172,7 @@ export default function Hero() {
               visible wordmark sitting lower than sibling text/icons that don't
               have this asymmetry. */}
           <Link href="/" aria-label="Vela home" className="shrink-0" style={{ transform: "translateY(-17.5%)" }}>
-            <Logo showText heightClass="!h-14" />
+            <Logo showText heightClass="!h-11" />
           </Link>
 
           {/* Nav links -- Pricing, How it works, The problem, FAQ. Plain
@@ -139,8 +187,8 @@ export default function Hero() {
                 <a
                   key={key}
                   href={href}
-                  className="px-3.5 py-2 rounded-full text-base font-semibold transition-colors duration-200"
-                  style={isActive ? { color: "#FF6B35", background: "#FFF3EE" } : { color: "#374151" }}
+                  className="px-3.5 py-2 rounded-full text-[15px] font-medium transition-colors duration-200"
+                  style={isActive ? { color: "#E8552B", background: "#FFF1EA" } : { color: "#17120E" }}
                   aria-current={isActive ? "true" : undefined}
                 >
                   {t(`landing.nav.${key}`)}
@@ -157,11 +205,17 @@ export default function Hero() {
               <>
                 <Link
                   href="/auth/login"
-                  className="text-base font-semibold text-[#374151] hover:text-[#111111] px-5 py-2.5 rounded-lg transition-colors duration-200"
+                  className="text-[15px] font-semibold text-[#17120E] hover:text-[#C2410C] px-4 py-2.5 rounded-lg transition-colors duration-200"
                 >
                   {t("landing.nav.login")}
                 </Link>
-                <CtaButton size="sm" />
+                <a
+                  href={ctaHref}
+                  className="h-[46px] px-[22px] rounded-full flex items-center text-[15px] font-semibold text-white"
+                  style={{ background: "linear-gradient(135deg, #C2410C, #FF6B35)" }}
+                >
+                  {ctaLabel}
+                </a>
               </>
             )}
           </div>
@@ -173,55 +227,47 @@ export default function Hero() {
           below lg. `fixed top-0 inset-x-0 z-40` pins it to the viewport;
           z-40 stays one level below the mobile menu overlay's z-50 so an
           open menu always layers above it. Top offset uses
-          max(16px, env(safe-area-inset-top)) (bigger-navbar round: was
-          24px) so the pill clears a notch/Dynamic Island on real phones
-          instead of sitting partly under it, while still getting a real
-          16px breathing room on devices with no inset at all.
-          Bigger-navbar round: pill height bumped 52px->64px (h-16),
-          width bumped to ~92% of the viewport (w-[92%] against the
-          wrapper's own w-full/no horizontal padding, so 92% resolves
-          against the true viewport width, not an already-padded
-          container), restructured justify-between (logo alone on the
-          start side, the toggle/hamburger/login cluster on the end side)
-          so the extra width doesn't just sit as dead space -- matches the
-          desktop pill's own logo-vs-actions justify-between pattern.
-          Logo/toggle/hamburger/login all scaled up ~1.2x to match. Login
-          button reuses the sitewide .btn-primary gradient class. Plain
-          flex row, no manual RTL classes -- source order stays logo-first,
-          the browser mirrors the whole row automatically under
-          dir="rtl". */}
+          max(16px, env(safe-area-inset-top)) so the pill clears a notch/
+          Dynamic Island on real phones instead of sitting partly under
+          it, while still getting a real 16px breathing room on devices
+          with no inset at all.
+          Hero v2 round: height matched to the spec's exact 66px (was
+          64px), logo bumped 30px->32px to match. Width stays the
+          existing w-[92%] (not the spec's literal 362px, which was
+          computed for exactly 390px) -- proportionally equivalent and
+          robust across the whole 375-430px range this round is verified
+          at, whereas a hardcoded 362px would sit at very different
+          percentages on a 375px vs 430px screen. */}
       <div
         className="lg:hidden fixed top-0 inset-x-0 z-40 w-full shrink-0 flex justify-center"
         style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
       >
-        <div className="glass glass-live flex items-center justify-between rounded-full h-16 w-[92%] px-4">
+        <div className="glass glass-live flex items-center justify-between rounded-full h-[66px] w-[92%] px-4">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
-            <Logo showText={false} size={30} />
+            <Logo showText={false} size={32} />
           </Link>
           <div className="flex items-center gap-2.5">
             <LanguageToggle size="lg" />
             <button
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open menu"
-              className="w-10 h-10 flex items-center justify-center rounded-full text-[#111111] hover:bg-[#F3F4F6] transition-colors shrink-0"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-[#17120E] hover:bg-[#F3F4F6] transition-colors shrink-0"
             >
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 7h16M4 12h16M4 17h16" />
               </svg>
             </button>
             <span className="w-px h-6 bg-[#E5E7EB] shrink-0" />
             {loggedIn ? (
               <OpenVelaButton size="nav" initials={session.status === "in" ? session.initials : "V"} />
             ) : (
-              <Link
-                href="/auth/login"
-                className="btn-primary gap-1.5 text-base ps-5 pe-4 py-3 min-h-[48px] shrink-0"
+              <a
+                href={ctaHref}
+                className="h-12 px-[18px] rounded-full flex items-center text-base font-semibold text-white shrink-0"
+                style={{ background: "linear-gradient(135deg, #C2410C, #FF6B35)" }}
               >
                 {t("landing.nav.login")}
-                <svg width="14" height="14" viewBox="0 0 15 15" fill="none" className="rtl:-scale-x-100 shrink-0">
-                  <path d="M3 7.5h9M8.5 4l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </Link>
+              </a>
             )}
           </div>
         </div>
@@ -240,7 +286,7 @@ export default function Hero() {
             <button
               onClick={() => setMobileMenuOpen(false)}
               aria-label="Close menu"
-              className="self-end w-10 h-10 flex items-center justify-center rounded-lg text-[#6B7280] hover:text-[#111111] hover:bg-[#F3F4F6] transition-colors mb-4 me-4"
+              className="self-end w-10 h-10 flex items-center justify-center rounded-lg text-[#6B7280] hover:text-[#17120E] hover:bg-[#F3F4F6] transition-colors mb-4 me-4"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -253,7 +299,7 @@ export default function Hero() {
                   key={key}
                   href={href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-base font-semibold text-[#111111] px-6 py-4 border-b border-[#F3F4F6] hover:bg-[#F9FAFB] transition-colors"
+                  className="text-base font-semibold text-[#17120E] px-6 py-4 border-b border-[#F3F4F6] hover:bg-[#F9FAFB] transition-colors"
                 >
                   {t(`landing.nav.${key}`)}
                 </Link>
@@ -277,7 +323,14 @@ export default function Hero() {
                   >
                     {t("landing.nav.login")}
                   </Link>
-                  <CtaButton size="md" fullWidth onClick={() => setMobileMenuOpen(false)} />
+                  <a
+                    href={ctaHref}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="inline-flex items-center justify-center w-full text-sm px-7 py-3 rounded-full font-semibold text-white"
+                    style={{ background: "linear-gradient(135deg, #C2410C, #FF6B35)" }}
+                  >
+                    {ctaLabel}
+                  </a>
                 </>
               )}
             </div>
@@ -285,121 +338,75 @@ export default function Hero() {
         </div>
       )}
 
-      {/* Content -- missed-call-story round: mobile now carries a whole
-          extra illustration below the CTA, so the hero is no longer
-          short content that should be vertically centered within exactly
-          one screen (that was the prior full-screen-hero round's
-          flex-1 + 55/45-flexGrow-spacer mechanism -- removed, since
-          content now naturally exceeds 100svh by design and centering it
-          would just push the headline off the TOP of the first view).
-          Simple fixed top padding instead, tuned so the header clears
-          the fixed mobile pill (~64px pill + 16px top offset = ~80px
-          bottom edge) with a real ~32px breathing gap below it, and
-          headline + CTA + the top of the phone mockup are visible on
-          first load at 390x844 without scrolling -- the section's own
-          min-h-[100svh] (above) still guarantees at least one full
-          screen even before the lazy story chunk has loaded in.
-          lg:pt-8/lg:pb-28 (desktop) are unchanged from the breathing-room
-          round -- see the section's lg:min-h-0 above for why desktop
-          never used this mobile-only mechanism to begin with. */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-5 md:px-6 pt-[112px] pb-12 lg:pt-8 lg:pb-28">
-        <div className="max-w-3xl">
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="flex flex-col items-center text-center md:items-start md:text-start"
-          >
-            {/* Eyebrow + headline -- grouped as one staggered unit so the
-                20px gap between them holds independently of the explicit
-                mt- spacing the rest of this stack now uses (hero-eyebrow
-                round 3: the orange line is removed, text-only label kept
-                at the same font/color/size -- see PR round 2's comment
-                history above for the prior line+text treatment this
-                replaces). Uses the exact same font-display family as the
-                headline right below it (not a special one-off font) -- in
-                Arabic mode the headline already relies on that family's
-                automatic per-glyph fallback for Arabic script (it has no
-                Arabic glyphs of its own), so the eyebrow inherits the
-                identical, already-proven-correct behavior with no locale
-                branching needed. justify-center on mobile (the hero is
-                centered on mobile, and with the line gone this text is no
-                longer implicitly centered by its wrapper's shrink-to-fit
-                width -- see round 3 fix notes), justify-start on desktop;
-                justify-start mirrors automatically to the end/right side
-                under dir="rtl", same as every other automatically-
-                mirrored row elsewhere on this page. */}
-            <motion.div variants={item} className="flex flex-col gap-[20px]">
-              <div className="flex items-center justify-center md:justify-start">
-                <p
-                  className="font-display font-semibold leading-none text-[15px] md:text-[17px] tracking-[-0.01em]"
-                  style={{ color: "#E8552B" }}
-                >
-                  {t("landing.hero.badge")}
-                </p>
-              </div>
-
-              {/* Headline -- black by default, one accent phrase in brand
-                  orange. Same words/colors/font as before, just bigger and
-                  tighter (Aira-reference scale): 46px mobile up to
-                  70px desktop, leading 1.05, tracking -0.03em, text-balance
-                  for even line breaks so it doesn't wrap to one lonely word
-                  on its own line at narrow widths. */}
-              <h1 className="font-display font-bold text-[46px] sm:text-[50px] md:text-[58px] lg:text-[70px] leading-[1.05] tracking-[-0.03em] text-balance text-[#111111]">
-                {t("landing.hero.headline1")}{" "}
-                <span className="vela-gradient-text">{t("landing.hero.headlineAccent")}</span>{" "}
-                {t("landing.hero.headline2")}
-              </h1>
-            </motion.div>
-
-            {/* Subtext -- same copy/color, calmer size/line-height/width
-                (18px, 1.6 leading, ~34ch measure) per the Aira-reference
-                rhythm. mt- replaces the old uniform parent `gap` now that
-                headline->paragraph and paragraph->CTA need different
-                values (20/28/40 mobile, 20/32/44 desktop). */}
-            <motion.p
-              variants={item}
-              className="text-[#4B5563] text-[18px] leading-[1.6] max-w-[34ch] mx-auto md:mx-0 mt-[28px] md:mt-[30px] lg:mt-[32px]"
+      {/* ═══ Desktop content (lg+): two columns, per Main.dc.html ═══ */}
+      <div className="hidden lg:flex w-full max-w-[1180px] mx-auto px-5 items-center justify-between" style={{ height: 808 }}>
+        <motion.div variants={container} initial="hidden" animate="show" style={{ width: 560, display: "flex", flexDirection: "column", paddingBottom: 40 }}>
+          <motion.span variants={item} style={{ fontSize: 17, fontWeight: 600, color: "#E8552B" }}>
+            {t("landing.hero.badge")}
+          </motion.span>
+          <motion.h1 variants={item} className="font-display" style={{ margin: "18px 0 0", fontSize: 92, fontWeight: 700, lineHeight: 0.95, letterSpacing: "-0.045em" }}>
+            <span style={{ display: "block", color: "#E8552B" }}>{t("landing.hero.headlineAccent")}</span>
+            <span style={{ display: "block", color: "#17120E" }}>{t("landing.hero.headline2")}</span>
+          </motion.h1>
+          <motion.p variants={item} style={{ margin: "28px 0 0", maxWidth: 460, fontSize: 19, lineHeight: 1.6, color: "#5B5550" }}>
+            {t("landing.hero.subtext")}
+          </motion.p>
+          <motion.div variants={item} style={{ marginTop: 38, display: "flex", alignItems: "center", gap: 26 }}>
+            <a
+              href={ctaHref}
+              style={{ height: 58, padding: "0 30px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", gap: 10, fontSize: 17, fontWeight: 600, textDecoration: "none", boxShadow: "0 18px 34px -14px rgba(232,85,43,0.65)" }}
             >
-              {t("landing.hero.subtext")}
-            </motion.p>
-
-            {/* CTA -- shared orange gradient button. Copy matches every
-                other CTA sitewide ("Start for Free", landing.hero.cta) for
-                a logged-out visitor -- the old "Start 14-Day Free Trial"
-                wording promised a trial mechanism that doesn't exist yet
-                (Hard Rule 17). A logged-in visitor gets "Go to your
-                dashboard" pointing straight at /app instead (logged-in
-                header round). min-h-[56px] on the button itself (not
-                CtaButton's shared size classes -- this is a Hero-only tap
-                target bump, every other CtaButton sitewide is unaffected).
-                mt- is +12px over the breathing-room round's 40/42/44
-                (explicit ask: push the CTA a bit further from the
-                paragraph than last round). */}
-            <motion.div variants={item} className="mt-[52px] md:mt-[54px] lg:mt-[56px]">
-              <CtaButton
-                size="lg"
-                className="min-h-[56px]"
-                href={loggedIn ? "/app" : "/auth/signup"}
-                label={loggedIn ? t("landing.hero.ctaLoggedIn") : t("landing.hero.cta")}
-              />
-            </motion.div>
-
-            {/* "The missed call story" -- mobile-only (MissedCallStory.tsx
-                is itself lg:hidden internally), 32px under the CTA per
-                spec. motion.div/variants={item} so it stays part of the
-                same on-load stagger as everything above it, rather than
-                popping in separately. */}
-            <motion.div variants={item} className="mt-8 w-full lg:hidden">
-              <MissedCallStory
-                loggedIn={loggedIn}
-                ctaHref={loggedIn ? "/app" : "/auth/signup"}
-                ctaLabel={loggedIn ? t("landing.hero.story.openVela") : t("landing.hero.story.start")}
-              />
-            </motion.div>
-
+              {ctaLabel}
+              <ArrowIcon />
+            </a>
+            <a href="#how-it-works" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600, color: "#17120E", textDecoration: "none" }}>
+              <PlayIcon />
+              {t("landing.hero.story2.seeHowItWorks")}
+            </a>
           </motion.div>
-        </div>
+          <motion.div variants={item} style={{ marginTop: 44, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "#8A807A", marginInlineEnd: 4 }}>{t("landing.hero.story2.answersOn")}</span>
+            <ChannelChip><InstagramIcon />{t("landing.hero.story2.instagram")}</ChannelChip>
+            <ChannelChip><WhatsAppIcon />{t("landing.hero.story2.whatsapp")}</ChannelChip>
+            <ChannelChip><PhoneIcon />{t("landing.hero.story2.phoneCalls")}</ChannelChip>
+          </motion.div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.3 }}>
+          <HeroDesktopStory ctaHref={ctaHref} ctaLabel={storyCtaLabel} />
+        </motion.div>
+      </div>
+
+      {/* ═══ Phone content (below lg): centered, per Phone.dc.html ═══ */}
+      <div className="lg:hidden w-full flex flex-col items-center" style={{ paddingTop: 14 + 66 + 14 }}>
+        <motion.div variants={container} initial="hidden" animate="show" style={{ width: 342, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          <motion.span variants={item} style={{ fontSize: 15, fontWeight: 600, color: "#E8552B" }}>
+            {t("landing.hero.badge")}
+          </motion.span>
+          <motion.h1 variants={item} className="font-display" style={{ margin: "14px 0 0", fontSize: 50, fontWeight: 700, lineHeight: 0.98, letterSpacing: "-0.04em" }}>
+            <span style={{ display: "block", color: "#E8552B" }}>{t("landing.hero.headlineAccent")}</span>
+            <span style={{ display: "block", color: "#17120E" }}>{t("landing.hero.headline2")}</span>
+          </motion.h1>
+          <motion.p variants={item} style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.6, color: "#5B5550" }}>
+            {t("landing.hero.subtext")}
+          </motion.p>
+          <motion.a
+            variants={item}
+            href={ctaHref}
+            style={{ marginTop: 30, height: 56, padding: "0 30px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", gap: 10, fontSize: 17, fontWeight: 600, textDecoration: "none", boxShadow: "0 16px 30px -14px rgba(232,85,43,0.65)" }}
+          >
+            {ctaLabel}
+            <ArrowIcon />
+          </motion.a>
+          <motion.div variants={item} style={{ marginTop: 22, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <ChannelChip><InstagramIcon />{t("landing.hero.story2.instagram")}</ChannelChip>
+            <ChannelChip><WhatsAppIcon />{t("landing.hero.story2.whatsapp")}</ChannelChip>
+            <ChannelChip><PhoneIcon />{t("landing.hero.story2.calls")}</ChannelChip>
+          </motion.div>
+        </motion.div>
+
+        <HeroPhoneStory ctaHref={ctaHref} ctaLabel={storyCtaLabel} />
+        <div className="pb-14" />
       </div>
     </section>
   );
