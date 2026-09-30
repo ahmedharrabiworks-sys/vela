@@ -61,20 +61,24 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
     goTo(step + (towardNext ? 1 : -1));
   }
 
-  // Mirrors under RTL, matching the desktop stage's own tilt mirror.
-  const tiltY = isRTL ? 9 : -9;
+  // FIX 3 round: bigger + calmer phone (scale 0.833->0.9, less tilt
+  // -9deg->-6deg, mirrored under RTL as before).
+  const tiltY = isRTL ? 6 : -6;
+  const SCALE = 0.9;
+  const deviceW = Math.round(300 * SCALE);
+  const deviceH = Math.round(620 * SCALE);
 
   return (
-    <div ref={stageRef} style={{ marginTop: 56, display: "flex", flexDirection: "column", alignItems: "center", gap: 22 }}>
-      <span style={{ fontFamily: "var(--font-display), 'Bricolage Grotesque', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", textAlign: "center" }}>
-        {t("landing.hero.story2.phoneTitle")}
+    <div ref={stageRef} style={{ marginTop: 80, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <span style={{ fontFamily: "var(--font-display), 'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", textAlign: "center" }}>
+        {t("landing.hero.story2.phoneStoryTitle")}
       </span>
 
       {/* scroll-margin-top clears the fixed mobile header pill (64px +
           16px top offset) so the tabs -- which carry the step label --
           are never hidden under it on an anchor jump or keyboard-focus
           scroll. */}
-      <div style={{ scrollMarginTop: 96, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4, width: 342, padding: 4, boxSizing: "border-box", borderRadius: 999, background: "#F6EFEA" }}>
+      <div style={{ marginTop: 16, scrollMarginTop: 96, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4, width: 342, padding: 4, boxSizing: "border-box", borderRadius: 999, background: "#F6EFEA" }}>
         {labels.map((label, i) => {
           const active = i === step;
           return (
@@ -93,15 +97,15 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
       </div>
 
       <div
-        style={{ position: "relative", width: 250, height: 516, touchAction: "pan-y" }}
+        style={{ position: "relative", width: deviceW, height: deviceH, marginTop: 24, touchAction: "pan-y" }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         role="group"
-        aria-label={t("landing.hero.story2.phoneTitle")}
+        aria-label={t("landing.hero.story2.phoneStoryTitle")}
       >
-        <div style={{ position: "absolute", left: 20, bottom: -12, width: 210, height: 30, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(120,45,15,0.26), rgba(120,45,15,0))" }} aria-hidden="true" />
+        <div style={{ position: "absolute", left: deviceW * 0.08, bottom: -13, width: deviceW * 0.84, height: 32, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(120,45,15,0.26), rgba(120,45,15,0))" }} aria-hidden="true" />
         <div style={{ transform: `perspective(1400px) rotateY(${tiltY}deg) rotateX(5deg)` }}>
-          <div style={{ width: 300, height: 620, transform: "scale(0.833)", transformOrigin: "top left" }}>
+          <div style={{ width: 300, height: 620, transform: `scale(${SCALE})`, transformOrigin: "top left" }}>
             <div className="v-float" style={{ width: 300, height: 620 }}>
               <StoryDevice key={step} step={step} paused={!inView} />
             </div>
@@ -109,7 +113,7 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
         </div>
       </div>
 
-      <div style={{ width: 342, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ width: 342, marginTop: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {[0, 1, 2].map((i) => (
             <button

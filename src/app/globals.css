@@ -444,6 +444,13 @@ canvas {
 .v-dot{animation:vDot 1s ease-in-out infinite}
 .v-select{animation:vSelect .3s ease both}
 .v-float{animation:vFloat 7s ease-in-out infinite}
+/* FIX 1 round (real iPhone call screen): gentle pulse on the "calling..."
+   text itself, replacing the old pulsing-ring-avatar. Independent,
+   always-on animation on the text span -- the surrounding .v-out layer
+   still handles its own separate hide-at-2.6s crossfade (a single
+   element can't have two conflicting `animation` values from two
+   classes, hence the pulse lives on a nested span instead). */
+.v-call-pulse{animation:vCallPulse 1.8s ease-in-out infinite}
 @keyframes vIn{from{opacity:0}to{opacity:1}}
 @keyframes vOut{from{opacity:1}to{opacity:0;visibility:hidden}}
 @keyframes vPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
@@ -453,6 +460,7 @@ canvas {
 @keyframes vDot{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-2px)}}
 @keyframes vSelect{from{background:#FFFFFF;color:#C2410C}to{background:#E8552B;color:#FFFFFF;border-color:#E8552B}}
 @keyframes vFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes vCallPulse{0%,100%{opacity:.55}50%{opacity:1}}
 /* Perf round requirement: pause every running animation (freeze at its
    current frame, not reset) when the story device scrolls off screen --
    StoryDevice.tsx toggles this class off the story root via
@@ -469,7 +477,7 @@ canvas {
    rule already handled per-component elsewhere), so it can't interact
    with unrelated animations. */
 @media (prefers-reduced-motion: reduce) {
-  .v-in, .v-out, .v-pop, .v-drop, .v-ring, .v-typing, .v-dot, .v-select, .v-float {
+  .v-in, .v-out, .v-pop, .v-drop, .v-ring, .v-typing, .v-dot, .v-select, .v-float, .v-call-pulse {
     animation-duration: .01ms !important;
     animation-delay: 0s !important;
     animation-iteration-count: 1 !important;

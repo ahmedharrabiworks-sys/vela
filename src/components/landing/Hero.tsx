@@ -377,8 +377,16 @@ export default function Hero() {
         </motion.div>
       </div>
 
-      {/* ═══ Phone content (below lg): centered, per Phone.dc.html ═══ */}
-      <div className="lg:hidden w-full flex flex-col items-center" style={{ paddingTop: 14 + 66 + 14 }}>
+      {/* ═══ Phone content (below lg): centered, per Phone.dc.html ═══
+          FIX 3 round (calmer phone hero, less text, more air): header to
+          eyebrow 40px (pill bottom edge ~82px + 40 = 122 paddingTop),
+          eyebrow to headline unchanged at 14px, the long paragraph is
+          gone -- replaced with one short line (headline to line 18px,
+          line to button 32px) -- and the channel chips are gone too
+          (desktop keeps both; this round is phone-only per FIX 3's own
+          explicit "nothing else on the phone page changes" outside these
+          spacing/copy edits). */}
+      <div className="lg:hidden w-full flex flex-col items-center" style={{ paddingTop: 122 }}>
         <motion.div variants={container} initial="hidden" animate="show" style={{ width: 342, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
           <motion.span variants={item} style={{ fontSize: 15, fontWeight: 600, color: "#E8552B" }}>
             {t("landing.hero.badge")}
@@ -387,22 +395,17 @@ export default function Hero() {
             <span style={{ display: "block", color: "#E8552B" }}>{t("landing.hero.headlineAccent")}</span>
             <span style={{ display: "block", color: "#17120E" }}>{t("landing.hero.headline2")}</span>
           </motion.h1>
-          <motion.p variants={item} style={{ margin: "20px 0 0", fontSize: 17, lineHeight: 1.6, color: "#5B5550" }}>
-            {t("landing.hero.subtext")}
+          <motion.p variants={item} style={{ margin: "18px 0 0", fontSize: 17, lineHeight: 1.6, color: "#5B5550" }}>
+            {t("landing.hero.story2.phoneSubtext")}
           </motion.p>
           <motion.a
             variants={item}
             href={ctaHref}
-            style={{ marginTop: 30, height: 56, padding: "0 30px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", gap: 10, fontSize: 17, fontWeight: 600, textDecoration: "none", boxShadow: "0 16px 30px -14px rgba(232,85,43,0.65)" }}
+            style={{ marginTop: 32, height: 56, padding: "0 30px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", gap: 10, fontSize: 17, fontWeight: 600, textDecoration: "none", boxShadow: "0 16px 30px -14px rgba(232,85,43,0.65)" }}
           >
             {ctaLabel}
             <ArrowIcon />
           </motion.a>
-          <motion.div variants={item} style={{ marginTop: 22, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <ChannelChip><InstagramIcon />{t("landing.hero.story2.instagram")}</ChannelChip>
-            <ChannelChip><WhatsAppIcon />{t("landing.hero.story2.whatsapp")}</ChannelChip>
-            <ChannelChip><PhoneIcon />{t("landing.hero.story2.calls")}</ChannelChip>
-          </motion.div>
         </motion.div>
 
         <HeroPhoneStory ctaHref={ctaHref} ctaLabel={storyCtaLabel} />

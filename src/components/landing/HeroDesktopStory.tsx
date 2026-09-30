@@ -91,22 +91,35 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
           </div>
         </div>
 
+        {/* FIX 2 round: the phone's real screen occupies x:150-430 within
+            this 580-wide stage (300px phone centered -> 140-440, minus the
+            10px bezel each side). These cards used to be ~230-260px wide
+            at left:0/right:0, which reached ~100px into that screen range
+            and covered real content (the competitor header, the lead-lost
+            card). Narrowed to a fixed 138px and kept at left:0/right:0 so
+            they sit entirely within the 0-150 / 430-580 margins outside
+            the screen -- at most grazing the phone's own bezel edge
+            (140-150 / 430-440), never the screen content, at every
+            verified width (1280/1440/1920 all give this stage the same
+            580px -- the two-column row just gets more outer whitespace on
+            wider viewports, never less room here). */}
         {cards.map((c, i) => (
           <div
             key={i}
             className="v-pop"
             style={{
               position: "absolute",
+              width: 138, boxSizing: "border-box",
               ...(i === 0 ? { top: 96, left: 0 } : { bottom: 170, right: 0 }),
-              display: "flex", alignItems: "center", gap: 11, padding: "12px 16px 12px 12px", borderRadius: 16,
+              display: "flex", alignItems: "center", gap: 9, padding: "10px 11px 10px 9px", borderRadius: 14,
               background: "#FFFFFF", border: "1px solid #F1E7E1", boxShadow: "0 22px 44px -22px rgba(120,50,20,0.38)",
               animationDelay: c.delay,
             }}
           >
-            <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 11, background: c.iconBg, color: c.iconColor, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.icon}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#17120E" }}>{c.title}</span>
-              <span style={{ fontSize: 12.5, color: "#7A6F68" }}>{c.subtitle}</span>
+            <div style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 9, background: c.iconBg, color: c.iconColor, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.icon}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.25, color: "#17120E" }}>{c.title}</span>
+              <span style={{ fontSize: 11, lineHeight: 1.3, color: "#7A6F68" }}>{c.subtitle}</span>
             </div>
           </div>
         ))}

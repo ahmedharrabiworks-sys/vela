@@ -116,36 +116,116 @@ function LightningIcon({ size = 13 }: { size?: number }) {
   );
 }
 
+/* ═══ iOS call-screen control grid icons (FIX 1 round) ═══ */
+function SpeakerIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 9v6h4l5 5V4L7 9H3z" fill="currentColor" />
+      <path d="M15.5 9a4 4 0 010 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      <path d="M18 6.5a8 8 0 010 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+function FaceTimeIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="6" width="14" height="12" rx="3" />
+      <path d="M16 10.3L21.5 7v10l-5.5-3.3z" />
+    </svg>
+  );
+}
+function MuteIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M6 11a6 6 0 0012 0M12 17v3" />
+    </svg>
+  );
+}
+function AddIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="9" r="3.2" />
+      <path d="M3.5 19c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5" />
+      <path d="M18 8v6M15 11h6" />
+    </svg>
+  );
+}
+function KeypadIcon() {
+  const dots = [6, 12, 18];
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      {dots.flatMap((cy) => dots.map((cx) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.6" />))}
+    </svg>
+  );
+}
+function EndCallIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: "rotate(135deg)" }}>
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" />
+    </svg>
+  );
+}
+
+/* One 64px translucent circle button + 11px label, real-iOS-call style. */
+function CallButton({ icon, label, end }: { icon: React.ReactNode; label: string; end?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: 64 }}>
+      <div
+        style={{
+          width: 64, height: 64, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+          background: end ? "#E5484D" : "rgba(255,255,255,0.14)",
+          border: end ? "none" : "1px solid rgba(255,255,255,0.18)",
+          color: "#FFFFFF",
+          boxShadow: end ? "0 10px 24px -6px rgba(229,72,77,0.6)" : "none",
+        }}
+      >
+        {icon}
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.75)" }}>{label}</span>
+    </div>
+  );
+}
+
 /* ═══ Screen 0: "Without Vela" -- call crossfades into chat ═══ */
 function ScreenWithoutVela() {
   const { t } = useI18n();
   return (
     <div style={{ position: "absolute", inset: 0 }}>
-      {/* Call layer -- visible (opacity:1, vOut's "from") until 3.4s, then fades out over .5s */}
-      <div className="v-out" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #3A2A22 0%, #15100D 55%, #0B0908 100%)", animationDelay: "3.4s" }}>
+      {/* Call layer -- visible (opacity:1, vOut's "from") until 3.4s, then
+          fades out over .5s. FIX 1 round: rebuilt to look like a real iOS
+          outgoing call -- contact photo + large name + status line (was a
+          giant pulsing-ring avatar in the middle), a real 2x3 iOS control
+          grid (Speaker/FaceTime/Mute, Add/End/Keypad) instead of a single
+          center avatar. The "calling..." text itself pulses gently
+          (.v-call-pulse, its own always-on animation, independent of this
+          layer's own v-out fade) rather than rings around an avatar. */}
+      <div className="v-out" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #3A2A22 0%, #120D0B 100%)", animationDelay: "3.4s" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 220, background: "radial-gradient(ellipse 240px 160px at 50% 0%, rgba(255,150,90,0.16), transparent 72%)", pointerEvents: "none" }} aria-hidden="true" />
         <StatusBar time="11:48" dark />
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 40 }}>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, paddingTop: 30 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#3B312B", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <StorefrontIcon size={26} />
+          </div>
+          <div style={{ fontFamily: "var(--font-display), 'Bricolage Grotesque', sans-serif", fontSize: 28, fontWeight: 300, letterSpacing: "-0.01em", color: "#FFFFFF" }}>{t("landing.hero.story2.yourBusiness")}</div>
           <div style={{ position: "relative", width: 200, height: 18 }}>
-            <div className="v-out" style={{ position: "absolute", inset: 0, textAlign: "center", fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.62)", animationDelay: "2.6s" }}>{t("landing.hero.story2.callingLabel")}</div>
-            <div className="v-in" style={{ position: "absolute", inset: 0, textAlign: "center", fontSize: 14, fontWeight: 600, color: "#FF7A7A", animationDelay: "2.6s" }}>{t("landing.hero.story2.noAnswer")}</div>
-          </div>
-          <div style={{ fontFamily: "var(--font-display), 'Bricolage Grotesque', sans-serif", fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "#FFFFFF" }}>{t("landing.hero.story2.yourBusiness")}</div>
-        </div>
-        <div style={{ flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ position: "relative", width: 96, height: 96 }}>
-            <div className="v-ring" style={{ animationDelay: "0s" }} />
-            <div className="v-ring" style={{ animationDelay: "0.45s" }} />
-            <div className="v-ring" style={{ animationDelay: "0.9s" }} />
-            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#3B312B", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <StorefrontIcon size={40} />
+            <div className="v-out" style={{ position: "absolute", inset: 0, animationDelay: "2.6s" }}>
+              <span className="v-call-pulse" style={{ display: "block", textAlign: "center", fontSize: 15, fontWeight: 400, color: "rgba(255,255,255,0.58)" }}>{t("landing.hero.story2.callingLabel")}</span>
             </div>
+            <div className="v-in" style={{ position: "absolute", inset: 0, textAlign: "center", fontSize: 15, fontWeight: 600, color: "#FF7A7A", animationDelay: "2.6s" }}>{t("landing.hero.story2.noAnswer")}</div>
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "center", paddingBottom: 60 }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#E5484D", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 24px -6px rgba(229,72,77,0.6)" }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: "rotate(135deg)" }}>
-              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" />
-            </svg>
+        <div style={{ flexGrow: 1 }} />
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 20, alignItems: "center", paddingBottom: 44 }}>
+          <div style={{ display: "flex", gap: 26, justifyContent: "center" }}>
+            <CallButton icon={<SpeakerIcon />} label={t("landing.hero.story2.callSpeaker")} />
+            <CallButton icon={<FaceTimeIcon />} label={t("landing.hero.story2.callFaceTime")} />
+            <CallButton icon={<MuteIcon />} label={t("landing.hero.story2.callMute")} />
+          </div>
+          <div style={{ display: "flex", gap: 26, justifyContent: "center" }}>
+            <CallButton icon={<AddIcon />} label={t("landing.hero.story2.callAdd")} />
+            <CallButton icon={<EndCallIcon />} label={t("landing.hero.story2.callEnd")} end />
+            <CallButton icon={<KeypadIcon />} label={t("landing.hero.story2.callKeypad")} />
           </div>
         </div>
       </div>
@@ -163,27 +243,27 @@ function ScreenWithoutVela() {
             <span style={{ fontSize: 11.5, color: "#8A807A" }}>{t("landing.hero.story2.online")}</span>
           </div>
         </div>
-        <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 8, padding: "16px 12px" }}>
+        <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 8, padding: "16px 16px" }}>
           <div className="v-pop" style={{ alignSelf: "center", fontSize: 11, color: "#9A908A", animationDelay: "3.7s" }}>{t("landing.hero.story2.timestampTonight1149")}</div>
           <div className="v-pop" style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 6, animationDelay: "3.9s" }}>
-            <div style={{ maxWidth: 178, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgCalledElsewhere")}</div>
+            <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgCalledElsewhere")}</div>
             <CustomerAvatar />
           </div>
           <div className="v-pop" style={{ display: "flex", alignItems: "flex-end", gap: 6, animationDelay: "5.0s" }}>
             <div style={{ width: 22, height: 22, flexShrink: 0, borderRadius: "50%", background: "#E3DDD9", color: "#6B625C", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <StorefrontIcon size={12} />
             </div>
-            <div style={{ maxWidth: 178, padding: "9px 12px", borderRadius: "18px 18px 18px 6px", background: "#E9E3DF", color: "#17120E", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgSlotAt9")}</div>
+            <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 18px 6px", background: "#E9E3DF", color: "#17120E", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgSlotAt9")}</div>
           </div>
           <div className="v-pop" style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 6, animationDelay: "5.9s" }}>
-            <div style={{ maxWidth: 178, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgPerfectBookMe")}</div>
+            <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgPerfectBookMe")}</div>
             <CustomerAvatar />
           </div>
-          <div className="v-pop" style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 14, background: "#FDECEC", border: "1px solid #F7C9CA", animationDelay: "6.8s" }}>
+          <div className="v-pop" style={{ marginTop: "auto", width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 14, background: "#FDECEC", border: "1px solid #F7C9CA", animationDelay: "6.8s" }}>
             <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", background: "#E5484D", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: "#9B1C20" }}>{t("landing.hero.story2.leadLostTitle")}</span>
               <span style={{ fontSize: 11.5, color: "#B24A4D" }}>{t("landing.hero.story2.leadLostSubtitle")}</span>
             </div>
@@ -214,10 +294,10 @@ function ScreenWithVela() {
           </span>
         </div>
       </div>
-      <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 8, padding: "16px 12px" }}>
+      <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 8, padding: "16px 16px" }}>
         <div className="v-pop" style={{ alignSelf: "center", fontSize: 11, color: "#9A908A", animationDelay: "0.1s" }}>{t("landing.hero.story2.timestampTonight1148")}</div>
         <div className="v-pop" style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 6, animationDelay: "0.3s" }}>
-          <div style={{ maxWidth: 178, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgFreeTonight")}</div>
+          <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgFreeTonight")}</div>
           <CustomerAvatar />
         </div>
         <div style={{ position: "relative" }}>
@@ -228,7 +308,7 @@ function ScreenWithVela() {
           </div>
           <div className="v-pop" style={{ display: "flex", alignItems: "flex-end", gap: 6, animationDelay: "2.1s" }}>
             <VelaAvatar size={22} />
-            <div style={{ maxWidth: 184, padding: "9px 12px", borderRadius: "18px 18px 18px 6px", background: "linear-gradient(135deg, #D9481F, #FF6B35)", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgTwoSlots")}</div>
+            <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 18px 6px", background: "linear-gradient(135deg, #D9481F, #FF6B35)", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgTwoSlots")}</div>
           </div>
         </div>
         <div className="v-pop" style={{ display: "flex", gap: 6, paddingLeft: 28, animationDelay: "2.5s" }}>
@@ -236,14 +316,14 @@ function ScreenWithVela() {
           <span className="v-select" style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid #F1C8B6", background: "#FFFFFF", color: "#C2410C", fontSize: 12, fontWeight: 600, animationDelay: "3.6s" }}>{t("landing.hero.story2.slot915")}</span>
         </div>
         <div className="v-pop" style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: 6, animationDelay: "4.1s" }}>
-          <div style={{ maxWidth: 178, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msg915Please")}</div>
+          <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 6px 18px", background: "#221B17", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msg915Please")}</div>
           <CustomerAvatar />
         </div>
-        <div className="v-pop" style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 28, padding: "11px 12px", borderRadius: 14, background: "#FFFFFF", border: "1px solid #CDEBD8", boxShadow: "0 8px 20px -14px rgba(20,90,50,0.5)", animationDelay: "4.8s" }}>
+        <div className="v-pop" style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 28, width: "calc(100% - 28px)", boxSizing: "border-box", padding: "11px 12px", borderRadius: 14, background: "#FFFFFF", border: "1px solid #CDEBD8", boxShadow: "0 8px 20px -14px rgba(20,90,50,0.5)", animationDelay: "4.8s" }}>
           <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", background: "#1F9D55", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckIcon size={15} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
             <span style={{ fontSize: 12.5, fontWeight: 600, color: "#145C33" }}>{t("landing.hero.story2.appointmentBookedTitle")}</span>
             <span style={{ fontSize: 11.5, color: "#3C7A57" }}>{t("landing.hero.story2.appointmentBookedSubtitle")}</span>
           </div>
