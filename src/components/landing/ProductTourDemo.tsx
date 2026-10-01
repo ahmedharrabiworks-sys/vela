@@ -18,13 +18,12 @@ const CONV = 0, APPT = 1, CHAN = 2, AGENT = 3;
 const SCENE_COUNT = 4;
 
 /* ─── Auto-advance: duration set per scene so each choreography has room to finish ───
-   hero-v5 round (FIX 5): re-paced so every tab's own content finishes within
-   about 8s and holds ~2s before auto-advancing (about 10s per tab, ~40s for
-   the 4 tabs). Conversation's own reveal schedule (CONV_TYPING_AT/REVEAL_AT,
-   below) was rewritten to match; Appointments/Channels/Agent's cinematic
-   step sequences already finished within ~7.5-8s, so only their hold got
-   extended to land on the same ~10s total. */
-const SCENE_DURATIONS: number[] = [10000, 10000, 10000, 10000];
+   hero-v6 round (FIX 2): hold trimmed to exactly 1s after each scene's own
+   last scripted event (was ~2-2.5s in hero-v5) -- last-event timestamps:
+   Conversation's final message reveal at 7820ms (CONV_REVEAL_AT[9]),
+   Appointments' ZOOM_OUT at 7500ms, Channels' SETTLE at 7650ms, Agent's
+   RETURNING at 8000ms. Each + 1000ms hold below. */
+const SCENE_DURATIONS: number[] = [8820, 8500, 8650, 9000];
 /* index matches CONV, APPT, CHAN, AGENT */
 
 /* ─── Appointments data ─────────────────────────────────────── */

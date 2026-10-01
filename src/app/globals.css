@@ -248,25 +248,18 @@ canvas {
    absolutely-positioned divs, each continuously animated (16s infinite)
    and each promoted to its own GPU compositor layer via will-change --
    measured live, 9 such layers existed sitewide, running forever
-   regardless of scroll position or tab visibility. A background-image
-   with one radial-gradient() per former blob, painted directly on the
-   page wrapper, is a single static paint: same connected-glow look
-   (percentage positions still spread the glow down the full scrollable
-   height, same as the old absolutely-positioned blobs did), zero
-   composited layers, zero per-frame animation cost. Opacity (0.13) is
+   regardless of scroll position or tab visibility. Opacity (0.13) is
    the tuned midpoint of the old animation's 0.65-1.0 opacity swing
    (0.15 base x that range), so the static look reads the same as the
-   old glow's "resting" average rather than its brightest instant. ───── */
-.landing-glow-bg {
-  background-image:
-    radial-gradient(circle 280px at 22% 6%,  rgba(255,107,53,0.13), transparent 45%),
-    radial-gradient(circle 280px at 82% 20%, rgba(255,107,53,0.13), transparent 45%),
-    radial-gradient(circle 280px at 12% 36%, rgba(255,107,53,0.13), transparent 45%),
-    radial-gradient(circle 280px at 78% 52%, rgba(255,107,53,0.13), transparent 45%),
-    radial-gradient(circle 280px at 18% 68%, rgba(255,107,53,0.13), transparent 45%),
-    radial-gradient(circle 280px at 80% 84%, rgba(255,107,53,0.13), transparent 45%),
-    radial-gradient(circle 280px at 30% 96%, rgba(255,107,53,0.13), transparent 45%);
-}
+   old glow's "resting" average rather than its brightest instant.
+   hero-v6 round (FIX 1): the landing page's own 7-stop version moved off
+   this single-background-image approach (it repainted the whole page on
+   every FAQ-accordion frame -- percent positions were relative to the
+   page wrapper's own, height-changing box) to LandingGlow.tsx, 7
+   fixed-size contain:paint divs. auth-glow-bg is unaffected -- the auth
+   page wrapper is min-h-screen with no dynamic-height content inside it,
+   so it was never part of this bug and stays as the simpler
+   background-image. ───── */
 .auth-glow-bg {
   background-image:
     radial-gradient(circle 280px at 20% 22%, rgba(255,107,53,0.13), transparent 45%),
@@ -323,6 +316,23 @@ canvas {
 }
 .glass-warm {
   background: rgba(255, 246, 240, 0.82);
+}
+
+/* hero-v6 round (FIX 1): FAQ cards keep .glass's full treatment on
+   desktop; on mobile, the accordion's open/close transition repaints
+   every card in view each frame, and .glass's 4-layer box-shadow +
+   masked-gradient ::before border (mask-composite is a relatively
+   expensive paint) added real per-frame cost under throttle (confirmed
+   in the round's trace). A single flat shadow and no masked border,
+   mobile only -- same cards, same corners, visually indistinguishable
+   at this card's own scale, just cheaper to repaint every frame. */
+@media (max-width: 768px) {
+  .faq-card-mobile-light {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  .faq-card-mobile-light::before {
+    display: none;
+  }
 }
 
 /* Real backdrop-filter, kept intentionally -- the fixed/sticky header

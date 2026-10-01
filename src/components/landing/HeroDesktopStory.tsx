@@ -45,20 +45,6 @@ function StorefrontIcon() {
     </svg>
   );
 }
-{/* hero-v5 round (FIX 6): the arrow glyphs are absolute SVG paths, not
-    logical/direction-aware -- CSS dir="rtl" auto-mirrors the ROW layout
-    (tabs move right, Back/Next move left) but never touches a fixed
-    viewBox's own path data, so without this the arrows would keep
-    pointing their LTR direction while sitting in mirrored positions.
-    `flip` applies scaleX(-1) under RTL so "forward" still visually
-    points the way the row actually reads. */}
-function NextArrow({ flip }: { flip?: boolean }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={flip ? { transform: "scaleX(-1)" } : undefined}><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
-}
-function BackArrow({ flip }: { flip?: boolean }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={flip ? { transform: "scaleX(-1)" } : undefined}><path d="M19 12H5M11 6l-6 6 6 6" /></svg>;
-}
-
 /* Per-step floating context cards -- exact copy/colors/positions from
    Main.dc.html, delays re-timed for FIX 2 (hero-v4 round). Desktop only
    (absent from Phone.dc.html). `at` values are the OLD delays scaled by
@@ -85,14 +71,13 @@ function useCardData() {
   ] as const;
 }
 
-export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
+export default function HeroDesktopStory() {
   const { t, locale } = useI18n();
   const isRTL = locale === "ar";
   const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
   const cardSets = useCardData();
   const cards = cardSets[step];
   const labels = [t("landing.hero.story2.stepLabel0"), t("landing.hero.story2.stepLabel1"), t("landing.hero.story2.stepLabel2")];
-  const isLast = step === STEP_COUNT - 1;
   // FIX 3 round: near-instant under reduced motion instead of skipping
   // the crossfade outright -- keeps the code path identical, just
   // imperceptible, matching "final states only."
@@ -157,75 +142,38 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
         ))}
       </div>
 
-      {/* hero-v5 round (FIX 1): the last step's CTA pill ("Start for
-          Free") is wider than the round Next button it replaces -- with
-          no guard, this flex row's default flex-shrink:1 let the tabs
-          segment get squeezed to make room, wrapping tab labels onto a
-          second line only on step 3. Three real fixes, not patches: (1)
-          every tab label and the CTA get white-space:nowrap -- text can
-          never wrap internally regardless of available width; (2) the
-          tabs segment gets flexShrink:0 -- it keeps its natural width no
-          matter what else is in the row; (3) the trailing Next/CTA slot
-          is a FIXED width (sized to the CTA pill, the widest of the two
-          states) instead of the control each state naturally renders at,
-          so the row's total width -- and the tabs' position within it --
-          is byte-identical across all 3 steps, not just non-wrapping. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 999, background: "#F6EFEA", flexShrink: 0 }}>
-          {labels.map((label, i) => {
-            const active = i === step;
-            return (
-              <button
-                key={i}
-                type="button"
-                className="v-tab"
-                aria-pressed={active}
-                onClick={() => goTo(i)}
-                style={{ position: "relative", overflow: "hidden", padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
-              >
-                {bdiVela(label)}
-                {active && <AutoplayProgressBar progress={advanceProgress} />}
-              </button>
-            );
-          })}
-        </div>
-        {/* hero-v3 round: Back added alongside the existing round Next
-            button (both call the shared goTo(), which jumps + pauses
-            autoplay for 12s per FIX 2). Back always wraps step-1..-1
-            (0 -> loops to the last step); the last step keeps its
-            existing Next -> "Start for Free" swap, Back still works
-            there to step back to step 1. */}
-        <button
-          type="button"
-          className="v-btn"
-          aria-label={t("landing.hero.story2.backAria")}
-          onClick={() => goTo(step - 1)}
-          style={{ width: 44, height: 44, borderRadius: "50%", background: "#F6EFEA", color: "#17120E", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-        >
-          <BackArrow flip={isRTL} />
-        </button>
-        <div style={{ width: 210, flexShrink: 0, display: "flex", alignItems: "center" }}>
-          {!isLast ? (
+      {/* hero-v6 round (FIX 3): Back/Next and the last-step CTA pill are
+          gone on desktop -- autoplay + clicking a tab are the only ways
+          to move between steps now (same as the control row's old
+          fallback behavior, just without the manual stepper buttons).
+          "Centered under the phone, not the stage" -- measured via the
+          dynamic island's real getBoundingClientRect(): the phone's true
+          rendered center sits ~12.8px off the stage's own geometric
+          center (the rotateY/rotateZ perspective transform skews its
+          projected bounding box; this offset is identical at 1440 and
+          1920, and mirrors sign exactly under RTL, confirming it's a
+          fixed transform artifact, not a viewport-dependent one). This
+          row is still centered via stageRef's own alignItems:center
+          (unchanged), with that measured offset applied as a corrective
+          translateX on top of it. white-space:nowrap kept on each label
+          regardless, since a translation can still be long. */}
+      <div style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 999, background: "#F6EFEA", transform: `translateX(${isRTL ? -12.8 : 12.8}px)` }}>
+        {labels.map((label, i) => {
+          const active = i === step;
+          return (
             <button
+              key={i}
               type="button"
-              className="v-btn"
-              aria-label={t("landing.hero.story2.nextAria")}
-              onClick={() => goTo(step + 1)}
-              style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 12px 24px -10px rgba(232,85,43,0.7)" }}
+              className="v-tab"
+              aria-pressed={active}
+              onClick={() => goTo(i)}
+              style={{ position: "relative", overflow: "hidden", padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
             >
-              <NextArrow flip={isRTL} />
+              {bdiVela(label)}
+              {active && <AutoplayProgressBar progress={advanceProgress} />}
             </button>
-          ) : (
-            <a
-              href={ctaHref}
-              className="v-link"
-              style={{ width: "100%", boxSizing: "border-box", height: 48, padding: "0 22px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 15, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "none", boxShadow: "0 12px 24px -10px rgba(232,85,43,0.7)" }}
-            >
-              {ctaLabel}
-              <NextArrow flip={isRTL} />
-            </a>
-          )}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

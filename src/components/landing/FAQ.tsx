@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { bdiVela } from "@/lib/bdi";
 
@@ -42,7 +41,7 @@ export default function FAQ() {
             return (
               <div
                 key={i}
-                className={`glass rounded-2xl transition-shadow duration-200 ${isOpen ? "shadow-md" : ""}`}
+                className={`glass faq-card-mobile-light rounded-2xl transition-shadow duration-200 ${isOpen ? "md:shadow-md" : ""}`}
               >
                 <button
                   type="button"
@@ -71,25 +70,35 @@ export default function FAQ() {
                   </span>
                 </button>
 
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      key="content"
-                      id={`faq-panel-${i}`}
-                      role="region"
-                      aria-labelledby={`faq-trigger-${i}`}
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                      className="relative z-[1] overflow-hidden"
-                    >
-                      <p className="px-4 pb-4 md:px-6 md:pb-6 text-sm md:text-base text-[#6B7280] leading-relaxed text-start">
-                        {bdiVela(faq.a)}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* hero-v6 round (FIX 1): CSS grid-template-rows 0fr->1fr
+                    instead of framer-motion's height:"auto" -- the old
+                    version animated a JS-measured pixel height every
+                    frame (real layout-thrash cost, confirmed in the
+                    round's trace); this is one CSS transition the
+                    browser's own layout+compositor pipeline owns
+                    directly. Content stays mounted always (not
+                    conditionally rendered via AnimatePresence) so the
+                    transition runs on every toggle, not just on mount/
+                    unmount -- overflow:hidden on the inner wrapper is
+                    what lets the 0fr row genuinely collapse to zero
+                    (it overrides the grid item's default auto min-size). */}
+                <div
+                  className="relative z-[1] grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                  id={`faq-panel-${i}`}
+                  role="region"
+                  aria-labelledby={`faq-trigger-${i}`}
+                  aria-hidden={!isOpen}
+                >
+                  <div
+                    className="overflow-hidden transition-opacity duration-300"
+                    style={{ opacity: isOpen ? 1 : 0 }}
+                  >
+                    <p className="px-4 pb-4 md:px-6 md:pb-6 text-sm md:text-base text-[#6B7280] leading-relaxed text-start">
+                      {bdiVela(faq.a)}
+                    </p>
+                  </div>
+                </div>
               </div>
             );
           })}

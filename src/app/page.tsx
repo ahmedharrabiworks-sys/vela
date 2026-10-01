@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import CursorGlow from "@/components/ui/CursorGlow";
+import LandingGlow from "@/components/landing/LandingGlow";
 import Hero from "@/components/landing/Hero";
 import ProblemSection from "@/components/landing/ProblemSection";
 import ProductTourDemo from "@/components/landing/ProductTourDemo";
@@ -11,13 +12,15 @@ import Footer from "@/components/landing/Footer";
 import Reveal from "@/components/landing/Reveal";
 export default function LandingPage() {
   return (
-    <main className="relative overflow-x-clip landing-glow-bg">
-      {/* Perf round: the old PageAmbientField (7 absolutely-positioned,
-          continuously-animated divs spanning the full page height, each
-          promoted to its own compositor layer via will-change) is gone.
-          Same connected-glow look, now a single static background-image
-          on this element instead -- one paint, zero extra layers, zero
-          per-frame animation cost. See .landing-glow-bg in globals.css. */}
+    <main className="relative overflow-x-clip">
+      {/* hero-v6 round (FIX 1): was `landing-glow-bg`, a single
+          background-image on this element with 7 percent-positioned
+          radial-gradient() stops -- percent-of-this-element's-own-height
+          meant the FAQ accordion expanding (a height change lower on the
+          page) forced a full repaint of this background on every frame.
+          LandingGlow.tsx replaces it with 7 fixed-size, contain:paint
+          divs -- see that file for the full root-cause writeup. */}
+      <LandingGlow />
       <Navbar />
       {/* Cursor glow re-add round: landing-only (not sitewide -- the old
           one lived in the root layout and ran on every page). Gated to
