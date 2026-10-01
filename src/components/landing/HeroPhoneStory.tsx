@@ -3,18 +3,12 @@
 import { useRef } from "react";
 import type { TouchEvent as ReactTouchEvent } from "react";
 import { useI18n } from "@/lib/i18n";
-import StoryDevice from "@/components/landing/StoryDevice";
+import StoryDevice, { STORY_DURATIONS_MS } from "@/components/landing/StoryDevice";
 import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
+import Crossfade from "@/components/landing/Crossfade";
 import { useAutoplayStep } from "@/lib/useAutoplayStep";
 
 const STEP_COUNT = 3;
-
-// hero-v3 round: matches HeroDesktopStory.tsx's own constant exactly --
-// same StoryDevice, same timings, autoplay should feel identical on
-// both surfaces.
-const STEP_ANIMATION_END_MS = [8000, 6000, 2800];
-const HOLD_MS = [2500, 2500, 3000];
-const STORY_DURATIONS = STEP_ANIMATION_END_MS.map((end, i) => end + HOLD_MS[i]);
 
 function NextArrow() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
@@ -33,10 +27,11 @@ function BackArrow() {
 export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   const { t, locale } = useI18n();
   const isRTL = locale === "ar";
-  const { sectionRef: stageRef, step, goTo, isVisible, running, resetKey, duration } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS);
+  const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const labels = [t("landing.hero.story2.stepLabel0"), t("landing.hero.story2.stepLabel1"), t("landing.hero.story2.stepLabel2")];
   const isLast = step === STEP_COUNT - 1;
+  const crossfadeMs = prefersReducedMotion ? 1 : 500;
 
   function onTouchStart(e: ReactTouchEvent) {
     const touch = e.touches[0];
@@ -88,7 +83,7 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
               style={{ position: "relative", overflow: "hidden", height: 40, borderRadius: 999, fontSize: 13, fontWeight: 600, background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
             >
               {label}
-              {active && <AutoplayProgressBar running={running} durationMs={duration} resetKey={resetKey} />}
+              {active && <AutoplayProgressBar progress={advanceProgress} />}
             </button>
           );
         })}
@@ -107,8 +102,8 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
           270px/300px width mismatch; (2) transformOrigin "top left" ->
           "top center" so the scale itself also shrinks symmetrically
           rather than pinned to the left edge. Verified via computed
-          getBoundingClientRect() in the browser: equal left/right
-          margins at both 375 and 390 -- see the round's report. */}
+          getBoundingClientRect(): equal left/right margins at both 375
+          and 390 (52.5/52.5 and 60/60px). */}
       <div
         style={{ position: "relative", width: deviceW, height: deviceH, marginTop: 24, display: "flex", justifyContent: "center", touchAction: "pan-y" }}
         onTouchStart={onTouchStart}
@@ -129,7 +124,16 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
         <div style={{ flexShrink: 0, transform: `perspective(1400px) rotateY(${tiltY}deg) rotateX(5deg)` }}>
           <div style={{ width: 300, height: 620, transform: `scale(${SCALE})`, transformOrigin: "top center" }}>
             <div className="v-float" style={{ width: 300, height: 620 }}>
-              <StoryDevice key={step} step={step as 0 | 1 | 2} paused={!isVisible} />
+              {/* FIX 1/3 round: no more key={step} remount -- see
+                  HeroDesktopStory.tsx for the full Crossfade rationale,
+                  identical here. */}
+              <Crossfade
+                activeKey={step}
+                durationMs={crossfadeMs}
+                renderItem={(s, frozen) => (
+                  <StoryDevice step={s as 0 | 1 | 2} elapsedMs={frozen || prefersReducedMotion ? STORY_DURATIONS_MS[s as number] : elapsedMs} />
+                )}
+              />
             </div>
           </div>
         </div>

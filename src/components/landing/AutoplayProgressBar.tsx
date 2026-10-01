@@ -1,36 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 /**
- * hero-v3 round: thin fill bar for the active tab of an autoplaying
- * carousel (Hero story tabs, ProductTourDemo tabs). Animates 0% -> 100%
- * over `durationMs` via a CSS width transition; `resetKey` changing
- * (see useAutoplayStep's own `resetKey`) restarts it from 0. Renders at
- * 0 width and does nothing when `running` is false (off screen, manual-
- * interaction pause, or prefers-reduced-motion) -- never a decorative
- * indicator claiming progress that isn't actually happening.
+ * hero-v4 round: simplified to a pure function of `progress` (0-1),
+ * supplied by useAutoplayStep's own elapsedMs/duration clock. No more
+ * resetKey/CSS-transition restart trick -- the caller already re-renders
+ * this every animation frame while the clock is running, so the width
+ * itself is smooth with no transition needed, and it freezes for free
+ * whenever the clock (and therefore progress) stops changing.
  */
 export default function AutoplayProgressBar({
-  running,
-  durationMs,
-  resetKey,
+  progress,
   color = "#E8552B",
 }: {
-  running: boolean;
-  durationMs: number;
-  resetKey: string | number;
+  progress: number;
   color?: string;
 }) {
-  const [filled, setFilled] = useState(false);
-
-  useEffect(() => {
-    setFilled(false);
-    if (!running) return;
-    const raf = requestAnimationFrame(() => setFilled(true));
-    return () => cancelAnimationFrame(raf);
-  }, [resetKey, running]);
-
+  const pct = Math.max(0, Math.min(1, progress)) * 100;
   return (
     <span
       aria-hidden="true"
@@ -41,8 +26,7 @@ export default function AutoplayProgressBar({
         height: 2,
         borderRadius: "0 0 0 999px",
         background: color,
-        width: filled ? "100%" : "0%",
-        transition: running ? `width ${durationMs}ms linear` : "none",
+        width: `${pct}%`,
         pointerEvents: "none",
       }}
     />

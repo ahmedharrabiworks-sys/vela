@@ -1,20 +1,24 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n";
-import StoryDevice from "@/components/landing/StoryDevice";
+import StoryDevice, { STORY_DURATIONS_MS } from "@/components/landing/StoryDevice";
 import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
+import Crossfade from "@/components/landing/Crossfade";
 import { useAutoplayStep } from "@/lib/useAutoplayStep";
 
 const STEP_COUNT = 3;
 
-// hero-v3 round: how long each step's own animation takes to finish
-// before the 2.5s (3s for the last step) hold, per FIX 2 -- matches the
-// new dramatic-ending timings in StoryDevice.tsx exactly (step 0's red
-// fill finishes ~7.92s, step 1's green fill ~5.92s, step 2's last drop
-// ~2.8s), rounded up, plus the hold.
-const STEP_ANIMATION_END_MS = [8000, 6000, 2800];
-const HOLD_MS = [2500, 2500, 3000];
-const STORY_DURATIONS = STEP_ANIMATION_END_MS.map((end, i) => end + HOLD_MS[i]);
+function clamp01(x: number) {
+  return Math.max(0, Math.min(1, x));
+}
+function easeOutCubic(p: number) {
+  const t = clamp01(p);
+  return 1 - Math.pow(1 - t, 3);
+}
+function cardReveal(elapsedMs: number, atMs: number) {
+  const p = easeOutCubic((elapsedMs - atMs) / 420);
+  return { opacity: p, transform: `translateY(${8 * (1 - p)}px)` } as React.CSSProperties;
+}
 
 function CheckIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>;
@@ -47,22 +51,28 @@ function BackArrow() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>;
 }
 
-/* Per-step floating context cards -- exact copy/colors/positions/delays
-   from Main.dc.html. Desktop only (absent from Phone.dc.html). */
+/* Per-step floating context cards -- exact copy/colors/positions from
+   Main.dc.html, delays re-timed for FIX 2 (hero-v4 round). Desktop only
+   (absent from Phone.dc.html). `at` values are the OLD delays scaled by
+   each step's new/old total-duration ratio: old totals were
+   [10500,8500,5800]ms, new are STORY_DURATIONS_MS ([16500,13400,10500])
+   -- same relative moment in the story, just paced to the slower
+   timeline. Pure function of elapsedMs (see cardReveal above), same
+   pause-safe architecture as StoryDevice itself. */
 function useCardData() {
   const { t } = useI18n();
   return [
     [
-      { icon: <PhoneMissedIcon />, iconBg: "#FDECEC", iconColor: "#E5484D", title: t("landing.hero.story2.cardMissedCallTitle"), subtitle: t("landing.hero.story2.cardMissedCallSubtitle"), delay: "2.8s" },
-      { icon: <StorefrontIcon />, iconBg: "#F1ECE8", iconColor: "#6B625C", title: t("landing.hero.story2.cardBookedCompetitorTitle"), subtitle: t("landing.hero.story2.cardBookedCompetitorSubtitle"), delay: "6.9s" },
+      { icon: <PhoneMissedIcon />, iconBg: "#FDECEC", iconColor: "#E5484D", title: t("landing.hero.story2.cardMissedCallTitle"), subtitle: t("landing.hero.story2.cardMissedCallSubtitle"), at: 4400 },
+      { icon: <StorefrontIcon />, iconBg: "#F1ECE8", iconColor: "#6B625C", title: t("landing.hero.story2.cardBookedCompetitorTitle"), subtitle: t("landing.hero.story2.cardBookedCompetitorSubtitle"), at: 10800 },
     ],
     [
-      { icon: <LightningIcon />, iconBg: "#FFF1EA", iconColor: "#E8552B", title: t("landing.hero.story2.cardRepliedTitle"), subtitle: t("landing.hero.story2.cardRepliedSubtitle"), delay: "2.2s" },
-      { icon: <CheckIcon />, iconBg: "#E7F6EE", iconColor: "#1F9D55", title: t("landing.hero.story2.appointmentBookedTitle"), subtitle: t("landing.hero.story2.appointmentBookedSubtitle"), delay: "4.9s" },
+      { icon: <LightningIcon />, iconBg: "#FFF1EA", iconColor: "#E8552B", title: t("landing.hero.story2.cardRepliedTitle"), subtitle: t("landing.hero.story2.cardRepliedSubtitle"), at: 3500 },
+      { icon: <CheckIcon />, iconBg: "#E7F6EE", iconColor: "#1F9D55", title: t("landing.hero.story2.appointmentBookedTitle"), subtitle: t("landing.hero.story2.appointmentBookedSubtitle"), at: 7700 },
     ],
     [
-      { icon: <CrescentIcon />, iconBg: "#FFF1EA", iconColor: "#E8552B", title: t("landing.hero.story2.cardWhileSleptTitle"), subtitle: t("landing.hero.story2.cardWhileSleptSubtitle"), delay: "0.6s" },
-      { icon: <CheckIcon />, iconBg: "#E7F6EE", iconColor: "#1F9D55", title: t("landing.hero.story2.cardThreeCustomersTitle"), subtitle: t("landing.hero.story2.cardThreeCustomersSubtitle"), delay: "2.5s" },
+      { icon: <CrescentIcon />, iconBg: "#FFF1EA", iconColor: "#E8552B", title: t("landing.hero.story2.cardWhileSleptTitle"), subtitle: t("landing.hero.story2.cardWhileSleptSubtitle"), at: 1100 },
+      { icon: <CheckIcon />, iconBg: "#E7F6EE", iconColor: "#1F9D55", title: t("landing.hero.story2.cardThreeCustomersTitle"), subtitle: t("landing.hero.story2.cardThreeCustomersSubtitle"), at: 4500 },
     ],
   ] as const;
 }
@@ -70,11 +80,15 @@ function useCardData() {
 export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   const { t, locale } = useI18n();
   const isRTL = locale === "ar";
-  const { sectionRef: stageRef, step, goTo, isVisible, running, resetKey, duration } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS);
+  const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
   const cardSets = useCardData();
   const cards = cardSets[step];
   const labels = [t("landing.hero.story2.stepLabel0"), t("landing.hero.story2.stepLabel1"), t("landing.hero.story2.stepLabel2")];
   const isLast = step === STEP_COUNT - 1;
+  // FIX 3 round: near-instant under reduced motion instead of skipping
+  // the crossfade outright -- keeps the code path identical, just
+  // imperceptible, matching "final states only."
+  const crossfadeMs = prefersReducedMotion ? 1 : 500;
 
   // Mirrors under RTL (explicit ask: "the tilt mirrors"), unchanged on LTR.
   const tiltY = isRTL ? 16 : -16;
@@ -86,7 +100,19 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
         <div style={{ position: "absolute", left: 150, bottom: 6, width: 300, height: 40, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(120,45,15,0.28), rgba(120,45,15,0))" }} aria-hidden="true" />
         <div style={{ transform: `perspective(1600px) rotateY(${tiltY}deg) rotateX(6deg) rotateZ(${tiltZ}deg)` }}>
           <div className="v-float" style={{ width: 300, height: 620 }}>
-            <StoryDevice key={step} step={step as 0 | 1 | 2} paused={!isVisible} />
+            {/* FIX 1/3 round: no more key={step} remount -- Crossfade keeps
+                the outgoing step mounted (frozen at its final elapsedMs)
+                while it fades out, simultaneously with the incoming step
+                fading in fresh from elapsedMs=0 (or, under reduced
+                motion, every step just shows its own final state
+                immediately, "final states only"). */}
+            <Crossfade
+              activeKey={step}
+              durationMs={crossfadeMs}
+              renderItem={(s, frozen) => (
+                <StoryDevice step={s as 0 | 1 | 2} elapsedMs={frozen || prefersReducedMotion ? STORY_DURATIONS_MS[s as number] : elapsedMs} />
+              )}
+            />
           </div>
         </div>
 
@@ -105,14 +131,13 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
         {cards.map((c, i) => (
           <div
             key={i}
-            className="v-pop"
             style={{
               position: "absolute",
               width: 138, boxSizing: "border-box",
               ...(i === 0 ? { top: 96, left: 0 } : { bottom: 170, right: 0 }),
               display: "flex", alignItems: "center", gap: 9, padding: "10px 11px 10px 9px", borderRadius: 14,
               background: "#FFFFFF", border: "1px solid #F1E7E1", boxShadow: "0 22px 44px -22px rgba(120,50,20,0.38)",
-              animationDelay: c.delay,
+              ...(prefersReducedMotion ? { opacity: 1 } : cardReveal(elapsedMs, c.at)),
             }}
           >
             <div style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 9, background: c.iconBg, color: c.iconColor, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.icon}</div>
@@ -138,7 +163,7 @@ export default function HeroDesktopStory({ ctaHref, ctaLabel }: { ctaHref: strin
                 style={{ position: "relative", overflow: "hidden", padding: "10px 18px", borderRadius: 999, fontSize: 14, fontWeight: 600, background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
               >
                 {label}
-                {active && <AutoplayProgressBar running={running} durationMs={duration} resetKey={resetKey} />}
+                {active && <AutoplayProgressBar progress={advanceProgress} />}
               </button>
             );
           })}

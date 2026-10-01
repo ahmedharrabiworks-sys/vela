@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import CtaButton from "@/components/landing/CtaButton";
 import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
@@ -1249,22 +1249,57 @@ const TOUR_PANELS = [
 
 const CHECKLIST_IDX = [0, 1, 2, 3, 4, 5] as const; // every panel has exactly 6 checklist items
 
-/* ─── Smooth 3D dissolve transition (shallow angle + fade + scale) */
+/* hero-v4 round: the left-panel content (icon/headline/subtext/checklist)
+   extracted so it can render identically inside the animated
+   AnimatePresence branch and inside the static pre-visibility
+   placeholder branch (FIX 1) without duplicating the JSX. */
+function renderTourPanelContent(p: (typeof TOUR_PANELS)[number], t: (key: string) => string) {
+  return (
+    <>
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center mb-4 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:text-white"
+        style={{ background: p.color }}
+      >{p.icon}</div>
+      <h3 className="font-display font-extrabold text-[24px] md:text-[28px] text-[#111111] leading-tight tracking-tight">
+        {t(`landing.tour.panels.${p.key}.headline`)}
+      </h3>
+      <p className="text-[15px] text-[#6B7280] mt-2 leading-relaxed">{t(`landing.tour.panels.${p.key}.subtext`)}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 mt-5">
+        {CHECKLIST_IDX.map(idx => (
+          <div key={idx} className="flex items-center gap-2">
+            <span
+              className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: `${p.color}1A` }}
+            >
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                <path d="M1.5 4.5l2 2 4-4" stroke={p.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span className="text-[13px] text-[#374151] font-medium leading-snug">{t(`landing.tour.panels.${p.key}.checklist.${idx}`)}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* hero-v4 round (FIX 3): a plain opacity crossfade, 500ms, the outgoing
+   scene fading out WHILE the incoming one fades in -- replaces the old
+   3D rotateY/scale "dissolve" + AnimatePresence mode="wait" (which
+   waited for exit to finish before enter even started, a sequential
+   swap, not a real crossfade). Same 500ms feel as the hero story's own
+   step crossfade (see Crossfade.tsx) so the whole site's transitions
+   read as one consistent language. */
 const sceneVariants = {
-  enter:  { opacity: 0, rotateY:  10, scale: 0.97 },
-  center: { opacity: 1, rotateY:   0, scale: 1,
-            transition:{ duration: 0.42, ease:[0.22,1,0.36,1] as [number,number,number,number] } },
-  exit:   { opacity: 0, rotateY: -10, scale: 0.97,
-            transition:{ duration: 0.28, ease:[0.55,0,1,0.45] as [number,number,number,number] } },
+  enter:  { opacity: 0 },
+  center: { opacity: 1, transition: { duration: 0.5, ease: [0.2, 0.8, 0.2, 1] as [number, number, number, number] } },
+  exit:   { opacity: 0, transition: { duration: 0.5, ease: [0.2, 0.8, 0.2, 1] as [number, number, number, number] } },
 };
-// prefers-reduced-motion variant: a plain, quick opacity cross-fade -- no
-// 3D rotateY/scale flip (the actual "motion" reduced-motion visitors are
-// asking to not see), used instead of sceneVariants when the OS/browser
-// preference is set.
+// prefers-reduced-motion: final states only, effectively instant.
 const sceneVariantsReduced = {
   enter:  { opacity: 0 },
-  center: { opacity: 1, transition: { duration: 0.2 } },
-  exit:   { opacity: 0, transition: { duration: 0.15 } },
+  center: { opacity: 1, transition: { duration: 0.01 } },
+  exit:   { opacity: 0, transition: { duration: 0.01 } },
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1272,18 +1307,19 @@ const sceneVariantsReduced = {
 ═══════════════════════════════════════════════════════════════ */
 export default function ProductTourDemo() {
   const { t } = useI18n();
-  const prefersReducedMotion = useReducedMotion();
-  // hero-v3 round: replaced this component's own hand-rolled visibility +
-  // timer + "manual mode loops forever" state machine with the shared
-  // useAutoplayStep hook (also used by the hero story) -- same contract
-  // now sitewide: starts only once >=40% visible (was threshold:0, i.e.
-  // any single visible pixel), a manual tab click jumps + pauses
-  // autoplay for 12s then resumes normal forward advancing (was: locks
-  // onto that scene forever, looping in place, until a different tab is
-  // clicked), and reduced-motion gets the first scene static with no
-  // autoplay (manual tab clicks still work -- goTo doesn't check
-  // reduced-motion).
-  const { sectionRef, step: scene, goTo, running, resetKey, duration } = useAutoplayStep<HTMLElement>(SCENE_COUNT, SCENE_DURATIONS, { visibilityThreshold: 0.4 });
+  // hero-v4 round (FIX 1): the root-cause bug here was that this whole
+  // AnimatePresence tree (and every scene's own internal staggered
+  // reveal, each keyed on ITS OWN mount time via framer-motion
+  // transition delays) rendered unconditionally from page load --
+  // "how-it-works" sits well below the fold, so by the time a visitor
+  // actually scrolled to it every scene's entrance choreography had
+  // long since played out and settled. Fix: don't mount this tree at
+  // all until `hasBeenVisible` (>=50%) -- see the `hasBeenVisible ?
+  // ... : <static placeholder>` branches below. Once mounted, each
+  // scene still remounts fresh on every scene change exactly as before
+  // (AnimatePresence + key={scene}), so its own internal delays always
+  // count from a moment the visitor can actually see.
+  const { sectionRef, step: scene, goTo, hasBeenVisible, contentActive, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLElement>(SCENE_COUNT, SCENE_DURATIONS, { visibilityThreshold: 0.5 });
 
   function renderScene(s: number) {
     switch (s) {
@@ -1348,7 +1384,7 @@ export default function ProductTourDemo() {
                     }}
                   >
                     {t(`landing.tour.tabs.${p.key}`)}
-                    {active && <AutoplayProgressBar running={running} durationMs={duration} resetKey={resetKey} color="var(--vp-color)" />}
+                    {active && <AutoplayProgressBar progress={advanceProgress} color="var(--vp-color)" />}
                   </button>
                 );
               })}
@@ -1357,45 +1393,31 @@ export default function ProductTourDemo() {
             {/* Content panel -- icon circle, headline, subtext, 2-col checklist.
                 Swapped per scene via AnimatePresence (fade/slide), same transition
                 feel as the rest of the file. CTA lives outside this block so it
-                never unmounts/re-animates on scene change (FIX 4: persistent). */}
-            <AnimatePresence mode="wait">
-              {(() => {
-                const p = TOUR_PANELS.find(x => x.sceneIdx === scene) ?? TOUR_PANELS[0];
-                return (
-                  <motion.div
-                    key={scene}
-                    initial={{ opacity:0, y:10 }}
-                    animate={{ opacity:1, y:0 }}
-                    exit={{ opacity:0, y:-10 }}
-                    transition={{ duration:0.35, ease:[0.22,1,0.36,1] }}
-                  >
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center mb-4 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:text-white"
-                      style={{ background:p.color }}
-                    >{p.icon}</div>
-                    <h3 className="font-display font-extrabold text-[24px] md:text-[28px] text-[#111111] leading-tight tracking-tight">
-                      {t(`landing.tour.panels.${p.key}.headline`)}
-                    </h3>
-                    <p className="text-[15px] text-[#6B7280] mt-2 leading-relaxed">{t(`landing.tour.panels.${p.key}.subtext`)}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5 mt-5">
-                      {CHECKLIST_IDX.map(idx => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span
-                            className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                            style={{ background:`${p.color}1A` }}
-                          >
-                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                              <path d="M1.5 4.5l2 2 4-4" stroke={p.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </span>
-                          <span className="text-[13px] text-[#374151] font-medium leading-snug">{t(`landing.tour.panels.${p.key}.checklist.${idx}`)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                );
-              })()}
-            </AnimatePresence>
+                never unmounts/re-animates on scene change (FIX 4: persistent).
+                FIX 1 (hero-v4): not mounted at all until hasBeenVisible -- the
+                static branch renders the same content with no motion wrapper,
+                so there is nothing here that can be "already finished" before
+                the visitor ever sees it. */}
+            {hasBeenVisible ? (
+              <AnimatePresence>
+                {(() => {
+                  const p = TOUR_PANELS.find(x => x.sceneIdx === scene) ?? TOUR_PANELS[0];
+                  return (
+                    <motion.div
+                      key={scene}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+                    >
+                      {renderTourPanelContent(p, t)}
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
+            ) : (
+              renderTourPanelContent(TOUR_PANELS[0], t)
+            )}
 
             <CtaButton size="md" className="mt-7 self-start" />
           </div>
@@ -1423,24 +1445,45 @@ export default function ProductTourDemo() {
                 <div style={{ width:52 }}/>
               </div>
 
-              {/* Scene area, perspective + overflow:hidden = no scrollbars ever */}
+              {/* Scene area, perspective + overflow:hidden = no scrollbars ever.
+                  FIX 1 (hero-v4): the real scene tree (each scene schedules its
+                  own internal staggered reveals via framer-motion transition
+                  delays counted from ITS OWN mount time) is not mounted at all
+                  until hasBeenVisible -- otherwise Conversation/Appointments/
+                  Channels/Agent would all start choreographing themselves from
+                  page load, exactly the "already finished by the time you
+                  scroll there" bug this round exists to fix. The placeholder is
+                  a plain empty frame (same chrome color, nothing timed running
+                  inside it) rather than a mocked-up "first frame," since these
+                  scenes don't expose one separably from their own internal
+                  timers. `.v-story-paused` freezes any plain-CSS animation
+                  still inside a mounted scene (e.g. the online-status pulse
+                  dot) while scrolled away after having started -- the
+                  framer-motion-driven staggered reveals themselves are brief
+                  (well under a second) relative to each scene's multi-second
+                  total duration, so in practice they've already settled long
+                  before a visitor could scroll away mid-reveal and back. */}
               <div
-                className="relative"
+                className={`relative${!contentActive && hasBeenVisible ? " v-story-paused" : ""}`}
                 style={{ height:480, perspective:1400, perspectiveOrigin:"50% 40%", overflow:"hidden" }}
               >
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={scene}
-                    variants={prefersReducedMotion ? sceneVariantsReduced : sceneVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    className="absolute inset-0"
-                    style={prefersReducedMotion ? undefined : { backfaceVisibility:"hidden", willChange:"transform, opacity" }}
-                  >
-                    {renderScene(scene)}
-                  </motion.div>
-                </AnimatePresence>
+                {hasBeenVisible ? (
+                  <AnimatePresence>
+                    <motion.div
+                      key={scene}
+                      variants={prefersReducedMotion ? sceneVariantsReduced : sceneVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      className="absolute inset-0"
+                      style={prefersReducedMotion ? undefined : { backfaceVisibility:"hidden", willChange:"transform, opacity" }}
+                    >
+                      {renderScene(scene)}
+                    </motion.div>
+                  </AnimatePresence>
+                ) : (
+                  <div className="absolute inset-0" style={{ background: "#FAFAFA" }} aria-hidden="true" />
+                )}
               </div>
               </div>
             </div>
