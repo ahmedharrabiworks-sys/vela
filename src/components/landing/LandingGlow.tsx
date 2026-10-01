@@ -12,16 +12,25 @@
    <main>'s height, and `contain: paint` gives it an isolated paint/
    containing block so an ancestor's layout/size change can never force
    it to repaint -- only (cheaply, compositor-only) reposition. Same 7
-   anchor points, same opacity, same connected-glow look as before. */
+   anchor points, same opacity, same connected-glow look as before.
+
+   faq-fix-2 round (FIX 1.3): a real phone still choked on this -- 7
+   separate 560x560 radial-gradient layers, each `contain:paint` (its
+   own compositor layer / GPU texture), is 7 textures a weak mobile GPU
+   has to keep resident and composite every frame, even though none of
+   them individually repaints anymore. Phone (below lg) now renders only
+   3 of the 7 (indices 0/3/6 -- top, middle, bottom, kept for the same
+   "spread down the page" feel with 3 textures instead of 7) at a
+   smaller 320px size; lg+ is unchanged (all 7 at 560px). */
 
 const BLOBS = [
-  { top: "6%", left: "22%" },
-  { top: "20%", left: "82%" },
-  { top: "36%", left: "12%" },
-  { top: "52%", left: "78%" },
-  { top: "68%", left: "18%" },
-  { top: "84%", left: "80%" },
-  { top: "96%", left: "30%" },
+  { top: "6%", left: "22%", mobile: true },
+  { top: "20%", left: "82%", mobile: false },
+  { top: "36%", left: "12%", mobile: false },
+  { top: "52%", left: "78%", mobile: true },
+  { top: "68%", left: "18%", mobile: false },
+  { top: "84%", left: "80%", mobile: false },
+  { top: "96%", left: "30%", mobile: true },
 ] as const;
 
 export default function LandingGlow() {
@@ -30,16 +39,8 @@ export default function LandingGlow() {
       {BLOBS.map((b, i) => (
         <div
           key={i}
-          style={{
-            position: "absolute",
-            top: b.top,
-            left: b.left,
-            width: 560,
-            height: 560,
-            transform: "translate(-50%, -50%)",
-            contain: "paint",
-            background: "radial-gradient(circle 280px at center, rgba(255,107,53,0.13), transparent 45%)",
-          }}
+          className={`landing-glow-blob absolute w-[320px] h-[320px] lg:w-[560px] lg:h-[560px] ${b.mobile ? "" : "hidden lg:block"}`}
+          style={{ top: b.top, left: b.left, transform: "translate(-50%, -50%)" }}
         />
       ))}
     </div>

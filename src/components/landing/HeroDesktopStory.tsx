@@ -74,7 +74,7 @@ function useCardData() {
 export default function HeroDesktopStory() {
   const { t, locale } = useI18n();
   const isRTL = locale === "ar";
-  const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
+  const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion, isVisible } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
   const cardSets = useCardData();
   const cards = cardSets[step];
   const labels = [t("landing.hero.story2.stepLabel0"), t("landing.hero.story2.stepLabel1"), t("landing.hero.story2.stepLabel2")];
@@ -92,7 +92,15 @@ export default function HeroDesktopStory() {
       <div style={{ position: "relative", width: 580, height: 660, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ position: "absolute", left: 150, bottom: 6, width: 300, height: 40, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(120,45,15,0.28), rgba(120,45,15,0))" }} aria-hidden="true" />
         <div style={{ transform: `perspective(1600px) rotateY(${tiltY}deg) rotateX(6deg) rotateZ(${tiltZ}deg)` }}>
-          <div className="v-float" style={{ width: 300, height: 620 }}>
+          {/* faq-fix-2 round (FIX 1.2): .v-float (a 7s infinite CSS bob)
+              had no visibility gating at all -- it ran forever once
+              mounted, including while scrolled all the way down to the
+              FAQ, continuously costing a composited layer's worth of
+              per-frame work on top of whatever the FAQ toggle itself
+              needed. `v-story-paused` (already used by the tour for the
+              same purpose) freezes it via animation-play-state the
+              moment this section leaves view. */}
+          <div className={`v-float${isVisible ? "" : " v-story-paused"}`} style={{ width: 300, height: 620 }}>
             {/* FIX 1/3 round: no more key={step} remount -- Crossfade keeps
                 the outgoing step mounted (frozen at its final elapsedMs)
                 while it fades out, simultaneously with the incoming step

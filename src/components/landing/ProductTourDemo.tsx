@@ -1329,7 +1329,7 @@ export default function ProductTourDemo() {
   // scene still remounts fresh on every scene change exactly as before
   // (AnimatePresence + key={scene}), so its own internal delays always
   // count from a moment the visitor can actually see.
-  const { sectionRef, step: scene, goTo, hasBeenVisible, contentActive, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLElement>(SCENE_COUNT, SCENE_DURATIONS, { visibilityThreshold: 0.5 });
+  const { sectionRef, step: scene, goTo, hasBeenVisible, isVisible, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLElement>(SCENE_COUNT, SCENE_DURATIONS, { visibilityThreshold: 0.5 });
 
   function renderScene(s: number) {
     switch (s) {
@@ -1462,22 +1462,33 @@ export default function ProductTourDemo() {
                   until hasBeenVisible -- otherwise Conversation/Appointments/
                   Channels/Agent would all start choreographing themselves from
                   page load, exactly the "already finished by the time you
-                  scroll there" bug this round exists to fix. The placeholder is
-                  a plain empty frame (same chrome color, nothing timed running
-                  inside it) rather than a mocked-up "first frame," since these
-                  scenes don't expose one separably from their own internal
-                  timers. `.v-story-paused` freezes any plain-CSS animation
-                  still inside a mounted scene (e.g. the online-status pulse
-                  dot) while scrolled away after having started -- the
-                  framer-motion-driven staggered reveals themselves are brief
-                  (well under a second) relative to each scene's multi-second
-                  total duration, so in practice they've already settled long
-                  before a visitor could scroll away mid-reveal and back. */}
+                  scroll there" bug this round exists to fix.
+                  faq-fix-2 round (FIX 1.2): the hero-v4 comment here assumed
+                  "scrolled away after having started" could be handled by
+                  `.v-story-paused` (CSS animation-play-state) alone, reasoning
+                  the scenes' own staggered reveals are brief enough to have
+                  already settled. Measured via document.getAnimations() and
+                  that was wrong for at least one case: the Conversation
+                  scene's typing-indicator dots use framer-motion's
+                  repeat:Infinity, which (like most framer-motion transforms)
+                  runs on the Web Animations API, not the CSS `animation`
+                  property -- animation-play-state has no effect on it at all,
+                  so it kept bouncing forever, unpaused, any time the tour was
+                  scrolled away mid-typing-indicator. Now the live scene only
+                  renders while `isVisible` (the IntersectionObserver's live
+                  state -- not contentActive, which also factors in
+                  prefersReducedMotion and would never mount for a
+                  reduced-motion visitor at all) -- scrolling away genuinely
+                  unmounts it, which cancels BOTH its own setTimeout-scheduled
+                  choreography (via its effect cleanup) and any WAAPI
+                  animation a mounted child was running, with no CSS-pause
+                  reliance for either. Scrolling back remounts the same scene
+                  fresh, same as a first visit. */}
               <div
-                className={`relative${!contentActive && hasBeenVisible ? " v-story-paused" : ""}`}
+                className="relative"
                 style={{ height:480, perspective:1400, perspectiveOrigin:"50% 40%", overflow:"hidden" }}
               >
-                {hasBeenVisible ? (
+                {isVisible ? (
                   <AnimatePresence>
                     <motion.div
                       key={scene}

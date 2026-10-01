@@ -242,7 +242,21 @@ export default function Hero() {
         className="lg:hidden fixed top-0 inset-x-0 z-40 w-full shrink-0 flex justify-center"
         style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}
       >
-        <div className="glass glass-live flex items-center justify-between rounded-full h-[66px] w-[92%] px-4">
+        {/* faq-fix-2 round (FIX 1.1): was `glass-live` (a real
+            backdrop-filter blur). This header is `position:fixed` and
+            this whole wrapper is lg:hidden -- it only ever renders on
+            mobile, where it never had a desktop variant to preserve.
+            backdrop-filter has to continuously re-sample whatever's
+            compositing underneath it; with the page height changing
+            every frame of the FAQ accordion below, that forced mobile
+            Chrome to keep re-rasterizing the blur the whole time this
+            header was on screen, i.e. always, since it's fixed at the
+            top. `.sticky-mobile-header` is a static, higher-opacity
+            glass (same value already used as the sitewide
+            @supports-not-backdrop-filter fallback, so this is a look
+            already designed and accepted for exactly this "no real
+            blur" case) -- no filter, no per-frame GPU cost. */}
+        <div className="glass sticky-mobile-header flex items-center justify-between rounded-full h-[66px] w-[92%] px-4">
           <Link href="/" aria-label="Vela home" className="shrink-0 flex items-center">
             <Logo showText={false} size={32} />
           </Link>

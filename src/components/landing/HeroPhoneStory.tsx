@@ -25,7 +25,7 @@ function NextArrow({ flip }: { flip?: boolean }) {
 export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   const { t, locale } = useI18n();
   const isRTL = locale === "ar";
-  const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
+  const { sectionRef: stageRef, step, goTo, elapsedMs, advanceProgress, prefersReducedMotion, isVisible } = useAutoplayStep<HTMLDivElement>(STEP_COUNT, STORY_DURATIONS_MS);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const labels = [t("landing.hero.story2.stepLabel0"), t("landing.hero.story2.stepLabel1"), t("landing.hero.story2.stepLabel2")];
   const isLast = step === STEP_COUNT - 1;
@@ -123,7 +123,10 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
             top-center scale origin below actually land centered. */}
         <div style={{ flexShrink: 0, transform: `perspective(1400px) rotateY(${tiltY}deg) rotateX(5deg)` }}>
           <div style={{ width: 300, height: 620, transform: `scale(${SCALE})`, transformOrigin: "top center" }}>
-            <div className="v-float" style={{ width: 300, height: 620 }}>
+            {/* faq-fix-2 round (FIX 1.2): see HeroDesktopStory.tsx for
+                the full writeup -- .v-float ran forever, unpaused, even
+                scrolled all the way down to the FAQ on mobile. */}
+            <div className={`v-float${isVisible ? "" : " v-story-paused"}`} style={{ width: 300, height: 620 }}>
               {/* FIX 1/3 round: no more key={step} remount -- see
                   HeroDesktopStory.tsx for the full Crossfade rationale,
                   identical here. */}

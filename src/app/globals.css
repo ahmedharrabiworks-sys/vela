@@ -358,6 +358,30 @@ canvas {
   }
 }
 
+/* faq-fix-2 round (FIX 1.1): the fixed mobile landing header -- same
+   0.92 opacity as the backdrop-filter fallback above (a look already
+   designed for "no real blur"), no filter property at all. */
+.sticky-mobile-header {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* faq-fix-2 round (FIX 1.3): LandingGlow.tsx's per-blob background --
+   contain:paint lives on this class too (not inline, so it applies
+   identically regardless of the element's current size). Radius scales
+   with the box: 160px (half of the 320px mobile box) below lg, 280px
+   (half of the 560px desktop box) at lg+ -- a fixed 280px radius inside
+   a shrunk 320px mobile box would never reach its own transparent edge,
+   reading as a solid tinted square instead of a soft glow. */
+.landing-glow-blob {
+  contain: paint;
+  background: radial-gradient(circle 160px at center, rgba(255, 107, 53, 0.13), transparent 45%);
+}
+@media (min-width: 1024px) {
+  .landing-glow-blob {
+    background: radial-gradient(circle 280px at center, rgba(255, 107, 53, 0.13), transparent 45%);
+  }
+}
+
 /* Ambient orange blobs that sit BEHIND glass surfaces so the blur actually
    has color to pick up (glass is invisible over pure white). Pre-softened
    radial gradients, no filter:blur() -- a blurred gradient is free, blur()
