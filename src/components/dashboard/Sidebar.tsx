@@ -9,6 +9,7 @@ import { getSupabase } from "@/lib/supabase";
 import { useI18n, LANGUAGES } from "@/lib/i18n";
 import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
 import { fetchNotificationsShared } from "@/lib/notifications-cache";
+import { bdiVela } from "@/lib/bdi";
 
 // MVP scope-down: hides the flagged item from the nav entirely (not
 // greyed out) whenever its flag is false. Demo (/demo) is a separate,
@@ -554,7 +555,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               </span>
               {!collapsed && (
                 <>
-                  <span className="flex-1">{t(item.labelKey)}</span>
+                  <span className="flex-1">{bdiVela(t(item.labelKey))}</span>
                   {badge && (
                     isCount ? (
                       <span className="min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#FF3366] text-white">
@@ -570,7 +571,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
               )}
               {collapsed && (
                 <>
-                  <span className="flex-1 md:hidden">{t(item.labelKey)}</span>
+                  <span className="flex-1 md:hidden">{bdiVela(t(item.labelKey))}</span>
                   {badge && (
                     <>
                       {isCount ? (

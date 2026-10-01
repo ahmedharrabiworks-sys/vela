@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n";
+import VelaMark from "@/components/landing/VelaMark";
 
 /* ═══════════════════════════════════════════════════════════════
    Hero v2 round: the shared phone device + 3 screens, ported 1:1 from
@@ -153,17 +154,6 @@ function CustomerAvatar({ size = 22 }: { size?: number }) {
       <svg width={size * 0.82} height={size * 0.82} viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="9" r="4.4" fill="#FFFFFF" />
         <path d="M3.2 24c0-5.2 3.9-8.4 8.8-8.4s8.8 3.2 8.8 8.4z" fill="#FFFFFF" />
-      </svg>
-    </div>
-  );
-}
-
-function VelaAvatar({ size = 22, radius = "50%" }: { size?: number; radius?: string }) {
-  return (
-    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: radius, background: "linear-gradient(140deg, #C2410C, #FF6B35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg width={size * 0.56} height={size * 0.56} viewBox="0 0 36 36" fill="none" aria-hidden="true">
-        <path d="M5 7L18 28L31 7" stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <circle cx="18" cy="30" r="2.5" fill="#FFFFFF" />
       </svg>
     </div>
   );
@@ -371,7 +361,7 @@ function ScreenWithVela({ elapsedMs }: { elapsedMs: number }) {
       <StatusBar time="11:48" dark={false} />
       <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "6px 14px 12px", borderBottom: "1px solid #EDE6E1" }}>
         <span style={{ color: "#8A807A", display: "flex" }}><BackChevron /></span>
-        <VelaAvatar size={34} />
+        <VelaMark size={34} />
         <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#17120E" }}>{t("landing.hero.story2.yourBusiness")}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: "#1F8A4C" }}>
@@ -394,7 +384,7 @@ function ScreenWithVela({ elapsedMs }: { elapsedMs: number }) {
             })}
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, ...reveal(elapsedMs, S1.replyAt) }}>
-            <VelaAvatar size={22} />
+            <VelaMark size={22} />
             <div style={{ maxWidth: 202, padding: "9px 12px", borderRadius: "18px 18px 18px 6px", background: "linear-gradient(135deg, #D9481F, #FF6B35)", color: "#FFFFFF", fontSize: 13, lineHeight: 1.38 }}>{t("landing.hero.story2.msgTwoSlots")}</div>
           </div>
         </div>
@@ -453,7 +443,7 @@ function ScreenMorning({ elapsedMs }: { elapsedMs: number }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "22px 12px 0" }}>
         {notifs.map((n, i) => (
           <div key={i} style={{ display: "flex", gap: 10, padding: "11px 12px", borderRadius: 18, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.14)", ...revealDrop(elapsedMs, n.at) }}>
-            <VelaAvatar size={30} radius="8px" />
+            <VelaMark size={30} radius="8px" />
             <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{t("landing.hero.story2.notif1Sender")}</span>

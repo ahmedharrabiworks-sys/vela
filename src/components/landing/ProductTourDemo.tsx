@@ -6,7 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import CtaButton from "@/components/landing/CtaButton";
 import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
+import VelaMark from "@/components/landing/VelaMark";
 import { useAutoplayStep } from "@/lib/useAutoplayStep";
+import { bdiVela } from "@/lib/bdi";
 
 /* ─── Scene indices ─────────────────────────────────────────── */
 /* Analytics dropped (MVP scope-down, Phase 2) -- see src/config/features.ts
@@ -15,8 +17,14 @@ import { useAutoplayStep } from "@/lib/useAutoplayStep";
 const CONV = 0, APPT = 1, CHAN = 2, AGENT = 3;
 const SCENE_COUNT = 4;
 
-/* ─── Auto-advance: duration set per scene so each choreography has room to finish ─── */
-const SCENE_DURATIONS: number[] = [11800, 9400, 8900, 9200];
+/* ─── Auto-advance: duration set per scene so each choreography has room to finish ───
+   hero-v5 round (FIX 5): re-paced so every tab's own content finishes within
+   about 8s and holds ~2s before auto-advancing (about 10s per tab, ~40s for
+   the 4 tabs). Conversation's own reveal schedule (CONV_TYPING_AT/REVEAL_AT,
+   below) was rewritten to match; Appointments/Channels/Agent's cinematic
+   step sequences already finished within ~7.5-8s, so only their hold got
+   extended to land on the same ~10s total. */
+const SCENE_DURATIONS: number[] = [10000, 10000, 10000, 10000];
 /* index matches CONV, APPT, CHAN, AGENT */
 
 /* ─── Appointments data ─────────────────────────────────────── */
@@ -175,14 +183,17 @@ const CONV_MSGS = [
   { role:"ai"   as const, text:"Yes, 2 PM Tuesday works!" },
   { role:"ai"   as const, text:"You're all set! See you Tuesday." },
 ];
-/* Typing indicator start and bubble reveal time per message, ms from scene mount. */
-const CONV_TYPING_AT = [300, 1200, 2250, 3150, 4200, 5100, 6150, 7050, 8150, 9200];
-const CONV_REVEAL_AT = [950, 2000, 2900, 3950, 4850, 5900, 6800, 7850, 8950, 10000];
+/* Typing indicator start and bubble reveal time per message, ms from scene
+   mount -- hero-v5 round (FIX 5): re-paced to ~780ms per item (was
+   ~900-1100ms, finishing at 10000ms total -- "about 20 seconds" by feel).
+   10 items land between 800ms and 7820ms, comfortably within the ~8s
+   target, leaving a clean ~2.2s hold before SCENE_DURATIONS[CONV] (10000)
+   advances. */
+const CONV_TYPING_AT = [350, 1130, 1910, 2690, 3470, 4250, 5030, 5810, 6590, 7370];
+const CONV_REVEAL_AT = [800, 1580, 2360, 3140, 3920, 4700, 5480, 6260, 7040, 7820];
 
 function AiAvatar() {
-  return (
-    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5" style={{ background:"var(--vela-gradient)" }}>V</div>
-  );
+  return <div className="shrink-0 mt-0.5"><VelaMark size={28} /></div>;
 }
 
 /* Three-dot typing/sending indicator, shaped like the sender's own bubble. */
@@ -1344,7 +1355,7 @@ export default function ProductTourDemo() {
             className="vela-heading text-[22px] sm:text-[28px] md:text-[34px] text-[#111111] leading-tight"
             style={{ textWrap:"balance" } as React.CSSProperties}
           >
-            {t("landing.tour.headline1")}{" "}
+            {bdiVela(t("landing.tour.headline1"))}{" "}
             <span className="vela-gradient-text">{t("landing.tour.headlineAccent")}</span>
           </h2>
           <p className="text-[#6B7280] text-base md:text-lg mt-4 max-w-lg mx-auto leading-relaxed">

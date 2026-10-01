@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import { bdiVela } from "@/lib/bdi";
 
 export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
@@ -51,7 +52,7 @@ export default function FAQ() {
                   aria-controls={`faq-panel-${i}`}
                   id={`faq-trigger-${i}`}
                 >
-                  <span className="font-bold text-[#111111] text-sm md:text-base">{faq.q}</span>
+                  <span className="font-bold text-[#111111] text-sm md:text-base">{bdiVela(faq.q)}</span>
                   <span
                     className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                       isOpen ? "text-white" : "bg-[#F3F4F6] text-[#6B7280]"
@@ -84,7 +85,7 @@ export default function FAQ() {
                       className="relative z-[1] overflow-hidden"
                     >
                       <p className="px-4 pb-4 md:px-6 md:pb-6 text-sm md:text-base text-[#6B7280] leading-relaxed text-start">
-                        {faq.a}
+                        {bdiVela(faq.a)}
                       </p>
                     </motion.div>
                   )}

@@ -7,14 +7,12 @@ import StoryDevice, { STORY_DURATIONS_MS } from "@/components/landing/StoryDevic
 import AutoplayProgressBar from "@/components/landing/AutoplayProgressBar";
 import Crossfade from "@/components/landing/Crossfade";
 import { useAutoplayStep } from "@/lib/useAutoplayStep";
+import { bdiVela } from "@/lib/bdi";
 
 const STEP_COUNT = 3;
 
-function NextArrow() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
-}
-function BackArrow() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>;
+function NextArrow({ flip }: { flip?: boolean }) {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={flip ? { transform: "scaleX(-1)" } : undefined}><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
 }
 
 /* Phone.dc.html spec: centered eyebrow/headline/CTA above this (handled
@@ -59,9 +57,11 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
   const deviceH = Math.round(620 * SCALE);
 
   return (
-    // hero-v3 round (FIX 4): +48px on top of the previous round's 80px
-    // (was cramped right under the hero) -- 80 -> 128.
-    <div ref={stageRef} style={{ marginTop: 128, display: "flex", flexDirection: "column", alignItems: "center" }}>
+    // hero-v5 round (FIX 4): the secondary "How it works" button above
+    // this block was removed (Hero.tsx), so the primary CTA is now the
+    // last thing before this -- 128 -> 56, landing this title ~56px
+    // below the CTA as asked, not the old two-button stack's spacing.
+    <div ref={stageRef} style={{ marginTop: 56, display: "flex", flexDirection: "column", alignItems: "center" }}>
       <span style={{ fontFamily: "var(--font-display), 'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", textAlign: "center" }}>
         {t("landing.hero.story2.phoneStoryTitle")}
       </span>
@@ -82,7 +82,7 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
               onClick={() => goTo(i)}
               style={{ position: "relative", overflow: "hidden", height: 40, borderRadius: 999, fontSize: 13, fontWeight: 600, background: active ? "#FFFFFF" : "transparent", color: active ? "#17120E" : "#7A6F68", boxShadow: active ? "0 2px 10px rgba(90,40,15,0.14)" : "none" }}
             >
-              {label}
+              {bdiVela(label)}
               {active && <AutoplayProgressBar progress={advanceProgress} />}
             </button>
           );
@@ -139,7 +139,12 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
         </div>
       </div>
 
-      <div style={{ width: 342, marginTop: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      {/* hero-v5 round (FIX 4): Back/Next removed on phone -- navigation
+          is swipe (onTouchStart/End above, mirrors direction under RTL)
+          + the tabs + these dots, all calling the same goTo(), which
+          still pauses autoplay 12s then resumes. Dots alone, centered,
+          now that there's no trailing control group to balance against. */}
+      <div style={{ width: 342, marginTop: 20, display: "flex", justifyContent: "center" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {[0, 1, 2].map((i) => (
             <button
@@ -154,39 +159,21 @@ export default function HeroPhoneStory({ ctaHref, ctaLabel }: { ctaHref: string;
             </button>
           ))}
         </div>
-        {/* hero-v3 round: Back added next to Next/Start for Free. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            type="button"
-            className="v-btn"
-            aria-label={t("landing.hero.story2.backAria")}
-            onClick={() => goTo(step - 1)}
-            style={{ width: 44, height: 44, borderRadius: "50%", background: "#F6EFEA", color: "#17120E", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-          >
-            <BackArrow />
-          </button>
-          {!isLast ? (
-            <button
-              type="button"
-              className="v-btn"
-              onClick={() => goTo(step + 1)}
-              style={{ height: 50, padding: "0 24px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600, boxShadow: "0 12px 24px -10px rgba(232,85,43,0.7)" }}
-            >
-              {t("landing.hero.story2.next")}
-              <NextArrow />
-            </button>
-          ) : (
-            <a
-              href={ctaHref}
-              className="v-link"
-              style={{ height: 50, padding: "0 24px", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600, textDecoration: "none", boxShadow: "0 12px 24px -10px rgba(232,85,43,0.7)" }}
-            >
-              {ctaLabel}
-              <NextArrow />
-            </a>
-          )}
-        </div>
       </div>
+
+      {/* With no Next button to swap into a CTA, the "Start for Free" pill
+          appears under the dots once step 3 is showing (auto-advance or
+          swipe/tap) and stays visible for as long as step 3 is shown. */}
+      {isLast && (
+        <a
+          href={ctaHref}
+          className="v-link"
+          style={{ width: 342, marginTop: 16, height: 50, padding: "0 24px", boxSizing: "border-box", borderRadius: 999, background: "linear-gradient(135deg, #C2410C, #FF6B35)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 16, fontWeight: 600, textDecoration: "none", boxShadow: "0 12px 24px -10px rgba(232,85,43,0.7)" }}
+        >
+          {ctaLabel}
+          <NextArrow flip={isRTL} />
+        </a>
+      )}
     </div>
   );
 }

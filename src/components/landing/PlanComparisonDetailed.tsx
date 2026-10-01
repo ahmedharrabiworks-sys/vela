@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { bdiVela } from "@/lib/bdi";
 
 const COL_KEYS = ["starter", "pro", "premium"] as const;
 const PRO_COL = 1;
@@ -135,7 +136,7 @@ export default function PlanComparisonDetailed({
                   <tr key={row.key} className="border-b border-[#F3F4F6] last:border-0">
                     <td className="py-4 px-5 align-top">
                       <p className="font-semibold text-[#111111]">{t(`landing.planCompare.rows.${row.key}.label`)}</p>
-                      <p className="text-xs text-[#9CA3AF] mt-0.5 leading-snug">{t(`landing.planCompare.rows.${row.key}.sublabel`)}</p>
+                      <p className="text-xs text-[#9CA3AF] mt-0.5 leading-snug">{bdiVela(t(`landing.planCompare.rows.${row.key}.sublabel`))}</p>
                     </td>
                     {COL_KEYS.map((colKey, ci) => {
                       const cell: Cell = row.cells[colKey];

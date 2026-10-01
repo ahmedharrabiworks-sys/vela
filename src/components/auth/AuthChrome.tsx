@@ -5,6 +5,7 @@ import Logo from "@/components/ui/Logo";
 import MadeInQatar from "@/components/ui/MadeInQatar";
 import LanguageToggle from "@/components/landing/LanguageToggle";
 import { useI18n } from "@/lib/i18n";
+import { bdiVela } from "@/lib/bdi";
 
 export const authInputCls =
   "input-glass w-full ps-10 pe-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] transition-all";
@@ -207,10 +208,10 @@ export function AuthSplitCard({
           <div className={`relative ${slim ? "hidden md:block" : ""}`}>
             <BrandWordmark className={slim ? "text-[40px] mb-5" : "text-[28px] md:text-[40px] mb-5"} />
             <h2 className="vela-heading text-lg md:text-[28px] text-white leading-tight mb-1.5 md:mb-3">
-              {headline}
+              {bdiVela(headline)}
             </h2>
             <p className="hidden md:block text-white/80 text-sm leading-relaxed max-w-[280px]">
-              {body}
+              {bdiVela(body)}
             </p>
           </div>
         </div>

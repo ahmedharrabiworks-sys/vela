@@ -406,21 +406,6 @@ export default function Hero() {
             {ctaLabel}
             <ArrowIcon />
           </motion.a>
-          {/* hero-v3 round (FIX 4): secondary "How it works" pill, same
-              width as the primary CTA (both width:100% of the shared
-              342px column) so the two read as a deliberate pair, not a
-              button plus an afterthought link. Glass-style white/orange
-              (not the primary's filled gradient) so it reads as
-              secondary at a glance; smooth-scrolls via the plain anchor
-              + the sitewide html{scroll-behavior:smooth}. */}
-          <motion.a
-            variants={item}
-            href="#how-it-works"
-            style={{ marginTop: 12, width: "100%", boxSizing: "border-box", height: 56, padding: "0 30px", borderRadius: 999, background: "rgba(255,255,255,0.7)", border: "1.5px solid #E8552B", color: "#C2410C", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 17, fontWeight: 600, textDecoration: "none" }}
-          >
-            <PlayIcon />
-            {t("landing.hero.story2.howItWorks")}
-          </motion.a>
         </motion.div>
 
         <HeroPhoneStory ctaHref={ctaHref} ctaLabel={storyCtaLabel} />

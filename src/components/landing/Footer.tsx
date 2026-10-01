@@ -4,6 +4,7 @@ import Link from "next/link";
 import Logo from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n";
 import MadeInQatar from "@/components/ui/MadeInQatar";
+import { bdiVela } from "@/lib/bdi";
 
 const SECTIONS = [
   {
@@ -116,13 +117,13 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-[#E5E7EB] pt-8 flex flex-col items-center gap-3 md:flex-row md:justify-between md:gap-4">
           <p className="flex items-center flex-wrap justify-center md:justify-start gap-1.5 text-sm text-[#9CA3AF]">
-            <span>{t("landing.footer.copyright")}</span>
+            <span>{bdiVela(t("landing.footer.copyright"))}</span>
             <span>·</span>
             <MadeInQatar />
           </p>
           <p className="text-sm text-[#9CA3AF] text-center md:text-start">
             {t("landing.footer.slogan1")}{" "}
-            <span className="vela-gradient-text font-medium">{t("landing.footer.slogan2")}</span>
+            <span className="vela-gradient-text font-medium">{bdiVela(t("landing.footer.slogan2"))}</span>
           </p>
         </div>
       </div>
