@@ -19,7 +19,7 @@ export default function ProblemSection() {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <section id="problem" className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
+    <section id="problem" className="relative py-12 md:py-16 bg-white scroll-mt-[88px] lg:scroll-mt-[110px]">
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: badge + headline + description + stats */}

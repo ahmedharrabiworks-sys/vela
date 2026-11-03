@@ -617,25 +617,22 @@
       "whatsapp": "Discuter sur WhatsApp"
     },
     "footer": {
-      "tagline": "Une plateforme. Tous les outils dont votre entreprise a besoin.",
+      "tagline": "Votre réceptionniste IA pour Instagram, WhatsApp et les appels téléphoniques.",
       "sections": {
         "product": "Produit",
-        "company": "Entreprise",
-        "legal": "Mentions légales"
+        "legal": "Mentions légales",
+        "contact": "Contact"
       },
       "links": {
         "features": "Fonctionnalités",
         "pricing": "Tarifs",
         "howItWorks": "Comment ça marche",
         "faq": "FAQ",
-        "about": "À propos",
-        "blog": "Blog",
-        "careers": "Carrières",
-        "contact": "Contact",
         "privacy": "Politique de confidentialité",
         "terms": "Conditions d'utilisation",
         "cookies": "Politique de cookies"
       },
+      "location": "Doha, Qatar",
       "copyright": "© 2026 Vela. Tous droits réservés.",
       "slogan1": "Conçu pour les entreprises qui ne dorment jamais.",
       "slogan2": "Vela non plus.",

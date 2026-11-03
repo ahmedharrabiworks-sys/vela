@@ -1345,7 +1345,7 @@ export default function ProductTourDemo() {
     // Polish pass #4: fully translated + RTL-correct, dir="ltr" pin from the
     // previous session removed. Every string in this section (and its 4
     // scene mocks) now routes through the i18n system.
-    <section id="how-it-works" ref={sectionRef} className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
+    <section id="how-it-works" ref={sectionRef} className="relative py-12 md:py-16 bg-white scroll-mt-[88px] lg:scroll-mt-[110px]">
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
 
         {/* Section header, FIX 5+6 applied */}

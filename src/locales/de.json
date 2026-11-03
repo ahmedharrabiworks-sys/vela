@@ -617,25 +617,22 @@
       "whatsapp": "Auf WhatsApp chatten"
     },
     "footer": {
-      "tagline": "Eine Plattform. Alle Tools, die Ihr Unternehmen braucht.",
+      "tagline": "Ihre KI-Rezeptionistin für Instagram, WhatsApp und Telefonanrufe.",
       "sections": {
         "product": "Produkt",
-        "company": "Unternehmen",
-        "legal": "Rechtliches"
+        "legal": "Rechtliches",
+        "contact": "Kontakt"
       },
       "links": {
         "features": "Funktionen",
         "pricing": "Preise",
         "howItWorks": "So funktioniert's",
         "faq": "FAQ",
-        "about": "Über uns",
-        "blog": "Blog",
-        "careers": "Karriere",
-        "contact": "Kontakt",
         "privacy": "Datenschutzrichtlinie",
         "terms": "Nutzungsbedingungen",
         "cookies": "Cookie-Richtlinie"
       },
+      "location": "Doha, Katar",
       "copyright": "© 2026 Vela. Alle Rechte vorbehalten.",
       "slogan1": "Gebaut für Unternehmen, die niemals schlafen.",
       "slogan2": "Vela auch nicht.",

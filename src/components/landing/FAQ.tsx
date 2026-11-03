@@ -110,7 +110,7 @@ export default function FAQ() {
   }, []);
 
   return (
-    <section id="faq" className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
+    <section id="faq" className="relative py-12 md:py-16 bg-white scroll-mt-[88px] lg:scroll-mt-[110px]">
       <div className="relative max-w-[900px] mx-auto px-5 md:px-6">
         {/* Header -- same pill badge + headline pattern as every other
             section (Problem/Comparison), not the old plain section-label. */}

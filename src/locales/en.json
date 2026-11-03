@@ -1072,25 +1072,22 @@
       }
     },
     "footer": {
-      "tagline": "One platform. Every tool your business needs.",
+      "tagline": "Your AI receptionist for Instagram, WhatsApp and phone calls.",
       "sections": {
         "product": "Product",
-        "company": "Company",
-        "legal": "Legal"
+        "legal": "Legal",
+        "contact": "Contact"
       },
       "links": {
         "features": "Features",
         "pricing": "Pricing",
         "howItWorks": "How It Works",
         "faq": "FAQ",
-        "about": "About",
-        "blog": "Blog",
-        "careers": "Careers",
-        "contact": "Contact",
         "privacy": "Privacy Policy",
         "terms": "Terms of Service",
         "cookies": "Cookie Policy"
       },
+      "location": "Doha, Qatar",
       "copyright": "© 2026 Vela. All rights reserved.",
       "slogan1": "Built for businesses that don't sleep.",
       "slogan2": "Neither does Vela.",

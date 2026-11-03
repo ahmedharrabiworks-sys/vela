@@ -135,7 +135,7 @@ function PhoneMockupDashboard() {
 export default function DashboardSection() {
   const { t } = useI18n();
   return (
-    <section id="features" className="py-12 md:py-16 bg-white">
+    <section id="features" className="py-12 md:py-16 bg-white scroll-mt-[88px] lg:scroll-mt-[110px]">
       <div className="max-w-6xl mx-auto px-5 md:px-6">
         <div className="relative">
           <div

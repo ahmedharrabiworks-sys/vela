@@ -43,7 +43,7 @@ export default function Pricing() {
   const { t } = useI18n();
 
   return (
-    <section id="pricing" className="relative py-12 md:py-16 bg-white scroll-mt-0 lg:scroll-mt-[110px]">
+    <section id="pricing" className="relative py-12 md:py-16 bg-white scroll-mt-[88px] lg:scroll-mt-[110px]">
       <div className="relative max-w-7xl mx-auto px-5 md:px-6" style={{ zIndex: 1 }}>
         {/* Header */}
         <div className="relative text-center mb-8">
