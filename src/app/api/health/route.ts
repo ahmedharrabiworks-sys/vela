@@ -91,8 +91,12 @@ export async function GET() {
   // TEMPORARY DIAGNOSTIC, added while root-causing the Vapi "ejected / Meeting
   // has ended" failure on Training and the generic call failure on Overview, to
   // rule in or out a Vapi account/credit/auth problem as a shared cause. Never
-  // returns the full key, only presence, length, and reachability against
-  // Vapi's own /org endpoint. Remove once the call failures are confirmed fixed.
+  // returns the full key, only presence, length, and reachability. The
+  // reachability probe is a read-only GET /assistant?limit=1, the same
+  // endpoint the app really calls. It used to hit /org, which Vapi rejects
+  // with 401 for this private key even though /assistant, /phone-number and
+  // /call all accept it, so the old probe reported a false "invalid_api_key".
+  // Remove once the call failures are confirmed fixed.
   const vapiKey = process.env.VAPI_API_KEY;
   const vapiKeyPresent = !!vapiKey;
   const vapiKeyLength = vapiKey?.length ?? 0;
@@ -103,7 +107,7 @@ export async function GET() {
 
   if (vapiKeyPresent) {
     try {
-      const res = await fetch("https://api.vapi.ai/org", {
+      const res = await fetch("https://api.vapi.ai/assistant?limit=1", {
         headers: { Authorization: `Bearer ${vapiKey}` },
         signal: AbortSignal.timeout(4000),
       });
