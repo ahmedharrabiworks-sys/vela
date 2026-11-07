@@ -12,6 +12,7 @@ import {
 } from "@/lib/vapi-agent-config";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { buildBookAppointmentTool, getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
+import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,15 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createSupabaseAdmin() as any;
+
+  // Plan gate (server-side): the phone agent needs a plan with voiceAgent.
+  // Nothing is unlinked here; a paused number simply can't be (re)connected
+  // until the plan includes voice again.
+  const { data: planRow } = await admin.from("tenants").select("plan").eq("id", tenant.id).maybeSingle();
+  const planId = ((planRow?.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
+  if (!(PLAN_CONFIG[planId] ?? PLAN_CONFIG.starter).voiceAgent) {
+    return NextResponse.json({ error: "The phone agent is paused on your current plan. Upgrade to Pro to turn it back on.", step: "plan" }, { status: 403 });
+  }
 
   // Load tenant KB + settings
   const { data: cfg } = await admin

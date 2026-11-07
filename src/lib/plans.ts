@@ -17,6 +17,35 @@ function readPlanFromStorage(): PlanId {
   }
 }
 
+const PLAN_CHANGED_EVENT = "vela:plan-changed";
+
+/**
+ * Call after the server confirmed a plan switch (POST /api/plan). Updates
+ * the local profile cache and tells every mounted usePlan()/Sidebar to
+ * re-render with the new plan right away: gates, badges and limits update
+ * live, no reload or re-login. The server is still the only authority;
+ * this only refreshes what the UI shows.
+ */
+export function announcePlanChange(plan: PlanId) {
+  if (typeof window === "undefined") return;
+  try {
+    const profile = JSON.parse(localStorage.getItem("vela_profile") || "{}");
+    localStorage.setItem("vela_profile", JSON.stringify({ ...profile, plan }));
+  } catch { /* ignore */ }
+  window.dispatchEvent(new CustomEvent<PlanId>(PLAN_CHANGED_EVENT, { detail: plan }));
+}
+
+/** Subscribe to plan changes; returns an unsubscribe function. */
+export function onPlanChange(cb: (plan: PlanId) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: Event) => {
+    const p = (e as CustomEvent<string>).detail;
+    if (typeof p === "string" && p in PLAN_CONFIG) cb(p as PlanId);
+  };
+  window.addEventListener(PLAN_CHANGED_EVENT, handler);
+  return () => window.removeEventListener(PLAN_CHANGED_EVENT, handler);
+}
+
 export function usePlan() {
   const [plan, setPlan] = useState<PlanId>(readPlanFromStorage);
   // Round M3 FIX 4: consumers that gate a data fetch on isPro (e.g.
@@ -57,6 +86,8 @@ export function usePlan() {
       }
     })();
   }, []);
+
+  useEffect(() => onPlanChange((p) => { setPlan(p); setPlanLoaded(true); }), []);
 
   return {
     plan,

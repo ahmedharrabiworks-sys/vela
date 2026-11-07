@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
+import { usePlan } from "@/lib/plans";
+import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 
 interface PhoneState {
   phoneNumber:   string | null;
@@ -29,7 +31,13 @@ export default function PhonePage() {
   // Connected = an assistant exists AND the number is attached to it. A
   // number linked without an assistant (e.g. an imported bridge number not
   // synced yet) is shown honestly as "not connected", never as active.
-  const connected = !!(state.phoneNumber && state.assistantId);
+  const { config: planConfig, planLoaded } = usePlan();
+  // Starter: voice is PAUSED, not removed. The number stays linked; it
+  // answers again as soon as the plan includes the voice agent (live, via
+  // the plan-changed event; the server enforces the same rule).
+  const paused = planLoaded && !planConfig.voiceAgent;
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const connected = !!(state.phoneNumber && state.assistantId) && !paused;
 
   const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
   const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
@@ -100,6 +108,19 @@ export default function PhonePage() {
           <p className="text-sm" style={{ color: textMuted }}>{t("aiAgent.phone.subtitle")}</p>
         </div>
 
+        {paused && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-amber-900">{t("aiAgent.phone.pausedTitle")}</p>
+              <p className="text-xs text-amber-800 mt-0.5">{t("aiAgent.phone.pausedDesc")}</p>
+            </div>
+            <button onClick={() => setPlanModalOpen(true)} className="btn-primary px-4 py-2 text-sm shrink-0 w-full sm:w-auto">
+              {t("sidebar.changePlan")}
+            </button>
+          </div>
+        )}
+        <PlanSwitchModal open={planModalOpen} onClose={() => setPlanModalOpen(false)} />
+
         {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
@@ -125,7 +146,7 @@ export default function PhonePage() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="text-xs font-semibold text-amber-600">{t("aiAgent.phone.notConnected")}</span>
+                      <span className="text-xs font-semibold text-amber-600">{paused ? t("aiAgent.phone.paused") : t("aiAgent.phone.notConnected")}</span>
                     </div>
                   )}
                   <span
@@ -188,7 +209,7 @@ export default function PhonePage() {
 
                 <button
                   onClick={provision}
-                  disabled={provisioning}
+                  disabled={provisioning || paused}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 mb-5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   style={connected
                     ? { background: inputBg, border: `1px solid ${border}`, color: textSub }
@@ -263,7 +284,7 @@ export default function PhonePage() {
 
                   <button
                     onClick={provision}
-                    disabled={provisioning}
+                    disabled={provisioning || paused}
                     className="inline-flex items-center gap-2.5 px-7 py-3 rounded-xl font-bold text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                     style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 6px 24px rgba(255,107,53,0.35)" }}
                   >

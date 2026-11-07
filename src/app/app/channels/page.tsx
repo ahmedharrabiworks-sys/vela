@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
+import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
@@ -456,34 +457,6 @@ function ChannelSettingsModal({
   );
 }
 
-/* ── Upgrade modal ── */
-function UpgradeModal({ onClose }: { onClose: () => void }) {
-  return (
-    <Modal onClose={onClose}>
-      <div className="p-6 text-center">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-          style={{ background: "var(--vela-gradient-tint)" }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#FF6B35" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-        <h3 className="text-lg font-bold text-[#111111] mb-2">Upgrade to connect more channels</h3>
-        <p className="text-sm text-[#6B7280] mb-6">Connect all 3 channels (WhatsApp, Instagram, and Website) on the Pro plan.</p>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
-          <Link
-            href="/pricing"
-            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90"
-            style={{ background: "var(--vela-gradient)" }}
-            onClick={() => { track("upgrade_clicked", { source: "channels" }); onClose(); }}
-          >
-            Upgrade to Pro →
-          </Link>
-        </div>
-      </div>
-    </Modal>
-  );
-}
 
 // FIX 5 (round N) / relocated FIX 2 (round O): the disconnect confirmation
 // modal (single-site vs multi-site plan wording) now lives in Website
@@ -910,7 +883,9 @@ function ChannelsPageContent() {
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {modal === "instagram" && <InstagramModal onClose={() => setModal(null)} />}
       {modal === "whatsapp"  && <WhatsAppModal  onClose={() => setModal(null)} onConnect={connectWhatsApp} />}
-      {modal === "upgrade"   && <UpgradeModal   onClose={() => setModal(null)} />}
+      {/* In-app plan picker (the old UpgradeModal linked to /pricing, which
+          bounces a signed-in user back to /app, so nothing happened). */}
+      <PlanSwitchModal open={modal === "upgrade"} onClose={() => setModal(null)} />
       {modal === "instagram-settings" && (
         <ChannelSettingsModal
           channel="instagram"
@@ -1006,11 +981,11 @@ function ChannelsPageContent() {
               <p className="text-[11px] text-[#6B7280]">Upgrade to Pro to connect all 3 channels</p>
             </div>
           </div>
-          <Link href="/auth/signup" onClick={() => track("upgrade_clicked", { source: "channels_banner" })}
+          <button onClick={() => { setModal("upgrade"); track("upgrade_clicked", { source: "channels_banner" }); }}
             className="text-xs font-bold px-3.5 py-2 rounded-lg text-white whitespace-nowrap hover:opacity-90"
             style={{ background: "var(--vela-gradient)" }}>
             Upgrade
-          </Link>
+          </button>
         </div>
       )}
 

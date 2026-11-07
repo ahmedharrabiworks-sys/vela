@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { getProfile, saveProfile } from "@/lib/business-profile";
 import { usePlan } from "@/lib/plans";
+import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 import { PLAN_CONFIG } from "@/lib/plan-config";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
@@ -62,7 +63,7 @@ function ModalShell({ onClose, children }: { onClose: () => void; children: Reac
 }
 
 /* ── Usage-cap upgrade modal ── */
-function UsageCapModal({ used, limit, onClose }: { used: number; limit: number; onClose: () => void }) {
+function UsageCapModal({ used, limit, onClose, onUpgrade }: { used: number; limit: number; onClose: () => void; onUpgrade: () => void }) {
   return (
     <ModalShell onClose={onClose}>
       <div className="p-6 text-center">
@@ -82,14 +83,13 @@ function UsageCapModal({ used, limit, onClose }: { used: number; limit: number; 
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">
             Dismiss
           </button>
-          <Link
-            href="/pricing"
+          <button
             className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white text-center hover:opacity-90"
             style={{ background: "var(--vela-gradient)" }}
-            onClick={onClose}
+            onClick={() => { onClose(); onUpgrade(); }}
           >
             Upgrade to Pro →
-          </Link>
+          </button>
         </div>
       </div>
     </ModalShell>
@@ -181,7 +181,8 @@ export default function SettingsPage() {
   const [savingSection, setSavingSection] = useState<Section | null>(null);
   const [savedSection, setSavedSection]   = useState<Section | null>(null);
 
-  const { isPro } = usePlan();
+  const { isPro, plan: currentPlan } = usePlan();
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   const { t }     = useI18n();
 
   useEffect(() => {
@@ -295,6 +296,17 @@ export default function SettingsPage() {
       .finally(() => setUsageLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
+
+  // Plan switched from the picker: re-read the real limits for the new
+  // plan (usage meters), no reload needed.
+  useEffect(() => {
+    if (section !== "billing" || usage === null) return;
+    fetch("/api/stats/usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: UsageData | null) => { if (data) setUsage(data); })
+      .catch(() => null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPlan]);
 
   function markSaved(s: Section) {
     setSavingSection(null);
@@ -707,22 +719,23 @@ export default function SettingsPage() {
               <div className="p-5 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-sm font-semibold text-[#111111] capitalize">{getProfile()?.plan ?? "Starter"} Plan</p>
+                    <p className="text-sm font-semibold text-[#111111]">{t(`sidebar.plans.${currentPlan}`)}</p>
                     <p className="text-xs text-[#6B7280] mt-0.5">{t("settings.billing.renews")}</p>
                   </div>
                   <span className="text-2xl font-extrabold text-[#FF6B35]">
-                    {((PLAN_CONFIG as Record<string, { price: number }>)[getProfile()?.plan ?? "starter"]?.price ?? 500).toLocaleString()} QAR
+                    {((PLAN_CONFIG as Record<string, { price: number }>)[currentPlan]?.price ?? 500).toLocaleString("en-US")} QAR
                     <span className="text-sm font-medium text-[#6B7280]">/mo</span>
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <Link
-                    href="/pricing"
+                  <button
+                    onClick={() => setPlanModalOpen(true)}
                     className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
                     style={{ background: "var(--vela-gradient)" }}
                   >
-                    {t("settings.billing.upgradePlan")}
-                  </Link>
+                    {t("settings.billing.changePlan")}
+                  </button>
+                  <PlanSwitchModal open={planModalOpen} onClose={() => setPlanModalOpen(false)} />
                 </div>
               </div>
 
@@ -770,7 +783,7 @@ export default function SettingsPage() {
                               ? `You've used ${usage.messages.used.toLocaleString()} of ${usage.messages.limit!.toLocaleString()} messages this month, `
                               : `You've used ${usage.voiceMinutes.used} of ${usage.voiceMinutes.limit} voice minutes, `
                             }
-                            <Link href="/pricing" className="font-semibold underline">upgrade to Pro</Link>
+                            <button onClick={() => setPlanModalOpen(true)} className="font-semibold underline">upgrade to Pro</button>
                             {" "}for unlimited messages.
                           </p>
                         </div>
@@ -908,6 +921,7 @@ export default function SettingsPage() {
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       {showCapModal && usage?.messages.limit !== null && (
         <UsageCapModal
+          onUpgrade={() => setPlanModalOpen(true)}
           used={usage!.messages.used}
           limit={usage!.messages.limit!}
           onClose={() => setShowCapModal(false)}

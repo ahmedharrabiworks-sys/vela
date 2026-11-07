@@ -10,6 +10,8 @@ import { useI18n, LANGUAGES } from "@/lib/i18n";
 import { MARKETING_ENABLED, LEADS_CRM_ENABLED, ANALYTICS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
 import { fetchNotificationsShared } from "@/lib/notifications-cache";
 import { bdiVela } from "@/lib/bdi";
+import { onPlanChange } from "@/lib/plans";
+import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 
 // MVP scope-down: hides the flagged item from the nav entirely (not
 // greyed out) whenever its flag is false. Demo (/demo) is a separate,
@@ -182,6 +184,10 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
   const [displayPlan, setDisplayPlan] = useState("starter");
   const [initials, setInitials] = useState("V");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  // Live plan badge: a switch from the plan picker (here or in Settings)
+  // updates this immediately, no reload.
+  useEffect(() => onPlanChange((p) => setDisplayPlan(p)), []);
   const [showLangMenu, setShowLangMenu] = useState(false);
   // Round M8 FIX 4: this badge now reflects REAL unread conversations
   // (last_read_at null, or older than the conversation's last_message_at)
@@ -625,6 +631,7 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
           toolbar shrinks the ACTUAL visible viewport below h-screen's
           (100vh, largest-possible) height, pushing this footer out of
           reach -- h-dvh tracks the real visible height instead. */}
+      <PlanSwitchModal open={planModalOpen} onClose={() => setPlanModalOpen(false)} />
       <div ref={dropRef} className="relative border-t border-[#E5E7EB] pb-[env(safe-area-inset-bottom)]">
         {/* Mobile backdrop for the bottom sheet -- desktop popover has none. */}
         {dropdownOpen && (
@@ -665,18 +672,21 @@ export default function Sidebar({ isOpen, onClose, pathPrefix = "/app", demoProf
             </div>
 
             <div className="py-1">
-              {!isPremium && (
-                <Link
-                  href="/pricing"
-                  onClick={() => { setDropdownOpen(false); onClose(); }}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#FF6B35] hover:bg-[#FFF5F0] transition-colors"
+              {/* Opens the in-app plan picker (was a link to the public
+                  /pricing page, whose buttons go to /auth/signup, which
+                  middleware bounces a signed-in user straight back to /app,
+                  so selecting a plan did nothing). Hidden in /demo. */}
+              {!demoProfile && (
+                <button
+                  onClick={() => { setDropdownOpen(false); setPlanModalOpen(true); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-[#FF6B35] hover:bg-[#FFF5F0] transition-colors"
                   role="menuitem"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
-                  {t("sidebar.upgradePlan")}
-                </Link>
+                  {isPremium ? t("sidebar.changePlan") : t("sidebar.upgradePlan")}
+                </button>
               )}
 
               {/* Settings */}

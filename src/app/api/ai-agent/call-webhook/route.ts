@@ -23,6 +23,7 @@ import {
   wallClockNowText,
 } from "@/lib/vapi-webhook";
 import { bookAppointmentFromCall } from "@/lib/phone-booking";
+import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 
 export const dynamic = "force-dynamic";
 
@@ -135,9 +136,19 @@ export async function POST(req: NextRequest) {
 
     const { data: tenantData } = await admin
       .from("tenants")
-      .select("business_name")
+      .select("business_name, plan")
       .eq("id", tenantRow.tenant_id)
       .maybeSingle();
+
+    // Plan gate: on a plan without the voice agent (Starter) voice is PAUSED,
+    // not disconnected. The number stays linked in Vapi and tenant_config;
+    // Vapi speaks this `error` to the caller and does not start an
+    // assistant. Upgrading turns it back on with no reconnect needed.
+    const planId = ((tenantData?.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
+    if (!(PLAN_CONFIG[planId] ?? PLAN_CONFIG.starter).voiceAgent) {
+      console.log("[call-webhook] voice paused for plan", JSON.stringify({ tenantId: tenantRow.tenant_id, plan: planId }));
+      return NextResponse.json({ error: "Sorry, this line can't take calls right now. Please try again later." });
+    }
 
     const kb = mergeKnowledgeBases(parseJson(tenantRow.knowledge_base), parseJson(tenantRow.phone_agent_knowledge_base));
     const settings = parseJson(tenantRow.agent_settings);

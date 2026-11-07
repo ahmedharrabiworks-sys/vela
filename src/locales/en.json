@@ -41,6 +41,7 @@
     "language": "Language",
     "viewAllPlans": "View all plans",
     "upgradePlan": "Upgrade Plan",
+    "changePlan": "Change plan",
     "logout": "Log out",
     "plans": {
       "starter": "Starter Plan",
@@ -113,6 +114,7 @@
     "billing": {
       "title": "Billing & Subscription",
       "upgradePlan": "Upgrade Plan",
+      "changePlan": "Change plan",
       "manageBilling": "Manage Billing",
       "addPayment": "Add payment method",
       "noCard": "No card on file",
@@ -1382,6 +1384,9 @@
       "provisioning": "Provisioning…",
       "copy": "Copy",
       "copied": "Copied",
+      "paused": "Paused",
+      "pausedTitle": "Phone agent paused on Starter",
+      "pausedDesc": "Your number stays linked and all your calls and data are kept. Upgrade to Pro and Vela answers again right away.",
       "yourNumber": "Your Vela number",
       "forwardHint": "Forward your business number to this number when you're busy or after hours.",
       "notConnected": "Not connected yet",
@@ -1418,5 +1423,34 @@
       "save": "Save Settings",
       "saved": "Settings saved"
     }
+  },
+  "planSwitch": {
+    "title": "Choose your plan",
+    "subtitle": "Upgrade or downgrade any time. Your data is always kept.",
+    "close": "Close",
+    "currentPlan": "Current plan",
+    "month": "mo",
+    "upgradeTo": "Upgrade to {plan}",
+    "downgradeTo": "Switch to {plan}",
+    "confirmTitle": "Switch to {plan}?",
+    "freeDuringTesting": "Free during testing.",
+    "confirmBtn": "Switch to {plan}",
+    "cancel": "Cancel",
+    "switching": "Switching…",
+    "done": "You're on {plan} now.",
+    "warnStarter": "On Starter your phone agent pauses. Your number stays linked and all your calls, appointments and data are kept. Voice comes back as soon as you upgrade.",
+    "warnDowngrade": "Some extras of your current plan turn off, like extra voice minutes. All your data is kept.",
+    "billingOnly": "Plan changes go through billing.",
+    "seePricing": "See pricing",
+    "loadError": "Couldn't load your plan. Please try again.",
+    "switchError": "Couldn't change your plan. Please try again.",
+    "voiceMinutes": "{n} voice minutes / month",
+    "noVoice": "No phone agent",
+    "unlimitedText": "Unlimited text messages",
+    "textMessages": "{n} text messages / month",
+    "allChannels": "Instagram, WhatsApp and phone",
+    "oneChannel": "1 channel",
+    "unlimitedTeam": "Unlimited team members",
+    "oneMember": "1 team member"
   }
 }
