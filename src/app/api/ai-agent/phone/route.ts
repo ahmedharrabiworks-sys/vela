@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
 import {
-  DEFAULT_VOICE_ID,
   DEFAULT_SPEED,
   getDefaultVoiceId,
   getTranscriberConfig,
@@ -12,6 +11,7 @@ import {
   CALL_LIMITS,
 } from "@/lib/vapi-agent-config";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
+import { buildBookAppointmentTool, getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
 
 export const dynamic = "force-dynamic";
 
@@ -19,19 +19,31 @@ export const dynamic = "force-dynamic";
 
 const VAPI_BASE = "https://api.vapi.ai";
 
-async function vapiRequest(path: string, method: string, body?: unknown) {
+class VapiError extends Error {
+  constructor(public step: "assistant" | "number", public status: number, detail: string) {
+    super(detail);
+  }
+}
+
+/** Short, non-sensitive reason for the UI (Vapi validation text, never keys). */
+function safeDetail(msg: unknown): string {
+  const s = Array.isArray(msg) ? msg.join("; ") : String(msg ?? "");
+  return s.replace(/(sk|pk|key|secret|token)[-_A-Za-z0-9]{8,}/gi, "[redacted]").slice(0, 160);
+}
+
+async function vapiRequest(step: "assistant" | "number", path: string, method: string, body?: unknown) {
   const key = process.env.VAPI_API_KEY;
-  if (!key) throw new Error("VAPI_API_KEY not configured");
+  if (!key) throw new VapiError(step, 0, "VAPI_API_KEY not configured");
   const res = await fetch(`${VAPI_BASE}${path}`, {
     method,
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // Log full Vapi error detail server-side; never surface internal API paths/messages to client
-    const detail = (data as any)?.message ?? `Vapi ${method} ${path} → ${res.status}`;
-    throw new Error(detail);
+    const detail = safeDetail((data as any)?.message ?? `HTTP ${res.status}`);
+    console.error(`[ai-agent/phone] Vapi ${method} ${path} failed: ${res.status} ${detail}`);
+    throw new VapiError(step, res.status, detail);
   }
   return data;
 }
@@ -115,25 +127,40 @@ export async function POST(req: NextRequest) {
   const voiceId   = (agentSettings.voiceId as string | undefined) || getDefaultVoiceId(language);
   const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : DEFAULT_SPEED;
 
-  // App URL for webhook serverUrl
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
-  const webhookUrl = appUrl
-    ? `${appUrl}/api/ai-agent/call-webhook?tenantId=${tenant.id}`
-    : "";
+  // C1: every Vapi object that calls back into Vela gets { url, headers: { x-vapi-secret } }.
+  // Without the secret our fail-closed webhook rejects every call, so refuse
+  // to provision half-configured instead of pretending it worked.
+  const serverCfg = getVapiServerConfig(tenant.id);
+  if (!serverCfg.ok) {
+    console.error("[ai-agent/phone] cannot provision:", serverCfg.reason);
+    return NextResponse.json({ error: "Phone service is not fully configured yet (webhook security). Contact support." }, { status: 422 });
+  }
+  const server = serverCfg.server;
+  const timezone = resolveTenantTimezone(agentSettings);
 
-  const systemPrompt = buildInboundSystem(agentName, tenant.business_name || "your business", kb, agentSettings);
+  // Static fallback prompt. Real inbound calls use the fresh per-call
+  // assistant from call-webhook's assistant-request (current schedule +
+  // today's date); this one is only used if Vapi ever calls the stored
+  // assistant directly.
+  const systemPrompt = buildInboundSystem(agentName, tenant.business_name || "your business", kb, agentSettings, "", {
+    nowText: wallClockNowText(timezone),
+    bookingTool: true,
+  });
   const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
 
+  let assistantId = (cfg as any)?.vapi_assistant_id as string | null ?? null;
+  let phoneNumber = (cfg as any)?.vapi_phone_number as string | null ?? null;
+  let phoneNumberId = (cfg as any)?.vapi_phone_number_id as string | null ?? null;
+
   try {
-    // Create or update the Vapi assistant
-    let assistantId = (cfg as any)?.vapi_assistant_id as string | null ?? null;
+    // ── Assistant: create or update, always with the signed server config + tool
     const assistantBody = {
       name: `${agentName}, ${tenant.business_name || "Business"}`,
       model: {
         provider: "openai",
         model: "gpt-4o",
         messages: [{ role: "system", content: systemPrompt }],
+        tools: [buildBookAppointmentTool(server)],
       },
       voice: getVoiceConfig(voiceId, speed),
       transcriber: getTranscriberConfig(language),
@@ -141,55 +168,51 @@ export async function POST(req: NextRequest) {
       stopSpeakingPlan,
       startSpeakingPlan,
       ...CALL_LIMITS,
-      ...(webhookUrl ? { serverUrl: webhookUrl } : {}),
+      server,
     };
 
     if (assistantId) {
       try {
-        await vapiRequest(`/assistant/${assistantId}`, "PATCH", assistantBody);
-      } catch (patchErr: any) {
-        // Stored ID no longer exists in Vapi (e.g. manually deleted from dashboard)
-        const msg = (patchErr?.message ?? "") as string;
-        if (/not found|404/i.test(msg)) {
-          const created = await vapiRequest("/assistant", "POST", assistantBody) as any;
+        await vapiRequest("assistant", `/assistant/${assistantId}`, "PATCH", assistantBody);
+      } catch (patchErr) {
+        // Stored ID no longer exists in Vapi (e.g. deleted from the dashboard)
+        if (patchErr instanceof VapiError && patchErr.status === 404) {
+          const created = await vapiRequest("assistant", "/assistant", "POST", assistantBody) as any;
           assistantId = created.id as string;
         } else {
           throw patchErr;
         }
       }
     } else {
-      const created = await vapiRequest("/assistant", "POST", assistantBody) as any;
+      const created = await vapiRequest("assistant", "/assistant", "POST", assistantBody) as any;
       assistantId = created.id as string;
     }
 
-    // Provision phone number if not already done
-    let phoneNumber = (cfg as any)?.vapi_phone_number as string | null ?? null;
-    let phoneNumberId = (cfg as any)?.vapi_phone_number_id as string | null ?? null;
-
-    if (!phoneNumberId) {
-      // Create phone number with serverUrl for dynamic assistant-request resolution, 
-      // every inbound call will read fresh settings from Supabase via the webhook.
-      const numPayload: Record<string, unknown> = {
+    // ── Phone number
+    // C2: a number already linked to this tenant (e.g. the Twilio bridge
+    // number imported into Vapi) is NEVER replaced: we only attach the
+    // webhook + secret to it. No assistantId on the number, so Vapi asks
+    // call-webhook (assistant-request) on every call and gets this tenant's
+    // fresh assistant. Only a tenant with no number at all gets a new
+    // Vapi-owned one.
+    if (phoneNumberId) {
+      const updated = await vapiRequest("number", `/phone-number/${phoneNumberId}`, "PATCH", { server }) as any;
+      if (!phoneNumber && typeof updated?.number === "string") phoneNumber = updated.number;
+      if (updated?.assistantId) {
+        console.warn(`[ai-agent/phone] number ${phoneNumberId} has a fixed assistantId set in Vapi; per-call assistant-request will not fire for it`);
+      }
+    } else {
+      const numRes = await vapiRequest("number", "/phone-number", "POST", {
         provider: "vapi",
         name: `${tenant.business_name || "Business"}, Vela`,
-      };
-      if (webhookUrl) {
-        numPayload.serverUrl = webhookUrl;
-      } else {
-        numPayload.assistantId = assistantId;
-      }
-      const numRes = await vapiRequest("/phone-number", "POST", numPayload) as any;
+        server,
+      }) as any;
       phoneNumber   = (numRes.number ?? numRes.id) as string;
       phoneNumberId = numRes.id as string;
-    } else if (webhookUrl) {
-      // Upgrade existing phone number to dynamic resolution (best-effort)
-      try {
-        await vapiRequest(`/phone-number/${phoneNumberId}`, "PATCH", { serverUrl: webhookUrl });
-      } catch { /* ignore, non-fatal */ }
     }
 
     // Save to tenant_config, upsert so a missing row doesn't cause a silent no-op
-    await admin
+    const { error: saveErr } = await admin
       .from("tenant_config")
       .upsert(
         {
@@ -200,14 +223,20 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "tenant_id" }
       );
+    if (saveErr) {
+      console.error("[ai-agent/phone] saving Vapi ids failed:", saveErr.message);
+      return NextResponse.json({ error: "Connected in Vapi, but saving to your account failed. Please try again." }, { status: 500 });
+    }
 
     return NextResponse.json({ phoneNumber, phoneNumberId, assistantId });
-  } catch (err: any) {
-    console.error("[ai-agent/phone] provision error:", err?.message ?? err);
-    return NextResponse.json(
-      { error: "Failed to provision phone number. Please try again." },
-      { status: 502 }
-    );
+  } catch (err) {
+    const step = err instanceof VapiError ? err.step : "assistant";
+    const detail = err instanceof VapiError ? err.message : safeDetail((err as any)?.message);
+    console.error(`[ai-agent/phone] provision error at ${step}:`, detail);
+    const what = step === "number"
+      ? "Couldn't connect your phone number to Vela"
+      : "Couldn't update your Vela phone assistant";
+    return NextResponse.json({ error: `${what}. Reason: ${detail}`, step }, { status: 502 });
   }
 }
 

@@ -225,12 +225,20 @@ const LANG_NAMES: Record<string, string> = {
 // provisioning call site (api/ai-agent/phone/route.ts), which builds a
 // fallback prompt at provisioning time, not per-call, so a real-time
 // schedule snapshot there would just go stale between provisions.
+//
+// opts.nowText: "Today is ... (Asia/Qatar)" from lib/vapi-webhook.ts, so the
+// agent resolves "tomorrow"/"Sunday" in the business's timezone.
+// opts.bookingTool: the assistant has the book_appointment tool (real
+// booking during the call, see lib/phone-booking.ts). Always true for real
+// inbound calls now; kept optional so a caller without the tool never gets
+// told to use one.
 export function buildInboundSystem(
   agentName: string,
   businessName: string,
   kb: Record<string, unknown>,
   settings: Record<string, unknown>,
   bookedSlotsText: string = "",
+  opts: { nowText?: string; bookingTool?: boolean } = {},
 ): string {
   const services =
     (kb.services as Array<{ name: string; price?: string }> | undefined) ?? [];
@@ -295,7 +303,7 @@ ${greetingLanguageLine}
 ${greetingVaryLine} You speak first.
 
 ## BUSINESS KNOWLEDGE
-${svcList ? `Services: ${svcList}` : "No services listed, let callers ask about what you offer."}
+${opts.nowText ? `${opts.nowText}\n` : ""}${svcList ? `Services: ${svcList}` : "No services listed, let callers ask about what you offer."}
 ${biz.hours ? `Hours: ${biz.hours}` : ""}
 ${biz.address ? `Location: ${biz.address}` : ""}
 ${biz.bookingPolicy ? `Booking policy: ${biz.bookingPolicy}` : ""}
@@ -306,7 +314,12 @@ ${bookedSlotsText}
 1. Brief greeting (see OPENING above), you speak first
 2. Listen, understand what the caller needs
 3. Answer using your business knowledge; never invent information
-4. If they want to book: ask for their preferred day/time if not given, then immediately check it against the schedule and hours above and tell them right away whether it works in that same turn, never tell a caller you'll "check and call back," you already have the real schedule above. If it's taken, offer real alternative times from gaps in that schedule. Once a time is confirmed, get their name and phone number, then confirm every detail back before ending.
+${opts.bookingTool
+  ? `4. If they want to book, collect ONE detail at a time: the service, the day and time (must be within the hours above), their name, and their phone number.
+   - ALWAYS ask for their phone number, even if you think you can see it. Read it back digit by digit and get a clear yes before moving on.
+   - Then repeat every detail (service, day, date, time, name, phone) and ask "Shall I book this?". Only after a clear yes, call the book_appointment tool. Say a short "one moment" while it runs.
+   - Tell the caller exactly what the tool result says. If the time is taken, offer the real alternatives it returns, never invent other times. Never say something is booked unless the tool said "Booked" or "Already booked".`
+  : `4. If they want to book: ask for their preferred day/time if not given, then immediately check it against the schedule and hours above and tell them right away whether it works in that same turn, never tell a caller you'll "check and call back," you already have the real schedule above. If it's taken, offer real alternative times from gaps in that schedule. Once a time is confirmed, get their name and phone number, read the phone number back digit by digit to confirm it, then confirm every detail back before ending.`}
 5. Warm close, tell them what happens next
 
 ## PERSONALITY

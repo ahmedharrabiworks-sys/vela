@@ -10,6 +10,13 @@ interface PhoneState {
   assistantId:   string | null;
 }
 
+// "+12533239602" -> "+1 253 323 9602" (North American numbers); anything
+// else is shown exactly as stored.
+function formatNumber(n: string): string {
+  const m = n.replace(/[^\d+]/g, "").match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  return m ? `+1 ${m[1]} ${m[2]} ${m[3]}` : n;
+}
+
 export default function PhonePage() {
   const { isDark } = useAgentTheme();
   const { t } = useI18n();
@@ -18,6 +25,11 @@ export default function PhonePage() {
   const [provisioning, setProvisioning] = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [copied, setCopied]             = useState(false);
+  const [synced, setSynced]             = useState(false);
+  // Connected = an assistant exists AND the number is attached to it. A
+  // number linked without an assistant (e.g. an imported bridge number not
+  // synced yet) is shown honestly as "not connected", never as active.
+  const connected = !!(state.phoneNumber && state.assistantId);
 
   const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
   const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
@@ -48,9 +60,11 @@ export default function PhonePage() {
       const res  = await fetch("/api/ai-agent/phone", { method: "POST" });
       const data = await res.json() as PhoneState & { error?: string };
       if (!res.ok || data.error) {
-        setError(data.error ?? "Failed to provision phone number");
+        setError(data.error ?? t("aiAgent.phone.syncFailed"));
       } else {
         setState(data);
+        setSynced(true);
+        setTimeout(() => setSynced(false), 2500);
       }
     } catch {
       setError("Network error. Please try again.");
@@ -103,10 +117,17 @@ export default function PhonePage() {
                 }}
               >
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: "0 0 6px #4ade80" }} />
-                    <span className="text-xs font-semibold text-green-400">{t("aiAgent.phone.active")}</span>
-                  </div>
+                  {connected ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: "0 0 6px #4ade80" }} />
+                      <span className="text-xs font-semibold text-green-500">{t("aiAgent.phone.active")}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span className="text-xs font-semibold text-amber-600">{t("aiAgent.phone.notConnected")}</span>
+                    </div>
+                  )}
                   <span
                     className="text-[10px] font-bold px-2.5 py-1 rounded-full"
                     style={{ background: isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0", color: "#FF6B35" }}
@@ -125,8 +146,8 @@ export default function PhonePage() {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: textMuted }}>Your business number</p>
-                    <p className="text-2xl font-bold tracking-wide" style={{ color: textPrimary }}>{state.phoneNumber}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: textMuted }}>{t("aiAgent.phone.yourNumber")}</p>
+                    <p dir="ltr" className="text-xl sm:text-2xl font-bold tracking-wide [overflow-wrap:anywhere] text-start" style={{ color: textPrimary }}>{formatNumber(state.phoneNumber)}</p>
                   </div>
                   <button
                     onClick={() => copyNumber(state.phoneNumber!)}
@@ -155,6 +176,31 @@ export default function PhonePage() {
                     )}
                   </button>
                 </div>
+
+                <p className="text-sm mb-4" style={{ color: textSub }}>{t("aiAgent.phone.forwardHint")}</p>
+
+                {error && (
+                  <div className="rounded-xl border p-3 mb-4" style={{ background: "#FFF5F5", borderColor: "rgba(239,68,68,0.2)" }}>
+                    <p className="text-xs font-semibold mb-0.5 text-red-500">{t("aiAgent.phone.syncFailed")}</p>
+                    <p className="text-xs break-words" style={{ color: textMuted }}>{error}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={provision}
+                  disabled={provisioning}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 mb-5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={connected
+                    ? { background: inputBg, border: `1px solid ${border}`, color: textSub }
+                    : { background: "var(--btn-gradient)", color: "#fff", boxShadow: "0 4px 20px rgba(255,107,53,0.30)" }}
+                >
+                  {provisioning ? (
+                    <>
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      {t("aiAgent.phone.provisioning")}
+                    </>
+                  ) : synced ? t("aiAgent.phone.synced") : connected ? t("aiAgent.phone.resyncBtn") : t("aiAgent.phone.connectBtn")}
+                </button>
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -210,7 +256,7 @@ export default function PhonePage() {
 
                   {error && (
                     <div className="rounded-xl border p-3 mb-4 text-left w-full" style={{ background: isDark ? "rgba(239,68,68,0.07)" : "#FFF5F5", borderColor: "rgba(239,68,68,0.2)" }}>
-                      <p className="text-xs font-semibold mb-0.5 text-red-400">Provisioning failed</p>
+                      <p className="text-xs font-semibold mb-0.5 text-red-400">{t("aiAgent.phone.syncFailed")}</p>
                       <p className="text-xs" style={{ color: textMuted }}>{error}</p>
                     </div>
                   )}
@@ -224,7 +270,7 @@ export default function PhonePage() {
                     {provisioning ? (
                       <>
                         <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                        Provisioning…
+                        {t("aiAgent.phone.provisioning")}
                       </>
                     ) : (
                       <>
@@ -236,9 +282,6 @@ export default function PhonePage() {
                       </>
                     )}
                   </button>
-                  <p className="text-[10px] mt-3" style={{ color: textMuted }}>
-                    Powered by Vapi · US number provisioned instantly
-                  </p>
                 </div>
               </div>
             )}

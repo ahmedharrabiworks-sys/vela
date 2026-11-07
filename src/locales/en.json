@@ -1382,6 +1382,13 @@
       "provisioning": "Provisioning…",
       "copy": "Copy",
       "copied": "Copied",
+      "yourNumber": "Your Vela number",
+      "forwardHint": "Forward your business number to this number when you're busy or after hours.",
+      "notConnected": "Not connected yet",
+      "connectBtn": "Connect Vela to this number",
+      "resyncBtn": "Re-sync",
+      "syncFailed": "Couldn't connect",
+      "synced": "Synced",
       "howTitle": "How inbound calls work",
       "techTitle": "Technical details"
     },

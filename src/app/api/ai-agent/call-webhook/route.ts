@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import {
-  DEFAULT_VOICE_ID,
   DEFAULT_SPEED,
   getDefaultVoiceId,
   getTranscriberConfig,
@@ -14,25 +13,88 @@ import {
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
 import { formatBookedSlotsText } from "@/lib/availability";
-import { hasConfirmedCountryCode } from "@/lib/phone-validate";
+import {
+  BOOK_APPOINTMENT_TOOL,
+  buildBookAppointmentTool,
+  collectCallerFields,
+  getVapiServerConfig,
+  resolveTenantTimezone,
+  wallClockNow,
+  wallClockNowText,
+} from "@/lib/vapi-webhook";
+import { bookAppointmentFromCall } from "@/lib/phone-booking";
 
 export const dynamic = "force-dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type TenantCfg = {
+  tenant_id: string;
+  vapi_phone_number_id: string | null;
+  vapi_phone_number: string | null;
+  agent_settings: unknown;
+  knowledge_base: unknown;
+  phone_agent_knowledge_base: unknown;
+};
+
+/**
+ * Resolves the tenant for a Vapi event and enforces that it is the RIGHT one:
+ * - tenantId in the query (set by us in server.url) must be a real tenant;
+ * - when Vapi reports which phone number the call came in on, it must be the
+ *   number linked to that tenant (a URL copied onto another number, or a
+ *   number unlinked via DELETE /api/ai-agent/phone, is refused);
+ * - with no tenantId, the phone number alone must map to exactly one tenant.
+ */
+async function resolveTenant(
+  admin: any,
+  reqUrl: string,
+  phoneNumberId: string | undefined,
+): Promise<{ ok: true; cfg: TenantCfg } | { ok: false; status: number; reason: string }> {
+  const tenantId = new URL(reqUrl).searchParams.get("tenantId");
+  const cols = "tenant_id, vapi_phone_number_id, vapi_phone_number, agent_settings, knowledge_base, phone_agent_knowledge_base";
+
+  if (tenantId) {
+    if (!UUID_RE.test(tenantId)) return { ok: false, status: 400, reason: "invalid tenantId" };
+    const { data } = await admin.from("tenant_config").select(cols).eq("tenant_id", tenantId).maybeSingle();
+    if (!data) return { ok: false, status: 404, reason: "tenant not found" };
+    if (phoneNumberId && data.vapi_phone_number_id !== phoneNumberId) {
+      return { ok: false, status: 403, reason: "phone number does not belong to this tenant" };
+    }
+    return { ok: true, cfg: data as TenantCfg };
+  }
+  if (phoneNumberId) {
+    const { data } = await admin.from("tenant_config").select(cols).eq("vapi_phone_number_id", phoneNumberId).maybeSingle();
+    if (!data) return { ok: false, status: 404, reason: "no tenant for this phone number" };
+    return { ok: true, cfg: data as TenantCfg };
+  }
+  return { ok: false, status: 400, reason: "cannot identify tenant" };
+}
+
+function parseJson(raw: unknown): Record<string, any> {
+  if (!raw) return {};
+  try { return (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>; } catch { return {}; }
+}
+
+/** Server-side only: what the carrier/Twilio actually reports about the caller. Never secrets. */
+function logCallerFields(event: string, message: Record<string, any>) {
+  try {
+    const fields = collectCallerFields({ call: message.call, customer: message.customer, phoneNumber: message.phoneNumber });
+    console.log(`[call-webhook] caller-fields ${event}`, JSON.stringify(fields));
+  } catch { /* logging must never break a call */ }
+}
+
 export async function POST(req: NextRequest) {
   // Fail closed, VAPI_WEBHOOK_SECRET must be set in production env.
-  // Without it we cannot verify the request is from Vapi; a forged end-of-call-report
-  // would insert fake rows into agent_calls and potentially appointments.
+  // Without it we cannot verify the request is from Vapi; a forged event
+  // could create fake calls/appointments.
   const secret = process.env.VAPI_WEBHOOK_SECRET;
   if (!secret) {
     console.error("[call-webhook] VAPI_WEBHOOK_SECRET not configured, rejecting request");
     return NextResponse.json({ error: "Service misconfigured" }, { status: 401 });
   }
-  // Security audit Part 2: upgraded from a plain !== compare to a
-  // timing-safe one, matching the Twilio/Meta webhooks' pattern elsewhere
-  // in this codebase -- a direct string compare leaks how many leading
-  // characters matched via response-time variance.
+  // Timing-safe compare (a plain !== leaks matching-prefix length via timing).
   const incoming = req.headers.get("x-vapi-secret") ?? "";
   const incomingBuf = Buffer.from(incoming);
   const secretBuf   = Buffer.from(secret);
@@ -50,66 +112,36 @@ export async function POST(req: NextRequest) {
 
   const message = (body.message ?? body) as Record<string, any>;
   const msgType = (message.type ?? message.message?.type) as string | undefined;
+  const call = (message.call ?? {}) as Record<string, any>;
+  const phoneNumberId = (call.phoneNumberId ?? call.phone_number_id ?? message.phoneNumber?.id) as string | undefined;
+  const callerNumber = ((call.customer ?? message.customer ?? {}).number ?? null) as string | null;
+  const callId = (call.id ?? null) as string | null;
 
-  // ── assistant-request: dynamic tenant lookup by phone number ──────────────
+  // ── assistant-request: build this tenant's assistant for this call ────────
   if (msgType === "assistant-request") {
-    const call = message.call as Record<string, any> | undefined;
-    const phoneNumberId = (call?.phoneNumberId ?? call?.phone_number_id) as string | undefined;
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get("tenantId") ?? null;
-
-    if (!tenantId && !phoneNumberId) {
-      return NextResponse.json({ error: "Cannot identify tenant" }, { status: 400 });
-    }
-
+    logCallerFields("assistant-request", message);
     const admin = createSupabaseAdmin() as any;
-    let tenantRow: Record<string, any> | null = null;
-
-    if (tenantId) {
-      const { data } = await admin
-        .from("tenant_config")
-        .select("tenant_id, agent_settings, knowledge_base, phone_agent_knowledge_base")
-        .eq("tenant_id", tenantId)
-        .maybeSingle();
-      tenantRow = data;
-    } else if (phoneNumberId) {
-      const { data } = await admin
-        .from("tenant_config")
-        .select("tenant_id, agent_settings, knowledge_base, phone_agent_knowledge_base")
-        .eq("vapi_phone_number_id", phoneNumberId)
-        .maybeSingle();
-      tenantRow = data;
+    const tenant = await resolveTenant(admin, req.url, phoneNumberId);
+    if (!tenant.ok) {
+      console.warn("[call-webhook] assistant-request refused:", tenant.reason);
+      return NextResponse.json({ error: tenant.reason }, { status: tenant.status });
+    }
+    const tenantRow = tenant.cfg;
+    const serverCfg = getVapiServerConfig(tenantRow.tenant_id);
+    if (!serverCfg.ok) {
+      console.error("[call-webhook] cannot build server config:", serverCfg.reason);
+      return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
     }
 
-    if (!tenantRow) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-    }
-
-    // Load tenant business name
     const { data: tenantData } = await admin
       .from("tenants")
       .select("business_name")
       .eq("id", tenantRow.tenant_id)
       .maybeSingle();
 
-    let rawKb: Record<string, any> = {};
-    let rawPhoneKb: Record<string, any> = {};
-    let settings: Record<string, any> = {};
-    try {
-      if (tenantRow.knowledge_base) {
-        const raw = tenantRow.knowledge_base;
-        rawKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
-      }
-      if (tenantRow.phone_agent_knowledge_base) {
-        const raw = tenantRow.phone_agent_knowledge_base;
-        rawPhoneKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
-      }
-      if (tenantRow.agent_settings) {
-        const raw = tenantRow.agent_settings;
-        settings = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
-      }
-    } catch { /* ignore */ }
-    const kb = mergeKnowledgeBases(rawKb, rawPhoneKb);
+    const kb = mergeKnowledgeBases(parseJson(tenantRow.knowledge_base), parseJson(tenantRow.phone_agent_knowledge_base));
+    const settings = parseJson(tenantRow.agent_settings);
+    const timezone = resolveTenantTimezone(settings);
 
     const agentName    = (settings.agentName as string | undefined) || "Vela";
     const language     = (settings.language as string | undefined) || "";
@@ -118,16 +150,8 @@ export async function POST(req: NextRequest) {
     const speed        = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
-    // Real, freshly-queried schedule for THIS call -- fetched dynamically on
-    // every inbound call (assistant-request fires per-call, unlike the
-    // static provisioning prompt in api/ai-agent/phone/route.ts), so the
-    // phone agent gets the same real availability awareness Website/
-    // WhatsApp/Instagram get, current as of when the call starts. A live
-    // call is turn-by-turn inside Vapi's own model loop, not round-tripped
-    // through this server per message, so this is a call-start snapshot
-    // rather than the per-message deterministic re-check api/ai/reply does, 
-    // still real, current data, just refreshed once per call instead of
-    // once per turn.
+    // Real upcoming schedule snapshot for this call (the book_appointment
+    // tool re-checks the exact slot against the DB at booking time anyway).
     let bookedSlotsText = "";
     try {
       const { data: bookedSlots } = await admin
@@ -135,7 +159,8 @@ export async function POST(req: NextRequest) {
         .select("datetime, service_name")
         .eq("tenant_id", tenantRow.tenant_id)
         .neq("status", "cancelled")
-        .gte("datetime", new Date().toISOString())
+        .is("deleted_at", null)
+        .gte("datetime", wallClockNow(timezone).asDate.toISOString())
         .order("datetime", { ascending: true })
         .limit(20);
       bookedSlotsText = formatBookedSlotsText(bookedSlots as { datetime: string; service_name?: string }[] | null);
@@ -143,7 +168,10 @@ export async function POST(req: NextRequest) {
       console.error("[call-webhook] failed to fetch booked slots for assistant-request:", err);
     }
 
-    const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings, bookedSlotsText);
+    const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings, bookedSlotsText, {
+      nowText: wallClockNowText(timezone),
+      bookingTool: true,
+    });
     const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
 
     return NextResponse.json({
@@ -152,6 +180,7 @@ export async function POST(req: NextRequest) {
           provider: "openai",
           model: "gpt-4o",
           messages: [{ role: "system", content: systemPrompt }],
+          tools: [buildBookAppointmentTool(serverCfg.server)],
         },
         voice: getVoiceConfig(voiceId, speed),
         transcriber: getTranscriberConfig(language),
@@ -159,39 +188,60 @@ export async function POST(req: NextRequest) {
         stopSpeakingPlan,
         startSpeakingPlan,
         ...CALL_LIMITS,
+        // end-of-call-report / tool calls for this call come back here, signed.
+        server: serverCfg.server,
       },
     });
   }
 
+  // ── tool-calls (current Vapi) / function-call (legacy): book_appointment ──
+  if (msgType === "tool-calls" || msgType === "function-call") {
+    const admin = createSupabaseAdmin() as any;
+    const tenant = await resolveTenant(admin, req.url, phoneNumberId);
+    if (!tenant.ok) {
+      console.warn("[call-webhook] tool call refused:", tenant.reason);
+      return NextResponse.json({ error: tenant.reason }, { status: tenant.status });
+    }
+    const tenantId = tenant.cfg.tenant_id;
+
+    const runTool = async (name: string | undefined, rawArgs: unknown): Promise<string> => {
+      if (name !== BOOK_APPOINTMENT_TOOL) return `Unknown tool "${name ?? ""}".`;
+      const args = parseJson(rawArgs);
+      const result = await bookAppointmentFromCall(admin, { tenantId, args, callId, callerNumber });
+      console.log("[call-webhook] book_appointment", JSON.stringify({ tenantId, callId, status: result.status, appointmentId: result.appointmentId ?? null }));
+      return result.message;
+    };
+
+    if (msgType === "function-call") {
+      const fc = (message.functionCall ?? {}) as Record<string, any>;
+      return NextResponse.json({ result: await runTool(fc.name, fc.parameters) });
+    }
+
+    const list = ((message.toolCallList as any[] | undefined)
+      ?? (message.toolWithToolCallList as any[] | undefined)?.map((t) => t.toolCall)
+      ?? []).filter(Boolean);
+    const results = [];
+    for (const tc of list) {
+      results.push({
+        toolCallId: tc.id,
+        result: await runTool(tc.function?.name ?? tc.name, tc.function?.arguments ?? tc.arguments ?? tc.parameters),
+      });
+    }
+    return NextResponse.json({ results });
+  }
+
   // ── end-of-call-report: log call to agent_calls ───────────────────────────
   if (msgType === "end-of-call-report" || msgType === "call.ended") {
-    const call      = (message.call ?? {}) as Record<string, any>;
-    const artifact  = (message.artifact ?? {}) as Record<string, any>;
-    const customer  = (call.customer ?? {}) as Record<string, any>;
-
-    const phoneNumberId = (call.phoneNumberId ?? call.phone_number_id) as string | undefined;
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get("tenantId") ?? null;
-
-    if (!tenantId && !phoneNumberId) {
-      return NextResponse.json({ ok: true }); // Can't associate, silently accept
-    }
-
+    logCallerFields("end-of-call-report", message);
     const admin = createSupabaseAdmin() as any;
-    let resolvedTenantId = tenantId;
-
-    if (!resolvedTenantId && phoneNumberId) {
-      const { data } = await admin
-        .from("tenant_config")
-        .select("tenant_id")
-        .eq("vapi_phone_number_id", phoneNumberId)
-        .maybeSingle();
-      resolvedTenantId = (data as any)?.tenant_id ?? null;
-    }
-
-    if (!resolvedTenantId) {
+    const tenant = await resolveTenant(admin, req.url, phoneNumberId);
+    if (!tenant.ok) {
+      // 200 so Vapi doesn't retry an event we will never accept.
+      console.warn("[call-webhook] end-of-call ignored:", tenant.reason);
       return NextResponse.json({ ok: true });
     }
+    const resolvedTenantId = tenant.cfg.tenant_id;
+    const artifact = (message.artifact ?? {}) as Record<string, any>;
 
     // Parse transcript messages
     const rawMessages = (artifact.messages ?? message.messages ?? []) as Array<any>;
@@ -202,12 +252,24 @@ export async function POST(req: NextRequest) {
         text: (m.message ?? m.text ?? m.content ?? "") as string,
       }));
 
-    const summary        = (message.summary ?? artifact.summary ?? null) as string | null;
-    const durationSecs   = Math.round((message.durationSeconds ?? call.endedAt
-      ? (new Date(call.endedAt as string).getTime() - new Date(call.startedAt as string).getTime()) / 1000
-      : 0) as number);
-    const callerNumber   = (customer.number ?? customer.phoneNumber ?? null) as string | null;
-    const endedAt        = (call.endedAt ?? new Date().toISOString()) as string;
+    const summary = (message.analysis?.summary ?? message.summary ?? artifact.summary ?? null) as string | null;
+
+    // C4: prefer Vapi's own durationSeconds. The old expression
+    // `message.durationSeconds ?? call.endedAt ? a : b` parsed as
+    // `(durationSeconds ?? endedAt) ? a : b`, ignoring durationSeconds and
+    // producing NaN when the call object had no startedAt.
+    const reported = typeof message.durationSeconds === "number" ? message.durationSeconds
+      : typeof call.durationSeconds === "number" ? call.durationSeconds
+      : NaN;
+    let durationSecs = Number.isFinite(reported) && reported >= 0 ? reported : NaN;
+    if (!Number.isFinite(durationSecs)) {
+      const start = Date.parse(message.startedAt ?? call.startedAt ?? "");
+      const end   = Date.parse(message.endedAt ?? call.endedAt ?? "");
+      durationSecs = Number.isFinite(start) && Number.isFinite(end) && end >= start ? (end - start) / 1000 : 0;
+    }
+    durationSecs = Math.round(durationSecs);
+
+    const endedAt = (message.endedAt ?? call.endedAt ?? new Date().toISOString()) as string;
 
     // Detect language from transcript (look for Arabic/French/German/Spanish chars)
     let language = "en";
@@ -217,18 +279,44 @@ export async function POST(req: NextRequest) {
     else if (/[äöüß]/i.test(allText)) language = "de";
     else if (/[¿¡ñáéíóú]/i.test(allText)) language = "es";
 
-    // Detect appointment booking from summary
+    // C3: the appointment (if any) was booked for real DURING the call by
+    // the book_appointment tool. Link it to this call record; never infer a
+    // booking from the summary text, never invent a date.
     let appointmentBooked: Record<string, unknown> | null = null;
-    if (summary && /book|appointment|schedule|reserv|cita|موعد|rendez/i.test(summary)) {
-      appointmentBooked = { detected: true, summary: summary.slice(0, 300) };
+    if (callId) {
+      try {
+        const { data: lead } = await admin.from("leads").select("id")
+          .eq("tenant_id", resolvedTenantId).eq("form_data->>last_vapi_call_id", callId)
+          .limit(1).maybeSingle();
+        if (lead) {
+          const { data: appt } = await admin.from("appointments")
+            .select("id, datetime, service_name, status, notes")
+            .eq("tenant_id", resolvedTenantId).eq("lead_id", lead.id)
+            .neq("status", "cancelled").is("deleted_at", null)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (appt) {
+            appointmentBooked = { appointmentId: appt.id, datetime: appt.datetime, service: appt.service_name, status: appt.status };
+            if (summary) {
+              await admin.from("appointments")
+                .update({ notes: `${appt.notes ?? ""} Call summary: ${summary}`.trim().slice(0, 1000) })
+                .eq("id", appt.id).eq("tenant_id", resolvedTenantId);
+              await admin.from("leads")
+                .update({ intent_summary: summary.slice(0, 200) })
+                .eq("id", lead.id).eq("tenant_id", resolvedTenantId);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[call-webhook] linking booked appointment failed:", err);
+      }
     }
 
     const outcome = (call.endedReason === "customer-ended-call" || call.endedReason === "assistant-ended-call")
       ? "completed"
-      : (call.endedReason ?? "completed") as string;
+      : (message.endedReason ?? call.endedReason ?? "completed") as string;
 
     try {
-      await admin.from("agent_calls").insert({
+      const { error } = await admin.from("agent_calls").insert({
         tenant_id:          resolvedTenantId,
         call_type:          "live",
         ended_at:           endedAt,
@@ -240,14 +328,13 @@ export async function POST(req: NextRequest) {
         outcome,
         appointment_booked: appointmentBooked,
       });
+      if (error) console.error("[call-webhook] agent_calls insert error:", error.message);
     } catch (err: any) {
       // Don't fail the webhook, Vapi retries on non-200
       console.error("[call-webhook] insert error:", err?.message ?? err);
     }
 
-    // A call that never connected/completed -- no talk time and no transcript
-    // at all, regardless of the exact endedReason string Vapi reports (those
-    // vary by failure type: no answer, busy, voicemail, provider error, etc).
+    // A call that never connected: no talk time and no transcript at all.
     const wasMissed = durationSecs <= 0 && transcript.length === 0;
     if (wasMissed) {
       await createNotification(admin, {
@@ -257,114 +344,6 @@ export async function POST(req: NextRequest) {
         body: callerNumber ?? null,
         link: "/app/ai-agent/overview",
       });
-    }
-
-    // If appointment was booked, route it into the same appointments table
-    // Instagram/WhatsApp/Website use -- appointments always hang off a lead
-    // (lead_id is NOT NULL), so find-or-create the caller as a "phone" lead
-    // first, tagged consistently with the other channels' lead.channel values.
-    if (appointmentBooked && callerNumber) {
-      try {
-        const { data: existingLead } = await admin
-          .from("leads")
-          .select("id")
-          .eq("tenant_id", resolvedTenantId)
-          .eq("phone", callerNumber)
-          .eq("channel", "phone")
-          .maybeSingle();
-
-        // Round M FIX 1: telephony caller ID is usually already a real
-        // E.164 number, but Vapi/carrier config can pass one with no "+"
-        // depending on setup -- same real check every other channel's lead
-        // write already applies, so this path can't silently look
-        // "confirmed" when it isn't just because it happens to come from a
-        // phone call.
-        const callerPhoneUnconfirmed = !hasConfirmedCountryCode(callerNumber);
-        // Round M FIX 8: reuse the REAL call summary Vapi already provides
-        // (same one written to appointments.notes below) as this lead's
-        // intent summary too -- never fabricated, just surfaced onto the
-        // lead so the Leads/CRM detail view is consistent across channels.
-        const intentSummary = summary ? summary.slice(0, 200) : null;
-
-        let leadId = (existingLead as { id?: string } | null)?.id;
-        let isNewLead = false;
-        if (leadId) {
-          // Tiered fallback -- phone_unconfirmed (migration_v33.sql) and
-          // intent_summary (migration_v34.sql) are separate, independently-
-          // landed columns; dropping both on any single PGRST204 would
-          // silently lose real phone validation whenever only
-          // intent_summary was actually the missing one.
-          let updateRow: Record<string, unknown> = { status: "booked", phone_unconfirmed: callerPhoneUnconfirmed, intent_summary: intentSummary };
-          let { error: updErr } = await admin.from("leads").update(updateRow).eq("id", leadId);
-          if (updErr?.code === "PGRST204") {
-            const { intent_summary: _is, ...withoutSummary } = updateRow;
-            void _is;
-            updateRow = withoutSummary;
-            ({ error: updErr } = await admin.from("leads").update(updateRow).eq("id", leadId));
-          }
-          if (updErr?.code === "PGRST204") {
-            await admin.from("leads").update({ status: "booked" }).eq("id", leadId);
-          }
-        } else {
-          let insertRow: Record<string, unknown> = {
-            tenant_id: resolvedTenantId,
-            name:      callerNumber,
-            phone:     callerNumber,
-            phone_unconfirmed: callerPhoneUnconfirmed,
-            channel:   "phone",
-            status:    "booked",
-            intent_summary: intentSummary,
-          };
-          let { data: newLead, error: leadErr } = await admin.from("leads").insert(insertRow).select("id").single();
-          if (leadErr?.code === "PGRST204") {
-            const { intent_summary: _is, ...withoutSummary } = insertRow;
-            void _is;
-            insertRow = withoutSummary;
-            ({ data: newLead, error: leadErr } = await admin.from("leads").insert(insertRow).select("id").single());
-          }
-          if (leadErr?.code === "PGRST204") {
-            const { phone_unconfirmed: _pu, ...withoutPhoneFlag } = insertRow;
-            void _pu;
-            insertRow = withoutPhoneFlag;
-            ({ data: newLead } = await admin.from("leads").insert(insertRow).select("id").single());
-          }
-          leadId = (newLead as { id?: string } | null)?.id;
-          isNewLead = true;
-        }
-
-        if (leadId) {
-          await admin.from("appointments").insert({
-            tenant_id:    resolvedTenantId,
-            lead_id:      leadId,
-            service_name: "",
-            // Placeholder until real date/time extraction exists -- the call
-            // summary regex only detects THAT a booking happened, not when.
-            datetime:     new Date(Date.now() + 86400000).toISOString(),
-            status:       "pending",
-            notes:        summary?.slice(0, 500) ?? null,
-          });
-
-          if (isNewLead) {
-            await createNotification(admin, {
-              tenantId: resolvedTenantId,
-              type: "lead",
-              title: "New lead from Phone",
-              body: callerNumber,
-              link: "/app/leads",
-            });
-          }
-
-          await createNotification(admin, {
-            tenantId: resolvedTenantId,
-            type: "appointment",
-            title: "New appointment booked",
-            body: callerNumber,
-            link: "/app/appointments",
-          });
-        }
-      } catch (err) {
-        console.error("[call-webhook] appointment insert error:", err);
-      }
     }
 
     return NextResponse.json({ ok: true });

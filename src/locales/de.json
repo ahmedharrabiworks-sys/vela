@@ -781,6 +781,13 @@
       "provisioning": "Wird bereitgestellt…",
       "copy": "Kopieren",
       "copied": "Kopiert",
+      "yourNumber": "Ihre Vela-Nummer",
+      "forwardHint": "Leiten Sie Ihre Geschäftsnummer an diese Nummer weiter, wenn Sie beschäftigt sind oder außerhalb der Öffnungszeiten.",
+      "notConnected": "Noch nicht verbunden",
+      "connectBtn": "Vela mit dieser Nummer verbinden",
+      "resyncBtn": "Neu synchronisieren",
+      "syncFailed": "Verbindung fehlgeschlagen",
+      "synced": "Synchronisiert",
       "howTitle": "Wie eingehende Anrufe funktionieren",
       "techTitle": "Technische Details"
     },

@@ -122,20 +122,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Sync voice to the Vapi assistant immediately so inbound calls hear the new voice
-  // without requiring a re-provision. Fire-and-forget, never block the settings save.
+  // Sync voice to the stored Vapi assistant so it matches the new voice
+  // without a re-provision. The settings save itself already succeeded and
+  // is never rolled back; a failed Vapi sync is logged and reported in the
+  // response (vapiSync) instead of being silently swallowed. Real inbound
+  // calls build their assistant per call from these saved settings anyway
+  // (call-webhook assistant-request), so they get the new voice regardless.
   const assistantId = existingCfg?.vapi_assistant_id as string | null | undefined;
   const vapiKey = process.env.VAPI_API_KEY;
+  let vapiSync: "ok" | "failed" | "skipped" = "skipped";
   if (assistantId && vapiKey) {
     const lang    = (settings.language as string | undefined) || "";
     const voiceId = (settings.voiceId  as string | undefined) || getDefaultVoiceId(lang);
     const speed   = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
-    fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${vapiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ voice: getVoiceConfig(voiceId, clampSpeed(speed)) }),
-    }).catch(() => {});
+    try {
+      const res = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${vapiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ voice: getVoiceConfig(voiceId, clampSpeed(speed)) }),
+        signal: AbortSignal.timeout(5000),
+      });
+      vapiSync = res.ok ? "ok" : "failed";
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        console.error(`[ai-agent/settings] Vapi voice sync failed: ${res.status} ${detail.slice(0, 200)}`);
+      }
+    } catch (err) {
+      vapiSync = "failed";
+      console.error("[ai-agent/settings] Vapi voice sync error:", (err as Error)?.message ?? err);
+    }
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, vapiSync });
 }
