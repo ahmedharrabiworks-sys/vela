@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_VOICE_ID, DEFAULT_SPEED, VOICES } from "@/lib/vapi-agent-config";
+import { VOICES } from "@/lib/vapi-agent-config";
+import { DEFAULT_PHONE_VOICE_ID, DEFAULT_PHONE_SPEED } from "@/lib/vapi-phone-assistant";
 
 const PERSONALITIES = [
   { value: "friendly",     label: "Friendly",     description: "Warm, approachable, builds rapport quickly" },
@@ -28,6 +29,7 @@ const LANGUAGES = [
 ];
 
 const GREETING_LANGUAGES = [
+  { value: "ar_en", label: "Arabic + English (العربية + English)" },
   { value: "en", label: "English" },
   { value: "fr", label: "French (Français)" },
   { value: "ar", label: "Arabic (العربية)" },
@@ -52,14 +54,14 @@ export default function SettingsPage() {
   const { t } = useI18n();
   const [settings, setSettings] = useState<Settings>({
     agentName:          "Vela",
-    voiceId:            DEFAULT_VOICE_ID,
-    speed:              DEFAULT_SPEED,
+    voiceId:            DEFAULT_PHONE_VOICE_ID,
+    speed:              DEFAULT_PHONE_SPEED,
     personality:        "professional",
     customInstructions: "",
     greetingStyle:      "warm",
     customGreeting:     "",
     language:           "",
-    greetingLanguage:   "en",
+    greetingLanguage:   "ar_en",
   });
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
@@ -120,7 +122,7 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
-  const speed    = settings.speed ?? DEFAULT_SPEED;
+  const speed    = settings.speed ?? DEFAULT_PHONE_SPEED;
   const speedPct = ((speed - 0.7) / 0.5) * 100;
   const speedLabel =
     speed < 0.85  ? "Slower. Clear and deliberate"
@@ -317,7 +319,7 @@ export default function SettingsPage() {
               <div>
                 <label className="text-xs font-medium block mb-1.5" style={{ color: textMuted }}>Greeting Language</label>
                 <select
-                  value={settings.greetingLanguage || "en"}
+                  value={settings.greetingLanguage || "ar_en"}
                   onChange={(e) => set("greetingLanguage", e.target.value)}
                   className={inputClass}
                   style={inputStyle}
@@ -360,7 +362,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs mt-3" style={{ color: textMuted }}>{speedLabel}</p>
               <button
-                onClick={() => playPreview(settings.voiceId ?? DEFAULT_VOICE_ID)}
+                onClick={() => playPreview(settings.voiceId ?? DEFAULT_PHONE_VOICE_ID)}
                 className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all"
                 style={{
                   background: isDark ? "var(--dm-card2)" : "#F3F4F6",

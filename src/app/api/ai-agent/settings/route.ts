@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import { getDefaultVoiceId, getVoiceConfig, clampSpeed, DEFAULT_SPEED } from "@/lib/vapi-agent-config";
+import { getPhoneVoiceConfig } from "@/lib/vapi-phone-assistant";
 
 export const dynamic = "force-dynamic";
 
@@ -132,14 +132,15 @@ export async function POST(req: NextRequest) {
   const vapiKey = process.env.VAPI_API_KEY;
   let vapiSync: "ok" | "failed" | "skipped" = "skipped";
   if (assistantId && vapiKey) {
-    const lang    = (settings.language as string | undefined) || "";
-    const voiceId = (settings.voiceId  as string | undefined) || getDefaultVoiceId(lang);
-    const speed   = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
+    // Phone receptionist v2 voice (model + fallback); owner's voice wins,
+    // else the default receptionist voice.
+    const voiceId = settings.voiceId as string | undefined;
+    const speed   = typeof settings.speed === "number" ? settings.speed : undefined;
     try {
       const res = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${vapiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ voice: getVoiceConfig(voiceId, clampSpeed(speed)) }),
+        body: JSON.stringify({ voice: getPhoneVoiceConfig(voiceId, speed) }),
         signal: AbortSignal.timeout(5000),
       });
       vapiSync = res.ok ? "ok" : "failed";

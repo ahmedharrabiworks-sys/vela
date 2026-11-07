@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
-import {
-  DEFAULT_SPEED,
-  getDefaultVoiceId,
-  getTranscriberConfig,
-  getSpeakingPlanConfig,
-  getVoiceConfig,
-  buildInboundSystem,
-  CALL_LIMITS,
-} from "@/lib/vapi-agent-config";
+import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
 import { formatBookedSlotsText } from "@/lib/availability";
 import {
   BOOK_APPOINTMENT_TOOL,
-  buildBookAppointmentTool,
   collectCallerFields,
+  isReliableCallerId,
   getVapiServerConfig,
   resolveTenantTimezone,
   wallClockNow,
@@ -136,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     const { data: tenantData } = await admin
       .from("tenants")
-      .select("business_name, plan")
+      .select("business_name, plan, phone")
       .eq("id", tenantRow.tenant_id)
       .maybeSingle();
 
@@ -155,10 +147,6 @@ export async function POST(req: NextRequest) {
     const timezone = resolveTenantTimezone(settings);
 
     const agentName    = (settings.agentName as string | undefined) || "Vela";
-    const language     = (settings.language as string | undefined) || "";
-    // Owner's explicit choice wins; smart Arabic default only when nothing is saved
-    const voiceId      = (settings.voiceId as string | undefined) || getDefaultVoiceId(language);
-    const speed        = typeof settings.speed === "number" ? settings.speed : DEFAULT_SPEED;
     const businessName = (tenantData?.business_name as string | undefined) || "your business";
 
     // Real upcoming schedule snapshot for this call (the book_appointment
@@ -179,29 +167,24 @@ export async function POST(req: NextRequest) {
       console.error("[call-webhook] failed to fetch booked slots for assistant-request:", err);
     }
 
-    const systemPrompt = buildInboundSystem(agentName, businessName, kb, settings, bookedSlotsText, {
-      nowText: wallClockNowText(timezone),
-      bookingTool: true,
-    });
-    const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
+    // Caller ID is only offered back to the caller ("the one ending in
+    // 2345?") when it is trustworthy: not missing/anonymous, not the
+    // business's own forwarding line, not the bridge number.
+    const reliable = isReliableCallerId(callerNumber, [tenantData?.phone as string | undefined, tenantRow.vapi_phone_number]);
 
     return NextResponse.json({
-      assistant: {
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          messages: [{ role: "system", content: systemPrompt }],
-          tools: [buildBookAppointmentTool(serverCfg.server)],
-        },
-        voice: getVoiceConfig(voiceId, speed),
-        transcriber: getTranscriberConfig(language),
-        firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-        stopSpeakingPlan,
-        startSpeakingPlan,
-        ...CALL_LIMITS,
-        // end-of-call-report / tool calls for this call come back here, signed.
+      // Receptionist v2 (see lib/vapi-phone-assistant.ts). end-of-call-report
+      // and tool calls for this call come back to serverCfg, signed.
+      assistant: buildPhoneAssistant({
+        agentName,
+        businessName,
+        kb,
+        settings,
+        nowText: wallClockNowText(timezone),
+        bookedSlotsText,
+        caller: { number: callerNumber, reliable },
         server: serverCfg.server,
-      },
+      }),
     });
   }
 

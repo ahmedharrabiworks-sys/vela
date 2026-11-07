@@ -19,6 +19,10 @@ export const VOICES: VoiceEntry[] = [
   { id: "TUKJhQmz3RPYBNAgC5A1", name: "Miles",     description: "Natural and grounded, easy to trust",        gender: "male" },
   { id: "DANw8bnAVbjDEHwZIoYa", name: "Sami",      description: "Deep and resonant, commanding presence",     gender: "male" },
   // Female
+  // Gulf Arabic receptionist voices (ElevenLabs library, Saudi/Gulf accent,
+  // conversational). Heba is the phone agent's default (vapi-phone-assistant.ts).
+  { id: "QsV9PCczMIklRM6xLPAS", name: "Heba",      description: "Gulf Arabic receptionist, warm and clear",   gender: "female" },
+  { id: "gVzwmdZzRgBrNjXaTmi5", name: "Layan",     description: "Gulf Arabic, polished and professional",     gender: "female" },
   { id: "Qggl4b0xRMiqOwhPtVWT", name: "Céline",    description: "Warm and articulate, engaging tone",         gender: "female" },
   { id: "FvmvwvObRqIHojkEGh5N", name: "Valentina", description: "Bright and confident, effortlessly clear",   gender: "female" },
   { id: "22VndfJPBU7AZORAZZTT", name: "Hanna",     description: "Precise and composed, professional warmth",  gender: "female" },
@@ -217,119 +221,10 @@ const LANG_NAMES: Record<string, string> = {
   en: "English",
 };
 
-// ── Inbound phone agent system prompt ─────────────────────────────────────────
-// bookedSlotsText: real, freshly-queried appointments text (same format as
-// api/ai/reply's, see src/lib/availability.ts's formatBookedSlotsText),
-// fetched fresh by call-webhook/route.ts's assistant-request handler on
-// every real inbound call. Optional and defaults to "" for the static
-// provisioning call site (api/ai-agent/phone/route.ts), which builds a
-// fallback prompt at provisioning time, not per-call, so a real-time
-// schedule snapshot there would just go stale between provisions.
-//
-// opts.nowText: "Today is ... (Asia/Qatar)" from lib/vapi-webhook.ts, so the
-// agent resolves "tomorrow"/"Sunday" in the business's timezone.
-// opts.bookingTool: the assistant has the book_appointment tool (real
-// booking during the call, see lib/phone-booking.ts). Always true for real
-// inbound calls now; kept optional so a caller without the tool never gets
-// told to use one.
-export function buildInboundSystem(
-  agentName: string,
-  businessName: string,
-  kb: Record<string, unknown>,
-  settings: Record<string, unknown>,
-  bookedSlotsText: string = "",
-  opts: { nowText?: string; bookingTool?: boolean } = {},
-): string {
-  const services =
-    (kb.services as Array<{ name: string; price?: string }> | undefined) ?? [];
-  const biz = (kb.business as Record<string, string> | undefined) ?? {};
-  const extra = (kb.extra as string | undefined) ?? "";
-  const personality = (settings.personality as string | undefined) ?? "professional";
-  const greetingStyle = (settings.greetingStyle as string | undefined) ?? "warm";
-  const customGreeting = (settings.customGreeting as string | undefined) ?? "";
-  const customInstructions = (settings.customInstructions as string | undefined) ?? "";
-  const language = (settings.language as string | undefined) ?? "";
-  const greetingLanguage = (settings.greetingLanguage as string | undefined) ?? "";
-
-  const svcList =
-    services.length > 0
-      ? services.map((s) => `${s.name}${s.price ? ` (${s.price})` : ""}`).join(", ")
-      : "";
-
-  const personalityLine =
-    personality === "professional"
-      ? "Formal, precise, business-focused."
-      : personality === "friendly"
-      ? "Warm, approachable, builds rapport quickly."
-      : personality === "persuasive"
-      ? "Confident, highlights value, gently drives action."
-      : "Concise and efficient, respect the caller's time.";
-
-  const greetingInstruction =
-    greetingStyle === "custom" && customGreeting.trim()
-      ? `Your opening greeting MUST be exactly this, translated naturally into the greeting language below while keeping the same meaning and structure, do not invent a different greeting: "${customGreeting.trim()}"`
-      : greetingStyle === "pro"
-      ? `Your first sentence MUST name the business: "${businessName}". Example: "Welcome to ${businessName}, how can I assist you today?" Polished and brief, then listen.`
-      : `Your first sentence MUST name the business: "${businessName}". Example: "Hi, thanks for calling ${businessName}! How can I help you today?" Warm and short, then let them speak.`;
-
-  const greetingVaryLine =
-    greetingStyle === "custom" && customGreeting.trim()
-      ? "Use the exact greeting specified above every call, do not vary its wording or meaning."
-      : `Generate your greeting naturally. Vary your exact wording every call, never open with the same phrase twice, and never use a fixed word like "مرحبا" or "Hello" as a rote opener.`;
-
-  // The AI speaks first, before it has heard the caller -- so the opening line's
-  // language cannot come from auto-detecting the caller's speech. greetingLanguage
-  // lets the owner fix it explicitly; tenants with no saved value default to
-  // English (not a "match business language" fallback).
-  const effectiveGreetingLang = greetingLanguage || "en";
-  const greetingLanguageLine = `Speak your OPENING GREETING specifically in ${LANG_NAMES[effectiveGreetingLang] ?? effectiveGreetingLang}, this is fixed regardless of what language the rest of the call ends up in. Immediately after the greeting, follow the LANGUAGE rule above for the remainder of the call.`;
-
-  const languageInstruction =
-    language && language !== "en"
-      ? `MANDATORY: Speak ONLY in ${LANG_NAMES[language] ?? language} for the ENTIRE call, from your very first word to your last. Do not use English. Do not mix languages mid-sentence. If the caller speaks a different language, acknowledge them briefly in ${LANG_NAMES[language] ?? language} and continue in ${LANG_NAMES[language] ?? language}.`
-      : `MANDATORY: Detect the caller's language from their very first word and respond in THAT language only, for the entire call.
-Arabic (العربية) is your HIGHEST priority, if you hear any Arabic at all, respond in Arabic immediately and stay in Arabic.
-Support Arabic (العربية), French, German, Spanish, and English.
-Never mix languages. Never default back to English mid-call. Mirror the caller's language exactly.`;
-
-  return `You are ${agentName}, the AI phone agent for ${businessName}. You handle inbound calls and help callers get what they need.
-
-## LANGUAGE, HIGHEST PRIORITY RULE
-${languageInstruction}
-
-## OPENING
-${greetingInstruction}
-${greetingLanguageLine}
-${greetingVaryLine} You speak first.
-
-## BUSINESS KNOWLEDGE
-${opts.nowText ? `${opts.nowText}\n` : ""}${svcList ? `Services: ${svcList}` : "No services listed, let callers ask about what you offer."}
-${biz.hours ? `Hours: ${biz.hours}` : ""}
-${biz.address ? `Location: ${biz.address}` : ""}
-${biz.bookingPolicy ? `Booking policy: ${biz.bookingPolicy}` : ""}
-${extra ? `Additional info: ${extra}` : ""}
-${bookedSlotsText}
-
-## CALL FLOW
-1. Brief greeting (see OPENING above), you speak first
-2. Listen, understand what the caller needs
-3. Answer using your business knowledge; never invent information
-${opts.bookingTool
-  ? `4. If they want to book, collect ONE detail at a time: the service, the day and time (must be within the hours above), their name, and their phone number.
-   - ALWAYS ask for their phone number, even if you think you can see it. Read it back digit by digit and get a clear yes before moving on.
-   - Then repeat every detail (service, day, date, time, name, phone) and ask "Shall I book this?". Only after a clear yes, call the book_appointment tool. Say a short "one moment" while it runs.
-   - Tell the caller exactly what the tool result says. If the time is taken, offer the real alternatives it returns, never invent other times. Never say something is booked unless the tool said "Booked" or "Already booked".`
-  : `4. If they want to book: ask for their preferred day/time if not given, then immediately check it against the schedule and hours above and tell them right away whether it works in that same turn, never tell a caller you'll "check and call back," you already have the real schedule above. If it's taken, offer real alternative times from gaps in that schedule. Once a time is confirmed, get their name and phone number, read the phone number back digit by digit to confirm it, then confirm every detail back before ending.`}
-5. Warm close, tell them what happens next
-
-## PERSONALITY
-${personalityLine}
-
-${customInstructions ? `## CUSTOM RULES\n${customInstructions}\n` : ""}## RULES
-- Never invent information not in your knowledge above
-- Keep answers short, this is a phone call
-- Never admit you are AI unless directly asked`;
-}
+// ── Inbound phone agent ───────────────────────────────────────────────────────
+// The real phone receptionist (prompt, voice, transcriber, turn-taking) lives in
+// src/lib/vapi-phone-assistant.ts (v2). The previous builder is preserved at git
+// tag voice-v1.
 
 // ── Training context (optional, makes questions smarter when available) ──────
 export interface TrainingContext {

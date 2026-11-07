@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import {
-  DEFAULT_SPEED,
-  getDefaultVoiceId,
-  getTranscriberConfig,
-  getSpeakingPlanConfig,
-  getVoiceConfig,
-  buildInboundSystem,
-  CALL_LIMITS,
-} from "@/lib/vapi-agent-config";
+import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
-import { buildBookAppointmentTool, getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
+import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 
 export const dynamic = "force-dynamic";
@@ -48,8 +40,6 @@ async function vapiRequest(step: "assistant" | "number", path: string, method: s
   }
   return data;
 }
-
-/* buildInboundSystem moved to src/lib/vapi-agent-config.ts */
 
 async function getAuthAndTenant(req: NextRequest) {
   void req;
@@ -132,10 +122,6 @@ export async function POST(req: NextRequest) {
   const kb = mergeKnowledgeBases(rawKb, rawPhoneKb);
 
   const agentName = (agentSettings.agentName as string | undefined) || "Vela";
-  const language  = (agentSettings.language as string | undefined) || "";
-  // Owner's explicit choice wins; smart Arabic default only when nothing is saved
-  const voiceId   = (agentSettings.voiceId as string | undefined) || getDefaultVoiceId(language);
-  const speed     = typeof agentSettings.speed === "number" ? agentSettings.speed : DEFAULT_SPEED;
 
   // C1: every Vapi object that calls back into Vela gets { url, headers: { x-vapi-secret } }.
   // Without the secret our fail-closed webhook rejects every call, so refuse
@@ -148,38 +134,24 @@ export async function POST(req: NextRequest) {
   const server = serverCfg.server;
   const timezone = resolveTenantTimezone(agentSettings);
 
-  // Static fallback prompt. Real inbound calls use the fresh per-call
-  // assistant from call-webhook's assistant-request (current schedule +
-  // today's date); this one is only used if Vapi ever calls the stored
-  // assistant directly.
-  const systemPrompt = buildInboundSystem(agentName, tenant.business_name || "your business", kb, agentSettings, "", {
-    nowText: wallClockNowText(timezone),
-    bookingTool: true,
-  });
-  const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
-
   let assistantId = (cfg as any)?.vapi_assistant_id as string | null ?? null;
   let phoneNumber = (cfg as any)?.vapi_phone_number as string | null ?? null;
   let phoneNumberId = (cfg as any)?.vapi_phone_number_id as string | null ?? null;
 
   try {
     // ── Assistant: create or update, always with the signed server config + tool
-    const assistantBody = {
+    // Stored fallback assistant (same receptionist v2 builder as the
+    // per-call one in call-webhook, minus caller ID and live schedule; real
+    // inbound calls get the fresh per-call assistant via assistant-request).
+    const assistantBody = buildPhoneAssistant({
       name: `${agentName}, ${tenant.business_name || "Business"}`,
-      model: {
-        provider: "openai",
-        model: "gpt-4o",
-        messages: [{ role: "system", content: systemPrompt }],
-        tools: [buildBookAppointmentTool(server)],
-      },
-      voice: getVoiceConfig(voiceId, speed),
-      transcriber: getTranscriberConfig(language),
-      firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-      stopSpeakingPlan,
-      startSpeakingPlan,
-      ...CALL_LIMITS,
+      agentName,
+      businessName: tenant.business_name || "your business",
+      kb,
+      settings: agentSettings,
+      nowText: wallClockNowText(timezone),
       server,
-    };
+    });
 
     if (assistantId) {
       try {
