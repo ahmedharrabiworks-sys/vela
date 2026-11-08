@@ -75,7 +75,7 @@ function appBase(): string {
  */
 export function politeVoicemailTwiml(businessName: string | null): Response {
   if (!businessName) {
-    return twiml(`<Response>${SAY_AR}شكرًا لاتصالك. ما نقدر نرد على مكالمتك الحين، حاول مرة ثانية بعد شوي.</Say>${SAY_EN}Thanks for calling. We can't take your call right now. Please try again a little later.</Say><Hangup/></Response>`);
+    return twiml(`<Response>${SAY_AR}شكرًا لاتصالك. ما نقدر نرد عليك الحين، حاول مرة ثانية بعد شوي.</Say>${SAY_EN}Thanks for calling. We can't take your call right now. Please try again a little later.</Say><Hangup/></Response>`);
   }
   const name = esc(businessName);
   const base = appBase();
@@ -83,7 +83,7 @@ export function politeVoicemailTwiml(businessName: string | null): Response {
   const callback = esc(`${base}/api/voice/twilio-voicemail?step=recording`);
   return twiml(
     `<Response>` +
-    `${SAY_AR}شكرًا لاتصالك بـ ${name}. ما نقدر نرد على مكالمتك الحين. اترك اسمك ورقمك بعد الصافرة، وبنرجع نتصل فيك.</Say>` +
+    `${SAY_AR}شكرًا لاتصالك بـ ${name}. ما نقدر نرد عليك الحين. اترك اسمك ورقمك بعد الصافرة، وبنتصل فيك إن شاء الله.</Say>` +
     `${SAY_EN}Thanks for calling ${name}. We can't take your call right now. Please leave your name and number after the tone and we'll call you back.</Say>` +
     `<Record maxLength="60" timeout="5" playBeep="true" trim="trim-silence" action="${action}" method="POST" recordingStatusCallback="${callback}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"/>` +
     `<Hangup/>` +
@@ -92,7 +92,7 @@ export function politeVoicemailTwiml(businessName: string | null): Response {
 }
 
 export function goodbyeTwiml(): Response {
-  return twiml(`<Response>${SAY_AR}شكرًا لك، مع السلامة.</Say>${SAY_EN}Thank you, goodbye.</Say><Hangup/></Response>`);
+  return twiml(`<Response>${SAY_AR}يعطيك العافية، في أمان الله.</Say>${SAY_EN}Thank you, goodbye.</Say><Hangup/></Response>`);
 }
 
 // Values carriers/Twilio use for a withheld caller ID. These look like real
@@ -162,17 +162,18 @@ export async function pointTwilioNumberAtVela(phoneNumber: string): Promise<"upd
       headers: { Authorization: auth }, signal: AbortSignal.timeout(8000),
     });
     if (!list.ok) { console.warn("[twilio-voice] number lookup failed:", list.status); return "failed"; }
-    const found = ((await list.json()) as { incoming_phone_numbers?: Array<{ sid: string }> }).incoming_phone_numbers?.[0];
+    const found = ((await list.json()) as { incoming_phone_numbers?: Array<{ sid: string; voice_fallback_url?: string | null }> }).incoming_phone_numbers?.[0];
     if (!found) return "not_found";
     const base = appBase();
+    // A TwiML Bin set by hand is the fallback that survives a full Vela outage: keep it.
+    const keepBin = /^https:\/\/handler\.twilio\.com\//i.test(found.voice_fallback_url ?? "");
     const res = await fetch(`${TWILIO_API}/Accounts/${sid}/IncomingPhoneNumbers/${found.sid}.json`, {
       method: "POST",
       headers: { Authorization: auth, "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         VoiceUrl: `${base}/api/voice/twilio-inbound`,
         VoiceMethod: "POST",
-        VoiceFallbackUrl: `${base}/api/voice/twilio-fallback`,
-        VoiceFallbackMethod: "POST",
+        ...(keepBin ? {} : { VoiceFallbackUrl: `${base}/api/voice/twilio-fallback`, VoiceFallbackMethod: "POST" }),
       }).toString(),
       signal: AbortSignal.timeout(8000),
     });

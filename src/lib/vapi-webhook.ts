@@ -55,6 +55,7 @@ export function buildBookAppointmentTool(server: VapiServerConfig) {
     type: "function" as const,
     async: false,
     server,
+    messages: [{ type: "request-start" as const, content: "" }],
     function: {
       name: BOOK_APPOINTMENT_TOOL,
       description:

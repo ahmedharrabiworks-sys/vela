@@ -28,5 +28,19 @@ export async function GET(req: NextRequest) {
 
   const audio = await fetchTwilioRecording(vm.accountSid, vm.recordingSid);
   if (!audio) return NextResponse.json({ error: "Recording unavailable" }, { status: 502 });
-  return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store" } });
+
+  // Byte ranges: iPhone Safari refuses to play audio without them.
+  const total = audio.byteLength;
+  const headers = { "Content-Type": "audio/mpeg", "Cache-Control": "private, no-store", "Accept-Ranges": "bytes" };
+  const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get("range") ?? "");
+  if (range && (range[1] || range[2])) {
+    const start = range[1] ? Number(range[1]) : Math.max(0, total - Number(range[2]));
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), total - 1) : total - 1;
+    if (start >= total || start > end) return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${total}` } });
+    return new Response(audio.slice(start, end + 1), {
+      status: 206,
+      headers: { ...headers, "Content-Range": `bytes ${start}-${end}/${total}`, "Content-Length": String(end - start + 1) },
+    });
+  }
+  return new Response(audio, { headers: { ...headers, "Content-Length": String(total) } });
 }

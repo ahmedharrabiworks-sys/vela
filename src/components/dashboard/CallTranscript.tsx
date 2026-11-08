@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 // Shared between the AI Agent Calls tab (inline row expansion) and the Overview
 // page's Recent Calls list (modal) -- single source of truth for how a call's
 // outcome badge and full transcript are rendered, so both surfaces show exactly
@@ -16,6 +18,7 @@ export interface CallRecord {
   transcript?: Array<{ role: string; text: string }>;
   summary?: string;
   outcome?: string;
+  has_recording?: boolean;
 }
 
 export function fmtDuration(secs?: number) {
@@ -86,6 +89,29 @@ export function callHeadline(call: CallRecord): string {
   return "No transcript available";
 }
 
+// Streams through /api/voice/recording, which only serves the signed-in owner.
+function VoicemailPlayer({ callId, isDark }: { callId: string; isDark: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const textMuted = isDark ? "var(--dm-muted)" : "#9CA3AF";
+  return (
+    <div className="md:col-span-2">
+      <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>Voicemail</p>
+      {failed ? (
+        <p className="text-xs" style={{ color: textMuted }}>This recording is not available right now. Please try again later.</p>
+      ) : (
+        <audio
+          controls
+          preload="none"
+          className="w-full h-10"
+          aria-label="Play voicemail"
+          src={`/api/voice/recording?call=${encodeURIComponent(callId)}`}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  );
+}
+
 // The actual summary + transcript content -- no "Knowledge Captured" block (removed
 // per product decision: too technical/debug-looking for the business owner to see).
 export function CallTranscriptContent({ call, isDark }: { call: CallRecord; isDark: boolean }) {
@@ -95,6 +121,8 @@ export function CallTranscriptContent({ call, isDark }: { call: CallRecord; isDa
 
   return (
     <div className="grid md:grid-cols-2 gap-5">
+      {call.has_recording && <VoicemailPlayer callId={call.id} isDark={isDark} />}
+
       {call.summary && (
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>AI Summary</p>

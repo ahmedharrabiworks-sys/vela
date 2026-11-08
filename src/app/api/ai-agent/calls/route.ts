@@ -38,7 +38,12 @@ export async function GET(req: NextRequest) {
 
   // Any DB error (table missing, column missing, etc.) → return empty gracefully
   if (error) return NextResponse.json({ calls: [] });
-  return NextResponse.json({ calls: data ?? [] });
+  // Recording ids stay on the server; the page only learns that one exists.
+  const calls = (data ?? []).map((c: any) => {
+    const { voicemail, ...kb } = (c.kb_extracted ?? {}) as Record<string, any>;
+    return { ...c, kb_extracted: c.kb_extracted ? kb : c.kb_extracted, has_recording: !!voicemail?.recordingSid };
+  });
+  return NextResponse.json({ calls });
 }
 
 export async function POST(req: NextRequest) {

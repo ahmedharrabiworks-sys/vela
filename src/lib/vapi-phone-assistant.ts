@@ -107,12 +107,29 @@ const INTERRUPT_PHRASES = [
   "لا", "لحظة", "استنى", "انتظر", "بس", "لحظه", "عفوا", "دقيقة",
 ];
 
+// A lone "yes" / "ايوه" / "تمام" is often the start of a longer sentence ("yes,
+// that is the best number"), so a very short utterance gets a slightly longer
+// wait. Anything longer doesn't match and keeps the fast default.
+const SHORT_REPLY_WORDS = [
+  "yes", "yeah", "yep", "yup", "ok", "okay", "sure", "right", "no", "mm", "mhm", "um", "uh", "aiwa", "aywa",
+  "إي", "اي", "ايه", "إيه", "ايوه", "أيوه", "ايوا", "إيوا", "نعم", "تمام", "زين", "طيب", "اوكي", "أوكي", "صح", "أكيد", "اكيد", "لا", "هلا", "اها", "آها", "امم", "أمم",
+].join("|");
+const PUNCT = "[\\s.,،؟?!…]*";
+export const SHORT_REPLY_REGEX = `^${PUNCT}(?:(?:${SHORT_REPLY_WORDS})${PUNCT}){1,2}$`;
+const SHORT_REPLY_WAIT_SECONDS = 0.8;
+
 export function getPhoneTurnTaking() {
   return {
     startSpeakingPlan: {
       // Minimum pause; the transcriber's own semantic end-of-turn decides
       // when the caller is actually done (fillers like "uhh" don't end a turn).
       waitSeconds: 0.2,
+      customEndpointingRules: [{
+        type: "customer" as const,
+        regex: SHORT_REPLY_REGEX,
+        regexOptions: [{ type: "ignore-case" as const, enabled: true }],
+        timeoutSeconds: SHORT_REPLY_WAIT_SECONDS,
+      }],
     },
     stopSpeakingPlan: {
       numWords: 1,
@@ -145,6 +162,18 @@ function compactServices(services: Service[]): string {
 function last4(n: string): string {
   const d = n.replace(/\D/g, "");
   return d.slice(-4);
+}
+
+const DIGIT_WORDS_EN = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const DIGIT_WORDS_AR = ["صفر", "واحد", "اثنين", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"];
+
+/** Digits as fixed spoken words, so the model never has to improvise them. */
+export function spokenDigits(digits: string): { en: string; ar: string } {
+  const list = digits.replace(/\D/g, "").split("").map(Number);
+  return {
+    en: list.map((d) => DIGIT_WORDS_EN[d]).join(", "),
+    ar: list.map((d) => DIGIT_WORDS_AR[d]).join("، "),
+  };
 }
 
 export function buildReceptionistPrompt(p: {
@@ -181,9 +210,13 @@ export function buildReceptionistPrompt(p: {
   ].filter(Boolean).join("\n");
 
   const caller = p.caller;
-  const callbackRule = caller?.reliable && caller.number
-    ? `The caller ID is ${caller.number}. When you need their number, ask naturally if it's the best number to reach them, the one ending in ${last4(caller.number)} (say the four digits one by one, in their language). If yes, use ${caller.number}. If not, ask for the right one and read it back in small groups.`
-    : `The caller ID is hidden or not usable. When you need their number, ask for it and read it back in small groups to confirm.`;
+  const newNumberRule = "Repeat any number they give you exactly once, digit by digit as words, in the exact order they said it, in groups of two or three. Never reorder, skip or add a digit. Then ask if that's right. If they correct it, repeat the corrected number the same way.";
+  const knownNumber = caller?.reliable && caller.number ? caller.number : null;
+  let callbackRule = `The caller ID is hidden or not usable. When you need their number, ask for it. ${newNumberRule}`;
+  if (knownNumber) {
+    const spoken = spokenDigits(last4(knownNumber));
+    callbackRule = `When you need their number, say this exact sentence, word for word, in the language you are speaking, then stop and wait for the answer. English: "Is the number ending in ${spoken.en} the best one to reach you?" Arabic: "الرقم اللي آخره ${spoken.ar}، هو أحسن رقم نتواصل معك عليه؟" Say it exactly once unless they ask you to repeat it. Never say those digits any other way, never as figures, never say any other part of the number, and never ask the caller to say or spell them. If yes, use ${knownNumber} as customer_phone (never say this aloud). If they give a different number: ${newNumberRule}`;
+  }
 
   const languageRule = ownerLang && ownerLang !== "en" && ownerLang !== "ar"
     ? `The business prefers ${ownerLang}, but always answer in the language the caller actually speaks.`
@@ -195,7 +228,9 @@ export function buildReceptionistPrompt(p: {
 ${facts}
 
 # Language
-- Answer in the caller's language AND dialect from their first words. Gulf Arabic callers get natural Gulf Arabic (هلا، حياك، شلون، وش، زين، إن شاء الله). Egyptian, Levantine, English, Hindi or Urdu callers get their own.
+- Answer in the caller's language AND dialect from their first words. Gulf Arabic callers get natural Gulf Arabic (هلا فيك، حياك الله، كيف أقدر أخدمك، وش، زين، إن شاء الله). Egyptian, Levantine, English, Hindi or Urdu callers get their own.
+- If a caller opens with "هلا" or "هلا والله", answer "هلا فيك". Always spell it هلا, never هلأ.
+- You speak for the business, so say "we" and "عندنا", never "I have" or "عندي".
 - If they switch language or mix Arabic and English, follow them smoothly. Never ask which language they prefer.
 ${languageRule}
 # How you talk
@@ -204,14 +239,20 @@ ${languageRule}
 - Small natural reactions are good ("mm", "okay", "sure", "تمام", "أكيد", "زين"), but vary them.
 - If they laugh, react warmly. If they hesitate or say "uhh", give them a moment and help gently. Never rush them.
 - Once you know their name, use it now and then.
-- Say times and numbers the way people talk ("four thirty in the afternoon", "الساعة أربع ونص العصر"). Read phone numbers in small groups.
+- Say times the way people talk ("four thirty in the afternoon", "الساعة أربع ونص العصر"). Phone numbers only as the call flow says, always in words.
 - Never invent prices, services, times or facts. If someone asks directly whether you are a real person or an AI, answer honestly.
+
+# Safety
+- You are a receptionist, not a doctor, lawyer or advisor. Never diagnose, guess the cause, or recommend or name a treatment, procedure, medicine, legal step or financial step for their situation, even if they ask what you think.
+- Instead: acknowledge it kindly in one short sentence, say the specialist will check it properly, and offer the general appointment type from the services (consultation, check-up, first visit). If none is listed, offer a consultation with the team and use "Consultation" as the service.
+- Book a specific treatment only when the caller asks for it by name.
+- If it sounds like an emergency, tell them to get urgent help right away instead of booking.
 
 # Call flow
 1. You already greeted them. Find out how you can help.
 2. Get their name early, naturally.
-3. Understand the need: a specific service, or a problem they describe (then suggest the service that fits, from the list only).
-4. To book: agree on a day and time inside the hours and not in the busy times. ${callbackRule} Then repeat the key details once and ask "shall I book it?". After a clear yes, say a short "one moment" and call ${BOOK_APPOINTMENT_TOOL} (date YYYY-MM-DD, time HH:MM 24h). Tell them exactly what the result says; if the time is taken, offer the alternatives it gives.
+3. Understand the need. If they name a service, use it. If they describe a problem or aren't sure what they need, follow the safety rules.
+4. To book: agree on a day and time inside the hours and not in the busy times. ${callbackRule} Then repeat the key details once and ask "shall I book it?". After a clear yes, say a short "one moment" in their language and call ${BOOK_APPOINTMENT_TOOL} (date YYYY-MM-DD, time HH:MM 24h). Tell them exactly what the result says; if the time is taken, offer the alternatives it gives.
 5. If you don't know the answer: don't guess. Offer to take a message (their name, the confirmed number, the message) and say the team will call them back.
 6. Before saying goodbye, sum up in one sentence what happens next.
 ${custom ? `\n# Owner's rules\n${custom}\n` : ""}`;
@@ -225,8 +266,8 @@ export function buildGreeting(businessName: string, settings: Record<string, any
   const pick = (opts: string[]) => opts[Math.floor(Math.random() * opts.length)];
   if (lang === "ar") {
     return pick([
-      `هلا والله، حياك الله في ${businessName}. شلون أقدر أخدمك؟`,
-      `أهلًا وسهلًا، ${businessName}. تفضل، شلون أقدر أساعدك؟`,
+      `هلا والله، حياك الله في ${businessName}. كيف أقدر أخدمك؟`,
+      `هلا وغلا، حياك الله في ${businessName}. تفضل، كيف أقدر أساعدك؟`,
     ]);
   }
   if (lang === "en") {
@@ -241,7 +282,7 @@ export function buildGreeting(businessName: string, settings: Record<string, any
   // "ar_en" or unset, the default for Qatar: a short Gulf Arabic welcome, then English.
   return pick([
     `هلا، حياك الله في ${businessName}. Hi, how can I help you today?`,
-    `أهلًا وسهلًا في ${businessName}. Hello, how can I help?`,
+    `هلا وغلا، حياك الله في ${businessName}. Hello, how can I help?`,
   ]);
 }
 

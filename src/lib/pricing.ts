@@ -1,3 +1,5 @@
+import { PLAN_CONFIG } from "@/lib/plan-config";
+
 export interface PlanFeature { text: string; included: boolean }
 
 export interface Plan {
@@ -118,3 +120,18 @@ export const PLANS: Plan[] = [
     ],
   },
 ];
+
+/** Plans and real QAR prices for AI prompts. Prompts must use this, never typed prices. */
+export function plansForPrompt(): string {
+  const qar = (n: number) => `${n.toLocaleString("en-US")} QAR/month`;
+  return PLANS.filter((p) => !p.isCustom).map((p) => {
+    const c = PLAN_CONFIG[p.id];
+    const includes = [
+      c.channels === 1 ? "1 channel" : `all ${c.channels} channels`,
+      c.textMessages === Infinity ? "unlimited text messages" : `${c.textMessages} text messages/month`,
+      c.voiceAgent ? `AI voice phone agent with ${c.voiceMinutes.toLocaleString("en-US")} voice minutes/month` : "no voice agent",
+      c.teamMembers === Infinity ? "unlimited team members" : `${c.teamMembers} team member`,
+    ];
+    return `- ${p.name}: ${qar(p.monthly)} (${qar(p.annual)} billed annually)${p.popular ? ", most popular" : ""}. ${includes.join(", ")}.`;
+  }).join("\n");
+}

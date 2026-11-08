@@ -130,7 +130,7 @@ Single source of truth: `src/lib/plan-config.ts` (limits, `price` in QAR) + `src
 6. **Never paste or write raw API keys / secret values** in chat, docs or commits.
 7. **When adding a Supabase column, always provide the exact SQL** (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...;` + `NOTIFY pgrst, 'reload schema';`).
 8. **Verify with real output, not predicted output.** A migration file in the repo does NOT mean it ran in production; confirm schema with a live query. (Lesson: migration_v2 never ran, website chat was broken for every new visitor until July 30, 2026.)
-9. Deepgram does not support Arabic. Transcriber is ElevenLabs Scribe. Never switch back.
+9. **Phone voice stack (`src/lib/vapi-phone-assistant.ts`, also used by browser test calls):** transcriber Soniox `stt-rt-v5` (ar + en hints, not strict) with Speechmatics `ar_en` fallback; voice ElevenLabs `eleven_v4_turbo` with `eleven_flash_v2_5` fallback; LLM `gpt-4.1-mini`. Why: in scripted calls (Nov 8, 2026) it answered in 1.1 to 1.7s vs 3.9 to 4.2s on the old Scribe + multilingual_v2 + gpt-4o stack, kept Arabic words in mixed Arabic/English speech where Scribe romanized them ("زين" became "Zane"), and cost about 12% less on the Vapi bill. Deepgram does not support Arabic: never use it. Scribe is only for voicemail transcription.
 10. Custom domains are never Vercel project aliases; use middleware hostname routing.
 11. **No trial / free-trial wording, no refund / money-back language.** CTA = "Start for Free".
 12. Automation is built in code. No n8n / Make / Lovable / Replit.

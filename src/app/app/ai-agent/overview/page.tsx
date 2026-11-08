@@ -13,6 +13,7 @@ import {
   DEFAULT_SPEED,
 } from "@/lib/vapi-agent-config";
 import { buildBrowserCallAssistant } from "@/lib/vapi-phone-assistant";
+import { plansForPrompt } from "@/lib/pricing";
 import { fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -389,7 +390,7 @@ ${langInstruction}
 ${STYLE_LINES[convStyleRef.current] ?? STYLE_LINES.warm}
 
 ## VELA PLANS
-Starter $79/mo · Pro $159/mo (most popular) · Premium $299/mo. Annual saves 20%.
+${plansForPrompt()}
 
 ## LIVE ACCOUNT DATA
 ${ctx ? buildContextString(ctx) : "Account data loading. Answer general questions about Vela."}
