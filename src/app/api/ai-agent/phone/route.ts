@@ -5,6 +5,7 @@ import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
 import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
+import { pointTwilioNumberAtVela } from "@/lib/twilio-voice";
 
 export const dynamic = "force-dynamic";
 
@@ -210,7 +211,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Connected in Vapi, but saving to your account failed. Please try again." }, { status: 500 });
     }
 
-    return NextResponse.json({ phoneNumber, phoneNumberId, assistantId });
+    // Importing or updating a number in Vapi can repoint Twilio at Vapi.
+    // Vela must stay the front door, so a caller never hears Vapi's own
+    // billing or error messages (see /api/voice/twilio-inbound).
+    const twilioWebhook = phoneNumber?.startsWith("+") ? await pointTwilioNumberAtVela(phoneNumber) : "skipped";
+    if (twilioWebhook === "failed") console.error("[ai-agent/phone] could not point the Twilio number at Vela");
+
+    return NextResponse.json({ phoneNumber, phoneNumberId, assistantId, twilioWebhook });
   } catch (err) {
     const step = err instanceof VapiError ? err.step : "assistant";
     const detail = err instanceof VapiError ? err.message : safeDetail((err as any)?.message);

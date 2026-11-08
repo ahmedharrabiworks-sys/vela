@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
-import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
-import { mergeKnowledgeBases } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
-import { formatBookedSlotsText } from "@/lib/availability";
-import {
-  BOOK_APPOINTMENT_TOOL,
-  collectCallerFields,
-  isReliableCallerId,
-  getVapiServerConfig,
-  resolveTenantTimezone,
-  wallClockNow,
-  wallClockNowText,
-} from "@/lib/vapi-webhook";
+import { BOOK_APPOINTMENT_TOOL, collectCallerFields } from "@/lib/vapi-webhook";
 import { bookAppointmentFromCall } from "@/lib/phone-booking";
-import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
+import { prepareInboundCall, parseJson, TENANT_PHONE_COLS, type TenantPhoneCfg } from "@/lib/phone-call-setup";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +12,7 @@ export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type TenantCfg = {
-  tenant_id: string;
-  vapi_phone_number_id: string | null;
-  vapi_phone_number: string | null;
-  agent_settings: unknown;
-  knowledge_base: unknown;
-  phone_agent_knowledge_base: unknown;
-};
+type TenantCfg = TenantPhoneCfg;
 
 /**
  * Resolves the tenant for a Vapi event and enforces that it is the RIGHT one:
@@ -46,7 +28,7 @@ async function resolveTenant(
   phoneNumberId: string | undefined,
 ): Promise<{ ok: true; cfg: TenantCfg } | { ok: false; status: number; reason: string }> {
   const tenantId = new URL(reqUrl).searchParams.get("tenantId");
-  const cols = "tenant_id, vapi_phone_number_id, vapi_phone_number, agent_settings, knowledge_base, phone_agent_knowledge_base";
+  const cols = TENANT_PHONE_COLS;
 
   if (tenantId) {
     if (!UUID_RE.test(tenantId)) return { ok: false, status: 400, reason: "invalid tenantId" };
@@ -63,11 +45,6 @@ async function resolveTenant(
     return { ok: true, cfg: data as TenantCfg };
   }
   return { ok: false, status: 400, reason: "cannot identify tenant" };
-}
-
-function parseJson(raw: unknown): Record<string, any> {
-  if (!raw) return {};
-  try { return (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>; } catch { return {}; }
 }
 
 /** Server-side only: what the carrier/Twilio actually reports about the caller. Never secrets. */
@@ -119,73 +96,19 @@ export async function POST(req: NextRequest) {
       console.warn("[call-webhook] assistant-request refused:", tenant.reason);
       return NextResponse.json({ error: tenant.reason }, { status: tenant.status });
     }
-    const tenantRow = tenant.cfg;
-    const serverCfg = getVapiServerConfig(tenantRow.tenant_id);
-    if (!serverCfg.ok) {
-      console.error("[call-webhook] cannot build server config:", serverCfg.reason);
+    // Same per-call setup as the Vela front door (/api/voice/twilio-inbound).
+    const prepared = await prepareInboundCall(admin, tenant.cfg, callerNumber);
+    if (!prepared.ok) {
+      if (prepared.reason === "plan_paused") {
+        // Starter: voice paused. Vapi speaks this to the caller; never
+        // mention plans, credits or errors.
+        console.log("[call-webhook] voice paused for plan", JSON.stringify({ tenantId: tenant.cfg.tenant_id }));
+        return NextResponse.json({ error: `Thanks for calling ${prepared.businessName}. We can't take your call right now. Please call again a little later.` });
+      }
       return NextResponse.json({ error: "Service misconfigured" }, { status: 500 });
     }
-
-    const { data: tenantData } = await admin
-      .from("tenants")
-      .select("business_name, plan, phone")
-      .eq("id", tenantRow.tenant_id)
-      .maybeSingle();
-
-    // Plan gate: on a plan without the voice agent (Starter) voice is PAUSED,
-    // not disconnected. The number stays linked in Vapi and tenant_config;
-    // Vapi speaks this `error` to the caller and does not start an
-    // assistant. Upgrading turns it back on with no reconnect needed.
-    const planId = ((tenantData?.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
-    if (!(PLAN_CONFIG[planId] ?? PLAN_CONFIG.starter).voiceAgent) {
-      console.log("[call-webhook] voice paused for plan", JSON.stringify({ tenantId: tenantRow.tenant_id, plan: planId }));
-      return NextResponse.json({ error: "Sorry, this line can't take calls right now. Please try again later." });
-    }
-
-    const kb = mergeKnowledgeBases(parseJson(tenantRow.knowledge_base), parseJson(tenantRow.phone_agent_knowledge_base));
-    const settings = parseJson(tenantRow.agent_settings);
-    const timezone = resolveTenantTimezone(settings);
-
-    const agentName    = (settings.agentName as string | undefined) || "Vela";
-    const businessName = (tenantData?.business_name as string | undefined) || "your business";
-
-    // Real upcoming schedule snapshot for this call (the book_appointment
-    // tool re-checks the exact slot against the DB at booking time anyway).
-    let bookedSlotsText = "";
-    try {
-      const { data: bookedSlots } = await admin
-        .from("appointments")
-        .select("datetime, service_name")
-        .eq("tenant_id", tenantRow.tenant_id)
-        .neq("status", "cancelled")
-        .is("deleted_at", null)
-        .gte("datetime", wallClockNow(timezone).asDate.toISOString())
-        .order("datetime", { ascending: true })
-        .limit(20);
-      bookedSlotsText = formatBookedSlotsText(bookedSlots as { datetime: string; service_name?: string }[] | null);
-    } catch (err) {
-      console.error("[call-webhook] failed to fetch booked slots for assistant-request:", err);
-    }
-
-    // Caller ID is only offered back to the caller ("the one ending in
-    // 2345?") when it is trustworthy: not missing/anonymous, not the
-    // business's own forwarding line, not the bridge number.
-    const reliable = isReliableCallerId(callerNumber, [tenantData?.phone as string | undefined, tenantRow.vapi_phone_number]);
-
-    return NextResponse.json({
-      // Receptionist v2 (see lib/vapi-phone-assistant.ts). end-of-call-report
-      // and tool calls for this call come back to serverCfg, signed.
-      assistant: buildPhoneAssistant({
-        agentName,
-        businessName,
-        kb,
-        settings,
-        nowText: wallClockNowText(timezone),
-        bookedSlotsText,
-        caller: { number: callerNumber, reliable },
-        server: serverCfg.server,
-      }),
-    });
+    // Receptionist v2; end-of-call-report and tool calls come back here, signed.
+    return NextResponse.json({ assistant: prepared.assistant });
   }
 
   // ── tool-calls (current Vapi) / function-call (legacy): book_appointment ──
