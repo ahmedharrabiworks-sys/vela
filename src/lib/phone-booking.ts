@@ -18,7 +18,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { checkAvailability, DEFAULT_SLOT_MINUTES, type ServiceDuration } from "@/lib/availability";
-import { mergeKnowledgeBases } from "@/lib/knowledge-base";
+import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 import { isReliableCallerId, resolveTenantTimezone, wallClockNow } from "@/lib/vapi-webhook";
@@ -100,7 +100,7 @@ export async function bookAppointmentFromCall(admin: any, input: PhoneBookingInp
   // Tenant context: timezone, real services (with durations), own numbers.
   const [{ data: cfg }, { data: tenant }] = await Promise.all([
     admin.from("tenant_config")
-      .select("knowledge_base, phone_agent_knowledge_base, agent_settings, vapi_phone_number")
+      .select("knowledge_base, agent_settings, vapi_phone_number")
       .eq("tenant_id", tenantId).maybeSingle(),
     admin.from("tenants").select("phone").eq("id", tenantId).maybeSingle(),
   ]);
@@ -109,7 +109,7 @@ export async function bookAppointmentFromCall(admin: any, input: PhoneBookingInp
     try { return (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>; } catch { return {}; }
   };
   const settings = parse(cfg?.agent_settings);
-  const kb = mergeKnowledgeBases(parse(cfg?.knowledge_base), parse(cfg?.phone_agent_knowledge_base));
+  const kb = parseKnowledgeBase(cfg?.knowledge_base);
   const services = ((kb.services as ServiceDuration[] | undefined) ?? []).filter((s) => s && typeof s.name === "string");
   const timezone = resolveTenantTimezone(settings);
 

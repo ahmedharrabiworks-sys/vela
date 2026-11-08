@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { suggestKnowledge } from "@/lib/knowledge-suggestions";
 import crypto from "crypto";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { createNotification } from "@/lib/notifications";
@@ -250,6 +251,12 @@ export async function POST(req: NextRequest) {
       // Don't fail the webhook, Vapi retries on non-200
       console.error("[call-webhook] insert error:", err?.message ?? err);
     }
+
+    await suggestKnowledge(admin, {
+      tenantId: resolvedTenantId,
+      source: "call",
+      text: (transcript as Array<{ role: string; text: string }>).filter((l) => l.role === "user").map((l) => l.text).join("\n"),
+    });
 
     // A call that never connected: no talk time and no transcript at all.
     const wasMissed = durationSecs <= 0 && transcript.length === 0;

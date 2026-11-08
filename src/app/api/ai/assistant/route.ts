@@ -4,6 +4,8 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { stripAiTells, stripMarkdownFormatting, stripFillerClosers } from "@/lib/text-clean";
 import { isRealImage } from "@/lib/file-signature";
 import { plansForPrompt } from "@/lib/pricing";
+import { syncStoredPhoneAssistant } from "@/lib/knowledge-base-server";
+import { suggestKnowledge } from "@/lib/knowledge-suggestions";
 
 export const dynamic = "force-dynamic";
 
@@ -266,7 +268,7 @@ The voice agent (AI Agent section) goes further, it answers real phone calls, sp
 - **Analytics** (/app/analytics): Leads over time, channel breakdown (WhatsApp / Instagram / Website), conversion rates, appointment fill rate.
 - **Marketing** (/app/marketing): AI content tools, Social Post generator (Instagram, Facebook, LinkedIn), Video Script (Reels / TikTok / Shorts), WhatsApp Broadcast for bulk campaigns.
 - **AI Agent** (/app/ai-agent): Voice phone agent overview, call stats, live call with Vela, recent call logs.
-- **AI Training** (/app/ai-agent/training): Train the voice agent by talking to it or filling in the knowledge base, services, prices, hours, location, FAQs.
+- **Knowledge Base** (/app/ai-agent/knowledge-base, also "Train your AI" in the sidebar): the one place for services, prices, hours, address, booking policy and notes. The text chat, the phone agent and this assistant all read it.
 - **Settings** (/app/settings): Business profile, AI personality, services list, notification preferences, billing.
 
 ## Connecting channels
@@ -279,7 +281,7 @@ ${plansForPrompt()}
 - Cancel anytime.
 
 ## Real data access and real actions, use your tools, don't refuse
-You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations, get_recycle_bin (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message, delete_lead, delete_appointment, delete_conversation, restore_lead, restore_appointment, restore_conversation, toggle_conversation_ai, permanently_delete (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL, never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation, delete or restore a lead/appointment/conversation), CALL THE REAL TOOL for it. Never say deleting isn't supported, it is; delete_lead/delete_appointment/delete_conversation move the item to the same Recycle Bin used everywhere else in the app (Settings → Recycle Bin), so it's always recoverable, never a permanent hard delete on their own. A real permanent delete IS also possible via permanently_delete, but it has its own strict confirmation rule below, never call it as a substitute for delete_lead/delete_appointment/delete_conversation. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence, never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. After a delete, briefly mention it's recoverable from the Recycle Bin in Settings if it feels natural, but keep it to one short sentence. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that), and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet, once you train the AI, I'll know exactly." [navigate:/app/ai-agent/training]
+You have real tools that read and act on this business's actual live data: get_leads, get_appointments, get_conversations, get_recycle_bin (read), and save_services, update_lead_stage, update_appointment_status, reschedule_appointment, send_message, delete_lead, delete_appointment, delete_conversation, restore_lead, restore_appointment, restore_conversation, toggle_conversation_ai, permanently_delete (act). If the owner asks about specific leads, appointments, or conversations beyond what's already summarized above, CALL THE READ TOOL, never say you don't have access or don't have permission; you do. If the owner asks you to DO something real (save/update services from text or an image, move a lead to a different stage, confirm/cancel an appointment, reschedule an appointment, send a message in a conversation, delete or restore a lead/appointment/conversation), CALL THE REAL TOOL for it. Never say deleting isn't supported, it is; delete_lead/delete_appointment/delete_conversation move the item to the same Recycle Bin used everywhere else in the app (Settings → Recycle Bin), so it's always recoverable, never a permanent hard delete on their own. A real permanent delete IS also possible via permanently_delete, but it has its own strict confirmation rule below, never call it as a substitute for delete_lead/delete_appointment/delete_conversation. Never just narrate doing it in words; a reply that only says "I've updated that" without the tool actually being called has changed nothing and is incorrect. After a tool runs, confirm briefly in one short plain sentence, never mention tool names, JSON, or any internal syntax; the owner should never see anything except normal conversation. After a delete, briefly mention it's recoverable from the Recycle Bin in Settings if it feels natural, but keep it to one short sentence. Only fall back to "I don't have that in your account yet" for things no tool covers at all (e.g. "what's my best service?" when nothing tracks that), and even then, give a genuinely helpful general answer first, then mention training the AI: "I don't have that in your account yet, once you train the AI, I'll know exactly." [navigate:/app/ai-agent/knowledge-base]
 
 ## Recycle Bin vs. cancelled, these are two different things, never confuse them
 A "cancelled" appointment still exists normally, just with status=cancelled (get_appointments finds these -- including past-dated ones; asking about cancelled appointments always searches all time, not just upcoming). The Recycle Bin (Settings → Recycle Bin) holds SOFT-DELETED leads/appointments/conversations -- a completely different, separate place, only visible via get_recycle_bin. A single item can be BOTH at once (cancelled AND in the Recycle Bin) -- if asked, report each state accurately and distinctly, don't collapse them into one. If the owner says "restore", "recycle bin", "deleted", "removed", or asks to bring something back, that means the Recycle Bin -- call get_recycle_bin (never assume nothing's there just because get_appointments/get_leads/get_conversations came back empty or didn't mention it, those never include Recycle Bin items) and use restore_lead/restore_appointment/restore_conversation. get_appointments' result tells you whether to mention cancelled/Recycle Bin counts this turn (via its "instruction" field) -- it already tracks whether you mentioned this earlier in the conversation, so follow that field exactly: mention once when it says to, then stop repeating it on later unrelated replies unless the owner asks again directly.
@@ -298,7 +300,7 @@ Every date, status, count, or existence claim you tell the owner must come from 
 
 ## Navigation
 When directing the user to a page, append [navigate:/path] at the end of your reply.
-Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-agent, /app/ai-agent/training, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
+Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-agent, /app/ai-agent/knowledge-base, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
 
 ## Saving services from pasted text, a pasted image, or a single edit (works in ANY conversation, not just the training interview, and regardless of interview mode)
 If the owner pastes or types a list of services with names and/or prices (a menu, a price list, a screenshot/photo of a price list, "here's what we offer: ..."), OR asks you to change/update/correct ONE existing service already shown above in "This business" (e.g. "change Haircut to $35", "remove Beard trim", "add a new service called X"), CALL THE save_services TOOL with the FULL corrected services list (existing services unchanged, plus the one real edit applied if this was a single edit), this list fully replaces what's stored, so always include everything that should still be there, not just what changed. Never tell them to go to Settings instead, that is wrong, you can do it right here. Only do this when real, concrete service names were actually given (a genuine list), never invent services, and never call the tool for a single vague mention like "we offer stuff." After the tool runs, confirm briefly in plain language, e.g. "Got it, saved those two services.", never describe the tool call itself.
@@ -817,6 +819,7 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
         { tenant_id: tenantId, knowledge_base: JSON.stringify(nextKb), knowledge_base_updated_at: new Date().toISOString() },
         { onConflict: "tenant_id" },
       );
+      if (!error) await syncStoredPhoneAssistant(admin, tenantId);
       return error ? { error: error.message } : { ok: true, servicesSaved: nextKb.services.length };
     }
     // FIX 1 (round J), real bug found via live verification: `.select("id",
@@ -1088,6 +1091,7 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
     // FIX 1 (round J): replaces text-token detection on the client -- the
     // client no longer has to guess "did a save happen" by scanning the
     // reply for a marker string; the server already knows for certain.
+    await suggestKnowledge(admin, { tenantId, source: "assistant", text: message ?? "" });
     return NextResponse.json({ reply, savedServices });
   } catch (err) {
     const apiErr = err as { status?: number; error?: { type?: string } };

@@ -254,7 +254,7 @@ export default function OverviewPage() {
   const BAR_BASES = [0.4, 0.7, 1.0, 0.7, 0.4];
 
   /* Theme */
-  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const bg          = "transparent";
   const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
   const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
   const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
@@ -280,18 +280,18 @@ export default function OverviewPage() {
 
   /* Load voice settings */
   useEffect(() => {
-    fetch("/api/ai-agent/assistant-settings")
-      .then(r => r.json())
-      .then((d: { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string }) => {
-        const lang = d.preferredLanguage ?? undefined;
-        // Owner's explicit choice wins; otherwise the phone agent's default voice
-        voiceIdRef.current = d.voiceId || DEFAULT_VOICE_ID;
-        if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
-        if (d.conversationStyle) convStyleRef.current = d.conversationStyle;
-        prefLangRef.current = lang;
-        setSettingsReady(true);
-      })
-      .catch(() => { setSettingsReady(true); });
+    // One voice everywhere: the one chosen in Settings. Style and language
+    // are the owner assistant's own.
+    Promise.all([
+      fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({})),
+      fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({})),
+    ]).then(([agent, owner]: [{ voiceId?: string; speed?: number }, { conversationStyle?: string; preferredLanguage?: string }]) => {
+      voiceIdRef.current = agent.voiceId || DEFAULT_VOICE_ID;
+      if (typeof agent.speed === "number") speedRef.current = clampSpeed(agent.speed);
+      if (owner.conversationStyle) convStyleRef.current = owner.conversationStyle;
+      prefLangRef.current = owner.preferredLanguage ?? undefined;
+      setSettingsReady(true);
+    }).catch(() => { setSettingsReady(true); });
   }, []);
 
   /* Prefetch agent context (for smart system prompt) */
@@ -907,7 +907,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>{t("aiAgent.overview.quickActions")}</p>
               <div className="space-y-1">
                 {[
-                  { label: t("aiAgent.overview.trainAgent"),   href: "/app/ai-agent/training", sub: t("aiAgent.overview.trainAgentSub"),  color: "#FF3366" },
+                  { label: t("aiAgent.overview.trainAgent"),   href: "/app/ai-agent/knowledge-base", sub: t("aiAgent.overview.trainAgentSub"),  color: "#FF3366" },
                   { label: t("aiAgent.overview.setupPhone"),   href: "/app/ai-agent/phone",    sub: t("aiAgent.overview.setupPhoneSub"),  color: "#FF6B35" },
                 ].map((link) => (
                   <Link key={link.href} href={link.href}
@@ -945,7 +945,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               <p className="text-sm font-semibold mb-2" style={{ color: textPrimary }}>{t("aiAgent.overview.onboardingTitle")}</p>
               <div className="space-y-1.5">
                 {[
-                  { n:"1", text: t("aiAgent.overview.step1Pre"), link: t("aiAgent.overview.step1Link"), href:"/app/ai-agent/training" },
+                  { n:"1", text: t("aiAgent.overview.step1Pre"), link: t("aiAgent.overview.step1Link"), href:"/app/ai-agent/knowledge-base" },
                   { n:"2", text: t("aiAgent.overview.step2Pre"), link: t("aiAgent.overview.step2Link"), href:"/app/ai-agent/phone" },
                   { n:"3", text: t("aiAgent.overview.step3"),    link: null,                            href: null },
                 ].map(step => (

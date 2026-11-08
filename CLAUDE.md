@@ -77,7 +77,7 @@ Single source of truth: `src/lib/plan-config.ts` (limits, `price` in QAR) + `src
 
 ### Working
 - Dashboard (real-data redesign, glass cards), Conversations (takeover replies, read tracking, live unread badge, needs-human resolve), Appointments (reschedule indicator), Recycle Bin soft-delete for leads/conversations/appointments, in-app notifications (new lead, booking, missed call).
-- Train your AI (interview, Magic Import, PDF/image upload). Phone Agent has its own KB, separate from the chat KB.
+- **One knowledge base:** `tenant_config.knowledge_base` is the only source for text chat, phone agent and owner assistant (`src/lib/knowledge-base.ts`), edited in one shared component (Train your AI and AI Agent > Knowledge Base). `phone_agent_knowledge_base` is no longer read; kept as a backup. Suggested knowledge needs `migration_v41.sql`.
 - AI Agent section (voice, phone number, calls, settings). Owner-facing assistant has an explicit scope boundary (declines off-topic) and server-persisted history.
 - Settings (Business Info, AI Configuration, Notifications, Billing with usage meters).
 - `/demo` with fixture data (the only place fake data is allowed).

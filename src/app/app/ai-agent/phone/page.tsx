@@ -28,6 +28,7 @@ export default function PhonePage() {
   const [error, setError]               = useState<string | null>(null);
   const [copied, setCopied]             = useState(false);
   const [synced, setSynced]             = useState(false);
+  const [showTech, setShowTech]         = useState(false);
   // Connected = an assistant exists AND the number is attached to it. A
   // number linked without an assistant (e.g. an imported bridge number not
   // synced yet) is shown honestly as "not connected", never as active.
@@ -39,7 +40,7 @@ export default function PhonePage() {
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const connected = !!(state.phoneNumber && state.assistantId) && !paused;
 
-  const bg          = isDark ? "var(--dm-bg)" : "#F8F9FF";
+  const bg          = "transparent";
   const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
   const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
   const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
@@ -149,12 +150,6 @@ export default function PhonePage() {
                       <span className="text-xs font-semibold text-amber-600">{paused ? t("aiAgent.phone.paused") : t("aiAgent.phone.notConnected")}</span>
                     </div>
                   )}
-                  <span
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                    style={{ background: isDark ? "rgba(255,107,53,0.15)" : "#FFF5F0", color: "#FF6B35" }}
-                  >
-                    Vapi
-                  </span>
                 </div>
 
                 <div className="flex items-center gap-4 mb-6">
@@ -225,10 +220,10 @@ export default function PhonePage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: "Answers calls", value: "24/7 automatically" },
-                    { label: "Languages", value: "EN, AR, FR, DE + more" },
-                    { label: "Interruption", value: "Instant barge-in" },
-                    { label: "Transcription", value: "Full + logged" },
+                    { label: t("agentUi.phone.tileAnswers"), value: t("agentUi.phone.tileAnswersValue") },
+                    { label: t("agentUi.phone.tileLanguages"), value: t("agentUi.phone.tileLanguagesValue") },
+                    { label: t("agentUi.phone.tileInterruption"), value: t("agentUi.phone.tileInterruptionValue") },
+                    { label: t("agentUi.phone.tileTranscription"), value: t("agentUi.phone.tileTranscriptionValue") },
                   ].map((item) => (
                     <div key={item.label} className="rounded-xl p-3" style={{ background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }}>
                       <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: textMuted }}>{item.label}</p>
@@ -255,14 +250,14 @@ export default function PhonePage() {
                   <h2 className="text-base font-bold mb-2" style={{ color: textPrimary }}>{t("aiAgent.phone.getTitle")}</h2>
                   <p className="text-sm mb-5 max-w-xs" style={{ color: textMuted }}>{t("aiAgent.phone.getDesc")}</p>
 
-                  <div className="grid grid-cols-2 gap-2 mb-5 text-left w-full max-w-xs">
+                  <div className="grid grid-cols-2 gap-2 mb-5 text-start w-full max-w-xs">
                     {[
-                      "Answers every call 24/7",
-                      "Detects caller language",
-                      "Books appointments",
-                      "Logs every call",
-                      "Full transcripts",
-                      "Instant barge-in",
+                      t("agentUi.phone.feat1"),
+                      t("agentUi.phone.feat2"),
+                      t("agentUi.phone.feat3"),
+                      t("agentUi.phone.feat4"),
+                      t("agentUi.phone.feat5"),
+                      t("agentUi.phone.feat6"),
                     ].map((feat) => (
                       <div key={feat} className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(255,107,53,0.15)" }}>
@@ -276,7 +271,7 @@ export default function PhonePage() {
                   </div>
 
                   {error && (
-                    <div className="rounded-xl border p-3 mb-4 text-left w-full" style={{ background: isDark ? "rgba(239,68,68,0.07)" : "#FFF5F5", borderColor: "rgba(239,68,68,0.2)" }}>
+                    <div className="rounded-xl border p-3 mb-4 text-start w-full" style={{ background: isDark ? "rgba(239,68,68,0.07)" : "#FFF5F5", borderColor: "rgba(239,68,68,0.2)" }}>
                       <p className="text-xs font-semibold mb-0.5 text-red-400">{t("aiAgent.phone.syncFailed")}</p>
                       <p className="text-xs" style={{ color: textMuted }}>{error}</p>
                     </div>
@@ -310,14 +305,14 @@ export default function PhonePage() {
 
           {/* Right, How it works, 2/5 */}
           <div className="lg:col-span-2 rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-            <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>How inbound calls work</h2>
+            <h2 className="text-sm font-semibold mb-4" style={{ color: textPrimary }}>{t("agentUi.phone.howTitle")}</h2>
             <div className="space-y-4">
               {[
-                { step: "1", title: "Customer calls your number", desc: "Vela answers immediately. No hold music, no voicemail." },
-                { step: "2", title: "Language detection", desc: "Vela detects the caller's language in the first few words and switches automatically." },
-                { step: "3", title: "Uses your training", desc: "Vela answers using the business knowledge you taught it in the Training interview." },
-                { step: "4", title: "Books appointments", desc: "If the caller wants to book, Vela collects details and confirms the appointment." },
-                { step: "5", title: "Call logged automatically", desc: "Full transcript, summary, duration, and language saved to your Calls page." },
+                { step: "1", title: t("agentUi.phone.step1"), desc: t("agentUi.phone.step1Desc") },
+                { step: "2", title: t("agentUi.phone.step2"), desc: t("agentUi.phone.step2Desc") },
+                { step: "3", title: t("agentUi.phone.step3"), desc: t("agentUi.phone.step3Desc") },
+                { step: "4", title: t("agentUi.phone.step4"), desc: t("agentUi.phone.step4Desc") },
+                { step: "5", title: t("agentUi.phone.step5"), desc: t("agentUi.phone.step5Desc") },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-3">
                   <div
@@ -338,18 +333,22 @@ export default function PhonePage() {
 
         {/* Technical details, full-width, conditional */}
         {state.assistantId && (
-          <div className="rounded-2xl border p-5" style={{ background: cardBg, borderColor: border }}>
-            <h2 className="text-sm font-semibold mb-3" style={{ color: textPrimary }}>Technical details</h2>
-            <div className="divide-y" style={{ borderColor: border }}>
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-xs" style={{ color: textMuted }}>Vapi Assistant ID</span>
-                <span className="text-xs font-mono" style={{ color: textSub }}>{state.assistantId.slice(0, 18)}…</span>
+          <div>
+            <button type="button" aria-expanded={showTech} onClick={() => setShowTech((v) => !v)} className="text-xs min-h-[32px]" style={{ color: textMuted }}>
+              {showTech ? t("agentUi.phone.hideTech") : t("agentUi.phone.showTech")}
+            </button>
+            {showTech && (
+              <div className="rounded-xl border px-4 mt-1 divide-y" style={{ background: cardBg, borderColor: border }}>
+                <div className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="text-xs" style={{ color: textMuted }}>{t("agentUi.phone.assistantId")}</span>
+                  <span dir="ltr" className="text-xs font-mono truncate" style={{ color: textSub }}>{state.assistantId.slice(0, 18)}…</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="text-xs" style={{ color: textMuted }}>{t("agentUi.phone.numberId")}</span>
+                  <span dir="ltr" className="text-xs font-mono truncate" style={{ color: textSub }}>{state.phoneNumberId?.slice(0, 18)}…</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-xs" style={{ color: textMuted }}>Phone Number ID</span>
-                <span className="text-xs font-mono" style={{ color: textSub }}>{state.phoneNumberId?.slice(0, 18)}…</span>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>

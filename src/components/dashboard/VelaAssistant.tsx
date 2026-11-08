@@ -316,28 +316,6 @@ export function VelaAssistant() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Keep sendRef current so the event listener doesn't need to re-register on every render
-  const sendRef = useRef<typeof send | null>(null);
-
-  // Event listener for "answer 5 quick questions" from the training page
-  useEffect(() => {
-    const handler = () => {
-      setOpen(true);
-      setInterviewMode(true);
-      // FIX 4 (round J): starting a fresh interview replaces the current
-      // conversation -- soft-delete the old one into the Recycle Bin (same
-      // as the "Clear" button) instead of leaving it persisted server-side
-      // where it would otherwise resurface mixed in with the new interview
-      // on the next history load.
-      setMessages([]);
-      fetch("/api/assistant/messages", { method: "DELETE" }).catch(() => { /* non-critical */ });
-      setTimeout(() => {
-        sendRef.current?.(t("velaAssistant.quickMessages.trainMe"), true);
-      }, 500);
-    };
-    window.addEventListener("vela-start-interview", handler);
-    return () => window.removeEventListener("vela-start-interview", handler);
-  }, []);
 
   // Mobile dedicated nav entry point (Sidebar's "Vela Assistant" item) --
   // opens this same panel instead of a floating bubble on small screens.
@@ -476,7 +454,6 @@ export function VelaAssistant() {
   }, [loading, messages, router, interviewMode, attachedImages, convLocale, locale, t, persistMessage]);
 
   // Update ref whenever send changes (useCallback deps may change)
-  useEffect(() => { sendRef.current = send; }, [send]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }

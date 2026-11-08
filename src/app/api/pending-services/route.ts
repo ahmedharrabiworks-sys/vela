@@ -5,6 +5,7 @@ import { ensureTenant } from "@/lib/ensure-tenant";
 import { checkAvailability, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
 import { sendCustomerMessage } from "@/lib/send-customer-message";
 import type { KnowledgeBase } from "@/app/api/ai-training/route";
+import { syncStoredPhoneAssistant } from "@/lib/knowledge-base-server";
 
 export const dynamic = "force-dynamic";
 
@@ -174,6 +175,7 @@ export async function POST(req: NextRequest) {
   }
 
   await admin.from("pending_service_requests").update({ status: "added" }).eq("id", body.id).eq("tenant_id", tenant.id);
+  await syncStoredPhoneAssistant(admin, tenant.id);
 
   // Round M8 FIX 3(b): the waiting customer should hear back automatically,
   // and their original request should become a real confirmed appointment

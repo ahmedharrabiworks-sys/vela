@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import { mergeKnowledgeBases } from "@/lib/knowledge-base";
-import { parseJson } from "@/lib/phone-call-setup";
+import { parseKnowledgeBase } from "@/lib/knowledge-base";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +46,7 @@ export async function GET(req: NextRequest) {
       .eq("tenant_id", tenantId)
       .is("deleted_at", null),
     admin.from("tenant_config")
-      .select("instagram_connected, whatsapp_connected, knowledge_base, phone_agent_knowledge_base, agent_settings")
+      .select("instagram_connected, whatsapp_connected, knowledge_base, agent_settings")
       .eq("tenant_id", tenantId)
       .maybeSingle(),
     admin.from("agent_calls")
@@ -57,11 +56,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   const cfg = (cfgRes.data as Record<string, any> | null) ?? {};
-  const rawKb      = parseJson(cfg.knowledge_base);
-  const rawPhoneKb = parseJson(cfg.phone_agent_knowledge_base);
-  // Merged so the internal Assistant sees whatever's known on either side --
-  // the Training/Magic Import KB and the Phone Agent's own dedicated KB.
-  const kb = mergeKnowledgeBases(rawKb, rawPhoneKb);
+  const kb = parseKnowledgeBase(cfg.knowledge_base);
   const agentSettings = (cfg.agent_settings as Record<string, any> | null) ?? {};
 
   const callData = (callsRes.data ?? []) as Array<{ duration_seconds?: number }>;

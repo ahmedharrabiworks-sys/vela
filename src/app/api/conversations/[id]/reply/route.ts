@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { sendWhatsAppMessage } from "@/lib/whatsapp-send";
 import { sendInstagramMessage } from "@/lib/instagram-send";
+import { suggestKnowledge } from "@/lib/knowledge-suggestions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,18 @@ export const dynamic = "force-dynamic";
  *               now-dead Twilio Verify/OTP flow for a retired WhatsApp-connect step) -- flagged
  *               via channelNote when a phone number exists but no email does, rather than faked.
  */
-export async function POST(
+export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
+  // Runs beside delivery so it never delays the customer's message.
+  let learning: Promise<unknown> = Promise.resolve();
+  const res = await sendOwnerReply(req, ctx, (p) => { learning = p; });
+  await learning;
+  return res;
+}
+
+async function sendOwnerReply(
   req: NextRequest,
   { params }: { params: { id: string } },
+  onSaved: (learning: Promise<unknown>) => void,
 ) {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -115,6 +125,13 @@ export async function POST(
     .from("conversations")
     .update({ last_message_at: new Date().toISOString() })
     .eq("id", params.id);
+
+  onSaved(suggestKnowledge(admin, {
+    tenantId,
+    source: "conversation",
+    text: text.trim(),
+    blockedNames: [conv.customer_name as string | null].filter((n): n is string => !!n),
+  }));
 
   // ── Channel delivery ──────────────────────────────────────────────────────
 

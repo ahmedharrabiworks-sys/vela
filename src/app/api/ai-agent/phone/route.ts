@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
 import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
-import { mergeKnowledgeBases } from "@/lib/knowledge-base";
+import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { pointTwilioNumberAtVela } from "@/lib/twilio-voice";
@@ -99,28 +99,18 @@ export async function POST(req: NextRequest) {
   // Load tenant KB + settings
   const { data: cfg } = await admin
     .from("tenant_config")
-    .select("knowledge_base, phone_agent_knowledge_base, agent_settings, vapi_assistant_id, vapi_phone_number_id, vapi_phone_number")
+    .select("knowledge_base, agent_settings, vapi_assistant_id, vapi_phone_number_id, vapi_phone_number")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
-  let rawKb: Record<string, any> = {};
-  let rawPhoneKb: Record<string, any> = {};
   let agentSettings: Record<string, any> = {};
   try {
-    if ((cfg as any)?.knowledge_base) {
-      const raw = (cfg as any).knowledge_base;
-      rawKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
-    }
-    if ((cfg as any)?.phone_agent_knowledge_base) {
-      const raw = (cfg as any).phone_agent_knowledge_base;
-      rawPhoneKb = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
-    }
     if ((cfg as any)?.agent_settings) {
       const raw = (cfg as any).agent_settings;
       agentSettings = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, any>;
     }
   } catch { /* ignore parse errors */ }
-  const kb = mergeKnowledgeBases(rawKb, rawPhoneKb);
+  const kb = parseKnowledgeBase((cfg as any)?.knowledge_base) as unknown as Record<string, any>;
 
   const agentName = (agentSettings.agentName as string | undefined) || "Vela";
 

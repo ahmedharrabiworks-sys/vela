@@ -8,6 +8,7 @@ import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
+import { knowledgeChecklist, parseKnowledgeBase } from "@/lib/knowledge-base";
 import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
 // FIX 5 (round P): standardized on the single shared toast component --
 // this file's local copy is now that shared component, moved verbatim.
@@ -515,9 +516,9 @@ function ChannelsPageContent() {
   // second, invented tracking field. "Connected" requires both a
   // provisioned Vapi number (GET /api/ai-agent/phone) AND training being
   // complete (all 5 knowledge topics present via GET
-  // /api/ai-agent/training-context, the same signal that page's own
+  // /api/ai-training, the same signal that page's own
   // progress bar is built from).
-  const [phoneAgent, setPhoneAgent] = useState({ provisioned: false, trainingFilled: 0 });
+  const [phoneAgent, setPhoneAgent] = useState({ provisioned: false, knowledgeFilled: 0, knowledgeReady: false });
   const [phoneAgentLoading, setPhoneAgentLoading] = useState(true);
 
   // FIX 2 (round F): per-channel AI-behavior config, lazily fetched when
@@ -662,18 +663,17 @@ function ChannelsPageContent() {
       try {
         const [phoneRes, ctxRes] = await Promise.all([
           fetch("/api/ai-agent/phone"),
-          fetch("/api/ai-agent/training-context"),
+          fetch("/api/ai-training"),
         ]);
         const phoneData = phoneRes.ok
           ? (await phoneRes.json() as { phoneNumber: string | null })
           : { phoneNumber: null };
-        const ctxData = ctxRes.ok
-          ? (await ctxRes.json() as { existingKb?: Record<string, string> })
-          : {};
+        const check = knowledgeChecklist(parseKnowledgeBase(ctxRes.ok ? await ctxRes.json() : null));
         if (cancelled) return;
         setPhoneAgent({
           provisioned: !!phoneData.phoneNumber,
-          trainingFilled: ctxData.existingKb ? Object.keys(ctxData.existingKb).length : 0,
+          knowledgeFilled: Object.values(check).filter(Boolean).length,
+          knowledgeReady: check.services && check.hours,
         });
       } catch { /* leave defaults -- reads as "not connected" */ }
       if (!cancelled) setPhoneAgentLoading(false);
@@ -746,8 +746,8 @@ function ChannelsPageContent() {
   const canConnectMore = !isStarter || connectedSocialCount < config.channels;
 
   // Real, derived (never invented) Phone Agent status -- see the fetch
-  // effect above for where provisioned/trainingFilled come from.
-  const phoneAgentTrainingComplete = phoneAgent.trainingFilled >= 5;
+  // effect above for where provisioned/knowledgeReady come from.
+  const phoneAgentTrainingComplete = phoneAgent.knowledgeReady;
   const phoneAgentStatus: "locked" | "not_connected" | "pending" | "connected" = !config.voiceAgent
     ? "locked"
     : !phoneAgent.provisioned
@@ -1150,7 +1150,7 @@ function ChannelsPageContent() {
                 </div>
                 {phoneAgentStatus === "pending" && (
                   <p className="text-xs font-mono text-[#9CA3AF] mt-0.5">
-                    Training {phoneAgent.trainingFilled}/5 complete
+                    {t("agentUi.kb.progress").replace("{n}", String(phoneAgent.knowledgeFilled))}
                   </p>
                 )}
                 <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">{t("channels.phoneAgent.desc")}</p>

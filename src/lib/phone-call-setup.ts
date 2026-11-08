@@ -7,7 +7,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { mergeKnowledgeBases } from "@/lib/knowledge-base";
+import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { formatBookedSlotsText } from "@/lib/availability";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
@@ -19,10 +19,9 @@ export type TenantPhoneCfg = {
   vapi_phone_number: string | null;
   agent_settings: unknown;
   knowledge_base: unknown;
-  phone_agent_knowledge_base: unknown;
 };
 
-export const TENANT_PHONE_COLS = "tenant_id, vapi_phone_number_id, vapi_phone_number, agent_settings, knowledge_base, phone_agent_knowledge_base";
+export const TENANT_PHONE_COLS = "tenant_id, vapi_phone_number_id, vapi_phone_number, agent_settings, knowledge_base";
 
 export function parseJson(raw: unknown): Record<string, any> {
   if (!raw) return {};
@@ -54,7 +53,7 @@ export async function prepareInboundCall(admin: any, cfg: TenantPhoneCfg, caller
     return { ok: false, reason: "server_config", businessName, ownerId };
   }
 
-  const kb = mergeKnowledgeBases(parseJson(cfg.knowledge_base), parseJson(cfg.phone_agent_knowledge_base));
+  const kb = parseKnowledgeBase(cfg.knowledge_base) as unknown as Record<string, any>;
   const settings = parseJson(cfg.agent_settings);
   const timezone = resolveTenantTimezone(settings);
   const agentName = (settings.agentName as string | undefined) || "Vela";
