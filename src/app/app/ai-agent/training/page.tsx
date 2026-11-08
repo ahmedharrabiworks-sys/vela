@@ -6,19 +6,15 @@ import { useI18n } from "@/lib/i18n";
 import {
   DEFAULT_VOICE_ID,
   clampSpeed,
-  getDefaultVoiceId,
-  getTranscriberConfig,
-  getSpeakingPlanConfig,
-  getVoiceConfig,
   buildTrainingSystem,
   RECORD_ANSWER_TOOL,
-  CALL_LIMITS,
   isVapiEjection,
   vapiErrorText,
   requestMicrophoneAccess,
   DEFAULT_SPEED,
   type TrainingContext,
 } from "@/lib/vapi-agent-config";
+import { buildBrowserCallAssistant } from "@/lib/vapi-phone-assistant";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type VapiInstance = any;
@@ -156,8 +152,8 @@ export default function TrainingPage() {
       fetch("/api/ai-agent/training-context").then(r => r.json()).catch(() => ({})),
     ]).then(([d, a, tc]: [{ voiceId?: string; speed?: number }, { preferredLanguage?: string }, TrainingContext]) => {
       const lang = a.preferredLanguage ?? undefined;
-      // Owner's explicit choice wins; smart Arabic default only when nothing is saved
-      voiceIdRef.current = d.voiceId || getDefaultVoiceId(lang);
+      // Owner's explicit choice wins; otherwise the phone agent's default voice
+      voiceIdRef.current = d.voiceId || DEFAULT_VOICE_ID;
       if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
       agentLanguageRef.current = lang;
       trainingContextRef.current = tc ?? {};
@@ -460,21 +456,14 @@ export default function TrainingPage() {
         }
       });
 
-      const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
-      await vapi.start({
-        model: {
-          provider: "openai",
-          model: "gpt-4o",
-          messages: [{ role: "system", content: buildTrainingSystem(agentLanguageRef.current, trainingContextRef.current) }],
-          tools: [RECORD_ANSWER_TOOL],
-        },
-        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
-        firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-        transcriber: getTranscriberConfig(agentLanguageRef.current),
-        stopSpeakingPlan,
-        startSpeakingPlan,
-        ...CALL_LIMITS,
-      });
+      await vapi.start(buildBrowserCallAssistant({
+        systemPrompt: buildTrainingSystem(agentLanguageRef.current, trainingContextRef.current),
+        tools: [RECORD_ANSWER_TOOL],
+        voiceId: voiceIdRef.current,
+        speed: speedRef.current,
+        businessName: trainingContextRef.current.businessName,
+        language: agentLanguageRef.current,
+      }));
     } catch (err: unknown) {
       console.error("[call]", err);
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }

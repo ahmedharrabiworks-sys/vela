@@ -7,16 +7,12 @@ import { useI18n } from "@/lib/i18n";
 import {
   DEFAULT_VOICE_ID,
   clampSpeed,
-  getDefaultVoiceId,
-  getTranscriberConfig,
-  getSpeakingPlanConfig,
-  getVoiceConfig,
-  CALL_LIMITS,
   isVapiEjection,
   vapiErrorText,
   requestMicrophoneAccess,
   DEFAULT_SPEED,
 } from "@/lib/vapi-agent-config";
+import { buildBrowserCallAssistant } from "@/lib/vapi-phone-assistant";
 import { fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -287,8 +283,8 @@ export default function OverviewPage() {
       .then(r => r.json())
       .then((d: { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string }) => {
         const lang = d.preferredLanguage ?? undefined;
-        // Owner's explicit choice wins; smart Arabic default only when nothing is saved
-        voiceIdRef.current = d.voiceId || getDefaultVoiceId(lang);
+        // Owner's explicit choice wins; otherwise the phone agent's default voice
+        voiceIdRef.current = d.voiceId || DEFAULT_VOICE_ID;
         if (typeof d.speed === "number") speedRef.current = clampSpeed(d.speed);
         if (d.conversationStyle) convStyleRef.current = d.conversationStyle;
         prefLangRef.current = lang;
@@ -461,16 +457,14 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
           setNoMicSignal(false);
         }
       });
-      const { stopSpeakingPlan, startSpeakingPlan } = getSpeakingPlanConfig();
-      await vapi.start({
-        model: { provider: "openai", model: "gpt-4o", messages: [{ role: "system", content: velaSystem }] },
-        voice: getVoiceConfig(voiceIdRef.current, speedRef.current),
-        firstMessageMode: "assistant-speaks-first-with-model-generated-message",
-        transcriber: getTranscriberConfig(prefLangRef.current),
-        stopSpeakingPlan,
-        startSpeakingPlan,
-        ...CALL_LIMITS,
-      });
+      await vapi.start(buildBrowserCallAssistant({
+        systemPrompt: velaSystem,
+        voiceId: voiceIdRef.current,
+        speed: speedRef.current,
+        businessName: ctx?.business.name,
+        services: ctx?.business.services,
+        language: prefLangRef.current,
+      }));
     } catch (err: unknown) {
       console.error("[call]", err);
       setCallError(toErrorText(err));

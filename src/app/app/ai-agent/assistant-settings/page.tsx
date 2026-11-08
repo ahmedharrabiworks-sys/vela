@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAgentTheme } from "../layout";
-import { DEFAULT_VOICE_ID, DEFAULT_SPEED, VOICES, getDefaultVoiceId, clampSpeed } from "@/lib/vapi-agent-config";
+import { DEFAULT_VOICE_ID, DEFAULT_SPEED, VOICES, clampSpeed } from "@/lib/vapi-agent-config";
 
 const CONV_STYLES = [
   { value: "direct",   label: "Direct",   description: "Straight to the answer. No filler." },
@@ -48,7 +48,7 @@ export default function AssistantSettingsPage() {
         const res = await fetch("/api/ai-agent/assistant-settings");
         if (res.ok) {
           const data = await res.json() as { voiceId?: string; speed?: number; conversationStyle?: string; preferredLanguage?: string };
-          setSelectedVoice(data.voiceId || getDefaultVoiceId(data.preferredLanguage ?? undefined));
+          setSelectedVoice(data.voiceId || DEFAULT_VOICE_ID);
           if (typeof data.speed === "number") setSpeed(clampSpeed(data.speed));
           if (data.conversationStyle) setConvStyle(data.conversationStyle);
           if (data.preferredLanguage !== undefined) setLanguage(data.preferredLanguage ?? "");

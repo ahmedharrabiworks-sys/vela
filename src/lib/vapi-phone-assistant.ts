@@ -4,8 +4,8 @@
  * One builder for both places a phone assistant is created:
  *  - call-webhook assistant-request (fresh per call: schedule, caller ID, date)
  *  - api/ai-agent/phone (the stored fallback assistant)
- * so the two can never drift. Browser test calls (Overview/Training) keep
- * using the older helpers in vapi-agent-config.ts on purpose.
+ * so the two can never drift. Browser test calls (Overview/Training) use the
+ * same stack through buildBrowserCallAssistant below.
  *
  * Restore point for the previous voice stack: git tag voice-v1.
  *
@@ -27,16 +27,17 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { CALL_LIMITS, clampSpeed } from "@/lib/vapi-agent-config";
+import { CALL_LIMITS, DEFAULT_SPEED, DEFAULT_VOICE_ID, clampSpeed } from "@/lib/vapi-agent-config";
 import { BOOK_APPOINTMENT_TOOL, buildBookAppointmentTool, type VapiServerConfig } from "@/lib/vapi-webhook";
 
 // ── Voice ────────────────────────────────────────────────────────────────────
 /** "Heba, Arabic customer care" (ElevenLabs library, Saudi/Gulf, conversational). */
-export const DEFAULT_PHONE_VOICE_ID = "QsV9PCczMIklRM6xLPAS";
+export const DEFAULT_PHONE_VOICE_ID = DEFAULT_VOICE_ID;
 export const PHONE_VOICE_MODEL = "eleven_v4_turbo";
 export const PHONE_VOICE_FALLBACK_MODEL = "eleven_flash_v2_5";
 /** Natural conversational pace (the old default was 1.1, slightly rushed). */
-export const DEFAULT_PHONE_SPEED = 1.0;
+export const DEFAULT_PHONE_SPEED = DEFAULT_SPEED;
+const PHONE_LLM = { provider: "openai" as const, model: "gpt-4.1-mini", temperature: 0.5 };
 
 export function getPhoneVoiceConfig(voiceId: string | undefined, speed: number | undefined) {
   const id = voiceId || DEFAULT_PHONE_VOICE_ID;
@@ -261,9 +262,7 @@ export function buildPhoneAssistant(p: {
   return {
     ...(p.name ? { name: p.name } : {}),
     model: {
-      provider: "openai" as const,
-      model: "gpt-4.1-mini",
-      temperature: 0.5,
+      ...PHONE_LLM,
       maxTokens: 180,
       messages: [{ role: "system", content: buildReceptionistPrompt(p) }],
       tools: [buildBookAppointmentTool(p.server)],
@@ -276,5 +275,33 @@ export function buildPhoneAssistant(p: {
     ...turn,
     ...CALL_LIMITS,
     server: p.server,
+  };
+}
+
+// ── Browser test calls (Overview, Training) ──────────────────────────────────
+// Same LLM, voice, transcriber and turn-taking as a real call, so the owner
+// hears what callers hear. Each page keeps its own prompt, tools and spoken
+// opening: those are different jobs from answering the phone. maxTokens stays
+// at Vapi's default because interview tool calls carry longer arguments.
+export function buildBrowserCallAssistant(p: {
+  systemPrompt: string;
+  tools?: unknown[];
+  voiceId?: string;
+  speed?: number;
+  businessName?: string;
+  services?: Array<{ name?: string }>;
+  language?: string;
+}) {
+  return {
+    model: {
+      ...PHONE_LLM,
+      messages: [{ role: "system", content: p.systemPrompt }],
+      ...(p.tools ? { tools: p.tools } : {}),
+    },
+    voice: getPhoneVoiceConfig(p.voiceId, p.speed),
+    transcriber: getPhoneTranscriberConfig(buildKeyterms(p.businessName ?? "", p.services ?? []), p.language),
+    firstMessageMode: "assistant-speaks-first-with-model-generated-message" as const,
+    ...getPhoneTurnTaking(),
+    ...CALL_LIMITS,
   };
 }
