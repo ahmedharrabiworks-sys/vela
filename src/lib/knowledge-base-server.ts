@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { parseKnowledgeBase, type KnowledgeBase } from "@/lib/knowledge-base";
-import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
+import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
 
 export async function loadKnowledgeBase(admin: any, tenantId: string): Promise<KnowledgeBase> {
@@ -34,7 +34,7 @@ export async function syncStoredPhoneAssistant(admin: any, tenantId: string): Pr
       settings = (typeof raw === "string" ? JSON.parse(raw) : raw) ?? {};
     } catch { /* defaults */ }
 
-    const agentName = (settings.agentName as string | undefined) || "Vela";
+    const agentName = resolveAgentName(settings);
     const businessName = (tenant?.business_name as string | undefined) || "your business";
     const body = buildPhoneAssistant({
       name: `${agentName}, ${businessName}`,

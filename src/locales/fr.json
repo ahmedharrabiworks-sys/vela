@@ -709,7 +709,6 @@
     "overview": {
       "pageTitle": "Vue d'ensemble de l'Agent IA",
       "subtitle": "Tableau de bord des performances de l'agent",
-      "statusActive": "Voix active",
       "statusOnline": "Agent en ligne",
       "answerRate": "Taux de réponse",
       "callsHandled": "Appels traités",
@@ -721,15 +720,6 @@
       "appointmentsSub": "Réservés dans le système",
       "recentCalls": "Appels récents",
       "recentCallsSub": "Dernière activité",
-      "channelStatus": "Statut du canal",
-      "setUp": "Configurer",
-      "talkToVela": "Parler à Vela",
-      "newCall": "Nouvel appel",
-      "quickActions": "Actions rapides",
-      "trainAgent": "Former l'agent",
-      "trainAgentSub": "Apprenez votre activité à Vela",
-      "setupPhone": "Configurer le numéro",
-      "setupPhoneSub": "Obtenez un numéro pour votre agent",
       "viewCalls": "Voir les appels",
       "viewCallsSub": "Voir l'historique complet",
       "onboardingTitle": "Votre agent est prêt. 3 étapes pour commencer",
@@ -847,16 +837,7 @@
       "calls": "Appels",
       "callsSub": "Appels clients traités par Vela",
       "avgSub": "Moyenne par appel",
-      "minutesSub": "Minutes utilisées",
-      "phoneSub": "L'IA répond à vos appels 24h/24",
-      "muted": "Micro coupé",
-      "listening": "À l'écoute…",
-      "connecting": "Connexion…",
-      "couldntConnect": "Connexion impossible",
-      "connectionLost": "Connexion perdue",
-      "callEnded": "Appel terminé",
-      "advisor": "Votre conseiller",
-      "loading": "Chargement…"
+      "minutesSub": "Minutes utilisées"
     },
     "conv": {
       "phone": "Téléphone",
@@ -883,16 +864,11 @@
     "kb": {
       "title": "Base de connaissances",
       "subtitle": "Une seule source pour le chat, l'agent téléphonique et votre assistant.",
-      "progress": "{n} sections sur 5 remplies",
+      "progress": "{n} sections sur {total} remplies",
       "usedBy": "Utilisée par le chat, l'agent téléphonique et votre assistant",
-      "services": "Services et prix",
-      "addService": "Ajouter un service",
-      "serviceName": "Nom du service",
       "price": "Prix",
       "duration": "Durée",
-      "description": "Description",
       "remove": "Supprimer le service",
-      "noServices": "Aucun service pour l'instant.",
       "details": "Informations sur l'entreprise",
       "hours": "Horaires",
       "hoursPlaceholder": "Du lundi au samedi, 9h à 18h",
@@ -991,7 +967,18 @@
       "styleWarm": "Chaleureux",
       "styleDirect": "Direct",
       "styleThorough": "Détaillé",
-      "styleBrief": "Bref"
+      "styleBrief": "Bref",
+      "spokenName": "Prononciation du nom de l'entreprise (facultatif)",
+      "spokenNameHint": "Uniquement pour la voix au téléphone. Écrivez le nom tel qu'il se prononce si la voix se trompe.",
+      "greetingPreview": "Les appelants entendront"
+    },
+    "callStatus": {
+      "booked": "Réservé",
+      "completed": "Terminé",
+      "hungUp": "L'appelant a raccroché",
+      "noAnswer": "Sans réponse",
+      "voicemail": "Messagerie",
+      "failed": "Échec"
     }
   }
 }

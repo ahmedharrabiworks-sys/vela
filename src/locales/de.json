@@ -709,7 +709,6 @@
     "overview": {
       "pageTitle": "KI-Agent Übersicht",
       "subtitle": "Leistungs-Dashboard des Telefonagenten",
-      "statusActive": "Stimme aktiv",
       "statusOnline": "Agent online",
       "answerRate": "Annahmequote",
       "callsHandled": "Bearbeitete Anrufe",
@@ -721,15 +720,6 @@
       "appointmentsSub": "Im System gebucht",
       "recentCalls": "Letzte Anrufe",
       "recentCallsSub": "Letzte Aktivität",
-      "channelStatus": "Kanalstatus",
-      "setUp": "Einrichten",
-      "talkToVela": "Mit Vela sprechen",
-      "newCall": "Neuer Anruf",
-      "quickActions": "Schnellaktionen",
-      "trainAgent": "Agenten trainieren",
-      "trainAgentSub": "Bringen Sie Vela Ihr Geschäft bei",
-      "setupPhone": "Telefonnummer einrichten",
-      "setupPhoneSub": "Nummer für Ihren Agenten holen",
       "viewCalls": "Anrufverlauf anzeigen",
       "viewCallsSub": "Vollständigen Verlauf anzeigen",
       "onboardingTitle": "Ihr Telefonagent ist bereit. 3 Schritte zum Start",
@@ -847,16 +837,7 @@
       "calls": "Anrufe",
       "callsSub": "Von Vela bearbeitete Kundenanrufe",
       "avgSub": "Durchschnitt pro Anruf",
-      "minutesSub": "Genutzte Minuten",
-      "phoneSub": "Die KI nimmt rund um die Uhr ab",
-      "muted": "Stumm",
-      "listening": "Hört zu…",
-      "connecting": "Verbindet…",
-      "couldntConnect": "Keine Verbindung",
-      "connectionLost": "Verbindung verloren",
-      "callEnded": "Anruf beendet",
-      "advisor": "Ihr Berater",
-      "loading": "Lädt…"
+      "minutesSub": "Genutzte Minuten"
     },
     "conv": {
       "phone": "Telefon",
@@ -883,16 +864,11 @@
     "kb": {
       "title": "Wissensdatenbank",
       "subtitle": "Eine Quelle für Chat, Telefonagent und Assistent.",
-      "progress": "{n} von 5 Bereichen ausgefüllt",
+      "progress": "{n} von {total} Bereichen ausgefüllt",
       "usedBy": "Genutzt von Chat, Telefonagent und Assistent",
-      "services": "Leistungen und Preise",
-      "addService": "Leistung hinzufügen",
-      "serviceName": "Name der Leistung",
       "price": "Preis",
       "duration": "Dauer",
-      "description": "Beschreibung",
       "remove": "Leistung entfernen",
-      "noServices": "Noch keine Leistungen.",
       "details": "Geschäftsdaten",
       "hours": "Öffnungszeiten",
       "hoursPlaceholder": "Montag bis Samstag, 9 bis 18 Uhr",
@@ -991,7 +967,18 @@
       "styleWarm": "Herzlich",
       "styleDirect": "Direkt",
       "styleThorough": "Ausführlich",
-      "styleBrief": "Kurz"
+      "styleBrief": "Kurz",
+      "spokenName": "Aussprache des Firmennamens (optional)",
+      "spokenNameHint": "Nur für die Telefonstimme. Schreiben Sie den Namen so, wie er klingt, falls die Stimme ihn falsch ausspricht.",
+      "greetingPreview": "Anrufer hören"
+    },
+    "callStatus": {
+      "booked": "Gebucht",
+      "completed": "Abgeschlossen",
+      "hungUp": "Anrufer hat aufgelegt",
+      "noAnswer": "Keine Antwort",
+      "voicemail": "Mailbox",
+      "failed": "Fehlgeschlagen"
     }
   }
 }

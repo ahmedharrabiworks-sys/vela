@@ -304,7 +304,11 @@
     "title": "Dashboard",
     "subtitle": "Performance overview for",
     "vs": "vs previous",
-    "range": { "7d": "7d", "30d": "30d", "90d": "90d" },
+    "range": {
+      "7d": "7d",
+      "30d": "30d",
+      "90d": "90d"
+    },
     "errorMessage": "We couldn't load your dashboard right now. Tap retry.",
     "retry": "Retry",
     "kpiConversations": "Conversations",
@@ -313,10 +317,16 @@
     "kpiNewCustomers": "New customers",
     "noDataYet": "No data yet",
     "planUsage": "Plan usage",
-    "usage": { "messages": "Text messages", "voiceMinutes": "Voice minutes" },
+    "usage": {
+      "messages": "Text messages",
+      "voiceMinutes": "Voice minutes"
+    },
     "unlimited": "Unlimited",
     "activityOverTime": "Activity over time",
-    "series": { "conversations": "Conversations", "appointments": "Appointments" },
+    "series": {
+      "conversations": "Conversations",
+      "appointments": "Appointments"
+    },
     "firstConversationsHint": "Your first conversations will show up here",
     "connectChannel": "Connect a channel",
     "channelBreakdown": "Channel breakdown",
@@ -620,16 +630,40 @@
       "headlineHighlight": "missed sale.",
       "description": "It's not that your team doesn't care, it's that there's only so much time in the day. Calls come in mid-appointment, messages arrive after hours, and every minute of silence pushes a customer closer to your competitor.",
       "stats": {
-        "always":       { "value": "24/7",           "label": "Always answering" },
-        "multiLang":    { "value": "Multi-language",  "label": "Speaks their language" },
-        "everyChannel": { "value": "Every Channel",   "label": "Phone, WhatsApp & Instagram" }
+        "always": {
+          "value": "24/7",
+          "label": "Always answering"
+        },
+        "multiLang": {
+          "value": "Multi-language",
+          "label": "Speaks their language"
+        },
+        "everyChannel": {
+          "value": "Every Channel",
+          "label": "Phone, WhatsApp & Instagram"
+        }
       },
       "timeline": {
-        "step1": { "title": "Customer reaches out",        "desc": "By phone, DM, or message, hoping for a quick reply." },
-        "step2": { "title": "Your team is busy",            "desc": "Mid-appointment, after hours, or just short-staffed." },
-        "step3": { "title": "Minutes turn into hours",       "desc": "The message sits there, unanswered." },
-        "step4": { "title": "They start looking elsewhere",  "desc": "A competitor picks up first, and the lead is gone." },
-        "step5": { "title": "Vela answers instead",          "desc": "Every time, instantly, so step 4 never happens." }
+        "step1": {
+          "title": "Customer reaches out",
+          "desc": "By phone, DM, or message, hoping for a quick reply."
+        },
+        "step2": {
+          "title": "Your team is busy",
+          "desc": "Mid-appointment, after hours, or just short-staffed."
+        },
+        "step3": {
+          "title": "Minutes turn into hours",
+          "desc": "The message sits there, unanswered."
+        },
+        "step4": {
+          "title": "They start looking elsewhere",
+          "desc": "A competitor picks up first, and the lead is gone."
+        },
+        "step5": {
+          "title": "Vela answers instead",
+          "desc": "Every time, instantly, so step 4 never happens."
+        }
       }
     },
     "tour": {
@@ -768,7 +802,15 @@
           "statAvgDuration": "Avg Duration",
           "statThisWeek": "This Week",
           "callsThisWeekChart": "Calls This Week",
-          "barDays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          "barDays": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
           "aiResolution": "AI Resolution",
           "escalatedNote": "6% escalated",
           "recentCalls": "Recent Calls",
@@ -804,9 +846,18 @@
       "headline": "Everything you need to run your business, even while you sleep.",
       "subtext": "We handle every call, message, and lead, so you can focus on the business, not the front desk.",
       "checklist": {
-        "aiPhoneAgent": { "label": "AI Phone Agent", "desc": "Never miss a call, day or night." },
-        "everyChannel": { "label": "Every Channel", "desc": "WhatsApp, Instagram, and Phone in one inbox." },
-        "automation":   { "label": "Automation", "desc": "Set it up once, let Vela run it." }
+        "aiPhoneAgent": {
+          "label": "AI Phone Agent",
+          "desc": "Never miss a call, day or night."
+        },
+        "everyChannel": {
+          "label": "Every Channel",
+          "desc": "WhatsApp, Instagram, and Phone in one inbox."
+        },
+        "automation": {
+          "label": "Automation",
+          "desc": "Set it up once, let Vela run it."
+        }
       }
     },
     "pricing": {
@@ -1312,7 +1363,6 @@
     "overview": {
       "pageTitle": "AI Agent Overview",
       "subtitle": "Phone agent performance dashboard",
-      "statusActive": "Voice active",
       "statusOnline": "Agent online",
       "answerRate": "Answer Rate",
       "callsHandled": "Calls Handled",
@@ -1324,15 +1374,6 @@
       "appointmentsSub": "Booked in system",
       "recentCalls": "Recent Calls",
       "recentCallsSub": "Last activity",
-      "channelStatus": "Channel Status",
-      "setUp": "Set up",
-      "talkToVela": "Talk to Vela",
-      "newCall": "New call",
-      "quickActions": "Quick Actions",
-      "trainAgent": "Train the agent",
-      "trainAgentSub": "Teach Vela your business",
-      "setupPhone": "Set up phone number",
-      "setupPhoneSub": "Get a number for your agent",
       "viewCalls": "View call records",
       "viewCallsSub": "See full call history",
       "onboardingTitle": "Your phone agent is ready. 3 steps to go live",
@@ -1483,16 +1524,7 @@
       "calls": "Calls",
       "callsSub": "Customer calls handled by Vela",
       "avgSub": "Per call average",
-      "minutesSub": "Total minutes used",
-      "phoneSub": "AI answers your calls 24/7",
-      "muted": "Muted",
-      "listening": "Listening…",
-      "connecting": "Connecting…",
-      "couldntConnect": "Couldn't connect",
-      "connectionLost": "Connection lost",
-      "callEnded": "Call ended",
-      "advisor": "Your business advisor",
-      "loading": "Loading…"
+      "minutesSub": "Total minutes used"
     },
     "conv": {
       "phone": "Phone",
@@ -1519,16 +1551,11 @@
     "kb": {
       "title": "Knowledge base",
       "subtitle": "One source for your text chat, phone agent and assistant.",
-      "progress": "{n} of 5 sections filled",
+      "progress": "{n} of {total} sections filled",
       "usedBy": "Used by your text chat, phone agent and assistant",
-      "services": "Services and prices",
-      "addService": "Add service",
-      "serviceName": "Service name",
       "price": "Price",
       "duration": "Duration",
-      "description": "Description",
       "remove": "Remove service",
-      "noServices": "No services yet.",
       "details": "Business details",
       "hours": "Opening hours",
       "hoursPlaceholder": "Saturday to Thursday, 9am to 9pm",
@@ -1627,7 +1654,18 @@
       "styleWarm": "Warm",
       "styleDirect": "Direct",
       "styleThorough": "Thorough",
-      "styleBrief": "Brief"
+      "styleBrief": "Brief",
+      "spokenName": "How to say the business name (optional)",
+      "spokenNameHint": "Only for the phone voice. Write it the way it sounds if the voice says your name wrong.",
+      "greetingPreview": "Callers will hear"
+    },
+    "callStatus": {
+      "booked": "Booked",
+      "completed": "Completed",
+      "hungUp": "Caller hung up",
+      "noAnswer": "No answer",
+      "voicemail": "Voicemail",
+      "failed": "Failed"
     }
   }
 }

@@ -4,8 +4,7 @@
  * One builder for both places a phone assistant is created:
  *  - call-webhook assistant-request (fresh per call: schedule, caller ID, date)
  *  - api/ai-agent/phone (the stored fallback assistant)
- * so the two can never drift. Browser test calls (Overview/Training) use the
- * same stack through buildBrowserCallAssistant below.
+ * so the two can never drift.
  *
  * Restore point for the previous voice stack: git tag voice-v1.
  *
@@ -39,6 +38,18 @@ export const PHONE_VOICE_FALLBACK_MODEL = "eleven_flash_v2_5";
 export const DEFAULT_PHONE_SPEED = DEFAULT_SPEED;
 const PHONE_LLM = { provider: "openai" as const, model: "gpt-4.1-mini", temperature: 0.5 };
 
+// Last line of defence: whatever the model writes, these never reach the voice.
+const IGNORE_CASE = [{ type: "ignore-case" as const, enabled: true }];
+const SPEECH_CLEANUP = [
+  { type: "regex" as const, regex: "\\b(?:ha|he){2,}h?\\b", options: IGNORE_CASE, value: "" },
+  { type: "regex" as const, regex: "\\blo+l\\b", options: IGNORE_CASE, value: "" },
+  { type: "regex" as const, regex: "ه{3,}", value: "" },
+  { type: "regex" as const, regex: "(^|\\s)هه([\\s.,،!؟]|$)", value: "$1$2" },
+  { type: "regex" as const, regex: "[*\\[(](?:laugh|chuckl|giggl|sigh)[^*\\])]*[*\\])]", options: IGNORE_CASE, value: "" },
+  { type: "regex" as const, regex: "\\s*[\u2014\u2013]\\s*", value: ", " },
+];
+const PHONE_CHUNK_PLAN = { formatPlan: { replacements: SPEECH_CLEANUP } };
+
 export function getPhoneVoiceConfig(voiceId: string | undefined, speed: number | undefined) {
   const id = voiceId || DEFAULT_PHONE_VOICE_ID;
   const s = clampSpeed(typeof speed === "number" ? speed : DEFAULT_PHONE_SPEED);
@@ -52,8 +63,9 @@ export function getPhoneVoiceConfig(voiceId: string | undefined, speed: number |
     style: 0,
     useSpeakerBoost: true,
     speed: s,
+    chunkPlan: PHONE_CHUNK_PLAN,
     fallbackPlan: {
-      voices: [{ provider: "11labs" as const, voiceId: id, model: PHONE_VOICE_FALLBACK_MODEL, stability: 0.5, similarityBoost: 0.75, speed: s }],
+      voices: [{ provider: "11labs" as const, voiceId: id, model: PHONE_VOICE_FALLBACK_MODEL, stability: 0.5, similarityBoost: 0.75, speed: s, chunkPlan: PHONE_CHUNK_PLAN }],
     },
   };
 }
@@ -198,9 +210,11 @@ export function buildReceptionistPrompt(p: {
     : personality === "concise" ? "warm but very brief"
     : "warm, friendly and relaxed";
 
+  const spokenName = resolveSpokenBusinessName(p.businessName, p.settings);
   const facts = [
     p.nowText,
     `Business: ${p.businessName}`,
+    spokenName !== p.businessName ? `When you say the business name out loud, say it like this: ${spokenName}` : "",
     services.length ? `Services: ${compactServices(services)}` : "Services: not listed yet",
     biz.hours ? `Hours: ${biz.hours}` : "",
     biz.address ? `Location: ${biz.address}` : "",
@@ -236,11 +250,21 @@ ${languageRule}
 # How you talk
 - One or two short sentences per turn, then stop and listen.
 - Ask one question at a time. Never read out lists; mention at most two options, like a person would.
-- Small natural reactions are good ("mm", "okay", "sure", "تمام", "أكيد", "زين"), but vary them.
-- If they laugh, react warmly. If they hesitate or say "uhh", give them a moment and help gently. Never rush them.
+- Small word reactions are good ("okay", "sure", "تمام", "أكيد", "زين"), but vary them.
+- Speak in words only. Never laugh and never write laughter (haha, hehe, lol, ههه), even if the caller laughs. No sound effects, no stage directions, no emojis, no dashes.
+- Your name is ${p.agentName} and nothing else. Never introduce yourself with any other name, even one that appears in the notes.
 - Once you know their name, use it now and then.
 - Say times the way people talk ("four thirty in the afternoon", "الساعة أربع ونص العصر"). Phone numbers only as the call flow says, always in words.
 - Never invent prices, services, times or facts. If someone asks directly whether you are a real person or an AI, answer honestly.
+
+# Reading the caller
+Notice these cues in what they say and adapt. Never name what you notice (never "you sound tired" or "you seem upset").
+- Hesitating ("umm", "uh", "I don't know", "مدري"): give them a moment, then ask one gentle question.
+- Torn between options ("both", "I can't decide", "ما أدري أي واحد"): give one short, honest recommendation based only on the business info ("Most people start with the checkup, then decide"). Never pressure. The safety rules still apply.
+- Frustrated (repeating themselves, "no that's not what I said", "قلت لك"): apologize in a few words, slow down, and say back what you understood.
+- Rushed or tired ("quickly", "بسرعة", very short answers): shorter replies, get to the booking fast.
+- Confused ("what?", "يعني؟", "ما فهمت"): say it again more simply.
+- Laughing or friendly: stay warm and light, in your words only.
 
 # Safety
 - You are a receptionist, not a doctor, lawyer or advisor. Never diagnose, guess the cause, or recommend or name a treatment, procedure, medicine, legal step or financial step for their situation, even if they ask what you think.
@@ -258,32 +282,38 @@ ${languageRule}
 ${custom ? `\n# Owner's rules\n${custom}\n` : ""}`;
 }
 
+// ── Identity ─────────────────────────────────────────────────────────────────
+function oneLine(value: unknown, max: number): string {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+}
+
+/** The only source of the agent's name. Never the owner's account or profile. */
+export function resolveAgentName(settings: Record<string, any>): string {
+  return oneLine(settings.agentName, 40) || "Vela";
+}
+
+/** Optional phonetic spelling, used only for what the voice says. */
+export function resolveSpokenBusinessName(businessName: string, settings: Record<string, any>): string {
+  return oneLine(settings.spokenBusinessName, 100) || businessName;
+}
+
 // ── First message (static, spoken instantly; no LLM round trip) ──────────────
-export function buildGreeting(businessName: string, settings: Record<string, any>): string {
+// One fixed sentence per language, so the preview in Settings is exactly what
+// callers hear. The Settings page calls this same function.
+export function buildGreeting(businessName: string, settings: Record<string, any>, agentName: string): string {
   const customGreeting = ((settings.customGreeting as string | undefined) ?? "").trim();
   if (settings.greetingStyle === "custom" && customGreeting) return customGreeting;
   const lang = ((settings.greetingLanguage as string | undefined) || "").toLowerCase();
-  const pick = (opts: string[]) => opts[Math.floor(Math.random() * opts.length)];
-  if (lang === "ar") {
-    return pick([
-      `هلا والله، حياك الله في ${businessName}. كيف أقدر أخدمك؟`,
-      `هلا وغلا، حياك الله في ${businessName}. تفضل، كيف أقدر أساعدك؟`,
-    ]);
-  }
-  if (lang === "en") {
-    return pick([
-      `Hi, thanks for calling ${businessName}. How can I help you today?`,
-      `Hello, ${businessName}, how can I help?`,
-    ]);
-  }
-  if (lang === "fr") return `Bonjour, ${businessName}, comment puis-je vous aider ?`;
-  if (lang === "es") return `Hola, ${businessName}, ¿en qué puedo ayudarle?`;
-  if (lang === "de") return `Hallo, ${businessName}, wie kann ich Ihnen helfen?`;
-  // "ar_en" or unset, the default for Qatar: a short Gulf Arabic welcome, then English.
-  return pick([
-    `هلا، حياك الله في ${businessName}. Hi, how can I help you today?`,
-    `هلا وغلا، حياك الله في ${businessName}. Hello, how can I help?`,
-  ]);
+  const name = resolveSpokenBusinessName(businessName, settings);
+  if (lang === "ar") return `هلا وغلا، حياك الله في ${name}. معك ${agentName}، كيف أقدر أخدمك؟`;
+  if (lang === "en") return `Hello, welcome to ${name}. This is ${agentName}, how can I help you?`;
+  if (lang === "fr") return `Bonjour, bienvenue chez ${name}. Ici ${agentName}, comment puis-je vous aider ?`;
+  if (lang === "es") return `Hola, bienvenido a ${name}. Soy ${agentName}, ¿en qué puedo ayudarle?`;
+  if (lang === "de") return `Hallo, willkommen bei ${name}. Hier ist ${agentName}, wie kann ich Ihnen helfen?`;
+  // "ar_en" or unset, the default for Qatar. A name in Latin letters stays in
+  // the English sentence: switching language right before it clipped the name.
+  if (/[\u0600-\u06FF]/.test(name)) return `هلا وغلا، حياك الله في ${name}. معك ${agentName}. Hello, how can I help you?`;
+  return `هلا، حياك الله. Hello, welcome to ${name}. This is ${agentName}, how can I help you?`;
 }
 
 // ── Whole assistant ──────────────────────────────────────────────────────────
@@ -310,39 +340,11 @@ export function buildPhoneAssistant(p: {
     },
     voice: getPhoneVoiceConfig(p.settings.voiceId as string | undefined, p.settings.speed as number | undefined),
     transcriber: getPhoneTranscriberConfig(buildKeyterms(p.businessName, services), p.settings.language as string | undefined),
-    firstMessage: buildGreeting(p.businessName, p.settings),
+    firstMessage: buildGreeting(p.businessName, p.settings, p.agentName),
     firstMessageMode: "assistant-speaks-first" as const,
     firstMessageInterruptionsEnabled: true,
     ...turn,
     ...CALL_LIMITS,
     server: p.server,
-  };
-}
-
-// ── Browser test calls (Overview, Training) ──────────────────────────────────
-// Same LLM, voice, transcriber and turn-taking as a real call, so the owner
-// hears what callers hear. Each page keeps its own prompt, tools and spoken
-// opening: those are different jobs from answering the phone. maxTokens stays
-// at Vapi's default because interview tool calls carry longer arguments.
-export function buildBrowserCallAssistant(p: {
-  systemPrompt: string;
-  tools?: unknown[];
-  voiceId?: string;
-  speed?: number;
-  businessName?: string;
-  services?: Array<{ name?: string }>;
-  language?: string;
-}) {
-  return {
-    model: {
-      ...PHONE_LLM,
-      messages: [{ role: "system", content: p.systemPrompt }],
-      ...(p.tools ? { tools: p.tools } : {}),
-    },
-    voice: getPhoneVoiceConfig(p.voiceId, p.speed),
-    transcriber: getPhoneTranscriberConfig(buildKeyterms(p.businessName ?? "", p.services ?? []), p.language),
-    firstMessageMode: "assistant-speaks-first-with-model-generated-message" as const,
-    ...getPhoneTurnTaking(),
-    ...CALL_LIMITS,
   };
 }

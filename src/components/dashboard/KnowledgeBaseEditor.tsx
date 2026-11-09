@@ -12,8 +12,6 @@ type Suggestion = SuggestedFact & { id: string; source: "conversation" | "call" 
 type PendingRequest = { id: string; serviceName: string; leadName: string | null; leadPhone: string | null };
 type AnalysisResult = { label: string; ok: boolean; message: string };
 
-const EMPTY_SERVICE: KbService = { name: "", price: "", duration: "", description: "" };
-
 // FAQs from older imports are shown and kept as notes.
 function foldFaqs(kb: KnowledgeBase): KnowledgeBase {
   if (kb.faqs.length === 0) return kb;
@@ -72,14 +70,16 @@ export default function KnowledgeBaseEditor() {
   };
   const editBusiness = (patch: Partial<KnowledgeBase["business"]>) =>
     edit((p) => ({ ...p, business: { ...p.business, ...patch } }));
-  const editService = (i: number, patch: Partial<KbService>) =>
-    edit((p) => ({ ...p, services: p.services.map((s, x) => (x === i ? { ...s, ...patch } : s)) }));
 
   const persist = async (): Promise<boolean> => {
     setSaving(true);
     setError(null);
     try {
-      const clean = { ...kb, services: kb.services.filter((s) => s.name.trim()) };
+      // Services are edited in Train your AI: always send the latest saved list,
+      // so a save here can never undo a change made there.
+      const latest = await fetch("/api/ai-training");
+      const services = latest.ok ? parseKnowledgeBase(await latest.json()).services : kb.services;
+      const clean = { ...kb, services: services.filter((s) => s.name.trim()) };
       const res = await fetch("/api/ai-training", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -217,15 +217,17 @@ export default function KnowledgeBaseEditor() {
     );
   }
 
-  const filled = Object.values(knowledgeChecklist(kb)).filter(Boolean).length;
+  const checklist = knowledgeChecklist(kb);
+  const onThisPage = [checklist.hours, checklist.address, checklist.policy, checklist.extra];
+  const filled = onThisPage.filter(Boolean).length;
   const sourceLabel = { conversation: t("agentUi.kb.sourceConversation"), call: t("agentUi.kb.sourceCall"), assistant: t("agentUi.kb.sourceAssistant") };
 
   return (
-    <div className="max-w-5xl mx-auto pb-24">
+    <div className="max-w-5xl mx-auto pb-24 sm:pb-0">
       <PageHead
         title={t("agentUi.kb.title")}
         subtitle={t("agentUi.kb.subtitle")}
-        aside={<p className="hidden sm:block text-xs text-[#9CA3AF] whitespace-nowrap">{t("agentUi.kb.progress").replace("{n}", String(filled))}</p>}
+        aside={<p className="hidden sm:block text-xs text-[#9CA3AF] whitespace-nowrap">{t("agentUi.kb.progress").replace("{n}", String(filled)).replace("{total}", String(onThisPage.length))}</p>}
       />
 
       <div className="space-y-4">
@@ -278,29 +280,6 @@ export default function KnowledgeBaseEditor() {
             </ul>
           </Section>
         )}
-
-        <Section
-          title={t("agentUi.kb.services")}
-          action={<button type="button" onClick={() => edit((p) => ({ ...p, services: [...p.services, { ...EMPTY_SERVICE }] }))} className={`${quietBtnCls} !h-8 shrink-0`}>{t("agentUi.kb.addService")}</button>}
-        >
-          {kb.services.length === 0 ? (
-            <p className="text-sm text-[#9CA3AF]">{t("agentUi.kb.noServices")}</p>
-          ) : (
-            <div className="space-y-3 sm:space-y-2">
-              {kb.services.map((s, i) => (
-                <div key={i} className="grid grid-cols-[1fr_1fr_40px] sm:grid-cols-[minmax(0,1.1fr)_110px_100px_minmax(0,1.5fr)_40px] gap-2 items-start pb-3 sm:pb-0 border-b border-[#F3F4F6] sm:border-0 last:border-0 last:pb-0">
-                  <input dir="auto" value={s.name} onChange={(e) => editService(i, { name: e.target.value })} aria-label={t("agentUi.kb.serviceName")} placeholder={t("agentUi.kb.serviceName")} className={`${fieldCls} col-span-2 sm:col-span-1`} />
-                  <button type="button" onClick={() => edit((p) => ({ ...p, services: p.services.filter((_, x) => x !== i) }))} aria-label={t("agentUi.kb.remove")} className="sm:order-last h-10 w-10 rounded-lg flex items-center justify-center text-[#9CA3AF] hover:text-red-600 transition-colors">
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M1.5 3h10M5 3V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M10.5 3l-.75 7a.9.9 0 01-.9.8H4.15a.9.9 0 01-.9-.8L2.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  <input dir="auto" value={s.price} onChange={(e) => editService(i, { price: e.target.value })} aria-label={t("agentUi.kb.price")} placeholder={t("agentUi.kb.price")} className={fieldCls} />
-                  <input dir="auto" value={s.duration} onChange={(e) => editService(i, { duration: e.target.value })} aria-label={t("agentUi.kb.duration")} placeholder={t("agentUi.kb.duration")} className={`${fieldCls} col-span-2 sm:col-span-1`} />
-                  <input dir="auto" value={s.description} onChange={(e) => editService(i, { description: e.target.value })} aria-label={t("agentUi.kb.description")} placeholder={t("agentUi.kb.description")} className={`${fieldCls} col-span-3 sm:col-span-1`} />
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <Section title={t("agentUi.kb.details")}>

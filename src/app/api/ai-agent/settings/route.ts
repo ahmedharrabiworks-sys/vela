@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import { getPhoneVoiceConfig } from "@/lib/vapi-phone-assistant";
+import { syncStoredPhoneAssistant } from "@/lib/knowledge-base-server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,11 @@ interface AgentSettings {
   customGreeting?: string;
   language?: string;
   greetingLanguage?: string;
+  spokenBusinessName?: string;
+}
+
+function oneLine(value: string, max: number): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, max);
 }
 
 async function getAuthAndTenant(req: NextRequest) {
@@ -57,7 +62,7 @@ export async function GET(req: NextRequest) {
     } catch { /* ignore */ }
   }
 
-  return NextResponse.json(settings);
+  return NextResponse.json({ ...settings, businessName: tenant.business_name ?? "" });
 }
 
 export async function POST(req: NextRequest) {
@@ -75,7 +80,7 @@ export async function POST(req: NextRequest) {
   // Read existing settings + vapi_assistant_id in one query
   const { data: existingCfg } = await admin
     .from("tenant_config")
-    .select("agent_settings, vapi_assistant_id")
+    .select("agent_settings")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
@@ -90,7 +95,8 @@ export async function POST(req: NextRequest) {
     ...(typeof body.speed === "number"        ? { speed:              body.speed }              : {}),
     ...(body.tone               !== undefined ? { tone:               body.tone }               : {}),
     ...(body.customInstructions !== undefined ? { customInstructions: body.customInstructions } : {}),
-    ...(body.agentName          !== undefined ? { agentName:          body.agentName }          : {}),
+    ...(typeof body.agentName === "string"    ? { agentName:          oneLine(body.agentName, 40) } : {}),
+    ...(typeof body.spokenBusinessName === "string" ? { spokenBusinessName: oneLine(body.spokenBusinessName, 100) } : {}),
     ...(body.personality        !== undefined ? { personality:        body.personality }        : {}),
     ...(body.greetingStyle      !== undefined ? { greetingStyle:      body.greetingStyle }      : {}),
     ...(body.customGreeting     !== undefined ? { customGreeting:     body.customGreeting }     : {}),
@@ -122,37 +128,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Sync voice to the stored Vapi assistant so it matches the new voice
-  // without a re-provision. The settings save itself already succeeded and
-  // is never rolled back; a failed Vapi sync is logged and reported in the
-  // response (vapiSync) instead of being silently swallowed. Real inbound
-  // calls build their assistant per call from these saved settings anyway
-  // (call-webhook assistant-request), so they get the new voice regardless.
-  const assistantId = existingCfg?.vapi_assistant_id as string | null | undefined;
-  const vapiKey = process.env.VAPI_API_KEY;
-  let vapiSync: "ok" | "failed" | "skipped" = "skipped";
-  if (assistantId && vapiKey) {
-    // Phone receptionist v2 voice (model + fallback); owner's voice wins,
-    // else the default receptionist voice.
-    const voiceId = settings.voiceId as string | undefined;
-    const speed   = typeof settings.speed === "number" ? settings.speed : undefined;
-    try {
-      const res = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${vapiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ voice: getPhoneVoiceConfig(voiceId, speed) }),
-        signal: AbortSignal.timeout(5000),
-      });
-      vapiSync = res.ok ? "ok" : "failed";
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        console.error(`[ai-agent/settings] Vapi voice sync failed: ${res.status} ${detail.slice(0, 200)}`);
-      }
-    } catch (err) {
-      vapiSync = "failed";
-      console.error("[ai-agent/settings] Vapi voice sync error:", (err as Error)?.message ?? err);
-    }
-  }
+  // Keep the stored assistant identical to the saved settings (greeting and
+  // name included). Real calls build a fresh assistant per call anyway. The
+  // save itself already succeeded and is never rolled back.
+  const vapiSync = await syncStoredPhoneAssistant(admin, tenant.id);
 
   return NextResponse.json({ ok: true, vapiSync });
 }

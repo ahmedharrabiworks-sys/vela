@@ -10,7 +10,7 @@
 import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { formatBookedSlotsText } from "@/lib/availability";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
-import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
+import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { getVapiServerConfig, isReliableCallerId, resolveTenantTimezone, wallClockNow, wallClockNowText } from "@/lib/vapi-webhook";
 
 export type TenantPhoneCfg = {
@@ -56,7 +56,7 @@ export async function prepareInboundCall(admin: any, cfg: TenantPhoneCfg, caller
   const kb = parseKnowledgeBase(cfg.knowledge_base) as unknown as Record<string, any>;
   const settings = parseJson(cfg.agent_settings);
   const timezone = resolveTenantTimezone(settings);
-  const agentName = (settings.agentName as string | undefined) || "Vela";
+  const agentName = resolveAgentName(settings);
 
   // Real upcoming schedule snapshot (book_appointment re-checks at booking time).
   let bookedSlotsText = "";

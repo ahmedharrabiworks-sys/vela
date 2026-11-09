@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
-import { buildPhoneAssistant } from "@/lib/vapi-phone-assistant";
+import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
   } catch { /* ignore parse errors */ }
   const kb = parseKnowledgeBase((cfg as any)?.knowledge_base) as unknown as Record<string, any>;
 
-  const agentName = (agentSettings.agentName as string | undefined) || "Vela";
+  const agentName = resolveAgentName(agentSettings);
 
   // C1: every Vapi object that calls back into Vela gets { url, headers: { x-vapi-secret } }.
   // Without the secret our fail-closed webhook rejects every call, so refuse

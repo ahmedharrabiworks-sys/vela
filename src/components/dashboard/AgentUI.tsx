@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 // Shared building blocks for the AI Agent section: one quiet visual language.
 
@@ -61,13 +61,22 @@ export function Chips<T extends string>({ value, options, onChange, label }: { v
   );
 }
 
+// The chat bubble takes 80px from the screen edge (bottom 24px, 56px tall).
+const BUBBLE_ZONE = 88;
+const ABOVE_BUBBLE = "max(92px, calc(env(safe-area-inset-bottom) + 84px))";
+const CLEAR_OF_BUBBLE = "max(20px, calc(env(safe-area-inset-bottom) + 12px))";
+
 /**
- * Fixed at the bottom end of the screen, just inside the chat bubble (the
- * logical "end" mirrors both to the left in Arabic). On phones it steps
- * aside while the keyboard is open so it can never cover the field in use.
+ * Sticks to the bottom of the page. On screens from 640px its end edge lines
+ * up with the content column it is placed in (put it last in that column), and
+ * it lifts above the chat bubble when that edge reaches the bubble. On phones
+ * it is a full width bar that steps aside while the keyboard is open.
  */
 export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, savingLabel, savedLabel }: { saving: boolean; dirty: boolean; justSaved: boolean; error: string | null; onSave: () => void; label: string; savingLabel: string; savedLabel: string }) {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [lifted, setLifted] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -76,20 +85,37 @@ export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, s
     return () => vv.removeEventListener("resize", check);
   }, []);
 
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const box = el.getBoundingClientRect();
+      const edgeGap = getComputedStyle(el).direction === "rtl" ? box.left : window.innerWidth - box.right;
+      setLifted(edgeGap < BUBBLE_ZONE);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
+
   const active = dirty || saving;
   return (
     <div
-      className={`fixed z-[130] end-4 sm:end-[92px] flex flex-col items-end gap-2 ${keyboardOpen ? "max-sm:hidden" : ""}`}
-      style={{ bottom: "max(28px, calc(env(safe-area-inset-bottom) + 20px))" }}
+      ref={wrapRef}
+      data-testid="save-bar"
+      className={`pointer-events-none z-30 flex flex-col items-end gap-2 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] sm:sticky sm:mt-4 sm:bottom-[var(--save-bottom)] ${keyboardOpen ? "max-sm:hidden" : ""}`}
+      style={{ "--save-bottom": lifted ? ABOVE_BUBBLE : CLEAR_OF_BUBBLE } as CSSProperties}
     >
       {error && <p role="alert" className="max-w-[260px] rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs text-red-600 shadow-sm">{error}</p>}
       <button
         type="button"
         onClick={onSave}
         disabled={!active || saving}
-        className={active
+        className={`pointer-events-auto max-sm:w-full ${active
           ? "btn-primary h-12 px-6 text-sm disabled:opacity-70"
-          : "h-12 px-6 rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#9CA3AF] shadow-[0_4px_14px_rgba(15,23,42,0.08)] cursor-default"}
+          : "h-12 px-6 rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#9CA3AF] shadow-[0_4px_14px_rgba(15,23,42,0.08)] cursor-default"}`}
       >
         {saving ? savingLabel : !dirty && justSaved ? savedLabel : label}
       </button>

@@ -1,37 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
-import {
-  DEFAULT_VOICE_ID,
-  clampSpeed,
-  isVapiEjection,
-  vapiErrorText,
-  requestMicrophoneAccess,
-  DEFAULT_SPEED,
-} from "@/lib/vapi-agent-config";
-import { buildBrowserCallAssistant } from "@/lib/vapi-phone-assistant";
-import { plansForPrompt } from "@/lib/pricing";
 import { ActivityChart, ChartCard, ChartSummary, RingCard, toDayPoints } from "@/components/dashboard/ActivityCharts";
-import { fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type VapiInstance = any;
-type CallStatus = "idle" | "connecting" | "active" | "ended";
-
-const toErrorText = vapiErrorText;
+import { callStatus, fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
 
 type UsageData = Record<"messages" | "voiceMinutes", { used: number; limit: number | null }>;
-
-interface LiveContext {
-  business: { name: string; services: any[] };
-  leads: { total: number; recent: any[] };
-  appointments: { total: number; upcoming: any[] };
-  calls: { total: number; totalMinutes: number };
-  agentSettings: { tone?: string; language?: string };
-}
 
 interface CallRecord {
   has_recording?: boolean;
@@ -49,27 +25,12 @@ interface CallRecord {
 
 // Overview's stats (Answer Rate, Calls Handled, Avg Duration, Voice Minutes, Call
 // Activity, Recent Calls) must reflect only real inbound customer calls to the
-// business's phone number -- never internal Training interviews or "Talk to Vela"
-// business-advisor sessions. Real customer calls are tagged call_type:"live" by
+// business's phone number -- never internal test sessions. Real customer calls are tagged call_type:"live" by
 // the Vapi end-of-call webhook (call-webhook/route.ts); Training tags its own
 // call_type:"training" explicitly (training/page.tsx). Any call_type other than
 // "live" is internal/testing and is excluded here.
 function isCustomerCall(c: CallRecord): boolean {
   return c.call_type === "live";
-}
-
-function buildContextString(ctx: LiveContext): string {
-  const lines = [
-    `Business: ${ctx.business.name}`,
-    `Leads: ${ctx.leads.total} total${ctx.leads.recent.length > 0 ? `. Latest: ${ctx.leads.recent.map((l:any)=>l.name||"Unknown").join(", ")}` : ""}`,
-    `Appointments: ${ctx.appointments.total} total${ctx.appointments.upcoming.length>0 ? `. Upcoming: ${ctx.appointments.upcoming.map((a:any)=>`${a.customer_name||"?"} (${a.service||"?"}) at ${a.scheduled_at?new Date(a.scheduled_at).toLocaleDateString():""}`).join(", ")}` : " (none upcoming)"}`,
-    `Training calls recorded: ${ctx.calls.total} (${ctx.calls.totalMinutes} voice minutes)`,
-  ];
-  if (ctx.business.services?.length > 0) {
-    const names = ctx.business.services.slice(0,5).map((s:any)=>s.name||String(s)).join(", ");
-    lines.push(`Services in KB: ${names}`);
-  }
-  return lines.join("\n");
 }
 
 /* ── Overview page ── */
@@ -83,41 +44,11 @@ export default function OverviewPage() {
 
   /* Appointments from Supabase */
 
-  /* Vapi state */
-  const [callStatus, setCallStatus]     = useState<CallStatus>("idle");
-  const [callError, setCallError]       = useState<string | null>(null);
-  const [muted, setMuted]               = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
-  const [wasEjected, setWasEjected]     = useState(false);
-  const [ejectedEarly, setEjectedEarly] = useState(false);
-  const [settingsReady, setSettingsReady] = useState(false);
   const [usage, setUsage] = useState<UsageData | null>(null);
-  const [noMicSignal, setNoMicSignal]   = useState(false);
-  const voiceIdRef     = useRef(DEFAULT_VOICE_ID);
-  const speedRef       = useRef(DEFAULT_SPEED);
-  const convStyleRef   = useRef("warm");
-  const liveContextRef = useRef<LiveContext | null>(null);
-  const prefLangRef    = useRef<string | undefined>(undefined);
-  const vapiRef  = useRef<VapiInstance>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Set on call-start, read (not via stale state) inside the error handler to
-  // tell a genuine mid-call drop apart from an immediate provider failure.
-  const activeSinceRef = useRef<number | null>(null);
-  // Tracks whether any real signal has come from the mic since the call went
-  // active -- the SDK's local-volume-level event is the documented way to
-  // detect "the mic isn't picking up audio" (wrong device, OS mute, etc.).
-  const heardLocalAudioRef = useRef(false);
-  const micCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t, locale } = useI18n();
-
-  /* Volume bars (DOM-direct), 5 bars */
-  const barRefs   = useRef<(HTMLDivElement | null)[]>([]);
-  const BAR_BASES = [0.4, 0.7, 1.0, 0.7, 0.4];
 
   /* Theme */
   const bg          = "transparent";
-  const cardBg      = isDark ? "var(--dm-card)" : "#FFFFFF";
-  const border      = isDark ? "var(--dm-border)" : "#E5E7EB";
   const textPrimary = isDark ? "var(--dm-text)" : "#0F172A";
   const textMuted   = isDark ? "var(--dm-muted)" : "#9CA3AF";
   const textSub     = isDark ? "var(--dm-text2)" : "#475569";
@@ -147,30 +78,6 @@ export default function OverviewPage() {
       .catch(() => {});
   }, []);
 
-  /* Load voice settings */
-  useEffect(() => {
-    // One voice everywhere: the one chosen in Settings. Style and language
-    // are the owner assistant's own.
-    Promise.all([
-      fetch("/api/ai-agent/settings").then(r => r.json()).catch(() => ({})),
-      fetch("/api/ai-agent/assistant-settings").then(r => r.json()).catch(() => ({})),
-    ]).then(([agent, owner]: [{ voiceId?: string; speed?: number }, { conversationStyle?: string; preferredLanguage?: string }]) => {
-      voiceIdRef.current = agent.voiceId || DEFAULT_VOICE_ID;
-      if (typeof agent.speed === "number") speedRef.current = clampSpeed(agent.speed);
-      if (owner.conversationStyle) convStyleRef.current = owner.conversationStyle;
-      prefLangRef.current = owner.preferredLanguage ?? undefined;
-      setSettingsReady(true);
-    }).catch(() => { setSettingsReady(true); });
-  }, []);
-
-  /* Prefetch agent context (for smart system prompt) */
-  useEffect(() => {
-    fetch("/api/ai-agent/context")
-      .then(r => r.ok ? r.json() : null)
-      .then((ctx: LiveContext | null) => { if (ctx) liveContextRef.current = ctx; })
-      .catch(() => {});
-  }, []);
-
   /* Derive call stats */
   const totalCalls = callRecords.length;
   const totalSecs  = callRecords.reduce((s, c) => s + (c.duration_seconds ?? 0), 0);
@@ -180,10 +87,6 @@ export default function OverviewPage() {
   function fmtDuration(s: number) {
     if (!s) return "0s";
     return s < 60 ? `${s}s` : `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
-  }
-
-  function fmtTimer(s: number) {
-    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   }
 
   /* Last 7 days, oldest first */
@@ -196,196 +99,15 @@ export default function OverviewPage() {
     });
     return toDayPoints(rows, locale, true);
   })();
-  const answeredCalls = callRecords.filter((c) => !/missed|voicemail/i.test(c.outcome ?? "")).length;
+  const answeredCalls = callRecords.filter((c) => !["noAnswer", "voicemail", "failed"].includes(callStatus(c.outcome, c.duration_seconds) ?? "")).length;
   const answerRate = totalCalls > 0 ? Math.round((answeredCalls / totalCalls) * 100) : null;
   const bookedCalls = callRecords.filter((c) => !!c.appointment_booked).length;
 
-  /* Vapi */
-  function resetBars() {
-    BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${b * 6}px`; });
-  }
-
-  const startCall = useCallback(async () => {
-    if (callStatus === "connecting" || callStatus === "active") return;
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
-    if (vapiRef.current) { try { vapiRef.current.stop(); } catch { /* ignore */ } vapiRef.current = null; }
-    setCallStatus("connecting");
-    setCallError(null);
-    setCallDuration(0);
-    setWasEjected(false);
-    setEjectedEarly(false);
-    setMuted(false);
-    setNoMicSignal(false);
-    heardLocalAudioRef.current = false;
-
-    // Request the mic ourselves first -- if it's denied, blocked, or missing,
-    // this surfaces a specific error immediately instead of a call that
-    // connects fine but the assistant never receives any audio.
-    const micCheck = await requestMicrophoneAccess();
-    if (!micCheck.ok) {
-      setCallError(micCheck.message);
-      setCallStatus("idle");
-      return;
-    }
-
-    const STYLE_LINES: Record<string, string> = {
-      direct:   "Be direct. Answer immediately with no preamble. Skip filler phrases like \"Great question\" or \"Of course\". One clear answer, nothing more.",
-      warm:     "Be warm and conversational. Natural, friendly language. Like a trusted colleague. A brief acknowledgment before answering is fine.",
-      thorough: "Be thorough. Provide full context when it adds value. Walk through reasoning where helpful. Err on the side of completeness over brevity.",
-      brief:    "Be maximally brief. Every word must earn its place. Compress to the minimum required for clarity and accuracy.",
-    };
-    const ctx  = liveContextRef.current;
-    const businessName = ctx?.business?.name?.trim() || "your business";
-    const lang = prefLangRef.current;
-    const LANG_NAMES: Record<string, string> = {
-      ar: "Arabic (العربية)", fr: "French", de: "German", es: "Spanish", en: "English",
-    };
-    const langInstruction = lang
-      ? `MANDATORY: Speak ONLY in ${LANG_NAMES[lang] ?? lang} throughout the entire conversation. Never switch languages. Not mid-sentence, not ever.`
-      : "Ask the owner which language they prefer upfront, then use ONLY that language for the rest of the conversation. Support Arabic (العربية), French, German, Spanish, and English fluently.";
-    const velaSystem = `You are Vela. A warm, insightful AI business partner built into a phone agent platform. You are talking directly with the business owner in a voice session.
-
-## YOUR ROLE
-You have read-only access to the owner's live account data. Help them understand their business performance, answer data questions, and give actionable insights about their Vela phone agent. Think like a trusted advisor. Give real insights, not just data readouts.
-
-Vela is a phone-only service: it answers inbound business calls 24/7, handles inquiries, qualifies leads, and books appointments via voice. Not chat or messaging.
-
-## OPENING
-Your first sentence MUST name the business: "${businessName}". Example: "Hi, I'm Vela, your business advisor for ${businessName}, what can I help with?" Open immediately, one sentence, then wait for their question. You speak first. Vary your exact wording every session. Never open with "مرحبا" or any other fixed phrase two sessions in a row.
-
-## LANGUAGE
-${langInstruction}
-
-## COMMUNICATION STYLE
-${STYLE_LINES[convStyleRef.current] ?? STYLE_LINES.warm}
-
-## VELA PLANS
-${plansForPrompt()}
-
-## LIVE ACCOUNT DATA
-${ctx ? buildContextString(ctx) : "Account data loading. Answer general questions about Vela."}
-
-Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
-    try {
-      const { default: Vapi } = await import("@vapi-ai/web");
-      const vapi: VapiInstance = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY ?? "");
-      vapiRef.current = vapi;
-      vapi.on("call-start", () => {
-        setCallStatus("active");
-        setCallDuration(0);
-        activeSinceRef.current = Date.now();
-        timerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
-        // Give the mic a few seconds to register real signal before warning --
-        // avoids a false positive during the brief silence right after connecting.
-        micCheckTimeoutRef.current = setTimeout(() => {
-          if (!heardLocalAudioRef.current) setNoMicSignal(true);
-        }, 6000);
-      });
-      vapi.on("call-end", () => {
-        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
-        activeSinceRef.current = null;
-        setCallStatus("ended");
-        resetBars();
-      });
-      vapi.on("call-start-failed", (e: any) => {
-        console.error("[vapi call-start-failed]", e);
-        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        setCallError(toErrorText(e));
-        setCallStatus("idle");
-        resetBars();
-      });
-      vapi.on("error", (e: any) => {
-        console.error("[vapi error]", e);
-        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
-        const isEjected = isVapiEjection(e);
-        if (isEjected) {
-          // A drop within seconds of connecting is essentially never caused by the
-          // tab being backgrounded (that requires the tab to have been hidden for a
-          // real stretch of time first) -- it means the call never properly
-          // established, almost always a voice/transcription provider failure.
-          const activeMs = activeSinceRef.current ? Date.now() - activeSinceRef.current : 0;
-          setEjectedEarly(activeMs < 15000);
-          activeSinceRef.current = null;
-          setWasEjected(true);
-          setCallStatus("ended");
-        } else {
-          setCallError(toErrorText(e));
-          setCallStatus("idle");
-        }
-        resetBars();
-      });
-      vapi.on("volume-level", (vol: number) => {
-        BAR_BASES.forEach((b, i) => { const el = barRefs.current[i]; if (el) el.style.height = `${Math.max(4, b * (8 + vol * 22))}px`; });
-      });
-      // The SDK's documented mechanism for detecting "the mic isn't picking up
-      // audio" (wrong input device, OS-level mute, etc.) -- see getLocalAudioLevel
-      // in @vapi-ai/web. Any real signal clears the warning immediately.
-      vapi.on("local-volume-level", (vol: number) => {
-        if (vol > 0.02) {
-          heardLocalAudioRef.current = true;
-          setNoMicSignal(false);
-        }
-      });
-      await vapi.start(buildBrowserCallAssistant({
-        systemPrompt: velaSystem,
-        voiceId: voiceIdRef.current,
-        speed: speedRef.current,
-        businessName: ctx?.business.name,
-        services: ctx?.business.services,
-        language: prefLangRef.current,
-      }));
-    } catch (err: unknown) {
-      console.error("[call]", err);
-      setCallError(toErrorText(err));
-      setCallStatus("idle");
-      resetBars();
-    }
-  }, [callStatus]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const endCall    = useCallback(() => { vapiRef.current?.stop(); }, []);
-  const toggleMute = useCallback(() => {
-    if (!vapiRef.current) return;
-    const next = !muted; setMuted(next); vapiRef.current.setMuted(next);
-  }, [muted]);
-  const resetCall = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    if (micCheckTimeoutRef.current) { clearTimeout(micCheckTimeoutRef.current); micCheckTimeoutRef.current = null; }
-    setCallStatus("idle");
-    setCallError(null);
-    setMuted(false);
-    setCallDuration(0);
-    setWasEjected(false);
-    setEjectedEarly(false);
-    setNoMicSignal(false);
-    resetBars();
-    vapiRef.current = null;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    function onVisChange() {
-      if (!document.hidden && vapiRef.current && callStatus === "active") {
-        vapiRef.current.setMuted(muted);
-      }
-    }
-    document.addEventListener("visibilitychange", onVisChange);
-    return () => document.removeEventListener("visibilitychange", onVisChange);
-  }, [callStatus, muted]);
-
-  useEffect(() => {
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []);
-
-  const isActive     = callStatus === "active";
-  const isConnecting = callStatus === "connecting";
 
   return (
     <div style={{ background: bg, margin: "-20px -16px -32px", padding: "20px 16px 32px" }}>
       <style>{`
         @keyframes pulse2 { 0%,100%{opacity:.4;transform:scale(.85)} 50%{opacity:1;transform:scale(1)} }
-        @keyframes spin { to{transform:rotate(360deg)} }
         @media(min-width:768px) { .ov-pad { padding: 20px 24px 32px; margin: -20px -24px -32px; } }
       `}</style>
 
@@ -400,15 +122,15 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
           <div
             className="flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1.5 rounded-full border mt-0.5"
             style={{
-              background: isActive ? "rgba(34,197,94,0.08)" : accentBg,
-              borderColor: isActive ? "rgba(34,197,94,0.3)" : accentBorder,
-              color: isActive ? "#22C55E" : "#FF6B35",
+              background: accentBg,
+              borderColor: accentBorder,
+              color: "#FF6B35",
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full"
-              style={{ background: isActive ? "#22C55E" : "#FF6B35", boxShadow: `0 0 6px ${isActive?"#22C55E":"#FF6B35"}`, animation: "pulse2 2s ease-in-out infinite" }}
+              style={{ background: "#FF6B35", boxShadow: "0 0 6px #FF6B35", animation: "pulse2 2s ease-in-out infinite" }}
             />
-            {isActive ? t("aiAgent.overview.statusActive") : t("aiAgent.overview.statusOnline")}
+            {t("aiAgent.overview.statusOnline")}
           </div>
         </div>
 
@@ -489,20 +211,30 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
 
         {/* Main row */}
         <div className="grid lg:grid-cols-3 gap-4">
-
-          {/* Chart + appointments */}
-          <div className="lg:col-span-2 space-y-3">
-
-            {/* Call activity chart */}
+          <div className="lg:col-span-2">
             {loadingCalls
-              ? <div className="glass rounded-2xl animate-pulse h-[210px]" />
+              ? <div className="glass rounded-2xl animate-pulse h-full min-h-[210px]" />
               : (
-                <ChartCard title={t("aiAgent.overview.callActivity")} subtitle={t("aiAgent.overview.callActivitySub")}>
+                <ChartCard fill title={t("aiAgent.overview.callActivity")} subtitle={t("aiAgent.overview.callActivitySub")}>
                   <ActivityChart points={weeklyPoints} unit={t("agentUi.overview.calls")} emptyText={t("agentUi.overview.noCalls")} />
                   <ChartSummary points={weeklyPoints} labels={{ total: t("agentUi.charts.total"), peak: t("agentUi.charts.peak"), average: t("agentUi.charts.average") }} />
                 </ChartCard>
               )}
+          </div>
 
+          <RingCard
+            fill
+            title={t("agentUi.overview.answerRate")}
+            value={loadingCalls ? null : answerRate}
+            ringLabel={t("agentUi.overview.ofCalls")}
+            emptyText={loadingCalls ? "" : t("agentUi.overview.noCalls")}
+            usageTitle={t("dashboardV2.planUsage")}
+            unlimitedLabel={t("dashboardV2.unlimited")}
+            notIncludedLabel={t("agentUi.charts.notIncluded")}
+            rows={usage ? (["messages", "voiceMinutes"] as const).map((key) => ({ label: t(`dashboardV2.usage.${key}`), used: usage[key].used, limit: usage[key].limit })) : []}
+          />
+
+          <div className="lg:col-span-3">
             {/* Recent calls, larger, richer list; each row opens the full transcript */}
             <div className="glass rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2.5">
@@ -542,262 +274,21 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                               <span className="text-xs font-semibold truncate" style={{ color: textPrimary }}>
                                 <span dir="ltr">{c.caller_number || t("agentUi.conv.hiddenNumber")}</span>
                               </span>
-                              <OutcomeBadge outcome={c.outcome} isDark={isDark} />
+                              <OutcomeBadge outcome={c.outcome} durationSeconds={c.duration_seconds} isDark={isDark} />
                             </div>
                             <span className="text-[10px] font-mono font-semibold shrink-0" style={{ color: textPrimary }}>
                               {fmtCallDuration(c.duration_seconds)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <p className="text-[11px] truncate flex-1" style={{ color: textMuted }}>{callHeadline(c)}</p>
-                            <span className="text-[10px] shrink-0" style={{ color: textMuted }}>{fmtTimeAgo(c.created_at)}</span>
+                            <p className="text-[11px] truncate flex-1" style={{ color: textMuted }}>{callHeadline(c, locale)}</p>
+                            <span className="text-[10px] shrink-0" style={{ color: textMuted }}>{fmtTimeAgo(c.created_at, locale)}</span>
                           </div>
                         </div>
                       </button>
                     ))}
                   </div>
               }
-            </div>
-          </div>
-
-          {/* Right sidebar */}
-          <div className="flex flex-col gap-3">
-
-            <RingCard
-              title={t("agentUi.overview.answerRate")}
-              value={loadingCalls ? null : answerRate}
-              ringLabel={t("agentUi.overview.ofCalls")}
-              emptyText={loadingCalls ? "" : t("agentUi.overview.noCalls")}
-              usageTitle={t("dashboardV2.planUsage")}
-              unlimitedLabel={t("dashboardV2.unlimited")}
-              notIncludedLabel={t("agentUi.charts.notIncluded")}
-              rows={usage ? (["messages", "voiceMinutes"] as const).map((key) => ({ label: t(`dashboardV2.usage.${key}`), used: usage[key].used, limit: usage[key].limit })) : []}
-            />
-
-            {/* Phone status */}
-            <div className="glass rounded-2xl">
-              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
-                <h2 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.channelStatus")}</h2>
-                <Link href="/app/ai-agent/phone" className="text-[10px] font-semibold hover:underline" style={{ color: "#FF6B35" }}>
-                  {t("aiAgent.overview.setUp")}
-                </Link>
-              </div>
-              <div className="p-3">
-                <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl" style={{ background: accentBg }}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,107,53,0.15)" }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.33c0 .4-.27.67-.67.67C4.4 12 2 6.6 2 2.67c0-.4.27-.67.67-.67H5.33c.4 0 .67.27.67.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" fill="#FF6B35"/>
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold" style={{ color: textPrimary }}>{t("agentUi.tabs.phone")}</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.phoneSub")}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Vela Voice card */}
-            <div
-              className="rounded-2xl border overflow-hidden"
-              style={{
-                background: isDark ? "linear-gradient(135deg, var(--dm-card), var(--dm-card2))" : "linear-gradient(135deg,#FFFAF8,#FFF5F0)",
-                borderColor: accentBorder,
-                boxShadow: isDark ? "0 0 24px rgba(255,107,53,0.08)" : "0 0 16px rgba(255,107,53,0.06)",
-              }}
-            >
-              <div className="px-4 pt-4 pb-4">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>{t("aiAgent.overview.talkToVela")}</p>
-                    <p className="text-[9px]" style={{ color: textMuted }}>
-                      {isActive
-                        ? (muted ? t("agentUi.overview.muted") : t("agentUi.overview.listening"))
-                        : isConnecting ? t("agentUi.overview.connecting")
-                        : callStatus === "ended" ? (wasEjected ? (ejectedEarly ? t("agentUi.overview.couldntConnect") : t("agentUi.overview.connectionLost")) : t("agentUi.overview.callEnded"))
-                        : t("agentUi.overview.advisor")}
-                    </p>
-                  </div>
-                  <div className="w-2 h-2 rounded-full" style={{
-                    background: isActive ? "#22C55E" : isConnecting ? "#F59E0B" : callStatus === "ended" ? "#6B7280" : "#FF6B35",
-                    boxShadow: isActive ? "0 0 6px #22C55E" : "none",
-                  }}/>
-                </div>
-
-                {/* Waveform bars, 5 bars, volume-driven when active */}
-                <div className="flex items-end justify-center gap-[5px] mb-3" style={{ height: 32 }}>
-                  {BAR_BASES.map((b, i) => (
-                    <div key={i} ref={el => { barRefs.current[i] = el; }}
-                      style={{
-                        width: 5,
-                        height: b * 6,
-                        borderRadius: 3,
-                        alignSelf: "flex-end",
-                        background: isActive
-                          ? "linear-gradient(to top,#FF6B35,#FF3366)"
-                          : isConnecting ? "#FF6B35" : isDark ? "var(--dm-card2)" : "#E9EBF0",
-                        transition: "background 0.3s, height 0.05s",
-                        animation: isConnecting ? `pulse2 ${0.7 + i * 0.12}s ease-in-out infinite` : "none",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Controls */}
-                {callStatus === "idle" && (
-                  <div className="flex flex-col items-center gap-2">
-                    <button onClick={startCall}
-                      disabled={!settingsReady}
-                      className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.4)" }}
-                    >
-                      {!settingsReady
-                        ? <div className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent" style={{ animation: "spin 0.8s linear infinite" }} />
-                        : <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                            <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" fill="white"/>
-                          </svg>
-                      }
-                    </button>
-                    <span className="text-[10px] font-medium" style={{ color: textMuted }}>
-                      {!settingsReady ? t("agentUi.overview.loading") : t("aiAgent.overview.talkToVela")}
-                    </span>
-                  </div>
-                )}
-
-                {isConnecting && (
-                  <div className="flex flex-col items-center gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <div style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}/>
-                      <span className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.connecting")}</span>
-                    </div>
-                    <button onClick={endCall}
-                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
-                      style={{ background: "#EF4444", boxShadow: "0 3px 10px rgba(239,68,68,0.4)" }}
-                      title="Cancel"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {isActive && (
-                  <div className="flex items-center justify-center gap-4">
-                    {/* Mute */}
-                    <button onClick={toggleMute}
-                      className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-105 active:scale-95"
-                      style={{
-                        background: muted ? "linear-gradient(135deg,#FF6B35,#FF3366)" : isDark ? "var(--dm-card2)" : "#F3F4F6",
-                        boxShadow: muted ? "0 2px 8px rgba(255,107,53,0.35)" : "none",
-                        border: muted ? "none" : `1.5px solid ${border}`,
-                      }}
-                      title={muted ? "Unmute" : "Mute"}
-                    >
-                      {muted ? (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill="white"/>
-                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                          <path d="M2 2l10 10" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M7 1a2 2 0 0 1 2 2v4a2 2 0 0 1-4 0V3a2 2 0 0 1 2-2z" fill={textMuted}/>
-                          <path d="M3 7a4 4 0 0 0 8 0M7 11v2" stroke={textMuted} strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
-                      )}
-                    </button>
-
-                    {/* Live timer */}
-                    <span className="text-sm font-mono font-bold tabular-nums min-w-[44px] text-center" style={{ color: textPrimary }}>
-                      {fmtTimer(callDuration)}
-                    </span>
-
-                    {/* End */}
-                    <button onClick={endCall}
-                      className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"
-                      style={{ background: "#EF4444", boxShadow: "0 3px 12px rgba(239,68,68,0.4)" }}
-                      title="End call"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M2.5 6.9c1.3 2.6 3.6 4.8 6.6 6.1l2-2a.7.7 0 0 1 .7-.1c.9.3 1.8.5 2.8.5a.7.7 0 0 1 .7.7v2.8a.7.7 0 0 1-.7.7C6.1 15.6 1 10.5 1 4.2a.7.7 0 0 1 .7-.7h2.8a.7.7 0 0 1 .7.7c0 1 .2 2 .5 2.9a.7.7 0 0 1-.1.7l-2.1 2.1z" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10 2l4 4M14 2l-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {isActive && noMicSignal && (
-                  <p className="text-[9px] text-center mt-2" style={{ color: "#F59E0B" }}>
-                    Can't hear you. Check your microphone input
-                  </p>
-                )}
-
-                {callStatus === "ended" && wasEjected && (
-                  <div className="space-y-2">
-                    <p className="text-[9px] text-center" style={{ color: textMuted }}>
-                      {ejectedEarly
-                        ? "The call disconnected right after connecting. This usually points to a voice service configuration issue rather than your connection."
-                        : "Call dropped. This can happen if the tab was hidden too long, or the connection was interrupted."}
-                    </p>
-                    <button onClick={startCall}
-                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                      style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)", boxShadow: "0 3px 12px rgba(255,107,53,0.35)" }}
-                    >
-                      Reconnect
-                    </button>
-                    <button onClick={resetCall} className="w-full text-[9px] text-center hover:underline" style={{ color: textMuted }}>
-                      Dismiss
-                    </button>
-                  </div>
-                )}
-
-                {callStatus === "ended" && !wasEjected && (
-                  <button onClick={resetCall}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-medium transition-all"
-                    style={{ background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: textSub }}
-                  >
-                    {t("aiAgent.overview.newCall")}
-                  </button>
-                )}
-
-                {callError && (
-                  <div className="mt-2 rounded-xl p-2.5" style={{ background: isDark ? "rgba(239,68,68,0.08)" : "#FFF5F5", border: "1px solid rgba(239,68,68,0.2)" }}>
-                    <p className="text-[10px] font-semibold text-red-400 mb-0.5">Call failed</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>{callError}</p>
-                    <button onClick={() => setCallError(null)} className="text-[9px] font-medium text-red-400 mt-1 hover:underline">Dismiss</button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Quick actions */}
-            <div className="rounded-2xl border p-4" style={{ background: cardBg, borderColor: border }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>{t("aiAgent.overview.quickActions")}</p>
-              <div className="space-y-1">
-                {[
-                  { label: t("aiAgent.overview.trainAgent"),   href: "/app/ai-agent/knowledge-base", sub: t("aiAgent.overview.trainAgentSub"),  color: "#FF3366" },
-                  { label: t("aiAgent.overview.setupPhone"),   href: "/app/ai-agent/phone",    sub: t("aiAgent.overview.setupPhoneSub"),  color: "#FF6B35" },
-                ].map((link) => (
-                  <Link key={link.href} href={link.href}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                    style={{ color: textSub }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isDark?"#161927":"#F9FAFB"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                  >
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background:`${link.color}18`, color:link.color }}>
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M3.5 2L7 5l-3.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold truncate" style={{ color: textPrimary }}>{link.label}</p>
-                      <p className="text-[9px] truncate" style={{ color: textMuted }}>{link.sub}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
             </div>
           </div>
         </div>

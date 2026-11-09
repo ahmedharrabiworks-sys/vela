@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { VOICES } from "@/lib/vapi-agent-config";
-import { DEFAULT_PHONE_SPEED, DEFAULT_PHONE_VOICE_ID } from "@/lib/vapi-phone-assistant";
+import { DEFAULT_PHONE_SPEED, DEFAULT_PHONE_VOICE_ID, buildGreeting, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { Chips, FloatingSave, PageHead, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
 
 interface Settings {
@@ -16,6 +16,7 @@ interface Settings {
   customGreeting?: string;
   language?: string;
   greetingLanguage?: string;
+  spokenBusinessName?: string;
 }
 
 const LANGUAGE_OPTIONS = [
@@ -38,7 +39,9 @@ export default function SettingsPage() {
     customGreeting: "",
     language: "",
     greetingLanguage: "ar_en",
+    spokenBusinessName: "",
   });
+  const [businessName, setBusinessName] = useState("");
   const [assistant, setAssistant] = useState({ conversationStyle: "warm", preferredLanguage: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,8 +56,9 @@ export default function SettingsPage() {
     Promise.all([
       fetch("/api/ai-agent/settings").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
       fetch("/api/ai-agent/assistant-settings").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
-    ]).then(([agent, owner]: [Settings, { conversationStyle?: string; preferredLanguage?: string }]) => {
+    ]).then(([{ businessName: savedName, ...agent }, owner]: [Settings & { businessName?: string }, { conversationStyle?: string; preferredLanguage?: string }]) => {
       setS((p) => ({ ...p, ...agent }));
+      setBusinessName(savedName ?? "");
       setAssistant((p) => ({ conversationStyle: owner.conversationStyle ?? p.conversationStyle, preferredLanguage: owner.preferredLanguage ?? p.preferredLanguage }));
       setLoading(false);
     });
@@ -83,6 +87,7 @@ export default function SettingsPage() {
   const speed = s.speed ?? DEFAULT_PHONE_SPEED;
   const voiceId = s.voiceId ?? DEFAULT_PHONE_VOICE_ID;
   const custom = s.greetingStyle === "custom";
+  const greeting = buildGreeting(businessName || "your business", s, resolveAgentName(s));
 
   const togglePreview = async () => {
     if (preview !== "idle") {
@@ -123,7 +128,7 @@ export default function SettingsPage() {
   const sectionLabel = (v: "female" | "male") => t(v === "female" ? "agentUi.settings.female" : "agentUi.settings.male");
 
   return (
-    <div className="max-w-4xl mx-auto pb-24">
+    <div className="max-w-4xl mx-auto pb-24 sm:pb-0">
       <PageHead title={t("agentUi.settings.title")} subtitle={t("agentUi.settings.subtitle")} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -132,7 +137,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="agent-name" className={labelCls}>{t("agentUi.settings.name")}</label>
-                <input id="agent-name" dir="auto" value={s.agentName ?? ""} onChange={(e) => set("agentName", e.target.value)} className={fieldCls} />
+                <input id="agent-name" dir="auto" maxLength={40} value={s.agentName ?? ""} onChange={(e) => set("agentName", e.target.value)} className={fieldCls} />
               </div>
               <div>
                 <label htmlFor="agent-language" className={labelCls}>{t("agentUi.settings.language")}</label>
@@ -174,6 +179,15 @@ export default function SettingsPage() {
               {custom && (
                 <textarea aria-label={t("agentUi.settings.writeGreeting")} rows={2} maxLength={300} value={s.customGreeting ?? ""} onChange={(e) => set("customGreeting", e.target.value)} placeholder={t("agentUi.settings.greetingPlaceholder")} className={areaCls} />
               )}
+              <div>
+                <label htmlFor="spoken-name" className={labelCls}>{t("agentUi.settings.spokenName")}</label>
+                <input id="spoken-name" dir="auto" maxLength={100} value={s.spokenBusinessName ?? ""} onChange={(e) => set("spokenBusinessName", e.target.value)} placeholder={businessName} className={fieldCls} />
+                <p className="text-xs text-[#9CA3AF] mt-1 leading-relaxed">{t("agentUi.settings.spokenNameHint")}</p>
+              </div>
+              <div className="rounded-lg bg-[#FAFAFA] border border-[#F3F4F6] px-3 py-2.5">
+                <p className="text-[11px] font-medium text-[#9CA3AF] mb-1">{t("agentUi.settings.greetingPreview")}</p>
+                <p data-testid="greeting-preview" dir="auto" className="text-sm text-[#111111] leading-relaxed [overflow-wrap:anywhere]">{greeting}</p>
+              </div>
             </div>
           </Section>
         </div>

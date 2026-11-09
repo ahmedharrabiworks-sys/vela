@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 // Shared between the AI Agent Calls tab (inline row expansion) and the Overview
 // page's Recent Calls list (modal) -- single source of truth for how a call's
@@ -38,14 +39,26 @@ export function fmtDate(iso: string) {
   });
 }
 
-export function fmtTimeAgo(iso: string): string {
+function arabicCount(n: number, one: string, two: string, few: string, many: string): string {
+  if (n === 1) return one;
+  if (n === 2) return two;
+  return n <= 10 ? `${n} ${few}` : `${n} ${many}`;
+}
+
+export function fmtTimeAgo(iso: string, locale: string = "en"): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+  if (locale === "ar") {
+    if (mins < 1) return "الآن";
+    if (mins < 60) return `منذ ${arabicCount(mins, "دقيقة", "دقيقتين", "دقائق", "دقيقة")}`;
+    if (hrs < 24) return `منذ ${arabicCount(hrs, "ساعة", "ساعتين", "ساعات", "ساعة")}`;
+    return `منذ ${arabicCount(days, "يوم", "يومين", "أيام", "يوم")}`;
+  }
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
   return `${days}d ago`;
 }
 
@@ -60,32 +73,45 @@ export function LangFlag({ lang }: { lang?: string }) {
   );
 }
 
-export function OutcomeBadge({ outcome, isDark }: { outcome?: string; isDark: boolean }) {
-  if (!outcome || outcome === "N/A") return <span className="text-xs" style={{ color: isDark ? "var(--dm-muted)" : "#9CA3AF" }}>N/A</span>;
-  const isBooked = /book|appointment|schedule/i.test(outcome);
-  const isComp   = outcome === "completed";
+export type CallStatus = "booked" | "completed" | "hungUp" | "noAnswer" | "voicemail" | "failed";
+
+// A caller ending a real conversation is a normal finish.
+const REAL_CONVERSATION_SECONDS = 20;
+
+/** Maps our outcomes and every Vapi endedReason to one short status. */
+export function callStatus(outcome?: string, durationSeconds?: number): CallStatus | null {
+  if (!outcome || outcome === "N/A") return null;
+  const o = outcome.toLowerCase();
+  if (/book|appointment|schedule/.test(o)) return "booked";
+  if (/voicemail/.test(o)) return "voicemail";
+  if (o === "customer-ended-call") return (durationSeconds ?? 0) >= REAL_CONVERSATION_SECONDS ? "completed" : "hungUp";
+  if (/missed|did-not-answer|no-answer|customer-busy|misdialed/.test(o)) return "noAnswer";
+  if (/^completed$|^assistant-(ended|said|forwarded)|^customer-transferred|silence-timed-out|exceeded-max-duration|manually-canceled/.test(o)) return "completed";
+  return "failed";
+}
+
+export function OutcomeBadge({ outcome, durationSeconds, isDark }: { outcome?: string; durationSeconds?: number; isDark: boolean }) {
+  const { t } = useI18n();
+  const status = callStatus(outcome, durationSeconds);
+  if (!status) return <span className="text-xs" style={{ color: isDark ? "var(--dm-muted)" : "#9CA3AF" }}>N/A</span>;
+  const tone =
+    status === "booked" ? { background: "rgba(34,197,94,0.12)", color: "#22C55E" }
+    : status === "completed" ? { background: isDark ? "rgba(255,107,53,0.1)" : "#FFF5F0", color: "#FF6B35" }
+    : status === "failed" ? { background: "rgba(239,68,68,0.1)", color: "#DC2626" }
+    : { background: isDark ? "var(--dm-card2)" : "#F3F4F6", color: isDark ? "var(--dm-muted)" : "#6B7280" };
   return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
-      style={{
-        background: isBooked
-          ? "rgba(34,197,94,0.12)"
-          : isComp
-          ? (isDark ? "rgba(255,107,53,0.1)" : "#FFF5F0")
-          : (isDark ? "var(--dm-card2)" : "#F3F4F6"),
-        color: isBooked ? "#22C55E" : isComp ? "#FF6B35" : (isDark ? "var(--dm-muted)" : "#9CA3AF"),
-      }}
-    >
-      {isBooked ? "Booked" : isComp ? "Complete" : outcome}
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap" style={tone}>
+      {t(`agentUi.callStatus.${status}`)}
     </span>
   );
 }
 
 // Derives a short one-line summary label for list rows when no AI summary exists yet.
-export function callHeadline(call: CallRecord): string {
+export function callHeadline(call: CallRecord, locale: string = "en"): string {
   if (call.summary) return call.summary;
-  const lines = call.transcript ?? [];
-  if (lines.length > 0) return `${lines.length} message${lines.length !== 1 ? "s" : ""}`;
+  const n = (call.transcript ?? []).length;
+  if (locale === "ar") return n > 0 ? `عدد الرسائل: ${n}` : "لا يوجد نص للمكالمة";
+  if (n > 0) return `${n} message${n !== 1 ? "s" : ""}`;
   return "No transcript available";
 }
 
