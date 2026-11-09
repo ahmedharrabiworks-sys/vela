@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 // Shared building blocks for the AI Agent section: one quiet visual language.
 
@@ -61,21 +61,25 @@ export function Chips<T extends string>({ value, options, onChange, label }: { v
   );
 }
 
-// The chat bubble takes 80px from the screen edge (bottom 24px, 56px tall).
-const BUBBLE_ZONE = 88;
-const ABOVE_BUBBLE = "max(92px, calc(env(safe-area-inset-bottom) + 84px))";
-const CLEAR_OF_BUBBLE = "max(20px, calc(env(safe-area-inset-bottom) + 12px))";
+// The chat bubble ends 80px from the screen edge (24px offset + 56px wide).
+const BUBBLE_REACH = 80;
+const BUBBLE_GAP = 12;
+
+type SaveFrame = { left: number; width: number; padding: number; shift: number };
 
 /**
- * Sticks to the bottom of the page. On screens from 640px its end edge lines
- * up with the content column it is placed in (put it last in that column), and
- * it lifts above the chat bubble when that edge reaches the bubble. On phones
- * it is a full width bar that steps aside while the keyboard is open.
+ * Fixed to the screen, so scrolling can never move it. The wrapper copies the
+ * main content area (which already follows the sidebar, expanded or collapsed)
+ * and repeats the page column inside it, so the button's end edge lands on the
+ * cards' edge. Only a window or sidebar size change can move it: if that edge
+ * would reach the chat bubble, the button shifts sideways to stay 12px clear.
+ * On phones it is a full width bar that steps aside while the keyboard is open.
+ * `columnClass` is the max-width class of the page's column.
  */
-export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, savingLabel, savedLabel }: { saving: boolean; dirty: boolean; justSaved: boolean; error: string | null; onSave: () => void; label: string; savingLabel: string; savedLabel: string }) {
+export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, savingLabel, savedLabel, columnClass }: { saving: boolean; dirty: boolean; justSaved: boolean; error: string | null; onSave: () => void; label: string; savingLabel: string; savedLabel: string; columnClass: string }) {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [lifted, setLifted] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [frame, setFrame] = useState<SaveFrame | null>(null);
+  const columnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -85,17 +89,26 @@ export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, s
     return () => vv.removeEventListener("resize", check);
   }, []);
 
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
+  useLayoutEffect(() => {
+    const main = document.querySelector("main");
+    const column = columnRef.current;
+    if (!main || !column) return;
     const measure = () => {
-      const box = el.getBoundingClientRect();
-      const edgeGap = getComputedStyle(el).direction === "rtl" ? box.left : window.innerWidth - box.right;
-      setLifted(edgeGap < BUBBLE_ZONE);
+      const styles = getComputedStyle(main);
+      const padding = parseFloat(styles.paddingLeft) || 0;
+      const left = main.getBoundingClientRect().left + main.clientLeft;
+      const room = main.clientWidth - padding * 2;
+      const columnWidth = Math.min(room, parseFloat(getComputedStyle(column).maxWidth) || room);
+      const margin = (room - columnWidth) / 2;
+      const columnEnd = left + padding + margin + columnWidth;
+      const edgeGap = styles.direction === "rtl" ? left + padding + margin : window.innerWidth - columnEnd;
+      const bubbleShown = window.matchMedia("(min-width: 640px)").matches;
+      const shift = bubbleShown ? Math.max(0, BUBBLE_REACH + BUBBLE_GAP - edgeGap) : 0;
+      setFrame({ left, width: main.clientWidth, padding, shift });
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    observer.observe(main);
     window.addEventListener("resize", measure);
     return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
@@ -103,22 +116,23 @@ export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, s
   const active = dirty || saving;
   return (
     <div
-      ref={wrapRef}
       data-testid="save-bar"
-      className={`pointer-events-none z-30 flex flex-col items-end gap-2 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] sm:sticky sm:mt-4 sm:bottom-[var(--save-bottom)] ${keyboardOpen ? "max-sm:hidden" : ""}`}
-      style={{ "--save-bottom": lifted ? ABOVE_BUBBLE : CLEAR_OF_BUBBLE } as CSSProperties}
+      className={`fixed z-30 bottom-0 pointer-events-none sm:bottom-[calc(24px+env(safe-area-inset-bottom))] max-sm:!left-0 max-sm:!w-full max-sm:pointer-events-auto max-sm:border-t max-sm:border-[#E5E7EB] max-sm:bg-white max-sm:pt-3 max-sm:pb-[max(12px,env(safe-area-inset-bottom))] ${keyboardOpen ? "max-sm:hidden" : ""}`}
+      style={{ left: frame?.left, width: frame?.width, paddingInline: frame?.padding, visibility: frame ? undefined : "hidden" }}
     >
-      {error && <p role="alert" className="max-w-[260px] rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs text-red-600 shadow-sm">{error}</p>}
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={!active || saving}
-        className={`pointer-events-auto max-sm:w-full ${active
-          ? "btn-primary h-12 px-6 text-sm disabled:opacity-70"
-          : "h-12 px-6 rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#9CA3AF] shadow-[0_4px_14px_rgba(15,23,42,0.08)] cursor-default"}`}
-      >
-        {saving ? savingLabel : !dirty && justSaved ? savedLabel : label}
-      </button>
+      <div ref={columnRef} className={`${columnClass} mx-auto w-full flex flex-col items-end gap-2`} style={{ paddingInlineEnd: frame?.shift }}>
+        {error && <p role="alert" className="max-w-[260px] rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs text-red-600 shadow-sm">{error}</p>}
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!active || saving}
+          className={`pointer-events-auto max-sm:w-full ${active
+            ? "btn-primary hover:!scale-100 active:!scale-100 h-12 px-6 text-sm disabled:opacity-70"
+            : "h-12 px-6 rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#9CA3AF] shadow-[0_4px_14px_rgba(15,23,42,0.08)] cursor-default"}`}
+        >
+          {saving ? savingLabel : !dirty && justSaved ? savedLabel : label}
+        </button>
+      </div>
     </div>
   );
 }

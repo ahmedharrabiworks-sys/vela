@@ -223,7 +223,7 @@ export default function KnowledgeBaseEditor() {
   const sourceLabel = { conversation: t("agentUi.kb.sourceConversation"), call: t("agentUi.kb.sourceCall"), assistant: t("agentUi.kb.sourceAssistant") };
 
   return (
-    <div className="max-w-5xl mx-auto pb-24 sm:pb-0">
+    <div className="max-w-5xl mx-auto pb-24">
       <PageHead
         title={t("agentUi.kb.title")}
         subtitle={t("agentUi.kb.subtitle")}
@@ -352,6 +352,7 @@ export default function KnowledgeBaseEditor() {
       </div>
 
       <FloatingSave
+        columnClass="max-w-5xl"
         saving={saving}
         dirty={dirty}
         justSaved={saved}
