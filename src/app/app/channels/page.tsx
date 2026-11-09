@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
-import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
@@ -504,7 +503,8 @@ function ChannelsPageContent() {
   const [disconnectingWebsite, setDisconnectingWebsite] = useState(false);
   const [showEmbed, setShowEmbed]   = useState(false);
   const embedSectionRef             = useRef<HTMLDivElement>(null);
-  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "upgrade" | "instagram-settings" | "whatsapp-settings" | null>(null);
+  const router = useRouter();
+  const [modal, setModal]           = useState<"instagram" | "whatsapp" | "instagram-settings" | "whatsapp-settings" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
   const [copied, setCopied]         = useState(false);
   const [tenantId, setTenantId]     = useState("YOUR_TENANT_ID");
@@ -758,7 +758,7 @@ function ChannelsPageContent() {
 
   const handleConnectClick = (ch: "instagram" | "whatsapp") => {
     if (!canConnectMore) {
-      setModal("upgrade");
+      router.push("/pricing");
       track("upgrade_clicked", { source: "channels_limit" });
     } else {
       setModal(ch);
@@ -883,9 +883,6 @@ function ChannelsPageContent() {
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {modal === "instagram" && <InstagramModal onClose={() => setModal(null)} />}
       {modal === "whatsapp"  && <WhatsAppModal  onClose={() => setModal(null)} onConnect={connectWhatsApp} />}
-      {/* In-app plan picker (the old UpgradeModal linked to /pricing, which
-          bounces a signed-in user back to /app, so nothing happened). */}
-      <PlanSwitchModal open={modal === "upgrade"} onClose={() => setModal(null)} />
       {modal === "instagram-settings" && (
         <ChannelSettingsModal
           channel="instagram"
@@ -981,7 +978,7 @@ function ChannelsPageContent() {
               <p className="text-[11px] text-[#6B7280]">Upgrade to Pro to connect all 3 channels</p>
             </div>
           </div>
-          <button onClick={() => { setModal("upgrade"); track("upgrade_clicked", { source: "channels_banner" }); }}
+          <button onClick={() => { router.push("/pricing"); track("upgrade_clicked", { source: "channels_banner" }); }}
             className="text-xs font-bold px-3.5 py-2 rounded-lg text-white whitespace-nowrap hover:opacity-90"
             style={{ background: "var(--vela-gradient)" }}>
             Upgrade
@@ -1158,7 +1155,7 @@ function ChannelsPageContent() {
 
               {phoneAgentStatus === "locked" ? (
                 <button
-                  onClick={() => { setModal("upgrade"); track("upgrade_clicked", { source: "channels_phone_agent" }); }}
+                  onClick={() => { router.push("/pricing"); track("upgrade_clicked", { source: "channels_phone_agent" }); }}
                   className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
                 >
                   Upgrade

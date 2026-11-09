@@ -6,7 +6,7 @@ import {
   EMPTY_KB, applySuggestion, knowledgeChecklist, parseKnowledgeBase,
   type KbService, type KnowledgeBase, type SuggestedFact,
 } from "@/lib/knowledge-base";
-import { Chips, PageHead, SaveBar, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
+import { Chips, FloatingSave, PageHead, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
 
 type Suggestion = SuggestedFact & { id: string; source: "conversation" | "call" | "assistant" };
 type PendingRequest = { id: string; serviceName: string; leadName: string | null; leadPhone: string | null };
@@ -221,7 +221,7 @@ export default function KnowledgeBaseEditor() {
   const sourceLabel = { conversation: t("agentUi.kb.sourceConversation"), call: t("agentUi.kb.sourceCall"), assistant: t("agentUi.kb.sourceAssistant") };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto pb-24">
       <PageHead
         title={t("agentUi.kb.title")}
         subtitle={t("agentUi.kb.subtitle")}
@@ -303,7 +303,6 @@ export default function KnowledgeBaseEditor() {
         </Section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          <div className="space-y-4">
             <Section title={t("agentUi.kb.details")}>
               <div className="space-y-3">
                 <div>
@@ -333,10 +332,6 @@ export default function KnowledgeBaseEditor() {
                 </div>
               </div>
             </Section>
-            <Section title={t("agentUi.kb.notes")} hint={t("agentUi.kb.notesHint")}>
-              <textarea aria-label={t("agentUi.kb.notes")} rows={6} value={kb.extra} onChange={(e) => edit((p) => ({ ...p, extra: e.target.value }))} placeholder={t("agentUi.kb.notesPlaceholder")} className={areaCls} />
-            </Section>
-          </div>
 
           <Section title={t("agentUi.kb.additional")} hint={t("agentUi.kb.additionalHint")}>
             <div className="space-y-3">
@@ -371,16 +366,21 @@ export default function KnowledgeBaseEditor() {
             </div>
           </Section>
         </div>
+
+        <Section title={t("agentUi.kb.notes")} hint={t("agentUi.kb.notesHint")}>
+          <textarea aria-label={t("agentUi.kb.notes")} rows={11} value={kb.extra} onChange={(e) => edit((p) => ({ ...p, extra: e.target.value }))} placeholder={t("agentUi.kb.notesPlaceholder")} className={areaCls} />
+        </Section>
       </div>
 
-      <SaveBar
+      <FloatingSave
         saving={saving}
         dirty={dirty}
+        justSaved={saved}
         error={error}
         onSave={persist}
         label={t("agentUi.common.save")}
         savingLabel={t("agentUi.common.saving")}
-        message={dirty ? t("agentUi.common.unsaved") : saved ? t("agentUi.common.saved") : t("agentUi.kb.usedBy")}
+        savedLabel={t("agentUi.common.saved")}
       />
     </div>
   );

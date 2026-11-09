@@ -14,6 +14,7 @@ import {
 } from "@/lib/vapi-agent-config";
 import { buildBrowserCallAssistant } from "@/lib/vapi-phone-assistant";
 import { plansForPrompt } from "@/lib/pricing";
+import { ActivityChart, ChartCard, ChartSummary, RingCard, toDayPoints } from "@/components/dashboard/ActivityCharts";
 import { fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -22,151 +23,8 @@ type CallStatus = "idle" | "connecting" | "active" | "ended";
 
 const toErrorText = vapiErrorText;
 
-/* Circle ring */
-function CircleRing({ value, size = 64, isDark }: { value: number; size?: number; isDark: boolean }) {
-  const r    = size / 2 - 7;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - value / 100);
-  const light = isDark ? "var(--dm-card2)" : "#F1F5F9";
-  const txt   = isDark ? "var(--dm-text)" : "#0F172A";
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <defs>
-        <linearGradient id="ring-ov" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FF6B35"/>
-          <stop offset="100%" stopColor="#FF3366"/>
-        </linearGradient>
-      </defs>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={light} strokeWidth="5.5"/>
-      {value > 0 && (
-        <circle cx={size/2} cy={size/2} r={r} fill="none"
-          stroke="url(#ring-ov)" strokeWidth="5.5"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`}/>
-      )}
-      <text x={size/2} y={size/2+5} textAnchor="middle"
-        fontSize={size < 56 ? 10 : 13} fontWeight="700" fill={txt}>
-        {value > 0 ? `${value}%` : "N/A"}
-      </text>
-    </svg>
-  );
-}
+type UsageData = Record<"messages" | "voiceMinutes", { used: number; limit: number | null }>;
 
-/* Smooth line/area chart with hover tooltip, hand-rolled SVG (no charting
-   library is installed in this project; matches this file's existing
-   hand-rolled CircleRing pattern rather than adding a new dependency). */
-function LineChart({ data, isDark }: { data: number[]; isDark: boolean }) {
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const today  = new Date().getDay();
-  const labels = Array.from({ length: 7 }, (_, i) => DAY_LABELS[(today - 6 + i + 7) % 7]);
-  const maxVal = Math.max(...data, 1);
-  const hasData = data.some(v => v > 0);
-  const W = 320, H = 90, PAD_TOP = 10;
-  const gridColor  = isDark ? "var(--dm-border2)" : "#F1F5F9";
-  const axisColor  = isDark ? "var(--dm-border)" : "#E5E7EB";
-  const labelColor = isDark ? "var(--dm-faint)" : "#9CA3AF";
-
-  const n = data.length;
-  const stepX = W / (n - 1);
-  const points = data.map((v, i) => ({
-    x: i * stepX,
-    y: PAD_TOP + (H - PAD_TOP) * (1 - v / maxVal),
-    v,
-  }));
-
-  // FIX 4 (round F): reverted back to Catmull-Rom -> cubic-bezier smoothing
-  // per explicit request -- the sharp/angular straight-segment style from
-  // the previous round is undone.
-  function smoothPath(pts: { x: number; y: number }[]): string {
-    if (pts.length < 2) return "";
-    let d = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i === 0 ? 0 : i - 1];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
-      const cp1x = p1.x + (p2.x - p0.x) / 6;
-      const cp1y = p1.y + (p2.y - p0.y) / 6;
-      const cp2x = p2.x - (p3.x - p1.x) / 6;
-      const cp2y = p2.y - (p3.y - p1.y) / 6;
-      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
-    }
-    return d;
-  }
-
-  const linePath = smoothPath(points);
-  const areaPath = `${linePath} L ${points[n - 1].x} ${H} L ${points[0].x} ${H} Z`;
-  const hover = hoverIdx !== null ? points[hoverIdx] : null;
-  const tooltipLeftPct = hover ? Math.min(92, Math.max(8, (hover.x / W) * 100)) : 0;
-
-  return (
-    <div className="relative">
-      <svg
-        viewBox={`0 0 ${W} ${H + 22}`}
-        className="w-full overflow-visible"
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const relX = ((e.clientX - rect.left) / rect.width) * W;
-          setHoverIdx(Math.max(0, Math.min(n - 1, Math.round(relX / stepX))));
-        }}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        <defs>
-          <linearGradient id="line-fill-ov" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#FF6B35" stopOpacity="0.32"/>
-            <stop offset="100%" stopColor="#FF6B35" stopOpacity="0"/>
-          </linearGradient>
-          <linearGradient id="line-stroke-ov" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#FF6B35"/>
-            <stop offset="100%" stopColor="#FF3366"/>
-          </linearGradient>
-        </defs>
-        {[0,.25,.5,.75,1].map(f => (
-          <line key={f} x1="0" y1={PAD_TOP + (H-PAD_TOP)*(1-f)} x2={W} y2={PAD_TOP + (H-PAD_TOP)*(1-f)} stroke={gridColor} strokeWidth="1"/>
-        ))}
-        <line x1="0" y1={H} x2={W} y2={H} stroke={axisColor} strokeWidth="1.5"/>
-        {hasData && <path d={areaPath} fill="url(#line-fill-ov)"/>}
-        {hasData && <path d={linePath} fill="none" stroke="url(#line-stroke-ov)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>}
-        {hasData && hover && (
-          <line x1={hover.x} y1={PAD_TOP} x2={hover.x} y2={H} stroke={axisColor} strokeWidth="1" strokeDasharray="2,2"/>
-        )}
-        {points.map((p, i) => (
-          <g key={i}>
-            {hasData && (
-              <circle cx={p.x} cy={p.y} r={hoverIdx === i ? 4 : 2.5}
-                fill={hoverIdx === i ? "#fff" : "#FF6B35"} stroke="#FF6B35" strokeWidth="2"
-                style={{ transition: "r .12s" }}/>
-            )}
-            <text x={p.x} y={H + 17} textAnchor="middle" fontSize="9" fill={labelColor}>{labels[i]}</text>
-          </g>
-        ))}
-      </svg>
-      {hasData && hover && (
-        <div
-          className="absolute px-2 py-1 rounded-lg text-[10px] font-semibold pointer-events-none whitespace-nowrap"
-          style={{
-            left: `${tooltipLeftPct}%`,
-            top: `${(hover.y / (H + 22)) * 100}%`,
-            transform: "translate(-50%, -135%)",
-            background: isDark ? "#0B0D14" : "#111111",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-          }}
-        >
-          {hover.v} call{hover.v !== 1 ? "s" : ""}
-        </div>
-      )}
-      {!hasData && (
-        <div className="absolute inset-0 flex items-center justify-center pb-4 pointer-events-none">
-          <p className="text-xs" style={{ color: isDark?"var(--dm-faint)":"#9CA3AF" }}>No calls yet. Activity will appear here</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Context types ── */
 interface LiveContext {
   business: { name: string; services: any[] };
   leads: { total: number; recent: any[] };
@@ -176,6 +34,8 @@ interface LiveContext {
 }
 
 interface CallRecord {
+  has_recording?: boolean;
+  appointment_booked?: unknown;
   id: string;
   created_at: string;
   duration_seconds?: number;
@@ -231,6 +91,7 @@ export default function OverviewPage() {
   const [wasEjected, setWasEjected]     = useState(false);
   const [ejectedEarly, setEjectedEarly] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
+  const [usage, setUsage] = useState<UsageData | null>(null);
   const [noMicSignal, setNoMicSignal]   = useState(false);
   const voiceIdRef     = useRef(DEFAULT_VOICE_ID);
   const speedRef       = useRef(DEFAULT_SPEED);
@@ -247,7 +108,7 @@ export default function OverviewPage() {
   // detect "the mic isn't picking up audio" (wrong device, OS mute, etc.).
   const heardLocalAudioRef = useRef(false);
   const micCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   /* Volume bars (DOM-direct), 5 bars */
   const barRefs   = useRef<(HTMLDivElement | null)[]>([]);
@@ -276,6 +137,14 @@ export default function OverviewPage() {
       setLoadingCalls(false);
     }
     loadCalls();
+  }, []);
+
+  /* Plan usage for the ring card */
+  useEffect(() => {
+    fetch("/api/dashboard?range=7d")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { usage?: UsageData } | null) => { if (d?.usage) setUsage(d.usage); })
+      .catch(() => {});
   }, []);
 
   /* Load voice settings */
@@ -317,17 +186,19 @@ export default function OverviewPage() {
     return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   }
 
-  /* Weekly call bucketing */
-  const weeklyData = (() => {
-    const buckets = Array(7).fill(0);
-    const now = Date.now();
-    callRecords.forEach(c => {
-      const diff = Math.floor((now - new Date(c.created_at).getTime()) / 86400000);
-      const idx  = 6 - Math.min(diff, 6);
-      if (idx >= 0) buckets[idx]++;
+  /* Last 7 days, oldest first */
+  const weeklyPoints = (() => {
+    const DAY = 86400000, now = Date.now();
+    const rows = Array.from({ length: 7 }, (_, i) => ({ date: new Date(now - (6 - i) * DAY).toISOString().slice(0, 10), value: 0 }));
+    callRecords.forEach((c) => {
+      const diff = Math.floor((now - new Date(c.created_at).getTime()) / DAY);
+      if (diff >= 0 && diff <= 6) rows[6 - diff].value++;
     });
-    return buckets;
+    return toDayPoints(rows, locale, true);
   })();
+  const answeredCalls = callRecords.filter((c) => !/missed|voicemail/i.test(c.outcome ?? "")).length;
+  const answerRate = totalCalls > 0 ? Math.round((answeredCalls / totalCalls) * 100) : null;
+  const bookedCalls = callRecords.filter((c) => !!c.appointment_booked).length;
 
   /* Vapi */
   function resetBars() {
@@ -544,27 +415,26 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-          {/* Answer Rate ring */}
-          <div className="rounded-2xl border p-4 flex flex-col" style={{ background: cardBg, borderColor: border }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>{t("aiAgent.overview.answerRate")}</p>
-            <div className="flex items-center gap-3">
-              {loadingCalls
-                ? <div className="w-[60px] h-[60px] rounded-full border-4 animate-pulse" style={{ borderColor: isDark?"var(--dm-border)":"#F1F5F9" }}/>
-                : <CircleRing value={totalCalls > 0 ? 100 : 0} size={60} isDark={isDark}/>
-              }
-              <div>
-                <p className="text-xs font-semibold leading-tight" style={{ color: textPrimary }}>
-                  {loadingCalls ? "…" : totalCalls > 0 ? "Answering calls" : "Not active yet"}
-                </p>
-                <p className="text-[10px] mt-1" style={{ color: textMuted }}>
-                  {totalCalls > 0 ? `${totalCalls} call${totalCalls!==1?"s":""} logged` : "Set up phone number"}
-                </p>
+          {/* Booked from calls */}
+          <div className="glass rounded-2xl p-4 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("agentUi.overview.booked")}</p>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.12)" }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <rect x="1.5" y="2.5" width="11" height="10" rx="2" stroke="#FF6B35" strokeWidth="1.3"/>
+                  <path d="M1.5 5.5h11M4.5 1v3M9.5 1v3" stroke="#FF6B35" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
               </div>
             </div>
+            {loadingCalls
+              ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: "#F1F5F9" }}/>
+              : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{bookedCalls}</p>
+            }
+            <p className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.bookedSub")}</p>
           </div>
 
           {/* Calls Handled */}
-          <div className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: cardBg, borderColor: border }}>
+          <div className="glass rounded-2xl p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("aiAgent.overview.callsHandled")}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.12)", color: "#FF6B35" }}>
@@ -577,11 +447,11 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{totalCalls}</p>
             }
-            <p className="text-[10px]" style={{ color: textMuted }}>Customer calls handled by Vela</p>
+            <p className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.callsSub")}</p>
           </div>
 
           {/* Avg Duration */}
-          <div className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: cardBg, borderColor: border }}>
+          <div className="glass rounded-2xl p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("aiAgent.overview.avgDuration")}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)", color: "#FF3366" }}>
@@ -595,11 +465,11 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{fmtDuration(avgSecs)}</p>
             }
-            <p className="text-[10px]" style={{ color: textMuted }}>Per call average</p>
+            <p className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.avgSub")}</p>
           </div>
 
           {/* Voice Minutes */}
-          <div className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: cardBg, borderColor: border }}>
+          <div className="glass rounded-2xl p-4 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: textMuted }}>{t("aiAgent.overview.voiceMinutes")}</p>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,107,53,0.12)", color: "#FF6B35" }}>
@@ -613,7 +483,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
               ? <div className="h-7 rounded w-1/3 animate-pulse" style={{ background: isDark?"var(--dm-card2)":"#F1F5F9" }}/>
               : <p className="text-2xl font-bold leading-none" style={{ color: textPrimary }}>{voiceMins > 0 ? `${voiceMins}` : "0"}</p>
             }
-            <p className="text-[10px]" style={{ color: textMuted }}>Total minutes used</p>
+            <p className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.minutesSub")}</p>
           </div>
         </div>
 
@@ -624,28 +494,17 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
           <div className="lg:col-span-2 space-y-3">
 
             {/* Call activity chart */}
-            <div className="rounded-2xl border" style={{ background: cardBg, borderColor: border }}>
-              <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
-                <div>
-                  <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.callActivity")}</h2>
-                  <p className="text-[10px] mt-0.5" style={{ color: textMuted }}>{t("aiAgent.overview.callActivitySub")}</p>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg"
-                  style={{ background: isDark?"var(--dm-card2)":"#F9FAFB", color: textMuted }}>
-                  <span className="w-2 h-2 rounded-sm" style={{ background: "linear-gradient(135deg, #FF6B35, #FF3366)" }}/>
-                  Calls
-                </div>
-              </div>
-              <div className="px-4 py-4">
-                {loadingCalls
-                  ? <div className="h-28 rounded-xl animate-pulse" style={{ background: isDark?"#161927":"#F9FAFB" }}/>
-                  : <LineChart data={weeklyData} isDark={isDark}/>
-                }
-              </div>
-            </div>
+            {loadingCalls
+              ? <div className="glass rounded-2xl animate-pulse h-[210px]" />
+              : (
+                <ChartCard title={t("aiAgent.overview.callActivity")} subtitle={t("aiAgent.overview.callActivitySub")}>
+                  <ActivityChart points={weeklyPoints} unit={t("agentUi.overview.calls")} emptyText={t("agentUi.overview.noCalls")} />
+                  <ChartSummary points={weeklyPoints} labels={{ total: t("agentUi.charts.total"), peak: t("agentUi.charts.peak"), average: t("agentUi.charts.average") }} />
+                </ChartCard>
+              )}
 
             {/* Recent calls, larger, richer list; each row opens the full transcript */}
-            <div className="rounded-2xl border p-4" style={{ background: cardBg, borderColor: border }}>
+            <div className="glass rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2.5">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,51,102,0.12)" }}>
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -658,7 +517,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                 </div>
               </div>
               {totalCalls === 0
-                ? <p className="text-xs py-2" style={{ color: textMuted }}>No calls yet</p>
+                ? <p className="text-xs py-2" style={{ color: textMuted }}>{t("agentUi.overview.noCalls")}</p>
                 : <div className="space-y-1.5">
                     {callRecords.slice(0, 6).map((c) => (
                       <button
@@ -681,7 +540,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className="text-xs font-semibold truncate" style={{ color: textPrimary }}>
-                                {c.caller_number || "Unknown caller"}
+                                <span dir="ltr">{c.caller_number || t("agentUi.conv.hiddenNumber")}</span>
                               </span>
                               <OutcomeBadge outcome={c.outcome} isDark={isDark} />
                             </div>
@@ -704,8 +563,19 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
           {/* Right sidebar */}
           <div className="flex flex-col gap-3">
 
+            <RingCard
+              title={t("agentUi.overview.answerRate")}
+              value={loadingCalls ? null : answerRate}
+              ringLabel={t("agentUi.overview.ofCalls")}
+              emptyText={loadingCalls ? "" : t("agentUi.overview.noCalls")}
+              usageTitle={t("dashboardV2.planUsage")}
+              unlimitedLabel={t("dashboardV2.unlimited")}
+              notIncludedLabel={t("agentUi.charts.notIncluded")}
+              rows={usage ? (["messages", "voiceMinutes"] as const).map((key) => ({ label: t(`dashboardV2.usage.${key}`), used: usage[key].used, limit: usage[key].limit })) : []}
+            />
+
             {/* Phone status */}
-            <div className="rounded-2xl border" style={{ background: cardBg, borderColor: border }}>
+            <div className="glass rounded-2xl">
               <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: border }}>
                 <h2 className="text-xs font-semibold" style={{ color: textPrimary }}>{t("aiAgent.overview.channelStatus")}</h2>
                 <Link href="/app/ai-agent/phone" className="text-[10px] font-semibold hover:underline" style={{ color: "#FF6B35" }}>
@@ -720,8 +590,8 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs font-semibold" style={{ color: textPrimary }}>Phone Number</p>
-                    <p className="text-[10px]" style={{ color: textMuted }}>AI answers your calls 24/7</p>
+                    <p className="text-xs font-semibold" style={{ color: textPrimary }}>{t("agentUi.tabs.phone")}</p>
+                    <p className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.phoneSub")}</p>
                   </div>
                 </div>
               </div>
@@ -740,13 +610,13 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>Talk to Vela</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#FF6B35" }}>{t("aiAgent.overview.talkToVela")}</p>
                     <p className="text-[9px]" style={{ color: textMuted }}>
                       {isActive
-                        ? (muted ? "Muted" : "Listening…")
-                        : isConnecting ? "Connecting…"
-                        : callStatus === "ended" ? (wasEjected ? (ejectedEarly ? "Couldn't connect" : "Connection lost") : "Call ended")
-                        : "Your business advisor"}
+                        ? (muted ? t("agentUi.overview.muted") : t("agentUi.overview.listening"))
+                        : isConnecting ? t("agentUi.overview.connecting")
+                        : callStatus === "ended" ? (wasEjected ? (ejectedEarly ? t("agentUi.overview.couldntConnect") : t("agentUi.overview.connectionLost")) : t("agentUi.overview.callEnded"))
+                        : t("agentUi.overview.advisor")}
                     </p>
                   </div>
                   <div className="w-2 h-2 rounded-full" style={{
@@ -790,7 +660,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                       }
                     </button>
                     <span className="text-[10px] font-medium" style={{ color: textMuted }}>
-                      {!settingsReady ? "Loading…" : t("aiAgent.overview.talkToVela")}
+                      {!settingsReady ? t("agentUi.overview.loading") : t("aiAgent.overview.talkToVela")}
                     </span>
                   </div>
                 )}
@@ -799,7 +669,7 @@ Do not read raw data aloud. Synthesize it into natural, helpful insights.`;
                   <div className="flex flex-col items-center gap-2.5">
                     <div className="flex items-center gap-2">
                       <div style={{ width: 12, height: 12, borderRadius: "50%", border: "1.5px solid #FF6B35", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}/>
-                      <span className="text-[10px]" style={{ color: textMuted }}>Connecting…</span>
+                      <span className="text-[10px]" style={{ color: textMuted }}>{t("agentUi.overview.connecting")}</span>
                     </div>
                     <button onClick={endCall}
                       className="flex items-center justify-center w-10 h-10 rounded-full text-white transition-all hover:scale-105 active:scale-95"

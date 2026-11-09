@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
 import { usePlan } from "@/lib/plans";
-import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
+import Link from "next/link";
 
 interface PhoneState {
   phoneNumber:   string | null;
@@ -37,7 +37,6 @@ export default function PhonePage() {
   // answers again as soon as the plan includes the voice agent (live, via
   // the plan-changed event; the server enforces the same rule).
   const paused = planLoaded && !planConfig.voiceAgent;
-  const [planModalOpen, setPlanModalOpen] = useState(false);
   const connected = !!(state.phoneNumber && state.assistantId) && !paused;
 
   const bg          = "transparent";
@@ -115,12 +114,11 @@ export default function PhonePage() {
               <p className="text-sm font-semibold text-amber-900">{t("aiAgent.phone.pausedTitle")}</p>
               <p className="text-xs text-amber-800 mt-0.5">{t("aiAgent.phone.pausedDesc")}</p>
             </div>
-            <button onClick={() => setPlanModalOpen(true)} className="btn-primary px-4 py-2 text-sm shrink-0 w-full sm:w-auto">
+            <Link href="/pricing" className="btn-primary px-4 py-2 text-sm shrink-0 w-full sm:w-auto text-center">
               {t("sidebar.changePlan")}
-            </button>
+            </Link>
           </div>
         )}
-        <PlanSwitchModal open={planModalOpen} onClose={() => setPlanModalOpen(false)} />
 
         {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

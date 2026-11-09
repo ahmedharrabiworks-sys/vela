@@ -317,6 +317,24 @@ export function VelaAssistant() {
   }, [messages, loading]);
 
 
+  // Event listener for "answer 5 quick questions" on Train your AI
+  useEffect(() => {
+    const handler = () => {
+      setOpen(true);
+      setInterviewMode(true);
+      // A fresh interview replaces the current conversation (soft-deleted to
+      // the Recycle Bin, same as the "Clear" button).
+      setMessages([]);
+      fetch("/api/assistant/messages", { method: "DELETE" }).catch(() => { /* non-critical */ });
+      setTimeout(() => {
+        sendRef.current?.(t("velaAssistant.quickMessages.trainMe"), true);
+      }, 500);
+    };
+    window.addEventListener("vela-start-interview", handler);
+    return () => window.removeEventListener("vela-start-interview", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Mobile dedicated nav entry point (Sidebar's "Vela Assistant" item) --
   // opens this same panel instead of a floating bubble on small screens.
   useEffect(() => {
@@ -347,6 +365,8 @@ export function VelaAssistant() {
     setClearToastMsg(t("velaAssistant.clearedToast"));
     fetch("/api/assistant/messages", { method: "DELETE" }).catch(() => { /* non-critical */ });
   }, [t]);
+
+  const sendRef = useRef<((text: string, startInterview?: boolean) => unknown) | null>(null);
 
   const send = useCallback(async (text: string, startInterview = false) => {
     if ((!text.trim() && attachedImages.length === 0) || loading) return;
@@ -452,6 +472,7 @@ export function VelaAssistant() {
     }
     setLoading(false);
   }, [loading, messages, router, interviewMode, attachedImages, convLocale, locale, t, persistMessage]);
+  useEffect(() => { sendRef.current = send; }, [send]);
 
   // Update ref whenever send changes (useCallback deps may change)
 

@@ -819,6 +819,57 @@
     }
   },
   "agentUi": {
+    "train": {
+      "checkServices": "Services",
+      "checkHours": "Horaires",
+      "checkAddress": "Adresse",
+      "checkPolicy": "Réservation",
+      "checkExtra": "Infos en plus",
+      "saveChanges": "Enregistrer",
+      "save": "Enregistrer",
+      "autosave": "Enregistrement automatique après 2 secondes",
+      "faqsToExtra": "{n} questions-réponses seront ajoutées aux infos en plus"
+    },
+    "charts": {
+      "total": "Total",
+      "peak": "Jour le plus actif",
+      "average": "Moyenne par jour",
+      "aiHandled": "Traité par l'IA",
+      "ofConversations": "des conversations",
+      "notIncluded": "Non inclus dans votre offre"
+    },
+    "overview": {
+      "booked": "Réservations par appel",
+      "bookedSub": "Rendez-vous pris pendant un appel",
+      "answerRate": "Taux de réponse",
+      "ofCalls": "des appels",
+      "noCalls": "Aucun appel pour l'instant",
+      "calls": "Appels",
+      "callsSub": "Appels clients traités par Vela",
+      "avgSub": "Moyenne par appel",
+      "minutesSub": "Minutes utilisées",
+      "phoneSub": "L'IA répond à vos appels 24h/24",
+      "muted": "Micro coupé",
+      "listening": "À l'écoute…",
+      "connecting": "Connexion…",
+      "couldntConnect": "Connexion impossible",
+      "connectionLost": "Connexion perdue",
+      "callEnded": "Appel terminé",
+      "advisor": "Votre conseiller",
+      "loading": "Chargement…"
+    },
+    "conv": {
+      "phone": "Téléphone",
+      "phoneCall": "Appel téléphonique",
+      "hiddenNumber": "Numéro masqué",
+      "aiSummary": "Résumé IA",
+      "noTranscript": "Aucune transcription pour cet appel.",
+      "back": "Retour",
+      "emptyTitle": "Rien pour l'instant",
+      "emptyHint": "Les messages et appels de vos clients apparaîtront ici.",
+      "emptyUnread": "Tout est lu",
+      "emptyUnreadHint": "Aucun message ni appel non lu."
+    },
     "tabs": {
       "phone": "Numéro de téléphone"
     },

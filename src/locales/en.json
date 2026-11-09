@@ -1425,6 +1425,7 @@
     }
   },
   "planSwitch": {
+    "switchTo": "Switch to {plan}",
     "title": "Choose your plan",
     "subtitle": "Upgrade or downgrade any time. Your data is always kept.",
     "close": "Close",
@@ -1454,6 +1455,57 @@
     "oneMember": "1 team member"
   },
   "agentUi": {
+    "train": {
+      "checkServices": "Services",
+      "checkHours": "Hours",
+      "checkAddress": "Address",
+      "checkPolicy": "Booking Policy",
+      "checkExtra": "Extra Info",
+      "saveChanges": "Save Changes",
+      "save": "Save",
+      "autosave": "Changes auto-save after 2 seconds",
+      "faqsToExtra": "{n} Q&A will be added to Extra"
+    },
+    "charts": {
+      "total": "Total",
+      "peak": "Busiest day",
+      "average": "Daily average",
+      "aiHandled": "AI handled",
+      "ofConversations": "of conversations",
+      "notIncluded": "Not on your plan"
+    },
+    "overview": {
+      "booked": "Booked from calls",
+      "bookedSub": "Appointments booked on a call",
+      "answerRate": "Answer rate",
+      "ofCalls": "of calls answered",
+      "noCalls": "No calls yet",
+      "calls": "Calls",
+      "callsSub": "Customer calls handled by Vela",
+      "avgSub": "Per call average",
+      "minutesSub": "Total minutes used",
+      "phoneSub": "AI answers your calls 24/7",
+      "muted": "Muted",
+      "listening": "Listening…",
+      "connecting": "Connecting…",
+      "couldntConnect": "Couldn't connect",
+      "connectionLost": "Connection lost",
+      "callEnded": "Call ended",
+      "advisor": "Your business advisor",
+      "loading": "Loading…"
+    },
+    "conv": {
+      "phone": "Phone",
+      "phoneCall": "Phone call",
+      "hiddenNumber": "Hidden number",
+      "aiSummary": "AI summary",
+      "noTranscript": "No transcript for this call.",
+      "back": "Back",
+      "emptyTitle": "Nothing here yet",
+      "emptyHint": "Messages and calls from your customers will appear here.",
+      "emptyUnread": "You're all caught up",
+      "emptyUnreadHint": "No unread messages or calls."
+    },
     "tabs": {
       "phone": "Phone Number"
     },

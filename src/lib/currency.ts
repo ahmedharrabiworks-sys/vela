@@ -38,7 +38,7 @@ export function formatPrice(amountQAR: number, currency: CurrencyCode): string {
   const rounded = Math.round(convertFromQAR(amountQAR, currency));
   const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? currency;
   if (currency === "USD" || currency === "EUR") {
-    return `${symbol}${rounded.toLocaleString()}`;
+    return `${symbol}${rounded.toLocaleString("en-US")}`;
   }
-  return `${rounded.toLocaleString()} ${symbol}`;
+  return `${rounded.toLocaleString("en-US")} ${symbol}`;
 }

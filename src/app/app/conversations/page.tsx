@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 // FIX 5 (round P): shared toast used by every delete/recycle-bin action.
 import Toast from "@/components/ui/Toast";
+import { VoicemailPlayer, fmtDuration, type CallRecord } from "@/components/dashboard/CallTranscript";
 
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"] & {
   preview?: string;
@@ -19,6 +20,7 @@ type Message = Database["public"]["Tables"]["messages"]["Row"] & { is_test?: boo
 // website = the auto-injected widget on a Vela-built site; website_embed = the
 // same widget pasted onto an external site via the Channels embed code.
 function channelLabel(channel: string): string {
+  if (channel === "phone") return "Phone";
   if (channel === "instagram") return "Instagram";
   if (channel === "whatsapp") return "WhatsApp";
   if (channel === "website_embed") return "Website (embed)";
@@ -32,6 +34,71 @@ function timeAgo(ts: string | null, t: (key: string) => string) {
   if (diff < 3600) return `${Math.floor(diff / 60)}${t("dashboard.timeMinutes")}`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}${t("dashboard.timeHours")}`;
   return `${Math.floor(diff / 86400)}${t("dashboard.timeDays")}`;
+}
+
+const CHANNEL_TINT: Record<string, string> = {
+  instagram: "bg-[#FDF0F6] text-[#B8327A]",
+  whatsapp:  "bg-[#EAF9F0] text-[#12804A]",
+  phone:     "bg-[#FFF1EA] text-[#D94E1B]",
+};
+
+function Avatar({ name, channel }: { name: string | null; channel: string }) {
+  const isNumber = !name || /^[+\d]/.test(name);
+  return (
+    <div className="relative shrink-0">
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${CHANNEL_TINT[channel] ?? "bg-[#F1F2FE] text-[#5457D6]"}`}>
+        {isNumber ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round"/></svg>
+        ) : name[0].toUpperCase()}
+      </div>
+      <div className={`absolute -bottom-0.5 -end-0.5 w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center ${channelIconBg(channel)}`}>
+        <ChannelIcon channel={channel} size={9} />
+      </div>
+    </div>
+  );
+}
+
+// A call has no read column on the server, so opened calls are remembered in this browser.
+const READ_CALLS_KEY = "vela_read_calls";
+
+function CallThread({ call, name, onBack, t }: { call: CallRecord; name: string; onBack: () => void; t: (k: string) => string }) {
+  const lines = (call.transcript ?? []).filter((l) => l.text?.trim());
+  return (
+    <>
+      <div className="flex items-center gap-3 px-4 md:px-5 py-4 border-b border-[#F3F4F6]">
+        <button onClick={onBack} aria-label={t("agentUi.conv.back")} className="md:hidden p-2 -ms-1 rounded-xl text-[#6B7280] hover:bg-[#F3F4F6] min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="rtl:-scale-x-100"><path d="M11 4l-5 5 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+        <Avatar name={call.caller_number ?? null} channel="phone" />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-[#111111] text-sm leading-tight text-start"><span dir="ltr">{name}</span></p>
+          <p className="text-[11px] text-[#6B7280] mt-0.5">{t("agentUi.conv.phoneCall")} · {fmtDuration(call.duration_seconds)} · {new Date(call.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 md:px-5 py-5 space-y-3 bg-[#FAFAFA]">
+        {call.summary && (
+          <div className="rounded-xl border border-[#EEF0F3] bg-white p-4">
+            <p className="text-[11px] font-medium text-[#9CA3AF] mb-1.5">{t("agentUi.conv.aiSummary")}</p>
+            <p dir="auto" className="text-sm text-[#374151] leading-relaxed text-start">{call.summary}</p>
+          </div>
+        )}
+        {call.has_recording && (
+          <div className="rounded-xl border border-[#EEF0F3] bg-white p-4"><VoicemailPlayer callId={call.id} isDark={false} /></div>
+        )}
+        {lines.map((l, i) => (
+          <div key={i} className={`flex ${l.role === "user" ? "justify-start" : "justify-end"}`}>
+            <div dir="auto" className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${l.role === "user" ? "bg-white text-[#111111] rounded-ss-sm border border-[#EEF0F3]" : "text-white rounded-se-sm"}`}
+              style={l.role === "user" ? undefined : { background: "var(--vela-gradient)" }}>
+              {l.text}
+            </div>
+          </div>
+        ))}
+        {lines.length === 0 && !call.summary && !call.has_recording && (
+          <p className="text-center text-sm text-[#9CA3AF] py-10">{t("agentUi.conv.noTranscript")}</p>
+        )}
+      </div>
+    </>
+  );
 }
 
 /* ── Loading skeleton ── */
@@ -81,6 +148,9 @@ export default function ConversationsPage() {
   const [deleteTarget, setDeleteTarget]     = useState<Conversation | null>(null);
   const [deleting, setDeleting]             = useState(false);
   const [toast, setToast]                   = useState("");
+  const [calls, setCalls]                   = useState<CallRecord[]>([]);
+  const [selectedCall, setSelectedCall]     = useState<CallRecord | null>(null);
+  const [readCalls, setReadCalls]           = useState<Set<string>>(new Set());
   const bottomRef   = useRef<HTMLDivElement>(null);
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
@@ -107,7 +177,13 @@ export default function ConversationsPage() {
       }
 
       setTenantId(tenant.id);
-      await fetchConversations(tenant.id);
+      try { setReadCalls(new Set(JSON.parse(localStorage.getItem(READ_CALLS_KEY) || "[]") as string[])); } catch { /* start empty */ }
+      await Promise.all([
+        fetchConversations(tenant.id),
+        fetch("/api/ai-agent/calls").then((r) => (r.ok ? r.json() : { calls: [] }))
+          .then((d: { calls?: CallRecord[] }) => setCalls((d.calls ?? []).filter((c) => c.call_type === "live")))
+          .catch(() => { /* phone calls simply don't appear */ }),
+      ]);
       setLoading(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -188,7 +264,21 @@ export default function ConversationsPage() {
   };
 
   /* ── Select conversation + subscribe to realtime ── */
+  const selectCall = async (call: CallRecord) => {
+    setSelected(null);
+    setMessages([]);
+    setSelectedCall(call);
+    setShowThread(true);
+    setReadCalls((prev) => {
+      const next = new Set(prev).add(call.id);
+      try { localStorage.setItem(READ_CALLS_KEY, JSON.stringify(Array.from(next).slice(-500))); } catch { /* private mode */ }
+      return next;
+    });
+    if (realtimeSub.current) { await realtimeSub.current.unsubscribe(); realtimeSub.current = null; }
+  };
+
   const selectConv = async (conv: Conversation) => {
+    setSelectedCall(null);
     setSelected(conv);
     setShowThread(true);
     await fetchMessages(conv.id);
@@ -408,16 +498,28 @@ export default function ConversationsPage() {
     if (tenantId) fetchConversations(tenantId);
   };
 
-  const filters = ["All", "instagram", "whatsapp", "website", "Unread"];
+  const filters = ["All", "instagram", "whatsapp", "phone", "Unread"];
   const filterLabel = (f: string) =>
-    f === "All" ? t("conversations.filterAll") : f === "Unread" ? t("conversations.filterUnread") : f;
+    f === "All" ? t("conversations.filterAll")
+    : f === "Unread" ? t("conversations.filterUnread")
+    : f === "phone" ? t("agentUi.conv.phone")
+    : channelLabel(f);
 
-  const filtered = conversations.filter((c) => {
+  const callName = (c: CallRecord) => c.caller_number || t("agentUi.conv.hiddenNumber");
+  type Item = { kind: "chat"; id: string; time: number; conv: Conversation; unread: boolean } | { kind: "call"; id: string; time: number; call: CallRecord; unread: boolean };
+  const items: Item[] = [
+    ...conversations.map((conv): Item => ({ kind: "chat", id: conv.id, time: new Date(conv.last_message_at ?? 0).getTime(), conv, unread: !!conv.isNew })),
+    ...calls.map((call): Item => ({ kind: "call", id: call.id, time: new Date(call.created_at).getTime(), call, unread: !readCalls.has(call.id) })),
+  ].sort((a, b) => b.time - a.time);
+  const unreadCount = items.filter((i) => i.unread).length;
+  const filtered = items.filter((i) => {
     if (filter === "All") return true;
-    if (filter === "Unread") return c.isNew;
-    if (filter === "website") return c.channel === "website" || c.channel === "website_embed";
-    return c.channel === filter;
+    if (filter === "Unread") return i.unread;
+    if (i.kind === "call") return filter === "phone";
+    return i.conv.channel === filter;
   });
+  const emptyTitle = filter === "Unread" ? t("agentUi.conv.emptyUnread") : t("agentUi.conv.emptyTitle");
+  const emptyHint = filter === "Unread" ? t("agentUi.conv.emptyUnreadHint") : t("agentUi.conv.emptyHint");
 
   /* ── Error state ── */
   if (error) {
@@ -437,54 +539,53 @@ export default function ConversationsPage() {
     <div className="h-full flex gap-0 md:gap-5 max-w-7xl mx-auto pb-20">
 
       {/* ── Conversation list ── */}
-      <div className={`flex-col bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden
-        ${showThread ? "hidden md:flex md:w-72" : "flex w-full md:w-72"}`}>
+      <div className={`flex-col bg-white rounded-2xl border border-[#EEF0F3] overflow-hidden
+        ${showThread ? "hidden md:flex md:w-[23rem] md:shrink-0" : "flex w-full md:w-[23rem] md:shrink-0"}`}>
 
-        <div className="px-4 py-4 border-b border-[#F3F4F6]">
-          <h2 className="font-bold text-[#111111] mb-3 text-sm">{t("conversations.title")}</h2>
-          <div className="flex gap-1.5 flex-wrap">
+        <div className="px-4 pt-4 pb-3">
+          <h2 className="font-semibold text-[#111111] mb-3 text-base">{t("conversations.title")}</h2>
+          <div className="flex flex-wrap md:flex-nowrap gap-1.5">
             {filters.map((f) => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all capitalize ${
-                  filter === f ? "bg-[#FF6B35] text-white" : "bg-[#F3F4F6] text-[#6B7280] hover:text-[#111111]"
+              <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f}
+                className={`shrink-0 inline-flex items-center gap-1 text-xs px-2.5 h-8 rounded-full transition-colors ${
+                  filter === f ? "bg-[#111111] text-white font-medium" : "bg-[#F5F5F6] text-[#6B7280] hover:text-[#111111]"
                 }`}>
                 {filterLabel(f)}
+                {f === "Unread" && unreadCount > 0 && (
+                  <span className={`text-[10px] font-semibold tabular-nums ${filter === f ? "text-white/70" : "text-[#FF6B35]"}`}>{unreadCount}</span>
+                )}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-[#F3F4F6]">
+        <div className="flex-1 overflow-y-auto px-2 pb-2">
           {loading && [1, 2, 3].map((i) => <ConvSkeleton key={i} />)}
 
           {!loading && filtered.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="w-10 h-10 rounded-xl bg-[#F3F4F6] flex items-center justify-center mb-3">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M16 2H2a1 1 0 0 0-1 1v12l3-3h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z" stroke="#9CA3AF" strokeWidth="1.3" strokeLinejoin="round"/></svg>
-              </div>
-              <p className="text-sm font-semibold text-[#374151]">{t("conversations.noConversations")}</p>
-              <p className="text-xs text-[#9CA3AF] mt-1">{t("conversations.widgetHint")}</p>
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+              <svg width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true" className="mb-4">
+                <path d="M38 22c0 7.7-7.2 14-16 14-2 0-4-.3-5.8-.9L8 38l2.3-6.6C7.6 29 6 25.700 6 22 6 14.300 13.200 8 22 8s16 6.300 16 14z" stroke="#E5E7EB" strokeWidth="1.5" strokeLinejoin="round"/>
+                <circle cx="16" cy="22" r="1.500" fill="#FF6B35"/><circle cx="22" cy="22" r="1.500" fill="#FF6B35" opacity=".6"/><circle cx="28" cy="22" r="1.500" fill="#FF6B35" opacity=".3"/>
+              </svg>
+              <p className="text-sm font-medium text-[#374151]">{emptyTitle}</p>
+              <p className="text-xs text-[#9CA3AF] mt-1 leading-relaxed">{emptyHint}</p>
             </div>
           )}
 
-          {filtered.map((conv) => {
-            const isActive = selected?.id === conv.id;
-            const isRenaming = renamingId === conv.id && menuSource === "list";
+          {filtered.map((item) => {
+            const isActive = item.kind === "chat" ? selected?.id === item.id : selectedCall?.id === item.id;
+            const conv = item.kind === "chat" ? item.conv : null;
+            const isRenaming = !!conv && renamingId === conv.id && menuSource === "list";
+            const name = conv ? (conv.customer_name ?? "") : callName(item.kind === "call" ? item.call : ({} as CallRecord));
+            const preview = conv ? (conv.preview || t("conversations.noMessages")) : ((item.kind === "call" && item.call.summary) || t("agentUi.conv.phoneCall"));
+            const when = conv ? conv.last_message_at : (item.kind === "call" ? item.call.created_at : null);
             return (
-              <div key={conv.id}
-                className={`group relative w-full flex items-start gap-3 pl-4 pr-1 py-3.5 transition-all ${
-                  isActive ? "bg-[#FFF8F5] border-l-2 border-[#FF6B35]" : "hover:bg-[#F9FAFB] border-l-2 border-transparent"
-                }`}>
-                <div className="relative shrink-0 mt-0.5">
-                  <div className="w-9 h-9 rounded-full bg-[#F3F4F6] flex items-center justify-center text-sm font-bold text-[#374151]">
-                    {(conv.customer_name ?? "?")[0].toUpperCase()}
-                  </div>
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${channelIconBg(conv.channel)}`}>
-                    <ChannelIcon channel={conv.channel} size={9} />
-                  </div>
-                </div>
+              <div key={item.id}
+                className={`group relative flex items-center gap-3 ps-2.5 pe-1 py-2.5 rounded-xl transition-colors ${isActive ? "bg-[#FFF5F0]" : "hover:bg-[#FAFAFA]"}`}>
+                <Avatar name={conv ? conv.customer_name : (item.kind === "call" ? item.call.caller_number ?? null : null)} channel={conv ? conv.channel : "phone"} />
 
-                {isRenaming ? (
+                {isRenaming && conv ? (
                   <div className="flex-1 min-w-0 py-0.5">
                     <input
                       autoFocus
@@ -501,31 +602,24 @@ export default function ConversationsPage() {
                     />
                   </div>
                 ) : (
-                  <button onClick={() => selectConv(conv)} className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-semibold text-[#111111] truncate">{conv.customer_name}</span>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        {conv.needs_human && (
-                          <>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 whitespace-nowrap">{t("conversations.needsAttention")}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleResolve(conv.id); }}
-                              disabled={resolving === conv.id}
-                              aria-label="Mark resolved"
-                              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 transition-colors whitespace-nowrap min-h-[20px]">
-                              {resolving === conv.id ? "…" : "Resolved"}
-                            </button>
-                          </>
-                        )}
-                        {conv.isNew && !conv.needs_human && <span className="w-2 h-2 rounded-full bg-[#FF3366]" />}
-                        <span className="text-[10px] text-[#9CA3AF]">{timeAgo(conv.last_message_at, t)}</span>
-                      </div>
+                  <button onClick={() => (item.kind === "chat" ? selectConv(item.conv) : selectCall(item.call))} className="flex-1 min-w-0 text-start">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <span dir={conv ? "auto" : "ltr"} className={`text-[13px] truncate ${item.unread ? "font-semibold text-[#111111]" : "font-medium text-[#374151]"}`}>{name}</span>
+                      <span className={`text-[11px] shrink-0 tabular-nums ${item.unread ? "text-[#FF6B35] font-medium" : "text-[#9CA3AF]"}`}>{timeAgo(when, t)}</span>
                     </div>
-                    <p className="text-[11px] text-[#6B7280] truncate">{conv.preview || t("conversations.noMessages")}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p dir="auto" className={`text-xs truncate text-start flex-1 ${item.unread ? "text-[#374151]" : "text-[#9CA3AF]"}`}>{preview}</p>
+                      {conv?.needs_human ? (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 whitespace-nowrap shrink-0">{t("conversations.needsAttention")}</span>
+                      ) : item.unread ? (
+                        <span className="w-2 h-2 rounded-full bg-[#FF6B35] shrink-0" aria-label={t("conversations.filterUnread")} />
+                      ) : null}
+                    </div>
                   </button>
                 )}
 
-                {!isRenaming && (
+                {!conv && <span className="shrink-0 w-7" aria-hidden="true" />}
+                {conv && !isRenaming && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -533,13 +627,13 @@ export default function ConversationsPage() {
                         setMenuOpenId(null); setMenuPos(null);
                       } else {
                         const rect = e.currentTarget.getBoundingClientRect();
-                        setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
+                        setMenuPos({ top: rect.bottom + 4, left: Math.max(8, rect.right - 112) });
                         setMenuOpenId(conv.id);
                         setMenuSource("list");
                       }
                     }}
                     aria-label="Conversation options"
-                    className="shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-md hover:bg-[#E5E7EB] transition-all text-[#9CA3AF] hover:text-[#374151]">
+                    className="shrink-0 w-7 h-7 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 rounded-md hover:bg-[#E5E7EB] transition-opacity text-[#9CA3AF] hover:text-[#374151]">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                       <circle cx="6" cy="2" r="1.2" /><circle cx="6" cy="6" r="1.2" /><circle cx="6" cy="10" r="1.2" />
                     </svg>
@@ -552,7 +646,7 @@ export default function ConversationsPage() {
       </div>
 
       {/* ── Thread ── */}
-      <div className={`flex-col bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden
+      <div className={`flex-col min-w-0 bg-white rounded-2xl border border-[#EEF0F3] overflow-hidden
         ${showThread ? "flex flex-1" : "hidden md:flex md:flex-1"}`}>
 
         {/* Thread header */}
@@ -560,20 +654,13 @@ export default function ConversationsPage() {
           <>
             <div className="flex items-center gap-3 px-4 md:px-5 py-4 border-b border-[#F3F4F6]">
               <button onClick={() => setShowThread(false)}
-                className="md:hidden p-2 -ml-1 rounded-xl text-[#6B7280] hover:bg-[#F3F4F6] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                className="md:hidden p-2 -ms-1 rounded-xl text-[#6B7280] hover:bg-[#F3F4F6] transition-all min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="rtl:-scale-x-100">
                   <path d="M11 4l-5 5 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
 
-              <div className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full bg-[#F3F4F6] flex items-center justify-center text-sm font-bold text-[#374151]">
-                  {(selected.customer_name ?? "?")[0].toUpperCase()}
-                </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${channelIconBg(selected.channel)}`}>
-                  <ChannelIcon channel={selected.channel} size={9} />
-                </div>
-              </div>
+              <Avatar name={selected.customer_name} channel={selected.channel} />
 
               <div className="flex-1 min-w-0">
                 {renamingId === selected.id && menuSource === "detail" ? (
@@ -637,7 +724,7 @@ export default function ConversationsPage() {
             </div>
 
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-3 bg-[#F9FAFB]">
+            <div className="flex-1 overflow-y-auto px-4 md:px-5 py-5 space-y-3 bg-[#FAFAFA]">
               {msgLoading && (
                 <div className="flex justify-center py-8">
                   <div className="flex gap-1">
@@ -657,17 +744,17 @@ export default function ConversationsPage() {
                     <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
                         ? isTestMsg
-                          ? "bg-[#FFF8F5] text-[#374151] rounded-tl-sm border border-[#FFD8C7]"
-                          : "bg-white text-[#111111] rounded-tl-sm border border-[#E5E7EB]"
+                          ? "bg-[#FFF8F5] text-[#374151] rounded-ss-sm border border-[#FFD8C7]"
+                          : "bg-white text-[#111111] rounded-ss-sm border border-[#EEF0F3]"
                         : isTestMsg
-                          ? "bg-[#F3F4F6] text-[#374151] rounded-tr-sm border border-[#E5E7EB]"
-                          : "text-white rounded-tr-sm"
+                          ? "bg-[#F3F4F6] text-[#374151] rounded-se-sm border border-[#E5E7EB]"
+                          : "text-white rounded-se-sm"
                     }`}
                       style={msg.role !== "user" && !isTestMsg ? { background: "var(--vela-gradient)" } : {}}>
                       {isTestMsg && (
                         <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-1.5 block">Test</span>
                       )}
-                      <p>{msg.content}</p>
+                      <p dir="auto" className="text-start">{msg.content}</p>
                       <p className="text-[10px] mt-1.5 opacity-50">
                         {msg.role === "assistant" && !isTestMsg
                           ? (isOwnerReply ? t("conversations.ownerReplyPrefix") : t("conversations.velaAiPrefix"))
@@ -681,7 +768,7 @@ export default function ConversationsPage() {
 
               {sending && (
                 <div className="flex justify-end">
-                  <div className="px-4 py-3 rounded-2xl rounded-tr-sm text-white text-sm"
+                  <div className="px-4 py-3 rounded-2xl rounded-se-sm text-white text-sm"
                     style={{ background: "var(--vela-gradient)", opacity: 0.6 }}>
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
@@ -733,16 +820,15 @@ export default function ConversationsPage() {
               </div>
             </div>
           </>
+        ) : selectedCall ? (
+          <CallThread call={selectedCall} name={callName(selectedCall)} onBack={() => setShowThread(false)} t={t} />
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-              style={{ background: "var(--vela-gradient)" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="font-bold text-[#111111] mb-1">{t("conversations.selectConversation")}</p>
+            <svg width="52" height="52" viewBox="0 0 44 44" fill="none" aria-hidden="true" className="mb-4">
+              <path d="M38 22c0 7.700-7.200 14-16 14-2 0-4-.3-5.800-.9L8 38l2.300-6.600C7.600 29 6 25.700 6 22 6 14.300 13.200 8 22 8s16 6.300 16 14z" stroke="#E5E7EB" strokeWidth="1.500" strokeLinejoin="round"/>
+            </svg>
+            <p className="font-semibold text-[#111111] mb-1">{t("conversations.selectConversation")}</p>
             <p className="text-sm text-[#6B7280]">{t("conversations.selectHint")}</p>
           </div>
         )}
@@ -764,12 +850,12 @@ export default function ConversationsPage() {
             className="bg-white border border-[#E5E7EB] rounded-lg shadow-xl py-1 w-28">
             <button
               onClick={() => handleStartRename(mc)}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB]">
+              className="w-full text-start px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB]">
               {t("conversations.renameConversation")}
             </button>
             <button
               onClick={() => { setMenuOpenId(null); setMenuPos(null); setDeleteTarget(mc); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-red-600 hover:bg-red-50">
+              className="w-full text-start px-3 py-1.5 text-[11px] text-red-600 hover:bg-red-50">
               {t("conversations.deleteConversation")}
             </button>
           </div>

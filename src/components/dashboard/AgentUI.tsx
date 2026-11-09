@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 // Shared building blocks for the AI Agent section: one quiet visual language.
 
@@ -61,15 +61,38 @@ export function Chips<T extends string>({ value, options, onChange, label }: { v
   );
 }
 
-export function SaveBar({ saving, dirty, message, error, onSave, label, savingLabel }: { saving: boolean; dirty: boolean; message: string; error: string | null; onSave: () => void; label: string; savingLabel: string }) {
+/**
+ * Fixed at the bottom end of the screen, just inside the chat bubble (the
+ * logical "end" mirrors both to the left in Arabic). On phones it steps
+ * aside while the keyboard is open so it can never cover the field in use.
+ */
+export function FloatingSave({ saving, dirty, justSaved, error, onSave, label, savingLabel, savedLabel }: { saving: boolean; dirty: boolean; justSaved: boolean; error: string | null; onSave: () => void; label: string; savingLabel: string; savedLabel: string }) {
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const check = () => setKeyboardOpen(window.innerHeight - vv.height > 140);
+    vv.addEventListener("resize", check);
+    return () => vv.removeEventListener("resize", check);
+  }, []);
+
+  const active = dirty || saving;
   return (
-    <div className="sticky bottom-3 z-20 mt-4 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={onSave} disabled={saving} className="btn-primary h-10 px-5 text-sm shrink-0 disabled:opacity-60">
-          {saving ? savingLabel : label}
-        </button>
-        <p role="status" className={`text-xs min-w-0 ${error ? "text-red-600" : dirty ? "text-[#6B7280]" : "text-[#9CA3AF]"}`}>{error ?? message}</p>
-      </div>
+    <div
+      className={`fixed z-[130] end-4 sm:end-[92px] flex flex-col items-end gap-2 ${keyboardOpen ? "max-sm:hidden" : ""}`}
+      style={{ bottom: "max(28px, calc(env(safe-area-inset-bottom) + 20px))" }}
+    >
+      {error && <p role="alert" className="max-w-[260px] rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs text-red-600 shadow-sm">{error}</p>}
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={!active || saving}
+        className={active
+          ? "btn-primary h-12 px-6 text-sm disabled:opacity-70"
+          : "h-12 px-6 rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#9CA3AF] shadow-[0_4px_14px_rgba(15,23,42,0.08)] cursor-default"}
+      >
+        {saving ? savingLabel : !dirty && justSaved ? savedLabel : label}
+      </button>
     </div>
   );
 }

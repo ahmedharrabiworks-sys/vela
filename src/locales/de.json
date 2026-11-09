@@ -819,6 +819,57 @@
     }
   },
   "agentUi": {
+    "train": {
+      "checkServices": "Leistungen",
+      "checkHours": "Zeiten",
+      "checkAddress": "Adresse",
+      "checkPolicy": "Buchungsregeln",
+      "checkExtra": "Weitere Infos",
+      "saveChanges": "Speichern",
+      "save": "Speichern",
+      "autosave": "Änderungen werden nach 2 Sekunden gespeichert",
+      "faqsToExtra": "{n} Fragen und Antworten werden zu Weitere Infos hinzugefügt"
+    },
+    "charts": {
+      "total": "Gesamt",
+      "peak": "Stärkster Tag",
+      "average": "Tagesschnitt",
+      "aiHandled": "Von der KI bearbeitet",
+      "ofConversations": "der Gespräche",
+      "notIncluded": "Nicht in Ihrem Tarif"
+    },
+    "overview": {
+      "booked": "Buchungen per Anruf",
+      "bookedSub": "Im Anruf gebuchte Termine",
+      "answerRate": "Annahmequote",
+      "ofCalls": "der Anrufe",
+      "noCalls": "Noch keine Anrufe",
+      "calls": "Anrufe",
+      "callsSub": "Von Vela bearbeitete Kundenanrufe",
+      "avgSub": "Durchschnitt pro Anruf",
+      "minutesSub": "Genutzte Minuten",
+      "phoneSub": "Die KI nimmt rund um die Uhr ab",
+      "muted": "Stumm",
+      "listening": "Hört zu…",
+      "connecting": "Verbindet…",
+      "couldntConnect": "Keine Verbindung",
+      "connectionLost": "Verbindung verloren",
+      "callEnded": "Anruf beendet",
+      "advisor": "Ihr Berater",
+      "loading": "Lädt…"
+    },
+    "conv": {
+      "phone": "Telefon",
+      "phoneCall": "Telefonanruf",
+      "hiddenNumber": "Unterdrückte Nummer",
+      "aiSummary": "KI-Zusammenfassung",
+      "noTranscript": "Kein Transkript für diesen Anruf.",
+      "back": "Zurück",
+      "emptyTitle": "Noch nichts hier",
+      "emptyHint": "Nachrichten und Anrufe Ihrer Kunden erscheinen hier.",
+      "emptyUnread": "Alles gelesen",
+      "emptyUnreadHint": "Keine ungelesenen Nachrichten oder Anrufe."
+    },
     "tabs": {
       "phone": "Telefonnummer"
     },

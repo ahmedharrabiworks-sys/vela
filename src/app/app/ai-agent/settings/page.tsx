@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { VOICES } from "@/lib/vapi-agent-config";
 import { DEFAULT_PHONE_SPEED, DEFAULT_PHONE_VOICE_ID } from "@/lib/vapi-phone-assistant";
-import { Chips, PageHead, SaveBar, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
+import { Chips, FloatingSave, PageHead, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
 
 interface Settings {
   agentName?: string;
@@ -123,7 +123,7 @@ export default function SettingsPage() {
   const sectionLabel = (v: "female" | "male") => t(v === "female" ? "agentUi.settings.female" : "agentUi.settings.male");
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-24">
       <PageHead title={t("agentUi.settings.title")} subtitle={t("agentUi.settings.subtitle")} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -183,7 +183,7 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <div className="flex gap-2">
                 <select aria-label={t("agentUi.settings.voice")} value={voiceId} onChange={(e) => { audioRef.current?.pause(); setPreview("idle"); set("voiceId", e.target.value); }} className={`${fieldCls} min-w-0 flex-1`}>
-                  {(["female", "male"] as const).map((g) => (
+                  {(["male", "female"] as const).map((g) => (
                     <optgroup key={g} label={sectionLabel(g)}>
                       {VOICES.filter((v) => v.gender === g).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </optgroup>
@@ -251,14 +251,15 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <SaveBar
+      <FloatingSave
         saving={saving}
         dirty={dirty}
+        justSaved={saved}
         error={error}
         onSave={save}
         label={t("agentUi.common.save")}
         savingLabel={t("agentUi.common.saving")}
-        message={dirty ? t("agentUi.common.unsaved") : saved ? t("agentUi.common.saved") : ""}
+        savedLabel={t("agentUi.common.saved")}
       />
     </div>
   );

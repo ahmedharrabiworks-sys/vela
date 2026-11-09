@@ -90,7 +90,7 @@ export function callHeadline(call: CallRecord): string {
 }
 
 // Streams through /api/voice/recording, which only serves the signed-in owner.
-function VoicemailPlayer({ callId, isDark }: { callId: string; isDark: boolean }) {
+export function VoicemailPlayer({ callId, isDark }: { callId: string; isDark: boolean }) {
   const [failed, setFailed] = useState(false);
   const textMuted = isDark ? "var(--dm-muted)" : "#9CA3AF";
   return (

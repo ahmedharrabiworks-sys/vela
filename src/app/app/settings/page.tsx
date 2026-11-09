@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { getProfile, saveProfile } from "@/lib/business-profile";
 import { usePlan } from "@/lib/plans";
-import PlanSwitchModal from "@/components/dashboard/PlanSwitchModal";
 import { PLAN_CONFIG } from "@/lib/plan-config";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import {
   PhoneInput,
@@ -182,7 +182,7 @@ export default function SettingsPage() {
   const [savedSection, setSavedSection]   = useState<Section | null>(null);
 
   const { isPro, plan: currentPlan } = usePlan();
-  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const router = useRouter();
   const { t }     = useI18n();
 
   useEffect(() => {
@@ -728,14 +728,13 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setPlanModalOpen(true)}
+                  <Link
+                    href="/pricing"
                     className="text-xs font-semibold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
                     style={{ background: "var(--vela-gradient)" }}
                   >
                     {t("settings.billing.changePlan")}
-                  </button>
-                  <PlanSwitchModal open={planModalOpen} onClose={() => setPlanModalOpen(false)} />
+                  </Link>
                 </div>
               </div>
 
@@ -783,7 +782,7 @@ export default function SettingsPage() {
                               ? `You've used ${usage.messages.used.toLocaleString()} of ${usage.messages.limit!.toLocaleString()} messages this month, `
                               : `You've used ${usage.voiceMinutes.used} of ${usage.voiceMinutes.limit} voice minutes, `
                             }
-                            <button onClick={() => setPlanModalOpen(true)} className="font-semibold underline">upgrade to Pro</button>
+                            <Link href="/pricing" className="font-semibold underline">upgrade to Pro</Link>
                             {" "}for unlimited messages.
                           </p>
                         </div>
@@ -921,7 +920,7 @@ export default function SettingsPage() {
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       {showCapModal && usage?.messages.limit !== null && (
         <UsageCapModal
-          onUpgrade={() => setPlanModalOpen(true)}
+          onUpgrade={() => router.push("/pricing")}
           used={usage!.messages.used}
           limit={usage!.messages.limit!}
           onClose={() => setShowCapModal(false)}

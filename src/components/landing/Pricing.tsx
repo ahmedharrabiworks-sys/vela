@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PLANS } from "@/lib/pricing";
 import { useI18n } from "@/lib/i18n";
 import { formatPrice, type CurrencyCode } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/landing/CurrencyToggle";
 import CtaButton from "@/components/landing/CtaButton";
+import PlanCardAction from "@/components/landing/PlanCardAction";
+import Toast from "@/components/ui/Toast";
+import { useLandingSession } from "@/lib/use-landing-session";
+import { announcePlanChange, PLAN_CONFIG, type PlanId } from "@/lib/plans";
 
 const TIER_PLANS = PLANS.filter((p) => !p.isCustom);
 
@@ -37,7 +42,39 @@ export const CARD_INDICES: Record<string, number[]> = {
   premium: [0, 1, 2, 3, 4, 5, 6],
 };
 
-export default function Pricing() {
+// Where to go after switching: the app page the owner came from, else the dashboard.
+function backToApp(): string {
+  try {
+    const last = localStorage.getItem("vela_last_app_route") ?? "";
+    if (/^\/app(\/[\w/-]*)?$/.test(last)) return last;
+  } catch { /* private mode */ }
+  return "/app";
+}
+
+export default function Pricing({ inApp = false }: { inApp?: boolean }) {
+  const session = useLandingSession();
+  const router = useRouter();
+  const signedIn = inApp && session.status === "in";
+  const [account, setAccount] = useState<{ plan: string; freeSwitch: boolean } | null>(null);
+  const [accountFailed, setAccountFailed] = useState(false);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    if (!signedIn) return;
+    fetch("/api/plan").then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d: { plan: string; freeSwitch: boolean }) => setAccount({ plan: d.plan, freeSwitch: !!d.freeSwitch }))
+      .catch(() => setAccountFailed(true));
+  }, [signedIn]);
+
+  const switched = (plan: string) => {
+    if (plan in PLAN_CONFIG) announcePlanChange(plan as PlanId);
+    setAccount((a) => (a ? { ...a, plan } : a));
+    setConfirming(null);
+    setToast(t("planSwitch.done").replace("{plan}", plan.charAt(0).toUpperCase() + plan.slice(1)));
+    setTimeout(() => router.push(backToApp()), 1400);
+  };
+
   const [annual, setAnnual] = useState(false);
   const [currency, setCurrency] = useState<CurrencyCode>("QAR");
   const { t } = useI18n();
@@ -185,7 +222,22 @@ export default function Pricing() {
                       now (popularity is signaled by the badge + border
                       instead of a different button style). FIX 2: the
                       "Cancel anytime" line below it is removed entirely. */}
-                  <CtaButton size="md" fullWidth />
+                  {inApp && (session.status === "loading" || (signedIn && !account && !accountFailed)) ? (
+                    <div className="h-11" aria-hidden="true" />
+                  ) : signedIn && account ? (
+                    <PlanCardAction
+                      planId={plan.id}
+                      planName={plan.name}
+                      current={account.plan}
+                      freeSwitch={account.freeSwitch}
+                      confirming={confirming === plan.id}
+                      onAsk={() => setConfirming(plan.id)}
+                      onCancel={() => setConfirming(null)}
+                      onSwitched={switched}
+                    />
+                  ) : (
+                    <CtaButton size="md" fullWidth />
+                  )}
                 </div>
               );
             })}
@@ -193,6 +245,7 @@ export default function Pricing() {
         </div>
 
       </div>
+      {toast && <Toast msg={toast} onDone={() => setToast("")} />}
     </section>
   );
 }

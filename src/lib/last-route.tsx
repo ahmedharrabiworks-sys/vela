@@ -16,7 +16,7 @@ export function LastRouteTracker() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!pathname || !pathname.startsWith("/app/")) return;
+    if (!pathname || (pathname !== "/app" && !pathname.startsWith("/app/"))) return;
     localStorage.setItem(LAST_APP_ROUTE_KEY, pathname);
   }, [pathname]);
 

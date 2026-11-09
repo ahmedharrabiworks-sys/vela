@@ -29,12 +29,12 @@ export const metadata = {
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      <PublicPageHeader />
+      <PublicPageHeader sessionAware />
 
       {/* Plan-card selection, the default landing view for any "Upgrade Now" /
           "Upgrade to Pro" click across the app. Reuses the same component as
           the homepage's #pricing section (same cards, same copy, same links). */}
-      <Pricing />
+      <Pricing inApp />
 
       <div id="compare" className="max-w-4xl mx-auto px-5 py-10 md:py-14 scroll-mt-6">
         {/* Rebuilt as a categorized, detailed comparison (bug-fix + polish
