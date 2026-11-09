@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { VOICES } from "@/lib/vapi-agent-config";
 import { DEFAULT_PHONE_SPEED, DEFAULT_PHONE_VOICE_ID, buildGreeting, resolveAgentName } from "@/lib/vapi-phone-assistant";
-import { Chips, FloatingSave, PageHead, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
+import { Chips, PageHead, SaveButton, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
 
 interface Settings {
   agentName?: string;
@@ -128,7 +128,7 @@ export default function SettingsPage() {
   const sectionLabel = (v: "female" | "male") => t(v === "female" ? "agentUi.settings.female" : "agentUi.settings.male");
 
   return (
-    <div className="max-w-4xl mx-auto pb-24">
+    <div className="max-w-4xl mx-auto pb-16 2xl:pb-0">
       <PageHead title={t("agentUi.settings.title")} subtitle={t("agentUi.settings.subtitle")} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -265,8 +265,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <FloatingSave
-        columnClass="max-w-4xl"
+      <SaveButton
         saving={saving}
         dirty={dirty}
         justSaved={saved}

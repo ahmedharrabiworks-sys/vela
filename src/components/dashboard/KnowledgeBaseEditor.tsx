@@ -6,7 +6,7 @@ import {
   EMPTY_KB, applySuggestion, knowledgeChecklist, parseKnowledgeBase,
   type KbService, type KnowledgeBase, type SuggestedFact,
 } from "@/lib/knowledge-base";
-import { Chips, FloatingSave, PageHead, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
+import { Chips, PageHead, SaveButton, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
 
 type Suggestion = SuggestedFact & { id: string; source: "conversation" | "call" | "assistant" };
 type PendingRequest = { id: string; serviceName: string; leadName: string | null; leadPhone: string | null };
@@ -223,7 +223,7 @@ export default function KnowledgeBaseEditor() {
   const sourceLabel = { conversation: t("agentUi.kb.sourceConversation"), call: t("agentUi.kb.sourceCall"), assistant: t("agentUi.kb.sourceAssistant") };
 
   return (
-    <div className="max-w-5xl mx-auto pb-24">
+    <div className="max-w-5xl mx-auto pb-16 2xl:pb-0">
       <PageHead
         title={t("agentUi.kb.title")}
         subtitle={t("agentUi.kb.subtitle")}
@@ -351,8 +351,7 @@ export default function KnowledgeBaseEditor() {
         </Section>
       </div>
 
-      <FloatingSave
-        columnClass="max-w-5xl"
+      <SaveButton
         saving={saving}
         dirty={dirty}
         justSaved={saved}
