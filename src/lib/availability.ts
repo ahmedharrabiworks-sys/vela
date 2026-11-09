@@ -105,7 +105,7 @@ export function parseDurationMinutes(text: string | null | undefined): number | 
  * over-wide window costs a redundant "that slot's taken" once in a while,
  * an under-wide one lets two appointments overlap.
  */
-function resolveDurationMinutes(services: ServiceDuration[] | undefined, serviceName: string | null | undefined): number {
+export function resolveDurationMinutes(services: ServiceDuration[] | undefined, serviceName: string | null | undefined): number {
   if (serviceName && services) {
     const match = services.find((s) => s.name?.trim().toLowerCase() === serviceName.trim().toLowerCase());
     if (match) {

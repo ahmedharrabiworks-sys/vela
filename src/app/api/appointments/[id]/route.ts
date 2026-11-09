@@ -1,7 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
+import { ensureTenant } from "@/lib/ensure-tenant";
+import { UUID_RE, checkSlot, loadBookingContext } from "@/lib/appointment-slots";
+import { normalizeDate, normalizeTime } from "@/lib/phone-booking";
 
 export const dynamic = "force-dynamic";
+
+const ACTIVE = ["pending", "confirmed"];
+const RULES: Record<string, { from: string[]; to?: string; needsStarted?: boolean }> = {
+  confirm: { from: ["pending"], to: "confirmed" },
+  cancel: { from: ACTIVE, to: "cancelled" },
+  reactivate: { from: ["cancelled", "completed", "no_show"], to: "pending" },
+  complete: { from: ACTIVE, to: "completed", needsStarted: true },
+  no_show: { from: ACTIVE, to: "no_show", needsStarted: true },
+  reschedule: { from: ACTIVE },
+  remove: { from: ["pending", "confirmed", "cancelled", "completed", "no_show"] },
+};
+
+/**
+ * PATCH /api/appointments/[id]: every change an owner makes to a booking.
+ * The appointment must belong to the caller's tenant; each action is only
+ * valid from certain statuses; a new time is re-checked against real opening
+ * hours and bookings here, whatever the browser sent.
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!UUID_RE.test(params.id)) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const body = await req.json().catch(() => null) as { action?: unknown; date?: unknown; time?: unknown } | null;
+  const action = typeof body?.action === "string" ? body.action : "";
+  const rule = Object.prototype.hasOwnProperty.call(RULES, action) ? RULES[action] : null;
+  if (!rule) return NextResponse.json({ error: "invalid" }, { status: 400 });
+
+  let tenant;
+  try {
+    tenant = await ensureTenant(user.id, user.email, user.user_metadata);
+  } catch {
+    return NextResponse.json({ error: "Account setup required" }, { status: 500 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = createSupabaseAdmin() as any;
+  const { data: appt } = await admin
+    .from("appointments")
+    .select("id, status, datetime, service_name")
+    .eq("id", params.id)
+    .eq("tenant_id", tenant.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!appt) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!rule.from.includes(appt.status as string)) return NextResponse.json({ error: "bad_state" }, { status: 409 });
+
+  const ctx = await loadBookingContext(admin, tenant.id);
+  if (rule.needsStarted && Date.parse(appt.datetime as string) > ctx.now.asDate.getTime()) {
+    return NextResponse.json({ error: "not_started" }, { status: 409 });
+  }
+
+  let patch: Record<string, unknown>;
+  if (action === "reschedule") {
+    const date = typeof body?.date === "string" ? normalizeDate(body.date) : null;
+    const time = typeof body?.time === "string" ? normalizeTime(body.time) : null;
+    if (!date || !time) return NextResponse.json({ error: "invalid" }, { status: 400 });
+    const problem = await checkSlot(admin, tenant.id, ctx, date, time, appt.service_name as string | null, appt.id as string);
+    if (problem) return NextResponse.json({ error: problem }, { status: 409 });
+    // Pending again: the customer has not agreed to the new time yet.
+    patch = { datetime: `${date}T${time}:00.000Z`, status: "pending", rescheduled: true };
+  } else if (action === "remove") {
+    patch = { deleted_at: new Date().toISOString() };
+  } else {
+    if (action === "reactivate") {
+      const iso = new Date(appt.datetime as string).toISOString();
+      const problem = await checkSlot(admin, tenant.id, ctx, iso.slice(0, 10), iso.slice(11, 16), appt.service_name as string | null, appt.id as string);
+      if (problem === "conflict") return NextResponse.json({ error: "conflict" }, { status: 409 });
+    }
+    patch = { status: rule.to };
+  }
+
+  const { error } = await admin.from("appointments").update(patch).eq("id", appt.id).eq("tenant_id", tenant.id);
+  if (error) {
+    console.error("[appointments/[id]] update failed:", error.code, error.message);
+    // appointments_status_check: migration_v42.sql has not run yet.
+    if (error.code === "23514") return NextResponse.json({ error: "needs_migration" }, { status: 422 });
+    return NextResponse.json({ error: "save_failed" }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
 
 /**
  * DELETE /api/appointments/[id]

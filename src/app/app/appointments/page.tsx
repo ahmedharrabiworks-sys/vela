@@ -1,806 +1,321 @@
 ﻿"use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { getSupabase } from "@/lib/supabase";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePlan } from "@/lib/plans";
 import { useI18n } from "@/lib/i18n";
-import Link from "next/link";
-// FIX 5 (round P): shared toast used by every delete/recycle-bin action.
+import CountUp from "@/components/ui/CountUp";
+import GlassBlobs from "@/components/ui/GlassBlobs";
 import Toast from "@/components/ui/Toast";
+import AgendaView, { type RowAction } from "@/components/dashboard/appointments/AgendaView";
+import WeekView from "@/components/dashboard/appointments/WeekView";
+import { AppointmentDrawer, NewAppointmentDrawer, type DrawerMode } from "@/components/dashboard/appointments/AppointmentDrawer";
+import { ChannelBadge, Icons, addDays, fmtDay, fmtTime, quietBtn, weekStartOf, type Appt, type ApptChannel, type ApptPayload } from "@/components/dashboard/appointments/shared";
 
-type SortKey = "name" | "phone" | "service" | "date" | "channel" | "status";
-type SortDir = "asc" | "desc";
-type FilterKey = "all" | "today" | "week" | "upcoming" | "past";
+type View = "agenda" | "week";
+type DateFilter = "all" | "today" | "week" | "upcoming" | "past";
+const DATE_FILTERS: DateFilter[] = ["all", "today", "week", "upcoming", "past"];
+const CHANNELS: ApptChannel[] = ["phone", "website", "whatsapp", "instagram", "manual"];
+const AI_CHANNELS: ApptChannel[] = ["phone", "website", "whatsapp", "instagram"];
 
-interface Appointment {
-  id: string;
-  name: string;
-  phone: string;
-  // FIX 6 (round P): true when the linked lead's phone was captured
-  // without a real, confirmable country code.
-  phoneUnconfirmed?: boolean;
-  service: string;
-  dateLabel: string;
-  sortDate: number;
-  time: string;
-  rawDatetime: string;
-  status: string;
-  channel: string;
-  conversationId: string | null;
-  rescheduled: boolean;
+// Spreadsheets run a cell that starts with these, and names come from customers.
+function csvCell(value: string, isPhone = false): string {
+  const safe = !isPhone && /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
-// FIX 5 (round G, historical): Tailwind's semantic palette classes
-// (green-50, red-50, yellow-50, etc.) needed an explicit dark-mode variant
-// back when the app supported dark mode. Dark mode has since been removed
-// entirely (see git history) -- these are the plain light-mode colors.
-const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  confirmed: { bg: "bg-green-50 ",   text: "text-green-700 ",   dot: "bg-green-500",  label: "Confirmed" },
-  pending:   { bg: "bg-yellow-50 ", text: "text-yellow-700 ", dot: "bg-yellow-400", label: "Pending"   },
-  cancelled: { bg: "bg-red-50 ",       text: "text-red-600 ",       dot: "bg-red-400",    label: "Cancelled" },
-};
-
-const FILTER_KEYS: FilterKey[] = ["all", "today", "week", "upcoming", "past"];
-
-const SORT_COL_KEYS: { key: SortKey; label: string; width: string }[] = [
-  { key: "name",    label: "Name",       width: "min-w-[170px]" },
-  { key: "phone",   label: "Phone",      width: "min-w-[140px]" },
-  { key: "service", label: "Service",    width: "min-w-[150px]" },
-  { key: "date",    label: "Date & Time",width: "min-w-[150px]" },
-  { key: "channel", label: "Channel",    width: "min-w-[110px]" },
-  { key: "status",  label: "Status",     width: "min-w-[110px]" },
-];
-
-// FIX 2 (round M): real root cause of the repeated "assistant confirms 10am,
-// DB/page shows 11am" bug, finally traced -- `appointments.datetime` is
-// written as literal wall-clock digits with a Z (UTC) suffix (e.g. the owner
-// says "10am", the row becomes `...T10:00:00Z`) with NO real per-tenant
-// timezone conversion anywhere in this app (there is no stored tenant
-// timezone to convert from/to). But `toLocaleTimeString`/`toLocaleDateString`
-// with no `timeZone` option convert using the VIEWER'S BROWSER timezone --
-// so a value stored as "10:00 UTC" displayed in a UTC+1 browser (e.g.
-// Tunisia) shows as "11:00", a full silent hour off, matching exactly what
-// was reported. Every write path treats the digits as literal wall-clock
-// time with no conversion; every display here must match that same
-// convention -- timeZone: "UTC" forces the raw stored digits to render
-// as-is, with zero browser-dependent drift, for every viewer everywhere.
-function formatDateLabel(dt: Date): string {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-  const d = new Date(dt); d.setHours(0, 0, 0, 0);
-  if (d.getTime() === today.getTime()) return "Today";
-  if (d.getTime() === tomorrow.getTime()) return "Tomorrow";
-  return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-}
-
-function calcSortDate(dt: Date): number {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const d = new Date(dt); d.setHours(0, 0, 0, 0);
-  return Math.round((d.getTime() - today.getTime()) / 86400000);
-}
-
-function todayISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl border border-[#E5E7EB] w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// FIX 6: "Copy Message" only ever put text on the owner's own clipboard --
-// nothing was actually delivered to the customer. Replaced with a real Send
-// that reuses the exact same delivery path already built and live for the
-// AI's own replies and for owner Takeover (POST /api/conversations/[id]/
-// reply): saves to the real conversation history and sends via the real
-// channel (WhatsApp/Instagram Graph API, or the website widget's poll).
-// Requires the appointment to be linked to a real conversation
-// (conversation_id) -- appointments created before that link existed, or
-// added manually, have none, and Send is honestly disabled rather than
-// faking a delivery with nowhere real to go.
-function SendModal({ apt, onClose }: { apt: Appointment; onClose: () => void }) {
-  const [text, setText]       = useState("");
-  const [sending, setSending] = useState(false);
-  const [result, setResult]   = useState<{ ok: boolean; note?: string } | null>(null);
-  const ta = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { ta.current?.focus(); }, []);
-
-  const SUGGESTIONS = [
-    `Hi ${apt.name.split(" ")[0]}, your ${apt.service} is confirmed for ${apt.dateLabel} at ${apt.time}.`,
-    `Hi ${apt.name.split(" ")[0]}, reminder about your appointment tomorrow at ${apt.time}. See you soon!`,
-    `Hi ${apt.name.split(" ")[0]}, please arrive 5 minutes early for your ${apt.service}.`,
-  ];
-
-  const handleSend = async () => {
-    if (!text.trim() || !apt.conversationId || sending) return;
-    setSending(true);
-    setResult(null);
-    try {
-      const res = await fetch(`/api/conversations/${apt.conversationId}/reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim() }),
-      });
-      const data = await res.json() as { ok?: boolean; channelError?: string; channelNote?: string; error?: string };
-      if (!res.ok || !data.ok) {
-        setResult({ ok: false, note: data.error ?? "Failed to send." });
-      } else {
-        setResult({ ok: true, note: data.channelError ?? data.channelNote });
-      }
-    } catch {
-      setResult({ ok: false, note: "Network error. Please try again." });
-    }
-    setSending(false);
-  };
-
-  return (
-    <Modal onClose={onClose}>
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="font-bold text-[#111111]">Message {apt.name}</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              via {apt.channel} · {apt.phone || "no phone on file"}
-              {apt.phoneUnconfirmed && <span title="No country code confirmed for this number" className="ml-1 text-amber-600 font-semibold">(unconfirmed)</span>}
-            </p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6]">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-
-        {!apt.conversationId && (
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 mb-4">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5"><circle cx="7" cy="7" r="6" stroke="#D97706" strokeWidth="1.3"/><path d="M7 4.5v3M7 9.5h.01" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/></svg>
-            <p className="text-xs text-amber-800 ">This appointment isn&apos;t linked to a real conversation, so there&apos;s no channel to deliver a message through.</p>
-          </div>
-        )}
-
-        {result && (
-          <div className={`p-3 rounded-xl mb-4 text-xs ${result.ok ? "bg-green-50 border border-green-200 text-green-800 " : "bg-red-50 border border-red-200 text-red-700 "}`}>
-            {result.ok ? (result.note ? result.note : "Sent.") : result.note}
-          </div>
-        )}
-
-        <div className="space-y-2 mb-3">
-          {SUGGESTIONS.map((s, i) => (
-            <button key={i} onClick={() => setText(s)}
-              className="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35]/40 hover:bg-[#FFF5F0] transition-all line-clamp-2">
-              {s}
-            </button>
-          ))}
-        </div>
-        <textarea ref={ta} value={text} onChange={(e) => setText(e.target.value)}
-          placeholder="Or write a custom message…" rows={4} disabled={!apt.conversationId}
-          className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50 resize-none mb-4 disabled:opacity-50" />
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">
-            {result?.ok ? "Done" : "Cancel"}
-          </button>
-          <button onClick={handleSend} disabled={!text.trim() || !apt.conversationId || sending}
-            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
-            style={{ background: "var(--vp-color)" }}>
-            {sending ? "Sending…" : "Send"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function RescheduleModal({ apt, onReschedule, onClose }: { apt: Appointment; onReschedule: (date: string, time: string) => void; onClose: () => void }) {
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  return (
-    <Modal onClose={onClose}>
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h3 className="font-bold text-[#111111]">Reschedule Appointment</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">{apt.name} · {apt.service}</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#9CA3AF] hover:bg-[#F3F4F6]">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-        <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl px-4 py-3 mb-5 text-sm">
-          <p className="text-[11px] text-[#9CA3AF] mb-0.5">Current appointment</p>
-          <p className="font-semibold text-[#111111]">{apt.dateLabel} · {apt.time}</p>
-        </div>
-        <div className="space-y-4 mb-5">
-          <div>
-            <label className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">New Date</label>
-            <input type="date" min={todayISO()} value={date} onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] focus:outline-none focus:border-[#FF6B35]/50" />
-          </div>
-          <div>
-            <label className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider block mb-1.5">New Time</label>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
-              className="w-full border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm text-[#111111] focus:outline-none focus:border-[#FF6B35]/50" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm text-[#6B7280] border border-[#E5E7EB]">Cancel</button>
-          <button onClick={() => { if (date && time) onReschedule(date, time); }} disabled={!date || !time}
-            className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-40"
-            style={{ background: "var(--vp-color)" }}>
-            Confirm Reschedule
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function CancelModal({ apt, onConfirm, onClose }: { apt: Appointment; onConfirm: () => void; onClose: () => void }) {
-  return (
-    <Modal onClose={onClose}>
-      <div className="p-6">
-        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-4">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 7v4M9 13h.01M3 15h12a1.5 1.5 0 001.3-2.25L10.3 3.75a1.5 1.5 0 00-2.6 0L1.7 12.75A1.5 1.5 0 003 15z" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
-        <h3 className="font-bold text-[#111111] mb-2">Cancel appointment?</h3>
-        <p className="text-sm text-[#6B7280] leading-relaxed mb-6">
-          <span className="font-semibold text-[#111111]">{apt.name}&apos;s</span> {apt.service} on{" "}
-          <span className="font-semibold text-[#111111]">{apt.dateLabel} at {apt.time}</span> will be cancelled.
-        </p>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[#374151] border border-[#E5E7EB]">Keep it</button>
-          <button onClick={onConfirm} className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 bg-red-500">
-            Yes, Cancel
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// FIX 8 (round F): confirmation for the real soft delete -- same visual
-// pattern as CancelModal, different copy since this removes the row from
-// the normal view entirely (recoverable from Settings -> Recycle Bin),
-// unlike Cancel which just marks status and keeps it visible.
-function DeleteModal({ apt, onConfirm, onClose }: { apt: Appointment; onConfirm: () => void; onClose: () => void }) {
-  return (
-    <Modal onClose={onClose}>
-      <div className="p-6">
-        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-4">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 7v4M9 13h.01M3 15h12a1.5 1.5 0 001.3-2.25L10.3 3.75a1.5 1.5 0 00-2.6 0L1.7 12.75A1.5 1.5 0 003 15z" stroke="#DC2626" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        </div>
-        <h3 className="font-bold text-[#111111] mb-2">Delete appointment?</h3>
-        <p className="text-sm text-[#6B7280] leading-relaxed mb-6">
-          <span className="font-semibold text-[#111111]">{apt.name}&apos;s</span> {apt.service} on{" "}
-          <span className="font-semibold text-[#111111]">{apt.dateLabel} at {apt.time}</span> will be removed from this list. You can restore it from Settings → Recycle Bin.
-        </p>
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[#374151] border border-[#E5E7EB]">Keep it</button>
-          <button onClick={onConfirm} className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 bg-red-500">
-            Yes, Delete
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function SortIcon({ dir, active }: { dir: SortDir; active: boolean }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-colors ${active ? "text-[#FF6B35]" : "text-[#ddd]"}`}>
-      <path d={dir === "asc" ? "M6 9V3M3 6l3-3 3 3" : "M6 3v6M3 6l3 3 3-3"} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+function SkeletonCard({ className = "" }: { className?: string }) {
+  return <div className={`glass rounded-2xl animate-pulse ${className}`} />;
 }
 
 export default function AppointmentsPage() {
-  const [tenantId, setTenantId]       = useState<string | null>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState("");
-  const [filter, setFilter]           = useState<FilterKey>("all");
-  const [sortKey, setSortKey]         = useState<SortKey>("date");
-  const [sortDir, setSortDir]         = useState<SortDir>("asc");
-  const [modal, setModal]             = useState<{ type: "message" | "reschedule" | "cancel" | "delete"; id: string } | null>(null);
-  const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [toast, setToast]             = useState("");
-  const { isStarter, config }         = usePlan();
-  const { t }                         = useI18n();
+  const { t, locale } = useI18n();
+  const { isStarter, config } = usePlan();
+  const [data, setData] = useState<ApptPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [view, setView] = useState<View>("agenda");
+  const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [channel, setChannel] = useState<ApptChannel | "all">("all");
+  const [drawer, setDrawer] = useState<{ id: string; mode: DrawerMode } | "new" | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  const loadData = useCallback(async (tId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = getSupabase() as any;
-    // Tiered fallback: migration_v29.sql (rescheduled), migration_v30.sql
-    // (deleted_at, FIX 8 round F), and/or migration_v33.sql
-    // (leads.phone_unconfirmed, FIX 6 round P) may not have run yet in
-    // production. PostgREST rejects the WHOLE query over one unknown
-    // column/filter -- degrade tier by tier rather than showing an empty page.
-    let { data, error } = await db
-      .from("appointments")
-      .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, phone_unconfirmed, channel)")
-      .eq("tenant_id", tId)
-      .is("deleted_at", null)
-      .order("datetime", { ascending: true });
-    if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] phone_unconfirmed column missing, run migration_v33.sql. Retrying without it.");
-      ({ data, error } = await db
-        .from("appointments")
-        .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
-        .eq("tenant_id", tId)
-        .is("deleted_at", null)
-        .order("datetime", { ascending: true }));
-    }
-    if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] deleted_at column missing, run migration_v30.sql. Retrying without the filter.");
-      ({ data, error } = await db
-        .from("appointments")
-        .select("id, service_name, datetime, status, conversation_id, rescheduled, leads(name, phone, channel)")
-        .eq("tenant_id", tId)
-        .order("datetime", { ascending: true }));
-    }
-    if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] rescheduled column missing, run migration_v29.sql. Retrying without it.");
-      ({ data } = await db
-        .from("appointments")
-        .select("id, service_name, datetime, status, conversation_id, leads(name, phone, channel)")
-        .eq("tenant_id", tId)
-        .order("datetime", { ascending: true }));
-    }
-
-    type Raw = { id: string; service_name: string | null; datetime: string; status: string; conversation_id: string | null; rescheduled?: boolean; leads?: { name: string | null; phone: string | null; phone_unconfirmed?: boolean | null; channel: string | null } | null };
-    const rows: Appointment[] = ((data ?? []) as Raw[]).map((a) => {
-      const dt = new Date(a.datetime);
-      return {
-        id: a.id,
-        name: a.leads?.name ?? "Unknown",
-        phone: a.leads?.phone ?? "",
-        phoneUnconfirmed: a.leads?.phone_unconfirmed === true,
-        service: a.service_name ?? "Appointment",
-        dateLabel: formatDateLabel(dt),
-        sortDate: calcSortDate(dt),
-        time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }),
-        rawDatetime: a.datetime,
-        status: a.status,
-        channel: a.leads?.channel ?? "website",
-        conversationId: a.conversation_id,
-        rescheduled: a.rescheduled === true,
-      };
-    });
-    setAppointments(rows);
+  const load = useCallback(async () => {
+    const res = await fetch("/api/appointments");
+    if (!res.ok) throw new Error("load");
+    const payload = await res.json() as ApptPayload;
+    setData(payload);
+    return payload;
   }, []);
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const db = getSupabase() as any;
-      const { data: { user } } = await db.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      const { data: tenant } = await db.from("tenants").select("id").eq("owner_id", user.id).single();
-      if (!tenant) { setLoading(false); return; }
-      setTenantId(tenant.id);
-      await loadData(tenant.id);
-      setLoading(false);
-    })();
-  }, [loadData]);
+    load()
+      .then((payload) => {
+        const saved = localStorage.getItem(`vela_appt_view:${payload.viewKey}`);
+        if (saved === "week" || saved === "agenda") setView(saved);
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
+  }, [load]);
 
-  const flashRow = (id: string) => {
-    setHighlightId(id);
-    setTimeout(() => setHighlightId(null), 1400);
+  const chooseView = (v: View) => {
+    setView(v);
+    if (data) try { localStorage.setItem(`vela_appt_view:${data.viewKey}`, v); } catch { /* private mode */ }
   };
 
+  const all = useMemo(() => data?.appointments ?? [], [data]);
+  const today = data?.now.date ?? "";
+  const weekStart = today ? weekStartOf(today) : "";
+  const weekEnd = today ? addDays(weekStart, 6) : "";
+
+  const stats = useMemo(() => {
+    const live = all.filter((a) => a.status !== "cancelled");
+    const ai = live.filter((a) => a.channel !== "manual");
+    return {
+      today: live.filter((a) => a.date === today).length,
+      week: live.filter((a) => a.date >= weekStart && a.date <= weekEnd).length,
+      ai: ai.length,
+      split: AI_CHANNELS.map((c) => ({ channel: c, count: ai.filter((a) => a.channel === c).length })),
+    };
+  }, [all, today, weekStart, weekEnd]);
+
+  const bookingsThisMonth = useMemo(() => all.filter((a) => a.status !== "cancelled" && a.date.slice(0, 7) === today.slice(0, 7)).length, [all, today]);
+
+  const matching = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return all.filter((a) => {
+      if (channel !== "all" && a.channel !== channel) return false;
+      if (!q) return true;
+      return [a.name, a.phone, a.service].some((v) => v.toLowerCase().includes(q));
+    });
+  }, [all, search, channel]);
+
+  const { upcoming, past } = useMemo(() => {
+    const nowKey = data ? `${data.now.date}T${data.now.time}` : "";
+    const inFilter = matching.filter((a) => {
+      if (dateFilter === "today") return a.date === today;
+      if (dateFilter === "week") return a.date >= weekStart && a.date <= weekEnd;
+      if (dateFilter === "upcoming") return `${a.date}T${a.time}` >= nowKey;
+      if (dateFilter === "past") return a.date < today;
+      return true;
+    });
+    return { upcoming: inFilter.filter((a) => a.date >= today), past: inFilter.filter((a) => a.date < today) };
+  }, [matching, dateFilter, today, weekStart, weekEnd, data]);
+
   const exportCSV = () => {
-    const headers = ["Name", "Phone", "Service", "Date", "Time", "Channel", "Status"];
-    const csvRows = appointments.map((a) =>
-      [
-        `"${a.name.replace(/"/g, '""')}"`,
-        `"${a.phone}"`,
-        `"${a.service.replace(/"/g, '""')}"`,
-        `"${a.dateLabel}"`,
-        `"${a.time}"`,
-        `"${a.channel}"`,
-        `"${a.status}"`,
-      ].join(",")
-    );
-    const csv = [headers.join(","), ...csvRows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    const header = ["name", "phone", "service", "date", "time", "channel", "status"].map((k) => csvCell(t(`appointmentsV2.csv.${k}`))).join(",");
+    const lines = all.map((a) => [
+      csvCell(a.name), csvCell(a.phone, true), csvCell(a.service), csvCell(a.date), csvCell(a.time),
+      csvCell(t(`appointmentsV2.channels.${a.channel}`)), csvCell(t(`appointmentsV2.status.${a.status}`)),
+    ].join(","));
+    const url = URL.createObjectURL(new Blob([`﻿${[header, ...lines].join("\n")}`], { type: "text/csv;charset=utf-8;" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `appointments-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `appointments-${today}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
-  // FIX 6: rescheduling now does two real things instead of one -- moves
-  // the appointment AND actually tells the customer, instead of silently
-  // changing a time they were never informed of. Status goes back to
-  // "pending" (not "confirmed") because the NEW time hasn't actually been
-  // agreed by the customer yet -- it only becomes real once they reply, and
-  // ai/reply/route.ts's pending-confirmation handling (section 6b) is what
-  // turns their "yes" into a real confirmed status, or flags the owner if
-  // they decline/ask for another time. Reuses the exact same delivery path
-  // as the Send button above (POST /api/conversations/[id]/reply) -- no new
-  // send mechanism, just a different message.
-  const handleReschedule = async (date: string, time: string) => {
-    if (!modal || !tenantId) return;
-    const id = modal.id;
-    const apt = appointments.find((a) => a.id === id);
-    setModal(null);
-    const newDatetime = new Date(`${date}T${time}`).toISOString();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = getSupabase() as any;
-    const { error } = await db.from("appointments").update({ datetime: newDatetime, status: "pending", rescheduled: true }).eq("id", id);
-    let rescheduledFlagSaved = !error;
-    if (error?.code === "PGRST204" || error?.code === "42703") {
-      console.warn("[appointments] rescheduled column missing, run migration_v29.sql. Retrying without it.");
-      await db.from("appointments").update({ datetime: newDatetime, status: "pending" }).eq("id", id);
-      rescheduledFlagSaved = false;
-    }
-    setAppointments((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const dt = new Date(newDatetime);
-        return { ...a, dateLabel: formatDateLabel(dt), sortDate: calcSortDate(dt), time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }), rawDatetime: newDatetime, status: "pending", rescheduled: rescheduledFlagSaved || a.rescheduled };
-      })
-    );
-    flashRow(id);
-
-    if (apt?.conversationId) {
-      const dt = new Date(newDatetime);
-      const dateLabel = formatDateLabel(dt);
-      const timeLabel = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-      const proposal = `Hi ${apt.name.split(" ")[0]}, we'd like to move your ${apt.service} to ${dateLabel} at ${timeLabel}. Does that work for you? Reply to confirm or let us know if another time is better.`;
-      try {
-        await fetch(`/api/conversations/${apt.conversationId}/reply`, {
+  const runAction = async (appt: Appt, action: string, extra?: { date: string; time: string }): Promise<string | null> => {
+    setBusyId(appt.id);
+    try {
+      const res = await fetch(`/api/appointments/${appt.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...extra }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        return body.error ?? "save_failed";
+      }
+      // A chat customer hears about the new time and can answer in the same thread.
+      if (action === "reschedule" && extra && appt.conversationId) {
+        const whenDay = fmtDay(extra.date, "en", { weekday: "short", day: "numeric", month: "short" });
+        const proposal = `Hi ${appt.name.split(" ")[0]}, we'd like to move your ${appt.service} to ${whenDay} at ${fmtTime(extra.time, "en")}. Does that work for you? Reply to confirm or let us know if another time is better.`;
+        await fetch(`/api/conversations/${appt.conversationId}/reply`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: proposal }),
-        });
-      } catch (err) {
-        console.error("[appointments] failed to send reschedule proposal:", err);
+        }).catch(() => {});
       }
+      await load().catch(() => {});
+      setDrawer(null);
+      setToast({ msg: t(`appointmentsV2.toast.${action}`), type: "success" });
+      return null;
+    } catch {
+      return "save_failed";
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const handleConfirm = async (id: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabase() as any).from("appointments").update({ status: "confirmed" }).eq("id", id);
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "confirmed" } : a)));
-    flashRow(id);
-  };
-
-  // FIX 6 (round K second follow-up): a cancelled appointment previously had
-  // no way back to active except a full reschedule (which also changes the
-  // date/time -- not what's needed when the owner just wants to undo an
-  // accidental or premature cancellation). Reactivate sets it back to
-  // pending -- the same "needs confirmation" state a fresh or rescheduled
-  // booking starts in -- without touching the date/time at all.
-  const handleReactivate = async (id: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabase() as any).from("appointments").update({ status: "pending" }).eq("id", id);
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "pending" } : a)));
-    flashRow(id);
-  };
-
-  const handleCancel = async () => {
-    if (!modal) return;
-    const id = modal.id;
-    setModal(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (getSupabase() as any).from("appointments").update({ status: "cancelled" }).eq("id", id);
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a)));
-    flashRow(id);
-  };
-
-  // FIX 8 (round F): soft delete -- moves the appointment to the Recycle
-  // Bin (Settings) instead of just marking it "Cancelled" (which stayed
-  // visible in the normal list). Only ever sets deleted_at; never removes
-  // the row itself.
-  const handleDelete = async () => {
-    if (!modal) return;
-    const id = modal.id;
-    setModal(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (getSupabase() as any).from("appointments").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-    if (error) { setToast("Could not delete. Please try again."); return; }
-    setAppointments((prev) => prev.filter((a) => a.id !== id));
-    setToast("Appointment moved to Recycle Bin");
-  };
-
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("asc"); }
-  };
-
-  const rows = useMemo(() => {
-    let data = [...appointments];
-    if (filter === "today")    data = data.filter((a) => a.sortDate === 0);
-    if (filter === "week")     data = data.filter((a) => a.sortDate >= 0 && a.sortDate <= 6);
-    if (filter === "upcoming") data = data.filter((a) => a.sortDate >= 1);
-    if (filter === "past")     data = data.filter((a) => a.sortDate < 0);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      data = data.filter((a) => a.name.toLowerCase().includes(q) || a.service.toLowerCase().includes(q) || a.channel.toLowerCase().includes(q) || a.status.toLowerCase().includes(q));
+  const onRowAction = (appt: Appt, action: RowAction) => {
+    if (action === "confirm") {
+      runAction(appt, "confirm").then((problem) => { if (problem) setToast({ msg: t(`appointmentsV2.errors.${problem}`), type: "error" }); });
+      return;
     }
-    data.sort((a, b) => {
-      let va: string | number = "";
-      let vb: string | number = "";
-      if (sortKey === "name")    { va = a.name;     vb = b.name; }
-      if (sortKey === "phone")   { va = a.phone;    vb = b.phone; }
-      if (sortKey === "service") { va = a.service;  vb = b.service; }
-      if (sortKey === "date")    { va = a.sortDate; vb = b.sortDate; }
-      if (sortKey === "channel") { va = a.channel;  vb = b.channel; }
-      if (sortKey === "status")  { va = a.status;   vb = b.status; }
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return data;
-  }, [appointments, search, filter, sortKey, sortDir]);
+    setDrawer({ id: appt.id, mode: action === "open" ? "view" : action });
+  };
 
-  const confirmedToday = appointments.filter((a) => a.status === "confirmed" && a.sortDate === 0).length;
-  const bookingsThisMonth = appointments.filter((a) => {
-    const d = new Date(a.rawDatetime);
-    const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && a.status !== "cancelled";
-  }).length;
-  const modalApt = modal ? appointments.find((a) => a.id === modal.id) : null;
+  const createAppointment = async (body: Record<string, string>): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const out = await res.json().catch(() => ({})) as { error?: string };
+        return out.error ?? "save_failed";
+      }
+      await load().catch(() => {});
+      setDrawer(null);
+      setToast({ msg: t("appointmentsV2.toast.created"), type: "success" });
+      return null;
+    } catch {
+      return "save_failed";
+    }
+  };
+
+  const openAppt = drawer && drawer !== "new" ? all.find((a) => a.id === drawer.id) ?? null : null;
+  const isEmpty = !loading && !failed && all.length === 0;
+  const summary = all.length === 0
+    ? t("appointmentsV2.summaryEmpty")
+    : [
+        t("appointmentsV2.summaryToday").replace("{n}", String(stats.today)),
+        t("appointmentsV2.summaryWeek").replace("{n}", String(stats.week)),
+        t("appointmentsV2.summaryAi").replace("{n}", String(stats.ai)),
+      ].join(" · ");
+  const nothingMatches = upcoming.length === 0 && past.length === 0;
 
   return (
-    // Round M5 FIX 3: the 4 modals + Toast below used to be direct children
-    // of this SAME space-y-5 container, ahead of Header etc in JSX order --
-    // they only escaped the bug BY ACCIDENT of being first in source order
-    // (Tailwind's space-y-* skips the first child), which breaks the moment
-    // any of them render while something else is also mounted before them,
-    // or if this ordering ever changes. Same real bug confirmed live on
-    // leads/page.tsx's LeadDetailModal (a stray marginTop from space-y-5
-    // pushed a "fixed inset-0" backdrop down from the true viewport top,
-    // leaving the header undimmed) -- fixed the same way: space-y-5 scoped
-    // to an inner wrapper around only the normal-flow content, modals/toast
-    // kept as true siblings of the page root so they can never inherit it.
-    <div className="max-w-7xl mx-auto pb-20">
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#111827]">{t("appointments.title")}</h1>
-          <div className="flex items-center flex-wrap gap-3 mt-1">
-            {!loading && <span className="text-sm font-semibold text-green-600 ">{confirmedToday} {t("appointments.confirmedToday")}</span>}
-            {!loading && isStarter && (
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                bookingsThisMonth >= config.bookingsPerMonth
-                  ? "bg-red-50 text-red-600 "
-                  : bookingsThisMonth >= config.bookingsPerMonth * 0.8
-                  ? "bg-yellow-50 text-yellow-700 "
-                  : "bg-[#F3F4F6] text-[#6B7280]"
-              }`}>
-                {bookingsThisMonth} / {config.bookingsPerMonth} {t("appointments.bookingCounter")}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={exportCSV}
-            disabled={appointments.length === 0}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl border border-[#E5E7EB] text-[#6B7280] bg-white hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all min-h-[40px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#E5E7EB] disabled:hover:text-[#6B7280]">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1v8M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Export CSV
-          </button>
-          <button
-            disabled
-            title="Appointments are created automatically when customers book through your AI"
-            className="text-xs font-bold px-4 py-2.5 rounded-xl text-white opacity-40 cursor-not-allowed min-h-[40px]"
-            style={{ background: "var(--vp-color)" }}>
-            + New Appointment
-          </button>
-        </div>
-      </div>
+    <div className="max-w-6xl mx-auto pb-24 relative">
+      <GlassBlobs variant="spread" />
+      <div className="relative z-10 space-y-5">
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <input type="text" placeholder="Search by name, service, channel…" value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-[#E5E7EB] rounded-xl text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/40" />
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
-            <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {FILTER_KEYS.map((key) => (
-            <button key={key} onClick={() => setFilter(key)}
-              className={`text-xs font-semibold px-3.5 py-2 rounded-lg transition-all min-h-[36px] capitalize ${
-                filter === key ? "text-white" : "bg-white border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35]/40 hover:text-[#FF6B35]"
-              }`}
-              style={filter === key ? { background: "var(--vela-gradient)" } : {}}>
-              {t(`appointments.filters.${key}`)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table, always rendered; empty state lives inside */}
-      {(
-        <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px]">
-              <thead>
-                <tr className="border-b border-[#E5E7EB] bg-[#FAFAFA]">
-                  <th className="w-10 pl-5 pr-3 py-3.5 text-left">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">#</span>
-                  </th>
-                  {SORT_COL_KEYS.map((col) => (
-                    <th key={col.key} className={`text-left py-3.5 pr-4 ${col.width}`}>
-                      <button onClick={() => handleSort(col.key)}
-                        className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#6B7280] hover:text-[#111827]">
-                        {col.label}
-                        <SortIcon dir={sortKey === col.key ? sortDir : "asc"} active={sortKey === col.key} />
-                      </button>
-                    </th>
-                  ))}
-                  <th className="text-left py-3.5 pr-5 min-w-[200px]">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  [1, 2, 3, 4, 5].map((i) => (
-                    <tr key={i} className="border-b border-[#E5E7EB] animate-pulse">
-                      <td className="pl-5 pr-3 py-4"><div className="h-2.5 bg-[#F3F4F6] rounded w-4" /></td>
-                      {[1, 2, 3, 4, 5, 6].map((j) => (
-                        <td key={j} className="py-4 pr-4"><div className="h-2.5 bg-[#F3F4F6] rounded w-24" /></td>
-                      ))}
-                      <td className="py-4 pr-5"><div className="h-2.5 bg-[#F3F4F6] rounded w-32" /></td>
-                    </tr>
-                  ))
-                ) : rows.length === 0 && appointments.length === 0 ? (
-                  <tr>
-                    <td colSpan={8}>
-                      <div className="flex flex-col items-center gap-3 py-14 text-center">
-                        <div className="w-11 h-11 rounded-2xl bg-[#F3F4F6] flex items-center justify-center">
-                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="16" height="15" rx="2" stroke="#9CA3AF" strokeWidth="1.3"/><path d="M6 2v2M14 2v2M2 7h16" stroke="#9CA3AF" strokeWidth="1.3" strokeLinecap="round"/></svg>
-                        </div>
-                        <p className="text-sm font-semibold text-[#374151]">No appointments yet. They&apos;ll appear here automatically</p>
-                        <p className="text-xs text-[#9CA3AF] max-w-xs">When customers book through your AI chat, appointments show up here in real time.</p>
-                        <Link href="/app/channels" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 mt-1" style={{ background: "var(--vp-color)" }}>
-                          Connect a channel
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-12 text-sm text-[#9CA3AF]">
-                      {filter === "past" ? "No past appointments." : "No appointments match your search."}
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((apt, i) => {
-                    const s = STATUS_CONFIG[apt.status] ?? STATUS_CONFIG.pending;
-                    const isHighlighted = highlightId === apt.id;
-                    return (
-                      <tr key={apt.id}
-                        className={`border-b border-[#E5E7EB] last:border-none transition-colors duration-500 ${
-                          isHighlighted ? "bg-[#FFF5F0]" : i % 2 === 1 ? "bg-[#FAFAFA] hover:bg-[#F3F4F6]" : "bg-white hover:bg-[#F9FAFB]"
-                        }`}>
-                        <td className="pl-5 pr-3 py-3.5"><span className="text-xs text-[#9CA3AF] font-mono">{i + 1}</span></td>
-                        <td className="py-3.5 pr-4"><p className="text-sm font-semibold text-[#111827] whitespace-nowrap">{apt.name}</p></td>
-                        <td className="py-3.5 pr-4">
-                          <span className="text-sm text-[#6B7280] whitespace-nowrap inline-flex items-center gap-1.5">
-                            {apt.phone || "No phone"}
-                            {apt.phoneUnconfirmed && (
-                              <span title="No country code confirmed for this number" className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
-                                Unconfirmed
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="py-3.5 pr-4"><span className="text-sm text-[#111827]">{apt.service}</span></td>
-                        <td className="py-3.5 pr-4">
-                          {/* FIX 1 (round I): "(Rescheduled)" now sits on its
-                              own line directly under date/time, not appended
-                              inline after the time on the same line. */}
-                          <div>
-                            <span className="text-sm whitespace-nowrap">
-                              <span className="font-semibold text-[#111827] ">{apt.dateLabel}</span>
-                              <span className="text-[#6B7280] "> · {apt.time}</span>
-                            </span>
-                            {apt.rescheduled && (
-                              <p className="text-xs text-[#6B7280] ">(Rescheduled)</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3.5 pr-4">
-                          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#F3F4F6] text-[#374151] whitespace-nowrap capitalize">{apt.channel}</span>
-                        </td>
-                        <td className="py-3.5 pr-4">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
-                            {s.label}
-                          </span>
-                        </td>
-                        <td className="py-3.5 pr-5">
-                          <div className="flex items-center gap-1">
-                            {apt.status === "pending" && (
-                              <button onClick={() => handleConfirm(apt.id)}
-                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 transition-all whitespace-nowrap min-h-[30px]">
-                                Confirm
-                              </button>
-                            )}
-                            {apt.status !== "cancelled" && (
-                              <>
-                                <button onClick={() => setModal({ type: "reschedule", id: apt.id })}
-                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all whitespace-nowrap min-h-[30px]">
-                                  Reschedule
-                                </button>
-                                <button onClick={() => setModal({ type: "cancel", id: apt.id })}
-                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-all whitespace-nowrap min-h-[30px]">
-                                  Cancel
-                                </button>
-                              </>
-                            )}
-                            {apt.status === "cancelled" && (
-                              <button onClick={() => handleReactivate(apt.id)}
-                                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50 transition-all whitespace-nowrap min-h-[30px]">
-                                Reactivate
-                              </button>
-                            )}
-                            <button onClick={() => setModal({ type: "message", id: apt.id })}
-                              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white hover:opacity-90 whitespace-nowrap min-h-[30px]"
-                              style={{ background: "var(--vela-gradient)" }}>
-                              Message
-                            </button>
-                            <button onClick={() => setModal({ type: "delete", id: apt.id })}
-                              title="Delete"
-                              className="shrink-0 w-[30px] h-[30px] flex items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-red-50 hover:text-red-500 transition-all">
-                              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                                <path d="M2.5 4h9M5.5 4V2.5h3V4M3.5 4l.5 8a1 1 0 001 1h4a1 1 0 001-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          {rows.length > 0 && (
-            <div className="px-5 py-3 border-t border-[#E5E7EB] bg-[#FAFAFA] flex items-center justify-between gap-4 flex-wrap">
-              <span className="text-xs text-[#6B7280]">
-                Showing <span className="font-semibold text-[#111827]">{rows.length}</span> appointments
-              </span>
-              <div className="flex items-center gap-1.5">
-                {["Confirmed", "Pending", "Cancelled"].map((st) => {
-                  const cfg = STATUS_CONFIG[st.toLowerCase()];
-                  const count = rows.filter((a) => a.status === st.toLowerCase()).length;
-                  return (
-                    <span key={st} className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                      {count} {st}
-                    </span>
-                  );
-                })}
-              </div>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-[#111111]">{t("appointments.title")}</h1>
+            <div className="flex items-center gap-2.5 flex-wrap mt-0.5">
+              {loading ? <div className="h-4 w-56 rounded bg-black/[0.05] animate-pulse" /> : <p data-testid="appt-summary" className="text-sm text-[#6B7280]">{summary}</p>}
+              {!loading && isStarter && Number.isFinite(config.bookingsPerMonth) && (
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] tabular-nums">
+                  <span dir="ltr">{bookingsThisMonth} / {config.bookingsPerMonth}</span> {t("appointments.bookingCounter")}
+                </span>
+              )}
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span title={all.length === 0 ? t("appointmentsV2.exportEmpty") : undefined}>
+              <button type="button" onClick={exportCSV} disabled={all.length === 0} className={`${quietBtn} h-11 px-3.5`}>
+                {Icons.download}{t("appointments.exportCsv")}
+              </button>
+            </span>
+            <button type="button" onClick={() => setDrawer("new")} disabled={loading || failed} className="btn-primary h-11 px-5 text-sm gap-1.5 disabled:opacity-60">
+              {Icons.plus}{t("appointmentsV2.newAppointment")}
+            </button>
+          </div>
+        </div>
+
+        {failed && (
+          <div className="glass rounded-2xl flex items-center gap-3 p-4">
+            <p className="text-sm text-red-700 flex-1">{t("appointmentsV2.loadFailed")}</p>
+            <button type="button" onClick={() => { setFailed(false); setLoading(true); load().catch(() => setFailed(true)).finally(() => setLoading(false)); }} className="text-xs font-bold text-red-700 px-3 h-9 border border-red-300 rounded-lg hover:bg-red-100 transition-colors">{t("dashboardV2.retry")}</button>
+          </div>
+        )}
+
+        {/* Stats: three cards, a sideways strip on phones */}
+        <div data-testid="appt-stats" className="flex gap-3 overflow-x-auto snap-x scrollbar-none -mx-4 px-4 py-0.5 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:mx-0 sm:px-0">
+          {loading ? [0, 1, 2].map((i) => <SkeletonCard key={i} className="h-[112px] min-w-[72%] sm:min-w-0" />) : (
+            <>
+              <div className="glass rounded-2xl p-4 sm:p-5 min-w-[72%] sm:min-w-0 snap-start">
+                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">{t("appointmentsV2.stats.today")}</p>
+                <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums"><CountUp value={stats.today} /></p>
+                <p className="text-[11px] text-[#9CA3AF] mt-1.5">{today ? fmtDay(today, locale, { weekday: "long", day: "numeric", month: "long" }) : ""}</p>
+              </div>
+              <div className="glass rounded-2xl p-4 sm:p-5 min-w-[72%] sm:min-w-0 snap-start">
+                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">{t("appointmentsV2.stats.week")}</p>
+                <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums"><CountUp value={stats.week} /></p>
+                <p className="text-[11px] text-[#9CA3AF] mt-1.5 tabular-nums">{today ? `${fmtDay(weekStart, locale, { day: "numeric", month: "short" })} · ${fmtDay(weekEnd, locale, { day: "numeric", month: "short" })}` : ""}</p>
+              </div>
+              <div className="glass rounded-2xl p-4 sm:p-5 min-w-[72%] sm:min-w-0 snap-start">
+                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">{t("appointmentsV2.stats.ai")}</p>
+                <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums"><CountUp value={stats.ai} /></p>
+                <div className="flex items-center gap-3 mt-1.5">
+                  {stats.split.map((s) => (
+                    <span key={s.channel} data-testid={`ai-split-${s.channel}`} className={`inline-flex items-center gap-1 text-[11px] tabular-nums ${s.count > 0 ? "text-[#374151]" : "text-[#9CA3AF] opacity-60"}`}>
+                      <ChannelBadge channel={s.channel} t={t} size={16} />{s.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
-      )}
-    </div>
 
-      {modal?.type === "message"    && modalApt && <SendModal       apt={modalApt} onClose={() => setModal(null)} />}
-      {modal?.type === "reschedule" && modalApt && <RescheduleModal apt={modalApt} onReschedule={handleReschedule} onClose={() => setModal(null)} />}
-      {modal?.type === "cancel"     && modalApt && <CancelModal     apt={modalApt} onConfirm={handleCancel}    onClose={() => setModal(null)} />}
-      {modal?.type === "delete"     && modalApt && <DeleteModal     apt={modalApt} onConfirm={handleDelete}    onClose={() => setModal(null)} />}
-      {toast && <Toast msg={toast} type={toast.startsWith("Could not") ? "error" : "success"} onDone={() => setToast("")} />}
+        {isEmpty ? (
+          <div className="glass rounded-2xl px-6 py-14 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#FFF5F0] text-[#C2410C] flex items-center justify-center mb-4">{Icons.calendar}</div>
+            <p className="text-sm font-semibold text-[#111111] max-w-md leading-relaxed">{t("appointmentsV2.emptyTitle")}</p>
+            <div className="flex items-center justify-center flex-wrap gap-2.5 mt-5">
+              {data?.phoneLinked ? (
+                <span className="inline-flex items-center gap-2 h-11 px-4 rounded-full bg-green-50 text-sm font-semibold text-green-700">
+                  <span className="w-2 h-2 rounded-full bg-green-500" aria-hidden="true" />{t("appointmentsV2.phoneLive")}
+                </span>
+              ) : (
+                <Link href="/app/ai-agent/phone" className="btn-primary h-11 px-5 text-sm">{t("appointmentsV2.setUpPhone")}</Link>
+              )}
+              <button type="button" onClick={() => setDrawer("new")} className={`${quietBtn} h-11 px-4 text-sm`}>{t("appointmentsV2.addManually")}</button>
+            </div>
+          </div>
+        ) : !failed && (
+          <>
+            {/* Toolbar */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+              <div className="glass flex items-center gap-1 rounded-xl p-1 self-start shrink-0">
+                {(["agenda", "week"] as View[]).map((v) => (
+                  <button key={v} type="button" aria-pressed={view === v} onClick={() => chooseView(v)} className={`px-3.5 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition-all ${view === v ? "text-white" : "text-[#6B7280] hover:text-[#111111]"}`} style={view === v ? { background: "var(--vela-gradient)" } : undefined}>
+                    {t(`appointmentsV2.views.${v}`)}
+                  </button>
+                ))}
+              </div>
+              <div className="relative flex-1 min-w-0 lg:max-w-xs">
+                <span className="absolute start-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]">{Icons.search}</span>
+                <input type="search" aria-label={t("appointmentsV2.search")} placeholder={t("appointmentsV2.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-10 ps-9 pe-3 text-sm bg-white/70 border border-black/[0.07] !rounded-xl text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50" />
+              </div>
+              <div className="flex items-center gap-1 flex-wrap lg:ms-auto">
+                {view === "agenda" && DATE_FILTERS.map((k) => (
+                  <button key={k} type="button" aria-pressed={dateFilter === k} onClick={() => setDateFilter(k)} className={`px-2.5 min-h-[36px] rounded-lg text-xs font-medium transition-colors ${dateFilter === k ? "bg-[#FFF5F0] text-[#C2410C]" : "text-[#6B7280] hover:text-[#111111]"}`}>
+                    {t(`appointmentsV2.filters.${k}`)}
+                  </button>
+                ))}
+                <select aria-label={t("appointmentsV2.channelFilter")} value={channel} onChange={(e) => setChannel(e.target.value as ApptChannel | "all")} className="h-9 ms-1 px-2 !rounded-lg border border-black/[0.07] bg-white/70 text-xs font-medium text-[#374151] focus:outline-none focus:border-[#FF6B35]/50">
+                  <option value="all">{t("appointmentsV2.channels.all")}</option>
+                  {CHANNELS.map((c) => <option key={c} value={c}>{t(`appointmentsV2.channels.${c}`)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {loading || !data ? (
+              <SkeletonCard className="h-[280px]" />
+            ) : view === "week" ? (
+              <WeekView rows={matching} hours={data.hours} now={data.now} locale={locale} t={t} onOpen={(a) => setDrawer({ id: a.id, mode: "view" })} />
+            ) : nothingMatches ? (
+              <div className="glass rounded-2xl px-6 py-12 text-center">
+                <p className="text-sm text-[#9CA3AF]">{t("appointmentsV2.noMatch")}</p>
+              </div>
+            ) : (
+              <AgendaView key={dateFilter} upcoming={upcoming} past={past} pastOpenByDefault={dateFilter === "past"} today={today} locale={locale} t={t} busyId={busyId} onAction={onRowAction} />
+            )}
+          </>
+        )}
+      </div>
+
+      {openAppt && drawer && drawer !== "new" && data && (
+        <AppointmentDrawer key={`${openAppt.id}:${drawer.mode}`} appt={openAppt} initialMode={drawer.mode} today={data.now.date} nowTime={data.now.time} locale={locale} t={t} onClose={() => setDrawer(null)} onAction={runAction} />
+      )}
+      {drawer === "new" && data && (
+        <NewAppointmentDrawer services={data.services} today={data.now.date} locale={locale} t={t} onClose={() => setDrawer(null)} onCreate={createAppointment} />
+      )}
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </div>
   );
 }

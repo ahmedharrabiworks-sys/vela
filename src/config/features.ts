@@ -8,3 +8,6 @@ export const MARKETING_ENABLED = false;
 export const LEADS_CRM_ENABLED = false;
 export const ANALYTICS_ENABLED = false;
 export const WEBSITE_BUILDER_ENABLED = false;
+// WhatsApp and Instagram wait for Meta approval. While false, channels that
+// are not connected show "Coming soon" and Connect stays disabled.
+export const META_CHANNELS_ENABLED = false;

@@ -621,3 +621,13 @@ canvas {
 /* Locked-feature ("Upgrade to Pro to unlock X") overlay backdrop -- Analytics,
    Marketing, and any page using the same pattern. */
 .upgrade-lock-backdrop { background: rgba(255,255,255,0.7); }
+
+/* Appointment drawer and bottom sheet: one short entrance, nothing looping. */
+@keyframes vela-sheet-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.vela-sheet { animation: vela-sheet-in .22s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .vela-sheet { animation: none; }
+}

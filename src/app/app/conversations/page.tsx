@@ -152,6 +152,7 @@ export default function ConversationsPage() {
   const [selectedCall, setSelectedCall]     = useState<CallRecord | null>(null);
   const [readCalls, setReadCalls]           = useState<Set<string>>(new Set());
   const bottomRef   = useRef<HTMLDivElement>(null);
+  const openedFromLink = useRef(false);
   const realtimeSub = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
 
   /* ── Init: get tenant + conversations ── */
@@ -262,6 +263,21 @@ export default function ConversationsPage() {
     setMessages((data ?? []) as Message[]);
     setMsgLoading(false);
   };
+
+  // Deep link from an appointment: ?open=call:<id> or ?open=conv:<id>.
+  useEffect(() => {
+    if (loading || openedFromLink.current) return;
+    const open = new URLSearchParams(window.location.search).get("open");
+    if (!open) return;
+    openedFromLink.current = true;
+    const [kind, id] = open.split(":");
+    const call = kind === "call" ? calls.find((c) => c.id === id) : undefined;
+    const conv = kind === "conv" ? conversations.find((c) => c.id === id) : undefined;
+    if (call) selectCall(call);
+    else if (conv) selectConv(conv);
+    window.history.replaceState({}, "", "/app/conversations");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, calls, conversations]);
 
   /* ── Select conversation + subscribe to realtime ── */
   const selectCall = async (call: CallRecord) => {

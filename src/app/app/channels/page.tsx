@@ -7,12 +7,14 @@ import { usePlan } from "@/lib/plans";
 import { track } from "@/lib/track";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
 import { useI18n } from "@/lib/i18n";
-import { knowledgeChecklist, parseKnowledgeBase } from "@/lib/knowledge-base";
 import ChannelAiConfigFields from "@/components/ui/ChannelAiConfigFields";
 // FIX 5 (round P): standardized on the single shared toast component --
 // this file's local copy is now that shared component, moved verbatim.
 import Toast from "@/components/ui/Toast";
-import { WEBSITE_BUILDER_ENABLED } from "@/config/features";
+import { META_CHANNELS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
+import GlassBlobs from "@/components/ui/GlassBlobs";
+import PhoneChannelCard from "@/components/dashboard/PhoneChannelCard";
+import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 
 /* ── Modal shell ── */
 function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
@@ -491,7 +493,6 @@ function ChannelsPageContent() {
     instagram: { connected: false, username: "", conversations: 0, leads: 0 },
     whatsapp:  { connected: false, phone: "", conversations: 0, bookings: 0 },
   });
-  const [showConnectMenu, setShowConnectMenu] = useState(false);
   const [website, setWebsite]       = useState<WebsiteState>({ published: false, siteUrl: null, visits: 0, conversations: 0, leads: 0 });
   // Round M FIX 12: restored Disconnect for the Website card -- this is
   // the aggregate/global switch (disconnects ALL of the tenant's connected
@@ -510,16 +511,6 @@ function ChannelsPageContent() {
   const [tenantId, setTenantId]     = useState("YOUR_TENANT_ID");
   const [loading, setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<"instagram" | "whatsapp" | null>(null);
-
-  // Phone Agent channel card: real state pulled from the same endpoints the
-  // AI Agent > Phone Number / Knowledge Base tabs already use -- never a
-  // second, invented tracking field. "Connected" requires both a
-  // provisioned Vapi number (GET /api/ai-agent/phone) AND training being
-  // complete (all 5 knowledge topics present via GET
-  // /api/ai-training, the same signal that page's own
-  // progress bar is built from).
-  const [phoneAgent, setPhoneAgent] = useState({ provisioned: false, knowledgeFilled: 0, knowledgeReady: false });
-  const [phoneAgentLoading, setPhoneAgentLoading] = useState(true);
 
   // FIX 2 (round F): per-channel AI-behavior config, lazily fetched when
   // the instagram/whatsapp "Manage" modal opens.
@@ -657,31 +648,6 @@ function ChannelsPageContent() {
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function loadPhoneAgent() {
-      try {
-        const [phoneRes, ctxRes] = await Promise.all([
-          fetch("/api/ai-agent/phone"),
-          fetch("/api/ai-training"),
-        ]);
-        const phoneData = phoneRes.ok
-          ? (await phoneRes.json() as { phoneNumber: string | null })
-          : { phoneNumber: null };
-        const check = knowledgeChecklist(parseKnowledgeBase(ctxRes.ok ? await ctxRes.json() : null));
-        if (cancelled) return;
-        setPhoneAgent({
-          provisioned: !!phoneData.phoneNumber,
-          knowledgeFilled: Object.values(check).filter(Boolean).length,
-          knowledgeReady: check.services && check.hours,
-        });
-      } catch { /* leave defaults -- reads as "not connected" */ }
-      if (!cancelled) setPhoneAgentLoading(false);
-    }
-    loadPhoneAgent();
-    return () => { cancelled = true; };
-  }, []);
-
   // Signal VelaAssistant bubble to hide on mobile when a modal is open.
   useEffect(() => {
     setBottomSheetOpen(modal !== null);
@@ -740,21 +706,10 @@ function ChannelsPageContent() {
     }
   }, [searchParams]);
 
-  const embedCode = `<script src="${appUrl}/api/embed/${tenantId}" async></script>`;
+  const embedCode = `<script src="${appUrl || (typeof window !== "undefined" ? window.location.origin : "")}/api/embed/${tenantId}" async></script>`;
 
   const connectedSocialCount = (channels.instagram.connected ? 1 : 0) + (channels.whatsapp.connected ? 1 : 0);
   const canConnectMore = !isStarter || connectedSocialCount < config.channels;
-
-  // Real, derived (never invented) Phone Agent status -- see the fetch
-  // effect above for where provisioned/knowledgeReady come from.
-  const phoneAgentTrainingComplete = phoneAgent.knowledgeReady;
-  const phoneAgentStatus: "locked" | "not_connected" | "pending" | "connected" = !config.voiceAgent
-    ? "locked"
-    : !phoneAgent.provisioned
-    ? "not_connected"
-    : phoneAgentTrainingComplete
-    ? "connected"
-    : "pending";
 
   const handleConnectClick = (ch: "instagram" | "whatsapp") => {
     if (!canConnectMore) {
@@ -813,7 +768,7 @@ function ChannelsPageContent() {
   const copyEmbed = () => {
     navigator.clipboard.writeText(embedCode).then(() => {
       setCopied(true);
-      setToast({ msg: "Embed code copied to clipboard", type: "success" });
+      setToast({ msg: t("channelsV2.website.copiedToast"), type: "success" });
       setTimeout(() => setCopied(false), 2000);
     });
   };
@@ -858,28 +813,12 @@ function ChannelsPageContent() {
     },
   ];
 
-  // FIX 4: real connected-channel list + banner, computed from actual state
-  // -- never hardcoded. "All connected" only when every channel Vela
-  // supports (Instagram, WhatsApp, Website) is genuinely connected; a
-  // partial connection (e.g. 1 of 3) simply doesn't show the banner rather
-  // than showing a misleading "All N connected" for a subset.
-  // Website swapped for Phone Agent as the third channel type for this MVP
-  // phase (see FIX 3) -- when Website Builder is re-enabled later, its own
-  // connected state can be folded back in here.
-  const connectedChannelNames = [
-    channels.instagram.connected ? "Instagram" : null,
-    channels.whatsapp.connected ? "WhatsApp" : null,
-    phoneAgentStatus === "connected" ? "your phone agent" : null,
-  ].filter((n): n is string => n !== null);
-  const allChannelsConnected = connectedChannelNames.length === 3;
-
-  const unconnectedChannels: { key: "instagram" | "whatsapp"; label: string }[] = [
-    ...(!channels.instagram.connected ? [{ key: "instagram" as const, label: t("channels.instagram.name") }] : []),
-    ...(!channels.whatsapp.connected  ? [{ key: "whatsapp"  as const, label: t("channels.whatsapp.name")  }] : []),
-  ];
+  const statLabel = (key: string) => t(`channelsV2.${key}`);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 pb-20">
+    <div className="max-w-6xl mx-auto pb-24 relative">
+      <GlassBlobs variant="spread" />
+      <div className="relative z-10 space-y-6">
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
       {modal === "instagram" && <InstagramModal onClose={() => setModal(null)} />}
       {modal === "whatsapp"  && <WhatsAppModal  onClose={() => setModal(null)} onConnect={connectWhatsApp} />}
@@ -922,260 +861,118 @@ function ChannelsPageContent() {
         />
       )}
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-[#111111]">{t("channels.title")}</h1>
-          <p className="text-sm text-[#6B7280] mt-1">{t("channels.subtitle")}</p>
-        </div>
-        {unconnectedChannels.length > 0 && (
-          <div className="relative">
-            <button onClick={() => setShowConnectMenu((v) => !v)}
-              className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
-              style={{ background: "var(--vela-gradient)" }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-              Connect Channel
-            </button>
-            {showConnectMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowConnectMenu(false)} />
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border border-[#E5E7EB] rounded-xl shadow-xl py-1 w-44">
-                  {unconnectedChannels.map((c) => (
-                    <button key={c.key} onClick={() => { setShowConnectMenu(false); handleConnectClick(c.key); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-[#374151] hover:bg-[#F9FAFB] transition-colors">
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+      <div>
+        <h1 className="text-xl font-bold text-[#111111]">{t("channels.title")}</h1>
+        <p className="text-sm text-[#6B7280] mt-0.5">{t("channels.subtitle")}</p>
       </div>
 
-      {/* Real success banner -- only when every channel is actually connected */}
-      {allChannelsConnected && (
-        <div className="flex items-center gap-3 p-4 rounded-xl border border-green-200 bg-green-50 ">
-          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5l3 3 6-6" stroke="#16A34A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      {META_CHANNELS_ENABLED && isStarter && (
+        <div className="glass-warm glass rounded-2xl flex items-center justify-between gap-4 p-4">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-[#111111]"><span dir="ltr">{connectedSocialCount}/{config.channels}</span> {t("channelsV2.starterChannels")}</p>
+            <p className="text-[11px] text-[#6B7280]">{t("channels.upgradeDesc")}</p>
           </div>
-          <p className="text-sm font-semibold text-green-800 ">
-            All 3 channels connected. Your AI agent is live across {connectedChannelNames.join(", ")}.
-          </p>
-        </div>
-      )}
-
-      {/* Plan indicator */}
-      {isStarter && (
-        <div className="flex items-center justify-between p-4 rounded-xl border border-[#FF6B35]/30 bg-[#FFF8F5]">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#FF6B35]/10 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 1.5v11M1.5 7h11" stroke="#FF6B35" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-[#111111]">Starter Plan: {connectedSocialCount}/{config.channels} social channel{config.channels > 1 ? "s" : ""}</p>
-              <p className="text-[11px] text-[#6B7280]">Upgrade to Pro to connect all 3 channels</p>
-            </div>
-          </div>
-          <button onClick={() => { router.push("/pricing"); track("upgrade_clicked", { source: "channels_banner" }); }}
-            className="text-xs font-bold px-3.5 py-2 rounded-lg text-white whitespace-nowrap hover:opacity-90"
-            style={{ background: "var(--vela-gradient)" }}>
-            Upgrade
+          <button onClick={() => { router.push("/pricing"); track("upgrade_clicked", { source: "channels_banner" }); }} className="btn-primary h-10 px-4 text-xs whitespace-nowrap">
+            {t("channelsV2.upgrade")}
           </button>
         </div>
       )}
 
-      <div className="space-y-3">
-        {/* Social channels */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 lg:row-span-2">
+          <PhoneChannelCard />
+        </div>
+
         {CHANNELS.map((ch) => {
           const isConnected = ch.key === "instagram" ? channels.instagram.connected : channels.whatsapp.connected;
-          const isLocked = isStarter && !isConnected && connectedSocialCount >= config.channels;
+          const comingSoon = !META_CHANNELS_ENABLED && !isConnected;
+          const isLocked = !comingSoon && isStarter && !isConnected && connectedSocialCount >= config.channels;
           const isDisc = disconnecting === ch.key;
-          // Real stat pairs -- only ever shown once the channel is
-          // connected (never fabricated for a disconnected channel).
           const stats = ch.key === "instagram"
-            ? [{ label: "Conversations", value: channels.instagram.conversations }, { label: "Leads", value: channels.instagram.leads }]
-            : [{ label: "Conversations", value: channels.whatsapp.conversations }, { label: "Bookings", value: channels.whatsapp.bookings }];
+            ? [{ label: statLabel("conversations"), value: channels.instagram.conversations }, { label: statLabel("leads"), value: channels.instagram.leads }]
+            : [{ label: statLabel("conversations"), value: channels.whatsapp.conversations }, { label: statLabel("bookings"), value: channels.whatsapp.bookings }];
 
           return (
-            <div key={ch.key}
-              className={`p-5 rounded-xl bg-white border transition-colors ${isLocked ? "border-[#E5E7EB] opacity-70" : "border-[#E5E7EB] hover:border-[#D1D5DB] "}`}
-            >
+            <div key={ch.key} data-testid={`channel-${ch.key}`} className="glass rounded-2xl p-4 sm:p-5 flex flex-col">
               {loading ? (
-                <div className="flex items-center gap-4 w-full animate-pulse">
-                  <div className="w-12 h-12 rounded-xl bg-[#F3F4F6]" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-2.5 bg-[#F3F4F6] rounded w-28" />
-                    <div className="h-2 bg-[#F3F4F6] rounded w-40" />
-                  </div>
-                  <div className="h-8 w-20 bg-[#F3F4F6] rounded-lg" />
+                <div className="flex items-center gap-3 animate-pulse">
+                  <div className="w-11 h-11 rounded-xl bg-[#F3F4F6]" />
+                  <div className="flex-1 space-y-2"><div className="h-2.5 bg-[#F3F4F6] rounded w-24" /><div className="h-2 bg-[#F3F4F6] rounded w-32" /></div>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-start gap-4 flex-wrap">
-                    <div className={`w-12 h-12 rounded-xl ${ch.iconBg} flex items-center justify-center shrink-0`}>
-                      {ch.icon}
-                    </div>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-11 h-11 rounded-xl ${ch.iconBg} flex items-center justify-center shrink-0 ${comingSoon ? "opacity-60" : ""}`}>{ch.icon}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-base font-bold text-[#111111] ">{ch.name}</p>
-                        {isLocked ? (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                              <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
-                              <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
-                            </svg>
-                            Pro only
-                          </span>
-                        ) : isConnected ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] ">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
-                            {t("channels.connected")}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#D1D5DB]" />
-                            {t("channels.notConnected")}
-                          </span>
-                        )}
-                      </div>
-                      {isConnected && <p className="text-xs font-mono text-[#9CA3AF] mt-0.5">{ch.connectedDesc}</p>}
-                      <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">{ch.desc}</p>
+                      <h2 className="text-sm font-bold text-[#111111]">{ch.name}</h2>
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold mt-0.5 ${isConnected ? "text-green-700" : "text-[#9CA3AF]"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-[#D1D5DB]"}`} aria-hidden="true" />
+                        {comingSoon ? t("channelsV2.comingSoon") : isLocked ? t("channelsV2.proOnly") : isConnected ? t("channels.connected") : t("channels.notConnected")}
+                      </span>
                     </div>
-                    {/* Actions -- stacked vertically to match the reference,
-                        not side by side. */}
-                    {isConnected ? (
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <button
-                          onClick={() => setModal(ch.key === "instagram" ? "instagram-settings" : "whatsapp-settings")}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors whitespace-nowrap"
-                        >
-                          Manage
-                        </button>
-                        <button
-                          onClick={() => disconnect(ch.key)}
-                          disabled={isDisc}
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FCA5A5] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors whitespace-nowrap disabled:opacity-50"
-                        >
-                          {isDisc ? "…" : t("common.disconnect")}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleConnectClick(ch.key)}
-                        className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all ${
-                          isLocked
-                            ? "border-[#E5E7EB] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                            : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                        }`}
-                      >
-                        {isLocked ? "Upgrade" : t("common.connect")}
-                      </button>
-                    )}
                   </div>
-
-                  {/* Real stat pairs -- connected channels only. */}
+                  {isConnected && <p dir="ltr" className="text-xs font-mono text-[#9CA3AF] mt-2 truncate text-start">{ch.connectedDesc}</p>}
+                  <p className="text-xs text-[#6B7280] mt-2.5 leading-relaxed">{comingSoon ? t("channelsV2.metaLine") : t(`channels.${ch.key}.desc`)}</p>
                   {isConnected && (
-                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[#F3F4F6] flex-wrap">
-                      {stats.map((s) => (
-                        <div key={s.label}>
-                          <p className="text-base font-bold text-[#111111] leading-none">{s.value.toLocaleString()}</p>
-                          <p className="text-[11px] text-[#9CA3AF] mt-1">{s.label}</p>
+                    <div className="flex items-center gap-6 mt-3 pt-3 border-t border-black/[0.06]">
+                      {stats.map((st) => (
+                        <div key={st.label}>
+                          <p className="text-base font-bold text-[#111111] leading-none tabular-nums">{st.value.toLocaleString("en-US")}</p>
+                          <p className="text-[11px] text-[#9CA3AF] mt-1">{st.label}</p>
                         </div>
                       ))}
                     </div>
                   )}
+                  <div className="mt-auto pt-3.5">
+                    {isConnected ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => setModal(ch.key === "instagram" ? "instagram-settings" : "whatsapp-settings")} className="flex-1 h-10 text-xs font-semibold rounded-lg border border-black/[0.08] bg-white text-[#374151] hover:border-[#FF6B35] hover:text-[#C2410C] transition-colors">
+                          {t("channelsV2.manage")}
+                        </button>
+                        <button onClick={() => disconnect(ch.key)} disabled={isDisc} className="flex-1 h-10 text-xs font-semibold rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
+                          {isDisc ? "…" : t("common.disconnect")}
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => handleConnectClick(ch.key)} disabled={comingSoon} className="w-full h-10 text-xs font-semibold rounded-lg border border-black/[0.08] bg-white text-[#374151] hover:border-[#FF6B35] hover:text-[#C2410C] transition-colors disabled:opacity-50 disabled:pointer-events-none">
+                        {isLocked ? t("channelsV2.upgrade") : t("common.connect")}
+                      </button>
+                    )}
+                  </div>
                 </>
               )}
             </div>
           );
         })}
 
-        {/* Phone Agent channel, deep-links to the existing setup under
-            AI Agent > Phone Number, never a new connect flow. Status is
-            derived from real provisioning + training state (see the fetch
-            effect and phoneAgentStatus above), same visual card pattern as
-            Instagram/WhatsApp/the (now-flagged-off) Website card. */}
-        <div className="p-5 rounded-xl bg-white border border-[#E5E7EB] ">
-          {phoneAgentLoading ? (
-            <div className="flex items-center gap-4 w-full animate-pulse">
-              <div className="w-12 h-12 rounded-xl bg-[#F3F4F6]" />
-              <div className="flex-1 space-y-2">
-                <div className="h-2.5 bg-[#F3F4F6] rounded w-28" />
-                <div className="h-2 bg-[#F3F4F6] rounded w-40" />
-              </div>
-              <div className="h-8 w-20 bg-[#F3F4F6] rounded-lg" />
-            </div>
-          ) : (
-            <div className="flex items-start gap-4 flex-wrap">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg,#FF6B35,#FF3366)" }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" fill="white"/>
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-base font-bold text-[#111111] ">{t("channels.phoneAgent.name")}</p>
-                  {phoneAgentStatus === "locked" ? (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <rect x="2" y="4.5" width="6" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
-                        <path d="M3.5 4.5V3a1.5 1.5 0 013 0v1.5" stroke="currentColor" strokeWidth="1.1"/>
-                      </svg>
-                      Pro only
-                    </span>
-                  ) : phoneAgentStatus === "connected" ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#ECFDF5] text-[#059669] ">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
-                      {t("channels.connected")}
-                    </span>
-                  ) : phoneAgentStatus === "pending" ? (
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 ">
-                      <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                      {t("channels.pending")}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-[#9CA3AF]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#D1D5DB]" />
-                      {t("channels.notConnected")}
-                    </span>
-                  )}
+        {/* The widget works on any website; this card is only about that. */}
+        {!WEBSITE_BUILDER_ENABLED && (
+          <div data-testid="channel-website" className="glass rounded-2xl p-4 sm:p-5 lg:col-span-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className={`w-11 h-11 rounded-xl ${channelIconBg("website")} flex items-center justify-center shrink-0`}><ChannelIcon channel="website" size={22} /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm font-bold text-[#111111]">{t("channelsV2.website.name")}</h2>
+                    {!loading && (
+                      <span data-testid="website-status" className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${website.conversations > 0 ? "text-green-700" : "text-[#9CA3AF]"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${website.conversations > 0 ? "bg-green-500" : "bg-[#D1D5DB]"}`} aria-hidden="true" />
+                        {website.conversations > 0 ? t("channelsV2.website.receiving").replace("{n}", website.conversations.toLocaleString("en-US")) : t("channelsV2.website.noChats")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">{t("channelsV2.website.desc")}</p>
                 </div>
-                {phoneAgentStatus === "pending" && (
-                  <p className="text-xs font-mono text-[#9CA3AF] mt-0.5">
-                    {t("agentUi.kb.progress").replace("{n}", String(phoneAgent.knowledgeFilled))}
-                  </p>
-                )}
-                <p className="text-sm text-[#6B7280] mt-1.5 leading-relaxed">{t("channels.phoneAgent.desc")}</p>
               </div>
-
-              {phoneAgentStatus === "locked" ? (
-                <button
-                  onClick={() => { router.push("/pricing"); track("upgrade_clicked", { source: "channels_phone_agent" }); }}
-                  className="text-xs font-bold px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#9CA3AF] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all shrink-0"
-                >
-                  Upgrade
-                </button>
-              ) : (
-                <Link
-                  href="/app/ai-agent/phone"
-                  className={`text-xs font-bold px-4 py-2 rounded-lg border shrink-0 transition-all whitespace-nowrap ${
-                    phoneAgentStatus === "not_connected"
-                      ? "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                      : "border-[#E5E7EB] text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35]"
-                  }`}
-                >
-                  {phoneAgentStatus === "not_connected" ? t("common.connect") : "Manage"}
-                </Link>
-              )}
+              <button onClick={copyEmbed} disabled={loading} className="h-11 px-4 shrink-0 text-xs font-semibold rounded-lg border border-black/[0.08] bg-white text-[#374151] hover:border-[#FF6B35] hover:text-[#C2410C] transition-colors disabled:opacity-50 w-full sm:w-auto">
+                {copied ? t("channelsV2.website.copied") : t("channelsV2.website.copy")}
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
+      <div className="space-y-3">
         {/* Website channel, tied to Website Builder, fully optional.
             Hidden for this MVP phase (WEBSITE_BUILDER_ENABLED=false) --
             code, state, and handlers below are untouched so re-enabling is
@@ -1384,6 +1181,7 @@ function ChannelsPageContent() {
           </div>
         </Modal>
       )}
+      </div>
     </div>
   );
 }

@@ -1667,5 +1667,179 @@
       "voicemail": "Voicemail",
       "failed": "Failed"
     }
+  },
+  "appointmentsV2": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "past": "Past",
+    "rescheduled": "Rescheduled",
+    "noName": "No name",
+    "noPhone": "No phone",
+    "summaryEmpty": "Nothing booked yet",
+    "summaryToday": "{n} today",
+    "summaryWeek": "{n} this week",
+    "summaryAi": "{n} booked by your AI",
+    "newAppointment": "New appointment",
+    "exportEmpty": "Nothing to export yet",
+    "loadFailed": "Could not load appointments.",
+    "search": "Search name, phone or service",
+    "channelFilter": "Filter by channel",
+    "noMatch": "No appointments match these filters.",
+    "emptyTitle": "No appointments yet. Your AI books here automatically from calls and chats.",
+    "setUpPhone": "Set up your phone agent",
+    "phoneLive": "Your phone agent is live",
+    "addManually": "Add one manually",
+    "stats": {
+      "today": "Today",
+      "week": "This week",
+      "ai": "Booked by AI"
+    },
+    "views": {
+      "agenda": "Agenda",
+      "week": "Week"
+    },
+    "filters": {
+      "all": "All",
+      "today": "Today",
+      "week": "This week",
+      "upcoming": "Upcoming",
+      "past": "Past"
+    },
+    "channels": {
+      "all": "All channels",
+      "phone": "Phone",
+      "website": "Website chat",
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "manual": "Added by you"
+    },
+    "status": {
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "cancelled": "Cancelled",
+      "completed": "Completed",
+      "no_show": "No-show"
+    },
+    "actions": {
+      "confirm": "Confirm",
+      "reschedule": "Reschedule",
+      "cancel": "Cancel",
+      "call": "Call",
+      "close": "Close",
+      "back": "Back",
+      "keep": "Keep it",
+      "saveNewTime": "Save new time",
+      "confirmCancel": "Yes, cancel it",
+      "complete": "Mark completed",
+      "noShow": "Mark no-show",
+      "reactivate": "Reactivate",
+      "remove": "Move to Recycle Bin",
+      "confirmRemove": "Yes, move it",
+      "addAppointment": "Add appointment"
+    },
+    "drawer": {
+      "current": "Now",
+      "service": "Service",
+      "channel": "Booked through",
+      "time": "Date and time",
+      "phone": "Phone",
+      "phoneUnconfirmed": "Country code not confirmed",
+      "notes": "Notes",
+      "fromCall": "From a phone call",
+      "fromChat": "From a conversation",
+      "openCall": "Open the call",
+      "openChat": "Open the conversation",
+      "cancelPrompt": "This appointment will be cancelled.",
+      "removePrompt": "It leaves this list. You can restore it from Settings, Recycle Bin."
+    },
+    "form": {
+      "name": "Customer name",
+      "phone": "Phone (optional)",
+      "service": "Service",
+      "otherService": "Other service",
+      "date": "Date",
+      "time": "Time",
+      "notes": "Notes (optional)",
+      "closedDay": "You are closed on this day.",
+      "noSlots": "No free times on this day."
+    },
+    "week": {
+      "previous": "Previous week",
+      "next": "Next week",
+      "thisWeek": "This week",
+      "closed": "Closed",
+      "nothingBooked": "Nothing booked",
+      "noHours": "We could not read your opening hours, so every day is shown as open.",
+      "addHours": "Add them in the Knowledge Base"
+    },
+    "errors": {
+      "past": "That time has already passed. Pick a later one.",
+      "closed": "You are closed on that day.",
+      "outside_hours": "That time is outside your opening hours.",
+      "conflict": "That time was just taken. Pick another one.",
+      "invalid": "Please check the details and try again.",
+      "invalid_phone": "That phone number does not look right.",
+      "bad_state": "This appointment has already changed. Refresh and try again.",
+      "not_started": "This appointment has not happened yet.",
+      "not_found": "This appointment no longer exists.",
+      "needs_migration": "Completed and no-show need one database update first.",
+      "save_failed": "Could not save. Please try again."
+    },
+    "toast": {
+      "confirm": "Appointment confirmed",
+      "cancel": "Appointment cancelled",
+      "reschedule": "New time saved",
+      "complete": "Marked as completed",
+      "no_show": "Marked as no-show",
+      "reactivate": "Appointment reactivated",
+      "remove": "Moved to Recycle Bin",
+      "created": "Appointment added"
+    },
+    "csv": {
+      "name": "Name",
+      "phone": "Phone",
+      "service": "Service",
+      "date": "Date",
+      "time": "Time",
+      "channel": "Channel",
+      "status": "Status"
+    }
+  },
+  "channelsV2": {
+    "live": "Live",
+    "needsSetup": "Needs setup",
+    "issue": "Issue",
+    "loadFailed": "Could not load the phone status.",
+    "customersCall": "Customers call",
+    "noNumber": "No number linked yet",
+    "callsThisWeek": "Calls this week",
+    "minutesUsed": "Minutes used",
+    "lastCall": "Last call",
+    "noCalls": "No calls yet",
+    "manage": "Manage",
+    "setUp": "Set up",
+    "upgrade": "Upgrade",
+    "proOnly": "Pro only",
+    "comingSoon": "Coming soon",
+    "metaLine": "Available once Meta approval is complete",
+    "starterChannels": "channels on the Starter plan",
+    "conversations": "Conversations",
+    "leads": "Leads",
+    "bookings": "Bookings",
+    "reasons": {
+      "plan": "The phone agent is not included in your current plan.",
+      "webhook": "The call connection is not fully set up.",
+      "number_missing": "Your phone line could not be found.",
+      "service": "The phone service is not responding right now."
+    },
+    "website": {
+      "name": "Website chat",
+      "desc": "Add your AI to any website with one line of code.",
+      "noChats": "No chats yet",
+      "receiving": "{n} chats so far",
+      "copy": "Copy embed code",
+      "copied": "Copied",
+      "copiedToast": "Embed code copied"
+    }
   }
 }
