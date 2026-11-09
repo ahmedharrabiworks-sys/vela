@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePlan } from "@/lib/plans";
@@ -14,7 +14,6 @@ import Toast from "@/components/ui/Toast";
 import { META_CHANNELS_ENABLED, WEBSITE_BUILDER_ENABLED } from "@/config/features";
 import GlassBlobs from "@/components/ui/GlassBlobs";
 import PhoneChannelCard from "@/components/dashboard/PhoneChannelCard";
-import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 
 /* ── Modal shell ── */
 function Modal({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
@@ -502,13 +501,9 @@ function ChannelsPageContent() {
   // one is destructive across every site at once).
   const [showWebsiteDisconnectConfirm, setShowWebsiteDisconnectConfirm] = useState(false);
   const [disconnectingWebsite, setDisconnectingWebsite] = useState(false);
-  const [showEmbed, setShowEmbed]   = useState(false);
-  const embedSectionRef             = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [modal, setModal]           = useState<"instagram" | "whatsapp" | "instagram-settings" | "whatsapp-settings" | null>(null);
   const [toast, setToast]           = useState<{ msg: string; type?: "success" | "error" | "info" } | null>(null);
-  const [copied, setCopied]         = useState(false);
-  const [tenantId, setTenantId]     = useState("YOUR_TENANT_ID");
   const [loading, setLoading]       = useState(true);
   const [disconnecting, setDisconnecting] = useState<"instagram" | "whatsapp" | null>(null);
 
@@ -538,7 +533,6 @@ function ChannelsPageContent() {
         .single();
 
       if (!tenant) { setLoading(false); return; }
-      setTenantId(tenant.id as string);
 
       const { data: cfg } = await s
         .from("tenant_config")
@@ -706,8 +700,6 @@ function ChannelsPageContent() {
     }
   }, [searchParams]);
 
-  const embedCode = `<script src="${appUrl || (typeof window !== "undefined" ? window.location.origin : "")}/api/embed/${tenantId}" async></script>`;
-
   const connectedSocialCount = (channels.instagram.connected ? 1 : 0) + (channels.whatsapp.connected ? 1 : 0);
   const canConnectMore = !isStarter || connectedSocialCount < config.channels;
 
@@ -763,14 +755,6 @@ function ChannelsPageContent() {
       setToast({ msg: "Failed to disconnect. Please try again.", type: "error" });
     }
     setDisconnectingWebsite(false);
-  };
-
-  const copyEmbed = () => {
-    navigator.clipboard.writeText(embedCode).then(() => {
-      setCopied(true);
-      setToast({ msg: t("channelsV2.website.copiedToast"), type: "success" });
-      setTimeout(() => setCopied(false), 2000);
-    });
   };
 
   // FIX 2 (round O): real connect/disconnect/reconnect + the AI-assistant-
@@ -945,31 +929,6 @@ function ChannelsPageContent() {
           );
         })}
 
-        {/* The widget works on any website; this card is only about that. */}
-        {!WEBSITE_BUILDER_ENABLED && (
-          <div data-testid="channel-website" className="glass rounded-2xl p-4 sm:p-5 lg:col-span-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className={`w-11 h-11 rounded-xl ${channelIconBg("website")} flex items-center justify-center shrink-0`}><ChannelIcon channel="website" size={22} /></div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-sm font-bold text-[#111111]">{t("channelsV2.website.name")}</h2>
-                    {!loading && (
-                      <span data-testid="website-status" className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${website.conversations > 0 ? "text-green-700" : "text-[#9CA3AF]"}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${website.conversations > 0 ? "bg-green-500" : "bg-[#D1D5DB]"}`} aria-hidden="true" />
-                        {website.conversations > 0 ? t("channelsV2.website.receiving").replace("{n}", website.conversations.toLocaleString("en-US")) : t("channelsV2.website.noChats")}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">{t("channelsV2.website.desc")}</p>
-                </div>
-              </div>
-              <button onClick={copyEmbed} disabled={loading} className="h-11 px-4 shrink-0 text-xs font-semibold rounded-lg border border-black/[0.08] bg-white text-[#374151] hover:border-[#FF6B35] hover:text-[#C2410C] transition-colors disabled:opacity-50 w-full sm:w-auto">
-                {copied ? t("channelsV2.website.copied") : t("channelsV2.website.copy")}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="space-y-3">
@@ -1085,63 +1044,6 @@ function ChannelsPageContent() {
             </div>
           )}
 
-          {/* Connect an existing external website, separate, optional, collapsed by default.
-              Also the real target of the "Manage" button above. */}
-          <div ref={embedSectionRef} className="mt-4 pt-4 border-t border-[#F3F4F6]">
-            <button
-              onClick={() => setShowEmbed((v) => !v)}
-              className="flex items-center justify-between w-full text-left"
-            >
-              <div>
-                <p className="text-xs font-semibold text-[#111111]">Have your own website?</p>
-                <p className="text-[11px] text-[#6B7280] mt-0.5">Paste one line of code to add the same AI assistant to any existing site.</p>
-              </div>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`shrink-0 ml-3 transition-transform ${showEmbed ? "rotate-180" : ""}`}>
-                <path d="M2.5 4.5l3.5 3.5 3.5-3.5" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {showEmbed && (
-              <div className="mt-4">
-                <p className="text-xs text-[#6B7280] leading-relaxed mb-4">
-                  If your website was built somewhere other than Vela, such as Wix, Squarespace, Shopify, or WordPress, you can still add the same AI assistant to it. Most website builders have a section in their settings called something like Custom Code, Embed, or Tracking Code where a snippet like this one can be pasted. If someone else built or manages your website, you can simply forward this code to them. It usually takes about 2 minutes to add, and no coding experience is needed.
-                </p>
-
-                <div className="space-y-3 mb-4">
-                  {[
-                    { n: 1, text: "Copy the code below" },
-                    { n: 2, text: "Paste it into your website's custom code or embed section, or send it to whoever manages your site" },
-                    { n: 3, text: "Your AI assistant appears as a chat bubble in the bottom right corner of your site" },
-                  ].map((s) => (
-                    <div key={s.n} className="flex items-start gap-3">
-                      <span className="w-6 h-6 rounded-full bg-[#FF6B35]/10 text-[#FF6B35] text-[11px] font-bold flex items-center justify-center shrink-0">{s.n}</span>
-                      <p className="text-xs text-[#374151] leading-relaxed pt-0.5">{s.text}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="relative mb-4">
-                  <div className="bg-[#111111] rounded-xl p-4 font-mono text-xs text-[#FF6B35] overflow-x-auto leading-relaxed pr-24">
-                    {embedCode}
-                  </div>
-                  <button
-                    onClick={copyEmbed}
-                    className="absolute top-2.5 right-2.5 flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition-all"
-                    style={{
-                      background: copied ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.08)",
-                      color: copied ? "#16A34A" : "rgba(255,255,255,0.6)",
-                    }}
-                  >
-                    {copied ? (
-                      <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>{t("common.copied")}</>
-                    ) : (
-                      <><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="3.5" y="3.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.1"/><path d="M3.5 3.5V2.5a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H6.5" stroke="currentColor" strokeWidth="1.1"/></svg>{t("common.copy")} Code</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
         )}
       </div>

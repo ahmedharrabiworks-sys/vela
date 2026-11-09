@@ -4,7 +4,8 @@ import { ensureTenant } from "@/lib/ensure-tenant";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { getUsageSummary } from "@/lib/usage";
 import { probeVapiWallet } from "@/lib/vapi-health";
-import { getVapiServerConfig, resolveTenantTimezone, wallClockNow } from "@/lib/vapi-webhook";
+import { getVapiServerConfig, resolveTenantTimezone, samePhoneLine, wallClockNow } from "@/lib/vapi-webhook";
+import { formatPhoneForDisplay } from "@/lib/phone-validate";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,7 @@ export async function GET() {
   const planId = ((row?.plan as string | undefined) ?? "starter").toLowerCase() as PlanId;
   const plan = PLAN_CONFIG[planId] ?? PLAN_CONFIG.starter;
   const linked = (cfg?.vapi_phone_number as string | null) ?? null;
+  const saved = ((row?.phone as string | null) ?? "").trim();
 
   let settings: Record<string, any> = {};
   try {
@@ -81,8 +83,8 @@ export async function GET() {
     status: !linked ? "needs_setup" : reason ? "issue" : "live",
     reason,
     voicePlan: plan.voiceAgent,
-    // Customers dial the business's own number, which forwards to the linked line.
-    number: (row?.phone as string | null) || linked,
+    // Only ever the number the business forwards from, never the hidden bridge.
+    businessNumber: saved && !samePhoneLine(saved, linked) ? formatPhoneForDisplay(saved) : null,
     callsThisWeek: callsThisWeek ?? 0,
     minutes: { used: usage.voiceMinutesUsed, limit },
     lastCallAt: (last?.created_at as string | undefined) ?? null,

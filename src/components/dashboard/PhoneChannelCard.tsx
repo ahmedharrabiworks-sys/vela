@@ -10,7 +10,7 @@ interface PhoneStatus {
   status: "live" | "needs_setup" | "issue";
   reason: "plan" | "webhook" | "number_missing" | "service" | null;
   voicePlan: boolean;
-  number: string | null;
+  businessNumber: string | null;
   callsThisWeek: number;
   minutes: { used: number; limit: number | null };
   lastCallAt: string | null;
@@ -79,10 +79,10 @@ export default function PhoneChannelCard() {
           )}
           <div className="mt-6">
             <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1">{t("channelsV2.customersCall")}</p>
-            {data.status === "needs_setup" ? (
-              <p className="text-sm text-[#6B7280]">{t("channelsV2.noNumber")}</p>
+            {data.businessNumber ? (
+              <p data-testid="phone-number" dir="ltr" className="text-[26px] sm:text-[32px] font-bold text-[#111111] leading-tight tabular-nums text-start">{data.businessNumber}</p>
             ) : (
-              <p data-testid="phone-number" dir="ltr" className="text-[26px] sm:text-[32px] font-bold text-[#111111] leading-tight tabular-nums text-start break-all">{data.number}</p>
+              <Link data-testid="add-business-number" href="/app/ai-agent/phone#business-number" className="inline-flex items-center min-h-[44px] text-base font-semibold text-[#C2410C] hover:underline">{t("channelsV2.addBusinessNumber")}</Link>
             )}
           </div>
 

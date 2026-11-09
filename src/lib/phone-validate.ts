@@ -23,3 +23,10 @@ export function hasConfirmedCountryCode(phone: string | null | undefined): boole
   const parsed = parsePhoneNumberFromString(normalized);
   return parsed?.isValid() === true;
 }
+
+/** "+97477202345" as "+974 7720 2345"; anything unparseable is returned as saved. */
+export function formatPhoneForDisplay(phone: string): string {
+  const trimmed = phone.trim();
+  const parsed = parsePhoneNumberFromString(/^00\d/.test(trimmed) ? `+${trimmed.slice(2)}` : trimmed);
+  return parsed?.isValid() ? parsed.formatInternational() : trimmed;
+}

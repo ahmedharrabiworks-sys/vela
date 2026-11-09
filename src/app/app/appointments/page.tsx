@@ -2,21 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePlan } from "@/lib/plans";
 import { useI18n } from "@/lib/i18n";
-import CountUp from "@/components/ui/CountUp";
 import GlassBlobs from "@/components/ui/GlassBlobs";
 import Toast from "@/components/ui/Toast";
-import AgendaView, { type RowAction } from "@/components/dashboard/appointments/AgendaView";
-import WeekView from "@/components/dashboard/appointments/WeekView";
-import { AppointmentDrawer, NewAppointmentDrawer, type DrawerMode } from "@/components/dashboard/appointments/AppointmentDrawer";
-import { ChannelBadge, Icons, addDays, fmtDay, fmtTime, quietBtn, weekStartOf, type Appt, type ApptChannel, type ApptPayload } from "@/components/dashboard/appointments/shared";
+import TimeGrid from "@/components/dashboard/appointments/TimeGrid";
+import MobileDay from "@/components/dashboard/appointments/MobileDay";
+import { FilterPopover, MiniMonth, UpNext } from "@/components/dashboard/appointments/ScheduleParts";
+import { AppointmentDrawer, NewAppointmentDrawer } from "@/components/dashboard/appointments/AppointmentDrawer";
+import { Icons, addDays, fmtDay, fmtTime, quietBtn, weekStartOf, type Appt, type ApptChannel, type ApptPayload, type ApptStatus } from "@/components/dashboard/appointments/shared";
 
-type View = "agenda" | "week";
-type DateFilter = "all" | "today" | "week" | "upcoming" | "past";
-const DATE_FILTERS: DateFilter[] = ["all", "today", "week", "upcoming", "past"];
-const CHANNELS: ApptChannel[] = ["phone", "website", "whatsapp", "instagram", "manual"];
-const AI_CHANNELS: ApptChannel[] = ["phone", "website", "whatsapp", "instagram"];
+type View = "day" | "week";
+const UP_NEXT_COUNT = 5;
+const BASE_CHANNELS: ApptChannel[] = ["phone", "whatsapp", "instagram", "manual"];
 
 // Spreadsheets run a cell that starts with these, and names come from customers.
 function csvCell(value: string, isPhone = false): string {
@@ -24,22 +21,34 @@ function csvCell(value: string, isPhone = false): string {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
-function SkeletonCard({ className = "" }: { className?: string }) {
-  return <div className={`glass rounded-2xl animate-pulse ${className}`} />;
+/** The server's wall clock, moved forward while the page stays open. */
+function useLiveNow(base: { date: string; time: string } | null) {
+  const [tick, setTick] = useState(0);
+  const [loadedAt, setLoadedAt] = useState(() => Date.now());
+  useEffect(() => { setLoadedAt(Date.now()); setTick(0); }, [base]);
+  useEffect(() => {
+    const id = setInterval(() => { if (!document.hidden) setTick((n) => n + 1); }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return useMemo(() => {
+    if (!base) return null;
+    const moved = new Date(Date.parse(`${base.date}T${base.time}:00.000Z`) + (Date.now() - loadedAt)).toISOString();
+    return { date: moved.slice(0, 10), time: moved.slice(11, 16) };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, loadedAt, tick]);
 }
 
 export default function AppointmentsPage() {
   const { t, locale } = useI18n();
-  const { isStarter, config } = usePlan();
   const [data, setData] = useState<ApptPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [view, setView] = useState<View>("agenda");
+  const [view, setView] = useState<View>("week");
+  const [anchor, setAnchor] = useState("");
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [status, setStatus] = useState<ApptStatus | "all">("all");
   const [channel, setChannel] = useState<ApptChannel | "all">("all");
-  const [drawer, setDrawer] = useState<{ id: string; mode: DrawerMode } | "new" | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<string | "new" | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   const load = useCallback(async () => {
@@ -53,8 +62,9 @@ export default function AppointmentsPage() {
   useEffect(() => {
     load()
       .then((payload) => {
+        setAnchor(payload.now.date);
         const saved = localStorage.getItem(`vela_appt_view:${payload.viewKey}`);
-        if (saved === "week" || saved === "agenda") setView(saved);
+        if (saved === "week" || saved === "day") setView(saved);
       })
       .catch(() => setFailed(true))
       .finally(() => setLoading(false));
@@ -65,44 +75,43 @@ export default function AppointmentsPage() {
     if (data) try { localStorage.setItem(`vela_appt_view:${data.viewKey}`, v); } catch { /* private mode */ }
   };
 
+  const now = useLiveNow(data?.now ?? null);
   const all = useMemo(() => data?.appointments ?? [], [data]);
-  const today = data?.now.date ?? "";
-  const weekStart = today ? weekStartOf(today) : "";
-  const weekEnd = today ? addDays(weekStart, 6) : "";
-
-  const stats = useMemo(() => {
-    const live = all.filter((a) => a.status !== "cancelled");
-    const ai = live.filter((a) => a.channel !== "manual");
-    return {
-      today: live.filter((a) => a.date === today).length,
-      week: live.filter((a) => a.date >= weekStart && a.date <= weekEnd).length,
-      ai: ai.length,
-      split: AI_CHANNELS.map((c) => ({ channel: c, count: ai.filter((a) => a.channel === c).length })),
-    };
-  }, [all, today, weekStart, weekEnd]);
-
-  const bookingsThisMonth = useMemo(() => all.filter((a) => a.status !== "cancelled" && a.date.slice(0, 7) === today.slice(0, 7)).length, [all, today]);
+  const today = now?.date ?? "";
 
   const matching = useMemo(() => {
     const q = search.trim().toLowerCase();
     return all.filter((a) => {
+      if (status !== "all" && a.status !== status) return false;
       if (channel !== "all" && a.channel !== channel) return false;
-      if (!q) return true;
-      return [a.name, a.phone, a.service].some((v) => v.toLowerCase().includes(q));
+      return !q || [a.name, a.phone, a.service].some((v) => v.toLowerCase().includes(q));
     });
-  }, [all, search, channel]);
+  }, [all, search, status, channel]);
 
-  const { upcoming, past } = useMemo(() => {
-    const nowKey = data ? `${data.now.date}T${data.now.time}` : "";
-    const inFilter = matching.filter((a) => {
-      if (dateFilter === "today") return a.date === today;
-      if (dateFilter === "week") return a.date >= weekStart && a.date <= weekEnd;
-      if (dateFilter === "upcoming") return `${a.date}T${a.time}` >= nowKey;
-      if (dateFilter === "past") return a.date < today;
-      return true;
-    });
-    return { upcoming: inFilter.filter((a) => a.date >= today), past: inFilter.filter((a) => a.date < today) };
-  }, [matching, dateFilter, today, weekStart, weekEnd, data]);
+  const upNext = useMemo(() => {
+    if (!now) return [];
+    const nowKey = `${now.date}T${now.time}`;
+    return all
+      .filter((a) => (a.status === "pending" || a.status === "confirmed") && `${a.date}T${a.time}` >= nowKey)
+      .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
+      .slice(0, UP_NEXT_COUNT);
+  }, [all, now]);
+
+  const bookedDates = useMemo(() => new Set(all.filter((a) => a.status !== "cancelled").map((a) => a.date)), [all]);
+  // Older website chat bookings stay findable; the option only exists if they do.
+  const channels = useMemo<ApptChannel[]>(() => (all.some((a) => a.channel === "website") ? [...BASE_CHANNELS, "website"] : BASE_CHANNELS), [all]);
+
+  const weekStart = anchor ? weekStartOf(anchor) : "";
+  const weekDays = useMemo(() => (weekStart ? Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)) : []), [weekStart]);
+
+  const step = (direction: 1 | -1) => {
+    const wide = window.matchMedia("(min-width: 768px)").matches;
+    setAnchor(addDays(anchor, direction * (wide && view === "week" ? 7 : 1)));
+  };
+
+  const rangeLabel = !anchor ? "" : view === "week"
+    ? `${fmtDay(weekDays[0], locale, { day: "numeric", month: "short" })} · ${fmtDay(weekDays[6], locale, { day: "numeric", month: "short" })}`
+    : fmtDay(anchor, locale, { weekday: "short", day: "numeric", month: "short" });
 
   const exportCSV = () => {
     const header = ["name", "phone", "service", "date", "time", "channel", "status"].map((k) => csvCell(t(`appointmentsV2.csv.${k}`))).join(",");
@@ -119,7 +128,6 @@ export default function AppointmentsPage() {
   };
 
   const runAction = async (appt: Appt, action: string, extra?: { date: string; time: string }): Promise<string | null> => {
-    setBusyId(appt.id);
     try {
       const res = await fetch(`/api/appointments/${appt.id}`, {
         method: "PATCH",
@@ -146,17 +154,7 @@ export default function AppointmentsPage() {
       return null;
     } catch {
       return "save_failed";
-    } finally {
-      setBusyId(null);
     }
-  };
-
-  const onRowAction = (appt: Appt, action: RowAction) => {
-    if (action === "confirm") {
-      runAction(appt, "confirm").then((problem) => { if (problem) setToast({ msg: t(`appointmentsV2.errors.${problem}`), type: "error" }); });
-      return;
-    }
-    setDrawer({ id: appt.id, mode: action === "open" ? "view" : action });
   };
 
   const createAppointment = async (body: Record<string, string>): Promise<string | null> => {
@@ -175,145 +173,82 @@ export default function AppointmentsPage() {
     }
   };
 
-  const openAppt = drawer && drawer !== "new" ? all.find((a) => a.id === drawer.id) ?? null : null;
-  const isEmpty = !loading && !failed && all.length === 0;
-  const summary = all.length === 0
-    ? t("appointmentsV2.summaryEmpty")
-    : [
-        t("appointmentsV2.summaryToday").replace("{n}", String(stats.today)),
-        t("appointmentsV2.summaryWeek").replace("{n}", String(stats.week)),
-        t("appointmentsV2.summaryAi").replace("{n}", String(stats.ai)),
-      ].join(" · ");
-  const nothingMatches = upcoming.length === 0 && past.length === 0;
+  const openAppt = drawer && drawer !== "new" ? all.find((a) => a.id === drawer) ?? null : null;
+  const showEmptyHint = !loading && all.length === 0;
+  const open = (a: Appt) => setDrawer(a.id);
+  const ready = !!(data && now && anchor);
 
   return (
-    <div className="max-w-6xl mx-auto pb-24 relative">
+    <div className="max-w-[1400px] mx-auto pb-24 relative">
       <GlassBlobs variant="spread" />
-      <div className="relative z-10 space-y-5">
+      <div className="relative z-10 space-y-4">
 
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-[#111111]">{t("appointments.title")}</h1>
-            <div className="flex items-center gap-2.5 flex-wrap mt-0.5">
-              {loading ? <div className="h-4 w-56 rounded bg-black/[0.05] animate-pulse" /> : <p data-testid="appt-summary" className="text-sm text-[#6B7280]">{summary}</p>}
-              {!loading && isStarter && Number.isFinite(config.bookingsPerMonth) && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#6B7280] tabular-nums">
-                  <span dir="ltr">{bookingsThisMonth} / {config.bookingsPerMonth}</span> {t("appointments.bookingCounter")}
-                </span>
-              )}
+        <header className="flex flex-wrap items-center gap-x-2 md:gap-x-4 gap-y-3">
+          <h1 className="text-xl font-bold text-[#111111] order-1">{t("appointments.title")}</h1>
+
+          <div className="flex items-center gap-1 order-3 md:order-2">
+            <button type="button" disabled={!anchor} onClick={() => step(-1)} aria-label={t("appointmentsV2.navigator.previous")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-10`}><span className="rotate-180 rtl:rotate-0">{Icons.chevron}</span></button>
+            <button type="button" disabled={!anchor} onClick={() => setAnchor(today)} className={`${quietBtn} h-11 md:h-10 px-3.5`}>{t("appointmentsV2.today")}</button>
+            <button type="button" disabled={!anchor} onClick={() => step(1)} aria-label={t("appointmentsV2.navigator.next")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-10`}><span className="rtl:rotate-180">{Icons.chevron}</span></button>
+            <p data-testid="range-label" className="hidden md:block ms-2 text-sm font-semibold text-[#111111] tabular-nums whitespace-nowrap">{rangeLabel}</p>
+          </div>
+
+          <div className="flex items-center gap-2 order-2 md:order-3 ms-auto">
+            <div className="hidden md:flex glass items-center gap-1 rounded-xl p-1">
+              {(["day", "week"] as View[]).map((v) => (
+                <button key={v} type="button" aria-pressed={view === v} onClick={() => chooseView(v)} className={`px-3.5 py-1 min-h-[32px] rounded-lg text-xs font-semibold transition-all ${view === v ? "text-white" : "text-[#6B7280] hover:text-[#111111]"}`} style={view === v ? { background: "var(--vela-gradient)" } : undefined}>
+                  {t(`appointmentsV2.views.${v}`)}
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span title={all.length === 0 ? t("appointmentsV2.exportEmpty") : undefined}>
-              <button type="button" onClick={exportCSV} disabled={all.length === 0} className={`${quietBtn} h-11 px-3.5`}>
-                {Icons.download}{t("appointments.exportCsv")}
-              </button>
+            <FilterPopover search={search} setSearch={setSearch} status={status} setStatus={setStatus} channel={channel} setChannel={setChannel} channels={channels} t={t} />
+            <span title={all.length === 0 ? t("appointmentsV2.exportEmpty") : t("appointments.exportCsv")}>
+              <button type="button" data-testid="export-button" onClick={exportCSV} disabled={all.length === 0} aria-label={t("appointments.exportCsv")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-10`}>{Icons.download}</button>
             </span>
-            <button type="button" onClick={() => setDrawer("new")} disabled={loading || failed} className="btn-primary h-11 px-5 text-sm gap-1.5 disabled:opacity-60">
-              {Icons.plus}{t("appointmentsV2.newAppointment")}
-            </button>
           </div>
-        </div>
+
+          <button type="button" onClick={() => setDrawer("new")} disabled={loading || failed} className="btn-primary h-11 md:h-10 px-3.5 md:px-4 text-sm gap-1.5 order-4 ms-auto md:ms-0 disabled:opacity-60">
+            {Icons.plus}{t("appointmentsV2.newAppointment")}
+          </button>
+        </header>
 
         {failed && (
           <div className="glass rounded-2xl flex items-center gap-3 p-4">
             <p className="text-sm text-red-700 flex-1">{t("appointmentsV2.loadFailed")}</p>
-            <button type="button" onClick={() => { setFailed(false); setLoading(true); load().catch(() => setFailed(true)).finally(() => setLoading(false)); }} className="text-xs font-bold text-red-700 px-3 h-9 border border-red-300 rounded-lg hover:bg-red-100 transition-colors">{t("dashboardV2.retry")}</button>
+            <button type="button" onClick={() => { setFailed(false); setLoading(true); load().then((p) => setAnchor(p.now.date)).catch(() => setFailed(true)).finally(() => setLoading(false)); }} className="text-xs font-bold text-red-700 px-3 h-9 border border-red-300 rounded-lg hover:bg-red-100 transition-colors">{t("dashboardV2.retry")}</button>
           </div>
         )}
 
-        {/* Stats: three cards, a sideways strip on phones */}
-        <div data-testid="appt-stats" className="flex gap-3 overflow-x-auto snap-x scrollbar-none -mx-4 px-4 py-0.5 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:mx-0 sm:px-0">
-          {loading ? [0, 1, 2].map((i) => <SkeletonCard key={i} className="h-[112px] min-w-[72%] sm:min-w-0" />) : (
-            <>
-              <div className="glass rounded-2xl p-4 sm:p-5 min-w-[72%] sm:min-w-0 snap-start">
-                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">{t("appointmentsV2.stats.today")}</p>
-                <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums"><CountUp value={stats.today} /></p>
-                <p className="text-[11px] text-[#9CA3AF] mt-1.5">{today ? fmtDay(today, locale, { weekday: "long", day: "numeric", month: "long" }) : ""}</p>
-              </div>
-              <div className="glass rounded-2xl p-4 sm:p-5 min-w-[72%] sm:min-w-0 snap-start">
-                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">{t("appointmentsV2.stats.week")}</p>
-                <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums"><CountUp value={stats.week} /></p>
-                <p className="text-[11px] text-[#9CA3AF] mt-1.5 tabular-nums">{today ? `${fmtDay(weekStart, locale, { day: "numeric", month: "short" })} · ${fmtDay(weekEnd, locale, { day: "numeric", month: "short" })}` : ""}</p>
-              </div>
-              <div className="glass rounded-2xl p-4 sm:p-5 min-w-[72%] sm:min-w-0 snap-start">
-                <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">{t("appointmentsV2.stats.ai")}</p>
-                <p className="text-[28px] sm:text-[32px] font-bold text-[#111111] leading-none tabular-nums"><CountUp value={stats.ai} /></p>
-                <div className="flex items-center gap-3 mt-1.5">
-                  {stats.split.map((s) => (
-                    <span key={s.channel} data-testid={`ai-split-${s.channel}`} className={`inline-flex items-center gap-1 text-[11px] tabular-nums ${s.count > 0 ? "text-[#374151]" : "text-[#9CA3AF] opacity-60"}`}>
-                      <ChannelBadge channel={s.channel} t={t} size={16} />{s.count}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        {!failed && !ready && <div className="glass rounded-2xl animate-pulse h-[560px]" />}
 
-        {isEmpty ? (
-          <div className="glass rounded-2xl px-6 py-14 flex flex-col items-center text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[#FFF5F0] text-[#C2410C] flex items-center justify-center mb-4">{Icons.calendar}</div>
-            <p className="text-sm font-semibold text-[#111111] max-w-md leading-relaxed">{t("appointmentsV2.emptyTitle")}</p>
-            <div className="flex items-center justify-center flex-wrap gap-2.5 mt-5">
-              {data?.phoneLinked ? (
-                <span className="inline-flex items-center gap-2 h-11 px-4 rounded-full bg-green-50 text-sm font-semibold text-green-700">
-                  <span className="w-2 h-2 rounded-full bg-green-500" aria-hidden="true" />{t("appointmentsV2.phoneLive")}
-                </span>
-              ) : (
-                <Link href="/app/ai-agent/phone" className="btn-primary h-11 px-5 text-sm">{t("appointmentsV2.setUpPhone")}</Link>
+        {ready && (
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_288px] gap-4 items-start">
+            <div className="min-w-0 space-y-4">
+              {!data.hours && (
+                <p className="text-xs text-[#6B7280] leading-relaxed">
+                  {t("appointmentsV2.week.noHours")}{" "}
+                  <Link href="/app/ai-agent/knowledge-base" className="font-semibold text-[#C2410C] hover:underline">{t("appointmentsV2.week.addHours")}</Link>
+                </p>
               )}
-              <button type="button" onClick={() => setDrawer("new")} className={`${quietBtn} h-11 px-4 text-sm`}>{t("appointmentsV2.addManually")}</button>
+              <div className="hidden md:block glass rounded-2xl overflow-hidden">
+                <TimeGrid days={view === "week" ? weekDays : [anchor]} rows={matching} hours={data.hours} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} variant={view} />
+              </div>
+              <MobileDay anchor={anchor} onAnchor={setAnchor} rows={matching} hours={data.hours} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} />
+              <div className="xl:hidden"><UpNext rows={upNext} today={today} locale={locale} t={t} onOpen={open} /></div>
             </div>
+            <aside className="hidden xl:block space-y-4">
+              <UpNext rows={upNext} today={today} locale={locale} t={t} onOpen={open} />
+              <MiniMonth anchor={anchor} today={today} bookedDates={bookedDates} locale={locale} t={t} onPick={setAnchor} />
+            </aside>
           </div>
-        ) : !failed && (
-          <>
-            {/* Toolbar */}
-            <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-              <div className="glass flex items-center gap-1 rounded-xl p-1 self-start shrink-0">
-                {(["agenda", "week"] as View[]).map((v) => (
-                  <button key={v} type="button" aria-pressed={view === v} onClick={() => chooseView(v)} className={`px-3.5 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition-all ${view === v ? "text-white" : "text-[#6B7280] hover:text-[#111111]"}`} style={view === v ? { background: "var(--vela-gradient)" } : undefined}>
-                    {t(`appointmentsV2.views.${v}`)}
-                  </button>
-                ))}
-              </div>
-              <div className="relative flex-1 min-w-0 lg:max-w-xs">
-                <span className="absolute start-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]">{Icons.search}</span>
-                <input type="search" aria-label={t("appointmentsV2.search")} placeholder={t("appointmentsV2.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-10 ps-9 pe-3 text-sm bg-white/70 border border-black/[0.07] !rounded-xl text-[#111111] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]/50" />
-              </div>
-              <div className="flex items-center gap-1 flex-wrap lg:ms-auto">
-                {view === "agenda" && DATE_FILTERS.map((k) => (
-                  <button key={k} type="button" aria-pressed={dateFilter === k} onClick={() => setDateFilter(k)} className={`px-2.5 min-h-[36px] rounded-lg text-xs font-medium transition-colors ${dateFilter === k ? "bg-[#FFF5F0] text-[#C2410C]" : "text-[#6B7280] hover:text-[#111111]"}`}>
-                    {t(`appointmentsV2.filters.${k}`)}
-                  </button>
-                ))}
-                <select aria-label={t("appointmentsV2.channelFilter")} value={channel} onChange={(e) => setChannel(e.target.value as ApptChannel | "all")} className="h-9 ms-1 px-2 !rounded-lg border border-black/[0.07] bg-white/70 text-xs font-medium text-[#374151] focus:outline-none focus:border-[#FF6B35]/50">
-                  <option value="all">{t("appointmentsV2.channels.all")}</option>
-                  {CHANNELS.map((c) => <option key={c} value={c}>{t(`appointmentsV2.channels.${c}`)}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {loading || !data ? (
-              <SkeletonCard className="h-[280px]" />
-            ) : view === "week" ? (
-              <WeekView rows={matching} hours={data.hours} now={data.now} locale={locale} t={t} onOpen={(a) => setDrawer({ id: a.id, mode: "view" })} />
-            ) : nothingMatches ? (
-              <div className="glass rounded-2xl px-6 py-12 text-center">
-                <p className="text-sm text-[#9CA3AF]">{t("appointmentsV2.noMatch")}</p>
-              </div>
-            ) : (
-              <AgendaView key={dateFilter} upcoming={upcoming} past={past} pastOpenByDefault={dateFilter === "past"} today={today} locale={locale} t={t} busyId={busyId} onAction={onRowAction} />
-            )}
-          </>
         )}
       </div>
 
-      {openAppt && drawer && drawer !== "new" && data && (
-        <AppointmentDrawer key={`${openAppt.id}:${drawer.mode}`} appt={openAppt} initialMode={drawer.mode} today={data.now.date} nowTime={data.now.time} locale={locale} t={t} onClose={() => setDrawer(null)} onAction={runAction} />
+      {openAppt && data && now && (
+        <AppointmentDrawer key={openAppt.id} appt={openAppt} initialMode="view" today={now.date} nowTime={now.time} locale={locale} t={t} onClose={() => setDrawer(null)} onAction={runAction} />
       )}
-      {drawer === "new" && data && (
-        <NewAppointmentDrawer services={data.services} today={data.now.date} locale={locale} t={t} onClose={() => setDrawer(null)} onCreate={createAppointment} />
+      {drawer === "new" && data && now && (
+        <NewAppointmentDrawer services={data.services} today={now.date} initialDate={anchor >= now.date ? anchor : now.date} locale={locale} t={t} onClose={() => setDrawer(null)} onCreate={createAppointment} />
       )}
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </div>

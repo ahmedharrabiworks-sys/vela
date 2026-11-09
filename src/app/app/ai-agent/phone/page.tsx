@@ -5,8 +5,11 @@ import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
 import { usePlan } from "@/lib/plans";
 import Link from "next/link";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { DEFAULT_PHONE_COUNTRY, PHONE_COUNTRIES, PhoneInput, type PhoneCountry } from "@/components/ui/PhoneInput";
 
 interface PhoneState {
+  businessPhone?: string | null;
   phoneNumber:   string | null;
   phoneNumberId: string | null;
   assistantId:   string | null;
@@ -29,6 +32,14 @@ export default function PhonePage() {
   const [copied, setCopied]             = useState(false);
   const [synced, setSynced]             = useState(false);
   const [showTech, setShowTech]         = useState(false);
+  const [bizCountry, setBizCountry]     = useState<PhoneCountry>(() => PHONE_COUNTRIES.find((c) => c.iso2 === "QA") ?? DEFAULT_PHONE_COUNTRY);
+  const [bizNumber, setBizNumber]       = useState("");
+  const [bizValid, setBizValid]         = useState(false);
+  const [bizE164, setBizE164]           = useState<string | null>(null);
+  const [bizAttempted, setBizAttempted] = useState(false);
+  const [bizSaving, setBizSaving]       = useState(false);
+  const [bizSaved, setBizSaved]         = useState(false);
+  const [bizError, setBizError]         = useState<string | null>(null);
   // Connected = an assistant exists AND the number is attached to it. A
   // number linked without an assistant (e.g. an imported bridge number not
   // synced yet) is shown honestly as "not connected", never as active.
@@ -54,6 +65,9 @@ export default function PhonePage() {
         if (res.ok) {
           const data = await res.json() as PhoneState;
           setState(data);
+          const saved = data.businessPhone ? parsePhoneNumberFromString(data.businessPhone) : undefined;
+          const match = saved ? PHONE_COUNTRIES.find((c) => c.iso2 === saved.country) : undefined;
+          if (saved && match) { setBizCountry(match); setBizNumber(saved.nationalNumber); }
         }
       } catch { /* ignore */ }
       setLoading(false);
@@ -78,6 +92,23 @@ export default function PhonePage() {
       setError("Network error. Please try again.");
     }
     setProvisioning(false);
+  };
+
+  const saveBusinessNumber = async () => {
+    setBizAttempted(true);
+    setBizError(null);
+    setBizSaved(false);
+    if (!bizValid || !bizE164) return;
+    setBizSaving(true);
+    try {
+      const res = await fetch("/api/ai-agent/phone", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businessPhone: bizE164 }) });
+      const data = await res.json().catch(() => ({})) as { error?: string };
+      if (res.ok) setBizSaved(true);
+      else setBizError(t(data.error === "bridge" ? "agentUi.phone.businessBridge" : data.error === "invalid" ? "agentUi.phone.businessInvalid" : "agentUi.common.saveError"));
+    } catch {
+      setBizError(t("agentUi.common.saveError"));
+    }
+    setBizSaving(false);
   };
 
   const copyNumber = async (num: string) => {
@@ -119,6 +150,29 @@ export default function PhonePage() {
             </Link>
           </div>
         )}
+
+        {/* What customers dial. The bridge below stays out of customer-facing labels. */}
+        <section id="business-number" className="glass rounded-2xl p-4 sm:p-5 scroll-mt-4">
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
+            <div className="flex-1 min-w-0">
+              <label className="block text-sm font-semibold mb-0.5" style={{ color: textPrimary }}>{t("agentUi.phone.businessTitle")}</label>
+              <p className="text-xs mb-2.5" style={{ color: textMuted }}>{t("agentUi.phone.businessHint")}</p>
+              <PhoneInput
+                country={bizCountry}
+                onCountryChange={(c) => { setBizCountry(c); setBizSaved(false); }}
+                value={bizNumber}
+                onChange={(v) => { setBizNumber(v); setBizSaved(false); }}
+                onValidityChange={(valid, e164) => { setBizValid(valid); setBizE164(e164); }}
+                forceShowError={bizAttempted}
+                required={false}
+              />
+            </div>
+            <button type="button" data-testid="save-business-number" onClick={saveBusinessNumber} disabled={bizSaving} className="btn-primary h-11 px-6 text-sm shrink-0 w-full md:w-auto disabled:opacity-60">
+              {bizSaved ? t("agentUi.common.saved") : bizSaving ? t("agentUi.common.saving") : t("agentUi.common.save")}
+            </button>
+          </div>
+          {bizError && <p role="alert" className="text-xs text-red-600 mt-2">{bizError}</p>}
+        </section>
 
         {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

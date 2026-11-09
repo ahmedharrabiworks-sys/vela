@@ -3,7 +3,8 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { ensureTenant } from "@/lib/ensure-tenant";
 import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { parseKnowledgeBase } from "@/lib/knowledge-base";
-import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
+import { getVapiServerConfig, resolveTenantTimezone, samePhoneLine, wallClockNowText } from "@/lib/vapi-webhook";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { pointTwilioNumberAtVela } from "@/lib/twilio-voice";
 
@@ -62,13 +63,13 @@ export async function GET(req: NextRequest) {
   const { tenant } = result;
 
   const admin = createSupabaseAdmin() as any;
-  const { data: cfg } = await admin
-    .from("tenant_config")
-    .select("vapi_phone_number, vapi_phone_number_id, vapi_assistant_id")
-    .eq("tenant_id", tenant.id)
-    .maybeSingle();
+  const [{ data: cfg }, { data: row }] = await Promise.all([
+    admin.from("tenant_config").select("vapi_phone_number, vapi_phone_number_id, vapi_assistant_id").eq("tenant_id", tenant.id).maybeSingle(),
+    admin.from("tenants").select("phone").eq("id", tenant.id).maybeSingle(),
+  ]);
 
   return NextResponse.json({
+    businessPhone: ((row as any)?.phone as string | null)?.trim() || null,
     phoneNumber:   (cfg as any)?.vapi_phone_number   ?? null,
     phoneNumberId: (cfg as any)?.vapi_phone_number_id ?? null,
     assistantId:   (cfg as any)?.vapi_assistant_id   ?? null,
@@ -217,6 +218,29 @@ export async function POST(req: NextRequest) {
       : "Couldn't update your Vela phone assistant";
     return NextResponse.json({ error: `${what}. Reason: ${detail}`, step }, { status: 502 });
   }
+}
+
+// The owner's own business number: what customers dial, forwarded to the bridge.
+export async function PATCH(req: NextRequest) {
+  const result = await getAuthAndTenant(req);
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  const { tenant } = result;
+
+  const body = await req.json().catch(() => null) as { businessPhone?: unknown } | null;
+  const raw = typeof body?.businessPhone === "string" ? body.businessPhone.trim() : "";
+  const parsed = raw.length <= 32 ? parsePhoneNumberFromString(raw) : undefined;
+  if (!parsed?.isValid()) return NextResponse.json({ error: "invalid" }, { status: 400 });
+
+  const admin = createSupabaseAdmin() as any;
+  const { data: cfg } = await admin.from("tenant_config").select("vapi_phone_number").eq("tenant_id", tenant.id).maybeSingle();
+  if (samePhoneLine(parsed.number, cfg?.vapi_phone_number as string | null)) return NextResponse.json({ error: "bridge" }, { status: 400 });
+
+  const { error } = await admin.from("tenants").update({ phone: parsed.number }).eq("id", tenant.id);
+  if (error) {
+    console.error("[ai-agent/phone] saving business number failed:", error.message);
+    return NextResponse.json({ error: "save_failed" }, { status: 500 });
+  }
+  return NextResponse.json({ businessPhone: parsed.number });
 }
 
 export async function DELETE(req: NextRequest) {

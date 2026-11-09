@@ -1428,7 +1428,7 @@
       "paused": "Paused",
       "pausedTitle": "Phone agent paused on Starter",
       "pausedDesc": "Your number stays linked and all your calls and data are kept. Upgrade to Pro and Vela answers again right away.",
-      "yourNumber": "Your Vela number",
+      "yourNumber": "Forward your calls to",
       "forwardHint": "Forward your business number to this number when you're busy or after hours.",
       "notConnected": "Not connected yet",
       "connectBtn": "Connect Vela to this number",
@@ -1621,7 +1621,11 @@
       "showTech": "Show technical details",
       "hideTech": "Hide technical details",
       "assistantId": "Assistant ID",
-      "numberId": "Phone number ID"
+      "numberId": "Phone number ID",
+      "businessTitle": "Your business number",
+      "businessHint": "The number your customers already call.",
+      "businessInvalid": "Enter a valid number with its country code.",
+      "businessBridge": "Enter the number customers call, not the number you forward to."
     },
     "settings": {
       "title": "Settings",
@@ -1671,39 +1675,16 @@
   "appointmentsV2": {
     "today": "Today",
     "tomorrow": "Tomorrow",
-    "past": "Past",
     "rescheduled": "Rescheduled",
     "noName": "No name",
     "noPhone": "No phone",
-    "summaryEmpty": "Nothing booked yet",
-    "summaryToday": "{n} today",
-    "summaryWeek": "{n} this week",
-    "summaryAi": "{n} booked by your AI",
     "newAppointment": "New appointment",
     "exportEmpty": "Nothing to export yet",
     "loadFailed": "Could not load appointments.",
     "search": "Search name, phone or service",
-    "channelFilter": "Filter by channel",
-    "noMatch": "No appointments match these filters.",
-    "emptyTitle": "No appointments yet. Your AI books here automatically from calls and chats.",
-    "setUpPhone": "Set up your phone agent",
-    "phoneLive": "Your phone agent is live",
-    "addManually": "Add one manually",
-    "stats": {
-      "today": "Today",
-      "week": "This week",
-      "ai": "Booked by AI"
-    },
     "views": {
-      "agenda": "Agenda",
+      "day": "Day",
       "week": "Week"
-    },
-    "filters": {
-      "all": "All",
-      "today": "Today",
-      "week": "This week",
-      "upcoming": "Upcoming",
-      "past": "Past"
     },
     "channels": {
       "all": "All channels",
@@ -1764,11 +1745,7 @@
       "noSlots": "No free times on this day."
     },
     "week": {
-      "previous": "Previous week",
-      "next": "Next week",
-      "thisWeek": "This week",
       "closed": "Closed",
-      "nothingBooked": "Nothing booked",
       "noHours": "We could not read your opening hours, so every day is shown as open.",
       "addHours": "Add them in the Knowledge Base"
     },
@@ -1803,6 +1780,29 @@
       "time": "Time",
       "channel": "Channel",
       "status": "Status"
+    },
+    "aiBooksHere": "Your AI books here automatically",
+    "navigator": {
+      "previous": "Previous",
+      "next": "Next",
+      "dates": "Choose a date"
+    },
+    "filter": {
+      "button": "Filters",
+      "search": "Search",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "channel": "Channel",
+      "clear": "Clear filters"
+    },
+    "upNext": {
+      "title": "Up next",
+      "nothing": "Nothing coming up"
+    },
+    "month": {
+      "title": "Jump to a date",
+      "previous": "Previous month",
+      "next": "Next month"
     }
   },
   "channelsV2": {
@@ -1811,7 +1811,6 @@
     "issue": "Issue",
     "loadFailed": "Could not load the phone status.",
     "customersCall": "Customers call",
-    "noNumber": "No number linked yet",
     "callsThisWeek": "Calls this week",
     "minutesUsed": "Minutes used",
     "lastCall": "Last call",
@@ -1832,14 +1831,6 @@
       "number_missing": "Your phone line could not be found.",
       "service": "The phone service is not responding right now."
     },
-    "website": {
-      "name": "Website chat",
-      "desc": "Add your AI to any website with one line of code.",
-      "noChats": "No chats yet",
-      "receiving": "{n} chats so far",
-      "copy": "Copy embed code",
-      "copied": "Copied",
-      "copiedToast": "Embed code copied"
-    }
+    "addBusinessNumber": "Add your business number"
   }
 }

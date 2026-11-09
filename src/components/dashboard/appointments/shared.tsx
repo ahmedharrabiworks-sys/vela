@@ -109,8 +109,7 @@ export const Icons = {
   close: <Svg><path d="M3 3l8 8M11 3l-8 8" /></Svg>,
   phone: <Svg><path d="M3.3 5.4c.93 1.87 2.43 3.4 4.4 4.4l1.47-1.47c.2-.2.47-.27.67-.13.73.27 1.53.4 2.4.4.4 0 .67.27.67.67V11.3c0 .4-.27.7-.67.7C4.4 12 2 6.6 2 2.7c0-.4.27-.7.67-.7H5.3c.4 0 .7.27.7.67 0 .87.13 1.67.4 2.4.13.2.07.47-.13.67L3.3 5.4z" /></Svg>,
   chevron: <Svg size={12}><path d="M5 2.5L9.5 7 5 11.5" /></Svg>,
-  download: <Svg><path d="M7 1.5v7M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" /></Svg>,
+  download: <Svg size={15}><path d="M7 1.5v7M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" /></Svg>,
   plus: <Svg><path d="M7 2v10M2 7h10" /></Svg>,
-  search: <Svg><circle cx="6" cy="6" r="4.5" /><path d="M9.5 9.5L12 12" /></Svg>,
-  calendar: <Svg size={20}><rect x="1.5" y="2.5" width="11" height="10" rx="2" /><path d="M1.5 5.5h11M4.5 1v3M9.5 1v3" /></Svg>,
+  filter: <Svg size={15}><path d="M2 3.5h10M4 7h6M6 10.5h2" /></Svg>,
 };

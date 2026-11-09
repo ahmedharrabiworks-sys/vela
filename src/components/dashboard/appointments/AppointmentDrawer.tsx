@@ -225,9 +225,10 @@ export function AppointmentDrawer({ appt, initialMode, today, nowTime, locale, t
   );
 }
 
-export function NewAppointmentDrawer({ services, today, locale, t, onClose, onCreate }: {
+export function NewAppointmentDrawer({ services, today, initialDate, locale, t, onClose, onCreate }: {
   services: string[];
   today: string;
+  initialDate: string;
   locale: string;
   t: Translate;
   onClose: () => void;
@@ -238,7 +239,7 @@ export function NewAppointmentDrawer({ services, today, locale, t, onClose, onCr
   const [phone, setPhone] = useState("");
   const [choice, setChoice] = useState(services[0] ?? OTHER);
   const [custom, setCustom] = useState("");
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
