@@ -1,9 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { createContext, type ReactNode } from "react";
 import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 import type { OpeningHours } from "@/lib/opening-hours";
 import type { TimeOff } from "@/lib/time-off";
+import { startOfWeek, type WeekStart } from "@/lib/week-start";
+
+/** The business's first day of the week, for every calendar on the page. */
+export const WeekStartContext = createContext<WeekStart>(0);
 
 export type ApptStatus = "confirmed" | "pending" | "cancelled" | "completed" | "no_show";
 export type ApptChannel = "phone" | "website" | "whatsapp" | "instagram" | "manual";
@@ -32,6 +36,7 @@ export interface ApptPayload {
   hours: OpeningHours | null;
   timeOff: TimeOff[];
   slotMinutes?: number;
+  weekStart?: WeekStart;
   services: string[];
   phoneLinked: boolean;
   viewKey: string;
@@ -45,8 +50,8 @@ export type Translate = (key: string) => string;
 export function addDays(date: string, days: number): string {
   return new Date(Date.parse(`${date}T12:00:00.000Z`) + days * 86_400_000).toISOString().slice(0, 10);
 }
-export function weekStartOf(date: string): string {
-  return addDays(date, -new Date(`${date}T12:00:00.000Z`).getUTCDay());
+export function weekStartOf(date: string, weekStart: WeekStart = 0): string {
+  return startOfWeek(date, weekStart);
 }
 
 export const intlLocale = (locale: string) => (locale === "ar" ? "ar-u-nu-latn" : locale === "en" ? "en-GB" : locale);
@@ -108,6 +113,7 @@ function Svg({ children, size = 13 }: { children: ReactNode; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">{children}</svg>;
 }
 export const Icons = {
+  calendar: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
   check: <Svg><path d="M2.5 7.5l3 3 6-6.5" /></Svg>,
   clock: <Svg><circle cx="7" cy="7" r="5.5" /><path d="M7 4v3l2 1.5" /></Svg>,
   close: <Svg><path d="M3 3l8 8M11 3l-8 8" /></Svg>,

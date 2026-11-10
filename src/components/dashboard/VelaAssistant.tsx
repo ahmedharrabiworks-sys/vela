@@ -432,6 +432,8 @@ export function VelaAssistant() {
       }
 
       let reply = data.reply ?? t("velaAssistant.errorNoResponse");
+      // The assistant may have saved business info: open pages re-read it.
+      window.dispatchEvent(new CustomEvent("vela-kb-changed"));
 
       // Handle [navigate:/path] token
       const navMatch = reply.match(/\[navigate:([^\]]+)\]/);

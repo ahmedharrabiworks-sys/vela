@@ -1484,12 +1484,13 @@ Rules:
     }
 
     // Server-side backstop: even if the reply slipped and said "Booked", a
-    // closed day, closed hour or time off never becomes an appointment.
+    // closed day, closed hour, time off, a past time or a slot someone else
+    // already holds never becomes an appointment (one client per slot).
     const bookedAt = new Date(booking.datetime).toISOString();
     const closedIssue = isSameSlot ? null : await checkSlot(admin, tenantId, bookingCtx, bookedAt.slice(0, 10), bookedAt.slice(11, 16), serviceName, existing?.id ?? null);
 
-    if (isClosedIssue(closedIssue)) {
-      console.warn("[ai/reply] refused a booking while closed:", closedIssue, bookedAt);
+    if (closedIssue) {
+      console.warn("[ai/reply] refused a booking:", closedIssue, bookedAt);
     } else if (nameConflict) {
       // Leave the existing appointment untouched -- no insert, no update.
       // The customer already got told about it via existingApptDirective.

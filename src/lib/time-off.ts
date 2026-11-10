@@ -75,6 +75,18 @@ export function slotProblem(p: { date: string; time: string; durationMinutes: nu
   return windows.some((w) => start >= w.open && end <= w.close) ? null : "outside_hours";
 }
 
+/**
+ * One client per slot: true when [date time, + duration) overlaps any booking that
+ * still holds its time (pending or confirmed). Back-to-back is not an overlap.
+ */
+export function clashesWithBooked(date: string, time: string, durationMinutes: number, booked: Array<{ date: string; time: string; durationMinutes: number }>): boolean {
+  const start = Date.parse(`${date}T${time}:00.000Z`), end = start + durationMinutes * 60_000;
+  return booked.some((b) => {
+    const s = Date.parse(`${b.date}T${b.time}:00.000Z`);
+    return start < s + b.durationMinutes * 60_000 && s < end;
+  });
+}
+
 export function isOutsideHours(date: string, time: string, durationMinutes: number, hours: OpeningHours | null, timeOff: TimeOff[]): boolean {
   return slotProblem({ date, time, durationMinutes, now: { date: "0000-01-01", time: "00:00" }, hours, timeOff }) !== null;
 }

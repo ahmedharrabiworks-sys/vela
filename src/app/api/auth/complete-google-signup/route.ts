@@ -42,22 +42,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // Server-side re-validation of the phone -- the client already
-    // validated it live (signup step 2), but that check is never trusted
-    // on its own. An E.164 string is self-describing (starts with "+"),
-    // no country hint needed. An invalid/empty phone is allowed through
-    // as null rather than blocking account creation at this final step --
-    // the phone was already required earlier in the wizard; this is a
-    // defensive re-check, not a new gate the user can get stuck behind.
-    let validatedPhone: string | null = null;
-    if (typeof phone === "string" && phone.trim()) {
-      const phoneCheck = checkPhoneServerSide(phone);
-      if (phoneCheck.ok) {
-        validatedPhone = phoneCheck.e164;
-      } else {
-        console.warn(`[complete-signup] phone failed server-side re-validation, storing null: user=${user.id}`);
-      }
+    // The business number is required for every plan: it is the number the
+    // Vela team forwards to the AI. The browser checks it live, and the
+    // server checks it again here; an account is never created without one.
+    const phoneCheck = typeof phone === "string" && phone.trim() ? checkPhoneServerSide(phone) : null;
+    if (!phoneCheck || !phoneCheck.ok) {
+      return NextResponse.json({ error: "invalid_phone" }, { status: 400 });
     }
+    const validatedPhone = phoneCheck.e164;
 
     const safeStr = (v: unknown, max: number): string | null => {
       if (typeof v !== "string") return null;

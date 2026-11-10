@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { OpeningHours } from "@/lib/opening-hours";
 import { dayStatus, nextOpenDay, type TimeOff } from "@/lib/time-off";
-import { ClosedDayCard, DayTable } from "./DayView";
+import { DayTable } from "./DayView";
 import { addDays, fmtDay, type Appt, type Translate } from "./shared";
 
 const STRIP_BACK = 14;
@@ -94,11 +94,7 @@ export default function MobileDay({ anchor, onAnchor, onAdd, onConfirm, slotMinu
           const dayRows = rows.filter((a) => a.date === d);
           return (
             <div key={i} ref={i === 1 ? middle : undefined} className="w-full shrink-0 snap-start snap-always">
-              {status.kind === "open" ? (
-                <DayTable date={d} rows={dayRows} hours={hours} timeOff={timeOff} now={now} slotMinutes={slotMinutes} locale={locale} t={t} onOpen={onOpen} onAdd={(time) => onAdd(d, time)} onConfirm={onConfirm} showEmptyHint={showEmptyHint} />
-              ) : (
-                <ClosedDayCard date={d} status={status} rows={dayRows} nextOpen={nextOpenDay(d, hours, timeOff)} locale={locale} t={t} onGo={onAnchor} onOpen={onOpen} />
-              )}
+              <DayTable date={d} rows={dayRows} hours={hours} timeOff={timeOff} status={status} nextOpen={status.kind === "open" ? null : nextOpenDay(d, hours, timeOff)} now={now} slotMinutes={slotMinutes} locale={locale} t={t} onOpen={onOpen} onAdd={(time) => onAdd(d, time)} onConfirm={onConfirm} onGo={onAnchor} showEmptyHint={showEmptyHint} />
             </div>
           );
         })}

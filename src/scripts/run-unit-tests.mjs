@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import ts from "typescript";
 
 const OUT = path.resolve(".unit-build");
-const LIBS = ["opening-hours", "time-off", "ai-resolution", "weekly-hours-edit", "knowledge-base"];
+const LIBS = ["opening-hours", "time-off", "ai-resolution", "weekly-hours-edit", "knowledge-base", "day-rows", "week-start"];
 const TESTS = fs.readdirSync("src/lib/__tests__").filter((f) => f.endsWith(".test.ts"));
 
 fs.rmSync(OUT, { recursive: true, force: true });

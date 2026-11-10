@@ -439,7 +439,13 @@ function SignupPageContent() {
       });
 
       if (!res.ok) {
-        setAuthError(t("landing.auth.signup.couldNotCreateAccount"));
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        if (body.error === "invalid_phone") {
+          // Back to the step with the number, showing what is wrong.
+          setPhoneSubmitAttempted(true);
+          setStep(2);
+        }
+        setAuthError(t(body.error === "invalid_phone" ? "landing.auth.signup.step2.phoneRequired" : "landing.auth.signup.couldNotCreateAccount"));
         setLoading(false);
         return;
       }
@@ -859,6 +865,7 @@ function SignupPageContent() {
 
               <div>
                 <label className={labelCls}>{t("landing.auth.signup.step2.phoneNumber")}</label>
+                <p className="text-xs text-[#9CA3AF] -mt-0.5 mb-1.5">{t("landing.auth.signup.step2.phoneHint")}</p>
                 <PhoneInput
                   country={phoneCountry}
                   onCountryChange={(c) => { setPhoneCountry(c); setPhoneCountryTouched(true); }}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { setBottomSheetOpen } from "@/lib/useBottomSheetState";
+import { DateField } from "./ScheduleParts";
 import { ChannelBadge, Icons, StatusPill, dangerBtn, fmtDay, fmtTime, inputCls, labelCls, quietBtn, type Appt, type Translate } from "./shared";
 
 export type DrawerMode = "view" | "reschedule" | "cancel";
@@ -59,7 +60,7 @@ function SlotPicker({ minDate, service, excludeId, locale, t, date, setDate, tim
     <div className="space-y-3">
       <div>
         <label htmlFor="appt-date" className={labelCls}>{t("appointmentsV2.form.date")}</label>
-        <input id="appt-date" type="date" dir="ltr" min={minDate} value={date} onChange={(e) => { setDate(e.target.value); setTime(""); }} className={`${inputCls} text-start`} />
+        <DateField id="appt-date" value={date} min={minDate} today={minDate} locale={locale} t={t} onChange={(d) => { setDate(d); setTime(""); }} />
       </div>
       {date && (
         <div>

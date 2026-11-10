@@ -1034,9 +1034,11 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
       const { data: moving } = await admin.from("appointments").select("service_name").eq("id", args.appointmentId).eq("tenant_id", tenantId).maybeSingle();
       const movingService = (moving?.service_name as string | null) ?? null;
       const issue = await checkSlot(admin, tenantId, bookingCtx, args.newDate, timePart.slice(0, 5), movingService, args.appointmentId);
-      if (isClosedIssue(issue)) {
+      if (issue) {
+        // One client per slot: a taken or past time is refused like a closed one.
         const alts = await nearestSlots(admin, tenantId, bookingCtx, args.newDate, timePart.slice(0, 5), movingService, args.appointmentId);
-        return { error: "The business is closed at that time, so it was not moved. Tell the owner and offer these.", nearestFree: alts };
+        const why = isClosedIssue(issue) ? "The business is closed at that time" : issue === "conflict" ? "Another appointment already holds that time" : "That time has already passed";
+        return { error: `${why}, so it was not moved. Tell the owner and offer these.`, nearestFree: alts };
       }
       const { data, error } = await admin.from("appointments").update({ datetime: newIso, status: "pending", rescheduled: true }).eq("id", args.appointmentId).eq("tenant_id", tenantId).select("id, datetime, status");
       if (error?.code === "PGRST204" || error?.code === "42703") {

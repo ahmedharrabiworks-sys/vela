@@ -84,7 +84,16 @@
       "email": "Email",
       "city": "City",
       "website": "Website",
-      "services": "Services (used by AI)"
+      "services": "Services (used by AI)",
+      "weekStart": "Week starts on",
+      "weekStartHint": "Used by the Week view, the month calendar and date pickers.",
+      "weekStartSaved": "Saved",
+      "weekStartError": "Couldn't save. Please try again.",
+      "days": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "saturday": "Saturday"
+      }
     },
     "aiConfig": {
       "title": "AI Configuration",
@@ -1299,14 +1308,16 @@
           "country": "Country",
           "city": "City",
           "cityPlaceholder": "Doha",
-          "phoneNumber": "Phone Number",
+          "phoneNumber": "Business phone number",
           "phonePlaceholder": "5555 1234",
           "back": "Back",
           "continue": "Continue",
           "analysing": "Analysing...",
           "panelHeadline": "Built around your business.",
           "panelBody": "Vela learns your services, hours and prices so every reply sounds like you.",
-          "stepIndicator": "Step 2 of 4"
+          "stepIndicator": "Step 2 of 4",
+          "phoneHint": "The number your customers call, the one on Google Maps and your cards.",
+          "phoneRequired": "Please enter a valid business phone number."
         },
         "step3": {
           "title": "Choose your plan",
@@ -1513,7 +1524,19 @@
       "autosave": "Changes auto-save after 2 seconds",
       "faqsToExtra": "{n} Q&A will be added to Extra",
       "editHours": "Edit",
-      "noHours": "No opening hours yet"
+      "noHours": "No opening hours yet",
+      "autosaveOn": "Changes save automatically",
+      "saveFailed": "Couldn't save",
+      "retry": "Retry",
+      "justNow": "just now",
+      "minutesAgo": "{n} min ago",
+      "savedAt": "Saved · {when}",
+      "extraKnowledge": "Extra knowledge",
+      "businessInfo": "Business info",
+      "businessInfoHint": "Edited in the Knowledge Base",
+      "notAdded": "Not added yet",
+      "edit": "Edit",
+      "add": "Add"
     },
     "charts": {
       "total": "Total",
@@ -1556,7 +1579,9 @@
       "saving": "Saving…",
       "saved": "Saved",
       "unsaved": "Unsaved changes",
-      "saveError": "Couldn't save. Please try again."
+      "saveError": "Couldn't save. Please try again.",
+      "cancel": "Cancel",
+      "close": "Close"
     },
     "kb": {
       "title": "Knowledge base",
@@ -1659,6 +1684,35 @@
         "copied": "Copied",
         "dial": "Dial",
         "note": "If your operator blocks it, ask them to enable call forwarding to international numbers."
+      },
+      "client": {
+        "subtitle": "Your AI receptionist answers calls to your business number.",
+        "status": {
+          "live": "Live, answering your calls",
+          "liveDesc": "Calls to your business number are answered by Vela, day and night.",
+          "setup": "Being set up by the Vela team",
+          "setupDesc": "We'll set it up for you and let you know. Nothing to do on your side.",
+          "issue": "Issue, we're on it",
+          "issueDesc": "Calls may not be answered right now. The Vela team is fixing it.",
+          "paused": "Paused on your plan",
+          "pausedDesc": "Your plan does not include the phone agent. Change plan to turn it back on."
+        },
+        "whatsapp": "WhatsApp us",
+        "email": "Email us",
+        "noNumber": "Not added yet",
+        "change": "Change",
+        "add": "Add",
+        "changeTitle": "Change your business number",
+        "addTitle": "Add your business number",
+        "addPrompt": "Add your business number",
+        "callsWeek": "Calls answered this week",
+        "minutesMonth": "Minutes used this month",
+        "notInPlan": "Not included in your plan"
+      },
+      "admin": {
+        "title": "Admin: setup",
+        "bridge": "Bridge number (forward calls here)",
+        "noBridge": "No bridge number linked"
       }
     },
     "settings": {
@@ -1777,7 +1831,8 @@
       "time": "Time",
       "notes": "Notes (optional)",
       "closedDay": "You are closed on this day.",
-      "noSlots": "No free times on this day."
+      "noSlots": "No free times on this day.",
+      "pickDate": "Pick a date"
     },
     "week": {
       "closed": "Closed",
@@ -1833,7 +1888,8 @@
       "status": "Status",
       "allStatuses": "All statuses",
       "channel": "Channel",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "showCancelled": "Show cancelled"
     },
     "upNext": {
       "title": "Up next",
@@ -1860,7 +1916,9 @@
       "freeCount": "{n} free",
       "nextFreeAt": "next free {time}",
       "noFreeLeft": "no free slots left",
-      "free": "Free"
+      "free": "Free",
+      "past": "Past",
+      "nextOpenLink": "Next open day: {date}"
     },
     "timeOff": {
       "button": "Time off",

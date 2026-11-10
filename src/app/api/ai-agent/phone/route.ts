@@ -7,6 +7,7 @@ import { getVapiServerConfig, resolveTenantTimezone, samePhoneLine, wallClockNow
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { pointTwilioNumberAtVela } from "@/lib/twilio-voice";
+import { isAdminUser } from "@/lib/admin-access";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,8 @@ async function getAuthAndTenant(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const result = await getAuthAndTenant(req);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const { tenant } = result;
+  const { tenant, user } = result;
+  const isAdmin = isAdminUser(user);
 
   const admin = createSupabaseAdmin() as any;
   const [{ data: cfg }, { data: row }] = await Promise.all([
@@ -68,17 +70,23 @@ export async function GET(req: NextRequest) {
     admin.from("tenants").select("phone").eq("id", tenant.id).maybeSingle(),
   ]);
 
+  // Clients only ever see their own business number. The hidden bridge
+  // number and the Vapi ids go to the Vela team, checked here, per request.
   return NextResponse.json({
     businessPhone: ((row as any)?.phone as string | null)?.trim() || null,
-    phoneNumber:   (cfg as any)?.vapi_phone_number   ?? null,
-    phoneNumberId: (cfg as any)?.vapi_phone_number_id ?? null,
-    assistantId:   (cfg as any)?.vapi_assistant_id   ?? null,
+    isAdmin,
+    ...(isAdmin ? {
+      phoneNumber:   (cfg as any)?.vapi_phone_number   ?? null,
+      phoneNumberId: (cfg as any)?.vapi_phone_number_id ?? null,
+      assistantId:   (cfg as any)?.vapi_assistant_id   ?? null,
+    } : {}),
   });
 }
 
 export async function POST(req: NextRequest) {
   const result = await getAuthAndTenant(req);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!isAdminUser(result.user)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const { tenant } = result;
 
   if (!process.env.VAPI_API_KEY) {
@@ -228,7 +236,9 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => null) as { businessPhone?: unknown } | null;
   const raw = typeof body?.businessPhone === "string" ? body.businessPhone.trim() : "";
-  const parsed = raw.length <= 32 ? parsePhoneNumberFromString(raw) : undefined;
+  // Digits with spaces, brackets or hyphens only: the parser alone forgives
+  // trailing junk ("+12533239602x" would pass), and this field is stored as is.
+  const parsed = /^\+?[0-9][0-9\s()-]{5,24}$/.test(raw) ? parsePhoneNumberFromString(raw) : undefined;
   if (!parsed?.isValid()) return NextResponse.json({ error: "invalid" }, { status: 400 });
 
   const admin = createSupabaseAdmin() as any;
@@ -246,6 +256,7 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const result = await getAuthAndTenant(req);
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!isAdminUser(result.user)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const { tenant } = result;
 
   const admin = createSupabaseAdmin() as any;

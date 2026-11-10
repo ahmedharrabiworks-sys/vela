@@ -12,9 +12,9 @@ export const labelCls = "block text-xs font-medium text-[#6B7280] mb-1.5";
 export const quietBtnCls =
   "inline-flex items-center justify-center h-10 px-3.5 rounded-lg border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] hover:border-[#FF6B35] hover:text-[#FF6B35] transition-colors disabled:opacity-50 disabled:pointer-events-none";
 
-export function Section({ title, hint, action, children }: { title: string; hint?: string; action?: ReactNode; children: ReactNode }) {
+export function Section({ id, title, hint, action, children }: { id?: string; title: string; hint?: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-[#E5E7EB] bg-white p-4 sm:p-5">
+    <section id={id} className="rounded-xl border border-[#E5E7EB] bg-white p-4 sm:p-5 scroll-mt-20 transition-shadow">
       <div className="flex items-start justify-between gap-3 mb-3.5">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-[#111111]">{title}</h2>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import CountUp from "@/components/ui/CountUp";
 import GlassBlobs from "@/components/ui/GlassBlobs";
+import BusinessNumberPrompt from "@/components/dashboard/BusinessNumberPrompt";
 import { ActivityChart, ChartCard, ChartSummary, RingCard, SeriesToggle, toDayPoints } from "@/components/dashboard/ActivityCharts";
 
 // Dashboard redesign round: replaces the prior "Linear/Vercel minimal
@@ -142,6 +143,8 @@ export default function DashboardPageUI({
             </div>
           </div>
         )}
+
+        {basePath === "/app" && <BusinessNumberPrompt t={t} />}
 
         {/* Onboarding checklist -- existing logic (connect a channel, train your AI), restyled as a glass card. */}
         {showOnboardingBanner && !loading && (

@@ -60,6 +60,20 @@ export default function KnowledgeBaseEditor() {
       .then((d: { requests?: PendingRequest[] }) => setRequests(d.requests ?? [])).catch(() => {});
   }, [load]);
 
+  // Deep links from Train your AI (#kb-address etc.): scroll there, highlight, focus.
+  useEffect(() => {
+    if (loading) return;
+    const id = window.location.hash.slice(1);
+    if (!/^kb-[a-z]+$/.test(id)) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ block: "center" });
+    el.classList.add("ring-2", "ring-[#FF6B35]/50", "ring-offset-2");
+    el.querySelector<HTMLElement>("input, textarea")?.focus({ preventScroll: true });
+    const done = setTimeout(() => el.classList.remove("ring-2", "ring-[#FF6B35]/50", "ring-offset-2"), 2400);
+    return () => clearTimeout(done);
+  }, [loading]);
+
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
@@ -293,7 +307,7 @@ export default function KnowledgeBaseEditor() {
           </Section>
         )}
 
-        <Section title={t("agentUi.kb.hours")} hint={t("agentUi.kb.weekHint")}>
+        <Section id="kb-hours" title={t("agentUi.kb.hours")} hint={t("agentUi.kb.weekHint")}>
           {needsReview && <p data-testid="hours-review" className="text-xs text-[#9A3412] bg-[#FFF5F0] rounded-lg px-3 py-2 mb-2">{t("agentUi.kb.hoursReview")}</p>}
           {kb.business.hours.trim() && !week && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-2">{t("agentUi.kb.unreadableHours").replace("{text}", kb.business.hours)}</p>}
           <WeeklyHoursEditor value={week ?? EMPTY_WEEK} onChange={(schedule) => editBusiness({ schedule, hours: formatWeeklyHours(schedule) })} locale={locale} t={t} />
@@ -302,15 +316,15 @@ export default function KnowledgeBaseEditor() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <Section title={t("agentUi.kb.details")}>
               <div className="space-y-3">
-                <div>
-                  <label htmlFor="kb-address" className={labelCls}>{t("agentUi.kb.address")}</label>
-                  <input id="kb-address" value={kb.business.address} onChange={(e) => editBusiness({ address: e.target.value })} placeholder={t("agentUi.kb.addressPlaceholder")} className={fieldCls} />
+                <div id="kb-address" className="scroll-mt-24 rounded-lg transition-shadow">
+                  <label htmlFor="kb-address-input" className={labelCls}>{t("agentUi.kb.address")}</label>
+                  <input id="kb-address-input" value={kb.business.address} onChange={(e) => editBusiness({ address: e.target.value })} placeholder={t("agentUi.kb.addressPlaceholder")} className={fieldCls} />
                 </div>
-                <div>
-                  <label htmlFor="kb-policy" className={labelCls}>{t("agentUi.kb.policy")}</label>
-                  <textarea id="kb-policy" rows={2} value={kb.business.bookingPolicy} onChange={(e) => editBusiness({ bookingPolicy: e.target.value })} placeholder={t("agentUi.kb.policyPlaceholder")} className={areaCls} />
+                <div id="kb-policy" className="scroll-mt-24 rounded-lg transition-shadow">
+                  <label htmlFor="kb-policy-input" className={labelCls}>{t("agentUi.kb.policy")}</label>
+                  <textarea id="kb-policy-input" rows={2} value={kb.business.bookingPolicy} onChange={(e) => editBusiness({ bookingPolicy: e.target.value })} placeholder={t("agentUi.kb.policyPlaceholder")} className={areaCls} />
                 </div>
-                <div>
+                <div id="kb-tone" className="scroll-mt-24 rounded-lg transition-shadow">
                   <p className={labelCls}>{t("agentUi.kb.tone")}</p>
                   <Chips
                     label={t("agentUi.kb.tone")}
@@ -360,7 +374,7 @@ export default function KnowledgeBaseEditor() {
           </Section>
         </div>
 
-        <Section title={t("agentUi.kb.notes")} hint={t("agentUi.kb.notesHint")}>
+        <Section id="kb-notes" title={t("agentUi.kb.notes")} hint={t("agentUi.kb.notesHint")}>
           <textarea aria-label={t("agentUi.kb.notes")} rows={11} value={kb.extra} onChange={(e) => edit((p) => ({ ...p, extra: e.target.value }))} placeholder={t("agentUi.kb.notesPlaceholder")} className={areaCls} />
         </Section>
       </div>

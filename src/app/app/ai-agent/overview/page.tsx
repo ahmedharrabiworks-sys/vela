@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useAgentTheme } from "../layout";
 import { useI18n } from "@/lib/i18n";
 import { ActivityChart, ChartCard, ChartSummary, RingCard, toDayPoints } from "@/components/dashboard/ActivityCharts";
-import { callStatus, fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, CallTranscriptModal, callHeadline } from "@/components/dashboard/CallTranscript";
+import { callStatus, fmtDuration as fmtCallDuration, fmtTimeAgo, OutcomeBadge, callHeadline } from "@/components/dashboard/CallTranscript";
+import { useRouter } from "next/navigation";
 
 type UsageData = Record<"messages" | "voiceMinutes", { used: number; limit: number | null }>;
 
@@ -39,7 +40,8 @@ export default function OverviewPage() {
 
   /* Call stats from agent_calls */
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
-  const [openCall, setOpenCall] = useState<CallRecord | null>(null);
+  // A call opens where the whole conversation lives, in Conversations.
+  const router = useRouter();
   const [loadingCalls, setLoadingCalls] = useState(true);
 
   /* Appointments from Supabase */
@@ -254,7 +256,8 @@ export default function OverviewPage() {
                     {callRecords.slice(0, 6).map((c) => (
                       <button
                         key={c.id}
-                        onClick={() => setOpenCall(c)}
+                        data-testid="recent-call"
+                        onClick={() => router.push(`/app/conversations?open=call:${encodeURIComponent(c.id)}`)}
                         className="w-full text-left flex items-start gap-3 p-2.5 rounded-xl transition-colors"
                         style={{ background: "transparent" }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isDark ? "rgba(255,255,255,0.03)" : "#F9FAFB"; }}
@@ -327,9 +330,6 @@ export default function OverviewPage() {
 
       </div>
 
-      {openCall && (
-        <CallTranscriptModal call={openCall} isDark={isDark} onClose={() => setOpenCall(null)} />
-      )}
     </div>
   );
 }

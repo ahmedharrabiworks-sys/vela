@@ -6,6 +6,7 @@ import { normalizeDate, normalizeTime } from "@/lib/phone-booking";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 import { isOutsideHours } from "@/lib/time-off";
 import { parseDurationMinutes } from "@/lib/availability";
+import { resolveWeekStart } from "@/lib/week-start";
 import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,10 @@ function ownerNotes(raw: string | null): { notes: string | null; callSummary: st
   return { notes: raw.trim() || null, callSummary: summary };
 }
 
+function settingsOf(raw: unknown): Record<string, unknown> {
+  try { return ((typeof raw === "string" ? JSON.parse(raw) : raw) ?? {}) as Record<string, unknown>; } catch { return {}; }
+}
+
 export async function GET() {
   let tenant;
   try {
@@ -42,7 +47,7 @@ export async function GET() {
 
   const admin = createSupabaseAdmin() as any;
   const ctx = await loadBookingContext(admin, tenant.id);
-  const [{ data: rows, error }, { data: calls }, { data: cfg }] = await Promise.all([
+  const [{ data: rows, error }, { data: calls }, { data: cfg }, { data: owner }] = await Promise.all([
     admin
       .from("appointments")
       .select("id, service_name, datetime, status, notes, conversation_id, rescheduled, leads(name, phone, phone_unconfirmed, channel)")
@@ -57,7 +62,8 @@ export async function GET() {
       .eq("call_type", "live")
       .not("appointment_booked", "is", null)
       .limit(MAX_ROWS),
-    admin.from("tenant_config").select("vapi_phone_number").eq("tenant_id", tenant.id).maybeSingle(),
+    admin.from("tenant_config").select("vapi_phone_number, agent_settings").eq("tenant_id", tenant.id).maybeSingle(),
+    admin.from("tenants").select("phone").eq("id", tenant.id).maybeSingle(),
   ]);
   if (error) {
     console.error("[appointments] list failed:", error.message);
@@ -104,6 +110,7 @@ export async function GET() {
     slotMinutes: (() => { const d = ctx.services.map((s) => parseDurationMinutes(s.duration)).filter((x): x is number => !!x && x >= 10 && x <= 240); return d.length ? Math.min(...d) : 30; })(),
     services: ctx.services.map((s) => s.name),
     phoneLinked: !!cfg?.vapi_phone_number,
+    weekStart: resolveWeekStart(settingsOf(cfg?.agent_settings).weekStart, owner?.phone as string | null),
     viewKey: tenant.id,
     appointments,
   });

@@ -1,4 +1,5 @@
 "use client";
+import WeekStartSetting from "@/components/dashboard/WeekStartSetting";
 
 import { useState, useEffect } from "react";
 import { getSupabase } from "@/lib/supabase";
@@ -315,12 +316,13 @@ export default function SettingsPage() {
   }
 
   const handleSaveBusiness = async () => {
-    if (phone.trim() && !phoneValid) {
+    // The business number is required, and the server validates it.
+    if (!phoneValid || !phoneE164) {
       setPhoneSubmitAttempted(true);
       return;
     }
     setSavingSection("business");
-    const phoneToSave = phone.trim() ? (phoneE164 ?? "") : "";
+    const phoneToSave = phoneE164;
     saveProfile({ businessName, businessType: industry, phone: phoneToSave, city });
     try {
       if (userId) {
@@ -354,9 +356,11 @@ export default function SettingsPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: saveErr } = await (supabase as any)
           .from("tenants")
-          .update({ business_name: businessName, industry, city, phone: phoneToSave, website })
+          .update({ business_name: businessName, industry, city, website })
           .eq("owner_id", userId);
-        if (saveErr) {
+        const phoneRes = await fetch("/api/ai-agent/phone", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businessPhone: phoneToSave }) }).catch(() => null);
+        if (!phoneRes?.ok) setPhoneSubmitAttempted(true);
+        if (saveErr || !phoneRes?.ok) {
           console.error("[settings] business save failed:", saveErr.code, saveErr.message);
           setToast(t("settings.billing.toastSavedLocally"));
         } else {
@@ -579,7 +583,7 @@ export default function SettingsPage() {
                     onChange={(v) => { setPhone(v); setBusinessDirty(true); }}
                     onValidityChange={(valid, e164) => { setPhoneValid(valid); setPhoneE164(e164); }}
                     forceShowError={phoneSubmitAttempted}
-                    required={false}
+                    required
                   />
                 </div>
                 <div>
@@ -600,6 +604,7 @@ export default function SettingsPage() {
                     className="w-full px-3.5 py-2.5 text-sm border border-[#E5E7EB] rounded-xl text-[#111111] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#FF6B35]/40 transition-colors" />
                 </div>
               </div>
+              <WeekStartSetting t={t} />
               <div>
                 <label className="text-xs font-medium text-[#6B7280] block mb-1.5">{t("settings.businessInfo.services")}</label>
                 <textarea rows={3} value={services} onChange={biz(setServices)}

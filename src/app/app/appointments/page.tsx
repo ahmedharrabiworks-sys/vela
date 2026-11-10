@@ -9,10 +9,10 @@ import TimeGrid from "@/components/dashboard/appointments/TimeGrid";
 import MobileDay from "@/components/dashboard/appointments/MobileDay";
 import { FilterPopover, MiniMonth, UpNext } from "@/components/dashboard/appointments/ScheduleParts";
 import { AppointmentDrawer, NewAppointmentDrawer, type DrawerMode } from "@/components/dashboard/appointments/AppointmentDrawer";
-import { ClosedDayCard, DayTable } from "@/components/dashboard/appointments/DayView";
+import { DayTable } from "@/components/dashboard/appointments/DayView";
 import TimeOffDrawer from "@/components/dashboard/appointments/TimeOffDrawer";
 import { dayStatus, fullDayOff, nextOpenDay } from "@/lib/time-off";
-import { Icons, addDays, fmtDay, fmtTime, quietBtn, weekStartOf, type Appt, type ApptChannel, type ApptPayload, type ApptStatus } from "@/components/dashboard/appointments/shared";
+import { Icons, WeekStartContext, addDays, fmtDay, fmtTime, quietBtn, weekStartOf, type Appt, type ApptChannel, type ApptPayload, type ApptStatus } from "@/components/dashboard/appointments/shared";
 
 type View = "day" | "week";
 const UP_NEXT_COUNT = 5;
@@ -51,6 +51,8 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ApptStatus | "all">("all");
   const [channel, setChannel] = useState<ApptChannel | "all">("all");
+  // Cancelled bookings never hold a slot; they stay out of sight unless asked for.
+  const [showCancelled, setShowCancelled] = useState(false);
   const [drawer, setDrawer] = useState<string | "new" | "timeoff" | null>(null);
   const [newAt, setNewAt] = useState<{ date: string; time?: string } | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>("view");
@@ -88,10 +90,11 @@ export default function AppointmentsPage() {
     const q = search.trim().toLowerCase();
     return all.filter((a) => {
       if (status !== "all" && a.status !== status) return false;
+      if (a.status === "cancelled" && !showCancelled && status !== "cancelled") return false;
       if (channel !== "all" && a.channel !== channel) return false;
       return !q || [a.name, a.phone, a.service].some((v) => v.toLowerCase().includes(q));
     });
-  }, [all, search, status, channel]);
+  }, [all, search, status, channel, showCancelled]);
 
   const upNext = useMemo(() => {
     if (!now) return [];
@@ -106,7 +109,8 @@ export default function AppointmentsPage() {
   // Older website chat bookings stay findable; the option only exists if they do.
   const channels = useMemo<ApptChannel[]>(() => (all.some((a) => a.channel === "website") ? [...BASE_CHANNELS, "website"] : BASE_CHANNELS), [all]);
 
-  const weekStart = anchor ? weekStartOf(anchor) : "";
+  const firstDay = data?.weekStart ?? 0;
+  const weekStart = anchor ? weekStartOf(anchor, firstDay) : "";
   const weekDays = useMemo(() => (weekStart ? Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)) : []), [weekStart]);
 
   const step = (direction: 1 | -1) => {
@@ -189,6 +193,7 @@ export default function AppointmentsPage() {
   const ready = !!(data && now && anchor);
 
   return (
+    <WeekStartContext.Provider value={firstDay}>
     <div className="max-w-[1400px] mx-auto pb-24 relative">
       <GlassBlobs variant="spread" />
       <div className="relative z-10 space-y-4">
@@ -214,7 +219,7 @@ export default function AppointmentsPage() {
             <button type="button" data-testid="time-off-button" onClick={() => setDrawer("timeoff")} disabled={!ready} aria-label={t("appointmentsV2.timeOff.button")} title={t("appointmentsV2.timeOff.button")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-auto md:px-3`}>
               {Icons.timeOff}<span className="hidden md:inline">{t("appointmentsV2.timeOff.button")}</span>
             </button>
-            <FilterPopover search={search} setSearch={setSearch} status={status} setStatus={setStatus} channel={channel} setChannel={setChannel} channels={channels} t={t} />
+            <FilterPopover search={search} setSearch={setSearch} status={status} setStatus={setStatus} channel={channel} setChannel={setChannel} channels={channels} showCancelled={showCancelled} setShowCancelled={setShowCancelled} t={t} />
             <span title={all.length === 0 ? t("appointmentsV2.exportEmpty") : t("appointments.exportCsv")}>
               <button type="button" data-testid="export-button" onClick={exportCSV} disabled={all.length === 0} aria-label={t("appointments.exportCsv")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-10`}>{Icons.download}</button>
             </span>
@@ -247,13 +252,9 @@ export default function AppointmentsPage() {
                 <div className="hidden md:block glass rounded-2xl overflow-hidden">
                   <TimeGrid days={weekDays} rows={matching} hours={data.hours} timeOff={timeOff} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} />
                 </div>
-              ) : anchorStatus.kind !== "open" ? (
-                <div className="hidden md:block">
-                  <ClosedDayCard date={anchor} status={anchorStatus} rows={dayRows} nextOpen={nextOpenDay(anchor, data.hours, timeOff)} locale={locale} t={t} onGo={setAnchor} onOpen={open} />
-                </div>
               ) : (
                 <div data-testid="day-layout" className="hidden md:block">
-                  <DayTable date={anchor} rows={dayRows} hours={data.hours} timeOff={timeOff} now={now} slotMinutes={data.slotMinutes ?? 30} locale={locale} t={t} onOpen={open} onAdd={(time) => addAt(anchor, time)} onConfirm={confirmRow} showEmptyHint={showEmptyHint} />
+                  <DayTable date={anchor} rows={dayRows} hours={data.hours} timeOff={timeOff} status={anchorStatus} nextOpen={anchorStatus.kind === "open" ? null : nextOpenDay(anchor, data.hours, timeOff)} now={now} slotMinutes={data.slotMinutes ?? 30} locale={locale} t={t} onOpen={open} onAdd={(time) => addAt(anchor, time)} onConfirm={confirmRow} onGo={setAnchor} showEmptyHint={showEmptyHint} />
                 </div>
               )}
               <MobileDay anchor={anchor} onAnchor={setAnchor} onAdd={addAt} onConfirm={confirmRow} slotMinutes={data.slotMinutes ?? 30} rows={matching} hours={data.hours} timeOff={timeOff} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} />
@@ -278,5 +279,6 @@ export default function AppointmentsPage() {
       )}
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </div>
+    </WeekStartContext.Provider>
   );
 }

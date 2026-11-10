@@ -274,14 +274,20 @@ export default function ConversationsPage() {
   // Deep link from an appointment: ?open=call:<id> or ?open=conv:<id>.
   useEffect(() => {
     if (loading || openedFromLink.current) return;
-    const open = new URLSearchParams(window.location.search).get("open");
+    const params = new URLSearchParams(window.location.search);
+    // ?open=call:<id> / ?open=conv:<id>, or plain ?id=<id> (either kind).
+    const open = params.get("open") ?? (params.get("id") ? `any:${params.get("id")}` : null);
     if (!open) return;
     openedFromLink.current = true;
     const [kind, id] = open.split(":");
-    const call = kind === "call" ? calls.find((c) => c.id === id) : undefined;
-    const conv = kind === "conv" ? conversations.find((c) => c.id === id) : undefined;
-    if (call) selectCall(call);
-    else if (conv) selectConv(conv);
+    const call = kind !== "conv" ? calls.find((c) => c.id === id) : undefined;
+    const conv = kind !== "call" && !call ? conversations.find((c) => c.id === id) : undefined;
+    if (call || conv) {
+      setFilter("All");
+      if (call) selectCall(call); else if (conv) selectConv(conv);
+      // Bring the row into view in the list (it may be far down).
+      setTimeout(() => document.querySelector(`[data-item-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "center" }), 60);
+    }
     window.history.replaceState({}, "", "/app/conversations");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, calls, conversations]);
@@ -647,6 +653,7 @@ export default function ConversationsPage() {
             const when = conv ? conv.last_message_at : (item.kind === "call" ? item.call.created_at : null);
             return (
               <div key={item.id}
+                data-item-id={item.id}
                 data-testid="inbox-row"
                 onTouchStart={() => startPress(keyOf(item.kind, item.id))}
                 onTouchEnd={endPress}

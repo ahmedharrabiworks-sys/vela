@@ -11,7 +11,7 @@
 import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { resolveDurationMinutes, type ServiceDuration } from "@/lib/availability";
 import { addDaysISO, resolveOpeningHours, type OpeningHours } from "@/lib/opening-hours";
-import { availableWindows, freeSlots, slotProblem, toTimeText, type HoursProblem, type TimeOff } from "@/lib/time-off";
+import { availableWindows, clashesWithBooked, freeSlots, slotProblem, toTimeText, type HoursProblem, type TimeOff } from "@/lib/time-off";
 import { loadTimeOff } from "@/lib/time-off-server";
 import { resolveTenantTimezone, wallClockNow } from "@/lib/vapi-webhook";
 
@@ -78,13 +78,8 @@ export async function checkSlot(admin: any, tenantId: string, ctx: BookingContex
   const durationMinutes = durationFor(ctx, service);
   const problem = slotProblem({ date, time, durationMinutes, now: ctx.now, hours: ctx.hours, timeOff: ctx.timeOff });
   if (problem) return problem;
-  const start = Date.parse(`${date}T${time}:00.000Z`), end = start + durationMinutes * 60_000;
   const booked = await bookedBetween(admin, tenantId, ctx, date, date, excludeId);
-  const clash = booked.some((b) => {
-    const s = Date.parse(`${b.date}T${b.time}:00.000Z`);
-    return start < s + b.durationMinutes * 60_000 && s < end;
-  });
-  return clash ? "conflict" : null;
+  return clashesWithBooked(date, time, durationMinutes, booked) ? "conflict" : null;
 }
 
 export async function listFreeSlots(admin: any, tenantId: string, ctx: BookingContext, date: string, service: string | null, excludeId?: string | null) {

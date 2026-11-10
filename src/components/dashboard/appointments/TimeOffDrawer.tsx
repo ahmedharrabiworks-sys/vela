@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { timeOffLabel, type TimeOff } from "@/lib/time-off";
 import { Shell } from "./AppointmentDrawer";
+import { DateField } from "./ScheduleParts";
 import { dangerBtn, fmtTime, inputCls, labelCls, type Translate } from "./shared";
 
 type Affected = { id: string; name: string; service: string; date: string; time: string };
@@ -65,14 +66,14 @@ export default function TimeOffDrawer({ list, today, locale, t, onClose, onChang
   return (
     <Shell title={t("appointmentsV2.timeOff.title")} onClose={onClose} closeLabel={t("appointmentsV2.actions.close")}>
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="off-from" className={labelCls}>{t("appointmentsV2.timeOff.from")}</label>
-            <input id="off-from" type="date" dir="ltr" min={today} value={from} onChange={(e) => { setFrom(e.target.value); if (!to || to < e.target.value) setTo(e.target.value); }} className={`${inputCls} text-start`} />
+            <DateField id="off-from" value={from} min={today} today={today} locale={locale} t={t} onChange={(d) => { setFrom(d); if (!to || to < d) setTo(d); }} />
           </div>
           <div>
             <label htmlFor="off-to" className={labelCls}>{t("appointmentsV2.timeOff.to")}</label>
-            <input id="off-to" type="date" dir="ltr" min={from || today} value={to} onChange={(e) => setTo(e.target.value)} className={`${inputCls} text-start`} />
+            <DateField id="off-to" value={to} min={from || today} today={today} locale={locale} t={t} onChange={setTo} />
           </div>
         </div>
         <label className="flex items-center gap-2.5 min-h-[32px] text-sm text-[#374151] cursor-pointer">
