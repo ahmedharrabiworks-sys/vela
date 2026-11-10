@@ -6,6 +6,8 @@ import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { createNotification, channelLabel } from "@/lib/notifications";
 import { recordPendingServiceRequest } from "@/lib/pending-services";
 import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
+import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
+import { closuresForPrompt, timeOffLabel } from "@/lib/time-off";
 import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 
@@ -793,6 +795,8 @@ export async function POST(req: NextRequest) {
   // and Instagram all reach this same code path (see the webhook routes,
   // which POST here rather than duplicating booking logic per channel).
   let availabilityDirective = "";
+  const bookingCtx = await loadBookingContext(admin, tenantId);
+  const closuresText = closuresForPrompt(bookingCtx.timeOff, bookingCtx.hours, bookingCtx.now.date);
   if (apiKey) {
     try {
       const openai = new OpenAI({ apiKey });
@@ -820,8 +824,16 @@ export async function POST(req: NextRequest) {
         // duration) so the conflict check uses a real per-service window
         // instead of a fixed buffer -- see lib/availability.ts for the full
         // root-cause explanation.
-        const result = await checkAvailability(admin, tenantId, parsed.candidateDateTime, DEFAULT_SLOT_MINUTES, parsed.candidateService, kbServices);
-        if (result) availabilityDirective = formatAvailabilityDirective(result);
+        // Stored digits are the wall clock, so read them as written.
+        const when = String(parsed.candidateDateTime).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+        const issue = when ? await checkSlot(admin, tenantId, bookingCtx, when[1], when[2], parsed.candidateService ?? null) : null;
+        if (when && isClosedIssue(issue)) {
+          const alts = await nearestSlots(admin, tenantId, bookingCtx, when[1], when[2], parsed.candidateService ?? null);
+          availabilityDirective = `\n\nREAL-TIME AVAILABILITY CHECK (already run by the system for this exact message):\nRequested: ${when[1]} ${when[2]}\nResult: NOT AVAILABLE, the business is closed then (closed day, outside opening hours, or a closure).\nReal free alternatives: ${alts.map((a) => `${timeOffLabel({ start_date: a.date, end_date: a.date, start_time: null, end_time: null }, "en").split(",")[0]} at ${a.time}`).join("; ") || "none nearby, offer to check a different day"}\nSay plainly that this time is closed, then offer these alternatives. Never confirm or book the requested time.`;
+        } else {
+          const result = await checkAvailability(admin, tenantId, parsed.candidateDateTime, DEFAULT_SLOT_MINUTES, parsed.candidateService, kbServices);
+          if (result) availabilityDirective = formatAvailabilityDirective(result);
+        }
       }
     } catch (err) {
       // Best-effort -- a failed pre-check just means no directive is injected;
@@ -839,7 +851,7 @@ Business details:
 • Name: ${displayName}
 • Industry: ${t.industry || "not specified"}
 • Location: ${t.city || "UAE"}${addressText ? `\n• ${addressText}` : ""}${t.phone ? `\n• Phone: ${t.phone}` : ""}${t.website ? `\n• Website: ${t.website}` : ""}
-• ${workingHoursText}${bookingPolicyText}
+• ${workingHoursText}${closuresText ? `\n• ${closuresText}` : ""}${bookingPolicyText}
 
 Current date & time: ${todayFull}, ${currentTime}
 
@@ -1469,7 +1481,14 @@ Rules:
       }
     }
 
-    if (nameConflict) {
+    // Server-side backstop: even if the reply slipped and said "Booked", a
+    // closed day, closed hour or time off never becomes an appointment.
+    const bookedAt = new Date(booking.datetime).toISOString();
+    const closedIssue = isSameSlot ? null : await checkSlot(admin, tenantId, bookingCtx, bookedAt.slice(0, 10), bookedAt.slice(11, 16), serviceName, existing?.id ?? null);
+
+    if (isClosedIssue(closedIssue)) {
+      console.warn("[ai/reply] refused a booking while closed:", closedIssue, bookedAt);
+    } else if (nameConflict) {
       // Leave the existing appointment untouched -- no insert, no update.
       // The customer already got told about it via existingApptDirective.
     } else if (existing && !isSameSlot) {

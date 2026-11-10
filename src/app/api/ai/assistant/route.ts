@@ -6,6 +6,10 @@ import { isRealImage } from "@/lib/file-signature";
 import { plansForPrompt } from "@/lib/pricing";
 import { syncStoredPhoneAssistant } from "@/lib/knowledge-base-server";
 import { suggestKnowledge } from "@/lib/knowledge-suggestions";
+import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
+import { addDaysISO, weekdayOf } from "@/lib/opening-hours";
+import { timeOffLabel, validateTimeOff } from "@/lib/time-off";
+import { appointmentsInBlock, deleteTimeOff, insertTimeOff, isConfirmationReply, previewRanges, type RawRange } from "@/lib/time-off-server";
 
 export const dynamic = "force-dynamic";
 
@@ -147,6 +151,13 @@ export async function POST(req: NextRequest) {
     admin.from("conversations").select("id, channel, needs_human, customer_name").eq("tenant_id", tenantId).is("deleted_at", null).order("created_at", { ascending: false }).limit(8),
     admin.from("tenant_config").select("instagram_connected, whatsapp_connected, services_json, knowledge_base").eq("tenant_id", tenantId).maybeSingle(),
   ]);
+
+  const bookingCtx = await loadBookingContext(admin, tenantId);
+  const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const calendarText = Array.from({ length: 21 }, (_, i) => {
+    const d = addDaysISO(bookingCtx.now.date, i);
+    return `${WEEKDAYS[weekdayOf(d)]} ${d}`;
+  }).join(", ");
 
   const today = new Date();
   const todayAppts = (apptsRes.data ?? []).filter((a: { datetime: string }) => {
@@ -298,6 +309,17 @@ When calling reschedule_appointment, newDate and newTime must be a direct, uncom
 ## State facts from real data, never from memory of what you said before
 Every date, status, count, or existence claim you tell the owner must come from a tool result you just received IN THIS EXACT TURN, never from what you or the owner said earlier in this conversation, even five seconds ago, even in the SAME session. Real data changes constantly from OUTSIDE this chat too -- the owner (or someone on their team) can delete, restore, cancel, or edit something directly on the actual dashboard pages at any moment, including permanently ("Delete Forever" in Settings -> Recycle Bin, a real hard delete with the row gone for good) -- your own conversation history has no way of knowing that happened and can be flat-out wrong the very next message. This means: ANY question about leads, appointments, conversations, or what's in the Recycle Bin -- including one you already answered earlier in this same conversation -- requires a FRESH call to the matching get_* tool right now, every single time, no exceptions for "I already checked this." Never answer from a remembered count or list, ever. After reschedule_appointment/update_appointment_status/update_lead_stage/restore_* run, read the exact value back from the tool's "saved"/"restored" result and state THAT, not the input you sent. If the owner ever says something you told them seems wrong, do not defend or repeat your earlier claim -- call the relevant get_* tool again right now and report exactly what it shows, even if that means correcting yourself. Being wrong once is fine; insisting on a claim without checking, or trusting your own memory over a fresh check, is not.
 
+## Time off, holidays and closures
+The owner can tell you, in English or Arabic, when the business is closed: "I'm on vacation 2, 3 and 4 December", "الدكتور مش موجود من ٢ لـ ٤ ديسمبر", "close early Thursday at 1pm", "cancel my time off on the 3rd", "what time off do I have?". Read weekdays and dates from the Calendar below, never work out a weekday yourself. Arabic digits are normal digits. Dates go to the tools as YYYY-MM-DD and times as 24-hour HH:MM.
+MANDATORY, in this order, no exceptions:
+1. Call preview_time_off first. It saves nothing.
+2. Tell the owner exactly what will be blocked using the label from the result, and how many appointments are already booked, as one yes/no question, for example "Block Tue 2 to Thu 4 Dec, all day? 2 appointments are already booked on those days." Then stop and wait.
+3. If a date is past, the result says so: ask if they meant the next occurrence and save nothing.
+4. Only after their very next message is a clear yes, call add_time_off with confirmed=true and the same ranges.
+5. After saving, name the appointments on those days and offer to cancel them. Never cancel one on your own; only cancel the ones they then tell you to, using update_appointment_status.
+"Close early at 1pm" is startTime 13:00 with no endTime. "Open late at 11" is endTime 11:00 with no startTime. All day means neither.
+To remove: call get_time_off for the real id, ask one yes/no question, then call remove_time_off with confirmed=true after a clear yes. For one day inside a longer block, pass onlyDate.
+
 ## Navigation
 When directing the user to a page, append [navigate:/path] at the end of your reply.
 Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-agent, /app/ai-agent/knowledge-base, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
@@ -313,7 +335,8 @@ If the owner pastes or types a list of services with names and/or prices (a menu
 - This is a plain-text chat, not a markdown renderer. Never use **bold**, *italic*, backtick code formatting, or # headers. Write like you're texting a friend.
 - Sound like a person texting back, not a formal report. Short, plain sentences. No corporate filler, no stock closers. Never end messages with generic padding like "If you need any further adjustments, just let me know!", "Please let me know if you have any other questions!", "Feel free to reach out if you need anything else!", or any variation of that -- if you genuinely have something specific and useful to add, say that specific thing; otherwise just stop talking. A confirmation is one short sentence, not a sentence plus a boilerplate offer of further help tacked on every single time.${visionCapabilityNote}
 
-Today: ${today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+Today: ${today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Qatar" })}
+Calendar: ${calendarText}
 
 ## This business
 - Name: ${tenant.business_name || "Unknown"}
@@ -404,6 +427,17 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
   // problem. These are real, tenant-scoped, read-only queries against the
   // same tables every other page in the app already reads from -- not new
   // data, just a real way for the model to ask for more of it on demand.
+  const TIME_OFF_RANGE = {
+    type: "object",
+    properties: {
+      startDate: { type: "string", description: "YYYY-MM-DD" },
+      endDate: { type: "string", description: "YYYY-MM-DD. Same as startDate for one day." },
+      startTime: { type: "string", description: "24-hour HH:MM. Omit for all day." },
+      endTime: { type: "string", description: "24-hour HH:MM. Omit for all day." },
+      reason: { type: "string" },
+    },
+    required: ["startDate"],
+  };
   const tools: OpenAI.ChatCompletionTool[] = [
     {
       type: "function",
@@ -649,6 +683,38 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
     {
       type: "function",
       function: {
+        name: "get_time_off",
+        description: "List this business's current and upcoming time off (holidays, vacations, partial-day closures), with ids needed to remove one.",
+        parameters: { type: "object", properties: {} },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "preview_time_off",
+        description: "Check dates the owner wants to block, without saving: returns a label, past-date warnings and the appointments already booked. Always call this before asking the owner to confirm.",
+        parameters: { type: "object", properties: { ranges: { type: "array", items: TIME_OFF_RANGE } }, required: ["ranges"] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "add_time_off",
+        description: "Save time off. Only after preview_time_off, and only after the owner clearly said yes to your confirmation question in their latest message.",
+        parameters: { type: "object", properties: { ranges: { type: "array", items: TIME_OFF_RANGE }, confirmed: { type: "boolean", description: "True only if the owner's latest message is a clear yes to your question." } }, required: ["ranges", "confirmed"] },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "remove_time_off",
+        description: "Remove time off by id (from get_time_off), or one day inside a longer block with onlyDate. Only after the owner clearly said yes to your confirmation question in their latest message.",
+        parameters: { type: "object", properties: { id: { type: "string" }, onlyDate: { type: "string", description: "YYYY-MM-DD, to free just this day." }, confirmed: { type: "boolean" } }, required: ["id", "confirmed"] },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "toggle_conversation_ai",
         description: "Turn the AI's automatic replies on or off for one specific conversation (same toggle as the Conversations page). When off, the owner replies manually and the AI stays silent in that thread only -- other conversations are unaffected. Requires the conversation's real id -- call get_conversations first if you only have a customer name.",
         parameters: {
@@ -664,6 +730,50 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
   ];
 
   async function runTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+    if (name === "get_time_off") {
+      return { timeOff: bookingCtx.timeOff.filter((o) => o.end_date >= bookingCtx.now.date).map((o) => ({ id: o.id, label: timeOffLabel(o, "en"), labelAr: timeOffLabel(o, "ar"), reason: o.reason })) };
+    }
+    if (name === "preview_time_off") {
+      const ranges = Array.isArray(args.ranges) ? args.ranges as RawRange[] : [];
+      if (ranges.length === 0) return { error: "No dates given. Ask the owner which dates they mean." };
+      return { items: await previewRanges(admin, tenantId, ranges, bookingCtx.now.date), instruction: "Nothing is saved yet. Ask the owner one yes/no question naming the label and the appointment count, then wait." };
+    }
+    if (name === "add_time_off" || name === "remove_time_off") {
+      if (args.confirmed !== true || !isConfirmationReply(message, history)) {
+        return { error: "Not confirmed. Ask the owner one explicit yes/no question naming exactly what will change, then only call this after a clear yes in their next message." };
+      }
+    }
+    if (name === "add_time_off") {
+      const ranges = Array.isArray(args.ranges) ? args.ranges as RawRange[] : [];
+      if (ranges.length === 0 || ranges.length > 10) return { error: "Give between 1 and 10 date ranges." };
+      const checked = ranges.map((r) => validateTimeOff(r, bookingCtx.now.date));
+      const bad = checked.find((c) => !c.ok);
+      if (bad && !bad.ok) return { error: bad.error === "past" ? "That date has passed. Ask if they meant the next occurrence." : `Invalid range: ${bad.error}` };
+      const saved: string[] = [];
+      const appointments = [];
+      for (const c of checked) {
+        if (!c.ok) continue;
+        const result = await insertTimeOff(admin, tenantId, user!.id, c.value);
+        if (result.missingTable) return { error: "Time off is not set up in the database yet. Tell the owner it needs one quick database update." };
+        if (!result.row) return { error: "Could not save. Ask the owner to try again." };
+        saved.push(timeOffLabel(c.value, "en"));
+        appointments.push(...await appointmentsInBlock(admin, tenantId, c.value));
+      }
+      return { ok: true, saved, appointmentsOnBlockedDays: appointments, instruction: appointments.length > 0 ? "Name these appointments and offer to cancel them. Do not cancel any until the owner says which." : undefined };
+    }
+    if (name === "remove_time_off") {
+      if (typeof args.id !== "string") return { error: "id is required, call get_time_off first." };
+      const row = bookingCtx.timeOff.find((o) => o.id === args.id);
+      if (!row) return { error: "That time off was not found." };
+      if (typeof args.onlyDate === "string" && row.start_date !== row.end_date) {
+        const day = args.onlyDate;
+        if (day < row.start_date || day > row.end_date) return { error: "That date is not inside this time off." };
+        const keep = { start_time: row.start_time, end_time: row.end_time, reason: row.reason };
+        if (day > row.start_date) await insertTimeOff(admin, tenantId, user!.id, { ...keep, start_date: row.start_date, end_date: addDaysISO(day, -1) });
+        if (day < row.end_date) await insertTimeOff(admin, tenantId, user!.id, { ...keep, start_date: addDaysISO(day, 1), end_date: row.end_date });
+      }
+      return await deleteTimeOff(admin, tenantId, row.id) ? { ok: true, removed: typeof args.onlyDate === "string" ? args.onlyDate : timeOffLabel(row, "en") } : { error: "Could not remove it." };
+    }
     const clampLimit = (n: unknown) => Math.max(1, Math.min(50, typeof n === "number" ? n : 25));
     if (name === "get_leads") {
       // FIX 3 (round K): exclude soft-deleted leads -- same .is("deleted_at",
@@ -885,6 +995,13 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
       const newIso = `${args.newDate}T${timePart}Z`;
       const parsed = new Date(newIso);
       if (Number.isNaN(parsed.getTime())) return { error: "newDate/newTime did not form a valid date" };
+      const { data: moving } = await admin.from("appointments").select("service_name").eq("id", args.appointmentId).eq("tenant_id", tenantId).maybeSingle();
+      const movingService = (moving?.service_name as string | null) ?? null;
+      const issue = await checkSlot(admin, tenantId, bookingCtx, args.newDate, timePart.slice(0, 5), movingService, args.appointmentId);
+      if (isClosedIssue(issue)) {
+        const alts = await nearestSlots(admin, tenantId, bookingCtx, args.newDate, timePart.slice(0, 5), movingService, args.appointmentId);
+        return { error: "The business is closed at that time, so it was not moved. Tell the owner and offer these.", nearestFree: alts };
+      }
       const { data, error } = await admin.from("appointments").update({ datetime: newIso, status: "pending", rescheduled: true }).eq("id", args.appointmentId).eq("tenant_id", tenantId).select("id, datetime, status");
       if (error?.code === "PGRST204" || error?.code === "42703") {
         const retry = await admin.from("appointments").update({ datetime: newIso, status: "pending" }).eq("id", args.appointmentId).eq("tenant_id", tenantId).select("id, datetime, status");

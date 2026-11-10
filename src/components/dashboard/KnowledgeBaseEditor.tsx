@@ -6,7 +6,11 @@ import {
   EMPTY_KB, applySuggestion, knowledgeChecklist, parseKnowledgeBase,
   type KbService, type KnowledgeBase, type SuggestedFact,
 } from "@/lib/knowledge-base";
+import WeeklyHoursEditor from "@/components/dashboard/WeeklyHoursEditor";
+import { formatWeeklyHours, normalizeSchedule, parseOpeningHours, type OpeningHours } from "@/lib/opening-hours";
 import { Chips, PageHead, SaveButton, Section, areaCls, fieldCls, labelCls, quietBtnCls } from "@/components/dashboard/AgentUI";
+
+const EMPTY_WEEK: OpeningHours = [[], [], [], [], [], [], []];
 
 type Suggestion = SuggestedFact & { id: string; source: "conversation" | "call" | "assistant" };
 type PendingRequest = { id: string; serviceName: string; leadName: string | null; leadPhone: string | null };
@@ -20,7 +24,7 @@ function foldFaqs(kb: KnowledgeBase): KnowledgeBase {
 }
 
 export default function KnowledgeBaseEditor() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [kb, setKb] = useState<KnowledgeBase>(EMPTY_KB);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -72,6 +76,10 @@ export default function KnowledgeBaseEditor() {
     edit((p) => ({ ...p, business: { ...p.business, ...patch } }));
 
   const persist = async (): Promise<boolean> => {
+    if (kb.business.schedule && !normalizeSchedule(kb.business.schedule)) {
+      setError(t("agentUi.kb.weekInvalid"));
+      return false;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -217,6 +225,7 @@ export default function KnowledgeBaseEditor() {
     );
   }
 
+  const week = kb.business.schedule ?? parseOpeningHours(kb.business.hours);
   const checklist = knowledgeChecklist(kb);
   const onThisPage = [checklist.hours, checklist.address, checklist.policy, checklist.extra];
   const filled = onThisPage.filter(Boolean).length;
@@ -281,13 +290,14 @@ export default function KnowledgeBaseEditor() {
           </Section>
         )}
 
+        <Section title={t("agentUi.kb.hours")} hint={t("agentUi.kb.weekHint")}>
+          {kb.business.hours.trim() && !week && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-2">{t("agentUi.kb.unreadableHours").replace("{text}", kb.business.hours)}</p>}
+          <WeeklyHoursEditor value={week ?? EMPTY_WEEK} onChange={(schedule) => editBusiness({ schedule, hours: formatWeeklyHours(schedule) })} locale={locale} t={t} />
+        </Section>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
             <Section title={t("agentUi.kb.details")}>
               <div className="space-y-3">
-                <div>
-                  <label htmlFor="kb-hours" className={labelCls}>{t("agentUi.kb.hours")}</label>
-                  <input id="kb-hours" value={kb.business.hours} onChange={(e) => editBusiness({ hours: e.target.value })} placeholder={t("agentUi.kb.hoursPlaceholder")} className={fieldCls} />
-                </div>
                 <div>
                   <label htmlFor="kb-address" className={labelCls}>{t("agentUi.kb.address")}</label>
                   <input id="kb-address" value={kb.business.address} onChange={(e) => editBusiness({ address: e.target.value })} placeholder={t("agentUi.kb.addressPlaceholder")} className={fieldCls} />

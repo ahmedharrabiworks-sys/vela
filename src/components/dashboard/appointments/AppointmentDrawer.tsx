@@ -8,7 +8,7 @@ import { ChannelBadge, Icons, StatusPill, dangerBtn, fmtDay, fmtTime, inputCls, 
 export type DrawerMode = "view" | "reschedule" | "cancel";
 type Result = string | null;
 
-function Shell({ title, onClose, closeLabel, children }: { title: string; onClose: () => void; closeLabel: string; children: ReactNode }) {
+export function Shell({ title, onClose, closeLabel, children }: { title: string; onClose: () => void; closeLabel: string; children: ReactNode }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     closeRef.current?.focus();
@@ -96,14 +96,13 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function AppointmentDrawer({ appt, initialMode, today, nowTime, locale, t, onClose, onAction }: {
+export function AppointmentDetails({ appt, initialMode, today, nowTime, locale, t, onAction }: {
   appt: Appt;
   initialMode: DrawerMode;
   today: string;
   nowTime: string;
   locale: string;
   t: Translate;
-  onClose: () => void;
   onAction: (a: Appt, action: string, extra?: { date: string; time: string }) => Promise<Result>;
 }) {
   const [mode, setMode] = useState<DrawerMode>(initialMode);
@@ -127,7 +126,7 @@ export function AppointmentDrawer({ appt, initialMode, today, nowTime, locale, t
   const source = appt.callId || appt.callSummary ? "call" : appt.conversationId ? "chat" : null;
 
   return (
-    <Shell title={appt.name || t("appointmentsV2.noName")} onClose={onClose} closeLabel={t("appointmentsV2.actions.close")}>
+    <>
       {mode === "reschedule" ? (
         <div className="space-y-4">
           <p className="text-sm text-[#6B7280]">{t("appointmentsV2.drawer.current")}: <span className="font-semibold text-[#111111]">{when}<span dir="ltr">{fmtTime(appt.time, locale)}</span></span></p>
@@ -154,6 +153,7 @@ export function AppointmentDrawer({ appt, initialMode, today, nowTime, locale, t
             <StatusPill status={appt.status} t={t} />
             {appt.rescheduled && <span className="text-[11px] text-[#9CA3AF]">{t("appointmentsV2.rescheduled")}</span>}
           </div>
+          {appt.outsideHours && <p data-testid="outside-warning" className="text-xs font-medium text-amber-700 bg-amber-50 rounded-lg px-3 py-2">{t("appointmentsV2.outsideHours")}</p>}
           <div className="grid grid-cols-2 gap-4">
             <Detail label={t("appointmentsV2.drawer.service")}><span dir="auto">{appt.service}</span></Detail>
             <Detail label={t("appointmentsV2.drawer.channel")}>
@@ -203,6 +203,7 @@ export function AppointmentDrawer({ appt, initialMode, today, nowTime, locale, t
                 <button type="button" disabled={busy} onClick={() => run("no_show")} className={`${quietBtn} h-11 text-sm`}>{t("appointmentsV2.actions.noShow")}</button>
               </div>
             )}
+            {appt.phone && <a href={`tel:${appt.phone.replace(/[^\d+]/g, "")}`} className={`${quietBtn} w-full h-11 text-sm`}>{Icons.phone}{t("appointmentsV2.actions.call")}</a>}
             {!active && <button type="button" disabled={busy} onClick={() => run("reactivate")} className={`${quietBtn} w-full h-11 text-sm`}>{t("appointmentsV2.actions.reactivate")}</button>}
           </div>
 
@@ -221,14 +222,23 @@ export function AppointmentDrawer({ appt, initialMode, today, nowTime, locale, t
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+export function AppointmentDrawer({ onClose, ...rest }: Parameters<typeof AppointmentDetails>[0] & { onClose: () => void }) {
+  return (
+    <Shell title={rest.appt.name || rest.t("appointmentsV2.noName")} onClose={onClose} closeLabel={rest.t("appointmentsV2.actions.close")}>
+      <AppointmentDetails {...rest} />
     </Shell>
   );
 }
 
-export function NewAppointmentDrawer({ services, today, initialDate, locale, t, onClose, onCreate }: {
+export function NewAppointmentDrawer({ services, today, initialDate, initialTime, locale, t, onClose, onCreate }: {
   services: string[];
   today: string;
   initialDate: string;
+  initialTime?: string;
   locale: string;
   t: Translate;
   onClose: () => void;
@@ -240,7 +250,7 @@ export function NewAppointmentDrawer({ services, today, initialDate, locale, t, 
   const [choice, setChoice] = useState(services[0] ?? OTHER);
   const [custom, setCustom] = useState("");
   const [date, setDate] = useState(initialDate);
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(initialTime ?? "");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

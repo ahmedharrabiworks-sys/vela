@@ -1,3 +1,4 @@
+import { checkSlot, isClosedIssue, loadBookingContext } from "@/lib/appointment-slots";
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
@@ -202,7 +203,10 @@ export async function POST(req: NextRequest) {
     // slot on file -- never fabricate a time the customer never gave.
     if (preferredDatetime) {
       const availability = await checkAvailability(admin, tenant.id, preferredDatetime, DEFAULT_SLOT_MINUTES, newService.name, [newService]);
-      if (availability && !availability.conflict) {
+      const wanted = new Date(preferredDatetime).toISOString();
+      const bookingCtx = await loadBookingContext(admin, tenant.id);
+      const closedIssue = await checkSlot(admin, tenant.id, bookingCtx, wanted.slice(0, 10), wanted.slice(11, 16), newService.name);
+      if (availability && !availability.conflict && !isClosedIssue(closedIssue)) {
         const { error: apptErr } = await admin.from("appointments").insert({
           tenant_id: tenant.id,
           lead_id: leadId,

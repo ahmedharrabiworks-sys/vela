@@ -5,6 +5,8 @@
 // standing between one tenant's numbers and another's -- see the
 // cross-tenant test, src/scripts/test-dashboard-cross-tenant.mjs).
 //
+import { resolutionForRange, type CallForResolution, type ChatForResolution } from "./ai-resolution";
+
 // Bucketing strategy: one real row-fetch per table for the full window
 // (current period + previous period, so period-over-period comparisons
 // never need a second round trip), then bucketed in JS -- the same
@@ -93,7 +95,7 @@ export interface DashboardData {
   kpis: {
     conversations: DashboardKPI;
     appointments: DashboardKPI;
-    aiResolutionRate: { value: number | null; previous: number | null; trend: TrendPill | null };
+    aiResolutionRate: { value: number | null; previous: number | null; trend: TrendPill | null; handled: number; needed: number };
     newCustomers: DashboardKPI;
   };
   series: {
@@ -106,10 +108,10 @@ export interface DashboardData {
 }
 
 interface Row { created_at: string }
-interface ConvRow extends Row { channel: string | null; needs_human: boolean; lead_id: string | null; deleted_at: string | null }
+interface ConvRow extends Row, ChatForResolution { channel: string | null; lead_id: string | null; deleted_at: string | null }
 interface ApptRow extends Row { status: string; conversation_id: string | null; deleted_at: string | null; lead_id: string | null }
 interface LeadRow extends Row { channel: string | null; deleted_at: string | null }
-interface CallRow extends Row { call_type: string }
+interface CallRow extends Row, CallForResolution { call_type: string }
 
 function normalizeChannel(raw: string | null | undefined): "whatsapp" | "instagram" | "phone" | null {
   const ch = (raw ?? "").toLowerCase();
@@ -153,10 +155,10 @@ export async function getDashboardData(admin: any, tenantId: string, range: Dash
   const previousStart = new Date(now.getTime() - days * 2 * 86_400_000).toISOString();
   const nowISO = now.toISOString();
 
-  const [tenantRes, convRes, apptRes, leadRes, callRes, tenantConfigRes, everAnyRes] = await Promise.all([
+  const [tenantRes, convRes, apptRes, leadRes, callRes, tenantConfigRes, everAnyRes, everCallRes] = await Promise.all([
     admin.from("tenants").select("business_name").eq("id", tenantId).maybeSingle(),
     admin.from("conversations")
-      .select("created_at, channel, needs_human, lead_id, deleted_at")
+      .select("created_at, channel, needs_human, needs_human_resolved_at, ai_enabled, lead_id, deleted_at")
       .eq("tenant_id", tenantId)
       .gte("created_at", previousStart),
     admin.from("appointments")
@@ -168,7 +170,7 @@ export async function getDashboardData(admin: any, tenantId: string, range: Dash
       .eq("tenant_id", tenantId)
       .gte("created_at", previousStart),
     admin.from("agent_calls")
-      .select("created_at, call_type")
+      .select("created_at, call_type, outcome, duration_seconds, transcript")
       .eq("tenant_id", tenantId)
       .eq("call_type", "live")
       .gte("created_at", previousStart),
@@ -181,6 +183,7 @@ export async function getDashboardData(admin: any, tenantId: string, range: Dash
     // that simply has nothing in the current 2N-day window -- drives the
     // empty-state CTA choice ("Connect a channel" vs "Train your AI").
     admin.from("conversations").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
+    admin.from("agent_calls").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("call_type", "live"),
   ]);
 
   const businessName = (tenantRes.data?.business_name as string | undefined) ?? "";
@@ -189,7 +192,7 @@ export async function getDashboardData(admin: any, tenantId: string, range: Dash
   const leads: LeadRow[] = (leadRes.data ?? []).filter((l: LeadRow) => !l.deleted_at);
   const calls: CallRow[] = callRes.data ?? [];
   const cfg = tenantConfigRes.data as { instagram_connected?: boolean; whatsapp_connected?: boolean; vapi_phone_number?: string | null } | null;
-  const hasAnyDataEver = (everAnyRes.count ?? 0) > 0;
+  const hasAnyDataEver = (everAnyRes.count ?? 0) + (everCallRes.count ?? 0) > 0;
 
   // ── KPI: Conversations (chat channels + live phone calls, current vs previous period) ──
   const convCurrent = conversations.filter((c) => inWindow(c.created_at, currentStart, nowISO)).length
@@ -201,20 +204,9 @@ export async function getDashboardData(admin: any, tenantId: string, range: Dash
   const apptCurrent = appointments.filter((a) => inWindow(a.created_at, currentStart, nowISO)).length;
   const apptPrevious = appointments.filter((a) => inWindow(a.created_at, previousStart, currentStart)).length;
 
-  // ── KPI: AI resolution rate -- conversations whose CURRENT needs_human
-  // value is false, as a % of all conversations in the period. Same
-  // definition as lib/stats.ts's computeAiResolutionRate (see that file's
-  // own comment for the full "resolved means resolved, whether the AI or a
-  // human closed it" reasoning) -- kept in sync deliberately so Dashboard
-  // and any other surface never show two different numbers for the same
-  // real thing. null (not 0%) when there are no conversations in the
-  // period at all -- an honest "no data," never a fabricated rate.
-  const aiHandledCurrent = conversations.filter((c) => inWindow(c.created_at, currentStart, nowISO) && c.needs_human === false).length;
-  const aiHandledPrevious = conversations.filter((c) => inWindow(c.created_at, previousStart, currentStart) && c.needs_human === false).length;
-  const convCurrentChatOnly = conversations.filter((c) => inWindow(c.created_at, currentStart, nowISO)).length;
-  const convPreviousChatOnly = conversations.filter((c) => inWindow(c.created_at, previousStart, currentStart)).length;
-  const aiRateCurrent = convCurrentChatOnly > 0 ? Math.round((aiHandledCurrent / convCurrentChatOnly) * 100) : null;
-  const aiRatePrevious = convPreviousChatOnly > 0 ? Math.round((aiHandledPrevious / convPreviousChatOnly) * 100) : null;
+  // ── KPI: AI resolution rate, one definition for phone and text (see
+  // lib/ai-resolution.ts). Null, never 0%, when nothing real happened.
+  const resolution = resolutionForRange(calls, conversations, now.getTime(), days);
 
   // ── KPI: New customers -- unique real leads first seen in the period. ──
   const custCurrent = leads.filter((l) => inWindow(l.created_at, currentStart, nowISO)).length;
@@ -318,9 +310,11 @@ export async function getDashboardData(admin: any, tenantId: string, range: Dash
       conversations: { value: convCurrent, previous: convPrevious, trend: computeTrendPill(convCurrent, convPrevious) },
       appointments: { value: apptCurrent, previous: apptPrevious, trend: computeTrendPill(apptCurrent, apptPrevious) },
       aiResolutionRate: {
-        value: aiRateCurrent,
-        previous: aiRatePrevious,
-        trend: aiRateCurrent !== null && aiRatePrevious !== null ? computeTrendPill(aiRateCurrent, aiRatePrevious) : null,
+        value: resolution.current.rate,
+        previous: resolution.previous.rate,
+        trend: resolution.current.rate !== null && resolution.previous.rate !== null ? computeTrendPill(resolution.current.rate, resolution.previous.rate) : null,
+        handled: resolution.current.handled,
+        needed: resolution.current.needed,
       },
       newCustomers: { value: custCurrent, previous: custPrevious, trend: computeTrendPill(custCurrent, custPrevious) },
     },

@@ -169,3 +169,42 @@ export function parseOpeningHours(text: string | null | undefined): OpeningHours
 export function weekdayOf(date: string): number {
   return new Date(`${date}T12:00:00.000Z`).getUTCDay();
 }
+
+export function addDaysISO(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T12:00:00.000Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** The stored weekly editor value, or null when it isn't a valid week. */
+export function normalizeSchedule(raw: unknown): OpeningHours | null {
+  if (!Array.isArray(raw) || raw.length !== 7) return null;
+  const week: OpeningHours = [];
+  for (const day of raw) {
+    if (!Array.isArray(day) || day.length > 4) return null;
+    const windows = day.map((w) => ({ open: Number((w as HoursWindow)?.open), close: Number((w as HoursWindow)?.close) })).sort((a, b) => a.open - b.open);
+    const bad = windows.some((w, i) => !Number.isInteger(w.open) || !Number.isInteger(w.close) || w.open < 0 || w.close > 24 * 60 || w.close <= w.open || (i > 0 && w.open < windows[i - 1].close));
+    if (bad) return null;
+    week.push(windows);
+  }
+  return week;
+}
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const clockText = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+
+/** The readable version kept in sync with the weekly editor. */
+export function formatWeeklyHours(week: OpeningHours): string {
+  const describe = (w: HoursWindow[]) => (w.length === 0 ? "closed" : w.map((x) => `${clockText(x.open)} to ${clockText(x.close)}`).join(" and "));
+  const parts: string[] = [];
+  for (let i = 0; i < 7;) {
+    let j = i;
+    while (j + 1 < 7 && describe(week[j + 1]) === describe(week[i])) j++;
+    parts.push(`${i === j ? DAY_NAMES[i] : `${DAY_NAMES[i]} to ${DAY_NAMES[j]}`} ${describe(week[i])}`);
+    i = j + 1;
+  }
+  return parts.join(", ");
+}
+
+/** The one place every booking path gets opening hours from. */
+export function resolveOpeningHours(business: { hours?: string; schedule?: OpeningHours | null }): OpeningHours | null {
+  return business.schedule ?? parseOpeningHours(business.hours);
+}

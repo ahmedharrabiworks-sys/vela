@@ -1,3 +1,4 @@
+import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-server";
 import { createHash } from "crypto";
@@ -290,6 +291,22 @@ export async function POST(req: NextRequest) {
   const requested = new Date(requestedISO);
   if (isNaN(requested.getTime())) {
     return NextResponse.json({ error: "Please enter a valid date and time." }, { status: 400, headers: CORS });
+  }
+
+  const bookingCtx = await loadBookingContext(admin, tenant.id as string);
+  const closedIssue = await checkSlot(admin, tenant.id as string, bookingCtx, date, time, matchedServiceName);
+  if (isClosedIssue(closedIssue)) {
+    const leadId = await upsertLead(
+      "new",
+      `Wanted ${matchedServiceName} on ${date} ${time}, but the business is closed then.`,
+      { service: matchedServiceName, preferred_datetime: requestedISO, message: null },
+    );
+    const alts = await nearestSlots(admin, tenant.id as string, bookingCtx, date, time, matchedServiceName);
+    const closedMessage = alts.length > 0
+      ? `We're closed at that time. The nearest openings are: ${alts.map((a) => `${a.date} at ${a.time}`).join(", ")}.`
+      : "We're closed at that time. We've saved your request and will follow up within 24 hours.";
+    await finalizeConversation(leadId, closedMessage);
+    return NextResponse.json({ ok: true, booked: false, message: closedMessage, alternatives: alts.map((a) => `${a.date}T${a.time}:00.000Z`), conversationId: convId }, { headers: CORS });
   }
 
   const availability = await checkAvailability(admin, tenant.id, requestedISO, DEFAULT_SLOT_MINUTES, matchedServiceName, kbServices as { name?: string; duration?: string }[]);

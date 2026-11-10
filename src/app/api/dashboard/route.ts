@@ -7,16 +7,8 @@ import { getDashboardData, isValidRange, type DashboardRange } from "@/lib/dashb
 
 export const dynamic = "force-dynamic";
 
-// Short per-tenant cache (60s) -- Dashboard-redesign round. In-memory,
-// same known limitation as every other in-memory cache/limiter in this
-// codebase (resets on cold start, not shared across serverless instances):
-// an acceptable staleness ceiling for a dashboard number, not a security
-// boundary (the security boundary is the explicit tenant_id filter on
-// every query in dashboard-stats.ts, re-checked on every request
-// regardless of cache state).
-const CACHE_TTL_MS = 60_000;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const cache = new Map<string, { data: any; expiresAt: number }>();
+// No cache: a per-instance cache showed deleted conversations for up to a
+// minute, and serverless instances can't clear each other's copy.
 
 function limitOrNull(value: number): number | null {
   return value === Infinity ? null : value;
@@ -42,12 +34,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Failed to load dashboard" }, { status: 500 });
   }
 
-  const cacheKey = `${tenantId}:${range}`;
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
-    return NextResponse.json(cached.data);
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
 
@@ -70,7 +56,6 @@ export async function GET(req: Request) {
       },
     };
 
-    cache.set(cacheKey, { data: payload, expiresAt: Date.now() + CACHE_TTL_MS });
     return NextResponse.json(payload);
   } catch (err) {
     console.error("[dashboard] aggregation error:", err instanceof Error ? err.message : err);

@@ -26,7 +26,7 @@ export interface DashboardPayload {
   kpis: {
     conversations: DashKPI;
     appointments: DashKPI;
-    aiResolutionRate: { value: number | null; previous: number | null; trend: Trend };
+    aiResolutionRate: { value: number | null; previous: number | null; trend: Trend; handled?: number; needed?: number };
     newCustomers: DashKPI;
   };
   series: { conversations: SeriesPoint[]; appointments: SeriesPoint[] };
@@ -75,7 +75,7 @@ function TrendPillView({ trend }: { trend: Trend }) {
 }
 
 function KpiCard({ label, value, suffix, trend, periodLabel, subDim }: {
-  label: string; value: number | null; suffix?: string; trend: Trend; periodLabel: string; subDim?: string;
+  label: string; value: number | null; suffix?: string; trend: Trend; periodLabel: string | null; subDim?: string;
 }) {
   return (
     <div className="glass rounded-2xl p-4 sm:p-5 transition-transform hover:-translate-y-0.5">
@@ -90,7 +90,7 @@ function KpiCard({ label, value, suffix, trend, periodLabel, subDim }: {
           <CountUp value={value} suffix={suffix} />
         </p>
       )}
-      <p className="text-[11px] text-[#9CA3AF] mt-1.5">{periodLabel}</p>
+      {periodLabel && <p data-testid="kpi-comparison" className="text-[11px] text-[#9CA3AF] mt-1.5">{periodLabel}</p>}
     </div>
   );
 }
@@ -207,10 +207,10 @@ export default function DashboardPageUI({
                 [0, 1, 2, 3].map((i) => <SkeletonCard key={i} className="h-[112px]" />)
               ) : (
                 <>
-                  <KpiCard label={t("dashboardV2.kpiConversations")} value={data!.kpis.conversations.value} trend={data!.kpis.conversations.trend} periodLabel={periodLabel} />
-                  <KpiCard label={t("dashboardV2.kpiAppointments")} value={data!.kpis.appointments.value} trend={data!.kpis.appointments.trend} periodLabel={periodLabel} />
-                  <KpiCard label={t("dashboardV2.kpiAiResolution")} value={data!.kpis.aiResolutionRate.value} suffix="%" trend={data!.kpis.aiResolutionRate.trend} periodLabel={periodLabel} subDim={t("dashboardV2.noDataYet")} />
-                  <KpiCard label={t("dashboardV2.kpiNewCustomers")} value={data!.kpis.newCustomers.value} trend={data!.kpis.newCustomers.trend} periodLabel={periodLabel} />
+                  <KpiCard label={t("dashboardV2.kpiConversations")} value={data!.kpis.conversations.value} trend={data!.kpis.conversations.trend} periodLabel={data!.kpis.conversations.trend ? periodLabel : null} />
+                  <KpiCard label={t("dashboardV2.kpiAppointments")} value={data!.kpis.appointments.value} trend={data!.kpis.appointments.trend} periodLabel={data!.kpis.appointments.trend ? periodLabel : null} />
+                  <KpiCard label={t("dashboardV2.kpiAiResolution")} value={data!.kpis.aiResolutionRate.value} suffix="%" trend={data!.kpis.aiResolutionRate.trend} periodLabel={data!.kpis.aiResolutionRate.trend ? periodLabel : null} subDim={t("dashboardV2.noDataYet")} />
+                  <KpiCard label={t("dashboardV2.kpiNewCustomers")} value={data!.kpis.newCustomers.value} trend={data!.kpis.newCustomers.trend} periodLabel={data!.kpis.newCustomers.trend ? periodLabel : null} />
                 </>
               )}
             </div>
@@ -253,6 +253,10 @@ export default function DashboardPageUI({
                   usageTitle={t("dashboardV2.planUsage")}
                   unlimitedLabel={t("dashboardV2.unlimited")}
                   notIncludedLabel={t("agentUi.charts.notIncluded")}
+                  legend={[
+                    { label: t("agentUi.charts.handledByAi"), value: data!.kpis.aiResolutionRate.handled ?? 0, color: "#FF6B35" },
+                    { label: t("agentUi.charts.neededHuman"), value: data!.kpis.aiResolutionRate.needed ?? 0, color: "#D1D5DB" },
+                  ]}
                   rows={(["messages", "voiceMinutes"] as const).map((key) => ({ label: t(`dashboardV2.usage.${key}`), used: data!.usage[key].used, limit: data!.usage[key].limit }))}
                 />
               </div>

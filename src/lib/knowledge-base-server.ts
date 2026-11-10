@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { parseKnowledgeBase, type KnowledgeBase } from "@/lib/knowledge-base";
+import { parseKnowledgeBase, syncHoursFields, type KnowledgeBase } from "@/lib/knowledge-base";
+import { loadTimeOff } from "@/lib/time-off-server";
+import { closuresForPrompt } from "@/lib/time-off";
+import { resolveOpeningHours } from "@/lib/opening-hours";
 import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
-import { getVapiServerConfig, resolveTenantTimezone, wallClockNowText } from "@/lib/vapi-webhook";
+import { getVapiServerConfig, resolveTenantTimezone, wallClockNow, wallClockNowText } from "@/lib/vapi-webhook";
 
 export async function loadKnowledgeBase(admin: any, tenantId: string): Promise<KnowledgeBase> {
   const { data } = await admin.from("tenant_config").select("knowledge_base").eq("tenant_id", tenantId).maybeSingle();
@@ -36,11 +39,15 @@ export async function syncStoredPhoneAssistant(admin: any, tenantId: string): Pr
 
     const agentName = resolveAgentName(settings);
     const businessName = (tenant?.business_name as string | undefined) || "your business";
+    const kb = parseKnowledgeBase(cfg?.knowledge_base);
+    const today = wallClockNow(resolveTenantTimezone(settings)).date;
+    const closures = closuresForPrompt(await loadTimeOff(admin, tenantId, today), resolveOpeningHours(kb.business), today);
     const body = buildPhoneAssistant({
       name: `${agentName}, ${businessName}`,
       agentName,
       businessName,
-      kb: parseKnowledgeBase(cfg?.knowledge_base) as unknown as Record<string, any>,
+      kb: kb as unknown as Record<string, any>,
+      closures,
       settings,
       nowText: wallClockNowText(resolveTenantTimezone(settings)),
       server: serverCfg.server,
@@ -60,7 +67,8 @@ export async function syncStoredPhoneAssistant(admin: any, tenantId: string): Pr
 }
 
 /** The one write path for owner-driven knowledge changes. */
-export async function saveKnowledgeBase(admin: any, tenantId: string, kb: KnowledgeBase): Promise<{ error: string | null; phoneSync: PhoneSync }> {
+export async function saveKnowledgeBase(admin: any, tenantId: string, incoming: KnowledgeBase): Promise<{ error: string | null; phoneSync: PhoneSync }> {
+  const kb = syncHoursFields(await loadKnowledgeBase(admin, tenantId), incoming);
   const { error } = await admin.from("tenant_config").upsert(
     { tenant_id: tenantId, knowledge_base: JSON.stringify(kb), knowledge_base_updated_at: new Date().toISOString() },
     { onConflict: "tenant_id" },

@@ -363,12 +363,18 @@
     "deleteConversation": "Delete",
     "renamePlaceholder": "Conversation name",
     "deleteConfirmTitle": "Delete this conversation?",
-    "deleteConfirmBody": "This permanently deletes the conversation and all its messages. This can't be undone.",
+    "deleteConfirmBody": "This can't be undone.",
     "cancel": "Cancel",
     "confirmDelete": "Delete conversation",
     "goToSettings": "Go to Settings →",
     "errorNoTenant": "No tenant found. Please complete your business setup first.",
-    "errorLoadFailed": "Could not load conversations. Please run the Supabase migration first."
+    "errorLoadFailed": "Could not load conversations. Please run the Supabase migration first.",
+    "select": "Select",
+    "selectAll": "Select all",
+    "deleteSelected": "Delete ({n})",
+    "deleteManyTitle": "Delete {n} conversations?",
+    "deletedToast": "Deleted",
+    "deleteFailed": "Could not delete. Please try again."
   },
   "leads": {
     "title": "Leads & CRM",
@@ -1513,7 +1519,9 @@
       "average": "Daily average",
       "aiHandled": "AI handled",
       "ofConversations": "of conversations",
-      "notIncluded": "Not on your plan"
+      "notIncluded": "Not on your plan",
+      "handledByAi": "Handled by AI",
+      "neededHuman": "Needed a human"
     },
     "overview": {
       "booked": "Booked from calls",
@@ -1590,7 +1598,16 @@
       "reject": "Reject",
       "sourceConversation": "From a conversation",
       "sourceCall": "From a call",
-      "sourceAssistant": "From your assistant chat"
+      "sourceAssistant": "From your assistant chat",
+      "weekHint": "Your AI and every booking follow these hours.",
+      "hoursFrom": "from",
+      "hoursUntil": "until",
+      "hoursTo": "to",
+      "addRange": "Add hours",
+      "removeRange": "Remove these hours",
+      "closedDay": "Closed",
+      "unreadableHours": "We could not read your saved hours (\"{text}\"). Set your week below.",
+      "weekInvalid": "Please check your opening hours. Each range must end after it starts and must not overlap."
     },
     "phone": {
       "howTitle": "How inbound calls work",
@@ -1760,7 +1777,12 @@
       "not_started": "This appointment has not happened yet.",
       "not_found": "This appointment no longer exists.",
       "needs_migration": "Completed and no-show need one database update first.",
-      "save_failed": "Could not save. Please try again."
+      "save_failed": "Could not save. Please try again.",
+      "time_off": "The business is closed at that time.",
+      "invalid_date": "Please check the dates.",
+      "invalid_time": "Please check the times.",
+      "range_too_long": "That is more than a year. Please shorten it.",
+      "timeoff_needs_migration": "Time off needs one database update first."
     },
     "toast": {
       "confirm": "Appointment confirmed",
@@ -1803,6 +1825,34 @@
       "title": "Jump to a date",
       "previous": "Previous month",
       "next": "Next month"
+    },
+    "outsideHours": "Outside opening hours",
+    "day": {
+      "closedOn": "Closed on {day}",
+      "timeOffShort": "Time off",
+      "goTo": "Go to {date}",
+      "to": "to",
+      "booked": "Booked",
+      "freeLeft": "Free slots left",
+      "nextFree": "Next free slot",
+      "noneFree": "None",
+      "addAt": "Add an appointment at {time}"
+    },
+    "timeOff": {
+      "button": "Time off",
+      "title": "Time off",
+      "from": "From",
+      "to": "To",
+      "allDay": "All day",
+      "fromTime": "From",
+      "toTime": "Until",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "For example, annual leave",
+      "add": "Block this time",
+      "upcoming": "Upcoming time off",
+      "none": "No time off planned.",
+      "remove": "Remove",
+      "conflicts": "{n} appointments are already booked in this time. They were not cancelled."
     }
   },
   "channelsV2": {

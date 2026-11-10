@@ -9,6 +9,9 @@
 
 import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { formatBookedSlotsText } from "@/lib/availability";
+import { resolveOpeningHours } from "@/lib/opening-hours";
+import { closuresForPrompt } from "@/lib/time-off";
+import { loadTimeOff } from "@/lib/time-off-server";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { getVapiServerConfig, isReliableCallerId, resolveTenantTimezone, wallClockNow, wallClockNowText } from "@/lib/vapi-webhook";
@@ -53,7 +56,8 @@ export async function prepareInboundCall(admin: any, cfg: TenantPhoneCfg, caller
     return { ok: false, reason: "server_config", businessName, ownerId };
   }
 
-  const kb = parseKnowledgeBase(cfg.knowledge_base) as unknown as Record<string, any>;
+  const parsedKb = parseKnowledgeBase(cfg.knowledge_base);
+  const kb = parsedKb as unknown as Record<string, any>;
   const settings = parseJson(cfg.agent_settings);
   const timezone = resolveTenantTimezone(settings);
   const agentName = resolveAgentName(settings);
@@ -89,6 +93,7 @@ export async function prepareInboundCall(admin: any, cfg: TenantPhoneCfg, caller
       settings,
       nowText: wallClockNowText(timezone),
       bookedSlotsText,
+      closures: closuresForPrompt(await loadTimeOff(admin, cfg.tenant_id, wallClockNow(timezone).date), resolveOpeningHours(parsedKb.business), wallClockNow(timezone).date),
       caller: { number: callerNumber, reliable },
       server: serverCfg.server,
     }),

@@ -4,6 +4,7 @@ import { ensureTenant } from "@/lib/ensure-tenant";
 import { checkSlot, cleanText, durationFor, loadBookingContext } from "@/lib/appointment-slots";
 import { normalizeDate, normalizeTime } from "@/lib/phone-booking";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
+import { isOutsideHours } from "@/lib/time-off";
 import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,7 @@ export async function GET() {
       date: iso.slice(0, 10),
       time: iso.slice(11, 16),
       durationMinutes: durationFor(ctx, a.service_name as string | null),
+      outsideHours: (a.status === "pending" || a.status === "confirmed") && isOutsideHours(iso.slice(0, 10), iso.slice(11, 16), durationFor(ctx, a.service_name as string | null), ctx.hours, ctx.timeOff),
       status: a.status as string,
       channel: lead?.channel ?? "manual",
       notes,
@@ -96,6 +98,7 @@ export async function GET() {
   return NextResponse.json({
     now: { date: ctx.now.date, time: ctx.now.time },
     hours: ctx.hours,
+    timeOff: ctx.timeOff,
     services: ctx.services.map((s) => s.name),
     phoneLinked: !!cfg?.vapi_phone_number,
     viewKey: tenant.id,

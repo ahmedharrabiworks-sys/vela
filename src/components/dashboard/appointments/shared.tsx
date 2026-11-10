@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import ChannelIcon, { channelIconBg } from "@/components/ui/ChannelIcon";
 import type { OpeningHours } from "@/lib/opening-hours";
+import type { TimeOff } from "@/lib/time-off";
 
 export type ApptStatus = "confirmed" | "pending" | "cancelled" | "completed" | "no_show";
 export type ApptChannel = "phone" | "website" | "whatsapp" | "instagram" | "manual";
@@ -16,6 +17,7 @@ export interface Appt {
   date: string;
   time: string;
   durationMinutes: number;
+  outsideHours: boolean;
   status: ApptStatus;
   channel: ApptChannel;
   notes: string | null;
@@ -28,6 +30,7 @@ export interface Appt {
 export interface ApptPayload {
   now: { date: string; time: string };
   hours: OpeningHours | null;
+  timeOff: TimeOff[];
   services: string[];
   phoneLinked: boolean;
   viewKey: string;
@@ -111,5 +114,7 @@ export const Icons = {
   chevron: <Svg size={12}><path d="M5 2.5L9.5 7 5 11.5" /></Svg>,
   download: <Svg size={15}><path d="M7 1.5v7M4 6l3 3 3-3M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" /></Svg>,
   plus: <Svg><path d="M7 2v10M2 7h10" /></Svg>,
+  warning: <Svg size={12}><path d="M7 2l5.5 10h-11L7 2zM7 6v3M7 10.6v.1" /></Svg>,
+  timeOff: <Svg size={15}><rect x="1.5" y="2.5" width="11" height="10" rx="2" /><path d="M1.5 5.5h11M4.5 1v3M9.5 1v3M5 8l4 2.5M9 8l-4 2.5" /></Svg>,
   filter: <Svg size={15}><path d="M2 3.5h10M4 7h6M6 10.5h2" /></Svg>,
 };

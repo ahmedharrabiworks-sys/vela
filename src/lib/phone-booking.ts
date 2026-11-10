@@ -17,7 +17,8 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { checkAvailability, DEFAULT_SLOT_MINUTES, type ServiceDuration } from "@/lib/availability";
+import type { ServiceDuration } from "@/lib/availability";
+import { checkSlot, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
 import { parseKnowledgeBase } from "@/lib/knowledge-base";
 import { createNotification } from "@/lib/notifications";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
@@ -164,16 +165,15 @@ export async function bookAppointmentFromCall(admin: any, input: PhoneBookingInp
     }
   }
 
-  // Same availability + double-booking logic as the text AI.
-  const availability = await checkAvailability(admin, tenantId, requestedISO, DEFAULT_SLOT_MINUTES, serviceName, services);
-  if (!availability) {
-    return { status: "invalid", message: "Not booked: that date and time could not be checked. Ask the caller to repeat the day and time." };
-  }
-  if (availability.conflict) {
-    const alts = availability.alternatives.map(spokenWhen);
+  // The same opening hours, time off and double-booking rules as every channel.
+  const bookingCtx = await loadBookingContext(admin, tenantId);
+  const issue = await checkSlot(admin, tenantId, bookingCtx, date!, time!, serviceName);
+  if (issue) {
+    const alts = (await nearestSlots(admin, tenantId, bookingCtx, date!, time!, serviceName)).map((s) => spokenWhen(new Date(`${s.date}T${s.time}:00.000Z`)));
+    const why = issue === "conflict" ? "is already taken" : issue === "outside_hours" ? "is outside our opening hours" : "is when the business is closed";
     return {
       status: "conflict",
-      message: `Not booked: ${spokenWhen(requested)} is already taken. ${alts.length > 0 ? `Real free alternatives: ${alts.join("; ")}.` : "No free slot nearby, ask for a different day."} Offer these to the caller.`,
+      message: `Not booked: ${spokenWhen(requested)} ${why}. ${alts.length > 0 ? `Nearest free times: ${alts.join("; ")}.` : "No free slot nearby, ask for a different day."} Offer these to the caller.`,
     };
   }
 

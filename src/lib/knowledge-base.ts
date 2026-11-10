@@ -5,6 +5,8 @@
  * knowledge-base-server.ts.
  */
 
+import { formatWeeklyHours, normalizeSchedule, parseOpeningHours, type OpeningHours } from "./opening-hours";
+
 export interface KbService {
   name: string;
   price: string;
@@ -17,6 +19,8 @@ export interface KnowledgeBase {
   faqs: Array<{ q: string; a: string }>;
   business: {
     hours: string;
+    // Structured week; hours above is its readable text, kept in sync.
+    schedule?: OpeningHours | null;
     address: string;
     bookingPolicy: string;
     tone: "professional" | "friendly" | "luxury";
@@ -50,7 +54,7 @@ export function parseKnowledgeBase(raw: unknown): KnowledgeBase {
     faqs: (Array.isArray(o.faqs) ? o.faqs : [])
       .filter((f) => f && typeof f === "object")
       .map((f: Record<string, unknown>) => ({ q: str(f.q), a: str(f.a) })),
-    business: { hours: str(b.hours), address: str(b.address), bookingPolicy: str(b.bookingPolicy), tone },
+    business: { hours: str(b.hours), schedule: normalizeSchedule(b.schedule), address: str(b.address), bookingPolicy: str(b.bookingPolicy), tone },
     extra: str(o.extra),
   };
 }
@@ -87,12 +91,28 @@ export function mergeImportedKnowledge(existing: KnowledgeBase, incoming: Knowle
     faqs,
     business: {
       hours: incoming.business.hours || existing.business.hours,
+      schedule: incoming.business.hours ? null : existing.business.schedule,
       address: incoming.business.address || existing.business.address,
       bookingPolicy: incoming.business.bookingPolicy || existing.business.bookingPolicy,
       tone: existing.business.tone,
     },
     extra: appendText(existing.extra, incoming.extra),
   };
+}
+
+/**
+ * Keeps the weekly editor and the free text in step, wherever a save came
+ * from: a changed week rewrites the text, a changed text re-reads the week.
+ */
+export function syncHoursFields(prev: KnowledgeBase, next: KnowledgeBase): KnowledgeBase {
+  const weekChanged = JSON.stringify(prev.business.schedule ?? null) !== JSON.stringify(next.business.schedule ?? null);
+  if (weekChanged && next.business.schedule) {
+    return { ...next, business: { ...next.business, hours: formatWeeklyHours(next.business.schedule) } };
+  }
+  if (prev.business.hours.trim() !== next.business.hours.trim()) {
+    return { ...next, business: { ...next.business, schedule: parseOpeningHours(next.business.hours) } };
+  }
+  return next;
 }
 
 export type KbSection = "services" | "hours" | "address" | "policy" | "extra";

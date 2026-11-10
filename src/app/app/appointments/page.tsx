@@ -8,7 +8,10 @@ import Toast from "@/components/ui/Toast";
 import TimeGrid from "@/components/dashboard/appointments/TimeGrid";
 import MobileDay from "@/components/dashboard/appointments/MobileDay";
 import { FilterPopover, MiniMonth, UpNext } from "@/components/dashboard/appointments/ScheduleParts";
-import { AppointmentDrawer, NewAppointmentDrawer } from "@/components/dashboard/appointments/AppointmentDrawer";
+import { AppointmentDetails, AppointmentDrawer, NewAppointmentDrawer } from "@/components/dashboard/appointments/AppointmentDrawer";
+import { ClosedDayCard, DaySummary, DayTimeline } from "@/components/dashboard/appointments/DayView";
+import TimeOffDrawer from "@/components/dashboard/appointments/TimeOffDrawer";
+import { dayStatus, fullDayOff, nextOpenDay } from "@/lib/time-off";
 import { Icons, addDays, fmtDay, fmtTime, quietBtn, weekStartOf, type Appt, type ApptChannel, type ApptPayload, type ApptStatus } from "@/components/dashboard/appointments/shared";
 
 type View = "day" | "week";
@@ -48,7 +51,9 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ApptStatus | "all">("all");
   const [channel, setChannel] = useState<ApptChannel | "all">("all");
-  const [drawer, setDrawer] = useState<string | "new" | null>(null);
+  const [drawer, setDrawer] = useState<string | "new" | "timeoff" | null>(null);
+  const [newAt, setNewAt] = useState<{ date: string; time?: string } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   const load = useCallback(async () => {
@@ -75,6 +80,7 @@ export default function AppointmentsPage() {
     if (data) try { localStorage.setItem(`vela_appt_view:${data.viewKey}`, v); } catch { /* private mode */ }
   };
 
+  useEffect(() => setSelectedId(null), [anchor, view]);
   const now = useLiveNow(data?.now ?? null);
   const all = useMemo(() => data?.appointments ?? [], [data]);
   const today = now?.date ?? "";
@@ -173,9 +179,18 @@ export default function AppointmentsPage() {
     }
   };
 
-  const openAppt = drawer && drawer !== "new" ? all.find((a) => a.id === drawer) ?? null : null;
+  const openAppt = drawer && drawer !== "new" && drawer !== "timeoff" ? all.find((a) => a.id === drawer) ?? null : null;
+  const selectedAppt = selectedId ? all.find((a) => a.id === selectedId) ?? null : null;
   const showEmptyHint = !loading && all.length === 0;
-  const open = (a: Appt) => setDrawer(a.id);
+  const timeOff = useMemo(() => data?.timeOff ?? [], [data]);
+  const anchorStatus = anchor ? dayStatus(anchor, data?.hours ?? null, timeOff) : ({ kind: "open" } as const);
+  const dayRows = useMemo(() => matching.filter((a) => a.date === anchor), [matching, anchor]);
+  // A wide Day view shows details beside the timeline; everywhere else, a drawer.
+  const open = (a: Appt) => {
+    if (view === "day" && anchorStatus.kind === "open" && window.matchMedia("(min-width: 1024px)").matches) setSelectedId(a.id);
+    else setDrawer(a.id);
+  };
+  const addAt = (date: string, time?: string) => { setNewAt({ date, time }); setDrawer("new"); };
   const ready = !!(data && now && anchor);
 
   return (
@@ -201,13 +216,16 @@ export default function AppointmentsPage() {
                 </button>
               ))}
             </div>
+            <button type="button" data-testid="time-off-button" onClick={() => setDrawer("timeoff")} disabled={!ready} aria-label={t("appointmentsV2.timeOff.button")} title={t("appointmentsV2.timeOff.button")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-auto md:px-3`}>
+              {Icons.timeOff}<span className="hidden md:inline">{t("appointmentsV2.timeOff.button")}</span>
+            </button>
             <FilterPopover search={search} setSearch={setSearch} status={status} setStatus={setStatus} channel={channel} setChannel={setChannel} channels={channels} t={t} />
             <span title={all.length === 0 ? t("appointmentsV2.exportEmpty") : t("appointments.exportCsv")}>
               <button type="button" data-testid="export-button" onClick={exportCSV} disabled={all.length === 0} aria-label={t("appointments.exportCsv")} className={`${quietBtn} h-11 w-11 md:h-10 md:w-10`}>{Icons.download}</button>
             </span>
           </div>
 
-          <button type="button" onClick={() => setDrawer("new")} disabled={loading || failed} className="btn-primary h-11 md:h-10 px-3.5 md:px-4 text-sm gap-1.5 order-4 ms-auto md:ms-0 disabled:opacity-60">
+          <button type="button" onClick={() => addAt(anchor && now && anchor >= now.date ? anchor : (now?.date ?? ""))} disabled={loading || failed} className="btn-primary h-11 md:h-10 px-3.5 md:px-4 text-sm gap-1.5 order-4 ms-auto md:ms-0 disabled:opacity-60">
             {Icons.plus}{t("appointmentsV2.newAppointment")}
           </button>
         </header>
@@ -230,15 +248,40 @@ export default function AppointmentsPage() {
                   <Link href="/app/ai-agent/knowledge-base" className="font-semibold text-[#C2410C] hover:underline">{t("appointmentsV2.week.addHours")}</Link>
                 </p>
               )}
-              <div className="hidden md:block glass rounded-2xl overflow-hidden">
-                <TimeGrid days={view === "week" ? weekDays : [anchor]} rows={matching} hours={data.hours} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} variant={view} />
-              </div>
-              <MobileDay anchor={anchor} onAnchor={setAnchor} rows={matching} hours={data.hours} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} />
+              {view === "week" ? (
+                <div className="hidden md:block glass rounded-2xl overflow-hidden">
+                  <TimeGrid days={weekDays} rows={matching} hours={data.hours} timeOff={timeOff} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} />
+                </div>
+              ) : anchorStatus.kind !== "open" ? (
+                <div className="hidden md:block">
+                  <ClosedDayCard date={anchor} status={anchorStatus} rows={dayRows} nextOpen={nextOpenDay(anchor, data.hours, timeOff)} locale={locale} t={t} onGo={setAnchor} onOpen={open} />
+                </div>
+              ) : (
+                <div data-testid="day-layout" className="hidden md:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-4 items-start">
+                  <div className="glass rounded-2xl overflow-hidden">
+                    <DayTimeline date={anchor} rows={dayRows} hours={data.hours} timeOff={timeOff} now={now} locale={locale} t={t} onOpen={open} onAdd={(time) => addAt(anchor, time)} selectedId={selectedId} showEmptyHint={showEmptyHint} />
+                  </div>
+                  <div data-testid="day-panel" className="hidden lg:block glass rounded-2xl p-4 sm:p-5">
+                    {selectedAppt ? (
+                      <>
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <h2 dir="auto" className="text-base font-bold text-[#111111] truncate">{selectedAppt.name || t("appointmentsV2.noName")}</h2>
+                          <button type="button" onClick={() => setSelectedId(null)} aria-label={t("appointmentsV2.actions.close")} className="h-9 w-9 -me-1.5 rounded-lg flex items-center justify-center text-[#6B7280] hover:bg-[#F3F4F6]">{Icons.close}</button>
+                        </div>
+                        <AppointmentDetails key={`${selectedAppt.id}:${selectedAppt.status}:${selectedAppt.date}${selectedAppt.time}`} appt={selectedAppt} initialMode="view" today={now.date} nowTime={now.time} locale={locale} t={t} onAction={runAction} />
+                      </>
+                    ) : (
+                      <DaySummary date={anchor} rows={dayRows} hours={data.hours} timeOff={timeOff} now={now} locale={locale} t={t} />
+                    )}
+                  </div>
+                </div>
+              )}
+              <MobileDay anchor={anchor} onAnchor={setAnchor} onAdd={addAt} rows={matching} hours={data.hours} timeOff={timeOff} now={now} locale={locale} t={t} onOpen={open} showEmptyHint={showEmptyHint} />
               <div className="xl:hidden"><UpNext rows={upNext} today={today} locale={locale} t={t} onOpen={open} /></div>
             </div>
             <aside className="hidden xl:block space-y-4">
               <UpNext rows={upNext} today={today} locale={locale} t={t} onOpen={open} />
-              <MiniMonth anchor={anchor} today={today} bookedDates={bookedDates} locale={locale} t={t} onPick={setAnchor} />
+              <MiniMonth anchor={anchor} today={today} bookedDates={bookedDates} isBlocked={(d) => !!fullDayOff(d, timeOff)} locale={locale} t={t} onPick={setAnchor} />
             </aside>
           </div>
         )}
@@ -248,7 +291,10 @@ export default function AppointmentsPage() {
         <AppointmentDrawer key={openAppt.id} appt={openAppt} initialMode="view" today={now.date} nowTime={now.time} locale={locale} t={t} onClose={() => setDrawer(null)} onAction={runAction} />
       )}
       {drawer === "new" && data && now && (
-        <NewAppointmentDrawer services={data.services} today={now.date} initialDate={anchor >= now.date ? anchor : now.date} locale={locale} t={t} onClose={() => setDrawer(null)} onCreate={createAppointment} />
+        <NewAppointmentDrawer key={`${newAt?.date}:${newAt?.time}`} services={data.services} today={now.date} initialDate={newAt?.date || now.date} initialTime={newAt?.time} locale={locale} t={t} onClose={() => setDrawer(null)} onCreate={createAppointment} />
+      )}
+      {drawer === "timeoff" && now && (
+        <TimeOffDrawer list={timeOff} today={now.date} locale={locale} t={t} onClose={() => setDrawer(null)} onChanged={load} />
       )}
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </div>

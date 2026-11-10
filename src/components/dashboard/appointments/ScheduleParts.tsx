@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { HATCH } from "./TimeGrid";
 import { ChannelBadge, Icons, addDays, dayHeading, fmtDay, fmtTime, inputCls, labelCls, quietBtn, type Appt, type ApptChannel, type ApptStatus, type Translate } from "./shared";
 
 export function UpNext({ rows, today, locale, t, onOpen }: { rows: Appt[]; today: string; locale: string; t: Translate; onOpen: (a: Appt) => void }) {
@@ -30,7 +31,7 @@ export function UpNext({ rows, today, locale, t, onOpen }: { rows: Appt[]; today
   );
 }
 
-export function MiniMonth({ anchor, today, bookedDates, locale, t, onPick }: { anchor: string; today: string; bookedDates: Set<string>; locale: string; t: Translate; onPick: (date: string) => void }) {
+export function MiniMonth({ anchor, today, bookedDates, isBlocked, locale, t, onPick }: { anchor: string; today: string; bookedDates: Set<string>; isBlocked: (date: string) => boolean; locale: string; t: Translate; onPick: (date: string) => void }) {
   const [month, setMonth] = useState(anchor.slice(0, 7));
   useEffect(() => setMonth(anchor.slice(0, 7)), [anchor]);
 
@@ -63,7 +64,7 @@ export function MiniMonth({ anchor, today, bookedDates, locale, t, onPick }: { a
       <div className="grid grid-cols-7 text-center">
         {headers.map((h, i) => <span key={i} className="text-[10px] font-medium text-[#9CA3AF] pb-1">{h}</span>)}
         {cells.map((d) => {
-          const selected = d === anchor, isToday = d === today, inMonth = d.slice(0, 7) === month, booked = bookedDates.has(d);
+          const selected = d === anchor, isToday = d === today, inMonth = d.slice(0, 7) === month, booked = bookedDates.has(d), blocked = isBlocked(d);
           return (
             <button
               key={d}
@@ -72,8 +73,9 @@ export function MiniMonth({ anchor, today, bookedDates, locale, t, onPick }: { a
               aria-label={fmtDay(d, locale, { weekday: "long", day: "numeric", month: "long" })}
               aria-current={isToday ? "date" : undefined}
               aria-pressed={selected}
-              className={`relative mx-auto h-8 w-8 rounded-lg text-xs tabular-nums transition-colors ${selected ? "text-white font-semibold" : isToday ? "text-[#C2410C] font-bold" : inMonth ? "text-[#374151] hover:bg-black/[0.04]" : "text-[#D1D5DB] hover:bg-black/[0.04]"}`}
-              style={selected ? { background: "var(--vela-gradient)" } : undefined}
+              data-blocked={blocked ? "true" : undefined}
+              className={`relative mx-auto h-8 w-8 rounded-lg text-xs tabular-nums transition-colors ${selected ? "text-white font-semibold" : blocked ? "text-[#9CA3AF] line-through" : isToday ? "text-[#C2410C] font-bold" : inMonth ? "text-[#374151] hover:bg-black/[0.04]" : "text-[#D1D5DB] hover:bg-black/[0.04]"}`}
+              style={selected ? { background: "var(--vela-gradient)" } : blocked ? HATCH : undefined}
             >
               {fmtDay(d, locale, { day: "numeric" })}
               {booked && <span data-testid="booked-dot" aria-hidden="true" className={`absolute bottom-[3px] start-1/2 -translate-x-1/2 rtl:translate-x-1/2 w-1 h-1 rounded-full ${selected ? "bg-white" : "bg-[#FF6B35]"}`} />}

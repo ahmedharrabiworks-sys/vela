@@ -163,8 +163,19 @@ function GlowRing({ value, emptyText, label }: { value: number | null; emptyText
   const R = 50, C = 2 * Math.PI * R;
   const pct = value === null ? 0 : Math.max(0, Math.min(100, value));
   const gradientId = useId().replace(/:/g, "");
+  // Sweeps in the first time the ring is on screen.
+  const ringRef = useRef<HTMLDivElement>(null);
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const el = ringRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setDrawn(true); return; }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setDrawn(true); io.disconnect(); } }, { threshold: 0.3 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   return (
-    <div className="relative mx-auto" style={{ width: 128, height: 128 }}>
+    <div ref={ringRef} className="relative mx-auto" style={{ width: 128, height: 128 }}>
       <svg width="128" height="128" viewBox="0 0 128 128" aria-hidden="true" style={{ overflow: "visible" }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
@@ -176,7 +187,7 @@ function GlowRing({ value, emptyText, label }: { value: number | null; emptyText
         {value !== null && pct > 0 && (
           <circle
             cx="64" cy="64" r={R} fill="none" stroke={`url(#${gradientId})`} strokeWidth="8" strokeLinecap="round"
-            strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)} transform="rotate(-90 64 64)"
+            strokeDasharray={C} strokeDashoffset={drawn ? C * (1 - pct / 100) : C} transform="rotate(-90 64 64)"
             style={{ filter: "drop-shadow(0 0 7px rgba(255,107,53,0.45))", transition: "stroke-dashoffset .6s ease" }}
           />
         )}
@@ -198,7 +209,7 @@ function GlowRing({ value, emptyText, label }: { value: number | null; emptyText
 export interface UsageRow { label: string; used: number; limit: number | null }
 
 /** limit null = unlimited, 0 = not on this plan. */
-export function RingCard({ title, value, ringLabel, emptyText, rows, usageTitle, unlimitedLabel, notIncludedLabel, fill = false }: {
+export function RingCard({ title, value, ringLabel, emptyText, rows, usageTitle, unlimitedLabel, notIncludedLabel, fill = false, legend }: {
   title: string;
   value: number | null;
   ringLabel: string;
@@ -208,11 +219,22 @@ export function RingCard({ title, value, ringLabel, emptyText, rows, usageTitle,
   unlimitedLabel: string;
   notIncludedLabel: string;
   fill?: boolean;
+  legend?: Array<{ label: string; value: number; color: string }>;
 }) {
   return (
     <div className={`glass rounded-2xl p-4 sm:p-5 flex flex-col ${fill ? "h-full" : ""}`}>
       <p className="text-sm font-semibold text-[#111111] mb-3">{title}</p>
       <GlowRing value={value} emptyText={emptyText} label={ringLabel} />
+      {legend && value !== null && (
+        <div data-testid="ring-legend" className="flex items-center justify-center gap-4 mt-3">
+          {legend.map((l) => (
+            <span key={l.label} className="inline-flex items-center gap-1.5 text-[11px] text-[#6B7280]">
+              <span className="w-2 h-2 rounded-full" style={{ background: l.color }} aria-hidden="true" />
+              {l.label} <span className="font-semibold text-[#111111] tabular-nums">{l.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {rows.length > 0 && (
         <div className="mt-4 pt-3.5 border-t border-black/[0.06] space-y-3">
           <p className="text-[11px] font-medium text-[#6B7280]">{usageTitle}</p>

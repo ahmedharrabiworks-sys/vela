@@ -195,6 +195,7 @@ export function buildReceptionistPrompt(p: {
   settings: Record<string, any>;
   nowText: string;
   bookedSlotsText?: string;
+  closures?: string;
   caller?: PhoneCallerInfo | null;
 }): string {
   const services = (p.kb.services as Service[] | undefined) ?? [];
@@ -220,6 +221,7 @@ export function buildReceptionistPrompt(p: {
     biz.address ? `Location: ${biz.address}` : "",
     biz.bookingPolicy ? `Booking policy: ${biz.bookingPolicy}` : "",
     extra ? `Notes: ${extra}` : "",
+    p.closures ?? "",
     (p.bookedSlotsText ?? "").trim() ? `Busy times (already booked): ${(p.bookedSlotsText ?? "").replace(/\n+/g, " ").trim()}` : "",
   ].filter(Boolean).join("\n");
 
@@ -276,7 +278,7 @@ Notice these cues in what they say and adapt. Never name what you notice (never 
 1. You already greeted them. Find out how you can help.
 2. Get their name early, naturally.
 3. Understand the need. If they name a service, use it. If they describe a problem or aren't sure what they need, follow the safety rules.
-4. To book: agree on a day and time inside the hours and not in the busy times. ${callbackRule} Then repeat the key details once and ask "shall I book it?". After a clear yes, say a short "one moment" in their language and call ${BOOK_APPOINTMENT_TOOL} (date YYYY-MM-DD, time HH:MM 24h). Tell them exactly what the result says; if the time is taken, offer the alternatives it gives.
+4. To book: agree on a day and time inside the hours, not on a closed day or closure, and not in the busy times. ${callbackRule} Then repeat the key details once and ask "shall I book it?". After a clear yes, say a short "one moment" in their language and call ${BOOK_APPOINTMENT_TOOL} (date YYYY-MM-DD, time HH:MM 24h). Tell them exactly what the result says; if the time is taken, offer the alternatives it gives.
 5. If you don't know the answer: don't guess. Offer to take a message (their name, the confirmed number, the message) and say the team will call them back.
 6. Before saying goodbye, sum up in one sentence what happens next.
 ${custom ? `\n# Owner's rules\n${custom}\n` : ""}`;
@@ -324,6 +326,7 @@ export function buildPhoneAssistant(p: {
   settings: Record<string, any>;
   nowText: string;
   bookedSlotsText?: string;
+  closures?: string;
   caller?: PhoneCallerInfo | null;
   server: VapiServerConfig;
   name?: string;

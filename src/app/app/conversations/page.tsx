@@ -61,7 +61,7 @@ function Avatar({ name, channel }: { name: string | null; channel: string }) {
 // A call has no read column on the server, so opened calls are remembered in this browser.
 const READ_CALLS_KEY = "vela_read_calls";
 
-function CallThread({ call, name, onBack, t }: { call: CallRecord; name: string; onBack: () => void; t: (k: string) => string }) {
+function CallThread({ call, name, onBack, onDelete, t }: { call: CallRecord; name: string; onBack: () => void; onDelete: () => void; t: (k: string) => string }) {
   const lines = (call.transcript ?? []).filter((l) => l.text?.trim());
   return (
     <>
@@ -74,6 +74,9 @@ function CallThread({ call, name, onBack, t }: { call: CallRecord; name: string;
           <p className="font-semibold text-[#111111] text-sm leading-tight text-start"><span dir="ltr">{name}</span></p>
           <p className="text-[11px] text-[#6B7280] mt-0.5">{t("agentUi.conv.phoneCall")} · {fmtDuration(call.duration_seconds)} · {new Date(call.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
         </div>
+        <button type="button" data-testid="call-delete" onClick={onDelete} aria-label={t("conversations.deleteConversation")} title={t("conversations.deleteConversation")} className="shrink-0 h-10 w-10 flex items-center justify-center rounded-lg text-[#9CA3AF] hover:text-red-600 hover:bg-red-50 transition-colors">
+          <svg width="14" height="14" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M1.5 3h10M5 3V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M10.5 3l-.75 7a.9.9 0 01-.9.8H4.15a.9.9 0 01-.9-.8L2.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto px-4 md:px-5 py-5 space-y-3 bg-[#FAFAFA]">
         {call.summary && (
@@ -145,7 +148,11 @@ export default function ConversationsPage() {
   // exists for it. Tracks which surface's "..." menu is open so only ONE
   // input ever renders/autofocuses for a given rename.
   const [menuSource, setMenuSource]         = useState<"list" | "detail" | null>(null);
-  const [deleteTarget, setDeleteTarget]     = useState<Conversation | null>(null);
+  const [deleteItems, setDeleteItems]       = useState<Array<{ kind: "chat" | "call"; id: string }> | null>(null);
+  const [selectMode, setSelectMode]         = useState(false);
+  const [picked, setPicked]                 = useState<Set<string>>(new Set());
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressed = useRef(false);
   const [deleting, setDeleting]             = useState(false);
   const [toast, setToast]                   = useState("");
   const [calls, setCalls]                   = useState<CallRecord[]>([]);
@@ -402,27 +409,54 @@ export default function ConversationsPage() {
 
   /* ── Delete ── */
   const handleConfirmDelete = async () => {
-    const conv = deleteTarget;
-    if (!conv || deleting) return;
+    const items = deleteItems;
+    if (!items || deleting) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/conversations/${conv.id}`, { method: "DELETE" });
+      const res = await fetch("/api/conversations/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
       if (!res.ok) throw new Error("delete failed");
-      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
-      if (selected?.id === conv.id) {
-        setSelected(null);
-        setMessages([]);
-        setShowThread(false);
-      }
-      setDeleteTarget(null);
-      setToast("Conversation moved to Recycle Bin");
+      const chats = new Set(items.filter((i) => i.kind === "chat").map((i) => i.id));
+      const gone = new Set(items.filter((i) => i.kind === "call").map((i) => i.id));
+      setConversations((prev) => prev.filter((c) => !chats.has(c.id)));
+      setCalls((prev) => prev.filter((c) => !gone.has(c.id)));
+      if (selected && chats.has(selected.id)) { setSelected(null); setMessages([]); setShowThread(false); }
+      if (selectedCall && gone.has(selectedCall.id)) { setSelectedCall(null); setShowThread(false); }
+      setDeleteItems(null);
+      setSelectMode(false);
+      setPicked(new Set());
+      setToast(t("conversations.deletedToast"));
     } catch {
-      setReplyError("Failed to delete conversation. Please try again");
-      setTimeout(() => setReplyError(null), 5000);
+      setDeleteItems(null);
+      setToast(t("conversations.deleteFailed"));
     } finally {
       setDeleting(false);
     }
   };
+
+  const keyOf = (kind: "chat" | "call", id: string) => `${kind}:${id}`;
+  const togglePick = (key: string) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const startPress = (key: string) => {
+    longPressed.current = false;
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    pressTimer.current = setTimeout(() => {
+      longPressed.current = true;
+      setSelectMode(true);
+      togglePick(key);
+    }, 500);
+  };
+  const endPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
+  const pickedItems = (): Array<{ kind: "chat" | "call"; id: string }> => Array.from(picked).map((k) => {
+    const [kind, id] = k.split(":");
+    return { kind: kind as "chat" | "call", id };
+  });
 
   /* ── Send message ── */
   const handleSend = async () => {
@@ -559,7 +593,22 @@ export default function ConversationsPage() {
         ${showThread ? "hidden md:flex md:w-[23rem] md:shrink-0" : "flex w-full md:w-[23rem] md:shrink-0"}`}>
 
         <div className="px-4 pt-4 pb-3">
-          <h2 className="font-semibold text-[#111111] mb-3 text-base">{t("conversations.title")}</h2>
+          <div className="flex items-center justify-between gap-2 mb-3 min-h-[32px]">
+            <h2 className="font-semibold text-[#111111] text-base">{t("conversations.title")}</h2>
+            {items.length > 0 && (
+              <button type="button" data-testid="select-toggle" onClick={() => { setSelectMode((v) => !v); setPicked(new Set()); }} className="text-xs font-semibold text-[#6B7280] hover:text-[#111111] min-h-[32px] px-1.5">
+                {selectMode ? t("conversations.cancel") : t("conversations.select")}
+              </button>
+            )}
+          </div>
+          {selectMode && (
+            <div data-testid="bulk-bar" className="flex items-center justify-between gap-2 mb-3 rounded-lg bg-[#FAFAFA] px-2.5 py-1.5">
+              <button type="button" onClick={() => setPicked(new Set(filtered.map((i) => keyOf(i.kind, i.id))))} className="text-xs font-semibold text-[#C2410C] min-h-[32px]">{t("conversations.selectAll")}</button>
+              <button type="button" data-testid="bulk-delete" disabled={picked.size === 0} onClick={() => setDeleteItems(pickedItems())} className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 rounded-lg px-3 h-8 transition-colors">
+                {t("conversations.deleteSelected").replace("{n}", String(picked.size))}
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap md:flex-nowrap gap-1.5">
             {filters.map((f) => (
               <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f}
@@ -598,7 +647,15 @@ export default function ConversationsPage() {
             const when = conv ? conv.last_message_at : (item.kind === "call" ? item.call.created_at : null);
             return (
               <div key={item.id}
-                className={`group relative flex items-center gap-3 ps-2.5 pe-1 py-2.5 rounded-xl transition-colors ${isActive ? "bg-[#FFF5F0]" : "hover:bg-[#FAFAFA]"}`}>
+                data-testid="inbox-row"
+                onTouchStart={() => startPress(keyOf(item.kind, item.id))}
+                onTouchEnd={endPress}
+                onTouchMove={endPress}
+                onContextMenu={(e) => { if (longPressed.current) e.preventDefault(); }}
+                className={`group relative flex items-center gap-3 ps-2.5 pe-1 py-2.5 rounded-xl transition-colors select-none md:select-auto ${isActive ? "bg-[#FFF5F0]" : "hover:bg-[#FAFAFA]"}`}>
+                {selectMode && (
+                  <input type="checkbox" data-testid="row-check" aria-label={name} checked={picked.has(keyOf(item.kind, item.id))} onChange={() => togglePick(keyOf(item.kind, item.id))} className="w-4 h-4 shrink-0 accent-[#FF6B35]" />
+                )}
                 <Avatar name={conv ? conv.customer_name : (item.kind === "call" ? item.call.caller_number ?? null : null)} channel={conv ? conv.channel : "phone"} />
 
                 {isRenaming && conv ? (
@@ -618,7 +675,11 @@ export default function ConversationsPage() {
                     />
                   </div>
                 ) : (
-                  <button onClick={() => (item.kind === "chat" ? selectConv(item.conv) : selectCall(item.call))} className="flex-1 min-w-0 text-start">
+                  <button onClick={() => {
+                    if (longPressed.current) { longPressed.current = false; return; }
+                    if (selectMode) { togglePick(keyOf(item.kind, item.id)); return; }
+                    if (item.kind === "chat") selectConv(item.conv); else selectCall(item.call);
+                  }} className="flex-1 min-w-0 text-start">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <span dir={conv ? "auto" : "ltr"} className={`text-[13px] truncate ${item.unread ? "font-semibold text-[#111111]" : "font-medium text-[#374151]"}`}>{name}</span>
                       <span className={`text-[11px] shrink-0 tabular-nums ${item.unread ? "text-[#FF6B35] font-medium" : "text-[#9CA3AF]"}`}>{timeAgo(when, t)}</span>
@@ -634,17 +695,17 @@ export default function ConversationsPage() {
                   </button>
                 )}
 
-                {!conv && <span className="shrink-0 w-7" aria-hidden="true" />}
-                {conv && !isRenaming && (
+                {!isRenaming && !selectMode && (
                   <button
+                    data-testid="row-menu"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (menuOpenId === conv.id) {
+                      if (menuOpenId === item.id) {
                         setMenuOpenId(null); setMenuPos(null);
                       } else {
                         const rect = e.currentTarget.getBoundingClientRect();
                         setMenuPos({ top: rect.bottom + 4, left: Math.max(8, rect.right - 112) });
-                        setMenuOpenId(conv.id);
+                        setMenuOpenId(item.id);
                         setMenuSource("list");
                       }
                     }}
@@ -837,7 +898,7 @@ export default function ConversationsPage() {
             </div>
           </>
         ) : selectedCall ? (
-          <CallThread call={selectedCall} name={callName(selectedCall)} onBack={() => setShowThread(false)} t={t} />
+          <CallThread call={selectedCall} name={callName(selectedCall)} onBack={() => setShowThread(false)} onDelete={() => setDeleteItems([{ kind: "call", id: selectedCall.id }])} t={t} />
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
@@ -859,18 +920,21 @@ export default function ConversationsPage() {
       {/* ⋯ conversation context menu, fixed position so it escapes list overflow:hidden */}
       {menuOpenId !== null && menuPos !== null && (() => {
         const mc = conversations.find((c) => c.id === menuOpenId);
-        if (!mc) return null;
+        if (!mc && !calls.some((c) => c.id === menuOpenId)) return null;
         return (
           <div
             style={{ position: "fixed", top: menuPos.top, left: menuPos.left, zIndex: 200 }}
             className="bg-white border border-[#E5E7EB] rounded-lg shadow-xl py-1 w-28">
+            {mc && (
+              <button
+                onClick={() => handleStartRename(mc)}
+                className="w-full text-start px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB]">
+                {t("conversations.renameConversation")}
+              </button>
+            )}
             <button
-              onClick={() => handleStartRename(mc)}
-              className="w-full text-start px-3 py-1.5 text-[11px] text-[#374151] hover:bg-[#F9FAFB]">
-              {t("conversations.renameConversation")}
-            </button>
-            <button
-              onClick={() => { setMenuOpenId(null); setMenuPos(null); setDeleteTarget(mc); }}
+              data-testid="menu-delete"
+              onClick={() => { const id = menuOpenId as string; setMenuOpenId(null); setMenuPos(null); setDeleteItems([{ kind: mc ? "chat" : "call", id }]); }}
               className="w-full text-start px-3 py-1.5 text-[11px] text-red-600 hover:bg-red-50">
               {t("conversations.deleteConversation")}
             </button>
@@ -885,14 +949,14 @@ export default function ConversationsPage() {
           button ratio changed from equal flex-1/flex-1 -- which wrapped
           "Delete conversation" onto two lines at max-w-sm width -- to the
           asymmetric flex-1/flex-[2] + whitespace-nowrap the reference uses. */}
-      {deleteTarget && (
+      {deleteItems && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-[#111111] ">{t("conversations.deleteConfirmTitle")}</h2>
+            <h2 className="text-base font-bold text-[#111111] ">{deleteItems.length > 1 ? t("conversations.deleteManyTitle").replace("{n}", String(deleteItems.length)) : t("conversations.deleteConfirmTitle")}</h2>
             <p className="text-sm text-[#6B7280] leading-relaxed">{t("conversations.deleteConfirmBody")}</p>
             <div className="flex items-center gap-3 pt-1">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => setDeleteItems(null)}
                 disabled={deleting}
                 className="flex-1 text-sm font-semibold px-4 py-2.5 rounded-xl border border-[#E5E7EB] text-[#374151] hover:bg-[#F9FAFB] disabled:opacity-50 transition-colors">
                 {t("conversations.cancel")}
