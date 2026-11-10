@@ -206,5 +206,7 @@ export function formatWeeklyHours(week: OpeningHours): string {
 
 /** The one place every booking path gets opening hours from. */
 export function resolveOpeningHours(business: { hours?: string; schedule?: OpeningHours | null }): OpeningHours | null {
-  return business.schedule ?? parseOpeningHours(business.hours);
+  // The structured week only. Free text is never read for booking rules.
+  void business.hours;
+  return business.schedule ?? null;
 }

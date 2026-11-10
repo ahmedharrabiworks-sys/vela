@@ -3,7 +3,6 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { ensureTenant } from "@/lib/ensure-tenant";
 import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { getUsageSummary } from "@/lib/usage";
-import { probeVapiWallet } from "@/lib/vapi-health";
 import { getVapiServerConfig, resolveTenantTimezone, samePhoneLine, wallClockNow } from "@/lib/vapi-webhook";
 import { formatPhoneForDisplay } from "@/lib/phone-validate";
 
@@ -20,15 +19,14 @@ async function findIssue(tenantId: string, phoneNumberId: string | null, voicePl
   const key = process.env.VAPI_API_KEY;
   if (!key || !phoneNumberId) return "number_missing";
   try {
-    const [number, wallet] = await Promise.all([
-      fetch(`https://api.vapi.ai/phone-number/${encodeURIComponent(phoneNumberId)}`, {
-        headers: { Authorization: `Bearer ${key}` },
-        signal: AbortSignal.timeout(4000),
-      }),
-      probeVapiWallet(),
-    ]);
+    // Read-only check. The wallet probe is gone: it posts an empty call to
+    // Vapi, which shows up in the Vapi log as a failed call on every page load.
+    const number = await fetch(`https://api.vapi.ai/phone-number/${encodeURIComponent(phoneNumberId)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(4000),
+    });
     if (number.status === 404) return "number_missing";
-    if (!number.ok || wallet.state !== "ok") return "service";
+    if (!number.ok) return "service";
     return null;
   } catch {
     return "service";

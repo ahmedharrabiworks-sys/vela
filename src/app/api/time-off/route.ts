@@ -3,7 +3,7 @@ import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-
 import { ensureTenant } from "@/lib/ensure-tenant";
 import { UUID_RE, loadBookingContext } from "@/lib/appointment-slots";
 import { validateTimeOff } from "@/lib/time-off";
-import { appointmentsInBlock, deleteTimeOff, insertTimeOff, isMissingTable } from "@/lib/time-off-server";
+import { appointmentsInBlock, deleteTimeOff, insertTimeOff } from "@/lib/time-off-server";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +48,6 @@ export async function DELETE(req: NextRequest) {
   if (!UUID_RE.test(id)) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const admin = createSupabaseAdmin() as any;
-  const { error: tableCheck } = await admin.from("business_time_off").select("id").limit(1);
-  if (isMissingTable(tableCheck)) return NextResponse.json({ error: "needs_migration" }, { status: 503 });
   const removed = await deleteTimeOff(admin, who.tenant.id, id);
   return removed ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "not_found" }, { status: 404 });
 }

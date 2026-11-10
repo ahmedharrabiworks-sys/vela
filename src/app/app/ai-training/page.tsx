@@ -1,8 +1,10 @@
 ﻿"use client";
+import Link from "next/link";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { mergeImportedKnowledge, parseKnowledgeBase, type KnowledgeBase } from "@/lib/knowledge-base";
 import { useI18n } from "@/lib/i18n";
+import { summarizeWeek } from "@/components/dashboard/WeeklyHoursEditor";
 
 type ServiceRow  = KnowledgeBase["services"][number];
 type Tab         = "Services" | "Business Info" | "Extra";
@@ -24,7 +26,7 @@ const DEFAULT_KB: KnowledgeBase = {
 function computeChecklist(kb: KnowledgeBase): { key: string; labelKey: string; done: boolean }[] {
   return [
     { key: "services", labelKey: "agentUi.train.checkServices", done: kb.services.some((s) => s.name.trim()) },
-    { key: "hours",    labelKey: "agentUi.train.checkHours",    done: !!kb.business.hours.trim() },
+    { key: "hours",    labelKey: "agentUi.train.checkHours",    done: !!kb.business.schedule?.some((day) => day.length > 0) },
     { key: "address",  labelKey: "agentUi.train.checkAddress",  done: !!kb.business.address.trim() },
     { key: "policy",   labelKey: "agentUi.train.checkPolicy",   done: !!kb.business.bookingPolicy.trim() },
     { key: "extra",    labelKey: "agentUi.train.checkExtra",    done: !!kb.extra.trim() },
@@ -77,7 +79,7 @@ function ChecklistItem({ label, done }: { label: string; done: boolean }) {
 const CELL = "w-full text-sm bg-transparent px-2.5 py-2 text-[#111111] placeholder-[#D1D5DB] focus:outline-none focus:bg-[#FFF8F5] rounded-lg transition-colors";
 
 export default function AITrainingPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [kb, setKb]             = useState<KnowledgeBase>(DEFAULT_KB);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
@@ -584,7 +586,7 @@ export default function AITrainingPage() {
           const badge = tabBadge[tab];
           return (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-1 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              className={`flex-shrink-0 flex items-center justify-center gap-1.5 px-1 min-w-[44px] min-h-[44px] text-sm font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${
                 activeTab === tab ? "border-[#FF6B35] text-[#111111] " : "border-transparent text-[#6B7280] hover:text-[#374151] "
               }`}
             >
@@ -646,7 +648,7 @@ export default function AITrainingPage() {
                     <div className="flex gap-2">
                       <input value={svc.name} onChange={(e) => updateService(i, { name: e.target.value })} onBlur={triggerAutoSave}
                         placeholder={t("aiTraining.services.namePlaceholder")} className="flex-1 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
-                      <button onClick={() => removeService(i)} className="p-2 text-[#D1D5DB] hover:text-[#DC2626] rounded-lg shrink-0">
+                      <button onClick={() => removeService(i)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#D1D5DB] hover:text-[#DC2626] rounded-lg shrink-0">
                         <TrashIcon />
                       </button>
                     </div>
@@ -683,10 +685,11 @@ export default function AITrainingPage() {
           <div className="p-6 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="text-xs font-medium text-[#6B7280]">{t("aiTraining.businessInfo.hours")}</label>
-                <input value={kb.business.hours} onChange={(e) => updateBusiness({ hours: e.target.value })} onBlur={triggerAutoSave}
-                  placeholder={t("aiTraining.businessInfo.hoursPlaceholder")}
-                  className="mt-1.5 w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] transition-all" />
+                <p className="text-xs font-medium text-[#6B7280]">{t("aiTraining.businessInfo.hours")}</p>
+                <Link href="/app/ai-agent/knowledge-base" data-testid="hours-chip" className="mt-1.5 flex items-center justify-between gap-3 min-h-[44px] rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] px-3 py-2 text-sm text-[#374151] hover:border-[#FF6B35] transition-colors">
+                  <span dir="auto" className="min-w-0 leading-relaxed">{kb.business.schedule ? summarizeWeek(kb.business.schedule, locale, t("appointmentsV2.day.to"), t("agentUi.kb.closedDay")) : t("agentUi.train.noHours")}</span>
+                  <span className="text-xs font-semibold text-[#C2410C] shrink-0">{t("agentUi.train.editHours")}</span>
+                </Link>
               </div>
               <div>
                 <label className="text-xs font-medium text-[#6B7280]">{t("aiTraining.businessInfo.address")}</label>

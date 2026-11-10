@@ -136,7 +136,7 @@ export default function DashboardPageUI({
               <Link href={`${basePath}/ai-training`} className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
                 {t("dashboard.trainAI")}
               </Link>
-              <button onClick={onDismissKbBanner} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+              <button onClick={onDismissKbBanner} className="w-11 h-11 sm:w-auto sm:h-auto sm:p-1.5 -m-2 sm:m-0 flex items-center justify-center text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -159,7 +159,7 @@ export default function DashboardPageUI({
               <Link href={`${basePath}/welcome`} className="text-xs font-bold px-3.5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity" style={{ background: "var(--vela-gradient)" }}>
                 {t("dashboard.continueSetup")}
               </Link>
-              <button onClick={onDismissOnboarding} className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+              <button onClick={onDismissOnboarding} className="w-11 h-11 sm:w-auto sm:h-auto sm:p-1.5 -m-2 sm:m-0 flex items-center justify-center text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
               </button>
             </div>
@@ -177,7 +177,7 @@ export default function DashboardPageUI({
           <div className="glass flex items-center gap-1 rounded-xl p-1">
             {(["7d", "30d", "90d"] as Range[]).map((r) => (
               <button key={r} onClick={() => onRangeChange(r)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "text-white" : "text-[#6B7280] hover:text-[#111111] "}`}
+                className={`px-3 min-w-[44px] h-11 sm:h-auto sm:min-w-0 sm:py-1.5 rounded-lg text-xs font-semibold transition-all ${range === r ? "text-white" : "text-[#6B7280] hover:text-[#111111] "}`}
                 style={range === r ? { background: "var(--vela-gradient)" } : undefined}>
                 {r}
               </button>

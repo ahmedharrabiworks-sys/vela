@@ -14,7 +14,7 @@ export const HATCH: CSSProperties = { background: "repeating-linear-gradient(135
 export const BLOCK_TONE: Record<ApptStatus, string> = {
   confirmed: "bg-[#FFF5F0] border-[#FF6B35] text-[#111111]",
   pending: "bg-amber-50 border-amber-400 text-[#111111]",
-  cancelled: "bg-[#F3F4F6] border-[#D1D5DB] text-[#9CA3AF] line-through",
+  cancelled: "bg-[#F3F4F6] border-[#D1D5DB] text-[#9CA3AF]",
   completed: "bg-[#F3F4F6] border-[#6B7280] text-[#374151]",
   no_show: "bg-rose-50 border-rose-400 text-[#374151]",
 };
@@ -125,7 +125,7 @@ export default function TimeGrid({ days, rows, hours, timeOff, now, locale, t, o
               style={blocked ? HATCH : undefined}
             >
               {hourMarks.map((h) => <div key={h} className="absolute inset-x-0 border-t border-black/[0.045]" style={{ top: y(h * 60) }} />)}
-              {shutBands(d).map(([from, to]) => <div key={from} className="absolute inset-x-0 bg-[#F3F4F6]/70" style={{ top: y(from), height: y(to) - y(from) }} />)}
+              {shutBands(d).map(([from, to]) => <div key={from} data-testid="week-break" className="absolute inset-x-0" style={{ ...HATCH, top: y(from), height: y(to) - y(from) }} />)}
               {!blocked && partialOffs(d, timeOff).map(({ entry, band }) => (
                 <div key={entry.id} data-testid="time-off-band" className="absolute inset-x-0 z-[2] overflow-hidden" style={{ ...HATCH, top: y(band.open), height: y(band.close) - y(band.open) }}>
                   <p className="px-1 pt-0.5 text-center text-[10px] font-medium text-[#6B7280] truncate">{entry.reason || t("appointmentsV2.day.timeOffShort")}</p>
@@ -164,7 +164,7 @@ export default function TimeGrid({ days, rows, hours, timeOff, now, locale, t, o
                         <ChannelBadge channel={appt.channel} t={t} size={14} />
                       </span>
                     </span>
-                    <span dir="auto" className="block truncate text-[10px] leading-[13px] opacity-75 text-start">{appt.service}</span>
+                    <span dir="auto" className="block truncate text-[10px] leading-[13px] opacity-75 text-start">{appt.status === "pending" || appt.status === "confirmed" ? appt.service : `${t(`appointmentsV2.status.${appt.status}`)} · ${appt.service}`}</span>
                   </button>
                 );
               })}

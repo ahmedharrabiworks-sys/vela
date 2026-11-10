@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { usePlan } from "@/lib/plans";
 import Link from "next/link";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { formatPhoneForDisplay } from "@/lib/phone-validate";
 import { DEFAULT_PHONE_COUNTRY, PHONE_COUNTRIES, PhoneInput, type PhoneCountry } from "@/components/ui/PhoneInput";
 
 interface PhoneState {
@@ -40,6 +41,7 @@ export default function PhonePage() {
   const [bizSaving, setBizSaving]       = useState(false);
   const [bizSaved, setBizSaved]         = useState(false);
   const [bizError, setBizError]         = useState<string | null>(null);
+  const [copiedCode, setCopiedCode]     = useState<string | null>(null);
   // Connected = an assistant exists AND the number is attached to it. A
   // number linked without an assistant (e.g. an imported bridge number not
   // synced yet) is shown honestly as "not connected", never as active.
@@ -103,7 +105,7 @@ export default function PhonePage() {
     try {
       const res = await fetch("/api/ai-agent/phone", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businessPhone: bizE164 }) });
       const data = await res.json().catch(() => ({})) as { error?: string };
-      if (res.ok) setBizSaved(true);
+      if (res.ok) { setBizSaved(true); setState((s) => ({ ...s, businessPhone: bizE164 })); }
       else setBizError(t(data.error === "bridge" ? "agentUi.phone.businessBridge" : data.error === "invalid" ? "agentUi.phone.businessInvalid" : "agentUi.common.saveError"));
     } catch {
       setBizError(t("agentUi.common.saveError"));
@@ -173,6 +175,45 @@ export default function PhonePage() {
           </div>
           {bizError && <p role="alert" className="text-xs text-red-600 mt-2">{bizError}</p>}
         </section>
+
+        {/* Carrier codes, built from the saved bridge number. */}
+        {state.businessPhone && state.phoneNumber && (() => {
+          const target = `00${state.phoneNumber.replace(/\D/g, "")}`;
+          const codes = [
+            { key: "all", code: `**21*${target}#` },
+            { key: "noAnswer", code: `**61*${target}**20#` },
+            { key: "busy", code: `**67*${target}#` },
+            { key: "off", code: "##002#" },
+          ];
+          const copy = async (code: string) => { try { await navigator.clipboard.writeText(code); setCopiedCode(code); setTimeout(() => setCopiedCode(null), 2000); } catch { /* ignore */ } };
+          return (
+            <section data-testid="forwarding-card" className="glass rounded-2xl p-4 sm:p-5">
+              <h2 className="text-sm font-semibold" style={{ color: textPrimary }}>{t("agentUi.phone.fwd.title")}</h2>
+              <ol className="mt-2 mb-4 space-y-1 text-xs list-decimal ps-4" style={{ color: textSub }}>
+                <li>{t("agentUi.phone.fwd.step1").replace("{number}", `\u2066${formatPhoneForDisplay(state.businessPhone)}\u2069`)}</li>
+                <li>{t("agentUi.phone.fwd.step2")}</li>
+                <li>{t("agentUi.phone.fwd.step3")}</li>
+              </ol>
+              <ul className="divide-y divide-black/[0.06]">
+                {codes.map((c) => (
+                  <li key={c.key} data-testid={`fwd-${c.key}`} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium" style={{ color: textSub }}>{t(`agentUi.phone.fwd.${c.key}`)}</p>
+                      <p dir="ltr" className="font-mono text-sm font-semibold text-start [overflow-wrap:anywhere]" style={{ color: textPrimary }}>{c.code}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <a href={`tel:${encodeURIComponent(c.code)}`} className="md:hidden inline-flex items-center justify-center h-11 px-3 rounded-lg border border-[#E5E7EB] text-xs font-semibold text-[#374151]">{t("agentUi.phone.fwd.dial")}</a>
+                      <button type="button" onClick={() => copy(c.code)} className="inline-flex items-center justify-center h-11 md:h-9 px-3 rounded-lg border border-[#E5E7EB] text-xs font-semibold text-[#374151] hover:border-[#FF6B35] hover:text-[#C2410C] transition-colors">
+                        {copiedCode === c.code ? t("agentUi.phone.fwd.copied") : t("agentUi.phone.fwd.copy")}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] mt-3 leading-relaxed" style={{ color: textMuted }}>{t("agentUi.phone.fwd.note")}</p>
+            </section>
+          );
+        })()}
 
         {/* Two-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

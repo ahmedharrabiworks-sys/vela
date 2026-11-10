@@ -1511,7 +1511,9 @@
       "saveChanges": "Save Changes",
       "save": "Save",
       "autosave": "Changes auto-save after 2 seconds",
-      "faqsToExtra": "{n} Q&A will be added to Extra"
+      "faqsToExtra": "{n} Q&A will be added to Extra",
+      "editHours": "Edit",
+      "noHours": "No opening hours yet"
     },
     "charts": {
       "total": "Total",
@@ -1607,7 +1609,8 @@
       "removeRange": "Remove these hours",
       "closedDay": "Closed",
       "unreadableHours": "We could not read your saved hours (\"{text}\"). Set your week below.",
-      "weekInvalid": "Please check your opening hours. Each range must end after it starts and must not overlap."
+      "weekInvalid": "Please check your opening hours. Each range must end after it starts and must not overlap.",
+      "hoursReview": "We turned your saved hours text into this weekly schedule. Check it and press Save to confirm."
     },
     "phone": {
       "howTitle": "How inbound calls work",
@@ -1640,9 +1643,23 @@
       "assistantId": "Assistant ID",
       "numberId": "Phone number ID",
       "businessTitle": "Your business number",
-      "businessHint": "The number your customers already call.",
+      "businessHint": "Your clinic's real number, the one on Google Maps and your cards.",
       "businessInvalid": "Enter a valid number with its country code.",
-      "businessBridge": "Enter the number customers call, not the number you forward to."
+      "businessBridge": "Enter the number customers call, not the number you forward to.",
+      "fwd": {
+        "title": "Set up forwarding",
+        "step1": "Dial a code below from the phone that has {number}.",
+        "step2": "Wait for the confirmation message from your operator.",
+        "step3": "Call your number from another phone to test it.",
+        "all": "Forward all calls",
+        "noAnswer": "Forward only when not answered (20 seconds)",
+        "busy": "Forward when busy",
+        "off": "Turn forwarding off",
+        "copy": "Copy",
+        "copied": "Copied",
+        "dial": "Dial",
+        "note": "If your operator blocks it, ask them to enable call forwarding to international numbers."
+      }
     },
     "settings": {
       "title": "Settings",
@@ -1678,7 +1695,8 @@
       "styleBrief": "Brief",
       "spokenName": "How to say the business name (optional)",
       "spokenNameHint": "Only for the phone voice. Write it the way it sounds if the voice says your name wrong.",
-      "greetingPreview": "Callers will hear"
+      "greetingPreview": "Callers will hear",
+      "greetingNameWarning": "Your greeting names a different business than \"{name}\". Callers hear this greeting, and call summaries will use that name."
     },
     "callStatus": {
       "booked": "Booked",
@@ -1836,7 +1854,13 @@
       "freeLeft": "Free slots left",
       "nextFree": "Next free slot",
       "noneFree": "None",
-      "addAt": "Add an appointment at {time}"
+      "addAt": "Add an appointment at {time}",
+      "break": "Break",
+      "bookedCount": "{n} booked",
+      "freeCount": "{n} free",
+      "nextFreeAt": "next free {time}",
+      "noFreeLeft": "no free slots left",
+      "free": "Free"
     },
     "timeOff": {
       "button": "Time off",
@@ -1853,6 +1877,15 @@
       "none": "No time off planned.",
       "remove": "Remove",
       "conflicts": "{n} appointments are already booked in this time. They were not cancelled."
+    },
+    "table": {
+      "time": "Time",
+      "customer": "Customer",
+      "phone": "Phone",
+      "service": "Service",
+      "channel": "Channel",
+      "status": "Status",
+      "actions": "Actions"
     }
   },
   "channelsV2": {

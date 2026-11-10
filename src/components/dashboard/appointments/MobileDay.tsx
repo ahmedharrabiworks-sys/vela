@@ -3,24 +3,26 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { OpeningHours } from "@/lib/opening-hours";
 import { dayStatus, nextOpenDay, type TimeOff } from "@/lib/time-off";
-import { ClosedDayCard, DayTimeline } from "./DayView";
+import { ClosedDayCard, DayTable } from "./DayView";
 import { addDays, fmtDay, type Appt, type Translate } from "./shared";
 
 const STRIP_BACK = 14;
 const STRIP_AHEAD = 45;
 
 /** Phones: a date strip over yesterday, today and tomorrow, swiped sideways. */
-export default function MobileDay({ anchor, onAnchor, onAdd, rows, hours, timeOff, now, locale, t, onOpen, showEmptyHint }: {
+export default function MobileDay({ anchor, onAnchor, onAdd, onConfirm, slotMinutes, rows, hours, timeOff, now, locale, t, onOpen, showEmptyHint }: {
   anchor: string;
   onAnchor: (date: string) => void;
   onAdd: (date: string, time: string) => void;
+  onConfirm: (a: Appt) => void;
+  slotMinutes: number;
   rows: Appt[];
   hours: OpeningHours | null;
   timeOff: TimeOff[];
   now: { date: string; time: string };
   locale: string;
   t: Translate;
-  onOpen: (a: Appt) => void;
+  onOpen: (a: Appt, mode?: "view" | "reschedule" | "cancel") => void;
   showEmptyHint: boolean;
 }) {
   // The strip is centred on a date window that always includes the chosen day.
@@ -93,9 +95,7 @@ export default function MobileDay({ anchor, onAnchor, onAdd, rows, hours, timeOf
           return (
             <div key={i} ref={i === 1 ? middle : undefined} className="w-full shrink-0 snap-start snap-always">
               {status.kind === "open" ? (
-                <div className="glass rounded-2xl overflow-hidden">
-                  <DayTimeline date={d} rows={dayRows} hours={hours} timeOff={timeOff} now={now} locale={locale} t={t} onOpen={onOpen} onAdd={(time) => onAdd(d, time)} selectedId={null} showEmptyHint={showEmptyHint} />
-                </div>
+                <DayTable date={d} rows={dayRows} hours={hours} timeOff={timeOff} now={now} slotMinutes={slotMinutes} locale={locale} t={t} onOpen={onOpen} onAdd={(time) => onAdd(d, time)} onConfirm={onConfirm} showEmptyHint={showEmptyHint} />
               ) : (
                 <ClosedDayCard date={d} status={status} rows={dayRows} nextOpen={nextOpenDay(d, hours, timeOff)} locale={locale} t={t} onGo={onAnchor} onOpen={onOpen} />
               )}

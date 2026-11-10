@@ -7,7 +7,9 @@ import { plansForPrompt } from "@/lib/pricing";
 import { syncStoredPhoneAssistant } from "@/lib/knowledge-base-server";
 import { suggestKnowledge } from "@/lib/knowledge-suggestions";
 import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
-import { addDaysISO, weekdayOf } from "@/lib/opening-hours";
+import { addDaysISO, formatWeeklyHours, normalizeSchedule, parseOpeningHours, weekdayOf } from "@/lib/opening-hours";
+import { applyWeeklyChange } from "@/lib/weekly-hours-edit";
+import { loadKnowledgeBase, saveKnowledgeBase } from "@/lib/knowledge-base-server";
 import { timeOffLabel, validateTimeOff } from "@/lib/time-off";
 import { appointmentsInBlock, deleteTimeOff, insertTimeOff, isConfirmationReply, previewRanges, type RawRange } from "@/lib/time-off-server";
 
@@ -181,7 +183,7 @@ export async function POST(req: NextRequest) {
     ? "\n\nFAQs:\n" + (kb.faqs ?? []).map((f) => `Q: ${f.q}\nA: ${f.a}`).join("\n")
     : "";
   const kbBusinessText = [
-    kb.business?.hours     ? `Working hours: ${kb.business.hours}` : "",
+    (() => { const w = normalizeSchedule((kb.business as { schedule?: unknown } | undefined)?.schedule); return w ? `Working hours: ${formatWeeklyHours(w)}` : ""; })(),
     kb.business?.address   ? `Address: ${kb.business.address}`     : "",
     kb.business?.bookingPolicy ? `Booking policy: ${kb.business.bookingPolicy}` : "",
   ].filter(Boolean).join("\n");
@@ -319,6 +321,9 @@ MANDATORY, in this order, no exceptions:
 5. After saving, name the appointments on those days and offer to cancel them. Never cancel one on your own; only cancel the ones they then tell you to, using update_appointment_status.
 "Close early at 1pm" is startTime 13:00 with no endTime. "Open late at 11" is endTime 11:00 with no startTime. All day means neither.
 To remove: call get_time_off for the real id, ask one yes/no question, then call remove_time_off with confirmed=true after a clear yes. For one day inside a longer block, pass onlyDate.
+
+## Weekly hours and breaks
+Recurring changes ("every day I take a lunch break from 12 to 1:30", "we open 9 to 5 on Saturdays", "closed every Friday") change the weekly opening hours, not time off. Call update_weekly_hours WITHOUT confirmed first: it returns the hours before and after and saves nothing. Ask one yes/no question showing the new hours. Only after a clear yes in their next message, call it again with the same arguments and confirmed=true, then say in one sentence what changed. Days are 0 Sunday to 6 Saturday; leave days out for every open day. A lunch break is action set_break with start and end in 24-hour HH:MM.
 
 ## Navigation
 When directing the user to a page, append [navigate:/path] at the end of your reply.
@@ -683,6 +688,24 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
     {
       type: "function",
       function: {
+        name: "update_weekly_hours",
+        description: "Change the recurring weekly opening hours: a daily break, a day's hours, or a day that is always closed. Call without confirmed to preview; call again with confirmed=true only after the owner clearly said yes.",
+        parameters: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["set_break", "remove_breaks", "set_hours", "close"] },
+            days: { type: "array", items: { type: "integer" }, description: "0 Sunday to 6 Saturday. Omit for every open day (breaks only)." },
+            start: { type: "string", description: "24-hour HH:MM" },
+            end: { type: "string", description: "24-hour HH:MM" },
+            confirmed: { type: "boolean" },
+          },
+          required: ["action"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
         name: "get_time_off",
         description: "List this business's current and upcoming time off (holidays, vacations, partial-day closures), with ids needed to remove one.",
         parameters: { type: "object", properties: {} },
@@ -737,6 +760,17 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
       const ranges = Array.isArray(args.ranges) ? args.ranges as RawRange[] : [];
       if (ranges.length === 0) return { error: "No dates given. Ask the owner which dates they mean." };
       return { items: await previewRanges(admin, tenantId, ranges, bookingCtx.now.date), instruction: "Nothing is saved yet. Ask the owner one yes/no question naming the label and the appointment count, then wait." };
+    }
+    if (name === "update_weekly_hours") {
+      const current = await loadKnowledgeBase(admin, tenantId);
+      const base = current.business.schedule ?? [[], [], [], [], [], [], []];
+      const result = applyWeeklyChange(base, args);
+      if (!result.ok) return { error: result.error };
+      const before = formatWeeklyHours(base), after = formatWeeklyHours(result.week);
+      if (args.confirmed !== true) return { preview: true, before, after, changed: before !== after, instruction: before === after ? "These hours are already set. Tell the owner nothing needs to change." : "Nothing saved yet. Ask one yes/no question showing the new hours, then wait." };
+      if (!isConfirmationReply(message, history)) return { error: "Not confirmed. Ask the owner one explicit yes/no question showing the new hours, then only call this after a clear yes in their next message." };
+      const saved = await saveKnowledgeBase(admin, tenantId, { ...current, business: { ...current.business, schedule: result.week, hoursReview: false } });
+      return saved.error ? { error: "Could not save the hours." } : { ok: true, saved: after };
     }
     if (name === "add_time_off" || name === "remove_time_off") {
       if (args.confirmed !== true || !isConfirmationReply(message, history)) {
@@ -918,7 +952,9 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
         services: Array.isArray(args.services) && args.services.length > 0 ? args.services : existing.services,
         faqs: Array.isArray(args.faqs) && args.faqs.length > 0 ? args.faqs : existing.faqs,
         business: {
+          ...existing.business,
           hours: typeof args.hours === "string" && args.hours ? args.hours : existing.business.hours,
+          ...((existing.business as { schedule?: unknown }).schedule ? {} : typeof args.hours === "string" && parseOpeningHours(args.hours) ? { schedule: parseOpeningHours(args.hours), hoursReview: true } : {}),
           address: typeof args.address === "string" && args.address ? args.address : existing.business.address,
           bookingPolicy: typeof args.bookingPolicy === "string" && args.bookingPolicy ? args.bookingPolicy : existing.business.bookingPolicy,
           tone: typeof args.tone === "string" && args.tone ? args.tone : existing.business.tone,

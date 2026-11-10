@@ -26,6 +26,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { formatWeeklyHours, normalizeSchedule } from "@/lib/opening-hours";
 import { CALL_LIMITS, DEFAULT_SPEED, DEFAULT_VOICE_ID, clampSpeed } from "@/lib/vapi-agent-config";
 import { BOOK_APPOINTMENT_TOOL, buildBookAppointmentTool, type VapiServerConfig } from "@/lib/vapi-webhook";
 
@@ -217,7 +218,7 @@ export function buildReceptionistPrompt(p: {
     `Business: ${p.businessName}`,
     spokenName !== p.businessName ? `When you say the business name out loud, say it like this: ${spokenName}` : "",
     services.length ? `Services: ${compactServices(services)}` : "Services: not listed yet",
-    biz.hours ? `Hours: ${biz.hours}` : "",
+    (() => { const week = normalizeSchedule((p.kb.business as Record<string, unknown> | undefined)?.schedule); return week ? `Hours: ${formatWeeklyHours(week)}` : ""; })(),
     biz.address ? `Location: ${biz.address}` : "",
     biz.bookingPolicy ? `Booking policy: ${biz.bookingPolicy}` : "",
     extra ? `Notes: ${extra}` : "",

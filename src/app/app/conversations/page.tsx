@@ -596,7 +596,7 @@ export default function ConversationsPage() {
           <div className="flex items-center justify-between gap-2 mb-3 min-h-[32px]">
             <h2 className="font-semibold text-[#111111] text-base">{t("conversations.title")}</h2>
             {items.length > 0 && (
-              <button type="button" data-testid="select-toggle" onClick={() => { setSelectMode((v) => !v); setPicked(new Set()); }} className="text-xs font-semibold text-[#6B7280] hover:text-[#111111] min-h-[32px] px-1.5">
+              <button type="button" data-testid="select-toggle" onClick={() => { setSelectMode((v) => !v); setPicked(new Set()); }} className="text-xs font-semibold text-[#6B7280] hover:text-[#111111] min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-0 px-1.5">
                 {selectMode ? t("conversations.cancel") : t("conversations.select")}
               </button>
             )}
@@ -612,7 +612,7 @@ export default function ConversationsPage() {
           <div className="flex flex-wrap md:flex-nowrap gap-1.5">
             {filters.map((f) => (
               <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f}
-                className={`shrink-0 inline-flex items-center gap-1 text-xs px-2.5 h-8 rounded-full transition-colors ${
+                className={`shrink-0 inline-flex items-center justify-center gap-1 text-xs px-3 min-w-[44px] h-11 sm:h-8 sm:min-w-0 sm:px-2.5 rounded-full transition-colors ${
                   filter === f ? "bg-[#111111] text-white font-medium" : "bg-[#F5F5F6] text-[#6B7280] hover:text-[#111111]"
                 }`}>
                 {filterLabel(f)}
@@ -710,7 +710,7 @@ export default function ConversationsPage() {
                       }
                     }}
                     aria-label="Conversation options"
-                    className="shrink-0 w-7 h-7 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 rounded-md hover:bg-[#E5E7EB] transition-opacity text-[#9CA3AF] hover:text-[#374151]">
+                    className="shrink-0 w-11 h-11 sm:w-7 sm:h-7 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 rounded-md hover:bg-[#E5E7EB] transition-opacity text-[#9CA3AF] hover:text-[#374151]">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                       <circle cx="6" cy="2" r="1.2" /><circle cx="6" cy="6" r="1.2" /><circle cx="6" cy="10" r="1.2" />
                     </svg>

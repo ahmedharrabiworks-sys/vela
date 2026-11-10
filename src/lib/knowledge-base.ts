@@ -21,6 +21,8 @@ export interface KnowledgeBase {
     hours: string;
     // Structured week; hours above is its readable text, kept in sync.
     schedule?: OpeningHours | null;
+    // Set when hours were converted from old text and still need a look.
+    hoursReview?: boolean;
     address: string;
     bookingPolicy: string;
     tone: "professional" | "friendly" | "luxury";
@@ -54,7 +56,7 @@ export function parseKnowledgeBase(raw: unknown): KnowledgeBase {
     faqs: (Array.isArray(o.faqs) ? o.faqs : [])
       .filter((f) => f && typeof f === "object")
       .map((f: Record<string, unknown>) => ({ q: str(f.q), a: str(f.a) })),
-    business: { hours: str(b.hours), schedule: normalizeSchedule(b.schedule), address: str(b.address), bookingPolicy: str(b.bookingPolicy), tone },
+    business: { hours: str(b.hours), schedule: normalizeSchedule(b.schedule), hoursReview: b.hoursReview === true, address: str(b.address), bookingPolicy: str(b.bookingPolicy), tone },
     extra: str(o.extra),
   };
 }
@@ -90,8 +92,10 @@ export function mergeImportedKnowledge(existing: KnowledgeBase, incoming: Knowle
     services,
     faqs,
     business: {
-      hours: incoming.business.hours || existing.business.hours,
-      schedule: incoming.business.hours ? null : existing.business.schedule,
+      // Imported text never changes a saved week; without one it becomes a week to review.
+      hours: existing.business.schedule ? existing.business.hours : incoming.business.hours || existing.business.hours,
+      schedule: existing.business.schedule ?? (incoming.business.hours ? parseOpeningHours(incoming.business.hours) : null),
+      hoursReview: existing.business.schedule ? existing.business.hoursReview : !!(incoming.business.hours && parseOpeningHours(incoming.business.hours)),
       address: incoming.business.address || existing.business.address,
       bookingPolicy: incoming.business.bookingPolicy || existing.business.bookingPolicy,
       tone: existing.business.tone,
@@ -105,14 +109,10 @@ export function mergeImportedKnowledge(existing: KnowledgeBase, incoming: Knowle
  * from: a changed week rewrites the text, a changed text re-reads the week.
  */
 export function syncHoursFields(prev: KnowledgeBase, next: KnowledgeBase): KnowledgeBase {
-  const weekChanged = JSON.stringify(prev.business.schedule ?? null) !== JSON.stringify(next.business.schedule ?? null);
-  if (weekChanged && next.business.schedule) {
-    return { ...next, business: { ...next.business, hours: formatWeeklyHours(next.business.schedule) } };
-  }
-  if (prev.business.hours.trim() !== next.business.hours.trim()) {
-    return { ...next, business: { ...next.business, schedule: parseOpeningHours(next.business.hours) } };
-  }
-  return next;
+  // The week is the source; the text is only its readable copy.
+  const schedule = next.business.schedule ?? prev.business.schedule ?? null;
+  const hours = schedule ? formatWeeklyHours(schedule) : prev.business.hours || next.business.hours;
+  return { ...next, business: { ...next.business, schedule, hours } };
 }
 
 export type KbSection = "services" | "hours" | "address" | "policy" | "extra";
@@ -120,7 +120,7 @@ export type KbSection = "services" | "hours" | "address" | "policy" | "extra";
 export function knowledgeChecklist(kb: KnowledgeBase): Record<KbSection, boolean> {
   return {
     services: kb.services.some((s) => s.name.trim()),
-    hours: !!kb.business.hours.trim(),
+    hours: !!kb.business.schedule?.some((day) => day.length > 0),
     address: !!kb.business.address.trim(),
     policy: !!kb.business.bookingPolicy.trim(),
     extra: !!kb.extra.trim(),

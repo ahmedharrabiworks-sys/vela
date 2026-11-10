@@ -14,14 +14,14 @@ export default function GlassBlobs({
 }) {
   if (variant === "tight") {
     return (
-      <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
         <div className="glass-blob glass-blob--orange" style={{ width: 320, height: 320, top: "-12%", left: "-8%" }} />
         <div className="glass-blob glass-blob--rose" style={{ width: 300, height: 300, bottom: "-15%", right: "-6%" }} />
       </div>
     );
   }
   return (
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
       <div className="glass-blob glass-blob--orange" style={{ width: 420, height: 420, top: "-15%", left: "-5%" }} />
       <div className="glass-blob glass-blob--rose" style={{ width: 380, height: 380, bottom: "-18%", right: "8%" }} />
       <div className="glass-blob glass-blob--orange" style={{ width: 280, height: 280, top: "35%", left: "60%" }} />

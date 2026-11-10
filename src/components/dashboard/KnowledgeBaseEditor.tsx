@@ -87,7 +87,8 @@ export default function KnowledgeBaseEditor() {
       // so a save here can never undo a change made there.
       const latest = await fetch("/api/ai-training");
       const services = latest.ok ? parseKnowledgeBase(await latest.json()).services : kb.services;
-      const clean = { ...kb, services: services.filter((s) => s.name.trim()) };
+      const week = kb.business.schedule ?? parseOpeningHours(kb.business.hours);
+      const clean = { ...kb, business: { ...kb.business, schedule: week, hoursReview: false }, services: services.filter((s) => s.name.trim()) };
       const res = await fetch("/api/ai-training", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -226,6 +227,8 @@ export default function KnowledgeBaseEditor() {
   }
 
   const week = kb.business.schedule ?? parseOpeningHours(kb.business.hours);
+  // A converted week waiting for the owner can be saved as is.
+  const needsReview = !!(kb.business.hoursReview || (!kb.business.schedule && week));
   const checklist = knowledgeChecklist(kb);
   const onThisPage = [checklist.hours, checklist.address, checklist.policy, checklist.extra];
   const filled = onThisPage.filter(Boolean).length;
@@ -291,6 +294,7 @@ export default function KnowledgeBaseEditor() {
         )}
 
         <Section title={t("agentUi.kb.hours")} hint={t("agentUi.kb.weekHint")}>
+          {needsReview && <p data-testid="hours-review" className="text-xs text-[#9A3412] bg-[#FFF5F0] rounded-lg px-3 py-2 mb-2">{t("agentUi.kb.hoursReview")}</p>}
           {kb.business.hours.trim() && !week && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-2">{t("agentUi.kb.unreadableHours").replace("{text}", kb.business.hours)}</p>}
           <WeeklyHoursEditor value={week ?? EMPTY_WEEK} onChange={(schedule) => editBusiness({ schedule, hours: formatWeeklyHours(schedule) })} locale={locale} t={t} />
         </Section>
@@ -363,7 +367,7 @@ export default function KnowledgeBaseEditor() {
 
       <SaveButton
         saving={saving}
-        dirty={dirty}
+        dirty={dirty || needsReview}
         justSaved={saved}
         error={error}
         onSave={persist}

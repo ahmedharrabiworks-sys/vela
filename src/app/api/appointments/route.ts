@@ -5,6 +5,7 @@ import { checkSlot, cleanText, durationFor, loadBookingContext } from "@/lib/app
 import { normalizeDate, normalizeTime } from "@/lib/phone-booking";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 import { isOutsideHours } from "@/lib/time-off";
+import { parseDurationMinutes } from "@/lib/availability";
 import { createNotification } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
@@ -99,6 +100,8 @@ export async function GET() {
     now: { date: ctx.now.date, time: ctx.now.time },
     hours: ctx.hours,
     timeOff: ctx.timeOff,
+    // Day table rows: the shortest real service, else 30 minutes.
+    slotMinutes: (() => { const d = ctx.services.map((s) => parseDurationMinutes(s.duration)).filter((x): x is number => !!x && x >= 10 && x <= 240); return d.length ? Math.min(...d) : 30; })(),
     services: ctx.services.map((s) => s.name),
     phoneLinked: !!cfg?.vapi_phone_number,
     viewKey: tenant.id,

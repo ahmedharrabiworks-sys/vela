@@ -1,8 +1,30 @@
+import crypto from "crypto";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { timeOffLabel, validateTimeOff, nextOccurrence, type TimeOff, type TimeOffInput, toMinutes } from "@/lib/time-off";
 import { addDaysISO } from "@/lib/opening-hours";
 
 const COLS = "id, start_date, end_date, start_time, end_time, reason";
+
+// Until migration_v43.sql runs, time off is kept in tenant_config.agent_settings
+// (owner-only, like the table), so the feature works either way. Once the
+// table exists, anything stored there moves into it on the next read.
+async function readSettings(admin: any, tenantId: string): Promise<Record<string, any>> {
+  const { data } = await admin.from("tenant_config").select("agent_settings").eq("tenant_id", tenantId).maybeSingle();
+  try {
+    const raw = data?.agent_settings;
+    return ((typeof raw === "string" ? JSON.parse(raw) : raw) ?? {}) as Record<string, any>;
+  } catch { return {}; }
+}
+async function readStored(admin: any, tenantId: string): Promise<TimeOff[]> {
+  const s = await readSettings(admin, tenantId);
+  return Array.isArray(s.timeOff) ? (s.timeOff as TimeOff[]) : [];
+}
+async function writeStored(admin: any, tenantId: string, list: TimeOff[]): Promise<boolean> {
+  const s = await readSettings(admin, tenantId);
+  const { error } = await admin.from("tenant_config").upsert({ tenant_id: tenantId, agent_settings: { ...s, timeOff: list } }, { onConflict: "tenant_id" });
+  if (error) console.error("[time-off] settings save failed:", error.message);
+  return !error;
+}
 
 /** True while migration_v43.sql has not been run. */
 export function isMissingTable(error: { code?: string; message?: string } | null | undefined): boolean {
@@ -16,8 +38,15 @@ export async function loadTimeOff(admin: any, tenantId: string, fromDate: string
   try {
     const { data, error } = await admin.from("business_time_off").select(COLS).eq("tenant_id", tenantId).gte("end_date", fromDate).order("start_date", { ascending: true }).limit(200);
     if (error) {
-      if (!isMissingTable(error)) console.error("[time-off] load failed:", error.message);
-      return [];
+      if (!isMissingTable(error)) { console.error("[time-off] load failed:", error.message); return []; }
+      return (await readStored(admin, tenantId)).filter((o) => o.end_date >= fromDate).sort((a, b) => a.start_date.localeCompare(b.start_date));
+    }
+    const legacy = await readStored(admin, tenantId);
+    if (legacy.length > 0) {
+      const { error: moveErr } = await admin.from("business_time_off").insert(legacy.map(({ id: _id, ...v }) => ({ tenant_id: tenantId, ...v })));
+      if (!moveErr) await writeStored(admin, tenantId, []);
+      const { data: again } = await admin.from("business_time_off").select(COLS).eq("tenant_id", tenantId).gte("end_date", fromDate).order("start_date", { ascending: true }).limit(200);
+      return ((again ?? []) as TimeOff[]).map(clean);
     }
     return ((data ?? []) as TimeOff[]).map(clean);
   } catch (err) {
@@ -55,7 +84,10 @@ export async function appointmentsInBlock(admin: any, tenantId: string, v: TimeO
 export async function insertTimeOff(admin: any, tenantId: string, userId: string, v: TimeOffInput): Promise<{ row?: TimeOff; missingTable?: boolean; error?: string }> {
   const { data, error } = await admin.from("business_time_off").insert({ tenant_id: tenantId, created_by: userId, ...v }).select(COLS).single();
   if (error) {
-    if (isMissingTable(error)) return { missingTable: true };
+    if (isMissingTable(error)) {
+      const row: TimeOff = { id: crypto.randomUUID(), ...v };
+      return (await writeStored(admin, tenantId, [...await readStored(admin, tenantId), row])) ? { row } : { error: "save_failed" };
+    }
     console.error("[time-off] insert failed:", error.message);
     return { error: "save_failed" };
   }
@@ -64,6 +96,11 @@ export async function insertTimeOff(admin: any, tenantId: string, userId: string
 
 export async function deleteTimeOff(admin: any, tenantId: string, id: string): Promise<boolean> {
   const { data, error } = await admin.from("business_time_off").delete().eq("id", id).eq("tenant_id", tenantId).select("id");
+  if (isMissingTable(error)) {
+    const list = await readStored(admin, tenantId);
+    if (!list.some((o) => o.id === id)) return false;
+    return writeStored(admin, tenantId, list.filter((o) => o.id !== id));
+  }
   if (error) {
     console.error("[time-off] delete failed:", error.message);
     return false;

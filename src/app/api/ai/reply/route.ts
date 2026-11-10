@@ -8,6 +8,7 @@ import { recordPendingServiceRequest } from "@/lib/pending-services";
 import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
 import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
 import { closuresForPrompt, timeOffLabel } from "@/lib/time-off";
+import { formatWeeklyHours, normalizeSchedule } from "@/lib/opening-hours";
 import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 
@@ -747,8 +748,9 @@ export async function POST(req: NextRequest) {
   });
   const currentTime = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
-  const workingHoursText = kbBusiness.hours
-    ? `Working hours: ${kbBusiness.hours}`
+  const kbWeek = normalizeSchedule((kbBusiness as { schedule?: unknown }).schedule);
+  const workingHoursText = kbWeek
+    ? `Working hours: ${formatWeeklyHours(kbWeek)}`
     : bookingRules?.workingHours
     ? `Working hours: ${bookingRules.workingHours.days.join(", ")} ${bookingRules.workingHours.start} to ${bookingRules.workingHours.end}`
     : "Working hours: not specified, use reasonable business hours";

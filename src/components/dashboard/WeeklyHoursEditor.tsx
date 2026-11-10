@@ -31,8 +31,8 @@ export default function WeeklyHoursEditor({ value, onChange, locale, t }: {
         const open = windows.length > 0;
         return (
           <div key={i} data-testid={`hours-day-${i}`} className="flex flex-wrap items-start gap-x-3 gap-y-2 py-2.5">
-            <label className="flex items-center gap-2.5 w-[132px] min-h-[40px] cursor-pointer">
-              <input type="checkbox" checked={open} onChange={(e) => setDay(i, e.target.checked ? [{ ...DEFAULT_RANGE }] : [])} aria-label={name} className="w-4 h-4 accent-[#FF6B35]" />
+            <label className="flex items-center gap-2.5 w-[132px] min-h-[44px] cursor-pointer">
+              <input type="checkbox" checked={open} onChange={(e) => setDay(i, e.target.checked ? [{ ...DEFAULT_RANGE }] : [])} aria-label={name} className="w-5 h-5 accent-[#FF6B35]" />
               <span className="text-sm font-medium text-[#111111]">{name}</span>
             </label>
             {open ? (
@@ -63,4 +63,19 @@ export default function WeeklyHoursEditor({ value, onChange, locale, t }: {
       })}
     </div>
   );
+}
+
+/** "Sun closed · Mon to Fri 8:00 to 12:00, 14:00 to 18:00 · Sat closed" */
+export function summarizeWeek(week: OpeningHours, locale: string, toWord: string, closedWord: string): string {
+  const clock = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+  const describe = (w: HoursWindow[]) => (w.length === 0 ? closedWord : w.map((x) => `${clock(x.open)} ${toWord} ${clock(x.close)}`).join(", "));
+  const short = (i: number) => fmtDay(dayDate(i), locale, { weekday: "short" });
+  const parts: string[] = [];
+  for (let i = 0; i < 7;) {
+    let j = i;
+    while (j + 1 < 7 && describe(week[j + 1]) === describe(week[i])) j++;
+    parts.push(`${i === j ? short(i) : `${short(i)} ${toWord} ${short(j)}`} ${describe(week[i])}`);
+    i = j + 1;
+  }
+  return parts.join(" · ");
 }

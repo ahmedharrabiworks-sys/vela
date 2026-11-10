@@ -31,6 +31,7 @@ export interface ApptPayload {
   now: { date: string; time: string };
   hours: OpeningHours | null;
   timeOff: TimeOff[];
+  slotMinutes?: number;
   services: string[];
   phoneLinked: boolean;
   viewKey: string;

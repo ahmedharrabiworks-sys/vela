@@ -87,6 +87,9 @@ export default function SettingsPage() {
   const speed = s.speed ?? DEFAULT_PHONE_SPEED;
   const voiceId = s.voiceId ?? DEFAULT_PHONE_VOICE_ID;
   const custom = s.greetingStyle === "custom";
+  // A custom greeting that never says the business name usually names another business.
+  const squash = (v: string) => v.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, "");
+  const namesOtherBusiness = !!(s.customGreeting ?? "").trim() && !!businessName && ![businessName, s.spokenBusinessName ?? ""].some((n) => squash(n) && squash(s.customGreeting ?? "").includes(squash(n)));
   const greeting = buildGreeting(businessName || "your business", s, resolveAgentName(s));
 
   const togglePreview = async () => {
@@ -172,8 +175,8 @@ export default function SettingsPage() {
                   {LANGUAGE_OPTIONS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </div>
-              <label className="flex items-center gap-2.5 min-h-[32px] text-sm text-[#374151] cursor-pointer">
-                <input type="checkbox" checked={custom} onChange={(e) => set("greetingStyle", e.target.checked ? "custom" : "warm")} className="w-4 h-4 accent-[#FF6B35]" />
+              <label className="flex items-center gap-2.5 min-h-[44px] text-sm text-[#374151] cursor-pointer">
+                <input type="checkbox" checked={custom} onChange={(e) => set("greetingStyle", e.target.checked ? "custom" : "warm")} className="w-5 h-5 accent-[#FF6B35]" />
                 {t("agentUi.settings.writeGreeting")}
               </label>
               {custom && (
@@ -188,6 +191,9 @@ export default function SettingsPage() {
                 <p className="text-[11px] font-medium text-[#9CA3AF] mb-1">{t("agentUi.settings.greetingPreview")}</p>
                 <p data-testid="greeting-preview" dir="auto" className="text-sm text-[#111111] leading-relaxed [overflow-wrap:anywhere]">{greeting}</p>
               </div>
+              {custom && namesOtherBusiness && (
+                <p data-testid="greeting-name-warning" className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 leading-relaxed">{t("agentUi.settings.greetingNameWarning").replace("{name}", businessName)}</p>
+              )}
             </div>
           </Section>
         </div>
