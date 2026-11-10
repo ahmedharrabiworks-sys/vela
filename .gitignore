@@ -41,3 +41,15 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Promo video: only source, scripts and storyboard are tracked
+promo-video/node_modules/
+promo-video/out/
+promo-video/public/audio/
+promo-video/public/captures/
+promo-video/public/brand/
+promo-video/.capture-auth/
+# Third-party skill install (not part of the app)
+.agents/
+.claude/skills/
+skills-lock.json
