@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
 import { mergeImportedKnowledge, parseKnowledgeBase } from "@/lib/knowledge-base";
-import { loadKnowledgeBase, saveKnowledgeBase } from "@/lib/knowledge-base-server";
+import { loadBusinessCurrency, loadKnowledgeBase, saveKnowledgeBase } from "@/lib/knowledge-base-server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,9 @@ export async function GET() {
   const tenant = await ensureTenant(user.id, user.email, user.user_metadata);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createSupabaseAdmin() as any;
-  return NextResponse.json(await loadKnowledgeBase(admin, tenant.id));
+  // The currency rides along so the editor can show "40 QAR" as soon as it is typed.
+  const [kb, currency] = await Promise.all([loadKnowledgeBase(admin, tenant.id), loadBusinessCurrency(admin, tenant.id)]);
+  return NextResponse.json({ ...kb, currency });
 }
 
 export async function POST(req: NextRequest) {

@@ -9,6 +9,7 @@ import { checkAvailability, formatAvailabilityDirective, formatBookedSlotsText, 
 import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
 import { closuresForPrompt, timeOffLabel } from "@/lib/time-off";
 import { formatWeeklyHours, normalizeSchedule } from "@/lib/opening-hours";
+import { currencyDirective, currencyOfPrices } from "@/lib/business-currency";
 import { stripAiTells, stripFillerClosers } from "@/lib/text-clean";
 import { hasConfirmedCountryCode } from "@/lib/phone-validate";
 
@@ -733,6 +734,8 @@ export async function POST(req: NextRequest) {
           .map((s) => `• ${s.name}${s.price ? `, ${s.price}` : ""}${s.description ? `: ${s.description}` : ""}`)
           .join("\n")
       : "(No services configured yet, use general knowledge about the industry)";
+  // Never "dollars" for a riyal price list.
+  const priceCurrencyLine = currencyDirective(currencyOfPrices(kbServices.map((s) => s.price)));
 
   // FAQs: prefer KB (q/a format), fall back to legacy (question/answer format)
   const faqsText =
@@ -858,7 +861,7 @@ Business details:
 Current date & time: ${todayFull}, ${currentTime}
 
 Services:
-${servicesText}
+${servicesText}${priceCurrencyLine ? `\n${priceCurrencyLine}` : ""}
 ${faqsText}
 ${bookedSlotsText}${extraText}${availabilityDirective}${pendingApptDirective}${existingApptDirective}${reactivateApptDirective}
 

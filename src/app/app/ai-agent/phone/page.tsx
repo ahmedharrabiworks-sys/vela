@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { formatPhoneForDisplay } from "@/lib/phone-validate";
 import BusinessNumberModal from "@/components/dashboard/BusinessNumberModal";
+import ChannelIcon from "@/components/ui/ChannelIcon";
+import { callStatus, fmtDuration, fmtTimeAgo, type CallRecord, type CallStatus } from "@/components/dashboard/CallTranscript";
 
-// Clients see three things: is it working, their number, this week. The
-// phone plumbing (bridge number, carrier codes, Vapi sync) is the Vela
-// team's job and only reaches team members, checked on the server.
+// One featured card in the Channels phone card style, then this week's calls
+// and the latest calls. Clients never see phone plumbing; the Vela team's
+// setup tools stay in the admin section, sent by the server to team members only.
 
 interface PhoneInfo {
   businessPhone: string | null;
@@ -22,7 +24,10 @@ interface PhoneStatus {
   reason: "plan" | "webhook" | "number_missing" | "service" | null;
   voicePlan: boolean;
   callsThisWeek: number;
+  week?: Array<{ date: string; calls: number }>;
+  today?: string;
   minutes: { used: number; limit: number | null };
+  lastCallAt: string | null;
 }
 type Kind = "live" | "setup" | "issue" | "paused";
 
@@ -38,93 +43,179 @@ function statusKind(info: PhoneInfo | null, s: PhoneStatus | null): Kind {
   return "setup";
 }
 
-const TONE: Record<Kind, { dot: string; text: string; bg: string }> = {
-  live: { dot: "bg-green-500", text: "text-green-700", bg: "bg-green-50 border-green-200" },
-  setup: { dot: "bg-amber-400", text: "text-amber-800", bg: "bg-amber-50 border-amber-200" },
-  paused: { dot: "bg-amber-400", text: "text-amber-800", bg: "bg-amber-50 border-amber-200" },
-  issue: { dot: "bg-red-500", text: "text-red-700", bg: "bg-red-50 border-red-200" },
+const PILL: Record<Kind, { box: string; dot: string }> = {
+  live: { box: "bg-green-50 text-green-700", dot: "bg-green-500" },
+  setup: { box: "bg-amber-50 text-amber-700", dot: "bg-amber-400" },
+  paused: { box: "bg-amber-50 text-amber-700", dot: "bg-amber-400" },
+  issue: { box: "bg-red-50 text-red-700", dot: "bg-red-500" },
 };
 
+// Booked / Answered / Hung up first; the rest are rarer and stay quiet.
+const OUTCOME: Record<CallStatus, string> = {
+  booked: "bg-green-50 text-green-700",
+  completed: "bg-[#FFF5F0] text-[#C2410C]",
+  hungUp: "bg-[#F3F4F6] text-[#6B7280]",
+  noAnswer: "bg-[#F3F4F6] text-[#6B7280]",
+  voicemail: "bg-[#F3F4F6] text-[#6B7280]",
+  failed: "bg-red-50 text-red-700",
+};
+
+function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] sm:text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1.5 leading-tight">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function fmtDay(date: string, locale: string, opts: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar-u-nu-latn" : locale === "en" ? "en-GB" : locale, { ...opts, timeZone: "UTC" }).format(new Date(`${date}T12:00:00.000Z`));
+}
+
 export default function PhonePage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [info, setInfo] = useState<PhoneInfo | null>(null);
   const [status, setStatus] = useState<PhoneStatus | null>(null);
+  const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(false);
 
   const load = useCallback(async () => {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       fetch("/api/ai-agent/phone").then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch("/api/channels/phone-status").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/ai-agent/calls").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
     setInfo(a as PhoneInfo | null);
     setStatus(b as PhoneStatus | null);
+    setCalls((((c as { calls?: CallRecord[] } | null)?.calls) ?? []).filter((x) => x.call_type === "live").slice(0, 5));
   }, []);
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
   if (loading) {
-    return <div className="max-w-3xl mx-auto space-y-4 animate-pulse"><div className="h-8 w-40 bg-[#F3F4F6] rounded-lg" /><div className="h-28 bg-[#F3F4F6] rounded-2xl" /><div className="h-24 bg-[#F3F4F6] rounded-2xl" /></div>;
+    return <div className="max-w-5xl mx-auto space-y-4 animate-pulse"><div className="h-8 w-40 bg-[#F3F4F6] rounded-lg" /><div className="glass rounded-2xl h-[280px]" /><div className="grid lg:grid-cols-2 gap-4"><div className="glass rounded-2xl h-56" /><div className="glass rounded-2xl h-56" /></div></div>;
   }
 
   const kind = statusKind(info, status);
-  const tone = TONE[kind];
-  const contact = (
-    <div className="flex flex-wrap gap-2 mt-3">
-      {SUPPORT_WHATSAPP && (
-        <a href={`https://wa.me/${SUPPORT_WHATSAPP}`} target="_blank" rel="noopener noreferrer" data-testid="contact-whatsapp" className="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-white border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#FF6B35]">{t("agentUi.phone.client.whatsapp")}</a>
-      )}
-      <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Phone setup")}`} data-testid="contact-email" className="inline-flex items-center justify-center h-11 px-4 rounded-xl bg-white border border-[#E5E7EB] text-sm font-semibold text-[#374151] hover:border-[#FF6B35]">{t("agentUi.phone.client.email")}</a>
-    </div>
-  );
+  const pill = PILL[kind];
   const limit = status?.minutes.limit ?? null;
+  const used = Math.round(status?.minutes.used ?? 0);
+  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const barColor = pct >= 100 ? "#DC2626" : pct >= 80 ? "#F59E0B" : "#FF6B35";
+  const week = status?.week ?? [];
+  const peak = Math.max(1, ...week.map((d) => d.calls));
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[#111111] mb-1">{t("aiAgent.phone.pageTitle")}</h1>
-        <p className="text-sm text-[#6B7280]">{t("agentUi.phone.client.subtitle")}</p>
+    <div className="max-w-5xl mx-auto space-y-4">
+      <h1 className="text-xl font-bold text-[#111111]">{t("aiAgent.phone.pageTitle")}</h1>
+
+      {/* Featured card */}
+      <section data-testid="phone-card" data-kind={kind} className="glass glass-warm rounded-2xl p-5 sm:p-6">
+        <div className="flex items-start gap-3.5">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--vela-gradient)" }}>
+            <ChannelIcon channel="phone" size={22} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-[#111111]">{t("channels.phoneAgent.name")}</h2>
+              <span data-testid="phone-status" className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${pill.box}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${pill.dot}`} aria-hidden="true" />
+                {t(`agentUi.phone.pill.${kind}`)}
+              </span>
+            </div>
+            {kind !== "live" && <p data-testid="phone-status-line" className="text-sm text-[#6B7280] mt-1 leading-relaxed">{t(`agentUi.phone.client.status.${kind}Desc`)}</p>}
+            {(kind === "setup" || kind === "issue") && (
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                {SUPPORT_WHATSAPP && <a href={`https://wa.me/${SUPPORT_WHATSAPP}`} target="_blank" rel="noopener noreferrer" data-testid="contact-whatsapp" className="inline-flex items-center justify-center h-11 sm:h-9 px-3.5 rounded-lg bg-white border border-[#E5E7EB] text-xs font-semibold text-[#374151] hover:border-[#FF6B35]">{t("agentUi.phone.client.whatsapp")}</a>}
+                <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Phone setup")}`} data-testid="contact-email" className="inline-flex items-center justify-center h-11 sm:h-9 px-3.5 rounded-lg bg-white border border-[#E5E7EB] text-xs font-semibold text-[#374151] hover:border-[#FF6B35]">{t("agentUi.phone.client.email")}</a>
+              </div>
+            )}
+            {kind === "paused" && <Link href="/pricing" className="btn-primary inline-flex h-11 sm:h-9 px-4 text-xs mt-2.5">{t("sidebar.changePlan")}</Link>}
+          </div>
+        </div>
+
+        <div id="business-number" className="mt-6 scroll-mt-20">
+          <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1">{t("channelsV2.customersCall")}</p>
+          {info?.businessPhone ? (
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <p data-testid="business-number" dir="ltr" className="text-[26px] sm:text-[32px] font-bold text-[#111111] leading-tight tabular-nums text-start">{formatPhoneForDisplay(info.businessPhone)}</p>
+              <button type="button" data-testid="change-business-number" onClick={() => setChanging(true)} className="min-h-[44px] sm:min-h-0 text-sm font-semibold text-[#C2410C] hover:underline">{t("agentUi.phone.client.change")}</button>
+            </div>
+          ) : (
+            <button type="button" data-testid="change-business-number" onClick={() => setChanging(true)} className="inline-flex items-center min-h-[44px] text-base font-semibold text-[#C2410C] hover:underline">{t("agentUi.phone.client.addTitle")}</button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-6 pt-5 border-t border-black/[0.06]">
+          <Stat label={t("channelsV2.callsThisWeek")}>
+            <p data-testid="calls-week" className="text-[20px] sm:text-[22px] font-bold text-[#111111] leading-none tabular-nums">{(status?.callsThisWeek ?? 0).toLocaleString("en-US")}</p>
+          </Stat>
+          <Stat label={t("channelsV2.minutesUsed")}>
+            <p data-testid="minutes-used" dir="ltr" className="text-[20px] sm:text-[22px] font-bold text-[#111111] leading-none tabular-nums text-start">
+              {used.toLocaleString("en-US")}
+              {limit !== null && <span className="text-xs sm:text-sm font-medium text-[#9CA3AF]"> / {limit.toLocaleString("en-US")}</span>}
+            </p>
+            {limit !== null && limit > 0 && <div className="h-1 rounded-full bg-[#F3F4F6] overflow-hidden mt-2"><div data-testid="minutes-bar" className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} /></div>}
+            {status && !status.voicePlan && <p className="text-[11px] text-[#9CA3AF] mt-1">{t("agentUi.phone.client.notInPlan")}</p>}
+          </Stat>
+          <Stat label={t("channelsV2.lastCall")}>
+            <p data-testid="last-call" className="text-sm font-semibold text-[#111111] pt-0.5">{status?.lastCallAt ? fmtTimeAgo(status.lastCallAt, locale) : t("channelsV2.noCalls")}</p>
+          </Stat>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* This week, one bar per day, from the business's first day of the week */}
+        <section data-testid="week-chart" className="glass rounded-2xl p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-[#111111] mb-4">{t("channelsV2.callsThisWeek")}</h2>
+          {week.length === 7 ? (
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-2 items-end h-36" role="img" aria-label={week.map((d) => `${fmtDay(d.date, locale, { weekday: "long" })}: ${d.calls}`).join(", ")}>
+              {week.map((d) => {
+                const today = d.date === status?.today;
+                return (
+                  <div key={d.date} data-testid="week-bar" data-date={d.date} data-calls={d.calls} className="flex flex-col items-center justify-end h-full gap-1">
+                    <span className={`text-[11px] tabular-nums ${d.calls ? "text-[#374151] font-semibold" : "text-[#C9CDD3]"}`}>{d.calls}</span>
+                    <div className="w-full max-w-[28px] rounded-md" style={{ height: `${Math.max(4, (d.calls / peak) * 88)}px`, background: d.calls ? (today ? "var(--vela-gradient)" : "rgba(255,107,53,0.45)") : "#F3F4F6" }} />
+                    <span className={`text-[11px] ${today ? "font-bold text-[#C2410C]" : "text-[#6B7280]"}`}>{fmtDay(d.date, locale, { weekday: "short" })}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className="text-sm text-[#9CA3AF]">{t("channelsV2.noCalls")}</p>}
+        </section>
+
+        {/* The latest calls, each opening its conversation */}
+        <section data-testid="recent-calls" className="glass rounded-2xl p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h2 className="text-sm font-bold text-[#111111]">{t("agentUi.phone.card.recentTitle")}</h2>
+            <Link href="/app/conversations" data-testid="view-all-calls" className="inline-flex items-center min-h-[44px] sm:min-h-0 text-xs font-semibold text-[#C2410C] hover:underline">{t("agentUi.phone.card.viewAll")}</Link>
+          </div>
+          {calls.length === 0 ? (
+            <p className="text-sm text-[#9CA3AF] py-6 text-center">{t("channelsV2.noCalls")}</p>
+          ) : (
+            <ul className="-mx-2">
+              {calls.map((c) => {
+                const st = callStatus(c.outcome, c.duration_seconds);
+                const lang = (c.language ?? "").toLowerCase().startsWith("ar") ? "AR" : (c.language ? "EN" : null);
+                return (
+                  <li key={c.id}>
+                    <Link href={`/app/conversations?open=call:${encodeURIComponent(c.id)}`} data-testid="recent-call-row" className="flex items-center gap-3 min-h-[52px] px-2 py-2 rounded-lg hover:bg-white/60 transition-colors">
+                      <span className="flex-1 min-w-0">
+                        <span dir="ltr" className="block text-sm font-semibold text-[#111111] truncate text-start tabular-nums">{c.caller_number ? formatPhoneForDisplay(c.caller_number) : t("agentUi.phone.card.hiddenNumber")}</span>
+                        <span className="block text-[11px] text-[#9CA3AF]">{fmtTimeAgo(c.created_at, locale)}</span>
+                      </span>
+                      {lang && <span data-testid="call-lang" className="text-[10px] font-bold text-[#6B7280] border border-[#E5E7EB] rounded px-1.5 py-0.5">{lang}</span>}
+                      <span dir="ltr" className="text-xs text-[#6B7280] tabular-nums w-12 text-end">{fmtDuration(c.duration_seconds)}</span>
+                      {st && <span data-testid="call-outcome" className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${OUTCOME[st]}`}>{t(`agentUi.phone.outcome.${st}`)}</span>}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
       </div>
-
-      {/* Status, from real checks */}
-      <section data-testid="phone-status" data-kind={kind} className={`rounded-2xl border p-4 sm:p-5 ${tone.bg}`}>
-        <div className="flex items-center gap-2.5">
-          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${tone.dot}`} />
-          <h2 className={`text-base font-bold ${tone.text}`}>{t(`agentUi.phone.client.status.${kind}`)}</h2>
-        </div>
-        <p className="text-sm text-[#374151] mt-1.5 leading-relaxed">{t(`agentUi.phone.client.status.${kind}Desc`)}</p>
-        {(kind === "setup" || kind === "issue") && contact}
-        {kind === "paused" && (
-          <Link href="/pricing" className="btn-primary inline-flex h-11 px-5 text-sm mt-3">{t("sidebar.changePlan")}</Link>
-        )}
-      </section>
-
-      {/* Their number, the one customers already call */}
-      <section data-testid="business-number-card" className="glass rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-[#6B7280]">{t("agentUi.phone.businessTitle")}</p>
-          {info?.businessPhone
-            ? <p dir="ltr" data-testid="business-number" className="text-xl font-bold text-[#111111] tabular-nums text-start mt-0.5">{formatPhoneForDisplay(info.businessPhone)}</p>
-            : <p className="text-sm text-[#9CA3AF] mt-1">{t("agentUi.phone.client.noNumber")}</p>}
-        </div>
-        <button type="button" data-testid="change-business-number" onClick={() => setChanging(true)} className="inline-flex items-center justify-center h-11 px-4 rounded-xl border border-[#E5E7EB] bg-white text-sm font-semibold text-[#374151] hover:border-[#FF6B35] hover:text-[#C2410C] transition-colors">
-          {t(info?.businessPhone ? "agentUi.phone.client.change" : "agentUi.phone.client.add")}
-        </button>
-      </section>
-
-      {/* This week, real counts */}
-      <section className="grid grid-cols-2 gap-3">
-        <div className="glass rounded-2xl p-4">
-          <p className="text-xs font-medium text-[#6B7280]">{t("agentUi.phone.client.callsWeek")}</p>
-          <p data-testid="calls-week" className="text-2xl font-bold text-[#111111] tabular-nums mt-1">{status?.callsThisWeek ?? 0}</p>
-        </div>
-        <div className="glass rounded-2xl p-4">
-          <p className="text-xs font-medium text-[#6B7280]">{t("agentUi.phone.client.minutesMonth")}</p>
-          <p data-testid="minutes-used" className="text-2xl font-bold text-[#111111] tabular-nums mt-1">
-            <span dir="ltr">{Math.round(status?.minutes.used ?? 0)}{limit !== null && <span className="text-sm font-medium text-[#9CA3AF]"> / {limit}</span>}</span>
-          </p>
-          {limit === null && status && !status.voicePlan && <p className="text-[11px] text-[#9CA3AF] mt-0.5">{t("agentUi.phone.client.notInPlan")}</p>}
-        </div>
-      </section>
 
       {info?.isAdmin && <AdminSetup info={info} t={t} onChanged={load} />}
 

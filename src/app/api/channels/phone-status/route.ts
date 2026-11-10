@@ -5,6 +5,7 @@ import { PLAN_CONFIG, type PlanId } from "@/lib/plan-config";
 import { getUsageSummary } from "@/lib/usage";
 import { getVapiServerConfig, resolveTenantTimezone, samePhoneLine, wallClockNow } from "@/lib/vapi-webhook";
 import { formatPhoneForDisplay } from "@/lib/phone-validate";
+import { resolveWeekStart, startOfWeek } from "@/lib/week-start";
 
 export const dynamic = "force-dynamic";
 
@@ -62,17 +63,26 @@ export async function GET() {
     settings = (typeof raw === "string" ? JSON.parse(raw) : raw) ?? {};
   } catch { /* defaults */ }
 
-  // This week runs Sunday to Saturday in the business's own timezone.
+  // This week, in the business's own timezone, from its chosen first day.
   const now = wallClockNow(resolveTenantTimezone(settings));
   const offsetMs = now.asDate.getTime() - Math.floor(Date.now() / 60_000) * 60_000;
-  const weekStartWall = Date.parse(`${now.date}T00:00:00.000Z`) - new Date(`${now.date}T12:00:00.000Z`).getUTCDay() * 86_400_000;
+  const firstDay = startOfWeek(now.date, resolveWeekStart(settings.weekStart, saved || null));
+  const weekStartWall = Date.parse(`${firstDay}T00:00:00.000Z`);
   const weekStart = new Date(weekStartWall - offsetMs).toISOString();
 
-  const [usage, { count: callsThisWeek }, { data: last }] = await Promise.all([
+  const [usage, { data: weekCalls }, { data: last }] = await Promise.all([
     getUsageSummary(admin, tenant.id),
-    admin.from("agent_calls").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.id).eq("call_type", "live").gte("created_at", weekStart),
+    admin.from("agent_calls").select("created_at").eq("tenant_id", tenant.id).eq("call_type", "live").gte("created_at", weekStart).limit(5000),
     admin.from("agent_calls").select("created_at").eq("tenant_id", tenant.id).eq("call_type", "live").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  // One bar per day; the total is the same calls, so the two always agree.
+  const week = Array.from({ length: 7 }, (_, i) => ({ date: new Date(weekStartWall + i * 86_400_000).toISOString().slice(0, 10), calls: 0 }));
+  for (const c of (weekCalls ?? []) as Array<{ created_at: string }>) {
+    const localDate = new Date(Date.parse(c.created_at) + offsetMs).toISOString().slice(0, 10);
+    const day = week.find((d) => d.date === localDate);
+    if (day) day.calls++;
+  }
+  const callsThisWeek = week.reduce((n, d) => n + d.calls, 0);
 
   const reason = linked ? await findIssue(tenant.id, (cfg?.vapi_phone_number_id as string | null) ?? null, plan.voiceAgent) : null;
   const limit = Number.isFinite(plan.voiceMinutes) ? plan.voiceMinutes : null;
@@ -83,7 +93,9 @@ export async function GET() {
     voicePlan: plan.voiceAgent,
     // Only ever the number the business forwards from, never the hidden bridge.
     businessNumber: saved && !samePhoneLine(saved, linked) ? formatPhoneForDisplay(saved) : null,
-    callsThisWeek: callsThisWeek ?? 0,
+    callsThisWeek,
+    week,
+    today: now.date,
     minutes: { used: usage.voiceMinutesUsed, limit },
     lastCallAt: (last?.created_at as string | undefined) ?? null,
   });

@@ -1536,7 +1536,14 @@
       "businessInfoHint": "Edited in the Knowledge Base",
       "notAdded": "Not added yet",
       "edit": "Edit",
-      "add": "Add"
+      "add": "Add",
+      "rowMenu": "Service options",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "addDescription": "Add description",
+      "chipTone": "Tone",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details"
     },
     "charts": {
       "total": "Total",
@@ -1713,6 +1720,25 @@
         "title": "Admin: setup",
         "bridge": "Bridge number (forward calls here)",
         "noBridge": "No bridge number linked"
+      },
+      "pill": {
+        "live": "Live",
+        "setup": "Being set up by the Vela team",
+        "issue": "Issue",
+        "paused": "Paused"
+      },
+      "card": {
+        "recentTitle": "Recent calls",
+        "viewAll": "View all",
+        "hiddenNumber": "Hidden number"
+      },
+      "outcome": {
+        "booked": "Booked",
+        "completed": "Answered",
+        "hungUp": "Hung up",
+        "noAnswer": "No answer",
+        "voicemail": "Voicemail",
+        "failed": "Failed"
       }
     },
     "settings": {

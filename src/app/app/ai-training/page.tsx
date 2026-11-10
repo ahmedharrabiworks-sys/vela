@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { mergeImportedKnowledge, parseKnowledgeBase, type KnowledgeBase } from "@/lib/knowledge-base";
 import { useI18n } from "@/lib/i18n";
 import { summarizeWeek } from "@/components/dashboard/WeeklyHoursEditor";
+import ServicesSheet from "@/components/dashboard/ServicesSheet";
+import { displayPrice, normalizePrice, type BusinessCurrency } from "@/lib/business-currency";
 
 type ServiceRow  = KnowledgeBase["services"][number];
 type ImportState = "idle" | "importing" | "review" | "error" | "instagram";
@@ -74,7 +76,6 @@ function ChecklistItem({ label, done }: { label: string; done: boolean }) {
   );
 }
 
-const CELL = "w-full text-sm bg-transparent px-2.5 py-2 text-[#111111] placeholder-[#D1D5DB] focus:outline-none focus:bg-[#FFF8F5] rounded-lg transition-colors";
 
 export default function AITrainingPage() {
   const { t, locale } = useI18n();
@@ -83,6 +84,8 @@ export default function AITrainingPage() {
   // Saving never hangs: every request has a timeout, and a failure says so.
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedAt, setSavedAt]     = useState<number | null>(null);
+  // Prices are stored "80 QAR" and shown in the page language ("80 ر.ق" in Arabic).
+  const [currency, setCurrency]   = useState<BusinessCurrency>("QAR");
   const [, setTick]               = useState(0);
   const [toast, setToast]       = useState("");
 
@@ -193,6 +196,8 @@ export default function AITrainingPage() {
         // against that flow's own (faster) local append -- if a real kb
         // mutation already landed while this was still pending, applying
         // this now-stale snapshot would silently discard it.
+        const cur = (data as { currency?: BusinessCurrency } | null)?.currency;
+        if (cur) setCurrency(cur);
         if (!kbMutatedRef.current) setKb(loaded);
         setLoading(false);
       })
@@ -269,6 +274,17 @@ export default function AITrainingPage() {
     const services = kbRef.current.services.filter((_, idx) => idx !== i);
     setKb((prev) => ({ ...prev, services }));
     void persist((latest) => ({ ...latest, services }));
+  };
+  const duplicateService = (i: number) => {
+    const services = [...kbRef.current.services.slice(0, i + 1), { ...kbRef.current.services[i] }, ...kbRef.current.services.slice(i + 1)];
+    setKb((prev) => ({ ...prev, services }));
+    void persist((latest) => ({ ...latest, services }));
+  };
+  // "40" becomes "40 QAR" (or "40 ر.ق") as soon as the owner leaves the cell.
+  const priceBlur = (i: number) => {
+    const raw = kbRef.current.services[i]?.price ?? "";
+    if (raw.trim()) updateService(i, { price: normalizePrice(raw, currency) });
+    triggerAutoSave();
   };
   const updateService = (i: number, patch: Partial<ServiceRow>) =>
     setKb((prev) => ({ ...prev, services: prev.services.map((s, idx) => idx === i ? { ...s, ...patch } : s) }));
@@ -370,11 +386,6 @@ export default function AITrainingPage() {
     </svg>
   );
 
-  const TrashIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-      <path d="M1.5 3h10M5 3V2a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M10.5 3l-.75 7a.9.9 0 01-.9.8H4.15a.9.9 0 01-.9-.8L2.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
 
   if (loading) {
     return (
@@ -399,50 +410,43 @@ export default function AITrainingPage() {
         <SaveStatus state={saveState} savedAt={savedAt} t={t} onRetry={() => { void saveServices(); }} />
       </div>
 
-      {/* AI Score card, real ring + real per-section checklist */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
-        <ProgressRing pct={pct} scoreLabel={t("aiTraining.aiScore")} statusLabel={statusLabel} />
-        <div className="flex items-center gap-4 flex-wrap">
-          {checklist.map((c) => <ChecklistItem key={c.key} label={t(c.labelKey)} done={c.done} />)}
+      {/* AI Score and import, one compact bar */}
+      <div className="mb-4">
+        <div className="bg-white border border-[#E5E7EB] rounded-xl p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
+          <div className="flex items-center gap-4 flex-wrap lg:w-[48%] shrink-0">
+            <ProgressRing pct={pct} scoreLabel={t("aiTraining.aiScore")} statusLabel={statusLabel} />
+            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+              {checklist.map((c) => <ChecklistItem key={c.key} label={t(c.labelKey)} done={c.done} />)}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <input
+                type="text"
+                value={importInput}
+                onChange={(e) => setImportInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && importState !== "importing" && handleImport()}
+                placeholder={t("aiTraining.importPlaceholder")}
+                className="w-full text-sm !rounded-lg ps-3.5 pe-[7rem] h-11 border border-[#E5E7EB] bg-white text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all"
+              />
+              <button
+                onClick={handleImport}
+                disabled={!importInput.trim() || importState === "importing"}
+                className="absolute end-1 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3.5 h-9 rounded-md text-xs font-bold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+                style={{ background: "var(--vela-gradient)" }}
+              >
+                {importState === "importing" ? <><SpinnerIcon /> {t("aiTraining.analyzing")}</> : t("aiTraining.importBtn")}
+              </button>
+            </div>
+            <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileUpload} disabled={uploadStatus === "uploading"} />
+            <p className="text-xs text-[#9CA3AF] mt-1.5">
+              {t("aiTraining.or")}{" "}
+              <button type="button" onClick={() => fileRef.current?.click()} className="min-h-[32px] text-[#6B7280] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">{t("aiTraining.uploadPriceList")}</button>
+              {" · " + t("aiTraining.or") + " "}
+              <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("vela-start-interview"))} className="min-h-[32px] text-[#6B7280] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">{t("aiTraining.answerQuestions")}</button>
+            </p>
+          </div>
         </div>
-      </div>
-
-      {/* ── Magic Import hero ── */}
-      <div className="mb-6">
-        <div className="relative">
-          <input
-            type="text"
-            value={importInput}
-            onChange={(e) => setImportInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && importState !== "importing" && handleImport()}
-            placeholder={t("aiTraining.importPlaceholder")}
-            className="w-full text-sm !rounded-xl ps-4 pe-[7.5rem] py-3.5 border border-[#E5E7EB] bg-white text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/20 transition-all"
-          />
-          <button
-            onClick={handleImport}
-            disabled={!importInput.trim() || importState === "importing"}
-            className="absolute end-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-            style={{ background: "var(--vela-gradient)" }}
-          >
-            {importState === "importing" ? <><SpinnerIcon /> {t("aiTraining.analyzing")}</> : t("aiTraining.importBtn")}
-          </button>
-        </div>
-
-        <input ref={fileRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileUpload} disabled={uploadStatus === "uploading"} />
-
-        <p className="text-xs text-center text-[#9CA3AF] mt-2.5">
-          {t("aiTraining.or")}{" "}
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="text-[#6B7280] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">
-            {t("aiTraining.uploadPriceList")}
-          </button>
-          {" · " + t("aiTraining.or") + " "}
-          <button type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("vela-start-interview"))}
-            className="text-[#6B7280] hover:text-[#FF6B35] underline underline-offset-2 transition-colors">
-            {t("aiTraining.answerQuestions")}
-          </button>
-        </p>
 
         {importState === "instagram" && (
           <div className="mt-3 flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl">
@@ -480,7 +484,7 @@ export default function AITrainingPage() {
                     {importedKb.services.slice(0, 5).map((s, i) => (
                       <div key={i} className="flex items-center justify-between text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
                         <span className="font-semibold text-[#374151]">{s.name}{s.duration ? ` (${s.duration})` : ""}</span>
-                        {s.price && <span className="text-[#FF6B35] font-bold">{s.price}</span>}
+                        {s.price && <span dir="auto" className="text-[#FF6B35] font-bold">{displayPrice(normalizePrice(s.price, currency), locale)}</span>}
                       </div>
                     ))}
                     {importedKb.services.length > 5 && <p className="text-[11px] text-[#9CA3AF] ps-1">+{importedKb.services.length - 5}{t("aiTraining.moreCount")}</p>}
@@ -581,9 +585,6 @@ export default function AITrainingPage() {
         </div>
       )}
 
-      {/* Business info lives in the Knowledge Base: here it is a summary with Edit links. */}
-      <BusinessInfoCard kb={kb} locale={locale} t={t} />
-
       {/* Price list files land in the Knowledge Base notes, after review. */}
       {uploadStatus !== "idle" && (
         <div className="bg-white rounded-xl mt-4">
@@ -627,82 +628,22 @@ export default function AITrainingPage() {
         </div>
       )}
 
-      {/* ── Services: the one thing edited here ── */}
-      <h2 className="text-sm font-bold text-[#111111] mt-6 mb-2">{t("aiTraining.tabs.services")}</h2>
-      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-          <div>
-            {kb.services.length > 0 && (
-              <div className="hidden sm:grid sm:grid-cols-[0.8fr_90px_80px_1.8fr_36px] px-2 py-2.5 border-b border-[#F3F4F6] bg-[#FAFAFA]">
-                {[t("aiTraining.services.colService"), t("aiTraining.services.colPrice"), t("aiTraining.services.colDuration"), t("aiTraining.services.colDescription"), ""].map((h, i) => (
-                  <span key={i} className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider px-2.5">{h}</span>
-                ))}
-              </div>
-            )}
+      {/* ── Services first: the one thing edited here ── */}
+      <h2 className="text-sm font-bold text-[#111111] mb-2">{t("aiTraining.tabs.services")}</h2>
+      <ServicesSheet
+        services={kb.services}
+        locale={locale}
+        t={t}
+        onEdit={updateService}
+        onBlur={triggerAutoSave}
+        onPriceBlur={priceBlur}
+        onAdd={addService}
+        onDuplicate={duplicateService}
+        onDelete={removeService}
+      />
 
-            <div className="divide-y divide-[#F9FAFB]">
-              {kb.services.map((svc, i) => (
-                <div key={i} className="group hover:bg-[#FAFAFA] transition-colors">
-                  {/* Desktop row */}
-                  <div className="hidden sm:grid sm:grid-cols-[0.8fr_90px_80px_1.8fr_36px] items-center px-2 py-1">
-                    <input value={svc.name} onChange={(e) => updateService(i, { name: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.namePlaceholder")} className={CELL} />
-                    <input value={svc.price} onChange={(e) => updateService(i, { price: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.pricePlaceholder")} className={CELL} />
-                    <input value={svc.duration} onChange={(e) => updateService(i, { duration: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.durationPlaceholder")} className={CELL} />
-                    {/* FIX 3 (round N): a single-line <input> never wraps --
-                        a long real description was only readable by
-                        scrolling horizontally INSIDE the tiny input box.
-                        Description column widened (1.8fr vs 0.8fr for
-                        Name) and this cell is now a real wrapping textarea
-                        (2 visible rows, manually resizable if still not
-                        enough) so the full text is readable in place. */}
-                    <textarea value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.descPlaceholder")} rows={2}
-                      className={`${CELL} resize-y leading-snug py-1.5`} />
-                    <div className="flex justify-center">
-                      <button onClick={() => removeService(i)} aria-label={t("agentUi.kb.remove")}
-                        className="p-1.5 text-[#D1D5DB] hover:text-[#DC2626] opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all rounded-lg">
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  </div>
-                  {/* Mobile card */}
-                  <div className="sm:hidden px-4 py-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input value={svc.name} onChange={(e) => updateService(i, { name: e.target.value })} onBlur={triggerAutoSave}
-                        placeholder={t("aiTraining.services.namePlaceholder")} className="flex-1 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
-                      <button onClick={() => removeService(i)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#D1D5DB] hover:text-[#DC2626] rounded-lg shrink-0">
-                        <TrashIcon />
-                      </button>
-                    </div>
-                    <div className="flex gap-2">
-                      <input value={svc.price} onChange={(e) => updateService(i, { price: e.target.value })} onBlur={triggerAutoSave}
-                        placeholder={t("aiTraining.services.pricePlaceholder")} className="flex-1 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
-                      <input value={svc.duration} onChange={(e) => updateService(i, { duration: e.target.value })} onBlur={triggerAutoSave}
-                        placeholder={t("aiTraining.services.durationPlaceholder")} className="w-24 text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35]" />
-                    </div>
-                    <textarea value={svc.description} onChange={(e) => updateService(i, { description: e.target.value })} onBlur={triggerAutoSave}
-                      placeholder={t("aiTraining.services.descPlaceholder")} rows={2}
-                      className="w-full text-sm border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111111] placeholder-[#9CA3AF] focus:outline-none focus:border-[#FF6B35] resize-y leading-snug" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {kb.services.length === 0 && (
-              <div className="px-6 py-8 text-center text-sm text-[#9CA3AF]">
-                {t("aiTraining.services.empty")}
-              </div>
-            )}
-
-            <button onClick={addService}
-              className="w-full flex items-center gap-2 px-5 py-3.5 text-sm text-[#9CA3AF] hover:text-[#FF6B35] hover:bg-[#FFF8F5] transition-colors border-t border-dashed border-[#F3F4F6]">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              {t("aiTraining.services.addService")}
-            </button>
-          </div>
-      </div>
+      {/* Business info lives in the Knowledge Base: a collapsed summary with Edit links. */}
+      <BusinessInfoCard kb={kb} locale={locale} t={t} />
 
       {/* Auto-save toast */}
       {toast && (
@@ -734,6 +675,8 @@ function SaveStatus({ state, savedAt, t, onRetry }: { state: "idle" | "saving" |
   return <p data-testid="save-status" className="text-xs text-[#6B7280] shrink-0 pt-1">{t("agentUi.train.savedAt").replace("{when}", when)}</p>;
 }
 
+const INFO_OPEN_KEY = "vela_train_info_open";
+
 /** Hours, address, policy, tone and notes are edited in the Knowledge Base only. */
 function BusinessInfoCard({ kb, locale, t }: { kb: KnowledgeBase; locale: string; t: (key: string) => string }) {
   const KB = "/app/ai-agent/knowledge-base";
@@ -746,12 +689,30 @@ function BusinessInfoCard({ kb, locale, t }: { kb: KnowledgeBase; locale: string
     { key: "tone", label: t("aiTraining.businessInfo.tone"), value: kb.business.tone && toneKey[kb.business.tone] ? t(toneKey[kb.business.tone]) : "" },
     { key: "notes", label: t("agentUi.train.extraKnowledge"), value: firstLines(kb.extra) },
   ];
+  // Collapsed by default; the choice is remembered on this device.
+  const [open, setOpen] = useState(false);
+  useEffect(() => { try { setOpen(localStorage.getItem(INFO_OPEN_KEY) === "1"); } catch { /* private mode */ } }, []);
+  const toggle = () => setOpen((v) => { try { localStorage.setItem(INFO_OPEN_KEY, v ? "0" : "1"); } catch { /* private mode */ } return !v; });
+  const short: Record<string, string> = { hours: "agentUi.train.checkHours", address: "agentUi.train.checkAddress", policy: "agentUi.train.checkPolicy", tone: "agentUi.train.chipTone", notes: "agentUi.train.checkExtra" };
   return (
-    <section data-testid="business-info-card" className="bg-white border border-[#E5E7EB] rounded-xl p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+    <section data-testid="business-info-card" data-open={open ? "true" : "false"} className="bg-white border border-[#E5E7EB] rounded-xl mt-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
         <h2 className="text-sm font-bold text-[#111111]">{t("agentUi.train.businessInfo")}</h2>
-        <p className="text-xs text-[#9CA3AF]">{t("agentUi.train.businessInfoHint")}</p>
+        <ul className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0" aria-label={t("agentUi.train.businessInfo")}>
+          {chips.map((c) => (
+            <li key={c.key} data-testid={`info-chip-${c.key}`} data-done={c.value ? "true" : "false"} className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium ${c.value ? "bg-green-50 text-green-700" : "bg-[#F3F4F6] text-[#9CA3AF]"}`}>
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">{c.value ? <path d="M2.5 6.2l2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /> : <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3" />}</svg>
+              {t(short[c.key])}
+            </li>
+          ))}
+        </ul>
+        <button type="button" data-testid="info-toggle" aria-expanded={open} onClick={toggle} className="text-xs font-semibold text-[#C2410C] hover:underline min-h-[44px] sm:min-h-[32px] ms-auto">
+          {t(open ? "agentUi.train.hideDetails" : "agentUi.train.showDetails")}
+        </button>
       </div>
+      {open && (
+      <div className="px-4 pb-3 border-t border-[#F3F4F6]">
+      <p className="text-xs text-[#9CA3AF] pt-2.5">{t("agentUi.train.businessInfoHint")}</p>
       <ul className="divide-y divide-[#F3F4F6]">
         {chips.map((c) => (
           <li key={c.key}>
@@ -767,6 +728,8 @@ function BusinessInfoCard({ kb, locale, t }: { kb: KnowledgeBase; locale: string
           </li>
         ))}
       </ul>
+      </div>
+      )}
     </section>
   );
 }

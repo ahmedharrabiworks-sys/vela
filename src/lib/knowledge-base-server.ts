@@ -5,6 +5,13 @@ import { closuresForPrompt } from "@/lib/time-off";
 import { resolveOpeningHours } from "@/lib/opening-hours";
 import { buildPhoneAssistant, resolveAgentName } from "@/lib/vapi-phone-assistant";
 import { getVapiServerConfig, resolveTenantTimezone, wallClockNow, wallClockNowText } from "@/lib/vapi-webhook";
+import { currencyForPhone, normalizeServicePrices, type BusinessCurrency } from "@/lib/business-currency";
+
+/** The currency this business charges in, from its business number. */
+export async function loadBusinessCurrency(admin: any, tenantId: string): Promise<BusinessCurrency> {
+  const { data } = await admin.from("tenants").select("phone").eq("id", tenantId).maybeSingle();
+  return currencyForPhone((data?.phone as string | null) ?? null);
+}
 
 export async function loadKnowledgeBase(admin: any, tenantId: string): Promise<KnowledgeBase> {
   const { data } = await admin.from("tenant_config").select("knowledge_base").eq("tenant_id", tenantId).maybeSingle();
@@ -68,7 +75,9 @@ export async function syncStoredPhoneAssistant(admin: any, tenantId: string): Pr
 
 /** The one write path for owner-driven knowledge changes. */
 export async function saveKnowledgeBase(admin: any, tenantId: string, incoming: KnowledgeBase): Promise<{ error: string | null; phoneSync: PhoneSync }> {
-  const kb = syncHoursFields(await loadKnowledgeBase(admin, tenantId), incoming);
+  const synced = syncHoursFields(await loadKnowledgeBase(admin, tenantId), incoming);
+  // Every price is stored in the business currency ("$80" on a Qatari list becomes "80 QAR").
+  const kb = { ...synced, services: normalizeServicePrices(synced.services, await loadBusinessCurrency(admin, tenantId)) };
   const { error } = await admin.from("tenant_config").upsert(
     { tenant_id: tenantId, knowledge_base: JSON.stringify(kb), knowledge_base_updated_at: new Date().toISOString() },
     { onConflict: "tenant_id" },

@@ -1537,7 +1537,14 @@
       "businessInfoHint": "تُعدّل من قاعدة المعرفة",
       "notAdded": "لم تُضف بعد",
       "edit": "تعديل",
-      "add": "إضافة"
+      "add": "إضافة",
+      "rowMenu": "خيارات الخدمة",
+      "duplicate": "نسخ",
+      "delete": "حذف",
+      "addDescription": "أضف وصفًا",
+      "chipTone": "الأسلوب",
+      "showDetails": "عرض التفاصيل",
+      "hideDetails": "إخفاء التفاصيل"
     },
     "charts": {
       "total": "الإجمالي",
@@ -1714,6 +1721,25 @@
         "title": "المسؤول: الإعداد",
         "bridge": "رقم التحويل (حوّل المكالمات إليه)",
         "noBridge": "لا يوجد رقم تحويل مرتبط"
+      },
+      "pill": {
+        "live": "يعمل",
+        "setup": "يقوم فريق Vela بالإعداد",
+        "issue": "مشكلة",
+        "paused": "متوقف"
+      },
+      "card": {
+        "recentTitle": "آخر المكالمات",
+        "viewAll": "عرض الكل",
+        "hiddenNumber": "رقم مخفي"
+      },
+      "outcome": {
+        "booked": "تم الحجز",
+        "completed": "تم الرد",
+        "hungUp": "أنهى المتصل",
+        "noAnswer": "لم يتم الرد",
+        "voicemail": "بريد صوتي",
+        "failed": "فشلت"
       }
     },
     "settings": {

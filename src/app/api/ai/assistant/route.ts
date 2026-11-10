@@ -9,7 +9,8 @@ import { suggestKnowledge } from "@/lib/knowledge-suggestions";
 import { checkSlot, isClosedIssue, loadBookingContext, nearestSlots } from "@/lib/appointment-slots";
 import { addDaysISO, formatWeeklyHours, normalizeSchedule, parseOpeningHours, weekdayOf } from "@/lib/opening-hours";
 import { applyWeeklyChange } from "@/lib/weekly-hours-edit";
-import { loadKnowledgeBase, saveKnowledgeBase } from "@/lib/knowledge-base-server";
+import { loadBusinessCurrency, loadKnowledgeBase, saveKnowledgeBase } from "@/lib/knowledge-base-server";
+import { currencyDirective, currencyOfPrices, normalizeServicePrices } from "@/lib/business-currency";
 import { timeOffLabel, validateTimeOff } from "@/lib/time-off";
 import { appointmentsInBlock, deleteTimeOff, insertTimeOff, isConfirmationReply, previewRanges, type RawRange } from "@/lib/time-off-server";
 
@@ -330,7 +331,7 @@ When directing the user to a page, append [navigate:/path] at the end of your re
 Paths: /app, /app/leads, /app/appointments, /app/conversations, /app/channels, /app/ai-agent, /app/ai-agent/knowledge-base, /app/website, /app/marketing, /app/analytics, /app/settings, /pricing
 
 ## Saving services from pasted text, a pasted image, or a single edit (works in ANY conversation, not just the training interview, and regardless of interview mode)
-If the owner pastes or types a list of services with names and/or prices (a menu, a price list, a screenshot/photo of a price list, "here's what we offer: ..."), OR asks you to change/update/correct ONE existing service already shown above in "This business" (e.g. "change Haircut to $35", "remove Beard trim", "add a new service called X"), CALL THE save_services TOOL with the FULL corrected services list (existing services unchanged, plus the one real edit applied if this was a single edit), this list fully replaces what's stored, so always include everything that should still be there, not just what changed. Never tell them to go to Settings instead, that is wrong, you can do it right here. Only do this when real, concrete service names were actually given (a genuine list), never invent services, and never call the tool for a single vague mention like "we offer stuff." After the tool runs, confirm briefly in plain language, e.g. "Got it, saved those two services.", never describe the tool call itself.
+If the owner pastes or types a list of services with names and/or prices (a menu, a price list, a screenshot/photo of a price list, "here's what we offer: ..."), OR asks you to change/update/correct ONE existing service already shown above in "This business" (e.g. "change Haircut to 35", "remove Beard trim", "add a new service called X"), CALL THE save_services TOOL with the FULL corrected services list (existing services unchanged, plus the one real edit applied if this was a single edit), this list fully replaces what's stored, so always include everything that should still be there, not just what changed. Never tell them to go to Settings instead, that is wrong, you can do it right here. Only do this when real, concrete service names were actually given (a genuine list), never invent services, and never call the tool for a single vague mention like "we offer stuff." After the tool runs, confirm briefly in plain language, e.g. "Got it, saved those two services.", never describe the tool call itself.
 
 ## Rules
 - Keep it short, a few sentences is almost always enough.
@@ -349,7 +350,7 @@ Calendar: ${calendarText}
 - City: ${tenant.city || "Unknown"}
 - Instagram: ${cfg?.instagram_connected ? "Connected ✓" : "Not connected"}
 - WhatsApp: ${cfg?.whatsapp_connected ? "Connected ✓" : "Not connected"}
-${kbBusinessText ? `${kbBusinessText}` : ""}${kbServicesText}${kbFaqsText}${kbExtraText}
+${kbBusinessText ? `${kbBusinessText}` : ""}${kbServicesText}${currencyOfPrices((kb.services ?? []).map((s) => s.price)) ? `\n${currencyDirective(currencyOfPrices((kb.services ?? []).map((s) => s.price)))}` : ""}${kbFaqsText}${kbExtraText}
 
 ## Live data
 - Recent leads: ${JSON.stringify((leadsRes.data ?? []).map((l: { name: string; status: string }) => ({ name: l.name, stage: l.status })))}
@@ -961,6 +962,7 @@ After all topics are collected or confirmed: thank them briefly, show 2 to 3 bul
         },
         extra: typeof args.extra === "string" && args.extra ? [existing.extra, args.extra].filter(Boolean).join("\n\n") : existing.extra,
       };
+      nextKb.services = normalizeServicePrices(nextKb.services, await loadBusinessCurrency(admin, tenantId));
       const { error } = await admin.from("tenant_config").upsert(
         { tenant_id: tenantId, knowledge_base: JSON.stringify(nextKb), knowledge_base_updated_at: new Date().toISOString() },
         { onConflict: "tenant_id" },

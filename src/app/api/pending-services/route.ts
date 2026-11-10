@@ -2,6 +2,8 @@ import { checkSlot, isClosedIssue, loadBookingContext } from "@/lib/appointment-
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createSupabaseServerClient, createSupabaseAdmin } from "@/lib/supabase-server";
+import { normalizeServicePrices } from "@/lib/business-currency";
+import { loadBusinessCurrency } from "@/lib/knowledge-base-server";
 import { ensureTenant } from "@/lib/ensure-tenant";
 import { checkAvailability, DEFAULT_SLOT_MINUTES } from "@/lib/availability";
 import { sendCustomerMessage } from "@/lib/send-customer-message";
@@ -45,7 +47,7 @@ async function cleanServiceEntry(rawName: string, rawPrice: string, rawDuration:
           role: "system",
           content: `Clean up these three fields for a business's service list so they read professionally, exactly like a real price list -- but NEVER invent, add, or guess any price/duration/detail that isn't already present in the input. Only rephrase/reformat/re-case what's actually there.
 - name: proper title case, concise, no filler words.
-- price: if it describes multiple real options (e.g. "100 dollar monthly for 3 years or 300 dollar once"), format as a short structured summary using only those real numbers (e.g. "$100/month (3-year term) or $300 one-time"). If it's a single simple price, just format it cleanly (e.g. "$100" not "100 dollar").
+- price: if it describes multiple real options (e.g. "100 dollar monthly for 3 years or 300 dollar once"), format as a short structured summary using only those real numbers and no currency symbol (e.g. "100/month (3-year term) or 300 one-time"); the business currency is added after. If it's a single simple price, give just the amount (e.g. "100" not "100 dollar").
 - duration: clean formatting only (e.g. "30 minutes" not "30 min" or "half hour" -> "30 minutes" only if that's literally what was said -- otherwise keep the stated unit).
 Reply ONLY valid JSON: {"name": "...", "price": "...", "duration": "..."}.`,
         },
@@ -160,7 +162,8 @@ export async function POST(req: NextRequest) {
   const rawName = (row as { service_name: string }).service_name;
   const cleaned = await cleanServiceEntry(rawName, price, duration);
   const newService = { name: cleaned.name, price: cleaned.price, duration: cleaned.duration, description: "" };
-  const saveKb: KnowledgeBase = { ...kb, services: [...kb.services, newService] };
+  const [pricedService] = normalizeServicePrices([newService], await loadBusinessCurrency(admin, tenant.id));
+  const saveKb: KnowledgeBase = { ...kb, services: [...kb.services, pricedService] };
 
   const { error: saveErr } = await admin.from("tenant_config").upsert(
     {
@@ -236,5 +239,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, service: newService, customerNotified, bookedAppointment: !!bookedAppointment });
+  return NextResponse.json({ ok: true, service: pricedService, customerNotified, bookedAppointment: !!bookedAppointment });
 }
