@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 
 import { DEMO_PROFILE } from "@/lib/demo-data";
 
 export default function DemoLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // A private sales demo (/demo/<token>) is its own page, not the demo app shell.
+  const pathname = usePathname() ?? "";
+  if (/^\/demo\/[A-Za-z0-9_-]{32,128}\/?$/.test(pathname)) return <>{children}</>;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

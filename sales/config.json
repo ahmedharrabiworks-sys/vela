@@ -1,0 +1,16 @@
+{
+  "MY_NAME": "Oussama",
+  "DEMO_NUMBER": "",
+  "daily_limit": 15,
+  "budget": { "elevenlabs_chars_per_run": 6000, "vapi_usd_total": 5 },
+  "offer": {
+    "plans": "Pro 1,500 QAR / month, Premium 3,000 QAR / month",
+    "trial": "7-day free trial, cancel anytime",
+    "setup": "Setup done by the Vela team",
+    "founding_5": "CONFIRM BEFORE SENDING: one of the first 5 founding clinics in Doha, set up personally by the founder, today's price kept for 12 months",
+    "sell_only": ["AI phone receptionist in Gulf Arabic and English, 24/7, books appointments", "Instagram DM replies"],
+    "coming_soon": ["WhatsApp"]
+  },
+  "voices": { "vela": "QsV9PCczMIklRM6xLPAS", "caller": "HKFOb9iktHA85uKXydRT" },
+  "demo_base_url": "https://velaos.co/demo/"
+}

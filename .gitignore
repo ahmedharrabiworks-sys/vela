@@ -53,3 +53,9 @@ promo-video/.capture-auth/
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Sales machine: lead data, messages, audio and generated pages never go to git
+sales/data/
+sales/today.html
+sales/check-plan.html
+*.ogg
