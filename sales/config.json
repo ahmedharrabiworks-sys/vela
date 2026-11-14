@@ -2,15 +2,37 @@
   "MY_NAME": "Oussama",
   "DEMO_NUMBER": "",
   "daily_limit": 15,
-  "budget": { "elevenlabs_chars_per_run": 6000, "vapi_usd_total": 5 },
+  "budget": {
+    "elevenlabs_chars_per_run": 6000,
+    "vapi_usd_total": 5
+  },
   "offer": {
     "plans": "Pro 1,500 QAR / month, Premium 3,000 QAR / month",
     "trial": "7-day free trial, cancel anytime",
     "setup": "Setup done by the Vela team",
-    "founding_5": "CONFIRM BEFORE SENDING: one of the first 5 founding clinics in Doha, set up personally by the founder, today's price kept for 12 months",
-    "sell_only": ["AI phone receptionist in Gulf Arabic and English, 24/7, books appointments", "Instagram DM replies"],
-    "coming_soon": ["WhatsApp"]
+    "founding_5": "One of our first 5 founding clients in Doha: full setup done personally by the founder, 7 days free to try it, and your launch price locked for 12 months.",
+    "sell_only": [
+      "AI phone receptionist in Gulf Arabic and English, 24/7, books appointments (always lead with this)",
+      "Instagram DM replies (mention only as also available)"
+    ],
+    "coming_soon": [
+      "WhatsApp"
+    ],
+    "lead_with": "The AI phone receptionist (Gulf Arabic and English, 24/7, books appointments). Instagram replies are mentioned only as also available."
   },
-  "voices": { "vela": "QsV9PCczMIklRM6xLPAS", "caller": "HKFOb9iktHA85uKXydRT" },
-  "demo_base_url": "https://velaos.co/demo/"
+  "voices": {
+    "vela": "QsV9PCczMIklRM6xLPAS",
+    "caller": "HKFOb9iktHA85uKXydRT"
+  },
+  "demo_base_url": "https://velaos.co/demo/",
+  "scoring": {
+    "check_bonus": 2,
+    "check_slow_reply_hours": 8,
+    "dm_missing_penalty": 2,
+    "demo_at": 9
+  },
+  "panel": {
+    "port": 4321,
+    "watch_speed_ms": 600
+  }
 }

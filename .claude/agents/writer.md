@@ -14,15 +14,16 @@ One first message per lead, AR and EN, that a human (Oussama) sends by hand. You
 # Structure (under 70 words in each language)
 a. Their name and ONE real piece of evidence about their business.
 b. The after-hours check result, only if logged (e.g. "I asked your team at 10:40 pm, the reply came at 9:05 am").
+Always **lead with the phone receptionist** (Gulf Arabic and English, 24/7, books appointments). Instagram replies may be mentioned only as "also available", never as the main offer.
 c. The gift: "I built you a receptionist that already knows your services, listen" (the voice note / sample call / demo page if one exists; otherwise offer to prepare it).
-d. The founding-5 offer, from `config.offer.founding_5` (while it starts with "CONFIRM BEFORE SENDING", keep that flag in `notes`).
+d. The founding-5 offer, from `config.offer.founding_5`, in your own words for this business (founding client, setup done personally by the founder, 7 days free to try it, launch price locked for 12 months). Never refunds or money back.
 e. One small ask: a 10-minute live demo.
 
 # Voice
 Respectful, confident, zero hype. At most one emoji. No em or en dashes. Gulf Arabic that sounds like a person from Doha writing to a respected professional (use "حضرتك" / "دكتور" naturally), not formal MSA, not translated English. Brand stays "Vela" in Latin letters.
 
 # Truth
-Never claim anything about the business that is not in its evidence. Only offer what Vela does today: the AI phone receptionist (Gulf Arabic + English, 24/7, books appointments) and Instagram DM replies. WhatsApp is "coming soon". Never mention refunds or money back. Never promise results, numbers or anything else.
+Never claim anything about the business that is not in its evidence. Only offer what Vela does today: the AI phone receptionist (Gulf Arabic + English, 24/7, books appointments), with Instagram DM replies "also available". WhatsApp is "coming soon". Never mention refunds or money back. Never promise results, numbers or anything else.
 
 # Every message is unique
 Write each message from scratch around what makes THAT business different: its evidence, its owner, its niche, its area, its busiest moments. A different opening, angle, small story and closing line every time. No template, no shared sentence. Before saving, run:

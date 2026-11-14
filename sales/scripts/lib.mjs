@@ -28,7 +28,30 @@ export const COLUMNS = [
   "dm_name", "dm_role", "dm_source", "contact_path", "contact_url", "contact_rank",
   "demo_token", "status", "status_note", "status_at", "contacted_at", "followups_sent", "found_at",
 ];
-export const STATUSES = ["new", "sent", "replied", "demo-booked", "trial", "won", "lost", "do-not-contact"];
+// known-contact: someone we already know (e.g. Kings Dental Center); never cold messaged.
+export const STATUSES = ["new", "sent", "replied", "demo-booked", "trial", "won", "lost", "do-not-contact", "known-contact"];
+
+/** After-hours checks logged with /sales-check, by slug. */
+export function readChecks() {
+  const f = path.join(DATA, "checks.json");
+  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : {};
+}
+
+/**
+ * The one scoring rule, applied after the qualifier's evidence score:
+ * - unknown signals are never punished (the qualifier scores what it can see);
+ * - a logged after-hours check with no reply, or a reply 8+ hours later: +2;
+ * - no decision maker found after searching: minus 2.
+ * Clamped to 1..10.
+ */
+export function computeScore(lead, checks = readChecks()) {
+  const s = config().scoring ?? { check_bonus: 2, check_slow_reply_hours: 8, dm_missing_penalty: 2 };
+  let score = Number(lead.score_raw || lead.score || 0);
+  const c = checks[lead.slug];
+  if (c && (c.minutes_to_reply === null || c.minutes_to_reply >= s.check_slow_reply_hours * 60)) score += s.check_bonus;
+  if (!lead.dm_name && lead.dm_source) score -= s.dm_missing_penalty;
+  return Math.max(1, Math.min(10, Math.round(score)));
+}
 
 const esc = (v) => {
   const s = v === null || v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v);

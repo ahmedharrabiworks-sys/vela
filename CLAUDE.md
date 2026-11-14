@@ -64,6 +64,7 @@ Single source of truth: `src/lib/plan-config.ts` (limits, `price` in QAR) + `src
 - **QAR shown first**, with a USD / EUR / AED toggle.
 - **"Unlimited" text is genuinely uncapped.** The safety net is the daily usage-alert log in `api/ai/reply/route.ts` (visibility, never a block). Observe real usage before ever setting a cap.
 - **CTA is always "Start for Free".** No trial wording anywhere. **Never any refund / money-back language.**
+- **Exception, sales materials only (decided Nov 2026 for the first clients):** everything in `sales/` (outreach messages, playbook, demo pages' sales copy) uses the founding offer "7 days free to try it" (founding 5: setup done personally by the founder, launch price locked for 12 months). App copy stays unchanged ("Start for Free", no trial wording) until payments exist.
 - A `custom` tier exists in `plan-config.ts` (`isCustom`, "Talk to us"); not a public card.
 - **Payments are not live.** Stripe routes are stubs; any plan is currently self-assigned at signup. Stripe/Paddle decision is postponed.
 - Old USD pricing ($79/$159/$299 and $95/$295/$595) is superseded.

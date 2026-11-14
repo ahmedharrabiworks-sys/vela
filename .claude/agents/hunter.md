@@ -27,6 +27,9 @@ For each business, fill what you can **prove** and list the rest under `unknowns
 - `website`, `phone_public`, `whatsapp_public` (only numbers the business itself publishes)
 - `other_evidence`: list of `{ "fact", "link" }` (e.g. "booking only by phone or WhatsApp", "open until 10 pm")
 
+# Reading pages
+Use WebSearch to find pages. To READ a page, run `node sales/scripts/browse.mjs "<url>" --caption "<what you are doing, e.g. Reading reviews for Zain Dental Center>" [--find "<text to look for>"]`. It prints the page title and visible text. When Watch mode is on in the panel, Oussama sees it happen in a visible Chrome window. It only opens public pages, never logs in, never clicks or fills anything; login and checkout pages are refused.
+
 # Rules
 - Public pages only. Never log in, never scrape behind a login, never message or call anyone.
 - Never invent a number, quote, date or link. If a page could not be opened or a value is not shown, write it in `unknowns` (e.g. `"ig_followers"`, `"meta_ads: Ad Library not reachable"`). A quote must be copied exactly, with its link.

@@ -9,13 +9,14 @@ Read this before every demo. One goal per meeting: a yes to the 7-day free trial
 | AI phone receptionist, Gulf Arabic and English, 24/7, answers every call, books into the calendar | Numbers ("you will get 30% more patients") |
 | It knows their services, prices and hours; refuses closed days and double bookings | WhatsApp today (it is **coming soon**) |
 | Every call, transcript and booking in one dashboard | Anything that is not live today |
-| Instagram DM replies (see the note below) | Refunds or money back (never mention them) |
+| Also available: Instagram DM replies (never the lead) | Refunds or money back (never mention them) |
 
 - **Pro** 1,500 QAR / month: phone agent (550 minutes), unlimited text, all channels. **Premium** 3,000 QAR / month: 1,000 minutes.
 - **7-day free trial, cancel anytime. Setup is done by the Vela team.** They keep their number: we set up forwarding.
-- **Founding 5** (see `config.json`, confirm the wording before using it): one of the first five clinics in Doha, set up personally by the founder.
+- **Founding 5:** one of our first 5 founding clients in Doha: full setup done personally by the founder, 7 days free to try it, and your launch price locked for 12 months.
+- **Always lead with the phone receptionist.** Instagram replies are mentioned only as "also available".
 
-> **Check before promising Instagram:** Instagram DM replies are built, but going live for a client's account still depends on Meta's app review. Until it is approved, offer Instagram as "being enabled" and lead with the phone receptionist.
+> Internal only: switching Instagram on for a client account still goes through Meta's app review. Mention Instagram as "also available", never as the reason to buy, and never promise a start date for it.
 
 ## The 10-minute demo (in person or video)
 
@@ -28,7 +29,7 @@ Read this before every demo. One goal per meeting: a yes to the 7-day free trial
 | 2 to 5 | **Hand them your phone. They call the demo line themselves**, in Arabic, and try to book. Encourage them to be difficult: ask a price, change the time, ask for a closed day. | "Call it. Try to trick it. Book something on a Friday." |
 | 5 to 7 | Turn the second screen: the call appears in the dashboard with the full transcript, the summary and the booking in the calendar | "Everything it says, you can read. Nothing happens in the dark." |
 | 7 to 8 | Show the Knowledge Base: their services and hours, editable | "It only says what you write here. Change a price, it knows instantly." |
-| 8 to 9 | The offer: founding 5, trial, setup by us | "We set it up for you this week. Seven days free. If it doesn't earn its place, cancel." |
+| 8 to 9 | The offer: founding 5 | "You'd be one of our first five founding clients: I set it up for you personally, you get 7 days free to try it, and your launch price stays locked for 12 months." |
 | 9 to 10 | Ask for the yes (below) | |
 
 ## Asking for the yes
@@ -52,7 +53,7 @@ Day 1: we load services, prices, hours and the greeting. Day 2: we set up forwar
 7. **"You're unknown."** True, we're new, so you get the founder on WhatsApp and a setup done personally. Judge it on the live call, not on a logo. *"جرّبه سبعة أيام واحكم بنفسك."*
 8. **"Our patients want a human."** Vela answers in seconds and books; when someone asks for a person, it takes their details and flags the call for your team. The alternative at 11 pm is voicemail. *"أحسن من إن التلفون يرن وما أحد يرد."*
 9. **"We're too busy to set it up."** We do the setup. We need your services list and 20 minutes once. *"إحنا نجهز كل شي."*
-10. **"What about WhatsApp?"** Coming soon; today it's the phone (and Instagram once Meta approves it). The phone is where the bookings are lost after hours. *"الواتساب قريب."*
+10. **"What about WhatsApp?"** Coming soon; today it's the phone, with Instagram replies also available. The phone is where the bookings are lost after hours. *"الواتساب قريب."*
 11. **"Will forwarding cost us?"** Today calls are forwarded to our line, which can be an international number; ask your operator about forwarding charges. We're moving to local Qatari numbers. Don't guess a figure. *"اسأل الشبكة عن رسوم التحويل، وقريبًا بيكون رقم قطري."*
 12. **"What if our hours or prices change?"** Change them in the Knowledge Base (or send them to us) and Vela uses them on the next call. *"تغيّر السعر، يعرفه على طول."*
 

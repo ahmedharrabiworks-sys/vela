@@ -4,8 +4,9 @@
 // - leads: new businesses from hunter + qualifier. Leads already in the CSV
 //   (same slug, website or Instagram) are skipped, never overwritten.
 // - dm: decision-maker results for existing slugs. Not found = score minus 2.
+// - rescore: { slug, score, why_fits } from a qualifier re-run (after a check).
 import fs from "node:fs";
-import { COLUMNS, readLeads, slugify, today, writeLeads } from "./lib.mjs";
+import { COLUMNS, computeScore, readLeads, slugify, today, writeLeads } from "./lib.mjs";
 
 const norm = (u) => String(u || "").toLowerCase().replace(/^https?:\/\/(www\.)?/, "").replace(/\/+$/, "");
 const leads = readLeads();
@@ -26,16 +27,23 @@ for (const file of process.argv.slice(2)) {
       row.found_at = today();
       row.followups_sent = "0";
       leads.push(row); added++;
+    } else if (batch.kind === "rescore") {
+      // Qualifier re-run for one lead: new evidence score and why_fits.
+      const lead = leads.find((l) => l.slug === item.slug);
+      if (!lead) { console.warn("rescore for unknown slug", item.slug); continue; }
+      if (Number.isFinite(Number(item.score))) lead.score_raw = String(Math.max(1, Math.min(10, Math.round(Number(item.score)))));
+      if (item.why_fits) lead.why_fits = item.why_fits;
+      lead.score = String(computeScore(lead));
+      updated++;
     } else if (batch.kind === "dm") {
       const lead = leads.find((l) => l.slug === item.slug);
       if (!lead) { console.warn("dm for unknown slug", item.slug); continue; }
       if (item.found && item.dm_name) {
         for (const c of ["dm_name", "dm_role", "dm_source", "contact_path", "contact_url", "contact_rank"]) lead[c] = item[c] ?? "";
-        lead.score = lead.score_raw;
       } else {
         lead.dm_name = ""; lead.dm_role = ""; lead.dm_source = item.dm_source ?? "searched, not found";
-        lead.score = String(Math.max(1, Number(lead.score_raw || 0) - 2));
       }
+      lead.score = String(computeScore(lead));
       updated++;
     }
   }

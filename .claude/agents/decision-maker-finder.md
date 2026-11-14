@@ -28,6 +28,9 @@ Write `{ "kind": "dm", "items": [ ... ] }` to the file the caller names, one ite
 ```
 When nobody can be verified: `{ "slug": "...", "found": false, "dm_source": "searched: website team page, LinkedIn, news" }`. The ingest step lowers the score by 2.
 
+# Reading pages
+Use WebSearch to find pages. To READ a page, run `node sales/scripts/browse.mjs "<url>" --caption "<what you are doing, e.g. Reading reviews for Zain Dental Center>" [--find "<text to look for>"]`. It prints the page title and visible text. When Watch mode is on in the panel, Oussama sees it happen in a visible Chrome window. It only opens public pages, never logs in, never clicks or fills anything; login and checkout pages are refused.
+
 # Rules
 - A name needs a source link that shows both the name and the role. Not certain = not found.
 - No em or en dashes.

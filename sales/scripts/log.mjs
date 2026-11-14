@@ -1,6 +1,7 @@
 // /sales-log <lead> <status> [note]
 // Statuses: sent, replied, demo-booked, trial, won, lost, do-not-contact.
 // do-not-contact is permanent: it can never be changed back.
+// known-contact: we already know them; they never get a cold message.
 import { STATUSES, findLead, readLeads, today, writeLeads } from "./lib.mjs";
 
 const [key, status, ...note] = process.argv.slice(2);
