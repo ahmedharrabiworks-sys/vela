@@ -23,6 +23,9 @@ const ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]
 const HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
 const TOKEN = crypto.randomBytes(24).toString("hex");
 const BROWSE_TOKEN = crypto.randomBytes(24).toString("hex");
+// The local worker (npm run sales:worker / sales:all) starts the panel with its own
+// random token; it stands in for the cookie and the same-origin check, on 127.0.0.1 only.
+const WORKER_TOKEN = /^[a-f0-9]{48}$/.test(process.env.SALES_WORKER_TOKEN || "") ? process.env.SALES_WORKER_TOKEN : "";
 const RUNS = path.join(DATA, "runs");
 fs.mkdirSync(RUNS, { recursive: true });
 
@@ -379,7 +382,8 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(303, { ...SEC, "Set-Cookie": `vela_panel=${TOKEN}; HttpOnly; SameSite=Strict; Path=/`, Location: "/" });
       return res.end();
     }
-    if (!same(cookieToken(req), TOKEN)) { res.writeHead(401, { ...SEC, "Content-Type": "text/plain" }); return res.end("Open the link printed in the terminal (npm run sales:panel)."); }
+    const isWorker = !!WORKER_TOKEN && same(String(req.headers["x-worker-token"] || ""), WORKER_TOKEN);
+    if (!isWorker && !same(cookieToken(req), TOKEN)) { res.writeHead(401, { ...SEC, "Content-Type": "text/plain" }); return res.end("Open the link printed in the terminal (npm run sales:panel)."); }
 
     if (req.method === "GET" && FILES[url.pathname]) {
       const [file, type] = FILES[url.pathname];
@@ -407,7 +411,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method !== "POST") { res.writeHead(404, SEC); return res.end(); }
-    if (!ORIGINS.has(String(req.headers.origin)) || !String(req.headers["content-type"]).startsWith("application/json")) return json(res, 403, { error: "forbidden" });
+    if ((!isWorker && !ORIGINS.has(String(req.headers.origin))) || !String(req.headers["content-type"]).startsWith("application/json")) return json(res, 403, { error: "forbidden" });
     const b = await readBody(req);
 
     if (url.pathname === "/api/power") {
@@ -433,6 +437,7 @@ const server = http.createServer(async (req, res) => {
       const kind = String(b.task);
       if (kind === "find") { const count = Math.round(Number(b.count)); if (!(count >= 1 && count <= 60)) return json(res, 400, { error: "count must be 1 to 60" }); enqueue("find", { count }); }
       else if (["today", "followups", "rescore"].includes(kind)) enqueue(kind);
+      else if (kind === "rewrite") { const slug = String(b.slug); if (!SLUG.test(slug) || !readLeads().some((l) => l.slug === slug)) return json(res, 400, { error: "invalid lead" }); enqueue("rewrite", { slug }); }
       else return json(res, 400, { error: "unknown task" });
       return json(res, 200, { ok: true });
     }

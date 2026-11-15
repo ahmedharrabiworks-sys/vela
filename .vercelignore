@@ -1,0 +1,7 @@
+# Never upload local-only data to Vercel (lead data, WhatsApp session, secrets, media sources).
+.env*
+sales/
+sales-site/
+promo-video/
+.claude/
+.agents/

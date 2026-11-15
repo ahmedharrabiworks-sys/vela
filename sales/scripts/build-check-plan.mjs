@@ -4,6 +4,7 @@
 // Instagram. Log the result with /sales-check <lead> <sent-time> [reply-time|none].
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { DATA, SALES, config, readLeads, today } from "./lib.mjs";
 import { h, safeUrl, shell } from "./page.mjs";
 
@@ -22,13 +23,17 @@ const Q = {
 const nicheKey = (n) => (/dent|orth/i.test(n) ? "dental" : /salon|spa|beauty|hair|nail/i.test(n) ? "salon" : "derm");
 const pick = (slug, list) => list[[...slug].reduce((a, c) => a + c.charCodeAt(0), 0) % list.length];
 
-const rows = readLeads()
+export function checkPlanRows() {
+  const checks = fs.existsSync(checksFile) ? JSON.parse(fs.readFileSync(checksFile, "utf8")) : {};
+  return readLeads()
   .filter((l) => ["new", "sent"].includes(l.status) && l.closing_time && toMin(l.closing_time) !== null && !checks[l.slug])
   .filter((l) => l.whatsapp_public || l.instagram)
   .sort((a, b) => Number(b.score) - Number(a.score))
   .slice(0, Number(cfg.daily_limit) || 15)
   .map((l) => ({ l, close: toMin(l.closing_time) }))
-  .sort((a, b) => a.close - b.close);
+  .sort((a, b) => a.close - b.close)
+  .map((r) => ({ ...r, question: pick(r.l.slug, Q[nicheKey(r.l.niche)]), from: fmt(r.close + 30), to: fmt(r.close + 60), closes: fmt(r.close) }));
+}
 
 const card = ({ l, close }, i) => {
   const q = pick(l.slug, Q[nicheKey(l.niche)]);
@@ -44,6 +49,8 @@ const card = ({ l, close }, i) => {
     <div class="unk" style="margin-top:8px">Then log it: <code>/sales-check ${h(l.slug)} HH:MM [HH:MM|none]</code></div>
   </section>`;
 };
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+const rows = checkPlanRows();
 const body = `
   <div class="row"><img src="../public/assets/logo-full.png" alt="Vela" style="height:34px"><span class="sp"></span><span class="pill">${h(today())}</span></div>
   <h1>After-hours check: ${rows.length} business(es)</h1>
@@ -51,3 +58,4 @@ const body = `
   ${rows.length ? rows.map(card).join("") : `<section class="card">No leads with a known closing time and a public WhatsApp or Instagram yet.</section>`}`;
 fs.writeFileSync(path.join(SALES, "check-plan.html"), shell(`Vela after-hours check: ${today()}`, body));
 console.log(`sales/check-plan.html: ${rows.length} business(es) to check`);
+}

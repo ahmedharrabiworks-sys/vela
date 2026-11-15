@@ -3,15 +3,16 @@
 // plus the follow-ups due today. Nothing here sends anything.
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { DATA, SALES, config, readLeads, today } from "./lib.mjs";
 import { h, safeUrl, shell } from "./page.mjs";
 
 const cfg = config();
-const leads = readLeads();
 const msg = (slug) => { const f = path.join(DATA, "messages", `${slug}.json`); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null; };
 const demo = (slug) => { const f = path.join(DATA, "demos", `${slug}.json`); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null; };
 const daysSince = (d) => Math.round((Date.parse(today()) - Date.parse(d)) / 864e5);
 
+export function todayLists(leads = readLeads()) {
 const fresh = leads
   .filter((l) => l.status === "new" && l.route && msg(l.slug))
   .sort((a, b) => Number(b.score) - Number(a.score))
@@ -21,6 +22,8 @@ const due = leads.filter((l) => l.status === "sent" && l.contacted_at && Number(
   const f = msg(l.slug)?.followups?.find((x) => x.day === day);
   return daysSince(l.contacted_at) >= day && f ? { l, f } : null;
 }).filter(Boolean);
+return { fresh, due };
+}
 
 const ROUTES = { A: "A · owner direct", B: "B · business WhatsApp, for the owner", C: "C · Instagram DM to the business" };
 const viaSender = (l) => l.route === "B" || (l.route === "A" && l.dm_direct_type === "whatsapp");
@@ -68,6 +71,8 @@ const fu = ({ l, f }, i) => `<section class="card">
   <div class="msg" id="fe-${i}">${h(f.en)}</div><div class="row" style="margin-top:6px"><button class="btn" data-copy="fe-${i}">Copy English</button></div>
   <div class="unk" style="margin-top:8px">After sending: <code>/sales-log ${h(l.slug)} sent</code></div></section>`;
 
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+const { fresh, due } = todayLists();
 const body = `
   <div class="row"><img src="../public/assets/logo-full.png" alt="Vela" style="height:34px"><span class="sp"></span><span class="pill">${h(today())}</span></div>
   <h1>Today: ${fresh.length} new contact(s), ${due.length} follow-up(s)</h1>
@@ -77,3 +82,4 @@ const body = `
   <p class="sub" style="margin-top:20px">Status: <code>/sales-log &lt;lead&gt; sent|replied|demo-booked|trial|won|lost|do-not-contact</code></p>`;
 fs.writeFileSync(path.join(SALES, "today.html"), shell(`Vela sales: ${today()}`, body));
 console.log(`sales/today.html: ${fresh.length} new contact(s), ${due.length} follow-up(s) due`);
+}

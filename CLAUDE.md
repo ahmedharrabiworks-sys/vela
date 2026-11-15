@@ -36,6 +36,7 @@
 |---|---|
 | Live site | https://velaos.co (live, canonical). Also aliased: vela-g8h4.vercel.app, tryvela.com |
 | Health | https://velaos.co/api/health |
+| Sales dashboard | https://vela-sales.vercel.app (Vercel project `vela-sales`, code in `sales-site/`, deploy from inside `sales-site/`). Admin-only (SALES_ADMIN_EMAILS + `sales_admins` table, migration_v45). Controls the laptop through `sales_jobs`; the laptop runs `npm run sales:all` (panel + worker). Root `.vercelignore` keeps `sales/` data out of every deploy. |
 | GitHub | https://github.com/ahmedharrabiworks-sys/vela (branch `master`) |
 | Supabase | `puyinskgvwycmrvkzgac` (eu-west-1, Ireland) |
 | Vercel | team `brandlab`, project `vela-g8h4`. Functions pinned to region **`dub1`** (`vercel.json`), next to Supabase |
