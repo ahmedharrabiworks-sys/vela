@@ -10,8 +10,8 @@
     "test:unit": "node src/scripts/run-unit-tests.mjs",
     "sales:panel": "node sales/panel/server.mjs",
     "sales:send": "node sales/sender/send.mjs",
-    "sales:worker": "node sales/worker/worker.mjs",
-    "sales:all": "node sales/worker/worker.mjs --open"
+    "sales:worker": "node sales/worker/supervise.mjs",
+    "sales:all": "node sales/worker/supervise.mjs --open"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

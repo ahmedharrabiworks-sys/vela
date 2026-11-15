@@ -25,7 +25,8 @@ export default function LeadCard({ lead: l, queue, toast }: { lead: Lead; queue:
   const due = l.followup_due ? l.message?.followups?.find((f) => f.day === l.followup_due) : null;
   const ar = due?.ar ?? l.message?.ar ?? "", en = due?.en ?? l.message?.en ?? "";
   const wa = l.route === "A" && l.direct_type === "whatsapp" ? waDigits(l.direct_contact) : waDigits(l.whatsapp_public);
-  const text = l.message?.send_lang === "en" ? en : l.message?.send_lang === "ar" ? ar : [ar, en].filter(Boolean).join("\n\n");
+  // One language per WhatsApp message (3 short lines): "both" sends the Arabic; English stays one tap away via Copy English.
+  const text = l.message?.send_lang === "en" ? en : ar || en;
   const ev = l.evidence ?? {};
   const facts = [l.google_rating && `${l.google_rating} on Google${l.google_reviews ? `, ${l.google_reviews} reviews` : ""}`, ev.branches && `${ev.branches} branch(es)`, ev.staff, l.closing_time && `closes ${l.closing_time}`, l.area].filter(Boolean).join(" · ");
   const locked = l.status === "do-not-contact";

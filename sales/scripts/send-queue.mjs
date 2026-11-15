@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DATA, ROOT, config, phoneKey, readLeads, today } from "./lib.mjs";
+import { DATA, ROOT, config, nicheNote, phoneKey, readLeads, today } from "./lib.mjs";
 
 export const SENDS = path.join(DATA, "sends.jsonl");
 const STOP_STATUSES = new Set(["do-not-contact", "known-contact", "replied", "demo-booked", "trial", "won", "lost"]);
@@ -30,8 +30,8 @@ export function waNumber(raw) {
 }
 const msgFile = (slug) => path.join(DATA, "messages", `${slug}.json`);
 const readMsg = (slug) => { try { return JSON.parse(fs.readFileSync(msgFile(slug), "utf8")); } catch { return null; } };
-const readDemo = (slug) => { try { return JSON.parse(fs.readFileSync(path.join(DATA, "demos", `${slug}.json`), "utf8")); } catch { return null; } };
-const compose = (pair, lang) => (lang === "ar" ? pair.ar : lang === "en" ? pair.en : [pair.ar, pair.en].filter(Boolean).join("\n\n")).trim();
+// One language per message (3 short lines, like a person types): "both" sends the Arabic, with the Arabic voice note.
+const compose = (pair, lang) => String((lang === "en" ? pair.en : pair.ar || pair.en) ?? "").trim();
 
 export function buildQueue({ limit } = {}) {
   const cfg = config(), s = cfg.send;
@@ -56,11 +56,9 @@ export function buildQueue({ limit } = {}) {
         items.push({ slug: l.slug, name: l.name, kind: `followup-${day}`, number, text: compose(f, lang), lang, score: Number(l.score), attachments: [] });
     } else if (l.status === "new" && !recent.has(phoneKey(number))) {
       const audioLang = lang === "en" ? "en" : "ar";
-      const demo = readDemo(l.slug);
-      const personal = demo?.generated?.note_ogg ? path.join(DATA, demo.generated.note_ogg) : "";
-      const niche = path.join(DATA, "audio", "niche", `${l.niche}-${audioLang}.ogg`);
-      const voice = s.voice_note ? [personal, niche].find((f) => f && fs.existsSync(f)) : "";
-      const video = s.video?.[audioLang] ? path.join(ROOT, s.video[audioLang]) : "";
+      // Always the voice note of the lead's niche (Vela answering a customer of that niche), else the general note.
+      const voice = s.voice_note ? nicheNote(l.niche, audioLang, "ogg")?.file ?? "" : "";
+      const video = s.attach_video && s.video?.[audioLang] ? path.join(ROOT, s.video[audioLang]) : ""; // off by default: message 1 is the text + the voice note
       items.push({ slug: l.slug, name: l.name, kind: "first", number, text: compose(m.first, lang), lang, score: Number(l.score), route: l.route, owner: l.dm_name,
         attachments: [voice && { type: "voice", file: voice }, video && fs.existsSync(video) && { type: "video", file: video }].filter(Boolean) });
     }

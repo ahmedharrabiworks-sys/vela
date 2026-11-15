@@ -145,6 +145,51 @@ export function velaVoiceId() {
   return m[1];
 }
 
+// ── Niches: free-text niches from older runs map to the 24 hunt niches ──
+const NICHE_RULES = [
+  [/dent|orthodon|implant/, "dental"],
+  [/derma|aesthetic|cosmetic|laser|hair transplant|plastic|skin/, "dermatology-aesthetic"],
+  [/physio|chiro|rehab/, "physiotherapy"],
+  [/vet(erinar)?|animal hospital/, "veterinary"],
+  [/pet groom|grooming/, "pet-grooming"],
+  [/nail/, "nail-bar"],
+  [/barber/, "barber"],
+  [/\bspa\b|massage/, "spa"],
+  [/salon|beauty|hair/, "hair-beauty-salon"],
+  [/gym|fitness|personal train|crossfit|yoga|pilates/, "gym-personal-training"],
+  [/car rental|rent a car|car hire|limousine/, "car-rental"],
+  [/car (service|wash|care)|detailing|garage|auto/, "car-service-detailing"],
+  [/\bac\b|air condition|maintenance|handyman/, "ac-home-maintenance"],
+  [/clean/, "cleaning"],
+  [/mov(ers|ing)|relocation/, "movers"],
+  [/real estate|propert|realty/, "real-estate"],
+  [/driving/, "driving-school"],
+  [/tutor|training cent|academy|courses/, "tutoring-training"],
+  [/event|venue|wedding|hall/, "event-venue"],
+  [/restaurant|cafe|dining/, "restaurant-reservations"],
+  [/pest/, "pest-control"],
+  [/home (health|care|nursing)|nursing/, "home-healthcare"],
+  [/plumb|electric/, "plumbing-electrical-emergency"],
+  [/lab|test/, "medical-lab-home-tests"],
+];
+/** The hunt niche id for a lead's niche text ("polyclinic group with dermatology" -> "dermatology-aesthetic"), or "general". */
+export function nicheId(text) {
+  const t = String(text || "").toLowerCase().trim();
+  if (!t) return "general";
+  try { if (config().hunt.niches.includes(t)) return t; } catch { /* config unreadable: use the rules */ }
+  for (const [re, id] of NICHE_RULES) if (re.test(t)) return id;
+  return "general";
+}
+/** The niche voice note for a lead (ext "ogg" for WhatsApp, "mp3" for the dashboard), falling back to the general note. */
+export function nicheNote(nicheText, lang, ext = "ogg") {
+  const dir = path.join(DATA, "audio", "niche"), l = lang === "en" ? "en" : "ar";
+  for (const id of [nicheId(nicheText), "general"]) {
+    const f = path.join(dir, `${id}-${l}.${ext}`);
+    if (fs.existsSync(f)) return { id, file: f };
+  }
+  return null;
+}
+
 // ── Usage budget (ElevenLabs characters per week, Vapi dollars in total) ──
 const USAGE = path.join(DATA, "usage.json");
 export function usage() {
@@ -166,9 +211,15 @@ export function weekChars(u = usage()) {
   const from = weekStart();
   return u.runs.flatMap((r) => r.items ?? []).filter((i) => new Date(Date.parse(i.at) + 3 * 3600e3).toISOString().slice(0, 10) >= from).reduce((n, i) => n + (i.chars || 0), 0);
 }
+/** This week's ElevenLabs cap: the normal weekly cap, unless a one-time raise is set for this exact week
+ *  (config.budget.elevenlabs_one_time = { week: "YYYY-MM-DD" (a Sunday), chars: N }). Next week it is ignored. */
+export function weekCap() {
+  const b = config().budget, o = b.elevenlabs_one_time;
+  return o && o.week === weekStart() && Number(o.chars) > 0 ? Number(o.chars) : b.elevenlabs_chars_per_week;
+}
 /** Reserve characters before calling ElevenLabs; throws when the weekly cap would be exceeded. */
 export function spendChars(n, what) {
-  const u = usage(), run = currentRun(u), cap = config().budget.elevenlabs_chars_per_week, used = weekChars(u);
+  const u = usage(), run = currentRun(u), cap = weekCap(), used = weekChars(u);
   if (used + n > cap) throw new Error(`budget: ${used} + ${n} > ${cap} ElevenLabs characters this week (resets Sunday)`);
   run.elevenlabs_chars += n; u.elevenlabs_chars_total += n; run.items.push({ what, chars: n, at: new Date().toISOString() });
   fs.mkdirSync(DATA, { recursive: true });

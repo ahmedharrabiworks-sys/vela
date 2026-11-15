@@ -1,15 +1,17 @@
-// One voice note per niche per language (about 25 s): Vela introducing itself
-// and what it does for that niche, in the SAME voice as the phone agent
+// One voice note per niche per language (20 to 25 s): Vela introduces itself,
+// then a tiny realistic example of answering a customer of that niche, in the SAME voice as the phone agent
 // (DEFAULT_VOICE_ID in src/lib/vapi-agent-config.ts). Made once, reused for
 // every lead in the niche. Text comes from sales/data/niche-notes/<niche>.json:
 //   { "niche": "dental", "ar": { "text": "..." }, "en": { "text": "..." } }
-// Usage: node sales/scripts/niche-voice.mjs <niche>      (skips what exists)
+// Usage: node sales/scripts/niche-voice.mjs <niche>      (skips what exists; "general" is the fallback note)
+//        node sales/scripts/niche-voice.mjs --all        (every niche with text: niches with leads first, then general)
 //        node sales/scripts/niche-voice.mjs --list       (which niches have notes)
 // Every request reserves its characters first; stops at the weekly cap.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { DASHES, DATA, config, env, spendChars, velaVoiceId, weekChars } from "./lib.mjs";
+import { fileURLToPath } from "node:url";
+import { DASHES, DATA, config, env, nicheId, readLeads, spendChars, velaVoiceId, weekCap, weekChars } from "./lib.mjs";
 import { ffmpegBin } from "./ffmpeg-path.mjs";
 
 const NOTES = path.join(DATA, "niche-notes");
@@ -17,12 +19,29 @@ const OUT = path.join(DATA, "audio", "niche");
 export const nicheAudio = (niche, lang) => ({ mp3: path.join(OUT, `${niche}-${lang}.mp3`), ogg: path.join(OUT, `${niche}-${lang}.ogg`) });
 
 const arg = process.argv[2];
+// Niches that already have leads first (most leads first), then the rest of the plan, then the general note.
+function ordered() {
+  const count = {};
+  for (const l of readLeads()) { const id = nicheId(l.niche); count[id] = (count[id] || 0) + 1; }
+  const plan = config().hunt.niches;
+  return [...plan.filter((n) => count[n]).sort((a, b) => count[b] - count[a]), ...plan.filter((n) => !count[n]), "general"];
+}
+if (arg === "--all") {
+  for (const n of ordered()) {
+    if (!fs.existsSync(path.join(NOTES, `${n}.json`))) { console.log(`${n}: no text yet, skipped`); continue; }
+    try { execFileSync(process.execPath, [fileURLToPath(import.meta.url), n], { stdio: "inherit" }); }
+    catch { console.log(`${n}: failed, stopping`); process.exit(1); }
+    if (weekChars() >= weekCap()) { console.log("STOPPED: weekly ElevenLabs cap reached"); break; }
+  }
+  console.log(`ElevenLabs this week: ${weekChars()} of ${weekCap()} characters`);
+  process.exit(0);
+}
 if (arg === "--list") {
-  for (const n of config().hunt.niches) {
+  for (const n of [...config().hunt.niches, "general"]) {
     const has = (l) => fs.existsSync(nicheAudio(n, l).ogg) ? "ready" : fs.existsSync(path.join(NOTES, `${n}.json`)) ? "text only" : "missing";
     console.log(`${n}: ar ${has("ar")}, en ${has("en")}`);
   }
-  console.log(`ElevenLabs this week: ${weekChars()} of ${config().budget.elevenlabs_chars_per_week} characters`);
+  console.log(`ElevenLabs this week: ${weekChars()} of ${weekCap()} characters`);
   process.exit(0);
 }
 if (!arg || !/^[a-z0-9-]+$/.test(arg)) { console.error("usage: niche-voice.mjs <niche> | --list"); process.exit(1); }
@@ -41,7 +60,8 @@ for (const lang of ["ar", "en"]) {
   if (fs.existsSync(out.ogg)) { console.log(`${arg} ${lang}: already made, reused`); continue; }
   if (!text) { console.log(`${arg} ${lang}: no text, skipped`); continue; }
   if (DASHES.test(text)) { console.error(`${arg} ${lang}: em/en dash in the text`); process.exit(1); }
-  if (text.length > 600) { console.error(`${arg} ${lang}: ${text.length} characters, keep it near 25 seconds (under 600)`); process.exit(1); }
+  const max = lang === "ar" ? 300 : 360; // about 25 s in this voice (Arabic reads slower)
+  if (text.length > max) { console.error(`${arg} ${lang}: ${text.length} characters, keep it to 20 to 25 seconds (max ${max})`); process.exit(1); }
   try { spendChars(text.length, `niche note ${arg} ${lang}`); }
   catch (e) { console.log(`STOPPED: ${e.message}`); process.exit(0); }
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE}?output_format=mp3_44100_128`, {

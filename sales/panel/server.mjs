@@ -13,7 +13,7 @@ import path from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { DATA, ROOT, SALES, STATUSES, config, env, readChecks, readLeads, today, usage, weekChars } from "../scripts/lib.mjs";
+import { DATA, ROOT, SALES, STATUSES, config, env, readChecks, readLeads, today, usage, weekCap, weekChars } from "../scripts/lib.mjs";
 import { buildQueue, sentToday } from "../scripts/send-queue.mjs";
 import { readPage } from "../scripts/browser-core.mjs";
 
@@ -58,7 +58,7 @@ const TASKS = {
   rescore: () => ({ label: "Re-scoring checked leads", prompt: `For each lead slug in sales/data/checks.json only: re-run the qualifier (.claude/agents/qualifier.md) on that lead's evidence plus its after-hours check, write { "kind": "rescore", "items": [{ "slug", "score", "why_fits" }] } to sales/data/batches/rescore-${today()}.json and run node sales/scripts/ingest.mjs on it. Then, for each of those leads with a decision maker, re-run the writer (.claude/agents/writer.md) so the check result is the hook (it must pass node sales/scripts/unique.mjs <slug>). For any of them now scoring 9 or more with a decision maker and no sales/data/demos/<slug>.json, build the demo as step 4 of .claude/commands/sales-run.md. Finally run node sales/scripts/build-today.mjs. ${RULES}` }),
   demo: ({ slug }) => ({ label: `Building the demo for ${slug}`, prompt: `Build the personalised demo for the lead "${slug}" only, exactly as step 4 of .claude/commands/sales-run.md (demo JSON from public info, then node sales/scripts/demo-voice.mjs ${slug}, then node sales/scripts/demo-publish.mjs ${slug}; stop at the ElevenLabs budget). Then run node sales/scripts/build-today.mjs. ${RULES}` }),
   hunt: () => ({ label: "Deep hunt: next batch", prompt: `Run ONE batch of the deep hunt: follow .claude/commands/sales-hunt.md exactly (claim the next cell with node sales/scripts/hunt.mjs next, save every lead the moment it is found, owner-finder on 6+, messages, niche voice note, then close the cell). ${RULES}` }),
-  rewrite: ({ slug }) => ({ label: `Rewriting the message for ${slug}`, prompt: `Re-run the writer (.claude/agents/writer.md) for the lead "${slug}" only, so its logged after-hours check becomes the hook. It must pass node sales/scripts/unique.mjs ${slug}. Then run node sales/scripts/build-today.mjs. ${RULES}` }),
+  rewrite: ({ slug }) => ({ label: `Rewriting the message for ${slug}`, prompt: `Re-run the writer (.claude/agents/writer.md) for the lead "${slug}" only: a new first message and its day 2, 5 and 9 follow-ups under the current rules (3 short lines, max 40 words, one question on one real fact; a logged after-hours check may be that fact). It must pass node sales/scripts/unique.mjs ${slug}. Then run node sales/scripts/build-today.mjs. ${RULES}` }),
 };
 // The only tools that EXIST in a panel run (--tools). Everything else (PowerShell,
 // WebFetch, schedulers, MCP, notifications) is absent, not just unapproved.
@@ -331,7 +331,7 @@ function snapshot(q = "") {
       demos: count((l) => ["demo-booked", "trial", "won"].includes(l.status)),
       won: count((l) => l.status === "won"),
     },
-    budget: { eleven_week: weekChars(u), eleven_cap: cfg.budget.elevenlabs_chars_per_week, eleven_today: todays.reduce((n, i) => n + (i.chars || 0), 0), vapi_total: u.vapi_usd_total || 0, vapi_cap: cfg.budget.vapi_usd_total },
+    budget: { eleven_week: weekChars(u), eleven_cap: weekCap(), eleven_today: todays.reduce((n, i) => n + (i.chars || 0), 0), vapi_total: u.vapi_usd_total || 0, vapi_cap: cfg.budget.vapi_usd_total },
     send: { sent_today: sentToday(), limit: cfg.send.daily_limit, queue: buildQueue().length, sessions: cfg.send.sessions },
     // Replies the sender spotted (or logged by hand): Oussama answers these himself.
     your_turn: leads.filter((l) => l.status === "replied").sort((a, b) => String(b.replied_at).localeCompare(String(a.replied_at))).slice(0, 20).map((l) => ({ slug: l.slug, name: l.name, dm: l.dm_name, at: l.replied_at || l.status_at })),

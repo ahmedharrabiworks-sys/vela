@@ -16,6 +16,19 @@ Read this before every demo. One goal per meeting: a yes to the 7-day free trial
 - **Founding 5:** one of our first 5 founding clients in Doha: full setup done personally by the founder, 7 days free to try it, and your launch price locked for 12 months.
 - **Always lead with the phone receptionist.** Instagram replies are mentioned only as "also available".
 
+## Outreach messages (WhatsApp and Instagram)
+
+The only goal of message 1 is a reply. It reads like a real person on WhatsApp, never like a pitch, never like we studied them. Full rules: `.claude/agents/writer.md`, checked by `node sales/scripts/unique.mjs`.
+
+- **Message 1: max 3 short lines, max 40 words.**
+  1. Greeting + owner's name + "معك أسامة من الدوحة" / "Oussama here, from Doha".
+  2. ONE question about a pain they recognize at once (calls after closing, missed calls, busy line, Friday), built on ONE real fact (closing time, one hotline for all branches).
+  3. One line: what Vela is + "listen to how it answers 👇". The niche voice note follows.
+- **Never in message 1:** stats, review counts, followers, prices, "I noticed you posted", founding 5, the trial, a meeting ask.
+- **Arabic:** natural Gulf dialect, all in Arabic script (أسامة, the owner's name, the business name when it is commonly written in Arabic). Latin only for "Vela" and a brand with no Arabic form. Correct gender (دكتور / دكتورة, تسمع / تسمعين). Max 1 emoji.
+- **Follow-ups (max 2 lines each, only if no reply):** day 2 "did you get to listen?" + one benefit; day 5 the free 7-day trial, set up by Oussama; day 9 "10 minutes this week, in person or a call?"
+- **Voice note:** every lead gets the note of its niche (Vela answering a customer of that niche, 20 to 25 s), or the general note.
+
 > Internal only: switching Instagram on for a client account still goes through Meta's app review. Mention Instagram as "also available", never as the reason to buy, and never promise a start date for it.
 
 ## The 10-minute demo (in person or video)

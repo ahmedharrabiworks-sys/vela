@@ -12,9 +12,9 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { execFile, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
-import { DATA, ROOT, SALES, config, env, readChecks, readLeads } from "../scripts/lib.mjs";
+import { DATA, ROOT, SALES, config, env, nicheNote, readChecks, readLeads } from "../scripts/lib.mjs";
 import { todayLists } from "../scripts/build-today.mjs";
 import { checkPlanRows } from "../scripts/build-check-plan.mjs";
 
@@ -32,7 +32,21 @@ const WTOKEN = crypto.randomBytes(24).toString("hex");
 const panelChild = spawn(process.execPath, [path.join(SALES, "panel", "server.mjs"), ...(process.argv.includes("--open") ? [] : ["--no-open"])], {
   cwd: ROOT, env: { ...process.env, SALES_PANEL_PORT: String(PORT), SALES_WORKER_TOKEN: WTOKEN }, stdio: ["ignore", "inherit", "inherit"],
 });
-panelChild.on("exit", (code) => { say(`The panel engine stopped (code ${code}). If port ${PORT} is busy, close "npm run sales:panel" first: sales:all starts both.`); process.exit(1); });
+let stopping = false;
+panelChild.on("exit", (code) => {
+  if (stopping) return;
+  say(`The panel engine stopped (code ${code}). If port ${PORT} is busy, close "npm run sales:panel" first: sales:all starts both.`);
+  process.exit(1);
+});
+// Whatever ends this process (crash included), take the panel and its runs down with it,
+// so a restart does not find the port still taken by an orphan.
+process.on("exit", () => {
+  stopping = true;
+  try {
+    if (process.platform === "win32") execFileSync("taskkill", ["/PID", String(panelChild.pid), "/T", "/F"], { stdio: "ignore" });
+    else panelChild.kill("SIGKILL");
+  } catch { /* already gone */ }
+});
 const panel = async (p, body) => {
   const res = await fetch(`${PANEL}${p}`, body ? { method: "POST", headers: { "x-worker-token": WTOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) } : { headers: { "x-worker-token": WTOKEN } });
   const out = await res.json().catch(() => ({}));
@@ -107,14 +121,18 @@ async function sync() {
     const rank = new Map(fresh.map((l, i) => [l.slug, i + 1]));
     const dueDay = new Map(due.map(({ l, f }) => [l.slug, f.day]));
     const plan = new Map(checkPlanRows().map((r) => [r.l.slug, { question: r.question, from: r.from, to: r.to, closes: r.closes }]));
+    // Every niche voice note (both languages), so new leads in any niche play at once on the dashboard.
+    const nicheDir = path.join(DATA, "audio", "niche");
+    for (const f of fs.existsSync(nicheDir) ? fs.readdirSync(nicheDir).filter((x) => /^[a-z0-9-]+-(ar|en)\.mp3$/.test(x)) : []) await uploadAudio(path.join(nicheDir, f), `niche/${f}`);
     const rows = [];
     for (const l of leads) {
       const m = readJson(path.join(DATA, "messages", `${l.slug}.json`));
       const d = readJson(path.join(DATA, "demos", `${l.slug}.json`));
       const lang = m?.send_lang === "en" ? "en" : "ar";
       const audio = {};
-      if (d?.generated?.note_mp3) audio.voice_note = await uploadAudio(path.join(DATA, d.generated.note_mp3), `demos/${l.slug}/voice-note.mp3`);
-      if (!audio.voice_note && l.niche) audio.voice_note = await uploadAudio(path.join(DATA, "audio", "niche", `${l.niche}-${lang}.mp3`), `niche/${l.niche}-${lang}.mp3`);
+      // The same note the sender attaches: the lead's niche note, else the general note.
+      const note = nicheNote(l.niche, lang, "mp3");
+      if (note) audio.voice_note = await uploadAudio(note.file, `niche/${note.id}-${lang}.mp3`);
       if (d?.generated?.call_mp3) audio.call = await uploadAudio(path.join(DATA, d.generated.call_mp3), `demos/${l.slug}/call.mp3`);
       for (const k of Object.keys(audio)) if (!audio[k]) delete audio[k];
       const row = {
@@ -257,10 +275,13 @@ say("First sync of existing data...");
 await sync();
 await heartbeat();
 await processJobs();
-pushLog("Laptop worker online.", "done");
+const restarts = Number(process.env.SALES_WORKER_RESTARTS) || 0;
+pushLog(restarts ? `Laptop worker back online after a crash (auto restart ${restarts}). Details: sales/data/runs/worker-restarts.log` : "Laptop worker online.", restarts ? "error" : "done");
 say("Online. The dashboard can now control this laptop. Ctrl+C to stop.");
 
 const shutdown = async () => {
+  if (stopping) return;
+  stopping = true;
   say("Stopping...");
   await db.from("sales_worker").update({ heartbeat_at: null, sender_status: "offline", running: null }).eq("id", 1);
   if (process.platform === "win32") execFile("taskkill", ["/PID", String(panelChild.pid), "/T", "/F"], () => process.exit(0));
@@ -268,4 +289,6 @@ const shutdown = async () => {
 };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+// Closing the window (Windows sends SIGHUP and gives a few seconds): mark the laptop offline at once.
+process.on("SIGHUP", shutdown);
 
