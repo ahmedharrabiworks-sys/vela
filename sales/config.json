@@ -1,9 +1,9 @@
 {
   "MY_NAME": "Oussama",
   "DEMO_NUMBER": "",
-  "daily_limit": 15,
+  "daily_limit": 60,
   "budget": {
-    "elevenlabs_chars_per_run": 6000,
+    "elevenlabs_chars_per_week": 15000,
     "vapi_usd_total": 5
   },
   "offer": {
@@ -21,8 +21,8 @@
     "lead_with": "The AI phone receptionist (Gulf Arabic and English, 24/7, books appointments). Instagram replies are mentioned only as also available."
   },
   "voices": {
-    "vela": "QsV9PCczMIklRM6xLPAS",
-    "caller": "HKFOb9iktHA85uKXydRT"
+    "caller": "HKFOb9iktHA85uKXydRT",
+    "vela_note": "The Vela voice is read from src/lib/vapi-agent-config.ts (DEFAULT_VOICE_ID), the same voice as the phone agent."
   },
   "demo_base_url": "https://velaos.co/demo/",
   "scoring": {
@@ -34,5 +34,84 @@
   "panel": {
     "port": 4321,
     "watch_speed_ms": 600
+  },
+  "hunt": {
+    "batch_size": 50,
+    "pause_minutes_between_batches": 5,
+    "max_batches_per_day": 10,
+    "usage_limit_wait_minutes": 60,
+    "owner_pass_min_score": 6,
+    "target_total": 2000,
+    "niches": [
+      "dental",
+      "dermatology-aesthetic",
+      "physiotherapy",
+      "veterinary",
+      "hair-beauty-salon",
+      "barber",
+      "spa",
+      "nail-bar",
+      "gym-personal-training",
+      "car-rental",
+      "car-service-detailing",
+      "ac-home-maintenance",
+      "cleaning",
+      "movers",
+      "real-estate",
+      "driving-school",
+      "tutoring-training",
+      "event-venue",
+      "restaurant-reservations",
+      "pest-control",
+      "home-healthcare",
+      "pet-grooming",
+      "plumbing-electrical-emergency",
+      "medical-lab-home-tests"
+    ],
+    "areas": [
+      "West Bay",
+      "The Pearl",
+      "Lusail",
+      "Al Sadd",
+      "Al Waab and Aspire",
+      "Msheireb and Downtown",
+      "Al Gharrafa",
+      "Al Hilal and Old Airport",
+      "Bin Mahmoud and Fereej Bin Omran",
+      "Al Rayyan",
+      "Al Wakrah",
+      "Al Khor",
+      "Muaither and Al Luqta",
+      "Abu Hamour and Ain Khaled",
+      "Al Duhail and Madinat Khalifa",
+      "Industrial Area and Salwa Road"
+    ]
+  },
+  "send": {
+    "daily_limit": 60,
+    "per_session": 30,
+    "sessions": [
+      {
+        "name": "morning",
+        "at": "10:00"
+      },
+      {
+        "name": "evening",
+        "at": "19:30"
+      }
+    ],
+    "gap_minutes": [
+      2,
+      7
+    ],
+    "recontact_days": 30,
+    "invalid_streak_stop": 3,
+    "language": "both",
+    "voice_note": true,
+    "video": {
+      "ar": "promo-video/out/vela-ar.mp4",
+      "en": "promo-video/out/vela-en.mp4"
+    },
+    "wait_for_send_minutes": 10
   }
 }

@@ -4,12 +4,11 @@
 // The writer uses it as the hook: "asked at 10:40 pm, reply came at 9:05 am".
 import fs from "node:fs";
 import path from "node:path";
-import { DATA, computeScore, config, findLead, readLeads, today, writeLeads } from "./lib.mjs";
+import { DATA, computeScore, config, findLead, readLeads, today, withLeads } from "./lib.mjs";
 
 const [key, sent, reply = "none"] = process.argv.slice(2);
 if (!key || !sent) { console.error("usage: /sales-check <lead> <sent-time> [reply-time|none]"); process.exit(1); }
-const leads = readLeads();
-const lead = findLead(leads, key);
+const lead = findLead(readLeads(), key);
 
 const parse = (s) => {
   if (s === "none") return null;
@@ -34,8 +33,7 @@ checks[lead.slug] = { sent_at: sentAt, reply_at: replyAt, minutes_to_reply: minu
 fs.writeFileSync(file, JSON.stringify(checks, null, 1));
 // Re-score now: no reply, or a reply 8+ hours later, adds +2.
 const before = Number(lead.score);
-lead.score = String(computeScore(lead, checks));
-writeLeads(leads);
+await withLeads((leads) => { const l = leads.find((x) => x.slug === lead.slug); l.score = String(computeScore(l, checks)); lead.score = l.score; });
 const demoAt = config().scoring?.demo_at ?? 9;
 const hasDemo = fs.existsSync(path.join(DATA, "demos", `${lead.slug}.json`));
 const hasMsg = fs.existsSync(path.join(DATA, "messages", `${lead.slug}.json`));

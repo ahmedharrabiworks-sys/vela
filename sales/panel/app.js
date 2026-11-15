@@ -26,6 +26,18 @@ function renderState(s) {
   $("#queue").textContent = s.queue.length ? `Waiting: ${s.queue.join(", ")}` : "";
   document.querySelectorAll("[data-run]").forEach((b) => { b.disabled = !s.on || !s.claude; });
   if (!s.claude) $("#queue").textContent = "Claude Code was not found on this computer. Set CLAUDE_BIN and restart the panel.";
+  // Deep hunt
+  const h = s.hunt;
+  $("#huntBtn").textContent = h.on ? "Stop deep hunt" : "Start deep hunt";
+  $("#huntBtn").className = h.on ? "btn" : "btn p";
+  $("#huntBtn").disabled = !s.on && !h.on;
+  $("#huntCells").style.width = `${h.cells ? (h.done / h.cells) * 100 : 0}%`;
+  $("#huntCellsText").textContent = h.cells ? `${h.done} of ${h.cells} done` : "Plan not started";
+  $("#huntBatches").textContent = h.on ? `${h.batchesToday} batch(es) today` : "";
+  $("#huntNote").textContent = h.note || "";
+  // Sender
+  $("#sendNow").disabled = $("#sendSchedule").disabled = !s.on || s.sender.running;
+  $("#sendStop").disabled = !s.sender.running;
 }
 
 function renderData(d) {
@@ -33,8 +45,16 @@ function renderData(d) {
   const stats = [["Leads found", d.stats.found], ["Ready to contact", d.stats.ready], ["Sent", d.stats.sent], ["Replied", d.stats.replied], ["Demos booked", d.stats.demos], ["Won", d.stats.won]];
   $("#stats").replaceChildren(...stats.map(([k, v]) => el("div", { className: "card stat" }, el("b", { textContent: String(v) }), el("span", { textContent: k }))));
   const pct = (a, b) => `${Math.min(100, b ? (a / b) * 100 : 0)}%`;
-  $("#elevenBar").style.width = pct(d.budget.eleven_today, d.budget.eleven_cap);
-  $("#elevenText").textContent = `${d.budget.eleven_today.toLocaleString("en-US")} of ${d.budget.eleven_cap.toLocaleString("en-US")} per run`;
+  $("#elevenBar").style.width = pct(d.budget.eleven_week, d.budget.eleven_cap);
+  $("#elevenText").textContent = `${d.budget.eleven_week.toLocaleString("en-US")} of ${d.budget.eleven_cap.toLocaleString("en-US")} (resets Sunday)`;
+  const target = 2000;
+  $("#huntLeads").style.width = pct(d.total_leads, target);
+  $("#huntLeadsText").textContent = `${d.total_leads.toLocaleString("en-US")} of ${target.toLocaleString("en-US")}`;
+  $("#sentBar").style.width = pct(d.send.sent_today, d.send.limit);
+  $("#sentText").textContent = `${d.send.sent_today} of ${d.send.limit}`;
+  $("#sendInfo").textContent = `${d.send.queue} ready in today's queue. Sessions: ${d.send.sessions.map((x) => `${x.name} ${x.at}`).join(", ")} (Qatar time).${d.sender?.running ? " Sender window is open." : ""}`;
+  $("#turn").replaceChildren(...(d.your_turn.length ? d.your_turn.map((t) => el("div", { className: "turn" }, el("strong", { textContent: t.name }), el("span", { className: "hint", textContent: `${t.dm ? `${t.dm} · ` : ""}${t.at ? String(t.at).slice(0, 16).replace("T", " ") : ""}` }), el("span", { className: "status replied", textContent: "your turn" }))) : [el("span", { textContent: "No replies yet." })]));
+  $("#leadCount").textContent = `${d.leads.length < d.total_leads ? `top ${d.leads.length} of ` : ""}${d.total_leads}`;
   $("#vapiBar").style.width = pct(d.budget.vapi_total, d.budget.vapi_cap);
   $("#vapiText").textContent = `$${Number(d.budget.vapi_total).toFixed(2)} of $${d.budget.vapi_cap}`;
 
@@ -66,6 +86,7 @@ function renderData(d) {
       el("td", {}, sc),
       el("td", {}, biz),
       el("td", { textContent: l.dm || "Not found" }),
+      el("td", {}, l.route ? el("span", { className: "route", textContent: l.route, title: { A: "Owner direct", B: "Business WhatsApp, forwarded to the owner", C: "Instagram DM to the business" }[l.route] }) : el("span", { className: "hint", textContent: "none" })),
       el("td", {}, el("span", { className: `status ${l.status}`, textContent: l.status })),
       el("td", { textContent: l.next }),
       el("td", {}, actions));
@@ -74,7 +95,7 @@ function renderData(d) {
 }
 
 async function refresh() {
-  const res = await fetch("/api/state");
+  const res = await fetch(`/api/state?q=${encodeURIComponent($("#search").value.trim())}`);
   if (!res.ok) return;
   const d = await res.json();
   renderState(d); renderData(d);
@@ -114,6 +135,13 @@ $("#checkForm").addEventListener("submit", async (ev) => {
   const r = await post("/api/check", { slug: $("#checkLead").value, sent: $("#checkSent").value.trim(), reply: $("#checkReply").value.trim() || "none" });
   if (r.ok) { toast("Check logged"); $("#checkSent").value = ""; refresh(); }
 });
+
+$("#huntBtn").addEventListener("click", () => post("/api/hunt", { on: $("#huntBtn").textContent.startsWith("Start") }));
+$("#sendNow").addEventListener("click", () => post("/api/sender", { action: "now" }));
+$("#sendSchedule").addEventListener("click", () => post("/api/sender", { action: "schedule" }));
+$("#sendStop").addEventListener("click", () => post("/api/sender", { action: "stop" }));
+let searchTimer = null;
+$("#search").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(refresh, 300); });
 
 // Tabs
 document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {

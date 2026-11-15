@@ -48,7 +48,9 @@ input,select{min-height:44px;border:1px solid var(--line);border-radius:10px;pad
 #checkForm input,#checkForm select{flex:1 1 120px;min-width:0}
 input[type=range]{accent-color:var(--o);min-height:0}
 @media (max-width:820px){.two{grid-template-columns:minmax(0,1fr)}}
-.budget .meter{height:8px;border-radius:99px;background:#f3f4f6;overflow:hidden;margin:6px 0 10px}.budget .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--o),var(--o2))}
+.meter{height:8px;border-radius:99px;background:#f3f4f6;overflow:hidden;margin:6px 0 6px}.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--o),var(--o2))}
+.route{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-weight:800;background:#fff1ea;color:#c2410c}
+.turn{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line);color:var(--ink);font-size:14px}
 table{width:100%;border-collapse:collapse}th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);text-align:start;padding:8px}
 td{padding:10px 8px;border-top:1px solid var(--line);vertical-align:top}
 .score{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--o),var(--o2))}
@@ -100,10 +102,33 @@ iframe{width:100%;height:calc(100vh - 130px);border:0;border-radius:16px;backgro
     </div>
 
     <div class="two">
+      <div class="card">
+        <h2>Deep hunt</h2>
+        <div class="row"><button class="btn p" id="huntBtn">Start deep hunt</button><span class="hint" id="huntBatches"></span></div>
+        <div class="hint" style="margin-top:10px">Niches and areas covered</div><div class="meter"><i id="huntCells"></i></div><div id="huntCellsText"></div>
+        <div class="hint" style="margin-top:8px">Businesses found</div><div class="meter"><i id="huntLeads"></i></div><div id="huntLeadsText"></div>
+        <p class="hint" id="huntNote"></p>
+        <p class="hint">Batches of 50 by niche and area, saved after every lead. Stop any time; it resumes where it left off and pauses by itself at the usage limit.</p>
+      </div>
+      <div class="card">
+        <h2>WhatsApp sender</h2>
+        <div class="row"><button class="btn p" id="sendNow">Start a session now</button><button class="btn" id="sendSchedule">Run on schedule</button><button class="btn" id="sendStop">Stop</button></div>
+        <div class="hint" style="margin-top:10px">Sent today</div><div class="meter"><i id="sentBar"></i></div><div id="sentText"></div>
+        <p class="hint" id="sendInfo"></p>
+        <p class="hint">Opens a Chrome window on WhatsApp Web with each message ready. You check it and press Send; it attaches the voice note and video, logs the time and moves on. It never sends or replies by itself. First time: scan the QR code.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px" id="turnCard">
+      <h2>Replied, your turn</h2>
+      <div id="turn" class="hint">No replies yet.</div>
+    </div>
+
+    <div class="two">
       <div class="card"><h2>Live log</h2><div id="log" aria-live="polite"></div></div>
       <div class="card budget">
-        <h2>Budget today</h2>
-        <div class="hint">ElevenLabs characters</div><div class="meter"><i id="elevenBar"></i></div><div id="elevenText"></div>
+        <h2>Budget</h2>
+        <div class="hint">ElevenLabs characters this week</div><div class="meter"><i id="elevenBar"></i></div><div id="elevenText"></div>
         <div class="hint" style="margin-top:12px">Vapi (total)</div><div class="meter"><i id="vapiBar"></i></div><div id="vapiText"></div>
         <h2 style="margin-top:18px">After-hours check</h2>
         <form id="checkForm" class="row">
@@ -117,8 +142,8 @@ iframe{width:100%;height:calc(100vh - 130px);border:0;border-radius:16px;backgro
     </div>
 
     <div class="card" style="margin-top:12px">
-      <h2>Leads</h2>
-      <table><thead><tr><th>Score</th><th>Business</th><th>Decision maker</th><th>Status</th><th>Next action</th><th>Log</th></tr></thead><tbody id="leads"></tbody></table>
+      <div class="row"><h2 style="margin:0">Leads</h2><span class="hint" id="leadCount"></span><span class="sp"></span><input id="search" type="search" placeholder="Search name, niche, area, owner" aria-label="Search leads" style="flex:1 1 200px;max-width:340px"></div>
+      <table style="margin-top:8px"><thead><tr><th>Score</th><th>Business</th><th>Owner</th><th>Route</th><th>Status</th><th>Next action</th><th>Log</th></tr></thead><tbody id="leads"></tbody></table>
     </div>
   </section>
   <section id="tab-today" class="hidden"><iframe id="todayFrame" title="Today's contacts"></iframe></section>

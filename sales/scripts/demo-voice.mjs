@@ -8,7 +8,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { DASHES, DATA, config, env, spendChars } from "./lib.mjs";
+import { DASHES, DATA, config, env, spendChars, velaVoiceId } from "./lib.mjs";
+const VELA = velaVoiceId(); // same voice as the phone agent
 import { ffmpegBin } from "./ffmpeg-path.mjs";
 
 const slug = process.argv[2];
@@ -38,13 +39,13 @@ const callChars = call.reduce((n, c) => n + c.text.length, 0);
 spendChars(callChars, `${slug} sample call`);
 const callMp3 = await eleven("/v1/text-to-dialogue", {
   model_id: "eleven_v3",
-  inputs: call.map((c) => ({ text: c.text, voice_id: c.speaker === "vela" ? cfg.voices.vela : cfg.voices.caller })),
+  inputs: call.map((c) => ({ text: c.text, voice_id: c.speaker === "vela" ? VELA : cfg.voices.caller })),
 });
 fs.writeFileSync(path.join(out, "call.mp3"), callMp3);
 
 // Voice note to the owner, in the Vela voice.
 spendChars(note.length, `${slug} voice note`);
-const noteMp3 = await eleven(`/v1/text-to-speech/${cfg.voices.vela}`, {
+const noteMp3 = await eleven(`/v1/text-to-speech/${VELA}`, {
   text: note, model_id: "eleven_v3", language_code: "ar",
   voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0, use_speaker_boost: true, speed: 0.95 },
 });
@@ -55,7 +56,7 @@ const dur = (f) => Number(execFileSync(ffmpegBin("ffprobe"), ["-v", "error", "-s
 demo.generated = {
   call_mp3: `audio/${slug}/call.mp3`, note_mp3: `audio/${slug}/voice-note.mp3`, note_ogg: `audio/${slug}/voice-note.ogg`,
   call_seconds: Math.round(dur(path.join(out, "call.mp3"))), note_seconds: Math.round(dur(path.join(out, "voice-note.mp3"))),
-  chars: callChars + note.length, voices: { vela: cfg.voices.vela, caller: cfg.voices.caller }, model: "eleven_v3", at: new Date().toISOString(),
+  chars: callChars + note.length, voices: { vela: VELA, caller: cfg.voices.caller }, model: "eleven_v3", at: new Date().toISOString(),
 };
 fs.writeFileSync(file, JSON.stringify(demo, null, 1));
 console.log(`${slug}: call ${demo.generated.call_seconds}s, voice note ${demo.generated.note_seconds}s, ${demo.generated.chars} characters`);

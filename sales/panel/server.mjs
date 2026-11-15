@@ -13,7 +13,8 @@ import path from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { DATA, ROOT, SALES, STATUSES, config, readChecks, readLeads, today, usage } from "../scripts/lib.mjs";
+import { DATA, ROOT, SALES, STATUSES, config, env, readChecks, readLeads, today, usage, weekChars } from "../scripts/lib.mjs";
+import { buildQueue, sentToday } from "../scripts/send-queue.mjs";
 import { readPage } from "../scripts/browser-core.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,7 @@ const TASKS = {
   followups: () => ({ label: "Drafting follow-ups due", prompt: `Draft only the follow-ups due today: follow .claude/agents/follow-up.md exactly, then run node sales/scripts/build-today.mjs. ${RULES}` }),
   rescore: () => ({ label: "Re-scoring checked leads", prompt: `For each lead slug in sales/data/checks.json only: re-run the qualifier (.claude/agents/qualifier.md) on that lead's evidence plus its after-hours check, write { "kind": "rescore", "items": [{ "slug", "score", "why_fits" }] } to sales/data/batches/rescore-${today()}.json and run node sales/scripts/ingest.mjs on it. Then, for each of those leads with a decision maker, re-run the writer (.claude/agents/writer.md) so the check result is the hook (it must pass node sales/scripts/unique.mjs <slug>). For any of them now scoring 9 or more with a decision maker and no sales/data/demos/<slug>.json, build the demo as step 4 of .claude/commands/sales-run.md. Finally run node sales/scripts/build-today.mjs. ${RULES}` }),
   demo: ({ slug }) => ({ label: `Building the demo for ${slug}`, prompt: `Build the personalised demo for the lead "${slug}" only, exactly as step 4 of .claude/commands/sales-run.md (demo JSON from public info, then node sales/scripts/demo-voice.mjs ${slug}, then node sales/scripts/demo-publish.mjs ${slug}; stop at the ElevenLabs budget). Then run node sales/scripts/build-today.mjs. ${RULES}` }),
+  hunt: () => ({ label: "Deep hunt: next batch", prompt: `Run ONE batch of the deep hunt: follow .claude/commands/sales-hunt.md exactly (claim the next cell with node sales/scripts/hunt.mjs next, save every lead the moment it is found, owner-finder on 6+, messages, niche voice note, then close the cell). ${RULES}` }),
   rewrite: ({ slug }) => ({ label: `Rewriting the message for ${slug}`, prompt: `Re-run the writer (.claude/agents/writer.md) for the lead "${slug}" only, so its logged after-hours check becomes the hook. It must pass node sales/scripts/unique.mjs ${slug}. Then run node sales/scripts/build-today.mjs. ${RULES}` }),
 };
 // The only tools that EXIST in a panel run (--tools). Everything else (PowerShell,
@@ -62,8 +64,17 @@ const TOOLS = ["Read", "Glob", "Grep", "WebSearch", "Task", "Write", "Edit", "Ba
 // commands only node sales/scripts/*.
 const ALLOWED_TOOLS = ["Read", "Glob", "Grep", "WebSearch", "Agent", "Task", "Write(sales/data/**)", "Edit(sales/data/**)", "Bash(node sales/scripts/*)"];
 
+// ── Subscription login only: never an API key for sales runs ──
+const KEY_NAMES = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"];
+const keyWarnings = KEY_NAMES.flatMap((k) => [process.env[k] && `${k} in this shell`, env()[k] && `${k} in .env.local`]).filter(Boolean);
+const runEnv = () => { const e = { ...process.env, PANEL_URL: `http://127.0.0.1:${PORT}`, PANEL_BROWSE_TOKEN: BROWSE_TOKEN }; for (const k of KEY_NAMES) delete e[k]; return e; };
+
 // ── State ──
 const state = { on: true, running: null, queue: [], watch: false, speed: config().panel?.watch_speed_ms ?? 600 };
+// Deep hunt: one batch per run, continued automatically, paced, paused at the usage limit.
+const hunt = { on: false, timer: null, nextAt: 0, pausedUntil: 0, batchesToday: 0, day: today(), note: "" };
+// The WhatsApp sender (assisted): a separate visible window, one at a time.
+const sender = { child: null, mode: "", started: 0 };
 const clients = new Set();
 const history = []; // last 300 log lines, replayed when the page opens or reconnects
 const send = (obj) => { const line = `data: ${JSON.stringify(obj)}\n\n`; for (const c of clients) c.write(line); };
@@ -75,7 +86,12 @@ function log(text, kind = "info") {
   if (state.running?.logFile) fs.appendFileSync(state.running.logFile, `[${entry.at}] ${text}\n`);
 }
 const pushState = () => send({ type: "state", state: publicState() });
-const publicState = () => ({ on: state.on, running: state.running ? { label: state.running.label, started: state.running.started } : null, queue: state.queue.map((t) => t.label), watch: state.watch, speed: state.speed, claude: !!CLAUDE });
+const publicState = () => ({
+  on: state.on, running: state.running ? { label: state.running.label, started: state.running.started } : null, queue: state.queue.map((t) => t.label), watch: state.watch, speed: state.speed, claude: !!CLAUDE,
+  hunt: { on: hunt.on, note: hunt.note, nextAt: hunt.nextAt, pausedUntil: hunt.pausedUntil, batchesToday: hunt.batchesToday, ...huntProgress() },
+  sender: { running: !!sender.child, mode: sender.mode },
+  keyWarnings,
+});
 
 // ── Running Claude Code headless ──
 function describeTool(name, input = {}) {
@@ -103,12 +119,14 @@ function startNext() {
   const args = ["-p", task.prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk", "--tools", TOOLS.join(","), "--allowedTools", ALLOWED_TOOLS.join(","), "--setting-sources", "project", "--strict-mcp-config", "--no-session-persistence"];
   const child = spawn(CLAUDE, args, {
     cwd: ROOT,
-    env: { ...process.env, PANEL_URL: `http://127.0.0.1:${PORT}`, PANEL_BROWSE_TOKEN: BROWSE_TOKEN },
+    env: runEnv(), // subscription login: API keys removed
     stdio: ["ignore", "pipe", "pipe"],
     detached: process.platform !== "win32",
     windowsHide: true,
   });
-  state.running = { ...task, child, logFile, started: Date.now() };
+  state.running = { ...task, child, logFile, started: Date.now(), limitText: "" };
+  const LIMIT = /usage limit|limit reached|hit your limit|rate.?limit|out of (extra )?usage/i;
+  const watchLimit = (t) => { if (LIMIT.test(t) && state.running?.child === child) state.running.limitText = String(t).slice(0, 300); };
   fs.writeFileSync(logFile, `${task.label}\n`);
   log(`Started: ${task.label}${state.watch ? " (Watch mode on)" : ""}`, "start");
   pushState();
@@ -125,21 +143,99 @@ function startNext() {
       if (ev.type === "system" && ev.subtype === "init") log(`Claude is ready${ev.model ? ` (${ev.model})` : ""}`);
       if (ev.type === "assistant") for (const c of ev.message?.content ?? []) {
         if (c.type === "tool_use") log(sub + describeTool(c.name, c.input));
-        if (c.type === "text" && c.text.trim()) log(sub + c.text.trim().split("\n")[0].slice(0, 220), "say");
+        if (c.type === "text" && c.text.trim()) { log(sub + c.text.trim().split("\n")[0].slice(0, 220), "say"); if (!sub) watchLimit(c.text); }
       }
+      if (ev.type === "result" && ev.is_error) watchLimit(`${ev.result ?? ""} ${ev.subtype ?? ""}`);
       if (ev.type === "result") log(`Finished in ${Math.round((ev.duration_ms || 0) / 1000)}s${ev.total_cost_usd ? `, cost $${ev.total_cost_usd.toFixed(2)}` : ""}${ev.is_error ? " (with errors)" : ""}`, ev.is_error ? "error" : "done");
     }
   });
-  child.stderr.on("data", (d) => fs.appendFileSync(logFile, `[stderr] ${d}`));
+  child.stderr.on("data", (d) => { fs.appendFileSync(logFile, `[stderr] ${d}`); watchLimit(d.toString()); });
   child.on("exit", (code) => {
     if (state.running?.child === child) {
-      if (state.running.killed) log("Stopped by the OFF switch.", "error");
-      else if (code) log(`The run ended with an error (code ${code}). See ${path.relative(ROOT, logFile)}.`, "error");
+      const r = state.running;
+      if (r.killed) log("Stopped by the OFF switch.", "error");
+      else if (code && !r.limitText) log(`The run ended with an error (code ${code}). See ${path.relative(ROOT, logFile)}.`, "error");
       state.running = null;
+      if (r.kind === "hunt") afterHunt({ killed: !!r.killed, code, limitText: r.limitText });
     }
     pushState();
     setTimeout(startNext, 300);
   });
+}
+
+// ── Deep hunt loop ──
+const huntCfg = () => config().hunt;
+const clock = (ms) => new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function huntProgress() {
+  try {
+    const p = JSON.parse(fs.readFileSync(path.join(DATA, "hunt", "plan.json"), "utf8"));
+    const by = (s) => p.cells.filter((c) => c.status === s).length;
+    return { cells: p.cells.length, done: by("done") + by("exhausted"), todo: by("todo") + by("claimed") };
+  } catch { return { cells: 0, done: 0, todo: 0 }; }
+}
+/** When a usage limit resets: an epoch in the message, "resets 3pm", or the configured wait. */
+function parseReset(text) {
+  const ep = text.match(/\|(\d{10})\b/);
+  if (ep) return Number(ep[1]) * 1000 + 60000;
+  const m = text.match(/resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if (m) {
+    const d = new Date(); d.setHours((Number(m[1]) % 12) + (m[3].toLowerCase() === "pm" ? 12 : 0), Number(m[2] || 0), 0, 0);
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    return d.getTime() + 60000;
+  }
+  return Date.now() + huntCfg().usage_limit_wait_minutes * 60000;
+}
+function scheduleHunt(ms, note) {
+  clearTimeout(hunt.timer); hunt.timer = null;
+  if (!hunt.on) return pushState();
+  if (hunt.day !== today()) { hunt.day = today(); hunt.batchesToday = 0; }
+  if (hunt.batchesToday >= huntCfg().max_batches_per_day) {
+    const midnight = new Date(Date.parse(`${today()}T00:00:00+03:00`) + 864e5 + 5 * 60000).getTime(); // next Qatar day
+    ms = Math.max(ms, midnight - Date.now());
+    note = `Daily limit of ${huntCfg().max_batches_per_day} batches reached. Continues at ${clock(Date.now() + ms)}.`;
+  }
+  hunt.nextAt = Date.now() + ms;
+  hunt.note = note || `Next batch at ${clock(hunt.nextAt)}.`;
+  log(`Deep hunt: ${hunt.note}`);
+  hunt.timer = setTimeout(() => {
+    hunt.timer = null; hunt.pausedUntil = 0; hunt.nextAt = 0;
+    if (!hunt.on || !state.on) return;
+    if (!state.queue.some((t) => t.kind === "hunt") && state.running?.kind !== "hunt") { hunt.note = "Running a batch."; enqueue("hunt"); }
+  }, Math.max(1000, ms));
+  pushState();
+}
+async function afterHunt({ killed, code, limitText }) {
+  if (killed) { await runScript("hunt", ["release"]); hunt.on = false; hunt.note = "Stopped. Unfinished cells go back in the plan."; return pushState(); }
+  if (limitText) {
+    await runScript("hunt", ["release"]);
+    hunt.pausedUntil = parseReset(limitText);
+    return scheduleHunt(hunt.pausedUntil - Date.now(), `Usage limit reached. Paused, resumes at ${clock(hunt.pausedUntil)}.`);
+  }
+  hunt.batchesToday++;
+  hunt.errors = code ? (hunt.errors || 0) + 1 : 0;
+  if (hunt.errors >= 3) { await runScript("hunt", ["release"]); hunt.on = false; hunt.note = "Stopped after 3 failed batches in a row. Check the run logs."; log(`Deep hunt: ${hunt.note}`, "error"); return pushState(); }
+  const p = huntProgress();
+  if (p.cells && !p.todo) { hunt.on = false; hunt.note = "Plan complete: every niche and area has been hunted."; log(`Deep hunt: ${hunt.note}`, "done"); return pushState(); }
+  scheduleHunt(huntCfg().pause_minutes_between_batches * 60000);
+}
+
+// ── The assisted WhatsApp sender (a separate visible window) ──
+function startSender(mode) {
+  if (sender.child) return false;
+  const child = spawn(process.execPath, [path.join(SALES, "sender", "send.mjs"), ...(mode === "schedule" ? ["--schedule"] : [])], { cwd: ROOT, env: runEnv(), stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32", windowsHide: false });
+  Object.assign(sender, { child, mode, started: Date.now() });
+  log(mode === "schedule" ? "WhatsApp sender opened: morning and evening sessions." : "WhatsApp sender opened: one session now.", "start");
+  let buf = "";
+  const onData = (d) => { buf += d.toString(); let nl; while ((nl = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, nl).replace(/^\[\d\d:\d\d:\d\d\]\s*/, "").trim(); buf = buf.slice(nl + 1); if (line) log(`WhatsApp: ${line}`, /SAFETY|Stopped/.test(line) ? "error" : "send"); } };
+  child.stdout.on("data", onData); child.stderr.on("data", onData);
+  child.on("exit", () => { if (sender.child === child) Object.assign(sender, { child: null, mode: "", started: 0 }); log("WhatsApp sender closed."); pushState(); });
+  pushState();
+  return true;
+}
+function stopSender() {
+  const c = sender.child; if (!c) return;
+  if (process.platform === "win32") execFile("taskkill", ["/PID", String(c.pid), "/T", "/F"], () => {});
+  else { try { process.kill(-c.pid, "SIGKILL"); } catch { try { c.kill("SIGKILL"); } catch { /* gone */ } } }
 }
 function enqueue(kind, params = {}) {
   const t = TASKS[kind](params);
@@ -155,10 +251,15 @@ function killRunning() {
   else { try { process.kill(-r.child.pid, "SIGKILL"); } catch { try { r.child.kill("SIGKILL"); } catch { /* gone */ } } }
 }
 
-// ── Watch-mode browser, shared by every agent's browse.mjs call ──
-let browserP = null, browserHeaded = null, pageP = null, browseChain = Promise.resolve();
-async function getPage() {
-  if (browserP && browserHeaded !== state.watch) { const b = await browserP.catch(() => null); browserP = null; pageP = null; await b?.close().catch(() => {}); }
+// ── The agents' browser, shared by every browse.mjs call ──
+// Watch mode: one visible page, reads happen one after another so they can be followed.
+// Otherwise: up to 3 headless pages, so parallel hunters do not wait for each other.
+let browserP = null, browserHeaded = null, freePages = [], active = 0;
+const waiters = [];
+async function ensureBrowser() {
+  if (browserP && browserHeaded !== state.watch && active === 0) {
+    const b = await browserP.catch(() => null); browserP = null; freePages = []; await b?.close().catch(() => {});
+  }
   if (!browserP) {
     browserHeaded = state.watch;
     const require = createRequire(path.join(ROOT, "package.json"));
@@ -166,22 +267,35 @@ async function getPage() {
     const opts = { headless: !state.watch, args: state.watch ? ["--window-size=1280,900"] : [] };
     browserP = chromium.launch({ channel: "chrome", ...opts }).catch(() => chromium.launch({ channel: "msedge", ...opts }));
   }
-  if (!pageP) pageP = browserP.then((b) => b.newPage({ viewport: { width: 1280, height: 860 } }));
-  return pageP;
+  return browserP;
 }
-function browse({ url, caption, find }) {
-  const job = browseChain.then(async () => {
-    if (!state.on) throw new Error("the panel is switched off");
-    const page = await getPage();
+async function acquirePage() {
+  while (active >= (state.watch ? 1 : 3)) await new Promise((r) => waiters.push(r));
+  active++;
+  try {
+    const b = await ensureBrowser();
+    const p = freePages.pop();
+    return p && !p.isClosed() && p.context().browser() === b ? p : await b.newPage({ viewport: { width: 1280, height: 860 } });
+  } catch (e) { active--; waiters.shift()?.(); throw e; }
+}
+async function releasePage(page) {
+  active--;
+  const b = await browserP?.catch(() => null);
+  if (page && !page.isClosed()) { if (page.context().browser() === b) freePages.push(page); else await page.close().catch(() => {}); }
+  waiters.shift()?.();
+}
+async function browse({ url, caption, find }) {
+  if (!state.on) throw new Error("the panel is switched off");
+  const page = await acquirePage();
+  try {
     if (state.watch) log(`Watching: ${caption || url}`, "watch");
-    return readPage(page, { url, caption, find, speed: state.speed, watch: state.watch });
-  });
-  browseChain = job.catch(() => {});
-  return job;
+    return await readPage(page, { url, caption, find, speed: state.speed, watch: state.watch });
+  } finally { await releasePage(page); }
 }
 
 // ── Data for the page ──
-function snapshot() {
+function snapshot(q = "") {
+  const query = String(q).toLowerCase().trim().slice(0, 60);
   const leads = readLeads();
   const msgDir = path.join(DATA, "messages"), demoDir = path.join(DATA, "demos");
   const hasMsg = (s) => fs.existsSync(path.join(msgDir, `${s}.json`));
@@ -214,8 +328,15 @@ function snapshot() {
       demos: count((l) => ["demo-booked", "trial", "won"].includes(l.status)),
       won: count((l) => l.status === "won"),
     },
-    budget: { eleven_today: todays.reduce((n, i) => n + (i.chars || 0), 0), eleven_cap: cfg.budget.elevenlabs_chars_per_run, vapi_total: u.vapi_usd_total || 0, vapi_cap: cfg.budget.vapi_usd_total },
-    leads: leads.sort((a, b) => Number(b.score) - Number(a.score)).map((l) => ({ slug: l.slug, name: l.name, score: Number(l.score), dm: l.dm_name ? `${l.dm_name}, ${l.dm_role}` : "", status: l.status, next: next(l), demo: hasDemo(l.slug), check: checks[l.slug]?.summary ?? "" })),
+    budget: { eleven_week: weekChars(u), eleven_cap: cfg.budget.elevenlabs_chars_per_week, eleven_today: todays.reduce((n, i) => n + (i.chars || 0), 0), vapi_total: u.vapi_usd_total || 0, vapi_cap: cfg.budget.vapi_usd_total },
+    send: { sent_today: sentToday(), limit: cfg.send.daily_limit, queue: buildQueue().length, sessions: cfg.send.sessions },
+    // Replies the sender spotted (or logged by hand): Oussama answers these himself.
+    your_turn: leads.filter((l) => l.status === "replied").sort((a, b) => String(b.replied_at).localeCompare(String(a.replied_at))).slice(0, 20).map((l) => ({ slug: l.slug, name: l.name, dm: l.dm_name, at: l.replied_at || l.status_at })),
+    total_leads: leads.length,
+    // The table shows the best 200 matches; search narrows it (the store can hold thousands).
+    leads: leads.filter((l) => !query || `${l.name} ${l.niche} ${l.area} ${l.dm_name} ${l.status}`.toLowerCase().includes(query))
+      .sort((a, b) => Number(b.score) - Number(a.score)).slice(0, 200)
+      .map((l) => ({ slug: l.slug, name: l.name, niche: l.niche, score: Number(l.score), dm: l.dm_name ? `${l.dm_name}, ${l.dm_role}${l.dm_confidence ? ` (${l.dm_confidence})` : ""}` : "", route: l.route || "", status: l.status, next: next(l), demo: hasDemo(l.slug), check: checks[l.slug]?.summary ?? "" })),
     statuses: STATUSES.filter((s) => s !== "new"),
   };
 }
@@ -274,7 +395,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { ...SEC, "Content-Type": audio[2].endsWith(".ogg") ? "audio/ogg" : "audio/mpeg" });
       return fs.createReadStream(file).pipe(res);
     }
-    if (req.method === "GET" && url.pathname === "/api/state") return json(res, 200, { ...publicState(), ...snapshot() });
+    if (req.method === "GET" && url.pathname === "/api/state") return json(res, 200, { ...publicState(), ...snapshot(url.searchParams.get("q") || "") });
     if (req.method === "GET" && url.pathname === "/api/events") {
       res.writeHead(200, { ...SEC, "Content-Type": "text/event-stream", Connection: "keep-alive" });
       res.write(`data: ${JSON.stringify({ type: "state", state: publicState() })}\n\n`);
@@ -291,7 +412,13 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/power") {
       state.on = !!b.on;
-      if (!state.on) { const n = state.queue.length; state.queue = []; killRunning(); log(`Switched OFF${n ? `, ${n} queued task(s) cleared` : ""}.`, "error"); }
+      if (!state.on) {
+        const n = state.queue.length; state.queue = [];
+        // OFF stops everything: the agent run, the hunt loop and the WhatsApp window.
+        if (hunt.on) { hunt.on = false; clearTimeout(hunt.timer); hunt.timer = null; hunt.nextAt = 0; hunt.note = "Stopped by the OFF switch."; if (state.running?.kind !== "hunt") runScript("hunt", ["release"]); }
+        killRunning(); stopSender();
+        log(`Switched OFF${n ? `, ${n} queued task(s) cleared` : ""}.`, "error");
+      }
       else { log("Switched ON."); startNext(); }
       pushState(); return json(res, 200, { ok: true });
     }
@@ -307,6 +434,31 @@ const server = http.createServer(async (req, res) => {
       if (kind === "find") { const count = Math.round(Number(b.count)); if (!(count >= 1 && count <= 60)) return json(res, 400, { error: "count must be 1 to 60" }); enqueue("find", { count }); }
       else if (["today", "followups", "rescore"].includes(kind)) enqueue(kind);
       else return json(res, 400, { error: "unknown task" });
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === "/api/hunt") {
+      if (b.on) {
+        if (!state.on) return json(res, 409, { error: "The panel is OFF. Switch it ON first." });
+        if (hunt.on) return json(res, 200, { ok: true });
+        await runScript("hunt", ["init"]);
+        Object.assign(hunt, { on: true, errors: 0, pausedUntil: 0 });
+        log("Deep hunt started: one batch at a time, saved after every lead.", "start");
+        scheduleHunt(0, "Starting the first batch.");
+      } else {
+        hunt.on = false; clearTimeout(hunt.timer); hunt.timer = null; hunt.nextAt = 0;
+        state.queue = state.queue.filter((t) => t.kind !== "hunt");
+        hunt.note = state.running?.kind === "hunt" ? "Stopping after the current batch (or use OFF to stop it now)." : "Stopped. Start again any time: it resumes where it left off.";
+        log(`Deep hunt: ${hunt.note}`);
+        pushState();
+      }
+      return json(res, 200, { ok: true });
+    }
+    if (url.pathname === "/api/sender") {
+      const action = String(b.action);
+      if (action === "stop") { stopSender(); log("WhatsApp sender: stop requested."); return json(res, 200, { ok: true }); }
+      if (!["now", "schedule"].includes(action)) return json(res, 400, { error: "unknown action" });
+      if (!state.on) return json(res, 409, { error: "The panel is OFF. Switch it ON first." });
+      if (!startSender(action)) return json(res, 409, { error: "The sender is already open." });
       return json(res, 200, { ok: true });
     }
     if (url.pathname === "/api/log") {
@@ -345,4 +497,8 @@ server.listen(PORT, "127.0.0.1", () => {
     try { spawn(opener[0], opener[1], { detached: true, stdio: "ignore" }).unref(); } catch { /* open it by hand */ }
   }
 });
-process.on("SIGINT", () => { killRunning(); process.exit(0); });
+if (keyWarnings.length) {
+  const msg = `Found ${keyWarnings.join(" and ")}. It is ignored: sales runs always use your Claude subscription login.`;
+  console.log(`Note: ${msg}`); log(msg, "error");
+}
+process.on("SIGINT", () => { killRunning(); stopSender(); process.exit(0); });

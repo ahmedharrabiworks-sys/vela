@@ -13,7 +13,7 @@ const demo = (slug) => { const f = path.join(DATA, "demos", `${slug}.json`); ret
 const daysSince = (d) => Math.round((Date.parse(today()) - Date.parse(d)) / 864e5);
 
 const fresh = leads
-  .filter((l) => l.status === "new" && l.dm_name && msg(l.slug))
+  .filter((l) => l.status === "new" && l.route && msg(l.slug))
   .sort((a, b) => Number(b.score) - Number(a.score))
   .slice(0, Number(cfg.daily_limit) || 15);
 const due = leads.filter((l) => l.status === "sent" && l.contacted_at && Number(l.followups_sent || 0) < 3).map((l) => {
@@ -22,6 +22,8 @@ const due = leads.filter((l) => l.status === "sent" && l.contacted_at && Number(
   return daysSince(l.contacted_at) >= day && f ? { l, f } : null;
 }).filter(Boolean);
 
+const ROUTES = { A: "A · owner direct", B: "B · business WhatsApp, for the owner", C: "C · Instagram DM to the business" };
+const viaSender = (l) => l.route === "B" || (l.route === "A" && l.dm_direct_type === "whatsapp");
 const contactLabel = { instagram: "Open Instagram", linkedin: "Open LinkedIn", whatsapp: "Open WhatsApp", phone: "Call the business line" };
 const evidence = (l) => [
   ...(l.unanswered_comments || []).map((c) => `Unanswered comment${c.date ? ` (${h(c.date)})` : ""}: "${h(c.quote)}" ${safeUrl(c.link) ? `<a href="${safeUrl(c.link)}" target="_blank" rel="noopener">link</a>` : ""}`),
@@ -39,11 +41,13 @@ const card = (l, i) => {
     <div class="k">Sample call (${h(d.generated.call_seconds)}s)</div>
     <audio controls preload="none" src="data/${h(d.generated.call_mp3)}"></audio>
     <div class="row"><a class="btn" href="data/${h(d.generated.call_mp3)}" download>Download call</a>${d.published?.url ? `<a class="btn" href="${safeUrl(d.published.url)}" target="_blank" rel="noopener">Open demo page</a>` : `<span class="unk">Demo page not published yet (needs migration_v44, then demo-publish.mjs)</span>`}</div>` : "";
-  const open = safeUrl(l.contact_url) ? `<a class="btn p" href="${safeUrl(l.contact_url)}" target="_blank" rel="noopener">${h(contactLabel[l.contact_path] ?? "Open contact")}</a>` : "";
+  const igUrl = l.route === "C" ? safeUrl(l.instagram) : "";
+  const open = igUrl ? `<a class="btn p" href="${igUrl}" target="_blank" rel="noopener">Open Instagram</a>` : safeUrl(l.contact_url) ? `<a class="btn p" href="${safeUrl(l.contact_url)}" target="_blank" rel="noopener">${h(contactLabel[l.contact_path] ?? "Open contact")}</a>` : "";
   return `<section class="card">
     <div class="row"><div class="score">${h(l.score)}</div><div class="sp"><h2>${h(l.name)}</h2><div class="unk">${h(l.niche)} · ${facts(l)}</div></div></div>
     <div class="k">Decision maker</div>
-    <div class="row"><strong>${h(l.dm_name)}</strong><span class="unk">${h(l.dm_role)}</span>${safeUrl(l.dm_source) ? `<a href="${safeUrl(l.dm_source)}" target="_blank" rel="noopener">source</a>` : ""}</div>
+    <div class="row"><span class="pill m">${h(ROUTES[l.route] ?? l.route)}</span>${viaSender(l) ? `<span class="unk">Goes out through the WhatsApp sender (npm run sales:send)</span>` : `<span class="unk">Send by hand: Copy, then Open</span>`}</div>
+    <div class="row"><strong>${h(l.dm_name || "Owner not found")}</strong>${l.dm_confidence ? `<span class="unk">confidence: ${h(l.dm_confidence)}</span>` : ""}<span class="unk">${h(l.dm_role)}</span>${safeUrl(l.dm_source) ? `<a href="${safeUrl(l.dm_source)}" target="_blank" rel="noopener">source</a>` : ""}</div>
     <div class="unk">Contact path: ${h(l.contact_rank || l.contact_path)}</div>
     <div class="k">Why it fits</div><div>${h(l.why_fits)}</div>
     ${evidence(l).length ? `<div class="k">Evidence</div><ul class="wrap">${evidence(l).map((e) => `<li>${e}</li>`).join("")}</ul>` : ""}
