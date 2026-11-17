@@ -1,6 +1,6 @@
 {
  "MY_NAME": "Oussama",
- "DEMO_NUMBER": "",
+ "DEMO_NUMBER": "set in sales/data/local-config.json (gitignored: the repo is public)",
  "daily_limit": 60,
  "budget": {
   "elevenlabs_chars_per_week": 15000,

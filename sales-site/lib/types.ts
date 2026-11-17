@@ -20,16 +20,19 @@ export type Lead = {
 
 export type Worker = {
   heartbeat_at: string | null; power_on: boolean; running: string | null; queue: string[];
-  hunt: { on?: boolean; note?: string; cells?: number; done?: number; batchesToday?: number };
+  hunt: { on?: boolean; note?: string; cells?: number; done?: number; batchesToday?: number; progress?: Progress | null; demo_to?: string | null };
   sender_status: string | null; today_sent: number; daily_limit: number; queue_left: number; eleven_week: number; eleven_cap: number;
 };
+
+/** The run in progress on the laptop (worker writes it into sales_worker.hunt.progress). */
+export type Progress = { job_id: number; task: string; label: string; step: string; line: string; found: number; started_at: string };
 
 export type Stats = {
   total_leads: number; owners_found: number; ready: number; sent_total: number; sent_today: number;
   replied: number; demos_booked: number; won: number; cells_done: number; cells_total: number; by_niche: Record<string, number> | null;
 };
 
-export type Job = { id: number; task: string; params: Record<string, unknown>; status: string; result: string | null; created_at: string };
-export type LogLine = { id: number; line: string; kind: string; created_at: string };
+export type Job = { id: number; task: string; params: Record<string, unknown>; status: string; result: string | null; created_at: string; started_at?: string | null };
+export type LogLine = { id: number; job_id?: number | null; line: string; kind: string; created_at: string };
 
 export const STATUSES = ["sent", "replied", "demo-booked", "won", "lost", "do-not-contact"] as const;

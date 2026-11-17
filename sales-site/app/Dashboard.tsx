@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import type { Job, Lead, LogLine, Stats, Worker } from "@/lib/types";
+import type { Job, Lead, LogLine, Progress, Stats, Worker } from "@/lib/types";
 import LeadCard from "./LeadCard";
 
 const ONLINE_MS = 90_000; // heartbeat every 30 s; offline after 3 missed beats
@@ -9,6 +9,30 @@ const TASK_LABEL: Record<string, string> = {
   power: "ON / OFF", hunt: "Deep hunt", find: "Find new leads", today: "Build today's list", followups: "Follow-ups due",
   rescore: "Re-score", rewrite: "Rewrite message", sender: "WhatsApp session", log: "Status", check: "After-hours check",
 };
+const clock = (t: string) => new Date(t).toLocaleString("en-GB", { hour12: false, weekday: "short", hour: "2-digit", minute: "2-digit" });
+const elapsed = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); return s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`; };
+
+/** Live card for the job running on the laptop: step in plain words, leads found, time, log lines. */
+function ProgressCard({ p, logs, now }: { p: Progress; logs: LogLine[]; now: number }) {
+  const lines = logs.filter((l) => l.job_id === p.job_id).slice(-8);
+  return (
+    <section className="card progress" aria-live="polite">
+      <div className="row" style={{ flexWrap: "nowrap" }}><span className="pulse" aria-hidden /><h2 style={{ margin: 0, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{TASK_LABEL[p.task] ?? p.label}</h2></div>
+      <div className="step" style={{ marginTop: 6 }}>{p.step}</div>
+      {p.line ? <div className="muted" style={{ overflowWrap: "anywhere" }}>{p.line}</div> : null}
+      <div className="pnums">
+        <div><b>{p.found}</b><span>{p.task === "find" ? "Leads found" : "New leads"}</span></div>
+        <div><b>{elapsed(now - Date.parse(p.started_at))}</b><span>Elapsed</span></div>
+        <div><b>{lines.length ? new Date(lines[lines.length - 1].created_at).toLocaleTimeString("en-GB", { hour12: false }) : "..."}</b><span>Last update</span></div>
+      </div>
+      <div className="log">
+        {lines.map((l) => <div key={l.id} className={l.kind}><span className="t">{new Date(l.created_at).toLocaleTimeString("en-GB", { hour12: false })}  </span>{l.line}</div>)}
+        {!lines.length ? <div className="t">Waiting for the first log line...</div> : null}
+      </div>
+    </section>
+  );
+}
+
 type Tab = "today" | "leads" | "checks" | "log";
 const STATUS_OPTIONS = ["new", "sent", "replied", "demo-booked", "trial", "won", "lost", "do-not-contact", "known-contact"];
 
@@ -61,7 +85,9 @@ export default function Dashboard({ email }: { email: string }) {
   const logRef = useRef<HTMLDivElement>(null);
 
   const toast = useCallback((m: string) => { setToastMsg(m); setTimeout(() => setToastMsg(""), 3200); }, []);
-  const online = !!worker?.heartbeat_at && now - Date.parse(worker.heartbeat_at) < ONLINE_MS;
+  // Online = a recent heartbeat and not stopped on purpose (heartbeat_at stays as "last seen").
+  const online = !!worker?.heartbeat_at && worker.sender_status !== "offline" && now - Date.parse(worker.heartbeat_at) < ONLINE_MS;
+  const progress = online ? worker?.hunt?.progress ?? null : null;
 
   const load = useCallback(async () => {
     const [w, s, t, r, c, j, a] = await Promise.all([
@@ -90,7 +116,7 @@ export default function Dashboard({ email }: { email: string }) {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "sales_logs" }, (p) => { setLogs((x) => [...x.slice(-399), p.new as LogLine]); soon(); })
       .subscribe();
     const poll = setInterval(load, 30_000);
-    const tick = setInterval(() => setNow(Date.now()), 10_000);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => { sb.removeChannel(ch); clearInterval(poll); clearInterval(tick); if (timer) clearTimeout(timer); };
   }, [sb, load]);
 
@@ -115,7 +141,7 @@ export default function Dashboard({ email }: { email: string }) {
         <div className="topIn">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="Vela" />
-          <span className={`pill ${online ? "on" : "off"}`}><span className="dot" />{online ? "Laptop online" : "Laptop offline"}</span>
+          <span className={`pill status ${online ? "on" : "off"}`} title={online ? undefined : "Laptop worker not running"}><span className="dot" />{online ? `Online · ${worker?.running ?? (worker?.sender_status?.startsWith("open") ? "WhatsApp session" : "Idle")}` : "Laptop worker not running"}</span>
           <span className="sp" />
           <button className="switch" role="switch" aria-checked={!!worker?.power_on} aria-label="Agents on or off"
             onClick={() => { const on = !worker?.power_on; if (!on && !confirm("Switch OFF? The running job stops and the queue is cleared.")) return; queue("power", { on }, on ? "Switching ON" : "Switching OFF"); }} />
@@ -124,7 +150,8 @@ export default function Dashboard({ email }: { email: string }) {
 
       <main className="wrap">
         {setupError ? <div className="banner">The sales tables are not ready ({setupError}). Run supabase/migration_v45.sql and add your email to sales_admins.</div> : null}
-        {!online && !setupError ? <div className="banner">Your laptop is offline. Buttons still work: jobs will start when you run <b>npm run sales:all</b> on the laptop.</div> : null}
+        {!online && !setupError ? <div className="banner"><b>Laptop worker not running.</b> It starts automatically when your PC turns on. Last seen: {worker?.heartbeat_at ? clock(worker.heartbeat_at) : "never"}. Buttons still work: jobs wait and start when it is back.</div> : null}
+        {progress ? <ProgressCard p={progress} logs={logs} now={now} /> : null}
 
         {replied.length ? (
           <section className="card" style={{ borderColor: "#86efac" }}>
@@ -134,7 +161,7 @@ export default function Dashboard({ email }: { email: string }) {
         ) : null}
 
         <section className="card">
-          <div className="row"><h2 style={{ margin: 0 }}>Now</h2><span className="sp" /><span className="muted">{worker?.running ? `Running: ${worker.running}` : online ? "Idle" : ""}</span></div>
+          <div className="row"><h2 style={{ margin: 0 }}>Now</h2><span className="sp" /><span className="muted">{online ? (worker?.running ? `Running: ${worker.running}` : "Idle") : "Laptop worker not running"}</span></div>
           {worker?.queue?.length ? <div className="muted">Waiting on the laptop: {worker.queue.join(", ")}</div> : null}
           <div className="controls" style={{ marginTop: 10 }}>
             <button className={`btn ${hunt.on ? "" : "primary"}`} onClick={() => queue("hunt", { on: !hunt.on }, hunt.on ? "Stopping the deep hunt" : "Starting the deep hunt")}>{hunt.on ? "Stop deep hunt" : "Start deep hunt"}</button>
@@ -152,6 +179,9 @@ export default function Dashboard({ email }: { email: string }) {
                   <button className="btn" onClick={() => queue("sender", { action: "schedule" }, "Scheduled sessions opening on the laptop")}>Schedule</button></>}
             </div>
           </div>
+          <button className="btn" disabled={!worker?.hunt?.demo_to || senderOpen} onClick={() => queue("sender", { action: "demo" }, "Demo opening on the laptop: press Send there")}>
+            {worker?.hunt?.demo_to ? `Send the demo to my phone (${worker.hunt.demo_to})` : "Send the demo to my phone (set DEMO_NUMBER on the laptop)"}
+          </button>
           <p className="muted" style={{ marginBottom: 0 }}>The WhatsApp session opens on the laptop: you press Send there for every message. {hunt.note ?? ""}</p>
           {jobs.length ? (
             <details style={{ marginTop: 8 }}>

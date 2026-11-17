@@ -9,7 +9,13 @@ export const DATA = path.join(SALES, "data");
 export const ROOT = path.dirname(SALES);
 export const LEADS_CSV = path.join(DATA, "leads.csv");
 
-export const config = () => JSON.parse(fs.readFileSync(path.join(SALES, "config.json"), "utf8"));
+// sales/config.json (in git) plus sales/data/local-config.json (gitignored, personal values such as
+// DEMO_NUMBER: the repo is public, so a phone number never goes in config.json).
+export const config = () => {
+  const base = JSON.parse(fs.readFileSync(path.join(SALES, "config.json"), "utf8"));
+  try { Object.assign(base, JSON.parse(fs.readFileSync(path.join(SALES, "data", "local-config.json"), "utf8"))); } catch { /* no local values */ }
+  return base;
+};
 
 /** Secrets only from ../.env.local, never printed. */
 export function env() {

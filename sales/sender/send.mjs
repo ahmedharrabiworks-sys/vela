@@ -43,7 +43,7 @@ if (TEST) { S.gap_minutes = [0.03, 0.05]; S.wait_for_send_minutes = 0.5; }
 // top lead's message as the sample. Nothing is logged against any lead.
 const DEMO = args.includes("--demo");
 const DEMO_DIGITS = String(cfg.DEMO_NUMBER || "").replace(/\D/g, "").replace(/^00/, "");
-if (DEMO && DEMO_DIGITS.length < 10) { console.error('Set "DEMO_NUMBER" in sales/config.json first (your own WhatsApp number with country code, e.g. +974 5xxx xxxx).'); process.exit(1); }
+if (DEMO && DEMO_DIGITS.length < 10) { console.error('Set "DEMO_NUMBER" in sales/data/local-config.json first (your own WhatsApp number with country code, e.g. +974 5xxx xxxx).'); process.exit(1); }
 const NOLOG = TEST || DEMO;
 
 const require = createRequire(path.join(ROOT, "package.json"));

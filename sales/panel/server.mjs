@@ -225,9 +225,9 @@ async function afterHunt({ killed, code, limitText }) {
 // ── The assisted WhatsApp sender (a separate visible window) ──
 function startSender(mode) {
   if (sender.child) return false;
-  const child = spawn(process.execPath, [path.join(SALES, "sender", "send.mjs"), ...(mode === "schedule" ? ["--schedule"] : [])], { cwd: ROOT, env: runEnv(), stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32", windowsHide: false });
+  const child = spawn(process.execPath, [path.join(SALES, "sender", "send.mjs"), ...(mode === "schedule" ? ["--schedule"] : mode === "demo" ? ["--demo"] : [])], { cwd: ROOT, env: runEnv(), stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32", windowsHide: false });
   Object.assign(sender, { child, mode, started: Date.now() });
-  log(mode === "schedule" ? "WhatsApp sender opened: morning and evening sessions." : "WhatsApp sender opened: one session now.", "start");
+  log(mode === "schedule" ? "WhatsApp sender opened: morning and evening sessions." : mode === "demo" ? "WhatsApp sender opened: demo to your own number (text, voice note, video)." : "WhatsApp sender opened: one session now.", "start");
   let buf = "";
   const onData = (d) => { buf += d.toString(); let nl; while ((nl = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, nl).replace(/^\[\d\d:\d\d:\d\d\]\s*/, "").trim(); buf = buf.slice(nl + 1); if (line) log(`WhatsApp: ${line}`, /SAFETY|Stopped/.test(line) ? "error" : "send"); } };
   child.stdout.on("data", onData); child.stderr.on("data", onData);
@@ -461,7 +461,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/sender") {
       const action = String(b.action);
       if (action === "stop") { stopSender(); log("WhatsApp sender: stop requested."); return json(res, 200, { ok: true }); }
-      if (!["now", "schedule"].includes(action)) return json(res, 400, { error: "unknown action" });
+      if (!["now", "schedule", "demo"].includes(action)) return json(res, 400, { error: "unknown action" });
       if (!state.on) return json(res, 409, { error: "The panel is OFF. Switch it ON first." });
       if (!startSender(action)) return json(res, 409, { error: "The sender is already open." });
       return json(res, 200, { ok: true });

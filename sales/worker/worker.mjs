@@ -17,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 import { DATA, ROOT, SALES, config, env, nicheNote, readChecks, readLeads } from "../scripts/lib.mjs";
 import { todayLists } from "../scripts/build-today.mjs";
 import { checkPlanRows } from "../scripts/build-check-plan.mjs";
+import { keepAwake } from "./awake.mjs";
 
 const E = env();
 const URL_ = E.NEXT_PUBLIC_SUPABASE_URL, KEY = E.SUPABASE_SERVICE_ROLE_KEY;
@@ -75,15 +76,48 @@ setInterval(async () => {
   if (error) say(`log upload failed: ${error.message}`);
 }, 2000);
 
+// ── Live progress of the run in progress (shown as a card on the dashboard) ──
+// Kept in sales_worker.hunt.progress (jsonb), so no new column is needed.
+let progress = null; // { job_id, task, label, step, line, found, started_at }
+const STEPS = [
+  [/ingest/i, "Saving the leads"], [/build-today/i, "Building today's list"], [/niche-voice|voice note/i, "Recording the voice note"],
+  [/demo/i, "Building a demo"], [/qualif|scor/i, "Scoring the leads"], [/owner|decision/i, "Finding the owners"],
+  [/writ|message|follow/i, "Writing the messages"], [/hunt|search|find|business|lead/i, "Searching for businesses"],
+];
+function stepOf(text) {
+  if (!/Agent started:|Running [\w-]+$/.test(text)) return null;
+  return STEPS.find(([re]) => re.test(text))?.[1] ?? null;
+}
+const leadCount = () => { try { return readLeads().length; } catch { return 0; } };
+let progressTimer = null;
+function onProgressLine(text) {
+  if (!progress) return;
+  progress.step = stepOf(text) ?? (progress.step === "Starting" && /Searching the web|Reading /.test(text) ? "Searching for businesses" : progress.step);
+  progress.line = String(text).trim().slice(0, 160);
+  progress.found = Math.max(0, leadCount() - progress.base);
+  if (!progressTimer) progressTimer = setTimeout(pushProgress, 3000);
+}
+async function pushProgress() {
+  progressTimer = null;
+  try { await db.from("sales_worker").update({ hunt: { ...(lastState?.hunt ?? {}), progress: publicProgress(), demo_to: demoTo() }, updated_at: new Date().toISOString() }).eq("id", 1); } catch { /* next beat */ }
+}
+const publicProgress = () => (progress ? { job_id: progress.job_id, task: progress.task, label: progress.label, step: progress.step, line: progress.line, found: progress.found, started_at: progress.started_at } : null);
+// The demo button shows where the demo goes, masked (the number itself stays on the laptop).
+const demoTo = () => { const d = String(config().DEMO_NUMBER || "").replace(/\D/g, ""); return d.length >= 10 ? `+${d.slice(0, 3)} •••• ${d.slice(-4)}` : null; };
+
 // ── Heartbeat + status ──
 let lastState = null;
 async function heartbeat() {
   try {
     lastState = await panel("/api/state?q=__none__");
     const s = lastState;
+    // Keep the PC awake while there is work; let it sleep when idle.
+    const busy = !!s.running || s.queue.length > 0 || !!s.sender?.running || !!s.hunt?.on || !!currentJob;
+    if (keepAwake(busy)) say(busy ? "Keeping the PC awake while working." : "Idle: the PC may sleep again.");
+    if (progress) progress.found = Math.max(0, leadCount() - progress.base);
     await db.from("sales_worker").upsert({
       id: 1, heartbeat_at: new Date().toISOString(), power_on: s.on, running: s.running?.label ?? null, queue: s.queue,
-      hunt: s.hunt, sender_status: s.sender.running ? (s.sender.mode === "schedule" ? "open (scheduled sessions)" : "open (session now)") : "closed",
+      hunt: { ...s.hunt, progress: publicProgress(), demo_to: demoTo() }, sender_status: s.sender.running ? (s.sender.mode === "schedule" ? "open (scheduled sessions)" : "open (session now)") : "closed",
       today_sent: s.send.sent_today, daily_limit: s.send.limit, queue_left: s.send.queue, eleven_week: s.budget.eleven_week, eleven_cap: s.budget.eleven_cap,
       updated_at: new Date().toISOString(),
     });
@@ -191,7 +225,7 @@ setInterval(sync, 60000); // also catches edits made outside the panel
           const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
           const line = chunk.split("\n").find((x) => x.startsWith("data: ")); if (!line) continue;
           let ev; try { ev = JSON.parse(line.slice(6)); } catch { continue; }
-          if (ev.type === "log" && !first) { pushLog(ev.text, ev.kind); syncSoon(); if (currentJob && ev.kind === "error" && /ended with an error/.test(ev.text)) currentJob.failed = true; }
+          if (ev.type === "log" && !first) { pushLog(ev.text, ev.kind); onProgressLine(ev.text); syncSoon(); if (currentJob && ev.kind === "error" && /ended with an error/.test(ev.text)) currentJob.failed = true; }
           if (ev.type === "state") { first = false; setTimeout(heartbeat, 500); }
         }
       }
@@ -210,7 +244,7 @@ async function finishRunIfIdle(s) {
   const label = currentJob.label;
   const busy = label ? s.running?.label === label || s.queue.includes(label) : !!s.running || s.queue.length;
   if (busy) return;
-  const job = currentJob; currentJob = null;
+  const job = currentJob; currentJob = null; progress = null;
   const status = !s.on ? "stopped" : job.failed ? "failed" : "done";
   await setJob(job.id, { status, finished_at: new Date().toISOString(), result: status === "done" ? "Finished" : status });
   pushLog(`Job ${job.id} ${status}.`, status === "done" ? "done" : "error");
@@ -234,16 +268,16 @@ async function processJobs() {
           if (!p.on) {
             // OFF from the phone: stop the run and clear the site's queue too.
             await db.from("sales_jobs").update({ status: "stopped", finished_at: new Date().toISOString(), result: "Cleared by OFF" }).eq("status", "queued").neq("id", job.id);
-            if (currentJob) { await setJob(currentJob.id, { status: "stopped", finished_at: new Date().toISOString() }); currentJob = null; }
+            if (currentJob) { await setJob(currentJob.id, { status: "stopped", finished_at: new Date().toISOString() }); currentJob = null; progress = null; }
           }
           await done(p.on ? "Switched ON" : "Switched OFF");
           if (!p.on) break;
         } else if (job.task === "hunt") { await panel("/api/hunt", { on: !!p.on }); await done(p.on ? "Deep hunt started" : "Deep hunt stopping"); }
         else if (job.task === "sender") {
-          const action = ["now", "schedule", "stop"].includes(p.action) ? p.action : "";
+          const action = ["now", "schedule", "demo", "stop"].includes(p.action) ? p.action : "";
           if (!action) { await done("unknown sender action", "failed"); continue; }
           await panel("/api/sender", { action });
-          await done(action === "stop" ? "Sender closed" : "Sender window opened on the laptop: press Send there");
+          await done(action === "stop" ? "Sender closed" : action === "demo" ? "Demo window opened on the laptop: press Send there, it goes to your own number only" : "Sender window opened on the laptop: press Send there");
         } else if (job.task === "log") {
           if (!SLUG.test(String(p.slug))) { await done("invalid lead", "failed"); continue; }
           const r = await panel("/api/log", { slug: p.slug, status: String(p.status), note: String(p.note || "From the online dashboard") });
@@ -259,6 +293,8 @@ async function processJobs() {
           const after = await panel("/api/state?q=__none__");
           const label = after.queue.find((q) => !before.queue.includes(q)) ?? (after.running && after.running.label !== before.running?.label ? after.running.label : null);
           currentJob = { id: job.id, label, startedAt: Date.now(), failed: false };
+          progress = { job_id: job.id, task: job.task, label: label ?? job.task, step: "Starting", line: "", found: 0, base: leadCount(), started_at: new Date().toISOString() };
+          pushProgress();
           await setJob(job.id, { status: "running", started_at: new Date().toISOString() });
           pushLog(`Job ${job.id} started: ${label ?? job.task}`, "start");
         } else await done("unknown task", "failed");
@@ -274,6 +310,11 @@ setInterval(processJobs, 10000);
 setInterval(() => db.from("sales_logs").delete().lt("created_at", new Date(Date.now() - 14 * 864e5).toISOString()), 6 * 3600e3);
 
 // ── Start ──
+// A run that was in progress when the last worker died cannot be resumed: close it honestly.
+{
+  const { data: stale } = await db.from("sales_jobs").update({ status: "failed", finished_at: new Date().toISOString(), result: "The laptop worker stopped during this run. Run it again." }).eq("status", "running").select("id");
+  if (stale?.length) pushLog(`Closed ${stale.length} run(s) cut off by the last stop: ${stale.map((j) => `#${j.id}`).join(", ")}. Run them again.`, "error");
+}
 say("First sync of existing data...");
 await sync();
 await heartbeat();
@@ -286,11 +327,16 @@ const shutdown = async () => {
   if (stopping) return;
   stopping = true;
   say("Stopping...");
-  await db.from("sales_worker").update({ heartbeat_at: null, sender_status: "offline", running: null }).eq("id", 1);
+  // heartbeat_at stays as "last seen"; sender_status "offline" tells the dashboard it stopped on purpose.
+  keepAwake(false);
+  await db.from("sales_worker").update({ sender_status: "offline", running: null, hunt: { ...(lastState?.hunt ?? {}), progress: null, demo_to: demoTo() } }).eq("id", 1);
   if (process.platform === "win32") execFile("taskkill", ["/PID", String(panelChild.pid), "/T", "/F"], () => process.exit(0));
   else { panelChild.kill("SIGINT"); process.exit(0); }
 };
 process.on("SIGINT", shutdown);
+// npm run sales:stop writes sales/data/runs/stopped: stop cleanly (this also tells the supervisor not to restart).
+const STOPPED = path.join(DATA, "runs", "stopped"), BORN = Date.now();
+setInterval(() => { try { if (fs.statSync(STOPPED).mtimeMs > BORN) shutdown(); } catch { /* no stop request */ } }, 1500);
 process.on("SIGTERM", shutdown);
 // Closing the window (Windows sends SIGHUP and gives a few seconds): mark the laptop offline at once.
 process.on("SIGHUP", shutdown);
