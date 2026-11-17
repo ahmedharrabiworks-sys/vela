@@ -80,3 +80,9 @@ input, select, textarea { min-height: 44px; border: 1px solid var(--line); borde
 audio { width: 100%; height: 40px; }
 .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #111; color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 50; max-width: 92vw; text-align: center; }
 .lead > .btn, .lead > .stack > .btn { align-self: flex-start; }
+.angles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+@media (min-width: 720px) { .angles { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.angle { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
+.angle b { font-size: 20px; line-height: 1.2; }
+.angle.best { border-color: var(--o); background: #fff7f2; }
+.angle .meter { margin: 4px 0 0; }

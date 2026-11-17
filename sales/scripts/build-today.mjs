@@ -18,7 +18,7 @@ const fresh = leads
   .sort((a, b) => Number(b.score) - Number(a.score))
   .slice(0, Number(cfg.daily_limit) || 15);
 const due = leads.filter((l) => l.status === "sent" && l.contacted_at && Number(l.followups_sent || 0) < 3).map((l) => {
-  const n = Number(l.followups_sent || 0), day = [2, 5, 9][n];
+  const n = Number(l.followups_sent || 0), day = [3, 7, 12][n];
   const f = msg(l.slug)?.followups?.find((x) => x.day === day);
   return daysSince(l.contacted_at) >= day && f ? { l, f } : null;
 }).filter(Boolean);

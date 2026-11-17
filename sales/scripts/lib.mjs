@@ -190,6 +190,52 @@ export function nicheNote(nicheText, lang, ext = "ogg") {
   return null;
 }
 
+// ── Question angles (A/B test on message 1) ──
+export const ANGLES = ["after-hours", "friday", "branches", "peak-hours", "whatsapp-backlog"];
+const REPLIED = new Set(["replied", "demo-booked", "trial", "won"]);
+const msgOf = (slug) => { try { return JSON.parse(fs.readFileSync(path.join(DATA, "messages", `${slug}.json`), "utf8")); } catch { return null; } };
+/** Angles this lead has a real fact for (peak-hours always fits: every business has a rush). */
+export function eligibleAngles(l) {
+  const text = `${l.hours || ""} ${l.closed_days || ""}`.toLowerCase();
+  const branches = Number(String(l.branches || "").match(/\d+/)?.[0] || 0);
+  const out = [];
+  if (l.closing_time || /\d{1,2}[:.]\d\d/.test(text)) out.push("after-hours");
+  if (/fri(day)?[^,;]{0,12}closed|closed[^,;]{0,12}fri|weekend|الجمعة/.test(text)) out.push("friday");
+  if (branches >= 2) out.push("branches");
+  out.push("peak-hours");
+  if (l.whatsapp_public) out.push("whatsapp-backlog");
+  return out;
+}
+/** Per angle: first messages sent and how many of those leads replied. */
+export function angleStats(leads = readLeads()) {
+  const s = Object.fromEntries(ANGLES.map((a) => [a, { sent: 0, replied: 0, rate: 0 }]));
+  for (const l of leads) {
+    const a = msgOf(l.slug)?.angle_key;
+    if (!s[a] || !(l.contacted_at || l.last_sent_at) || l.status === "new") continue;
+    s[a].sent++;
+    if (REPLIED.has(l.status) || l.replied_at) s[a].replied++;
+  }
+  for (const a of ANGLES) s[a].rate = s[a].sent ? Math.round((s[a].replied / s[a].sent) * 1000) / 10 : 0;
+  return s;
+}
+/** The angle for a new message: balanced until every angle has 20+ sends, then 70% the best reply rate, 30% the others. */
+export function pickAngle(lead, leads = readLeads(), rnd = Math.random) {
+  const ok = eligibleAngles(lead), st = angleStats(leads);
+  const allTested = ANGLES.every((a) => st[a].sent >= 20);
+  if (allTested) {
+    const best = [...ANGLES].sort((a, b) => st[b].rate - st[a].rate)[0];
+    const others = ok.filter((a) => a !== best);
+    if (ok.includes(best) && (rnd() < 0.7 || !others.length)) return best;
+    if (others.length) return others[Math.floor(rnd() * others.length)];
+  }
+  // Still testing: the least-sent angle this lead fits (ties broken at random, so the angles spread).
+  const planned = Object.fromEntries(ANGLES.map((a) => [a, st[a].sent]));
+  for (const l of leads) { const a = l.status === "new" ? msgOf(l.slug)?.angle_key : null; if (a && planned[a] !== undefined) planned[a] += 1; }
+  const min = Math.min(...ok.map((a) => planned[a]));
+  const pool = ok.filter((a) => planned[a] === min);
+  return pool[Math.floor(rnd() * pool.length)];
+}
+
 // ── Usage budget (ElevenLabs characters per week, Vapi dollars in total) ──
 const USAGE = path.join(DATA, "usage.json");
 export function usage() {

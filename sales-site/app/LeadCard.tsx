@@ -44,6 +44,7 @@ export default function LeadCard({ lead: l, queue, toast }: { lead: Lead; queue:
       {due ? <span className="pill o">Follow-up day {due.day}{due.adds ? `: ${due.adds}` : ""}</span> : null}
       <div className="row">
         {l.route ? <span className="route" title={ROUTE[l.route]}>{l.route}</span> : null}
+        {l.message?.angle_key ? <span className="pill o" title={l.message.angle || undefined}>Angle: {l.message.angle_key.replace(/-/g, " ")}</span> : null}
         <span>{l.owner_name ? <strong>{l.owner_name}</strong> : <span className="muted">Owner not found</span>}{l.owner_role ? <span className="muted">, {l.owner_role}</span> : null}</span>
         {l.owner_confidence ? <span className="muted">({l.owner_confidence})</span> : null}
         {safe(l.owner_source) ? <a href={safe(l.owner_source)!} target="_blank" rel="noopener noreferrer" className="muted">source</a> : null}

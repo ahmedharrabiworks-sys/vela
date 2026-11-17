@@ -11,7 +11,8 @@
     "sales:panel": "node sales/panel/server.mjs",
     "sales:send": "node sales/sender/send.mjs",
     "sales:worker": "node sales/worker/supervise.mjs",
-    "sales:all": "node sales/worker/supervise.mjs --open"
+    "sales:all": "node sales/worker/supervise.mjs --open",
+    "sales:demo": "node sales/sender/send.mjs --demo"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

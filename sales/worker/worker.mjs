@@ -143,7 +143,7 @@ async function sync() {
         website: l.website || null, instagram: l.instagram || null, whatsapp_public: l.whatsapp_public || null, phone_public: l.phone_public || null,
         google_rating: l.google_rating || null, google_reviews: l.google_reviews || null, closing_time: l.closing_time || null, after_hours: l.after_hours_signal || null,
         evidence: { unanswered_comments: l.unanswered_comments || [], slow_reply_reviews: l.slow_reply_reviews || [], other_evidence: l.other_evidence || [], unknowns: l.unknowns || [], branches: l.branches || null, staff: l.staff || null, hours: l.hours || null, closed_days: l.closed_days || null, ig_followers: l.ig_followers || null, meta_ads: l.meta_ads || null, premium_area: l.premium_area || null },
-        message: m ? { ar: m.first?.ar ?? "", en: m.first?.en ?? "", route: m.route ?? null, send_lang: m.send_lang ?? "both", angle: m.angle ?? "", to: m.to ?? "", followups: m.followups ?? [] } : null,
+        message: m ? { ar: m.first?.ar ?? "", en: m.first?.en ?? "", route: m.route ?? null, send_lang: m.send_lang ?? "both", angle: m.angle ?? "", angle_key: m.angle_key ?? null, to: m.to ?? "", followups: m.followups ?? [] } : null,
         check_result: checks[l.slug] ?? null, check_plan: plan.get(l.slug) ?? null, demo_url: d?.published?.url ?? null, audio,
         in_today: rank.has(l.slug), today_rank: rank.get(l.slug) ?? null, followup_due: dueDay.get(l.slug) ?? null,
         contacted_at: l.contacted_at || null, last_contacted_at: ts(l.last_sent_at), replied_at: ts(l.replied_at), found_at: l.found_at || null,

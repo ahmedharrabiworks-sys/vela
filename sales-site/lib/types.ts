@@ -10,7 +10,7 @@ export type Lead = {
   website: string | null; instagram: string | null; whatsapp_public: string | null; phone_public: string | null;
   google_rating: string | null; google_reviews: string | null; closing_time: string | null; after_hours: string | null;
   evidence: { unanswered_comments?: Quote[]; slow_reply_reviews?: Quote[]; other_evidence?: Fact[]; unknowns?: string[]; branches?: string | null; staff?: string | null };
-  message: { ar: string; en: string; route: string | null; send_lang: string; angle: string; to: string; followups: Followup[] } | null;
+  message: { ar: string; en: string; route: string | null; send_lang: string; angle: string; angle_key?: string | null; to: string; followups: Followup[] } | null;
   check_result: { summary?: string } | null;
   check_plan: { question: string; from: string; to: string; closes: string } | null;
   demo_url: string | null; audio: { voice_note?: string; call?: string };

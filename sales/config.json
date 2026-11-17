@@ -113,11 +113,20 @@
   "invalid_streak_stop": 3,
   "language": "both",
   "voice_note": true,
-  "attach_video": false,
+  "attach_video": true,
   "video": {
-   "ar": "promo-video/out/vela-ar.mp4",
-   "en": "promo-video/out/vela-en.mp4"
+   "ar": "promo-video/out/vela-short-ar.mp4",
+   "en": "promo-video/out/vela-short-en.mp4"
   },
+  "voice_speed": 1.08,
+  "voice_after_seconds": [
+   3,
+   6
+  ],
+  "video_after_seconds": [
+   5,
+   10
+  ],
   "wait_for_send_minutes": 10
  }
 }

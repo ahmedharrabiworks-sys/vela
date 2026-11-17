@@ -12,11 +12,13 @@
 // (gitignored, local only).
 import fs from "node:fs";
 import path from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { DATA, ROOT, SALES, config, nameKey, phoneKey, readLeads, today, withLeads } from "../scripts/lib.mjs";
 import { SENDS, buildQueue, sentToday } from "../scripts/send-queue.mjs";
+import { ffmpegBin } from "../scripts/ffmpeg-path.mjs";
 import { overlay } from "./overlay.mjs";
+import { mic } from "./mic.mjs";
 
 const args = process.argv.slice(2);
 const cfg = config(), S = cfg.send;
@@ -37,6 +39,13 @@ if (TEST && !(/^http:\/\/127\.0\.0\.1:\d+$/.test(TEST.base) && TEST.queue && TES
 const BASE = TEST ? TEST.base : "https://web.whatsapp.com";
 if (TEST) { S.gap_minutes = [0.03, 0.05]; S.wait_for_send_minutes = 0.5; }
 
+// Demo mode: the full first contact (text, voice note, video) to DEMO_NUMBER only, using the
+// top lead's message as the sample. Nothing is logged against any lead.
+const DEMO = args.includes("--demo");
+const DEMO_DIGITS = String(cfg.DEMO_NUMBER || "").replace(/\D/g, "").replace(/^00/, "");
+if (DEMO && DEMO_DIGITS.length < 10) { console.error('Set "DEMO_NUMBER" in sales/config.json first (your own WhatsApp number with country code, e.g. +974 5xxx xxxx).'); process.exit(1); }
+const NOLOG = TEST || DEMO;
+
 const require = createRequire(path.join(ROOT, "package.json"));
 const { chromium } = require("playwright");
 const PROFILE = TEST ? path.join(TEST.out, "profile") : path.join(DATA, "wa-profile");
@@ -51,6 +60,8 @@ const opts = { channel: "chrome", headless: false, viewport: null, bypassCSP: tr
 const ctx = await chromium.launchPersistentContext(PROFILE, opts).catch(() => chromium.launchPersistentContext(PROFILE, { ...opts, channel: "msedge" }));
 await ctx.exposeBinding("__velaControl", (_src, action) => control(String(action)));
 await ctx.addInitScript(overlay);
+await ctx.addInitScript(mic);
+await ctx.grantPermissions(["microphone"], { origin: BASE }).catch(() => {});
 const page = ctx.pages()[0] ?? (await ctx.newPage());
 ctx.on("close", () => { stopRequested = true; });
 // Read only: never let the page navigate away from WhatsApp.
@@ -86,7 +97,61 @@ const SEL = {
   send: "footer button[aria-label='Send'], footer span[data-icon='send'], footer span[data-icon='wds-ic-send-filled']",
   attach: "[aria-label='Attach'], span[data-icon='plus'], span[data-icon='plus-rounded'], span[data-icon='attach-menu-plus']",
   mediaSend: "div[role='button'][aria-label='Send'], span[data-icon='send'], span[data-icon='wds-ic-send-filled']",
+  // Voice note recording: the mic shows when the box is empty; pause gives a preview with Send.
+  mic: "footer button[aria-label='Voice message'], footer [aria-label='Voice message'], footer [aria-label='رسالة صوتية'], footer span[data-icon='ptt'], footer span[data-icon='mic-outlined'], footer span[data-icon='wds-ic-mic']",
+  pause: "footer [aria-label='Pause'], footer [aria-label='Pause recording'], footer [aria-label='إيقاف مؤقت'], footer span[data-icon='pause-refreshed'], footer span[data-icon='pause'], footer span[data-icon='wds-ic-pause']",
+  discard: "footer [aria-label='Delete'], footer [aria-label='Discard'], footer [aria-label='حذف'], footer span[data-icon='delete'], footer span[data-icon='wds-ic-delete']",
 };
+
+// ── The voice note at 1.08 speed (pitch kept), made once per file ──
+function fastVersion(file) {
+  const speed = Number(S.voice_speed) || 1.08;
+  const out = path.join(path.dirname(file), "fast", `${path.basename(file).replace(/\.\w+$/, "")}-x${String(speed).replace(".", "")}.ogg`);
+  if (!fs.existsSync(out) || fs.statSync(out).mtimeMs < fs.statSync(file).mtimeMs) {
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    execFileSync(ffmpegBin("ffmpeg"), ["-y", "-v", "error", "-i", file, "-filter:a", `atempo=${speed}`, "-ac", "1", "-ar", "48000", "-c:a", "libopus", "-b:a", "48k", out]);
+  }
+  return out;
+}
+const between = ([lo, hi]) => Math.round((lo + Math.random() * (hi - lo)) * 1000);
+
+/** Records the voice note through WhatsApp's own recorder, then waits for Oussama's Send. Returns "sent", "skipped", "stop" or "fallback". */
+async function voiceNote(item, file) {
+  const fast = fastVersion(file);
+  const secs = await page.evaluate((b64) => window.__velaMicLoad?.(b64), fs.readFileSync(fast).toString("base64")).catch(() => 0);
+  if (!secs) return "fallback";
+  const micBtn = page.locator(SEL.mic).first();
+  if (!(await micBtn.isVisible().catch(() => false))) { await page.evaluate(() => window.__velaMicClear?.()); return "fallback"; }
+  await point(SEL.mic);
+  await ui(`${item.name}: recording the voice note (${Math.round(secs)} s), hands off`);
+  await micBtn.click({ timeout: 5000 });
+  // Wait for the voice to finish playing into the recorder.
+  const t0 = Date.now();
+  while (Date.now() - t0 < (secs + 8) * 1000) {
+    if (stopRequested) return "stop";
+    const st = await page.evaluate(() => window.__velaMicState?.()).catch(() => null);
+    if (st?.ends && st.now > st.ends + 250) break;
+    await sleep(200);
+  }
+  const pauseBtn = page.locator(SEL.pause).first();
+  if (!(await pauseBtn.isVisible().catch(() => false))) {
+    // No pause in this WhatsApp version: throw the recording away rather than let silence run on.
+    await page.locator(SEL.discard).first().click({ timeout: 3000 }).catch(() => {});
+    await page.evaluate(() => window.__velaMicClear?.());
+    return "fallback";
+  }
+  await pauseBtn.click({ timeout: 3000 });
+  await page.evaluate(() => window.__velaMicClear?.());
+  await point(SEL.send);
+  const before = await outCount();
+  const r = await waitFor({
+    ms: S.wait_for_send_minutes * 60000,
+    caption: `${item.name}: listen if you like, then press Send for the voice note`,
+    buttons: [{ id: "sent", label: "I sent it" }, { id: "skip", label: "Skip voice note" }],
+    check: async () => (await outCount()) > before,
+  });
+  return r === "stop" ? "stop" : r === "condition" || r === "sent" ? "sent" : "skipped";
+}
 let wasLoggedIn = false;
 async function safety() {
   const t = await page.evaluate(() => {
@@ -106,8 +171,8 @@ const mainHas = (snippet) => page.evaluate((s) => (document.querySelector("#main
 const outCount = () => page.evaluate(() => document.querySelectorAll("#main .message-out").length).catch(() => 0);
 
 // ── Records ──
-const run = (script, a) => (TEST ? Promise.resolve(`(test) ${script} ${a.join(" ")}`) : new Promise((ok) => execFile(process.execPath, [path.join(SALES, "scripts", `${script}.mjs`), ...a], { cwd: ROOT }, (e, out, err) => ok(`${out}${err}`.trim()))));
-const record = (entry) => fs.appendFileSync(TEST ? path.join(TEST.out, "sends.jsonl") : SENDS, JSON.stringify({ at: new Date().toISOString(), ...entry }) + "\n");
+const run = (script, a) => (NOLOG ? Promise.resolve(`(${DEMO ? "demo" : "test"}) ${script} ${a.join(" ")}`) : new Promise((ok) => execFile(process.execPath, [path.join(SALES, "scripts", `${script}.mjs`), ...a], { cwd: ROOT }, (e, out, err) => ok(`${out}${err}`.trim()))));
+const record = (entry) => fs.appendFileSync(TEST ? path.join(TEST.out, "sends.jsonl") : DEMO ? path.join(DATA, "runs", "demo-sends.jsonl") : SENDS, JSON.stringify({ at: new Date().toISOString(), ...entry }) + "\n");
 
 // ── Replies: read the chat list only (unread badges), never open a chat ──
 const flagged = new Set();
@@ -141,7 +206,7 @@ async function sendOne(item, i, n) {
   if (ready === "stop") return "stop";
   if (ready === "invalid") {
     invalidStreak++;
-    if (!TEST) await withLeads((ls) => { const l = ls.find((x) => x.slug === item.slug); if (l) l.wa_invalid = today(); });
+    if (!NOLOG) await withLeads((ls) => { const l = ls.find((x) => x.slug === item.slug); if (l) l.wa_invalid = today(); });
     record({ slug: item.slug, kind: item.kind, result: "not-on-whatsapp" });
     say(`${item.name}: number not on WhatsApp (${invalidStreak} in a row).`);
     if (invalidStreak >= S.invalid_streak_stop) { stopRequested = true; say(`SAFETY STOP: ${invalidStreak} numbers in a row are not on WhatsApp.`); await ui("Stopped for safety: 3 numbers in a row not on WhatsApp"); return "stop"; }
@@ -165,10 +230,20 @@ async function sendOne(item, i, n) {
   record({ slug: item.slug, kind: item.kind, result: "sent", number_end: item.number.slice(-4) });
   say(`${item.name}: sent. ${await run("log", [item.slug, "sent", item.kind === "first" ? "WhatsApp, first message" : `WhatsApp, ${item.kind}`])}`);
 
-  // Attachments: voice note, then the promo video, each sent by Oussama.
+  // Then: 3 to 6 s later the voice note (a real WhatsApp voice note), 5 to 10 s later the video. Oussama presses Send on each.
   for (const a of item.attachments) {
     if (stopRequested) return "stop";
-    const what = a.type === "voice" ? "the voice note" : "the promo video";
+    const what = a.type === "voice" ? "the voice note" : "the Vela video";
+    const pause = between(a.type === "voice" ? S.voice_after_seconds ?? [3, 6] : S.video_after_seconds ?? [5, 10]);
+    await ui(`${item.name}: ${what} in ${Math.round(pause / 1000)} s`);
+    await sleep(pause);
+    if (stopRequested) return "stop";
+    if (a.type === "voice") {
+      const v = await voiceNote(item, a.file);
+      if (v === "stop") return "stop";
+      if (v !== "fallback") { record({ slug: item.slug, kind: `${item.kind}-voice`, result: v, as: "voice-note" }); continue; }
+      say(`${item.name}: the voice recorder was not found, attaching the voice note as audio instead.`);
+    }
     let attached = false;
     try {
       await point(SEL.attach);
@@ -204,7 +279,13 @@ async function ensureLogin() {
   wasLoggedIn = ok;
   return ok;
 }
-const getQueue = (o) => (TEST ? JSON.parse(fs.readFileSync(TEST.queue, "utf8")) : buildQueue(o));
+// Demo: the top first-contact item (its text, voice note and video), sent to DEMO_NUMBER only.
+function demoQueue() {
+  const top = buildQueue({ limit: 50 }).find((q) => q.kind === "first");
+  if (!top) return [];
+  return [{ ...top, slug: `demo-${top.slug}`, name: `Demo (${top.name})`, number: DEMO_DIGITS }];
+}
+const getQueue = (o) => (TEST ? JSON.parse(fs.readFileSync(TEST.queue, "utf8")) : DEMO ? demoQueue() : buildQueue(o));
 async function session(name) {
   const queue = getQueue({ limit: S.per_session });
   say(`Session ${name}: ${queue.length} to prepare (sent today ${sentToday()} of ${S.daily_limit}).`);

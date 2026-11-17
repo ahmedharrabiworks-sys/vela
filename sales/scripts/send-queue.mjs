@@ -1,7 +1,7 @@
 // Today's WhatsApp queue for the assisted sender (it prepares, Oussama presses Send).
 //   node sales/scripts/send-queue.mjs            print today's queue (dry run, sends nothing)
 // Rules:
-// - follow-ups due today first (day 2, 5, 9), then new leads by score;
+// - follow-ups due today first (day 3, 7, 12), then new leads by score;
 // - only WhatsApp routes: A with the owner's public WhatsApp, B with the
 //   business's public WhatsApp; Instagram and LinkedIn stay manual (today.html);
 // - never: do-not-contact, known contacts, replied / booked / won / lost, numbers
@@ -50,7 +50,7 @@ export function buildQueue({ limit } = {}) {
     if (!m || !number) continue;
     const lang = m.send_lang || s.language || "both";
     if (l.status === "sent" && l.contacted_at && Number(l.followups_sent || 0) < 3) {
-      const day = [2, 5, 9][Number(l.followups_sent || 0)];
+      const day = [3, 7, 12][Number(l.followups_sent || 0)];
       const f = (m.followups || []).find((x) => x.day === day);
       if (f && days(l.contacted_at) >= day && (!l.last_sent_at || qatarDate(l.last_sent_at) !== today()))
         items.push({ slug: l.slug, name: l.name, kind: `followup-${day}`, number, text: compose(f, lang), lang, score: Number(l.score), attachments: [] });

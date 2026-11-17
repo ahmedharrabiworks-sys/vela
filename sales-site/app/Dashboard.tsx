@@ -12,6 +12,37 @@ const TASK_LABEL: Record<string, string> = {
 type Tab = "today" | "leads" | "checks" | "log";
 const STATUS_OPTIONS = ["new", "sent", "replied", "demo-booked", "trial", "won", "lost", "do-not-contact", "known-contact"];
 
+type AngleRow = { status: string; contacted_at: string | null; last_contacted_at: string | null; replied_at: string | null; angle: string | null };
+const ANGLES: [string, string][] = [["after-hours", "After hours"], ["friday", "Friday"], ["branches", "Branches"], ["peak-hours", "Peak hours"], ["whatsapp-backlog", "WhatsApp backlog"]];
+const REPLIED = new Set(["replied", "demo-booked", "trial", "won"]);
+
+/** A/B test of the question angle in message 1: sent, replied and reply rate per angle. */
+function AngleTest({ rows }: { rows: AngleRow[] }) {
+  const s = ANGLES.map(([k, label]) => {
+    const sent = rows.filter((r) => r.angle === k && r.status !== "new" && (r.contacted_at || r.last_contacted_at));
+    const rep = sent.filter((r) => REPLIED.has(r.status) || r.replied_at).length;
+    return { k, label, sent: sent.length, rep, rate: sent.length ? Math.round((rep / sent.length) * 1000) / 10 : 0, queued: rows.filter((r) => r.angle === k && r.status === "new").length };
+  });
+  const tested = s.every((x) => x.sent >= 20);
+  const best = tested ? [...s].sort((a, b) => b.rate - a.rate)[0] : null;
+  return (
+    <section className="card">
+      <div className="row"><h2 style={{ margin: 0 }}>Question angle test</h2><span className="sp" /><span className="muted">{best ? `Favoring ${best.label} 70/30` : "Balanced until each angle has 20 sends"}</span></div>
+      <div className="angles">
+        {s.map((x) => (
+          <div key={x.k} className={`angle${best?.k === x.k ? " best" : ""}`}>
+            <strong>{x.label}</strong>
+            <span>{x.sent} sent · {x.rep} replied</span>
+            <b>{x.sent ? `${x.rate}%` : "No sends yet"}</b>
+            <div className="meter"><i style={{ width: `${Math.min(100, (x.sent / 20) * 100)}%` }} /></div>
+            <span className="muted">{x.queued} ready</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function Dashboard({ email }: { email: string }) {
   const sb = useMemo(() => supabaseBrowser(), []);
   const [worker, setWorker] = useState<Worker | null>(null);
@@ -20,6 +51,7 @@ export default function Dashboard({ email }: { email: string }) {
   const [replied, setReplied] = useState<Lead[]>([]);
   const [checks, setChecks] = useState<Lead[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [angleRows, setAngleRows] = useState<AngleRow[]>([]);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [tab, setTab] = useState<Tab>("today");
   const [count, setCount] = useState(20);
@@ -32,18 +64,19 @@ export default function Dashboard({ email }: { email: string }) {
   const online = !!worker?.heartbeat_at && now - Date.parse(worker.heartbeat_at) < ONLINE_MS;
 
   const load = useCallback(async () => {
-    const [w, s, t, r, c, j] = await Promise.all([
+    const [w, s, t, r, c, j, a] = await Promise.all([
       sb.from("sales_worker").select("*").eq("id", 1).maybeSingle(),
       sb.from("sales_stats").select("*").maybeSingle(),
       sb.from("sales_leads").select("*").or("in_today.eq.true,followup_due.not.is.null").order("today_rank", { ascending: true, nullsFirst: true }).limit(80),
       sb.from("sales_leads").select("*").eq("status", "replied").order("replied_at", { ascending: false, nullsFirst: false }).limit(20),
       sb.from("sales_leads").select("*").not("check_plan", "is", null).is("check_result", null).in("status", ["new", "sent"]).order("score", { ascending: false }).limit(60),
       sb.from("sales_jobs").select("*").order("created_at", { ascending: false }).limit(12),
+      sb.from("sales_leads").select("status,contacted_at,last_contacted_at,replied_at,angle:message->>angle_key").not("message", "is", null).limit(5000),
     ]);
     if (w.error) { setSetupError(w.error.message); return; }
     setSetupError("");
     setWorker(w.data as Worker | null); setStats(s.data as Stats | null);
-    setToday((t.data ?? []) as Lead[]); setReplied((r.data ?? []) as Lead[]); setChecks((c.data ?? []) as Lead[]); setJobs((j.data ?? []) as Job[]);
+    setToday((t.data ?? []) as Lead[]); setReplied((r.data ?? []) as Lead[]); setChecks((c.data ?? []) as Lead[]); setJobs((j.data ?? []) as Job[]); setAngleRows((a.data ?? []) as AngleRow[]);
   }, [sb]);
 
   useEffect(() => {
@@ -136,6 +169,8 @@ export default function Dashboard({ email }: { email: string }) {
             <div key={String(k)} className="card stat"><b>{v ?? 0}</b><span>{k}</span></div>
           ))}
         </section>
+
+        <AngleTest rows={angleRows} />
 
         <section className="card">
           <div className="row"><h2 style={{ margin: 0 }}>Deep hunt</h2><span className="sp" /><span className="muted">{cellsDone} of {cellsTotal} batches</span></div>
