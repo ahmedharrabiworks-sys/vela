@@ -27,7 +27,8 @@
  },
  "voices": {
   "caller": "HKFOb9iktHA85uKXydRT",
-  "vela_note": "The Vela voice is read from src/lib/vapi-agent-config.ts (DEFAULT_VOICE_ID), the same voice as the phone agent."
+  "vela_note": "Arabic notes: the phone agent's default voice (DEFAULT_VOICE_ID, Heba). English notes: voices.note_en from the VOICES list in src/lib/vapi-agent-config.ts.",
+  "note_en": "Mateo"
  },
  "demo_base_url": "https://velaos.co/demo/",
  "scoring": {
@@ -115,8 +116,8 @@
   "voice_note": true,
   "attach_video": true,
   "video": {
-   "ar": "promo-video/out/vela-short-ar.mp4",
-   "en": "promo-video/out/vela-short-en.mp4"
+   "ar": "promo-video/out/vela-wa-ar.mp4",
+   "en": "promo-video/out/vela-wa-en.mp4"
   },
   "voice_speed": 1.08,
   "voice_after_seconds": [

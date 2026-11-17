@@ -22,7 +22,7 @@ The only goal of message 1 is a reply. The text is a warm hello and one question
 
 - **First contact, in order:** the text; 3 to 6 s later the niche voice note as a real WhatsApp voice note (speed 1.08); 5 to 10 s later the 20 to 25 s Vela video. Oussama presses Send on each.
 - **Message 1: 2 or 3 short lines, about 25 words.**
-  1. Warm greeting with the owner's name (دكتور / دكتورة, أستاذ / أستاذة).
+  1. Warm greeting with the owner's name (دكتور / دكتورة, أستاذ / أستاذة). Route B: "لو تكرمتوا هالرسالة للدكتور ...". No self-introduction anywhere.
   2. ONE neutral question on the lead's A/B angle (after-hours, Friday, branches, peak hours, WhatsApp backlog), on one real fact. Never answered, no fear, no competitors, no "you're losing customers", no stats.
   3. One line pointing to what follows, never asking permission ("جهزت لكم تسجيل قصير عن فكرة ممكن تفيدكم 👇").
 - **Never in the text:** price, trial, meeting ask, product explanation.

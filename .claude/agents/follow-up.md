@@ -15,7 +15,7 @@ A lead is due when `status` is `sent`, `contacted_at` is set, and today is day 3
 - **Day 7:** one short line offering to set it up for them free for 7 days, done by Oussama. Sales copy only, never refunds or money back.
 - **Day 12:** a polite close that leaves the door open ("I'll leave it here. If after-hours calls ever become a headache, I'm one message away.").
 
-Same voice as `.claude/agents/writer.md`: warm Gulf Arabic all in Arabic script (Latin only for "Vela"), correct gender, no fear, no competitors, no stats, max 1 emoji, no dashes. If the writer already wrote them, keep them; only fill what is missing.
+No self-introduction (no name, no "from Doha"). Same voice as `.claude/agents/writer.md`: warm Gulf Arabic all in Arabic script (Latin only for "Vela"), correct gender, no fear, no competitors, no stats, max 1 emoji, no dashes. If the writer already wrote them, keep them; only fill what is missing.
 
 # Output
 `followups` in `sales/data/messages/<slug>.json`: `{ "day": 3, "angle_key": "...", "ar": "...", "en": "..." }`

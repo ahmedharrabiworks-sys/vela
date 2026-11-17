@@ -19,6 +19,8 @@ const lines = (t) => t.trim().split(/\n+/).filter((l) => l.trim());
 const emojis = (t) => (t.match(/\p{Extended_Pictographic}/gu) || []).length;
 const questions = (t) => (t.match(/[?؟]/g) || []).length;
 
+// No self-introduction anywhere (message or follow-up): the voice note and the video speak for Vela.
+const INTRO = /\b(Oussama|Ahmed Harrabi|my name is|this is [A-Z][a-z]+ from|from Doha)\b|أسامة|اسمي|معك [^\s،.]+ من|أنا [^\s،.]+ من الدوحة|من الدوحة/i;
 const RULES = {
   en: [
     [/\b(competitors?|down the street|other clinics?|lose|losing|lost|loss|missed (customers|patients|business)|cost you|leaving money)\b/i, "competitors, losses or fear"],
@@ -35,8 +37,6 @@ const RULES = {
     [/(تقييم|مراجعات|متابع|لاحظت إن|شفت إنكم)/, "sounds researched"],
   ],
 };
-// The required self-introduction may repeat by design.
-const REQUIRED = new Set(["oussama here from doha", "معك أسامة من الدوحة"]);
 
 const msgs = files.map((f) => ({ slug: f.replace(/\.json$/, ""), ...JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) }));
 const problems = [];
@@ -60,13 +60,14 @@ for (const m of msgs) {
       if (!/👇|⬇️/.test(ls[ls.length - 1] || "")) problems.push(`${m.slug} ${lang}: the last line should point to what follows (👇)`);
       if (emojis(text) > 1) problems.push(`${m.slug} ${lang}: ${emojis(text)} emojis (max 1)`);
       if (DASHES.test(text)) problems.push(`${m.slug} ${lang}: contains an em/en dash`);
+      if (INTRO.test(text)) problems.push(`${m.slug} ${lang}: self-introduction "${text.match(INTRO)[0]}" (no intro, ever)`);
       for (const [re, why] of RULES[lang]) { const hit = text.match(re); if (hit) problems.push(`${m.slug} ${lang}: "${hit[0]}" (${why})`); }
       if (lang === "ar") {
         const latin = (text.match(/[A-Za-z]+/g) || []).filter((w) => w !== "Vela");
         if (latin.length) problems.push(`${m.slug} ar: Latin letters "${latin.join(" ")}" (Arabic script only, except Vela)`);
       }
     }
-    const ss = sentences(text).filter((s) => !REQUIRED.has(s));
+    const ss = sentences(text);
     const opening = norm(text).split(" ").slice(0, 4).join(" ");
     const closing = ss[ss.length - 1];
     for (const key of [...ss.map((s) => `s:${s}`), `open:${opening}`, `close:${closing}`]) {
@@ -81,6 +82,7 @@ for (const m of msgs) {
   if (days !== "3,7,12") problems.push(`${m.slug}: follow-ups must be days 3, 7, 12 (has ${days || "none"})`);
   for (const f of m.followups || []) for (const fl of ["ar", "en"]) {
     const t = f[fl] || "";
+    if (t && INTRO.test(t)) problems.push(`${m.slug} day ${f.day} ${fl}: self-introduction "${t.match(INTRO)[0]}"`);
     if (!t) { problems.push(`${m.slug} day ${f.day} ${fl}: missing`); continue; }
     if (lines(t).length > 2) problems.push(`${m.slug} day ${f.day} ${fl}: ${lines(t).length} lines (max 2)`);
     if (words(t) > 30) problems.push(`${m.slug} day ${f.day} ${fl}: ${words(t)} words (keep it short)`);

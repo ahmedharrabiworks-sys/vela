@@ -236,6 +236,18 @@ export function pickAngle(lead, leads = readLeads(), rnd = Math.random) {
   return pool[Math.floor(rnd() * pool.length)];
 }
 
+/** A voice from the agent config's VOICES list, by name (e.g. "Mateo"); never guessed. */
+export function voiceIdByName(name) {
+  const src = fs.readFileSync(path.join(ROOT, "src", "lib", "vapi-agent-config.ts"), "utf8");
+  const m = src.match(new RegExp(`\\{\\s*id:\\s*"([A-Za-z0-9]+)",\\s*name:\\s*"${name}"`));
+  if (!m) throw new Error(`voice "${name}" not found in src/lib/vapi-agent-config.ts`);
+  return m[1];
+}
+/** The voice for a niche note: Arabic = the phone agent's default (Heba), English = config.voices.note_en (Mateo). */
+export function noteVoiceId(lang) {
+  return lang === "en" ? voiceIdByName(config().voices?.note_en || "Mateo") : velaVoiceId();
+}
+
 // ── Usage budget (ElevenLabs characters per week, Vapi dollars in total) ──
 const USAGE = path.join(DATA, "usage.json");
 export function usage() {

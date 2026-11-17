@@ -19,14 +19,15 @@ Before writing, get this lead's angle: `node sales/scripts/angle.mjs <slug>` pri
 Write the question on THAT angle, built on the lead's one real fact for it (closing time, closed day, number of branches, call-to-book line, WhatsApp booking). Save it as `angle_key`. Never pick it yourself.
 
 # Message 1 (2 or 3 short lines, about 25 words, max 30)
-1. **Warm greeting with the owner's name**, correct Arabic gender: دكتور / دكتورة, أستاذ / أستاذة. Route B (business WhatsApp, staff read it): one kind phrase asking it to reach them is fine. No name found: "صاحب المكان" / "the owner", never invent one.
+1. **Warm greeting with the owner's name**, correct Arabic gender: دكتور / دكتورة, أستاذ / أستاذة (e.g. "هلا دكتورة سارة، عساج بخير."). Route B (business WhatsApp, staff read it): the polite opener "لو تكرمتوا هالرسالة للدكتور ..." / "This one is for Dr. ... please." No name found: "صاحب المكان" / "the owner", never invent one.
+   **No self-introduction, ever**: no "معك أسامة من الدوحة", no "Oussama here", no name, no "from Doha", in the message or any follow-up.
 2. **ONE neutral question** that pulls them into the problem, specific to them, on the assigned angle. Never answer it. No fear, no competitors, no "you're losing customers", no stats.
 3. **One line pointing to what follows, never asking permission**, e.g. "جهزت لكم تسجيل قصير عن فكرة ممكن تفيدكم 👇" / "Put together a short voice note on an idea that might help 👇". Say it your own way each time.
 
 Never in the text: price, trial, meeting ask, product explanation (no "AI", "receptionist", "answers calls", "books"), links, "I noticed", review or follower counts. Max 1 emoji. No em or en dashes.
 
 # Arabic
-Natural, warm Gulf Arabic, all in Arabic script: أسامة if you sign, the owner's name in Arabic letters, the business name in Arabic letters. Latin only for "Vela" if you ever use it. Correct gender everywhere (عندك / عندج, تسمع / تسمعين; a business in plural: عندكم، تسكّرون).
+Natural, warm Gulf Arabic, all in Arabic script: the owner's name in Arabic letters, the business name in Arabic letters. Latin only for "Vela" if you ever use it. Correct gender everywhere (عندك / عندج, تسمع / تسمعين; a business in plural: عندكم، تسكّرون).
 
 # English
 Same rules. Plain, warm, short.
@@ -37,7 +38,7 @@ Same rules. Plain, warm, short.
 - **Day 12:** a polite close, e.g. "I'll leave it here. If after-hours calls ever become a headache, I'm one message away."
 
 # Self-check (`node sales/scripts/unique.mjs <slug>` must print ok)
-It rejects: more than 3 lines or 30 words; more than one question; anything after the question that answers it; asking permission ("can I send", "تسمح لي", "عادي أرسل"); competitors or losses; product explanation; price, trial or meeting in message 1; Latin letters in Arabic (except "Vela"); dashes; more than one emoji; repeated sentences, openings or closings across leads. Rewrite until it prints ok.
+It rejects: any self-introduction; more than 3 lines or 30 words; more than one question; anything after the question that answers it; asking permission ("can I send", "تسمح لي", "عادي أرسل"); competitors or losses; product explanation; price, trial or meeting in message 1; Latin letters in Arabic (except "Vela"); dashes; more than one emoji; repeated sentences, openings or closings across leads. Rewrite until it prints ok.
 
 # Every lead gets a fresh message
 Different wording for every business, even on the same angle. Never a template.

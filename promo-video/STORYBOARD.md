@@ -65,3 +65,14 @@ Renders, audio, captures and copied logos are not in git. From `promo-video/` (n
 4. `node scripts/build-timeline.mjs en <take>` and `... ar <take>` (cuts and captions from the voice timing).
 5. `node scripts/make-sfx.mjs`, and copy `../public/assets/logo-full.png` to `public/brand/`.
 6. `node scripts/render.mjs en` and `... ar`, then `node scripts/qa.mjs en` and `... ar`.
+
+## WhatsApp video (VelaWA): the third message of a first contact
+
+`out/vela-wa-en.mp4`, `out/vela-wa-ar.mp4`. 1080x1920, 30 fps, 22.5 to 25 s, H.264 High@4.0 yuv420p (BT.709), AAC 48 kHz, under 8 MB, -14 LUFS. General: any business, no niche, no business names. Built from scratch in `src/wa/` (not cut from the promos above).
+
+- **One world:** the landing hero phone (StoryDevice: 300x620, warm dark metal bezel, orange-tinted soft shadow) lies ringing on a dark counter, then rises into warm white as Vela answers; the call becomes a transcript, a booking card and a slot in the week.
+- **Acts:** dark (the problem: "After hours", "Fridays.", "Busy lines.", missed calls counting up), warm white (Vela at work), end card (logo, "The receptionist that never sleeps", velaos.co, held 2.5 s or more).
+- **Voice:** eleven_v3, speed 1.08. English: Mateo. Arabic: Heba (female Gulf, the phone agent's default). Swap with `WA_VOICE_EN` / `WA_VOICE_AR` (a name from the VOICES list in `src/lib/vapi-agent-config.ts`).
+- **Timing:** each sentence of the take is placed at its storyboard time (`LINE_AT` in `src/wa/script.js`); every cue lands on a word (`src/wa/timeline-<lang>.json`).
+- **Captions:** 2 to 5 words, the spoken word in orange, hidden where the kinetic type or the end card already says it. Text and UI stay between y 200 and 1700 (WhatsApp's overlays).
+- **Build:** `node scripts/wa-tts.mjs <lang>` (spends ElevenLabs characters against the shared weekly cap), `node scripts/wa-timeline.mjs <lang>`, `node scripts/wa-render.mjs <lang>`, `node scripts/wa-qa.mjs <lang>` (ffprobe, loudness, one frame per scene, contact sheet, safe-zone sheet).

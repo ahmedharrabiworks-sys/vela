@@ -1,0 +1,481 @@
+{
+ "lang": "en",
+ "fps": 30,
+ "voice": "Mateo",
+ "durationInFrames": 747,
+ "clips": [
+  {
+   "line": 0,
+   "from": 18,
+   "srcFrom": 0,
+   "srcTo": 83
+  },
+  {
+   "line": 1,
+   "from": 107,
+   "srcFrom": 80,
+   "srcTo": 130
+  },
+  {
+   "line": 2,
+   "from": 162,
+   "srcFrom": 128,
+   "srcTo": 164
+  },
+  {
+   "line": 3,
+   "from": 205,
+   "srcFrom": 163,
+   "srcTo": 217
+  },
+  {
+   "line": 4,
+   "from": 265,
+   "srcFrom": 233,
+   "srcTo": 436
+  },
+  {
+   "line": 5,
+   "from": 480,
+   "srcFrom": 437,
+   "srcTo": 481
+  },
+  {
+   "line": 6,
+   "from": 546,
+   "srcFrom": 493,
+   "srcTo": 616
+  }
+ ],
+ "words": [
+  {
+   "line": 0,
+   "t": "Every",
+   "spoken": "Every",
+   "from": 18,
+   "to": 23
+  },
+  {
+   "line": 0,
+   "t": "business",
+   "spoken": "business",
+   "from": 24,
+   "to": 37
+  },
+  {
+   "line": 0,
+   "t": "has",
+   "spoken": "has",
+   "from": 39,
+   "to": 44
+  },
+  {
+   "line": 0,
+   "t": "calls",
+   "spoken": "calls",
+   "from": 46,
+   "to": 56
+  },
+  {
+   "line": 0,
+   "t": "it",
+   "spoken": "it",
+   "from": 57,
+   "to": 59
+  },
+  {
+   "line": 0,
+   "t": "can't",
+   "spoken": "can't",
+   "from": 60,
+   "to": 66
+  },
+  {
+   "line": 0,
+   "t": "pick",
+   "spoken": "pick",
+   "from": 67,
+   "to": 73
+  },
+  {
+   "line": 0,
+   "t": "up.",
+   "spoken": "up.",
+   "from": 76,
+   "to": 97
+  },
+  {
+   "line": 1,
+   "t": "After",
+   "spoken": "After",
+   "from": 109,
+   "to": 123
+  },
+  {
+   "line": 1,
+   "t": "closing.",
+   "spoken": "closing.",
+   "from": 125,
+   "to": 153
+  },
+  {
+   "line": 2,
+   "t": "On",
+   "spoken": "On",
+   "from": 164,
+   "to": 171
+  },
+  {
+   "line": 2,
+   "t": "Fridays.",
+   "spoken": "Fridays.",
+   "from": 174,
+   "to": 195
+  },
+  {
+   "line": 3,
+   "t": "When",
+   "spoken": "When",
+   "from": 207,
+   "to": 224
+  },
+  {
+   "line": 3,
+   "t": "the",
+   "spoken": "the",
+   "from": 224,
+   "to": 226
+  },
+  {
+   "line": 3,
+   "t": "line",
+   "spoken": "line",
+   "from": 229,
+   "to": 238
+  },
+  {
+   "line": 3,
+   "t": "is",
+   "spoken": "is",
+   "from": 239,
+   "to": 241
+  },
+  {
+   "line": 3,
+   "t": "busy.",
+   "spoken": "busy.",
+   "from": 243,
+   "to": 255
+  },
+  {
+   "line": 4,
+   "t": "Vela",
+   "spoken": "Vela",
+   "from": 266,
+   "to": 298
+  },
+  {
+   "line": 4,
+   "t": "answers",
+   "spoken": "answers",
+   "from": 300,
+   "to": 314
+  },
+  {
+   "line": 4,
+   "t": "them,",
+   "spoken": "them,",
+   "from": 316,
+   "to": 331
+  },
+  {
+   "line": 4,
+   "t": "in",
+   "spoken": "in",
+   "from": 333,
+   "to": 336
+  },
+  {
+   "line": 4,
+   "t": "Arabic",
+   "spoken": "Arabic",
+   "from": 338,
+   "to": 348
+  },
+  {
+   "line": 4,
+   "t": "and",
+   "spoken": "and",
+   "from": 349,
+   "to": 350
+  },
+  {
+   "line": 4,
+   "t": "English,",
+   "spoken": "English,",
+   "from": 352,
+   "to": 372
+  },
+  {
+   "line": 4,
+   "t": "knows",
+   "spoken": "knows",
+   "from": 374,
+   "to": 382
+  },
+  {
+   "line": 4,
+   "t": "your",
+   "spoken": "your",
+   "from": 382,
+   "to": 384
+  },
+  {
+   "line": 4,
+   "t": "services,",
+   "spoken": "services,",
+   "from": 386,
+   "to": 410
+  },
+  {
+   "line": 4,
+   "t": "and",
+   "spoken": "and",
+   "from": 413,
+   "to": 422
+  },
+  {
+   "line": 4,
+   "t": "books",
+   "spoken": "books",
+   "from": 424,
+   "to": 430
+  },
+  {
+   "line": 4,
+   "t": "the",
+   "spoken": "the",
+   "from": 430,
+   "to": 432
+  },
+  {
+   "line": 4,
+   "t": "appointment",
+   "spoken": "appointment",
+   "from": 433,
+   "to": 446
+  },
+  {
+   "line": 4,
+   "t": "for",
+   "spoken": "for",
+   "from": 448,
+   "to": 454
+  },
+  {
+   "line": 4,
+   "t": "you.",
+   "spoken": "you.",
+   "from": 455,
+   "to": 463
+  },
+  {
+   "line": 5,
+   "t": "Day",
+   "spoken": "Day",
+   "from": 482,
+   "to": 502
+  },
+  {
+   "line": 5,
+   "t": "and",
+   "spoken": "and",
+   "from": 503,
+   "to": 506
+  },
+  {
+   "line": 5,
+   "t": "night.",
+   "spoken": "night.",
+   "from": 508,
+   "to": 521
+  },
+  {
+   "line": 6,
+   "t": "Vela.",
+   "spoken": "Vela.",
+   "from": 548,
+   "to": 577
+  },
+  {
+   "line": 6,
+   "t": "The",
+   "spoken": "The",
+   "from": 583,
+   "to": 603
+  },
+  {
+   "line": 6,
+   "t": "receptionist",
+   "spoken": "receptionist",
+   "from": 605,
+   "to": 627
+  },
+  {
+   "line": 6,
+   "t": "that",
+   "spoken": "that",
+   "from": 629,
+   "to": 637
+  },
+  {
+   "line": 6,
+   "t": "never",
+   "spoken": "never",
+   "from": 638,
+   "to": 644
+  },
+  {
+   "line": 6,
+   "t": "sleeps.",
+   "spoken": "sleeps.",
+   "from": 647,
+   "to": 665
+  }
+ ],
+ "captions": [
+  {
+   "line": 0,
+   "words": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "from": 18,
+   "to": 57
+  },
+  {
+   "line": 0,
+   "words": [
+    4,
+    5,
+    6,
+    7
+   ],
+   "from": 57,
+   "to": 109
+  },
+  {
+   "line": 1,
+   "words": [
+    8,
+    9
+   ],
+   "from": 109,
+   "to": 164
+  },
+  {
+   "line": 2,
+   "words": [
+    10,
+    11
+   ],
+   "from": 164,
+   "to": 207
+  },
+  {
+   "line": 3,
+   "words": [
+    12,
+    13,
+    14,
+    15,
+    16
+   ],
+   "from": 207,
+   "to": 266
+  },
+  {
+   "line": 4,
+   "words": [
+    17,
+    18,
+    19
+   ],
+   "from": 266,
+   "to": 333
+  },
+  {
+   "line": 4,
+   "words": [
+    20,
+    21,
+    22,
+    23
+   ],
+   "from": 333,
+   "to": 374
+  },
+  {
+   "line": 4,
+   "words": [
+    24,
+    25,
+    26
+   ],
+   "from": 374,
+   "to": 413
+  },
+  {
+   "line": 4,
+   "words": [
+    27,
+    28,
+    29,
+    30
+   ],
+   "from": 413,
+   "to": 448
+  },
+  {
+   "line": 4,
+   "words": [
+    31,
+    32
+   ],
+   "from": 448,
+   "to": 475
+  },
+  {
+   "line": 5,
+   "words": [
+    33,
+    34,
+    35
+   ],
+   "from": 482,
+   "to": 533
+  },
+  {
+   "line": 6,
+   "words": [
+    36,
+    37,
+    38,
+    39
+   ],
+   "from": 548,
+   "to": 638
+  },
+  {
+   "line": 6,
+   "words": [
+    40,
+    41
+   ],
+   "from": 638,
+   "to": 677
+  }
+ ]
+}

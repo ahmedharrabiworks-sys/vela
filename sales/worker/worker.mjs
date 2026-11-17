@@ -105,7 +105,8 @@ async function uploadAudio(local, remote) {
   if (!fs.existsSync(local)) return null;
   const st = fs.statSync(local), key = `${st.size}:${Math.round(st.mtimeMs)}`;
   if (syncState.audio[remote] === key) return remote;
-  const { error } = await db.storage.from("sales-audio").upload(remote, fs.readFileSync(local), { contentType: "audio/mpeg", upsert: true });
+  const type = local.endsWith(".mp4") ? "video/mp4" : local.endsWith(".ogg") ? "audio/ogg" : "audio/mpeg";
+  const { error } = await db.storage.from("sales-audio").upload(remote, fs.readFileSync(local), { contentType: type, upsert: true });
   if (error) { say(`audio upload ${remote}: ${error.message}`); return null; }
   syncState.audio[remote] = key;
   return remote;
@@ -124,6 +125,8 @@ async function sync() {
     // Every niche voice note (both languages), so new leads in any niche play at once on the dashboard.
     const nicheDir = path.join(DATA, "audio", "niche");
     for (const f of fs.existsSync(nicheDir) ? fs.readdirSync(nicheDir).filter((x) => /^[a-z0-9-]+-(ar|en)\.mp3$/.test(x)) : []) await uploadAudio(path.join(nicheDir, f), `niche/${f}`);
+    // The WhatsApp videos (third message of a first contact), kept in the same private bucket.
+    for (const [lang, rel] of Object.entries(config().send?.video ?? {})) await uploadAudio(path.join(ROOT, rel), `video/vela-wa-${lang}.mp4`);
     const rows = [];
     for (const l of leads) {
       const m = readJson(path.join(DATA, "messages", `${l.slug}.json`));
